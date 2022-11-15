@@ -23,12 +23,12 @@
 #ifndef IRESEARCH_INDEX_READER_H
 #define IRESEARCH_INDEX_READER_H
 
-#include <vector>
-#include <numeric>
 #include <functional>
+#include <numeric>
+#include <vector>
 
-#include "index/field_meta.hpp"
 #include "formats/formats.hpp"
+#include "index/field_meta.hpp"
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/iterator.hpp"
@@ -38,6 +38,15 @@
 namespace iresearch {
 
 struct sub_reader;
+
+using column_warmup_callback_f =
+  std::function<bool(const segment_meta& meta, const field_reader& fields,
+                     const column_reader& column)>;
+
+struct index_reader_options {
+  column_warmup_callback_f warmup_columns;
+  memory_accounting_f pinned_memory_accounting;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_reader

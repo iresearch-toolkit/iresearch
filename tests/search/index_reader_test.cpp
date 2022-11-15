@@ -21,13 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "index/index_reader.hpp"
+
 #include "formats/formats_10.hpp"
-#include "index/index_writer.hpp"
-#include "store/memory_directory.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
+#include "index/index_writer.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 #include "utils/version_utils.hpp"
 
 using namespace std::chrono_literals;
@@ -451,7 +452,9 @@ TEST(segment_reader_test, open_invalid_segment) {
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(irs::segment_reader::open(dir, meta), irs::io_error);
+    ASSERT_THROW(
+      irs::segment_reader::open(dir, meta, irs::index_reader_options{}),
+      irs::io_error);
   }
 }
 
@@ -494,7 +497,8 @@ TEST(segment_reader_test, open) {
     meta.name = "_1";
     meta.version = IRESEARCH_VERSION;
 
-    auto rdr = irs::segment_reader::open(dir, meta);
+    auto rdr =
+      irs::segment_reader::open(dir, meta, irs::index_reader_options{});
     ASSERT_FALSE(!rdr);
     ASSERT_EQ(1, rdr.size());
     ASSERT_EQ(meta.docs_count, rdr.docs_count());

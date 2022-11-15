@@ -29,8 +29,8 @@
 
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/register.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 

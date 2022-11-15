@@ -24,18 +24,20 @@
 #ifndef IRESEARCH_FILE_UTILS_H
 #define IRESEARCH_FILE_UTILS_H
 
-#include <memory>
+#include <fcntl.h>  // open/_wopen
+
 #include <cstdio>
 #include <functional>
-#include <fcntl.h>  // open/_wopen
+#include <memory>
 
 #include "shared.hpp"
 #include "string.hpp"
+#include "utils/bit_utils.hpp"
 #include "utils/utf8_path.hpp"
 
 #ifdef _WIN32
-#include <tchar.h>
 #include <io.h>  // _close
+#include <tchar.h>
 #define file_blksize_t \
   uint32_t  // DWORD (same as GetDriveGeometry(...)
             // DISK_GEOMETRY::BytesPerSector)
@@ -59,8 +61,8 @@
 #define IR_FADVICE_DONTNEED 0
 #define IR_FADVICE_NOREUSE 0
 #else
-#include <unistd.h>     // close
 #include <sys/types.h>  // for blksize_t
+#include <unistd.h>     // close
 #define file_blksize_t blksize_t
 #define file_path_delimiter '/'
 #define file_stat_t struct stat
@@ -128,7 +130,9 @@ bool mtime(time_t& result, const file_path_t file) noexcept;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
-enum class OpenMode { Read, Write };
+enum class OpenMode : uint16_t { Invalid = 0, Read = 1, Write = 2, Direct = 4 };
+
+ENABLE_BITMASK_ENUM(OpenMode);
 
 struct file_deleter {
   void operator()(void* f) const noexcept;

@@ -339,12 +339,12 @@ class bytes_ref_input : public index_input {
     pos_ += size;
   }
 
-  virtual void seek(size_t pos) noexcept override final {
+  virtual void seek(size_t pos) noexcept override {
     assert(data_.begin() + pos <= data_.end());
     pos_ = data_.begin() + pos;
   }
 
-  virtual size_t file_pointer() const noexcept override final {
+  virtual size_t file_pointer() const noexcept override {
     return std::distance(data_.begin(), pos_);
   }
 
@@ -359,8 +359,8 @@ class bytes_ref_input : public index_input {
     return *pos_++;
   }
 
-  virtual const byte_type* read_buffer(
-    size_t offset, size_t size, BufferHint /*hint*/) noexcept override final {
+  const byte_type* read_buffer(size_t offset, size_t size,
+                               BufferHint /*hint*/) noexcept override {
     const auto begin = data_.begin() + offset;
     const auto end = begin + size;
 
@@ -372,8 +372,8 @@ class bytes_ref_input : public index_input {
     return nullptr;
   }
 
-  virtual const byte_type* read_buffer(
-    size_t size, BufferHint /*hint*/) noexcept override final {
+  const byte_type* read_buffer(size_t size,
+                               BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
     if (pos <= data_.end()) {
@@ -384,10 +384,9 @@ class bytes_ref_input : public index_input {
     return nullptr;
   }
 
-  virtual size_t read_bytes(byte_type* b, size_t size) noexcept override final;
+  size_t read_bytes(byte_type* b, size_t size) noexcept override final;
 
-  virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept override final;
+  size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept override;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
@@ -399,38 +398,79 @@ class bytes_ref_input : public index_input {
 
   void reset(bytes_ref ref) noexcept { reset(ref.c_str(), ref.size()); }
 
-  virtual ptr dup() const override {
+  ptr dup() const override {
     return memory::make_unique<bytes_ref_input>(*this);
   }
 
-  virtual ptr reopen() const override { return dup(); }
+  ptr reopen() const override { return dup(); }
 
-  virtual int16_t read_short() noexcept override final {
-    return irs::read<uint16_t>(pos_);
-  }
+  int16_t read_short() noexcept final { return irs::read<uint16_t>(pos_); }
 
-  virtual int32_t read_int() noexcept override final {
-    return irs::read<uint32_t>(pos_);
-  }
+  int32_t read_int() noexcept final { return irs::read<uint32_t>(pos_); }
 
-  virtual int64_t read_long() noexcept override final {
-    return irs::read<uint64_t>(pos_);
-  }
+  int64_t read_long() noexcept final { return irs::read<uint64_t>(pos_); }
 
-  virtual uint64_t read_vlong() noexcept override final {
-    return irs::vread<uint64_t>(pos_);
-  }
+  uint64_t read_vlong() noexcept final { return irs::vread<uint64_t>(pos_); }
 
-  virtual uint32_t read_vint() noexcept override final {
-    return irs::vread<uint32_t>(pos_);
-  }
+  uint32_t read_vint() noexcept final { return irs::vread<uint32_t>(pos_); }
 
-  virtual int64_t checksum(size_t offset) const override final;
+  int64_t checksum(size_t offset) const override;
 
  private:
   bytes_ref data_;
   const byte_type* pos_{data_.begin()};
-};  // bytes_ref_input
+};
+
+// same as bytes_view_input but with support of adress remapping
+// usable when original data offses needs to be persistent
+// NOTE: remapped data blocks may have gaps but should not overlap!
+class IRESEARCH_API remapped_bytes_ref_input : public bytes_ref_input {
+ public:
+  using mapping_value = std::pair<size_t, size_t>;
+  using mapping = std::vector<mapping_value>;
+
+  explicit remapped_bytes_ref_input(const bytes_ref& data, mapping&& mapping)
+    : bytes_ref_input(data), mapping_{std::move(mapping)} {
+    std::sort(
+      mapping_.begin(), mapping_.end(),
+      [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; });
+  }
+
+  remapped_bytes_ref_input(const remapped_bytes_ref_input& other)
+    : bytes_ref_input(other), mapping_{other.mapping_} {}
+
+  int64_t checksum(size_t offset) const final {
+    return bytes_ref_input::checksum(src_to_internal(offset));
+  }
+
+  void seek(size_t pos) noexcept final {
+    bytes_ref_input::seek(src_to_internal(pos));
+  }
+
+  size_t file_pointer() const noexcept final;
+
+  ptr dup() const override {
+    return memory::make_unique<remapped_bytes_ref_input>(*this);
+  }
+
+  const byte_type* read_buffer(size_t offset, size_t size,
+                               BufferHint hint) noexcept override {
+    return bytes_ref_input::read_buffer(src_to_internal(offset), size, hint);
+  }
+
+  using bytes_ref_input::read_buffer;
+  using bytes_ref_input::read_bytes;
+
+  virtual size_t read_bytes(size_t offset, byte_type* b,
+                            size_t size) noexcept final {
+    return bytes_ref_input::read_bytes(src_to_internal(offset), b, size);
+  }
+
+ private:
+  size_t src_to_internal(size_t t) const noexcept;
+
+  mapping mapping_;
+};
 
 namespace encode {
 
