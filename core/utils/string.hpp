@@ -30,111 +30,90 @@
 
 namespace std {
 
-#if defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wtautological-pointer-compare"
-#endif
-
-// MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
-// MacOS requires this definition to be before first usage (i.e. in bytes_view)
-#if !defined(_MSC_VER) || (_MSC_VER <= 1900)
+// We define this specialization because default implementation
+// for unsigned char doesn't implement it effective
 template<>
 struct char_traits<::iresearch::byte_type> {
-  typedef ::iresearch::byte_type char_type;
-  typedef int int_type;
-  typedef std::streamoff off_type;
-  typedef std::streampos pos_type;
+  using char_type = ::iresearch::byte_type;
+  using int_type = int;
+  using pos_type = std::streampos;
+  using off_type = std::streamoff;
+  using state_type = std::mbstate_t;
 
-  static void assign(char_type& dst, const char_type& src) noexcept {
-    dst = src;
+  static constexpr void assign(char_type& c1, const char_type& c2) noexcept {
+    c1 = c2;
   }
 
-  static char_type* assign(char_type* ptr, size_t count, char_type ch) noexcept
-    IRESEARCH_ATTRIBUTE_NONNULL() {
-    assert(nullptr != ptr);
-    return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
+  static constexpr bool eq(const char_type& c1, const char_type& c2) noexcept {
+    return c1 == c2;
   }
 
-  static int compare(const char_type* lhs, const char_type* rhs,
-                     size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
-    if (0 == count) {
+  static constexpr bool lt(const char_type& c1, const char_type& c2) noexcept {
+    return (static_cast<unsigned char>(c1) < static_cast<unsigned char>(c2));
+  }
+
+  static constexpr int compare(const char_type* s1, const char_type* s2,
+                               size_t n) {
+    if (n == 0) {
       return 0;
     }
-
-    assert(nullptr != lhs);
-    assert(nullptr != rhs);
-    return std::memcmp(lhs, rhs, count);
+    return std::memcmp(s1, s2, n);
   }
 
-  static char_type* copy(char_type* dst, const char_type* src,
-                         size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
-    if (0 == count) {
-      return dst;
-    }
-
-    assert(nullptr != dst);
-    assert(nullptr != src);
-    return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
-  }
-
-  static constexpr int_type eof() noexcept { return -1; }
-
-  static constexpr bool eq(char_type lhs, char_type rhs) noexcept {
-    return lhs == rhs;
-  }
-
-  static constexpr bool eq_int_type(int_type lhs, int_type rhs) noexcept {
-    return lhs == rhs;
-  }
-
-  static const char_type* find(const char_type* ptr, size_t count,
-                               const char_type& ch) noexcept
-    IRESEARCH_ATTRIBUTE_NONNULL() {
-    if (0 == count) {
+  static constexpr const char_type* find(const char_type* s, size_t n,
+                                         const char_type& a) {
+    if (n == 0) {
       return nullptr;
     }
-
-    assert(nullptr != ptr);
-    return reinterpret_cast<const char_type*>(std::memchr(ptr, ch, count));
+    return static_cast<const char_type*>(std::memchr(s, a, n));
   }
 
-  static size_t length(const char_type* /*ptr*/) noexcept {
-    // binary string length cannot be determined from binary content
-    assert(false);
-    return (std::numeric_limits<size_t>::max)();
-  }
-
-  static constexpr bool lt(char_type lhs, char_type rhs) noexcept {
-    return lhs < rhs;
-  }
-
-  static char_type* move(char_type* dst, const char_type* src,
-                         size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
-    if (0 == count) {
-      return dst;
+  static constexpr char_type* move(char_type* s1, const char_type* s2,
+                                   size_t n) {
+    if (n == 0) {
+      return s1;
     }
-
-    return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
+    return static_cast<char_type*>(std::memmove(s1, s2, n));
   }
 
-  static constexpr int_type not_eof(int_type i) noexcept { return i != eof(); }
-
-  static constexpr char_type to_char_type(int_type i) noexcept {
-    assert(int_type(char_type(i)) == i);
-    return char_type(i);
+  static constexpr char_type* copy(char_type* s1, const char_type* s2,
+                                   size_t n) {
+    if (n == 0) {
+      return s1;
+    }
+    return static_cast<char_type*>(std::memcpy(s1, s2, n));
   }
 
-  static constexpr int_type to_int_type(char_type ch) noexcept { return ch; }
+  static constexpr char_type* assign(char_type* s, size_t n, char_type a) {
+    if (n == 0) {
+      return s;
+    }
+    return static_cast<char_type*>(std::memset(s, a, n));
+  }
 
-  MSVC_ONLY(static void _Copy_s(char_type* /*dst*/, size_t /*dst_size*/,
-                                const char_type* /*src*/,
-                                size_t /*src_size*/) { assert(false); });
-};  // char_traits
-#endif
+  static constexpr char_type to_char_type(const int_type& c) noexcept {
+    return static_cast<char_type>(c);
+  }
 
-#if defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
+  // To keep both the byte 0xff and the eof symbol 0xffffffff
+  // from ending up as 0xffffffff.
+  static constexpr int_type to_int_type(const char_type& c) noexcept {
+    return static_cast<int_type>(static_cast<unsigned char>(c));
+  }
+
+  static constexpr bool eq_int_type(const int_type& c1,
+                                    const int_type& c2) noexcept {
+    return c1 == c2;
+  }
+
+  static constexpr int_type eof() noexcept {
+    return static_cast<int_type>(-1);
+  }
+
+  static constexpr int_type not_eof(const int_type& c) noexcept {
+    return (c == eof()) ? 0 : c;
+  }
+};
 
 }  // namespace std
 
