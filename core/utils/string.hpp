@@ -53,7 +53,7 @@ struct char_traits<::iresearch::byte_type> {
   }
 
   static constexpr int compare(const char_type* s1, const char_type* s2,
-                               size_t n) {
+                               size_t n) noexcept {
     if (n == 0) {
       return 0;
     }
@@ -61,7 +61,7 @@ struct char_traits<::iresearch::byte_type> {
   }
 
   static constexpr const char_type* find(const char_type* s, size_t n,
-                                         const char_type& a) {
+                                         const char_type& a) noexcept {
     if (n == 0) {
       return nullptr;
     }
@@ -69,7 +69,7 @@ struct char_traits<::iresearch::byte_type> {
   }
 
   static constexpr char_type* move(char_type* s1, const char_type* s2,
-                                   size_t n) {
+                                   size_t n) noexcept {
     if (n == 0) {
       return s1;
     }
@@ -77,14 +77,15 @@ struct char_traits<::iresearch::byte_type> {
   }
 
   static constexpr char_type* copy(char_type* s1, const char_type* s2,
-                                   size_t n) {
+                                   size_t n) noexcept {
     if (n == 0) {
       return s1;
     }
     return static_cast<char_type*>(std::memcpy(s1, s2, n));
   }
 
-  static constexpr char_type* assign(char_type* s, size_t n, char_type a) {
+  static constexpr char_type* assign(char_type* s, size_t n,
+                                     char_type a) noexcept {
     if (n == 0) {
       return s;
     }
@@ -106,9 +107,7 @@ struct char_traits<::iresearch::byte_type> {
     return c1 == c2;
   }
 
-  static constexpr int_type eof() noexcept {
-    return static_cast<int_type>(-1);
-  }
+  static constexpr int_type eof() noexcept { return static_cast<int_type>(-1); }
 
   static constexpr int_type not_eof(const int_type& c) noexcept {
     return (c == eof()) ? 0 : c;
