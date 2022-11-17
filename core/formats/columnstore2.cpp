@@ -1073,7 +1073,7 @@ class sparse_column final : public column_base {
     }
 
     std::sort(chunks.begin(), chunks.end(),
-              [&blocks](const auto& lhs, const auto& rhs) {
+              [](const auto& lhs, const auto& rhs) {
                 return std::get<4>(lhs) < std::get<4>(rhs);
               });
 
