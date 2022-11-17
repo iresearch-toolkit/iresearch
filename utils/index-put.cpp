@@ -283,7 +283,7 @@ struct WikiDoc : Doc {
 
     // id: uint64_t to string, base 36
     uint64_t id = next_id++;  // atomic fetch and get
-    char str[10];
+    char str[21];
     itoa(id, str, 36);
     char str2[10];
     snprintf(str2, sizeof(str2), "%6s", str);
