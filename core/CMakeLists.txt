@@ -365,6 +365,7 @@ add_dependencies(iresearch-static
   )
 
 target_include_directories(iresearch-static
+  SYSTEM
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   PRIVATE ${URING_INCLUDE_DIR}
@@ -475,6 +476,7 @@ add_library(iresearch-analyzer-text-static
 set_ipo(iresearch-analyzer-text-static)
 
 target_include_directories(iresearch-analyzer-text-static
+  SYSTEM
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
   )
@@ -504,6 +506,7 @@ add_library(iresearch-analyzer-collation-static
 set_ipo(iresearch-analyzer-collation-static)
 
 target_include_directories(iresearch-analyzer-collation-static
+  SYSTEM
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   )
 
@@ -554,6 +557,7 @@ add_library(iresearch-analyzer-norm-static
 set_ipo(iresearch-analyzer-norm-static)
 
 target_include_directories(iresearch-analyzer-norm-static
+  SYSTEM
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   )
 
@@ -582,6 +586,7 @@ add_library(iresearch-analyzer-stem-static
 set_ipo(iresearch-analyzer-stem-static)
 
 target_include_directories(iresearch-analyzer-stem-static
+  SYSTEM
   PRIVATE ${Snowball_INCLUDE_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
   )
@@ -694,6 +699,7 @@ set_target_properties(iresearch-analyzer-segmentation-static
   )
 
 target_include_directories(iresearch-analyzer-segmentation-static
+  SYSTEM
   PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
   )
 
