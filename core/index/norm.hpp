@@ -141,7 +141,7 @@ class Norm2Writer final : public feature_writer {
     WriteValue(stream, stats.len);
   }
 
-  virtual void write(data_output& out, bytes_view payload) {
+  virtual void write(data_output& out, bytes_view payload) final {
     uint32_t value;
 
     switch (payload.size()) {
