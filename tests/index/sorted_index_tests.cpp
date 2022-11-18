@@ -1984,7 +1984,7 @@ TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
   }
   std::array<bool, kLen> in_store;
   std::array<char, kLen> results{'A', 'B', 'C', 'D', 'E'};
-  for (size_t reset = 0; reset < 64; ++reset) {
+  for (size_t reset = 0; reset < 32; ++reset) {
     std::sort(insert_docs.begin(), insert_docs.end(),
               [](auto& a, auto& b) { return a.first < b.first; });
     do {
