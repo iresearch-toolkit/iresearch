@@ -20,10 +20,10 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "so_utils.hpp"
+
 #include "log.hpp"
 #include "utils/file_utils.hpp"
-#include "utils/utf8_path.hpp"
-#include "so_utils.hpp"
 
 #if defined(_MSC_VER)  // Microsoft compiler
 #define NOMINMAX
@@ -86,7 +86,7 @@ void* load_library(const char* soname, int mode /* = 2 */) {
     return nullptr;
   }
 
-  irs::utf8_path name{soname};
+  std::filesystem::path name{soname};
   name += FILENAME_EXTENSION;
 
 #if defined(_MSC_VER)  // Microsoft compiler
@@ -128,7 +128,7 @@ bool free_library(void* handle) {
 
 void load_libraries(std::string_view path, std::string_view prefix,
                     std::string_view suffix) {
-  irs::utf8_path plugin_path{path};
+  std::filesystem::path plugin_path{path};
   bool result;
 
   if (!file_utils::exists_directory(result, plugin_path.c_str()) || !result) {
@@ -161,7 +161,8 @@ void load_libraries(std::string_view path, std::string_view prefix,
     }
 
     auto stem =
-      irs::utf8_path{irs::utf8_path::string_type(path_parts.stem)}.string();
+      std::filesystem::path{std::filesystem::path::string_type{path_parts.stem}}
+        .string();
 
     if (stem.size() < prefix.size() + suffix.size() ||
         strncmp(stem.c_str(), prefix.data(), prefix.size()) != 0 ||

@@ -23,14 +23,12 @@
 #include "async_directory.hpp"
 
 #include "liburing.h"
-
 #include "store_utils.hpp"
-#include "utils/utf8_path.hpp"
-#include "utils/mmap_utils.hpp"
-#include "utils/memory.hpp"
-#include "utils/string_utils.hpp"
-#include "utils/file_utils.hpp"
 #include "utils/crc.hpp"
+#include "utils/file_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/mmap_utils.hpp"
+#include "utils/string_utils.hpp"
 
 namespace {
 
@@ -335,10 +333,10 @@ class async_index_output final : public index_output {
   if (nullptr == handle) {
 #ifdef _WIN32
     IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                  GetLastError(), irs::utf8_path{name}.c_str());
+                  GetLastError(), std::filesystem::path{name}.c_str());
 #else
     IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno,
-                  irs::utf8_path{name}.c_str());
+                  std::filesystem::path{name}.c_str());
 #endif
 
     return nullptr;
@@ -493,7 +491,7 @@ async_directory::async_directory(std::string path, directory_attributes attrs,
     flags_{flags} {}
 
 index_output::ptr async_directory::create(std::string_view name) noexcept {
-  utf8_path path;
+  std::filesystem::path path;
 
   try {
     (path /= directory()) /= name;
@@ -507,7 +505,7 @@ index_output::ptr async_directory::create(std::string_view name) noexcept {
 }
 
 bool async_directory::sync(std::span<std::string_view> names) noexcept {
-  utf8_path path;
+  std::filesystem::path path;
 
   try {
     std::vector<file_utils::handle_t> handles(names.size());
@@ -516,7 +514,7 @@ bool async_directory::sync(std::span<std::string_view> names) noexcept {
     auto async = async_pool_.emplace(queue_size_, flags_);
 
     for (auto name = names.begin(); auto& handle : handles) {
-      utf8_path full_path(path);
+      std::filesystem::path full_path(path);
       full_path /= (*name);
       ++name;
 
@@ -550,7 +548,7 @@ bool async_directory::sync(std::span<std::string_view> names) noexcept {
 }
 
 // bool async_directory::sync(std::string_view name) noexcept {
-//   utf8_path path;
+//   std::filesystem::path path;
 //
 //   try {
 //     (path/=directory())/=name;
