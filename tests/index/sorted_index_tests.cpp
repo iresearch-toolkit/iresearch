@@ -1956,6 +1956,9 @@ INSTANTIATE_TEST_SUITE_P(
 struct sorted_index_stress_test_case : sorted_index_test_case {};
 
 TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
+#if !GTEST_OS_LINUX
+  GTEST_SKIP();  // too long for our CI
+#endif
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [](tests::document& doc, std::string_view name,
@@ -1989,7 +1992,6 @@ TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
                 [](auto& a, auto& b) { return a.first < b.first; });
       do {
         in_store.fill(false);
-        size_t insert_count = 0;
         // open writer
         string_comparer less;
         irs::index_writer::init_options opts;
@@ -2013,7 +2015,6 @@ TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
             if (((reset >> i) & 1U) == 1U) {
               ctx.reset();
             } else {
-              ++insert_count;
               in_store[insert_docs[i].first] = true;
             }
           }
@@ -2036,7 +2037,7 @@ TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
           continue;
         }
         ASSERT_EQ(1, reader.size());
-        ASSERT_EQ(insert_count, reader->docs_count());
+        ASSERT_EQ(kLen, reader->docs_count());
         ASSERT_EQ(in_store_count, reader->live_docs_count());
         const auto& segment = reader[0];
         const auto* column = segment.sort();
