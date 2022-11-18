@@ -525,17 +525,17 @@ TEST_F(segment_writer_tests, index_field) {
 struct string_comparer final : irs::comparer {
   bool less(irs::bytes_view lhs, irs::bytes_view rhs) const final {
     if (lhs.empty() && rhs.empty()) {
-      return false;
-    } else if (rhs.empty()) {
       return true;
-    } else if (lhs.empty()) {
+    } else if (rhs.empty()) {
       return false;
+    } else if (lhs.empty()) {
+      return true;
     }
 
     const auto lhs_value = irs::to_string<irs::bytes_view>(lhs.data());
     const auto rhs_value = irs::to_string<irs::bytes_view>(rhs.data());
 
-    return lhs_value > rhs_value;
+    return lhs_value < rhs_value;
   }
 };
 
@@ -554,7 +554,7 @@ void reorder(std::span<tests::document const*> docs,
   }
 }
 
-TEST_F(segment_writer_tests, single_cycle) {
+TEST_F(segment_writer_tests, reorder) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [](tests::document& doc, std::string_view name,
@@ -572,7 +572,7 @@ TEST_F(segment_writer_tests, single_cycle) {
     docs[i] = gen.next();
     ctxs[i] = {i, i};
   }
-  const std::vector<size_t> expected{4, 3, 2, 1, 0};
+  const std::vector<size_t> expected{0, 1, 2, 3, 4};
   auto cases = std::array<std::vector<size_t>, 5>{
     std::vector<size_t>{0, 1, 2, 3, 4},  // no reorder
     std::vector<size_t>{2, 3, 1, 4, 0},  // single cycle
@@ -582,7 +582,6 @@ TEST_F(segment_writer_tests, single_cycle) {
   };
 
   for (auto& order : cases) {
-    std::reverse(order.begin(), order.end());
     reorder(docs, ctxs, order);
 
     auto column_info = default_column_info();
@@ -596,7 +595,7 @@ TEST_F(segment_writer_tests, single_cycle) {
 
     irs::segment_meta segment;
     segment.name = "foo";
-    segment.codec = irs::formats::get("1_1", "1_0");
+    segment.codec = default_codec();
     writer->reset(segment);
     ASSERT_EQ(0, writer->memory_active());
 
