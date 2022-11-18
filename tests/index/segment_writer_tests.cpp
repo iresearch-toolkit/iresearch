@@ -547,7 +547,7 @@ void reorder(std::span<tests::document const*> docs,
     while (i != new_i) {
       std::swap(docs[i], docs[new_i]);
       std::swap(ctxs[i], ctxs[new_i]);
-std::swap(new_i, order[new_i]);
+      std::swap(new_i, order[new_i]);
     }
   }
 }
