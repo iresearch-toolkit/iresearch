@@ -58,10 +58,10 @@ namespace {
 #ifdef _WIN32
 
 // workaround for path MAX_PATH
-const irs::utf8_path::string_type path_prefix(L"\\\\?\\");
+const std::filesystem::path::string_type path_prefix(L"\\\\?\\");
 
-irs::utf8_path::string_type ensure_path_prefix(
-  const irs::utf8_path::string_type& path) {
+std::filesystem::path::string_type ensure_path_prefix(
+  const std::filesystem::path::string_type& path) {
   if (path.size() >= path_prefix.size() &&
       !path.compare(0, path_prefix.size(), path_prefix)) {
     return path;
@@ -311,7 +311,7 @@ bool verify_lock_file(const file_path_t file) {
   const size_t len = strlen(buf);
   if (!is_same_hostname(buf, len)) {
     IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'",
-                 buf, utf8_path{file}.c_str());
+                 buf, std::filesystem::path{file}.c_str());
     return true;  // locked
   }
 
@@ -319,7 +319,7 @@ bool verify_lock_file(const file_path_t file) {
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
     IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid,
-                 utf8_path{file}.c_str());
+                 std::filesystem::path{file}.c_str());
     return true;  // locked
   }
 
@@ -351,7 +351,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   if (INVALID_HANDLE_VALUE == fd) {
     IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d",
-                  utf8_path{file}.c_str(), GetLastError());
+                  std::filesystem::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -366,7 +366,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   if (!file_utils::write(fd, buf, strlen(buf) + 1)) {  // include terminate 0
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
-                  utf8_path{file}.c_str(), GetLastError());
+                  std::filesystem::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -378,7 +378,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   const size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
     IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
-                  utf8_path{file}.c_str(), GetLastError());
+                  std::filesystem::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -389,7 +389,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
   // flush buffers
   if (::FlushFileBuffers(fd) <= 0) {
     IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d ",
-                  utf8_path{file}.c_str(), GetLastError());
+                  std::filesystem::path{file}.c_str(), GetLastError());
     return nullptr;
   }
 
@@ -659,7 +659,7 @@ bool exists(bool& result, const file_path_t file) noexcept {
 
   if (!result && ENOENT != errno) {
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno,
-                  utf8_path{file}.c_str());
+                  std::filesystem::path{file}.c_str());
   }
 
   return true;
@@ -679,7 +679,7 @@ bool exists_directory(bool& result, const file_path_t name) noexcept {
 #endif
   } else if (ENOENT != errno) {
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno,
-                  utf8_path{name}.c_str());
+                  std::filesystem::path{name}.c_str());
   }
 
   return true;
@@ -699,7 +699,7 @@ bool exists_file(bool& result, const file_path_t name) noexcept {
 #endif
   } else if (ENOENT != errno) {
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno,
-                  utf8_path{name}.c_str());
+                  std::filesystem::path{name}.c_str());
   }
 
   return true;
@@ -912,7 +912,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
 
   if (!parts.dirname.empty()) {
     // need a null terminated string for use with ::mkdir()/::CreateDirectoryW()
-    utf8_path::string_type parent(parts.dirname);
+    std::filesystem::path::string_type parent(parts.dirname);
     if (!mkdir(
           parent.c_str(),
           false)) {  // intermediate path parts can exist, this is ok anyway
@@ -935,7 +935,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
         // perform creation
 
         IR_FRMT_ERROR("Failed to create relative path: '%s', error %d",
-                      utf8_path{path}.c_str(), GetLastError());
+                      std::filesystem::path{path}.c_str(), GetLastError());
         return false;
       }
     }
@@ -943,7 +943,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
   }
 
   // workaround for path MAX_PATH
-  auto dirname = utf8_path::string_type(path);
+  auto dirname = std::filesystem::path::string_type(path);
 
   // 'path_prefix' cannot be used with paths containing a mix of native and
   // non-native path separators
@@ -958,7 +958,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
       // perform creation
 
       IR_FRMT_ERROR("Failed to create absolute path: '%s', error %d",
-                    utf8_path{path}.c_str(), GetLastError());
+                    std::filesystem::path{path}.c_str(), GetLastError());
 
       return false;
     }
@@ -1050,7 +1050,8 @@ path_parts_t path_parts(const file_path_t path) noexcept {
   }
 }
 
-bool read_cwd(std::basic_string<utf8_path::value_type>& result) noexcept {
+bool read_cwd(
+  std::basic_string<std::filesystem::path::value_type>& result) noexcept {
   try {
 #ifdef _WIN32
     auto size = GetCurrentDirectory(0, nullptr);
@@ -1139,19 +1140,19 @@ bool read_cwd(std::basic_string<utf8_path::value_type>& result) noexcept {
   return false;
 }
 
-void ensure_absolute(utf8_path& path) {
+void ensure_absolute(std::filesystem::path& path) {
   if (!path.is_absolute()) {
-    utf8_path::string_type str;
+    std::filesystem::path::string_type str;
     read_cwd(str);
 
-    path = utf8_path{str} / path;
+    path = std::filesystem::path{str} / path;
   }
 }
 
 bool remove(const file_path_t path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
-    std::basic_string<utf8_path::value_type> buf;
+    std::basic_string<std::filesystem::path::value_type> buf;
 
     // must remove each directory entry recursively (ignore result, check final
     // ::remove() instead)
@@ -1189,10 +1190,10 @@ bool remove(const file_path_t path) noexcept {
       if (ERROR_FILE_NOT_FOUND ==
           system_error) {  // file is just not here, so we are done actually
         IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
-                      utf8_path{path}.c_str(), system_error);
+                      std::filesystem::path{path}.c_str(), system_error);
       } else {
         IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
-                      utf8_path{path}.c_str(), system_error);
+                      std::filesystem::path{path}.c_str(), system_error);
       }
       return false;
     }
@@ -1201,7 +1202,7 @@ bool remove(const file_path_t path) noexcept {
   }
 
   // workaround for path MAX_PATH
-  auto fullpath = utf8_path::string_type(path);
+  auto fullpath = std::filesystem::path::string_type(path);
 
   // 'path_prefix' cannot be used with paths containing a mix of native and
   // non-native path separators
@@ -1220,10 +1221,10 @@ bool remove(const file_path_t path) noexcept {
     if (ERROR_FILE_NOT_FOUND ==
         system_error) {  // file is just not here, so we are done actually
       IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
-                    utf8_path{path}.c_str(), system_error);
+                    std::filesystem::path{path}.c_str(), system_error);
     } else {
       IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
-                    utf8_path{path}.c_str(), system_error);
+                    std::filesystem::path{path}.c_str(), system_error);
     }
 
     return false;
@@ -1258,7 +1259,7 @@ bool set_cwd(const file_path_t path) noexcept {
   }
 
   // workaround for path MAX_PATH
-  auto fullpath = utf8_path::string_type(path);
+  auto fullpath = std::filesystem::path::string_type(path);
 
   // 'path_prefix' cannot be used with paths containing a mix of native and
   // non-native path separators

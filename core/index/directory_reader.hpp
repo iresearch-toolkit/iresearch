@@ -117,7 +117,7 @@ class directory_reader final : public index_reader {
   impl_ptr impl_;
 
   directory_reader(impl_ptr&& impl) noexcept;
-};  // directory_reader
+};
 
 inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {
   return rhs == nullptr;

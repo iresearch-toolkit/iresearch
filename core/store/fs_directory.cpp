@@ -86,7 +86,7 @@ MSVC_ONLY(__pragma(warning(
 
 class fs_lock : public index_lock {
  public:
-  fs_lock(const irs::utf8_path& dir, std::string_view file)
+  fs_lock(const std::filesystem::path& dir, std::string_view file)
     : dir_{dir}, file_{file} {}
 
   virtual bool lock() override {
@@ -158,7 +158,7 @@ class fs_lock : public index_lock {
   }
 
  private:
-  irs::utf8_path dir_;
+  std::filesystem::path dir_;
   std::string file_;
   file_utils::lock_handle_t handle_;
 };  // fs_lock
@@ -179,10 +179,10 @@ class fs_index_output : public buffered_index_output {
     if (nullptr == handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                    GetLastError(), irs::utf8_path{name}.c_str());
+                    GetLastError(), std::filesystem::path{name}.c_str());
 #else
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno,
-                    irs::utf8_path{name}.c_str());
+                    std::filesystem::path{name}.c_str());
 #endif
 
       return nullptr;
@@ -277,10 +277,10 @@ class fs_index_input : public buffered_index_input {
     if (nullptr == handle->handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
-                    GetLastError(), irs::utf8_path{name}.c_str());
+                    GetLastError(), std::filesystem::path{name}.c_str());
 #else
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno,
-                    irs::utf8_path{name}.c_str());
+                    std::filesystem::path{name}.c_str());
 #endif
 
       return nullptr;
@@ -295,7 +295,7 @@ class fs_index_input : public buffered_index_input {
 #endif
 
       IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s",
-                    error, irs::utf8_path{name}.c_str());
+                    error, std::filesystem::path{name}.c_str());
 
       return nullptr;
     }
@@ -488,15 +488,15 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-fs_directory::fs_directory(irs::utf8_path dir, directory_attributes attrs,
-                           size_t fd_pool_size)
+fs_directory::fs_directory(std::filesystem::path dir,
+                           directory_attributes attrs, size_t fd_pool_size)
   : attrs_{std::move(attrs)},
     dir_{std::move(dir)},
     fd_pool_size_{fd_pool_size} {}
 
 index_output::ptr fs_directory::create(std::string_view name) noexcept {
   try {
-    irs::utf8_path path{dir_};
+    std::filesystem::path path{dir_};
     path /= name;
 
     auto out = fs_index_output::open(path.c_str());
@@ -513,7 +513,9 @@ index_output::ptr fs_directory::create(std::string_view name) noexcept {
   return nullptr;
 }
 
-const irs::utf8_path& fs_directory::directory() const noexcept { return dir_; }
+const std::filesystem::path& fs_directory::directory() const noexcept {
+  return dir_;
+}
 
 bool fs_directory::exists(bool& result, std::string_view name) const noexcept {
   auto path = dir_;
@@ -590,7 +592,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   }
 
 #ifdef _WIN32
-  irs::utf8_path path;
+  std::filesystem::path path;
   auto dir_visitor = [&path, &visitor](const file_path_t name) {
     path = name;
 

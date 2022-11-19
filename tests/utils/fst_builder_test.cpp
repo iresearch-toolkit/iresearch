@@ -68,7 +68,7 @@ using fst_byte_builder =
 // first - prefix
 // second - payload
 std::vector<std::pair<irs::bstring, irs::bstring>> read_fst_input(
-  const irs::utf8_path& filename) {
+  const std::filesystem::path& filename) {
   auto read_size = [](std::istream& stream) {
     size_t size;
     stream.read(reinterpret_cast<char*>(&size), sizeof(size_t));

@@ -138,7 +138,7 @@ namespace iresearch {
 // --SECTION--                                     mmap_directory implementation
 // -----------------------------------------------------------------------------
 
-mmap_directory::mmap_directory(irs::utf8_path path,
+mmap_directory::mmap_directory(std::filesystem::path path,
                                directory_attributes attrs /* = {} */)
   : fs_directory{std::move(path), std::move(attrs)} {}
 

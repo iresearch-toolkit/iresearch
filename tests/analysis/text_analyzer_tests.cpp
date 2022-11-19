@@ -35,7 +35,6 @@
 #include "tests_config.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/runtime_utils.hpp"
-#include "utils/utf8_path.hpp"
 
 namespace tests {
 
@@ -767,10 +766,11 @@ TEST_F(TextAnalyzerParserTestSuite,
 
   // no stopwords, but valid CWD
   auto reset_stopword_path =
-    irs::make_finally([oldCWD = irs::current_path()]() noexcept {
+    irs::make_finally([oldCWD = std::filesystem::current_path()]() noexcept {
       EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
     });
-  irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());
+  irs::file_utils::set_cwd(
+    std::filesystem::path(IResearch_test_resource_dir).c_str());
 
   {
     const std::string sDataASCII = "A E I O U";
@@ -856,10 +856,11 @@ TEST_F(TextAnalyzerParserTestSuite,
   // no stopwords, but empty stopwords path (we need to shift CWD to our test
   // resources, to be able to load stopwords)
   auto reset_stopword_path =
-    irs::make_finally([oldCWD = irs::current_path()]() noexcept {
+    irs::make_finally([oldCWD = std::filesystem::current_path()]() noexcept {
       EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
     });
-  irs::file_utils::set_cwd(irs::utf8_path(IResearch_test_resource_dir).c_str());
+  irs::file_utils::set_cwd(
+    std::filesystem::path(IResearch_test_resource_dir).c_str());
 
   std::string config =
     "{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\"accent\":false,"
@@ -1026,11 +1027,11 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   // resources, to be able to load stopwords)
   {
     auto reset_stopword_path =
-      irs::make_finally([oldCWD = irs::current_path()]() noexcept {
+      irs::make_finally([oldCWD = std::filesystem::current_path()]() noexcept {
         EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
       });
     irs::file_utils::set_cwd(
-      irs::utf8_path(IResearch_test_resource_dir).c_str());
+      std::filesystem::path(IResearch_test_resource_dir).c_str());
 
     std::string config =
       "{\"locale\":\"en_US.utf-8\",\"case\":\"lower\",\"accent\":false,"

@@ -27,13 +27,13 @@
 #include <fcntl.h>  // open/_wopen
 
 #include <cstdio>
+#include <filesystem>
 #include <functional>
 #include <memory>
 
 #include "shared.hpp"
 #include "string.hpp"
 #include "utils/bit_utils.hpp"
-#include "utils/utf8_path.hpp"
 
 #ifdef _WIN32
 #include <io.h>  // _close
@@ -90,11 +90,10 @@
 #endif
 #endif
 
-using path_char_t = irs::utf8_path::value_type;
+using path_char_t = std::filesystem::path::value_type;
 #define file_path_t path_char_t*
 
-namespace iresearch {
-namespace file_utils {
+namespace iresearch::file_utils {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         lock file
@@ -127,9 +126,6 @@ bool exists_file(bool& result, const file_path_t file) noexcept;
 
 bool mtime(time_t& result, const file_path_t file) noexcept;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         open file
-// -----------------------------------------------------------------------------
 enum class OpenMode : uint16_t { Invalid = 0, Read = 1, Write = 2, Direct = 4 };
 
 ENABLE_BITMASK_ENUM(OpenMode);
@@ -142,10 +138,6 @@ typedef std::unique_ptr<void, file_deleter> handle_t;
 
 handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept;
 handle_t open(void* file, OpenMode mode, int advice) noexcept;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        path utils
-// -----------------------------------------------------------------------------
 
 bool mkdir(const file_path_t path,
            bool createNew) noexcept;  // recursive directory creation
@@ -175,28 +167,19 @@ path_parts_t path_parts(const file_path_t path) noexcept;
 
 bool read_cwd(std::basic_string<path_char_t>& result) noexcept;
 
-void ensure_absolute(utf8_path& path);
+void ensure_absolute(std::filesystem::path& path);
 
 bool remove(const file_path_t path) noexcept;
 
 bool set_cwd(const file_path_t path) noexcept;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   directory utils
-// -----------------------------------------------------------------------------
-
 bool visit_directory(const file_path_t name,
                      const std::function<bool(const file_path_t name)>& visitor,
                      bool include_dot_dir = true);
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              misc
-// -----------------------------------------------------------------------------
-
 bool file_sync(const file_path_t name) noexcept;
 bool file_sync(int fd) noexcept;
 
-}  // namespace file_utils
-}  // namespace iresearch
+}  // namespace iresearch::file_utils
 
 #endif
