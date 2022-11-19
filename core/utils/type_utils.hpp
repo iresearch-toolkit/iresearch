@@ -88,12 +88,11 @@ struct template_traits_t<First, Second...> {
 
   static constexpr size_t align_max(size_t max = 0) noexcept {
     return template_traits_t<Second...>::align_max(
-      irstd::max(max, std::alignment_of<First>::value));
+      std::max(max, std::alignment_of<First>::value));
   }
 
   static constexpr size_t size_max(size_t max = 0) noexcept {
-    return template_traits_t<Second...>::size_max(
-      irstd::max(max, sizeof(First)));
+    return template_traits_t<Second...>::size_max(std::max(max, sizeof(First)));
   }
 
   static constexpr size_t offset_aligned(size_t start = 0) noexcept {
@@ -108,7 +107,7 @@ struct template_traits_t<First, Second...> {
   static constexpr size_t size_max_aligned(size_t start = 0,
                                            size_t max = 0) noexcept {
     return template_traits_t<Second...>::size_max_aligned(
-      start, (irstd::max)(max, offset_aligned(start)));
+      start, (std::max)(max, offset_aligned(start)));
   }
 
   template<typename T>

@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_STD_H
 #define IRESEARCH_STD_H
 
-#include <iterator>
 #include <algorithm>
+#include <iterator>
 
 #include "shared.hpp"
 
@@ -44,17 +44,6 @@ struct adjust_const<const In, Out> {
   typedef const Out& reference;
   typedef const Out* pointer;
 };
-
-// constexpr versions of min/max functions (for prior c++14 environments)
-template<typename T>
-constexpr const T&(max)(const T& a, const T& b) {
-  return a < b ? b : a;
-}
-
-template<typename T>
-constexpr const T&(min)(const T& a, const T& b) {
-  return a < b ? a : b;
-}
 
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"
