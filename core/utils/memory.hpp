@@ -26,11 +26,11 @@
 
 #include <memory>
 
-#include "shared.hpp"
 #include "ebo.hpp"
 #include "log.hpp"
-#include "noncopyable.hpp"
 #include "math_utils.hpp"
+#include "noncopyable.hpp"
+#include "shared.hpp"
 #include "type_utils.hpp"
 
 namespace iresearch {
@@ -560,27 +560,6 @@ struct maker<Class, false> {
 
 }  // namespace memory
 }  // namespace iresearch
-
-#define PTR_NAMED(class_type, name, ...)                                    \
-  class_type::ptr name;                                                     \
-  try {                                                                     \
-    name.reset(new class_type(__VA_ARGS__));                                \
-  } catch (const std::bad_alloc&) {                                         \
-    fprintf(stderr,                                                         \
-            "Memory allocation failure while creating and initializing an " \
-            "object of size " IR_SIZE_T_SPECIFIER " bytes\n",               \
-            sizeof(class_type));                                            \
-    ::iresearch::memory::dump_mem_stats_trace();                            \
-    throw;                                                                  \
-  }
-
-#define DECLARE_SHARED_PTR(class_name)                \
-  friend struct irs::memory::maker<class_name, true>; \
-  typedef std::shared_ptr<class_name> ptr
-
-#define DECLARE_UNIQUE_PTR(class_name)                 \
-  friend struct irs::memory::maker<class_name, false>; \
-  typedef std::unique_ptr<class_name> ptr
 
 // Default inline implementation of a factory method, instantiation on
 // heap

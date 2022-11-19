@@ -1312,10 +1312,10 @@ void index_writer::segment_context::reset(bool store_flushed) noexcept {
 }
 
 index_writer::index_writer(
-  index_lock::ptr&& lock, index_file_refs::ref_t&& lock_file_ref,
-  directory& dir, format::ptr codec, size_t segment_pool_size,
-  const segment_options& segment_limits, const comparer* comparator,
-  const column_info_provider_t& column_info,
+  ConstructToken, index_lock::ptr&& lock,
+  index_file_refs::ref_t&& lock_file_ref, directory& dir, format::ptr codec,
+  size_t segment_pool_size, const segment_options& segment_limits,
+  const comparer* comparator, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info,
   const payload_provider_t& meta_payload_provider, index_meta&& meta,
   committed_state_t&& committed_state)
@@ -1481,8 +1481,8 @@ index_writer::ptr index_writer::make(
   auto comitted_state = memory::make_shared<committed_state_t::element_type>(
     memory::make_shared<index_meta>(meta), std::move(file_refs));
 
-  PTR_NAMED(
-    index_writer, writer, std::move(lock), std::move(lockfile_ref), dir, codec,
+  auto writer = std::make_shared<index_writer>(
+    ConstructToken{}, std::move(lock), std::move(lockfile_ref), dir, codec,
     opts.segment_pool_size, segment_options(opts), opts.comparator,
     opts.column_info ? opts.column_info : kDefaultColumnInfo,
     opts.features ? opts.features : kDefaultFeatureInfo,

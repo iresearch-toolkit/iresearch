@@ -118,6 +118,15 @@ class index_writer : private util::noncopyable {
   // declaration from segment_context::ptr below
   using segment_context_ptr = std::shared_ptr<segment_context>;
 
+  // Disallow using public constructor
+  struct ConstructToken {
+    explicit ConstructToken() = default;
+  };
+
+  using file_refs_t = std::vector<index_file_refs::ref_t>;
+  using committed_state_t =
+    std::shared_ptr<std::pair<std::shared_ptr<index_meta>, file_refs_t>>;
+
   // Segment references given out by flush_context to allow tracking
   // and updating flush_context::pending_segment_context
   //
@@ -636,9 +645,18 @@ class index_writer : private util::noncopyable {
     return feature_info_;
   }
 
- private:
-  using file_refs_t = std::vector<index_file_refs::ref_t>;
+  // public because we want to use std::make_shared
+  index_writer(ConstructToken, index_lock::ptr&& lock,
+               index_file_refs::ref_t&& lock_file_ref, directory& dir,
+               format::ptr codec, size_t segment_pool_size,
+               const segment_options& segment_limits,
+               const comparer* comparator,
+               const column_info_provider_t& column_info,
+               const feature_info_provider_t& feature_info,
+               const payload_provider_t& meta_payload_provider,
+               index_meta&& meta, committed_state_t&& committed_state);
 
+ private:
   static constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
   struct consolidation_context_t : util::noncopyable {
@@ -819,7 +837,7 @@ class index_writer : private util::noncopyable {
     // staring offset in
     // 'modification_queries_' that is not part of the current flush_context
     size_t uncomitted_modification_queries_;
-    segment_writer::ptr writer_;
+    std::unique_ptr<segment_writer> writer_;
     // the segment_meta this writer was initialized with
     index_meta::index_segment_t writer_meta_;
 
@@ -883,8 +901,6 @@ class index_writer : private util::noncopyable {
     }
   };
 
-  using committed_state_t =
-    std::shared_ptr<std::pair<std::shared_ptr<index_meta>, file_refs_t>>;
   using segment_pool_t = unbounded_object_pool<segment_context>;
 
   // The context containing data collected for the next commit() call
@@ -1084,15 +1100,6 @@ class index_writer : private util::noncopyable {
 
   static_assert(std::is_nothrow_move_constructible_v<pending_state_t>);
   static_assert(std::is_nothrow_move_assignable_v<pending_state_t>);
-
-  index_writer(index_lock::ptr&& lock, index_file_refs::ref_t&& lock_file_ref,
-               directory& dir, format::ptr codec, size_t segment_pool_size,
-               const segment_options& segment_limits,
-               const comparer* comparator,
-               const column_info_provider_t& column_info,
-               const feature_info_provider_t& feature_info,
-               const payload_provider_t& meta_payload_provider,
-               index_meta&& meta, committed_state_t&& committed_state);
 
   std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> flush_pending(
     flush_context& ctx, std::unique_lock<std::mutex>& ctx_lock);
