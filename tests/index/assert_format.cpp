@@ -626,7 +626,7 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual irs::seek_cookie::ptr cookie() const override {
-    return irs::memory::make_unique<term_cookie>(value_.value);
+    return std::make_unique<term_cookie>(value_.value);
   }
 
  private:

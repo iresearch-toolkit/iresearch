@@ -935,12 +935,12 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   };
   scorer.prepare_field_collector_ =
     [&scorer]() -> irs::sort::field_collector::ptr {
-    return irs::memory::make_unique<
+    return std::make_unique<
       tests::sort::custom_sort::prepared::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ =
     [&scorer]() -> irs::sort::term_collector::ptr {
-    return irs::memory::make_unique<
+    return std::make_unique<
       tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
   scorer.prepare_scorer =
@@ -950,7 +950,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
-    return {irs::memory::make_unique<test_score_ctx>(&frequency, freq,
+    return {std::make_unique<test_score_ctx>(&frequency, freq,
                                                      &filter_boost, boost),
             [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
               const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
@@ -1014,12 +1014,12 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   };
   scorer.prepare_field_collector_ =
     [&scorer]() -> irs::sort::field_collector::ptr {
-    return irs::memory::make_unique<
+    return std::make_unique<
       tests::sort::custom_sort::prepared::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ =
     [&scorer]() -> irs::sort::term_collector::ptr {
-    return irs::memory::make_unique<
+    return std::make_unique<
       tests::sort::custom_sort::prepared::term_collector>(scorer);
   };
   scorer.prepare_scorer =
@@ -1029,7 +1029,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
-    return {irs::memory::make_unique<test_score_ctx>(&frequency, freq,
+    return {std::make_unique<test_score_ctx>(&frequency, freq,
                                                      &filter_boost, boost),
             [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
               const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);

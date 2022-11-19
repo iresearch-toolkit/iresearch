@@ -27,11 +27,11 @@
 #include <array>
 #include <memory>
 
-#include "shared.hpp"
 #include "math_utils.hpp"
 #include "memory.hpp"
-#include "object_pool.hpp"
 #include "noncopyable.hpp"
+#include "object_pool.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace container_utils {
@@ -219,7 +219,7 @@ struct default_allocator {
   typedef std::unique_ptr<byte_type[]> value_type;
 
   value_type allocate(const bucket_size_t& bucket) {
-    return irs::memory::make_unique<byte_type[]>(bucket.size);
+    return std::make_unique<byte_type[]>(bucket.size);
   }
 };  // default_allocator
 

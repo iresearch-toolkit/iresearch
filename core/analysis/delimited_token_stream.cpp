@@ -238,7 +238,7 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
 /// @brief args is a delimiter to use for tokenization
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(std::string_view args) {
-  return irs::memory::make_unique<irs::analysis::delimited_token_stream>(args);
+  return std::make_unique<irs::analysis::delimited_token_stream>(args);
 }
 
 bool normalize_text_config(std::string_view delimiter, std::string& definition) {

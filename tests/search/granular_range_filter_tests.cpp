@@ -1898,12 +1898,12 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     };
     scorer.prepare_field_collector_ =
       [&scorer]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
@@ -1954,12 +1954,12 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     };
     scorer.prepare_field_collector_ =
       [&scorer]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 

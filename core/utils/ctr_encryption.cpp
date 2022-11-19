@@ -294,7 +294,7 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
     return nullptr;
   }
 
-  return memory::make_unique<ctr_cipher_stream>(
+  return std::make_unique<ctr_cipher_stream>(
     *cipher_, bytes_view(iv.data(), block_size), base_counter);
 }
 

@@ -6648,7 +6648,7 @@ TEST_P(index_test_case, segment_column_user_system) {
 TEST_P(index_test_case, import_concurrent) {
   struct store {
     store(const irs::format::ptr& codec)
-      : dir(irs::memory::make_unique<irs::memory_directory>()) {
+      : dir(std::make_unique<irs::memory_directory>()) {
       writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
       writer->commit();
       reader = irs::directory_reader::open(*dir);

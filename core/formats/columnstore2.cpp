@@ -641,9 +641,9 @@ struct mask_column final : public column_base {
                          index_input& /*index_in*/, const index_input& data_in,
                          compression::decompressor::ptr&& /*inflater*/,
                          encryption::stream* cipher) {
-    return memory::make_unique<mask_column>(std::move(name), std::move(payload),
-                                            std::move(hdr), std::move(index),
-                                            data_in, cipher);
+    return std::make_unique<mask_column>(std::move(name), std::move(payload),
+                                         std::move(hdr), std::move(index),
+                                         data_in, cipher);
   }
 
   mask_column(std::optional<std::string>&& name, bstring&& payload,
@@ -748,7 +748,7 @@ class dense_fixed_length_column final : public column_base {
   const uint64_t len = index_in.read_long();
   const uint64_t data = index_in.read_long();
 
-  return memory::make_unique<dense_fixed_length_column>(
+  return std::make_unique<dense_fixed_length_column>(
     std::move(name), std::move(payload), std::move(hdr), std::move(index),
     data_in, std::move(inflater), cipher, data, len);
 }
@@ -790,7 +790,7 @@ class fixed_length_column final : public column_base {
     const uint64_t len = index_in.read_long();
     auto blocks = read_blocks_dense(hdr, index_in);
 
-    return memory::make_unique<fixed_length_column>(
+    return std::make_unique<fixed_length_column>(
       std::move(name), std::move(payload), std::move(hdr), std::move(index),
       data_in, std::move(inflater), cipher, std::move(blocks), len);
   }
@@ -958,7 +958,7 @@ class sparse_column final : public column_base {
                          encryption::stream* cipher) {
     auto blocks = read_blocks_sparse(hdr, index_in);
 
-    return memory::make_unique<sparse_column>(
+    return std::make_unique<sparse_column>(
       std::move(name), std::move(payload), std::move(hdr), std::move(index),
       data_in, std::move(inflater), cipher, std::move(blocks));
   }
@@ -1465,8 +1465,7 @@ void column::finish(index_output& index_out) {
 writer::writer(Version version, bool consolidation)
   : dir_{nullptr},
     alloc_{&memory_allocator::global()},
-    buf_{
-      memory::make_unique<byte_type[]>(column::kBlockSize * sizeof(uint64_t))},
+    buf_{std::make_unique<byte_type[]>(column::kBlockSize * sizeof(uint64_t))},
     ver_{version},
     consolidation_{consolidation} {}
 
@@ -1670,7 +1669,8 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
                            std::string_view filename,
                            std::string_view data_filename,
                            const options& opts) {
-  auto index_in = dir.open(filename, irs::IOAdvice::READONCE_SEQUENTIAL);
+  auto index_in =
+    dir.open(filename, irs::IOAdvice::READONCE | irs::IOAdvice::SEQUENTIAL);
 
   if (!index_in) {
     throw io_error{string_utils::to_string("Failed to open file, path: %s",
@@ -1855,11 +1855,11 @@ bool reader::visit(const column_visitor_f& visitor) const {
 }
 
 irs::columnstore_writer::ptr make_writer(Version version, bool consolidation) {
-  return memory::make_unique<writer>(version, consolidation);
+  return std::make_unique<writer>(version, consolidation);
 }
 
 irs::columnstore_reader::ptr make_reader() {
-  return memory::make_unique<reader>();
+  return std::make_unique<reader>();
 }
 
 }  // namespace columnstore2

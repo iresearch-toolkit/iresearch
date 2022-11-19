@@ -224,12 +224,12 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     };
     scorer.prepare_field_collector_ =
       [&scorer]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
     CheckQuery(make_filter("prefix", "%"), order, docs, rdr);

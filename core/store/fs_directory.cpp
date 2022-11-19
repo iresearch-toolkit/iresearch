@@ -37,25 +37,24 @@
 #include <Windows.h>  // for GetLastError()
 #endif
 
+namespace iresearch {
 namespace {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief converts the specified IOAdvice to corresponding posix fadvice
-//////////////////////////////////////////////////////////////////////////////
-inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
+// Converts the specified IOAdvice to corresponding posix fadvice
+inline int get_posix_fadvice(IOAdvice advice) noexcept {
   switch (advice) {
-    case irs::IOAdvice::NORMAL:
-    case irs::IOAdvice::DIRECT_READ:
+    case IOAdvice::NORMAL:
+    case IOAdvice::DIRECT_READ:
       return IR_FADVICE_NORMAL;
-    case irs::IOAdvice::SEQUENTIAL:
+    case IOAdvice::SEQUENTIAL:
       return IR_FADVICE_SEQUENTIAL;
-    case irs::IOAdvice::RANDOM:
+    case IOAdvice::RANDOM:
       return IR_FADVICE_RANDOM;
-    case irs::IOAdvice::READONCE:
+    case IOAdvice::READONCE:
       return IR_FADVICE_DONTNEED;
-    case irs::IOAdvice::READONCE_SEQUENTIAL:
+    case IOAdvice::READONCE_SEQUENTIAL:
       return IR_FADVICE_SEQUENTIAL | IR_FADVICE_NOREUSE;
-    case irs::IOAdvice::READONCE_RANDOM:
+    case IOAdvice::READONCE_RANDOM:
       return IR_FADVICE_RANDOM | IR_FADVICE_NOREUSE;
   }
 
@@ -75,7 +74,6 @@ inline irs::file_utils::OpenMode get_read_mode(irs::IOAdvice advice) {
 
 }  // namespace
 
-namespace iresearch {
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(
   disable : 4996)))  // the compiler encountered a deprecated declaration
@@ -403,7 +401,7 @@ class pooled_fs_index_input final : public fs_index_input {
     using ptr = std::unique_ptr<file_handle>;
 
     static std::unique_ptr<file_handle> make() {
-      return memory::make_unique<file_handle>();
+      return std::make_unique<file_handle>();
     }
   };
 
@@ -415,11 +413,11 @@ class pooled_fs_index_input final : public fs_index_input {
 };  // pooled_fs_index_input
 
 index_input::ptr fs_index_input::reopen() const {
-  return memory::make_unique<pooled_fs_index_input>(*this);
+  return std::make_unique<pooled_fs_index_input>(*this);
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
-  : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
+  : fs_index_input(in), fd_pool_(std::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
 }
 

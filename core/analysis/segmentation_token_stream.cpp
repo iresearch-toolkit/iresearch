@@ -175,7 +175,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
     if (!parse_vpack_options(slice, options)) {
       return nullptr;
     }
-    return memory::make_unique<analysis::segmentation_token_stream>(
+    return std::make_unique<analysis::segmentation_token_stream>(
       std::move(options));
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(

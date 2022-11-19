@@ -443,7 +443,7 @@ bool meta_reader::prepare(const directory& dir, const segment_meta& meta,
       const auto blocks_in_buffer = math::div_ceil64(
         DEFAULT_ENCRYPTION_BUFFER_SIZE, in_cipher_->block_size());
 
-      in_ = memory::make_unique<encrypted_input>(
+      in_ = std::make_unique<encrypted_input>(
         std::move(in_), *in_cipher_, blocks_in_buffer, kFooterLength);
     }
   }
@@ -1561,7 +1561,7 @@ class read_context
       throw io_error("Failed to reopen columnstore input in");
     }
 
-    return memory::make_shared<read_context>(std::move(clone), cipher);
+    return std::make_shared<read_context>(std::move(clone), cipher);
   }
 
   read_context(index_input::ptr&& in, encryption::stream* cipher,
@@ -1893,7 +1893,7 @@ class sparse_column final : public column {
 
   static column::ptr make(const context_provider& ctxs, field_id id,
                           ColumnProperty props) {
-    return memory::make_unique<column_t>(ctxs, id, props);
+    return std::make_unique<column_t>(ctxs, id, props);
   }
 
   sparse_column(const context_provider& ctxs, field_id id, ColumnProperty props)
@@ -2046,7 +2046,7 @@ class dense_fixed_offset_column final : public column {
 
   static column::ptr make(const context_provider& ctxs, field_id id,
                           ColumnProperty props) {
-    return memory::make_unique<column_t>(ctxs, id, props);
+    return std::make_unique<column_t>(ctxs, id, props);
   }
 
   dense_fixed_offset_column(const context_provider& ctxs, field_id id,
@@ -2182,7 +2182,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
 
   static column::ptr make(const context_provider&, field_id id,
                           ColumnProperty props) {
-    return memory::make_unique<column_t>(id, props);
+    return std::make_unique<column_t>(id, props);
   }
 
   explicit dense_fixed_offset_column(field_id id, ColumnProperty prop) noexcept
@@ -2559,11 +2559,11 @@ const irs::column_reader* reader::column(field_id field) const {
 
 irs::columnstore_writer::ptr make_writer(Version version,
                                          ColumnMetaVersion meta_version) {
-  return memory::make_unique<columnstore::writer>(version, meta_version);
+  return std::make_unique<columnstore::writer>(version, meta_version);
 }
 
 irs::columnstore_reader::ptr make_reader() {
-  return memory::make_unique<columnstore::reader>();
+  return std::make_unique<columnstore::reader>();
 }
 
 }  // namespace columnstore

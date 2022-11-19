@@ -26,11 +26,10 @@
 #include "utils/memory.hpp"
 #include "utils/mmap_utils.hpp"
 
+namespace iresearch {
 namespace {
 
-using namespace irs;
 using mmap_utils::mmap_handle;
-
 using mmap_handle_ptr = std::shared_ptr<mmap_handle>;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -73,7 +72,7 @@ class mmap_index_input : public bytes_view_input {
     mmap_handle_ptr handle;
 
     try {
-      handle = memory::make_shared<mmap_handle>();
+      handle = std::make_shared<mmap_handle>();
     } catch (...) {
       return nullptr;
     }
@@ -86,7 +85,7 @@ class mmap_index_input : public bytes_view_input {
     }
 
     if (0 == handle->size()) {
-      return memory::make_unique<bytes_view_input>();
+      return std::make_unique<bytes_view_input>();
     }
 
     const int padvice = get_posix_madvice(advice);
@@ -131,8 +130,6 @@ class mmap_index_input : public bytes_view_input {
 };  // mmap_index_input
 
 }  // namespace
-
-namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     mmap_directory implementation

@@ -112,12 +112,12 @@ struct sort : irs::sort {
 
     virtual irs::sort::field_collector::ptr prepare_field_collector()
       const override {
-      return irs::memory::make_unique<field_collector>();
+      return std::make_unique<field_collector>();
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector()
       const override {
-      return irs::memory::make_unique<term_collector>();
+      return std::make_unique<term_collector>();
     }
 
     virtual irs::ScoreFunction prepare_scorer(
@@ -134,7 +134,7 @@ struct sort : irs::sort {
   };
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<prepared>();
+    return std::make_unique<prepared>();
   }
 };
 
@@ -152,7 +152,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   virtual bool seek(irs::bytes_view) override { return false; }
 
   virtual irs::seek_cookie::ptr cookie() const override {
-    return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
+    return std::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
   virtual irs::attribute* get_mutable(
