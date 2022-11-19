@@ -40,9 +40,7 @@ void dump_mem_stats_trace() noexcept {
 // libmusl does no define mallinfo() or malloc_stats() in malloc.h
 // enable mallinfo() and malloc_stats() for GLIBC only
 #if !defined(__APPLE__) && defined(__GLIBC__)
-  // ...........................................................................
   // output mallinfo()
-  // ...........................................................................
   constexpr const char* format =
     "\
 Total non-mmapped bytes (arena):       %u\n\
@@ -66,19 +64,12 @@ Topmost releasable block (keepcost):   %u\n\
           static_cast<unsigned>(mi.fordblks),
           static_cast<unsigned>(mi.keepcost));
 
-  // ...........................................................................
-  // output malloc_stats()
-  // ...........................................................................
-  malloc_stats();  // outputs to stderr
+  malloc_stats();  // output malloc_stats to stderr
 #endif
-
-  // ...........................................................................
   // output stacktrace
-  // ...........................................................................
-  static const size_t frames_max = 128;  // arbitrary size
-  void* frames_buf[frames_max];
+  void* frames_buf[128];  // arbitrary size
 
-  backtrace_symbols_fd(frames_buf, backtrace(frames_buf, frames_max),
+  backtrace_symbols_fd(frames_buf, backtrace(frames_buf, std::size(frames_buf)),
                        fileno(stderr));
 #endif
 }

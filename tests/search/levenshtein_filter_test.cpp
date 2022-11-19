@@ -191,13 +191,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
       ++field_collectors_count;
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
       ++term_collectors_count;
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
@@ -243,13 +243,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
       ++field_collectors_count;
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
       ++term_collectors_count;
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 
@@ -295,13 +295,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
       ++field_collectors_count;
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
       ++term_collectors_count;
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
 

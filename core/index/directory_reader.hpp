@@ -92,8 +92,9 @@ class directory_reader final : public index_reader {
   /// @brief create an index reader over the specified directory
   ///        if codec == nullptr then use the latest file for all known codecs
   ////////////////////////////////////////////////////////////////////////////////
-  static directory_reader open(const directory& dir,
-                               format::ptr codec = nullptr);
+  static directory_reader open(
+    const directory& dir, format::ptr codec = nullptr,
+    const index_reader_options& opts = index_reader_options{});
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief open a new instance based on the latest file for the specified
@@ -116,7 +117,7 @@ class directory_reader final : public index_reader {
   impl_ptr impl_;
 
   directory_reader(impl_ptr&& impl) noexcept;
-};  // directory_reader
+};
 
 inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {
   return rhs == nullptr;

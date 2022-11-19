@@ -41,7 +41,7 @@ const auto kSQRT = irs::cache_func<uint32_t, 2048>(
 irs::sort::ptr make_from_object(const VPackSlice slice) {
   assert(slice.isObject());
 
-  auto scorer = irs::memory::make_unique<irs::bm25_sort>();
+  auto scorer = std::make_unique<irs::bm25_sort>();
 
   {
     // optional float
@@ -127,7 +127,7 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
     }
   }
 
-  return irs::memory::make_unique<irs::bm25_sort>(k, b);
+  return std::make_unique<irs::bm25_sort>(k, b);
 }
 
 irs::sort::ptr make_vpack(const VPackSlice slice) {
@@ -146,7 +146,7 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
 irs::sort::ptr make_vpack(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
-    return irs::memory::make_unique<irs::bm25_sort>();
+    return std::make_unique<irs::bm25_sort>();
   } else {
     VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
     return make_vpack(slice);
@@ -156,7 +156,7 @@ irs::sort::ptr make_vpack(std::string_view args) {
 irs::sort::ptr make_json(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
-    return irs::memory::make_unique<irs::bm25_sort>();
+    return std::make_unique<irs::bm25_sort>();
   } else {
     try {
       auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -391,7 +391,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
 
   template<bool HasFilterBoost, typename... Args>
   static ScoreFunction Make(Args&&... args) {
-    return {memory::make_unique<Ctx>(std::forward<Args>(args)...),
+    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
             [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
               assert(res);
               assert(ctx);
@@ -421,7 +421,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
 
   template<bool HasFilterBoost, typename... Args>
   static ScoreFunction Make(Args&&... args) {
-    return {memory::make_unique<Ctx>(std::forward<Args>(args)...),
+    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
             [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
               assert(res);
               assert(ctx);
@@ -524,7 +524,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
   }
 
   virtual field_collector::ptr prepare_field_collector() const override {
-    return irs::memory::make_unique<field_collector>();
+    return std::make_unique<field_collector>();
   }
 
   virtual ScoreFunction prepare_scorer(const sub_reader& segment,
@@ -598,7 +598,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
   }
 
   virtual term_collector::ptr prepare_term_collector() const override {
-    return irs::memory::make_unique<term_collector>();
+    return std::make_unique<term_collector>();
   }
 
  private:
@@ -622,7 +622,7 @@ bm25_sort::bm25_sort(float_t k /*= 1.2f*/, float_t b /*= 0.75f*/,
 }
 
 sort::prepared::ptr bm25_sort::prepare() const {
-  return memory::make_unique<bm25::sort>(k_, b_, boost_as_score_);
+  return std::make_unique<bm25::sort>(k_, b_, boost_as_score_);
 }
 
 }  // namespace iresearch

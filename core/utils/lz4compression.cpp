@@ -125,7 +125,7 @@ compressor::ptr lz4::compressor(const options& opts) {
     return memory::to_managed<lz4compressor, false>(&LZ4_BASIC_COMPRESSOR);
   }
 
-  return memory::to_managed(memory::make_unique<lz4compressor>(acceleration));
+  return memory::to_managed(std::make_unique<lz4compressor>(acceleration));
 }
 
 decompressor::ptr lz4::decompressor() {

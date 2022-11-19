@@ -28,7 +28,7 @@ namespace iresearch {
 
 /*static*/ std::unique_ptr<char[]> result::copyState(const char* src) {
   const size_t len = std::strlen(src);
-  auto copy = memory::make_unique<char[]>(len + 1);  // +1 for null terminator
+  auto copy = std::make_unique<char[]>(len + 1);  // +1 for null terminator
   memcpy(copy.get(), src, len);
   copy[len] = 0;  // null terminator
   return copy;
@@ -43,7 +43,7 @@ result::result(Code code, std::string_view msg1, std::string_view msg2) : code_(
   const size_t len1 = msg1.size();
   const size_t len2 = msg2.size();
   const size_t size = len1 + (len2 ? (len2 + 2) : 0);
-  auto state = memory::make_unique<char[]>(size + 1);  // +1 for null terminator
+  auto state = std::make_unique<char[]>(size + 1);  // +1 for null terminator
   memcpy(state.get(), msg1.data(), len1);
   if (len2) {
     state[len1] = ':';

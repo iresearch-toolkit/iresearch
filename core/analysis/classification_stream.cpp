@@ -134,7 +134,7 @@ analyzer::ptr construct(const classification_stream::Options& options) {
     return nullptr;
   }
 
-  return irs::memory::make_unique<classification_stream>(options,
+  return std::make_unique<classification_stream>(options,
                                                          std::move(model));
 }
 

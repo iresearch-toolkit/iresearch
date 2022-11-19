@@ -26,15 +26,14 @@
 
 #include <memory>
 
-#include "shared.hpp"
 #include "ebo.hpp"
 #include "log.hpp"
-#include "noncopyable.hpp"
 #include "math_utils.hpp"
+#include "noncopyable.hpp"
+#include "shared.hpp"
 #include "type_utils.hpp"
 
-namespace iresearch {
-namespace memory {
+namespace iresearch::memory {
 
 inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
@@ -46,7 +45,7 @@ inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
 #endif
 }
 
-/// Dump memory statistics and stack trace to stderr
+// Dump memory statistics and stack trace to stderr
 void dump_mem_stats_trace() noexcept;
 
 // Same as 'std::aligned_storage' but MSVC doesn't honor alignment on
@@ -340,72 +339,8 @@ to_managed(std::unique_ptr<T>&& ptr) noexcept {
 template<typename T, typename... Types>
 inline typename std::enable_if_t<!std::is_array<T>::value, managed_ptr<T>>
 make_managed(Types&&... Args) {
-  try {
-    return to_managed<T, true>(new T(std::forward<Types>(Args)...));
-  } catch (std::bad_alloc&) {
-    fprintf(stderr,
-            "Memory allocation failure while creating and initializing an "
-            "object of size " IR_SIZE_T_SPECIFIER " bytes\n",
-            sizeof(T));
-    dump_mem_stats_trace();
-    throw;
-  }
+  return to_managed<T, true>(new T(std::forward<Types>(Args)...));
 }
-
-#define DECLARE_MANAGED_PTR(class_name) \
-  typedef irs::memory::managed_ptr<class_name> ptr
-
-template<typename T, typename... Args>
-inline std::shared_ptr<T> make_shared(Args&&... args) {
-  try {
-    return std::make_shared<T>(std::forward<Args>(args)...);
-  } catch (std::bad_alloc&) {
-    fprintf(stderr,
-            "Memory allocation failure while creating and initializing an "
-            "object of size " IR_SIZE_T_SPECIFIER " bytes\n",
-            sizeof(T));
-    dump_mem_stats_trace();
-    throw;
-  }
-}
-
-template<typename T, typename... Types>
-inline typename std::enable_if_t<!std::is_array<T>::value, std::unique_ptr<T>>
-make_unique(Types&&... Args) {
-  try {
-    return std::unique_ptr<T>(new T(std::forward<Types>(Args)...));
-  } catch (std::bad_alloc&) {
-    fprintf(stderr,
-            "Memory allocation failure while creating and initializing an "
-            "object of size " IR_SIZE_T_SPECIFIER " bytes\n",
-            sizeof(T));
-    dump_mem_stats_trace();
-    throw;
-  }
-}
-
-template<typename T>
-inline typename std::enable_if_t<
-  std::is_array<T>::value && std::extent<T>::value == 0, std::unique_ptr<T>>
-make_unique(size_t size) {
-  typedef typename std::remove_extent<T>::type value_type;
-
-  try {
-    return std::unique_ptr<T>(new value_type[size]());
-  } catch (std::bad_alloc&) {
-    fprintf(stderr,
-            "Memory allocation failure while creating and initializing an "
-            "array of " IR_SIZE_T_SPECIFIER
-            " objects each of size " IR_SIZE_T_SPECIFIER " bytes\n",
-            size, sizeof(value_type));
-    dump_mem_stats_trace();
-    throw;
-  }
-}
-
-template<typename T, typename... Types>
-typename std::enable_if_t<std::extent<T>::value != 0, void> make_unique(
-  Types&&...) = delete;
 
 template<typename T, typename Alloc, typename... Types>
 inline typename std::enable_if_t<!std::is_array<T>::value,
@@ -414,18 +349,7 @@ allocate_unique(Alloc& alloc, Types&&... Args) {
   typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
   typedef typename traits_t::pointer pointer;
 
-  pointer p;
-
-  try {
-    p = alloc.allocate(1);  // allocate space for 1 object
-  } catch (std::bad_alloc&) {
-    fprintf(stderr,
-            "Memory allocation failure while creating and initializing an "
-            "object of size " IR_SIZE_T_SPECIFIER " bytes\n",
-            sizeof(T));
-    dump_mem_stats_trace();
-    throw;
-  }
+  pointer p = alloc.allocate(1);  // allocate space for 1 object
 
   try {
     traits_t::construct(alloc, p,
@@ -455,17 +379,7 @@ allocate_unique(Alloc& alloc, size_t size) {
     return unique_ptr_t(p, deleter_t(alloc, size));
   }
 
-  try {
-    p = alloc.allocate(size);  // allocate space for 'size' object
-  } catch (std::bad_alloc&) {
-    fprintf(stderr,
-            "Memory allocation failure while creating and "
-            "initializing " IR_SIZE_T_SPECIFIER
-            " object(s) of size " IR_SIZE_T_SPECIFIER " bytes\n",
-            size, sizeof(typename traits_t::value_type));
-    dump_mem_stats_trace();
-    throw;
-  }
+  p = alloc.allocate(size);  // allocate space for 'size' object
 
   auto begin = p;
 
@@ -507,17 +421,7 @@ allocate_unique(Alloc& alloc, size_t size, allocate_only_tag) {
     return unique_ptr_t(p, deleter_t(alloc, size));
   }
 
-  try {
-    p = alloc.allocate(size);  // allocate space for 'size' object
-  } catch (std::bad_alloc&) {
-    fprintf(stderr,
-            "Memory allocation failure while creating and "
-            "initializing " IR_SIZE_T_SPECIFIER
-            " object(s) of size " IR_SIZE_T_SPECIFIER " bytes\n",
-            size, sizeof(typename traits_t::value_type));
-    dump_mem_stats_trace();
-    throw;
-  }
+  p = alloc.allocate(size);  // allocate space for 'size' object
 
   return unique_ptr_t(p, deleter_t(alloc, size));
 }
@@ -532,7 +436,7 @@ struct maker {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
     // creates shared_ptr with a single heap allocation
-    return irs::memory::make_shared<Class>(std::forward<Args>(args)...);
+    return std::make_shared<Class>(std::forward<Args>(args)...);
   }
 };
 
@@ -545,42 +449,11 @@ struct maker<Class, false> {
                                     typename Class::ptr::element_type*>::value,
       "type must be nothrow constructible");
 
-    try {
-      return typename Class::ptr(new Class(std::forward<Args>(args)...));
-    } catch (std::bad_alloc&) {
-      fprintf(stderr,
-              "Memory allocation failure while creating and initializing an "
-              "object of size " IR_SIZE_T_SPECIFIER " bytes\n",
-              sizeof(Class));
-      ::iresearch::memory::dump_mem_stats_trace();
-      throw;
-    }
+    return typename Class::ptr(new Class(std::forward<Args>(args)...));
   }
 };
 
-}  // namespace memory
-}  // namespace iresearch
-
-#define PTR_NAMED(class_type, name, ...)                                    \
-  class_type::ptr name;                                                     \
-  try {                                                                     \
-    name.reset(new class_type(__VA_ARGS__));                                \
-  } catch (const std::bad_alloc&) {                                         \
-    fprintf(stderr,                                                         \
-            "Memory allocation failure while creating and initializing an " \
-            "object of size " IR_SIZE_T_SPECIFIER " bytes\n",               \
-            sizeof(class_type));                                            \
-    ::iresearch::memory::dump_mem_stats_trace();                            \
-    throw;                                                                  \
-  }
-
-#define DECLARE_SHARED_PTR(class_name)                \
-  friend struct irs::memory::maker<class_name, true>; \
-  typedef std::shared_ptr<class_name> ptr
-
-#define DECLARE_UNIQUE_PTR(class_name)                 \
-  friend struct irs::memory::maker<class_name, false>; \
-  typedef std::unique_ptr<class_name> ptr
+}  // namespace iresearch::memory
 
 // Default inline implementation of a factory method, instantiation on
 // heap

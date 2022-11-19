@@ -69,7 +69,7 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
   const size_t bits = segment_->docs_count() + irs::doc_limits::min();
   const size_t words = bitset::bits_to_words(bits);
-  set_ = memory::make_unique<word_t[]>(words);
+  set_ = std::make_unique<word_t[]>(words);
   std::memset(set_.get(), 0, sizeof(word_t) * words);
 
   auto provider = [begin = states_.begin(),

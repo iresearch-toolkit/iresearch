@@ -509,8 +509,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values](irs::doc_id_t doc,
-                                                     const irs::bytes_view& in) {
+      auto reader = [&calls_count, &expected_values](
+                      irs::doc_id_t doc, const irs::bytes_view& in) {
         ++calls_count;
         irs::bytes_view_input stream(in);
         const auto actual_value = irs::read_zvint(stream);
@@ -545,8 +545,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
         {"string2_data", 1}, {"string4_data", 2}};
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values](irs::doc_id_t doc,
-                                                     const irs::bytes_view& in) {
+      auto reader = [&calls_count, &expected_values](
+                      irs::doc_id_t doc, const irs::bytes_view& in) {
         ++calls_count;
         irs::bytes_view_input stream(in);
         const auto actual_value = irs::read_string<std::string>(stream);
@@ -581,8 +581,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
         {"another_value", 2}};
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values](irs::doc_id_t doc,
-                                                     const irs::bytes_view& in) {
+      auto reader = [&calls_count, &expected_values](
+                      irs::doc_id_t doc, const irs::bytes_view& in) {
         ++calls_count;
         irs::bytes_view_input stream(in);
         const auto actual_value = irs::read_string<std::string>(stream);
@@ -627,7 +627,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   writer.flush(index_segment);
 
   {
-    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                             irs::index_reader_options{});
     ASSERT_EQ(3, segment.docs_count());
 
     auto columns = segment.columns();
@@ -994,7 +995,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   writer.flush(index_segment);
 
   {
-    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                             irs::index_reader_options{});
     ASSERT_EQ(4, segment.docs_count());
 
     auto columns = segment.columns();
@@ -1634,8 +1636,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
                      irs::ViewCast<irs::byte_type>(std::string_view(string1)),
-                     irs::ViewCast<irs::byte_type>(std::string_view(string2)), 2,
-                     features, {}, expected_terms, &frequency, &position);
+                     irs::ViewCast<irs::byte_type>(std::string_view(string2)),
+                     2, features, {}, expected_terms, &frequency, &position);
     }
 
     // validate text field
@@ -2001,8 +2003,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
                      irs::ViewCast<irs::byte_type>(std::string_view(string3)),
-                     irs::ViewCast<irs::byte_type>(std::string_view(string4)), 2,
-                     features, {}, expected_terms, &frequency, &position);
+                     irs::ViewCast<irs::byte_type>(std::string_view(string4)),
+                     2, features, {}, expected_terms, &frequency, &position);
     }
 
     // validate text field
@@ -2134,7 +2136,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   writer.add(reader[1]);
   ASSERT_TRUE(writer.flush(index_segment));
 
-  auto segment = irs::segment_reader::open(dir, index_segment.meta);
+  auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                           irs::index_reader_options{});
 
   ASSERT_EQ(3, segment.docs_count());  // doc4 removed during merge
 
@@ -2493,11 +2496,14 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text1_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(
+                     std::string_view("text1_data"))]
       .emplace(1);
-    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text2_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(
+                     std::string_view("text2_data"))]
       .emplace(2);
-    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text3_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(
+                     std::string_view("text3_data"))]
       .emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_text"));
@@ -2635,7 +2641,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
     index_segment.meta.codec = codec_ptr;
     ASSERT_TRUE(writer.flush(index_segment));
 
-    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                             irs::index_reader_options{});
     ASSERT_EQ(33, segment.docs_count());
     ASSERT_EQ(33, segment.field("name")->docs_count());
     ASSERT_EQ(33, segment.field("seq")->docs_count());
@@ -2693,7 +2700,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.version);
     ASSERT_EQ(true, index_segment.meta.column_store);
 
-    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                             irs::index_reader_options{});
     ASSERT_EQ(2, segment.docs_count());
   }
 
@@ -2720,7 +2728,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.live_docs_count);
     ASSERT_EQ(0, index_segment.meta.size);
 
-    ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta));
+    ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta,
+                                               irs::index_reader_options{}));
   }
 
   size_t progress_call_count = 0;
@@ -2747,7 +2756,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.version);
     ASSERT_EQ(true, index_segment.meta.column_store);
 
-    auto segment = irs::segment_reader::open(dir, index_segment.meta);
+    auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                             irs::index_reader_options{});
     ASSERT_EQ(2, segment.docs_count());
   }
 
@@ -2781,7 +2791,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.live_docs_count);
     ASSERT_EQ(0, index_segment.meta.size);
 
-    ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta));
+    ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta,
+                                               irs::index_reader_options{}));
   }
 }
 
@@ -2948,7 +2959,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
 
   ASSERT_TRUE(writer.flush(index_segment));
 
-  auto segment = irs::segment_reader::open(dir, index_segment.meta);
+  auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                           irs::index_reader_options{});
   ASSERT_EQ(3, segment.docs_count());
   ASSERT_EQ(3, segment.live_docs_count());
   auto docs = segment.docs_iterator();
@@ -3556,8 +3568,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
                      irs::ViewCast<irs::byte_type>(std::string_view(string1)),
-                     irs::ViewCast<irs::byte_type>(std::string_view(string2)), 2,
-                     features, {}, expected_terms, &frequency, &position);
+                     irs::ViewCast<irs::byte_type>(std::string_view(string2)),
+                     2, features, {}, expected_terms, &frequency, &position);
     }
 
     // validate text field
@@ -3952,8 +3964,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       validate_terms(segment, *terms, 2,
                      irs::ViewCast<irs::byte_type>(std::string_view(string3)),
-                     irs::ViewCast<irs::byte_type>(std::string_view(string4)), 2,
-                     features, {}, expected_terms, &frequency, &position);
+                     irs::ViewCast<irs::byte_type>(std::string_view(string4)),
+                     2, features, {}, expected_terms, &frequency, &position);
     }
 
     // validate text field
@@ -4085,7 +4097,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   writer.add(reader[1]);
   ASSERT_TRUE(writer.flush(index_segment));
 
-  auto segment = irs::segment_reader::open(dir, index_segment.meta);
+  auto segment = irs::segment_reader::open(dir, index_segment.meta,
+                                           irs::index_reader_options{});
 
   ASSERT_EQ(3, segment.docs_count());  // doc4 removed during merge
 
@@ -4477,11 +4490,14 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     std::unordered_map<irs::bytes_view, std::unordered_set<irs::doc_id_t>>
       expected_terms;
 
-    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text1_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(
+                     std::string_view("text1_data"))]
       .emplace(1);
-    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text2_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(
+                     std::string_view("text2_data"))]
       .emplace(2);
-    expected_terms[irs::ViewCast<irs::byte_type>(std::string_view("text3_data"))]
+    expected_terms[irs::ViewCast<irs::byte_type>(
+                     std::string_view("text3_data"))]
       .emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_text"));

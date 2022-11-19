@@ -121,7 +121,7 @@ void AssertNorm2Header(irs::bytes_view header, uint32_t num_bytes, uint32_t min,
   const auto actual_num_bytes = *p++;
   const auto actual_min = irs::read<uint32_t>(p);
   const auto actual_max = irs::read<uint32_t>(p);
-  ASSERT_EQ(p, header.end());
+  ASSERT_EQ(p, header.data() + header.size());
 
   ASSERT_EQ(static_cast<uint32_t>(kVersion), actual_verson);
   ASSERT_EQ(num_bytes, actual_num_bytes);

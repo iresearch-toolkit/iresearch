@@ -562,8 +562,10 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   cached_reader = std::move(reader);  // clear existing reader
 
   // update cache, in case of failure reader stays empty
-  reader = cached_reader ? cached_reader.reopen(meta)
-                         : segment_reader::open(dir_, meta);
+  // intentionally never warmup readers for writers
+  reader = cached_reader
+             ? cached_reader.reopen(meta)
+             : segment_reader::open(dir_, meta, index_reader_options{});
 
   return reader;
 }
@@ -731,30 +733,40 @@ index_writer::documents_context::document::~document() noexcept {
   }
 }
 
+void index_writer::documents_context::AddToFlush() {
+  const auto& ctx = segment_.ctx();
+  if (!ctx) {
+    return;  // nothing to do
+  }
+  writer_.get_flush_context()->AddToPending(segment_);
+}
+
 index_writer::documents_context::~documents_context() noexcept {
+  auto& ctx = segment_.ctx();
+
   // failure may indicate a dangling 'document' instance
-  assert(segment_.ctx().use_count() >= 0 &&
-         static_cast<uint64_t>(segment_.ctx().use_count()) ==
-           segment_use_count_);
+  assert(ctx.use_count() >= 0 &&
+         static_cast<uint64_t>(ctx.use_count()) == segment_use_count_);
 
-  if (segment_.ctx()) {
-    auto& writer = *segment_.ctx()->writer_;
+  if (!ctx) {
+    return;  // nothing to do
+  }
 
-    if (writer.tick() < tick_) {
-      writer.tick(tick_);
-    }
+  if (auto& writer = *ctx->writer_; writer.tick() < last_operation_tick_) {
+    writer.tick(last_operation_tick_);
   }
 
   try {
     // FIXME move emplace into active_segment_context destructor commit segment
-    writer_.get_flush_context()->emplace(std::move(segment_));
+    writer_.get_flush_context()->emplace(std::move(segment_),
+                                         first_operation_tick_);
   } catch (...) {
     reset();  // abort segment
   }
 }
 
 void index_writer::documents_context::reset() noexcept {
-  tick_ = 0;  // reset tick
+  last_operation_tick_ = 0;  // reset tick
 
   auto& ctx = segment_.ctx();
 
@@ -908,7 +920,8 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   return ctx;
 }
 
-void index_writer::flush_context::emplace(active_segment_context&& segment) {
+void index_writer::flush_context::emplace(active_segment_context&& segment,
+                                          uint64_t generation_base) {
   if (!segment.ctx_) {
     return;  // nothing to do
   }
@@ -935,7 +948,6 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
     (this != flush_ctx && flush_ctx && segment.ctx_.use_count() == 1));
 
   freelist_t::node_type* freelist_node = nullptr;
-  size_t generation_base{};
   size_t modification_count{};
   auto& ctx = *(segment.ctx_);
 
@@ -1022,15 +1034,17 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
            ctx.modification_queries_.size());
     modification_count =
       ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_;
-    if (flush_ctx && this != flush_ctx) {
-      generation_base = flush_ctx->generation_ += modification_count;
-    } else {
-      // FIXME remove this condition once col_writer tail is writen correctly
+    if (!generation_base) {
+      if (flush_ctx && this != flush_ctx) {
+        generation_base = flush_ctx->generation_ += modification_count;
+      } else {
+        // FIXME remove this condition once col_writer tail is writen correctly
 
-      // atomic increment to end of unique generation range
-      generation_base = generation_ += modification_count;
+        // atomic increment to end of unique generation range
+        generation_base = generation_ += modification_count;
+      }
+      generation_base -= modification_count;  // start of generation range
     }
-    generation_base -= modification_count;  // start of generation range
   }
 
   // noexcept state update operations below here
@@ -1115,6 +1129,19 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   }
 }
 
+void index_writer::flush_context::AddToPending(
+  active_segment_context& segment) {
+  if (segment.flush_ctx_ != nullptr) {
+    // re-used active_segment_context
+    return;
+  }
+  std::lock_guard lock{mutex_};
+  auto const sizeBefore = pending_segment_contexts_.size();
+  pending_segment_contexts_.emplace_back(segment.ctx_, sizeBefore);
+  segment.flush_ctx_ = this;
+  segment.pending_segment_context_offset_ = sizeBefore;
+}
+
 void index_writer::flush_context::reset() noexcept {
   // reset before returning to pool
   for (auto& entry : pending_segment_contexts_) {
@@ -1185,7 +1212,7 @@ index_writer::segment_context::ptr index_writer::segment_context::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info, const comparer* comparator) {
-  return memory::make_unique<segment_context>(
+  return std::make_unique<segment_context>(
     dir, std::move(meta_generator), column_info, feature_info, comparator);
 }
 
@@ -1285,10 +1312,10 @@ void index_writer::segment_context::reset(bool store_flushed) noexcept {
 }
 
 index_writer::index_writer(
-  index_lock::ptr&& lock, index_file_refs::ref_t&& lock_file_ref,
-  directory& dir, format::ptr codec, size_t segment_pool_size,
-  const segment_options& segment_limits, const comparer* comparator,
-  const column_info_provider_t& column_info,
+  ConstructToken, index_lock::ptr&& lock,
+  index_file_refs::ref_t&& lock_file_ref, directory& dir, format::ptr codec,
+  size_t segment_pool_size, const segment_options& segment_limits,
+  const comparer* comparator, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info,
   const payload_provider_t& meta_payload_provider, index_meta&& meta,
   committed_state_t&& committed_state)
@@ -1317,13 +1344,13 @@ index_writer::index_writer(
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
     flush_context_pool_[i].dir_ =
-      memory::make_unique<ref_tracking_directory>(dir);
+      std::make_unique<ref_tracking_directory>(dir);
     flush_context_pool_[i].next_context_ = &flush_context_pool_[i + 1];
   }
 
   // setup round-robin chain
   flush_context_pool_[flush_context_pool_.size() - 1].dir_ =
-    memory::make_unique<ref_tracking_directory>(dir);
+    std::make_unique<ref_tracking_directory>(dir);
   flush_context_pool_[flush_context_pool_.size() - 1].next_context_ =
     &flush_context_pool_[0];
 }
@@ -1342,9 +1369,9 @@ void index_writer::clear(uint64_t tick) {
   // ensure there are no active struct update operations
   std::lock_guard ctx_lock{ctx->mutex_};
 
-  auto pending_commit = memory::make_shared<committed_state_t::element_type>(
+  auto pending_commit = std::make_shared<committed_state_t::element_type>(
     std::piecewise_construct,
-    std::forward_as_tuple(memory::make_shared<index_meta>()),
+    std::forward_as_tuple(std::make_shared<index_meta>()),
     std::forward_as_tuple());
 
   auto& dir = *ctx->dir_;
@@ -1451,11 +1478,11 @@ index_writer::ptr index_writer::make(
     }
   }
 
-  auto comitted_state = memory::make_shared<committed_state_t::element_type>(
-    memory::make_shared<index_meta>(meta), std::move(file_refs));
+  auto comitted_state = std::make_shared<committed_state_t::element_type>(
+    std::make_shared<index_meta>(meta), std::move(file_refs));
 
-  PTR_NAMED(
-    index_writer, writer, std::move(lock), std::move(lockfile_ref), dir, codec,
+  auto writer = std::make_shared<index_writer>(
+    ConstructToken{}, std::move(lock), std::move(lockfile_ref), dir, codec,
     opts.segment_pool_size, segment_options(opts), opts.comparator,
     opts.column_info ? opts.column_info : kDefaultColumnInfo,
     opts.features ? opts.features : kDefaultFeatureInfo,
@@ -2097,7 +2124,7 @@ index_writer::pending_context_t index_writer::flush_all(
   sync_context to_sync;
   document_mask docs_mask;
 
-  auto pending_meta = memory::make_unique<index_meta>();
+  auto pending_meta = std::make_unique<index_meta>();
   auto& segments = pending_meta->segments_;
 
   auto ctx = get_flush_context(false);
@@ -2642,7 +2669,7 @@ bool index_writer::start(progress_report_callback const& progress) {
     // 1st phase of the transaction successfully finished here,
     // set to_commit as active flush context containing pending meta
     pending_state_.commit =
-      memory::make_shared<committed_state_t::element_type>(
+      std::make_shared<committed_state_t::element_type>(
         std::piecewise_construct,
         std::forward_as_tuple(std::move(to_commit.meta)),
         std::forward_as_tuple(std::move(pending_refs)));

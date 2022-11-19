@@ -31,6 +31,7 @@
 #include <unicode/brkiter.h>  // for icu::BreakIterator
 
 #include <cctype>  // for std::isspace(...)
+#include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <string_view>
@@ -43,7 +44,6 @@
 #include "utils/runtime_utils.hpp"
 #include "utils/snowball_stemmer.hpp"
 #include "utils/thread_utils.hpp"
-#include "utils/utf8_path.hpp"
 #include "utils/utf8_utils.hpp"
 #include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
@@ -163,7 +163,7 @@ std::mutex mutex;
 ////////////////////////////////////////////////////////////////////////////////
 bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
                    std::string_view language, std::string_view path = {}) {
-  utf8_path stopword_path;
+  std::filesystem::path stopword_path;
 
   auto* custom_stopword_path =
     !IsNull(path)
@@ -174,7 +174,7 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
     stopword_path.assign(custom_stopword_path);
     file_utils::ensure_absolute(stopword_path);
   } else {
-    utf8_path::string_type cwd;
+    std::filesystem::path::string_type cwd;
     file_utils::read_cwd(cwd);
 
     // use CWD if the environment variable STOPWORD_PATH_ENV_VARIABLE is
@@ -321,7 +321,7 @@ analysis::analyzer::ptr construct(
           .first->second);
   }
 
-  return memory::make_unique<analysis::text_token_stream>(
+  return std::make_unique<analysis::text_token_stream>(
     *options_ptr, options_ptr->stopwords_);
 }
 
@@ -340,7 +340,7 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
       make_hashed_ref(std::string_view(locale.getName())));
 
     if (itr != cached_state_by_key.end()) {
-      return memory::make_unique<analysis::text_token_stream>(
+      return std::make_unique<analysis::text_token_stream>(
         itr->second, itr->second.stopwords_);
     }
   }
@@ -858,7 +858,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       auto itr = cached_state_by_key.find(make_hashed_ref(slice_ref));
 
       if (itr != cached_state_by_key.end()) {
-        return memory::make_unique<analysis::text_token_stream>(
+        return std::make_unique<analysis::text_token_stream>(
           itr->second, itr->second.stopwords_);
       }
     }
@@ -1135,8 +1135,8 @@ bool text_token_stream::next_word() {
 }
 
 bool text_token_stream::next_ngram() {
-  auto begin = state_->term.begin();
-  auto end = state_->term.end();
+  auto begin = state_->term.data();
+  auto end = state_->term.data() + state_->term.size();
   assert(begin != end);
 
   auto& inc = std::get<increment>(attrs_);

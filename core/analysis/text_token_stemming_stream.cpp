@@ -121,7 +121,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   analysis::stemming_token_stream::options_t opts;
 
   if (parse_vpack_options(slice, opts)) {
-    return memory::make_unique<analysis::stemming_token_stream>(opts);
+    return std::make_unique<analysis::stemming_token_stream>(opts);
   } else {
     return nullptr;
   }

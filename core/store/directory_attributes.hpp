@@ -61,10 +61,10 @@ class memory_allocator final {
 
 // Directory encryption provider
 struct encryption {
-  DECLARE_UNIQUE_PTR(encryption);
-
   // FIXME check if it's possible to rename to iresearch::encryption?
-  static constexpr std::string_view type_name() noexcept { return "encryption"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "encryption";
+  }
 
   virtual ~encryption() = default;
 
@@ -130,7 +130,7 @@ class directory_attributes {
 
  private:
   memory_allocator::ptr alloc_;
-  irs::encryption::ptr enc_;
+  std::unique_ptr<irs::encryption> enc_;
   std::unique_ptr<index_file_refs> refs_;
 };
 

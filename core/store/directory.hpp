@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DIRECTORY_H
-#define IRESEARCH_DIRECTORY_H
+#pragma once
 
 #include <ctime>
 #include <span>
@@ -36,174 +35,122 @@ namespace iresearch {
 
 class directory_attributes;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct index_lock
-/// @brief an interface for abstract resource locking
-//////////////////////////////////////////////////////////////////////////////
+// An interface for abstract resource locking
 struct index_lock : private util::noncopyable {
   DECLARE_IO_PTR(index_lock, unlock);
   DEFINE_FACTORY_INLINE(index_lock);
 
   static constexpr size_t kLockWaitForever = std::numeric_limits<size_t>::max();
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////
   virtual ~index_lock() = default;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief checks whether the guarded resource is locked
-  /// @param[out] true if resource is already locked
-  /// @returns call success
-  ////////////////////////////////////////////////////////////////////////////
+  // Checks whether the guarded resource is locked
+  // result - true if resource is already locked
+  // Returns call success
   virtual bool is_locked(bool& result) const noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief locks the guarded resource
-  /// @returns true on success
-  /// @exceptions any exception thrown by the underlying lock
-  ////////////////////////////////////////////////////////////////////////////
+  // Locks the guarded resource
+  // Returns true on success
   virtual bool lock() = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief tries to lock the guarded resource within the specified amount of
-  ///        time
-  /// @param[in] wait_timeout timeout between different locking attempts
-  /// @returns true on success
-  ////////////////////////////////////////////////////////////////////////////
+  // Tries to lock the guarded resource within the specified amount of time
+  // wait_timeout - timeout between different locking attempts
+  // Returns true on success
   bool try_lock(size_t wait_timeout = 1000) noexcept;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief unlocks the guarded resource
-  /// @returns call success
-  ////////////////////////////////////////////////////////////////////////////
+  // Nnlocks the guarded resource
+  // Returns call success
   virtual bool unlock() noexcept = 0;
-};  // unique_lock
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @enum IOAdvice
-/// @brief defines access patterns for data in a directory
-//////////////////////////////////////////////////////////////////////////////
+// Defines access patterns for data in a directory
 enum class IOAdvice : uint32_t {
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Indicates that caller has no advice to give about its access
-  ///        pattern for the data
-  ////////////////////////////////////////////////////////////////////////////
+  // Indicates that caller has no advice to give about its access
+  // pattern for the data
   NORMAL = 0,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Indicates that caller expects to access data sequentially
-  ////////////////////////////////////////////////////////////////////////////
+  // Indicates that caller expects to access data sequentially
   SEQUENTIAL = 1,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Indicates that caller expects to access data in random order
-  ////////////////////////////////////////////////////////////////////////////
+  // Indicates that caller expects to access data in random order
   RANDOM = 2,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief Indicates that caller expects that data will not be accessed
-  ///        in the near future
-  ////////////////////////////////////////////////////////////////////////////
+  // Indicates that caller expects that data will not be accessed
+  // in the near future
   READONCE = 4,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief convenience value for READONCE | SEQUENTIAL
-  ///        explicitly required for MSVC2013
-  ////////////////////////////////////////////////////////////////////////////
+  // Convenience value for READONCE | SEQUENTIAL
+  // explicitly required for MSVC2013
   READONCE_SEQUENTIAL = 5,
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief convenience value for READONCE | RANDOM
-  ///        explicitly required for MSVC2013
-  ////////////////////////////////////////////////////////////////////////////
+  // Convenience value for READONCE | RANDOM
+  // explicitly required for MSVC2013
   READONCE_RANDOM = 6,
-};  // IOAdvice
+
+  // File is opened for non-buffered reads
+  DIRECT_READ = 8
+};
 
 ENABLE_BITMASK_ENUM(IOAdvice);  // enable bitmap operations on the enum
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct directory
-/// @brief represents a flat directory of write once/read many files
-//////////////////////////////////////////////////////////////////////////////
+// Represents a flat directory of write once/read many files
 struct directory : private util::noncopyable {
  public:
   using visitor_f = std::function<bool(std::string_view)>;
   using ptr = std::unique_ptr<directory>;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor
-  ////////////////////////////////////////////////////////////////////////////
   virtual ~directory() = default;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief opens output stream associated with the file
-  /// @param[in] name name of the file to open
-  /// @returns output stream associated with the file with the specified name
-  ////////////////////////////////////////////////////////////////////////////
+  // Opens output stream associated with the file
+  // name - name of the file to open
+  // Returns output stream associated with the file with the specified name
   virtual index_output::ptr create(std::string_view name) noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief check whether the file specified by the given name exists
-  /// @param[out] true if file already exists
-  /// @param[in] name name of the file
-  /// @returns call success
-  ////////////////////////////////////////////////////////////////////////////
+  // Check whether the file specified by the given name exists
+  // result - true if file already exists
+  // name - name of the file
+  // Returns call success
   virtual bool exists(bool& result, std::string_view name) const noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief returns the length of the file specified by the given name
-  /// @param[out] length of the file specified by the name
-  /// @param[in] name name of the file
-  /// @returns call success
-  ////////////////////////////////////////////////////////////////////////////
+  // Returns the length of the file specified by the given name
+  // result - length of the file specified by the name
+  // name -  name of the file
+  // Returns call success
   virtual bool length(uint64_t& result,
                       std::string_view name) const noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief creates an index level lock with the specified name
-  /// @param[in] name name of the lock
-  /// @returns lock hande
-  ////////////////////////////////////////////////////////////////////////////
+  // Creates an index level lock with the specified name
+  // name - name of the lock
+  // Returns lock hande
   virtual index_lock::ptr make_lock(std::string_view name) noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief returns modification time of the file specified by the given name
-  /// @param[out] file last modified time
-  /// @param[in] name name of the file
-  /// @returns call success
-  ////////////////////////////////////////////////////////////////////////////
+  // Returns modification time of the file specified by the given name
+  // result - file last modified time
+  // name - name of the file
+  // Returns call success
   virtual bool mtime(std::time_t& result,
                      std::string_view name) const noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief opens input stream associated with the existing file
-  /// @param[in] name   name of the file to open
-  /// @returns input stream associated with the file with the specified name
-  ////////////////////////////////////////////////////////////////////////////
+  // Opens input stream associated with the existing file
+  // name - name of the file to open
+  // Returns input stream associated with the file with the specified name
   virtual index_input::ptr open(std::string_view name,
                                 IOAdvice advice) const noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief removes the file specified by the given name from directory
-  /// @param[in] name name of the file
-  /// @returns true if file has been removed
-  ////////////////////////////////////////////////////////////////////////////
+  // Removes the file specified by the given name from directory
+  // name - name of the file
+  // Rreturns true if file has been removed
   virtual bool remove(std::string_view name) noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief renames the 'src' file to 'dst'
-  /// @param[in] src initial name of the file
-  /// @param[in] dst final name of the file
-  /// @returns true if file has been renamed
-  ////////////////////////////////////////////////////////////////////////////
+  // Renames the 'src' file to 'dst'
+  // src - initial name of the file
+  // dst - final name of the file
+  // Returns true if file has been renamed
   virtual bool rename(std::string_view src, std::string_view dst) noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief ensures that all modification have been sucessfully persisted
-  /// @param[in] name name of the file
-  /// @returns call success
-  ////////////////////////////////////////////////////////////////////////////
+  // Ensures that all modification have been sucessfully persisted
+  // name - name of the file
+  // Returns call success
   virtual bool sync(std::string_view name) noexcept = 0;
 
   virtual bool sync(std::span<std::string_view> files) noexcept {
@@ -213,27 +160,18 @@ struct directory : private util::noncopyable {
                        });
   }
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @brief applies the specified 'visitor' to every filename in a directory
-  /// @param[in] visitor to be applied
-  /// @returns 'false' if visitor has returned 'false', 'true' otherwise
-  /// @exceptions any exception thrown by the visitor
-  ////////////////////////////////////////////////////////////////////////////
+  // Applies the specified 'visitor' to every filename in a directory
+  // visitor - visitor to be applied
+  // Returns 'false' if visitor has returned 'false', 'true' otherwise
   virtual bool visit(const visitor_f& visitor) const = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @returns directory attributes
-  ////////////////////////////////////////////////////////////////////////////
+  // Returns directory attributes
   virtual directory_attributes& attributes() noexcept = 0;
 
-  ////////////////////////////////////////////////////////////////////////////
-  /// @returns directory attributes
-  ////////////////////////////////////////////////////////////////////////////
+  // Returns directory attributes
   const directory_attributes& attributes() const noexcept {
     return const_cast<directory*>(this)->attributes();
   }
-};  // directory
+};
 
 }  // namespace iresearch
-
-#endif

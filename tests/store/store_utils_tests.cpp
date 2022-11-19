@@ -56,16 +56,18 @@ class bytes_input final : public data_input, public bytes_view {
 
   void seek(size_t pos) {
     assert(this->begin() + pos <= this->end());
-    pos_ = this->begin() + pos;
+    pos_ = this->data() + pos;
   }
 
   virtual size_t file_pointer() const override {
-    return std::distance(this->begin(), pos_);
+    return std::distance(this->data(), pos_);
   }
 
   virtual size_t length() const override { return this->size(); }
 
-  virtual bool eof() const override { return pos_ >= this->end(); }
+  virtual bool eof() const override {
+    return pos_ >= (this->data() + this->size());
+  }
 
   virtual const byte_type* read_buffer(size_t /*count*/,
                                        BufferHint /*hint*/) override {
@@ -157,7 +159,8 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
 
 size_t bytes_input::read_bytes(byte_type* b, size_t size) {
   assert(pos_ + size <= this->end());
-  size = std::min(size, size_t(std::distance(pos_, this->end())));
+  size =
+    std::min(size, size_t(std::distance(pos_, this->data() + this->size())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
   pos_ += size;
   return size;
@@ -207,7 +210,7 @@ void delta_encode_decode_core(size_t step, size_t count) {
   auto encoded = values;
   irs::encode::delta::encode(encoded.begin(), encoded.end());
   ASSERT_TRUE(std::all_of(encoded.begin(), encoded.end(),
-                          [step](int v) { return step == v; }));
+                          [step](auto v) { return step == v; }));
 
   auto decoded = encoded;
   irs::encode::delta::decode(decoded.begin(), decoded.end());
@@ -1018,6 +1021,54 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
       ASSERT_TRUE(success);
       ASSERT_EQ(values.end(), begin);
     }
+  }
+}
+
+TEST(store_utils_tests, test_remapped_bytes_view) {
+  std::array<irs::byte_type, 15> data = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,
+                                         0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
+
+  {
+    remapped_bytes_view_input::mapping mapping;
+    mapping.emplace_back(3, 0);
+    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
+                                 std::move(mapping));
+    auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual[0], data[0]);
+    ASSERT_EQ(5, in.file_pointer());
+    std::array<irs::byte_type, 2> read;
+    ASSERT_EQ(2, in.read_bytes(5, read.data(), 2));
+    ASSERT_EQ(0x3, read[0]);
+    ASSERT_EQ(0x4, read[1]);
+    ASSERT_EQ(7, in.file_pointer());
+    ASSERT_EQ(2, in.read_bytes(read.data(), 2));
+    ASSERT_EQ(0x5, read[0]);
+    ASSERT_EQ(0x6, read[1]);
+    ASSERT_EQ(9, in.file_pointer());
+    auto actual2 = in.read_buffer(4, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual2[0], data[1]);
+    ASSERT_EQ(6, in.file_pointer());
+    auto actual3 = in.read_buffer(17, 1, BufferHint::NORMAL);
+    ASSERT_EQ(actual3[0], data[14]);
+    ASSERT_EQ(18, in.file_pointer());
+  }
+
+  {
+    remapped_bytes_view_input::mapping mapping;
+    mapping.emplace_back(3, 0);
+    mapping.emplace_back(5, 7);
+    mapping.emplace_back(25, 14);
+    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
+                                 std::move(mapping));
+    auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual[1], data[1]);
+    ASSERT_EQ(5, in.file_pointer());
+    auto actual2 = in.read_buffer(5, 2, BufferHint::NORMAL);
+    ASSERT_EQ(actual2[0], data[7]);
+    ASSERT_EQ(7, in.file_pointer());
+    auto actual3 = in.read_buffer(25, 1, BufferHint::NORMAL);
+    ASSERT_EQ(actual3[0], data[14]);
+    ASSERT_EQ(26, in.file_pointer());
   }
 }
 

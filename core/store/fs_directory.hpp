@@ -23,23 +23,21 @@
 #ifndef IRESEARCH_FILE_SYSTEM_DIRECTORY_H
 #define IRESEARCH_FILE_SYSTEM_DIRECTORY_H
 
+#include <filesystem>
+
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/string.hpp"
-#include "utils/utf8_path.hpp"
 
 namespace iresearch {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class fs_directory
-//////////////////////////////////////////////////////////////////////////////
 class fs_directory : public directory {
  public:
-  static constexpr size_t DEFAULT_POOL_SIZE = 8;
+  static constexpr size_t kDefaultPoolSize = 8;
 
-  explicit fs_directory(utf8_path dir,
+  explicit fs_directory(std::filesystem::path dir,
                         directory_attributes attrs = directory_attributes{},
-                        size_t fd_pool_size = DEFAULT_POOL_SIZE);
+                        size_t fd_pool_size = kDefaultPoolSize);
 
   using directory::attributes;
   virtual directory_attributes& attributes() noexcept override {
@@ -48,7 +46,7 @@ class fs_directory : public directory {
 
   virtual index_output::ptr create(std::string_view name) noexcept override;
 
-  const utf8_path& directory() const noexcept;
+  const std::filesystem::path& directory() const noexcept;
 
   virtual bool exists(bool& result,
                       std::string_view name) const noexcept override;
@@ -75,9 +73,9 @@ class fs_directory : public directory {
 
  private:
   directory_attributes attrs_;
-  utf8_path dir_;
+  std::filesystem::path dir_;
   size_t fd_pool_size_;
-};  // fs_directory
+};
 
 }  // namespace iresearch
 

@@ -50,22 +50,17 @@ namespace {
   return true;
 }
 
-void reorder(std::span<segment_writer::update_context> ctxs,
+// Please will be accurate with trying to make this function in-place
+// During my small research I consider it's impossible without mutable docmap
+void reorder(std::vector<segment_writer::update_context>& ctxs,
              const doc_map& docmap) {
-  assert(!docmap.empty());
-
-  for (size_t doc = doc_limits::min(); doc <= ctxs.size(); ++doc) {
-    assert(doc < docmap.size());
-    const auto new_doc = docmap[doc];
-    assert(!doc_limits::eof(new_doc));
-
-    if (new_doc > doc) {
-      assert(new_doc > 0);
-      assert(new_doc <= ctxs.size());
-      std::swap(ctxs[doc - doc_limits::min()],
-                ctxs[new_doc - doc_limits::min()]);
-    }
+  std::vector<segment_writer::update_context> new_ctxs;
+  new_ctxs.resize(ctxs.size());
+  for (size_t i = 0, size = ctxs.size(); i < size; ++i) {
+    new_ctxs[docmap[i + doc_limits::min()] - doc_limits::min()] =
+      std::move(ctxs[i]);
   }
+  ctxs = std::move(new_ctxs);
 }
 
 }  // namespace
@@ -117,11 +112,11 @@ doc_id_t segment_writer::begin(const update_context& ctx,
   return doc_id_t(docs_cached() + doc_limits::min() - 1);
 }
 
-segment_writer::ptr segment_writer::make(
+std::unique_ptr<segment_writer> segment_writer::make(
   directory& dir, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info, const comparer* comparator) {
-  return memory::maker<segment_writer>::make(dir, column_info, feature_info,
-                                             comparator);
+  return std::make_unique<segment_writer>(ConstructToken{}, dir, column_info,
+                                          feature_info, comparator);
 }
 
 size_t segment_writer::memory_active() const noexcept {
@@ -182,7 +177,7 @@ bool segment_writer::remove(doc_id_t doc_id) {
   return true;
 }
 
-segment_writer::segment_writer(directory& dir,
+segment_writer::segment_writer(ConstructToken, directory& dir,
                                const column_info_provider_t& column_info,
                                const feature_info_provider_t& feature_info,
                                const comparer* comparator) noexcept
@@ -246,16 +241,21 @@ void segment_writer::flush_fields(const doc_map& docmap) {
   }
 }
 
-size_t segment_writer::flush_doc_mask(const segment_meta& meta) {
+size_t segment_writer::flush_doc_mask(const segment_meta& meta,
+                                      const doc_map& docmap) {
   document_mask docs_mask;
   docs_mask.reserve(docs_mask_.size());
 
   for (size_t doc_id = 0, doc_id_end = docs_mask_.size(); doc_id < doc_id_end;
        ++doc_id) {
     if (docs_mask_.test(doc_id)) {
-      assert(size_t(std::numeric_limits<doc_id_t>::max()) >=
-             doc_id + doc_limits::min());
-      docs_mask.emplace(doc_id_t(doc_id + doc_limits::min()));
+      auto idx = doc_id + doc_limits::min();
+      assert(idx < doc_limits::eof());
+      if (!docmap.empty()) {
+        idx = docmap[idx];
+        assert(idx < doc_limits::eof());
+      }
+      docs_mask.emplace(static_cast<doc_id_t>(idx));
     }
   }
 
@@ -310,7 +310,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   // write non-empty document mask
   size_t docs_mask_count = 0;
   if (docs_mask_.any()) {
-    docs_mask_count = flush_doc_mask(meta);
+    docs_mask_count = flush_doc_mask(meta, docmap);
   }
 
   // update segment metadata

@@ -21,28 +21,28 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <climits>
+#include <condition_variable>
+#include <filesystem>
 #include <fstream>
 #include <thread>
-#include <condition_variable>
-#include <climits>
 
 #include "tests_shared.hpp"
 #include "utils/file_utils.hpp"
-#include "utils/utf8_path.hpp"
 
 using namespace std::chrono_literals;
 
 namespace {
 
 class utf8_path_tests : public test_base {
-  irs::utf8_path cwd_;
+  std::filesystem::path cwd_;
 
   virtual void SetUp() {
     // Code here will be called immediately after the constructor (right before
     // each test).
 
     test_base::SetUp();
-    cwd_ = irs::current_path();
+    cwd_ = std::filesystem::current_path();
     irs::file_utils::mkdir(test_dir().c_str(), false);  // ensure path exists
     irs::file_utils::set_cwd(
       test_dir()
@@ -63,7 +63,7 @@ class utf8_path_tests : public test_base {
 TEST_F(utf8_path_tests, current) {
   // absolute path
   {
-    auto path = irs::current_path();
+    auto path = std::filesystem::current_path();
     std::string directory("deleteme");
     std::string directory2("deleteme2");
     bool tmpBool;
@@ -93,7 +93,6 @@ TEST_F(utf8_path_tests, current) {
     path /= directory;
     ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
     ASSERT_TRUE(irs::file_utils::set_cwd(path.c_str()));
-    ASSERT_TRUE(path.native() == irs::current_path().native());
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) &&
                 tmpBool);
@@ -105,7 +104,7 @@ TEST_F(utf8_path_tests, current) {
     path /= directory2;
     ASSERT_TRUE(irs::file_utils::mkdir(path.c_str(), true));
     ASSERT_TRUE(irs::file_utils::set_cwd(path.c_str()));
-    ASSERT_TRUE(path.native() == irs::current_path().native());
+    ASSERT_TRUE(path.native() == std::filesystem::current_path().native());
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
     ASSERT_TRUE(irs::file_utils::exists_directory(tmpBool, path.c_str()) &&
                 tmpBool);
@@ -117,7 +116,7 @@ TEST_F(utf8_path_tests, current) {
 
   // relative path
   {
-    irs::utf8_path path;
+    std::filesystem::path path;
     std::string directory("deleteme");
     std::string directory2("deleteme2");
     bool tmpBool;
@@ -166,7 +165,7 @@ TEST_F(utf8_path_tests, current) {
 }
 
 TEST_F(utf8_path_tests, empty) {
-  irs::utf8_path path;
+  std::filesystem::path path;
   std::string empty("");
   bool tmpBool;
   std::time_t tmpTime;
@@ -185,27 +184,27 @@ TEST_F(utf8_path_tests, empty) {
 TEST_F(utf8_path_tests, absolute) {
   // empty
   {
-    irs::utf8_path path;
+    std::filesystem::path path;
     ASSERT_FALSE(path.is_absolute());
   }
 
   // cwd
   {
-    auto path = irs::current_path();
+    auto path = std::filesystem::current_path();
     ASSERT_TRUE(path.is_absolute());
   }
 
   // relative
   {
-    irs::utf8_path path;
+    std::filesystem::path path;
     path += "deleteme";
     ASSERT_FALSE(path.is_absolute());
   }
 
   // absolute
   {
-    auto cwd = irs::current_path();
-    irs::utf8_path path;
+    auto cwd = std::filesystem::current_path();
+    std::filesystem::path path;
     path += cwd.native();
     ASSERT_TRUE(path.is_absolute());
   }
@@ -222,22 +221,24 @@ TEST_F(utf8_path_tests, path) {
   std::string file1("deleteme");
   std::string file2(file1 + suffix);
   std::string dir1("deleteme.dir");
-  auto pwd_native = irs::current_path().native();
-  auto pwd_utf8 = irs::current_path().u8string();
-  auto file1_abs_native = (irs::current_path() /= file1).native();
-  auto file1f_abs_native = ((irs::current_path() += "/") += file1)
+  auto pwd_native = std::filesystem::current_path().native();
+  auto pwd_utf8 = std::filesystem::current_path().u8string();
+  auto file1_abs_native = (std::filesystem::current_path() /= file1).native();
+  auto file1f_abs_native = ((std::filesystem::current_path() += "/") += file1)
                              .native();  // abs file1 with forward slash
-  auto file1n_abs_native = ((irs::current_path() += native_path_sep) += file1)
-                             .native();  // abs file1 with native slash
-  auto file1_abs_utf8 = (irs::current_path() /= file1).u8string();
-  auto file1f_abs_utf8 = ((irs::current_path() += "/") += file1)
+  auto file1n_abs_native =
+    ((std::filesystem::current_path() += native_path_sep) += file1)
+      .native();  // abs file1 with native slash
+  auto file1_abs_utf8 = (std::filesystem::current_path() /= file1).u8string();
+  auto file1f_abs_utf8 = ((std::filesystem::current_path() += "/") += file1)
                            .u8string();  // abs file1 with forward slash
-  auto file1n_abs_utf8 = ((irs::current_path() += native_path_sep) += file1)
-                           .u8string();  // abs file1 with native slash
-  auto file2_abs_native = (irs::current_path() /= file2).native();
-  auto file2_abs_utf8 = (irs::current_path() /= file2).u8string();
-  auto dir_abs_native = (irs::current_path() /= dir1).native();
-  auto dir_abs_utf8 = (irs::current_path() /= dir1).u8string();
+  auto file1n_abs_utf8 =
+    ((std::filesystem::current_path() += native_path_sep) += file1)
+      .u8string();  // abs file1 with native slash
+  auto file2_abs_native = (std::filesystem::current_path() /= file2).native();
+  auto file2_abs_utf8 = (std::filesystem::current_path() /= file2).u8string();
+  auto dir_abs_native = (std::filesystem::current_path() /= dir1).native();
+  auto dir_abs_utf8 = (std::filesystem::current_path() /= dir1).u8string();
 
   // create file
   {
@@ -248,12 +249,12 @@ TEST_F(utf8_path_tests, path) {
 
   // from native std::string_view
   {
-    irs::utf8_path path1(file1_abs_native.c_str());
-    irs::utf8_path path1f(file1f_abs_native.c_str());
-    irs::utf8_path path1n(file1n_abs_native.c_str());
-    irs::utf8_path path2(file2_abs_native.c_str());
-    irs::utf8_path dir1(pwd_native.c_str());
-    irs::utf8_path dir2(dir_abs_native.c_str());
+    std::filesystem::path path1(file1_abs_native.c_str());
+    std::filesystem::path path1f(file1f_abs_native.c_str());
+    std::filesystem::path path1n(file1n_abs_native.c_str());
+    std::filesystem::path path2(file2_abs_native.c_str());
+    std::filesystem::path dir1(pwd_native.c_str());
+    std::filesystem::path dir2(dir_abs_native.c_str());
     bool tmpBool;
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
@@ -295,12 +296,12 @@ TEST_F(utf8_path_tests, path) {
 
   // from utf8 string
   {
-    irs::utf8_path path1(file1_abs_utf8);
-    irs::utf8_path path1f(file1f_abs_utf8);
-    irs::utf8_path path1n(file1n_abs_utf8);
-    irs::utf8_path path2(file2_abs_utf8);
-    irs::utf8_path dir1(pwd_utf8);
-    irs::utf8_path dir2(dir_abs_utf8);
+    std::filesystem::path path1(file1_abs_utf8);
+    std::filesystem::path path1f(file1f_abs_utf8);
+    std::filesystem::path path1n(file1n_abs_utf8);
+    std::filesystem::path path2(file2_abs_utf8);
+    std::filesystem::path dir1(pwd_utf8);
+    std::filesystem::path dir2(dir_abs_utf8);
     bool tmpBool;
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
@@ -342,12 +343,12 @@ TEST_F(utf8_path_tests, path) {
 
   // from utf8 std::string_view
   {
-    irs::utf8_path path1(file1_abs_utf8.c_str());
-    irs::utf8_path path1f(file1f_abs_utf8.c_str());
-    irs::utf8_path path1n(file1n_abs_utf8.c_str());
-    irs::utf8_path path2(file2_abs_utf8.c_str());
-    irs::utf8_path dir1(pwd_utf8.c_str());
-    irs::utf8_path dir2(dir_abs_utf8.c_str());
+    std::filesystem::path path1(file1_abs_utf8.c_str());
+    std::filesystem::path path1f(file1f_abs_utf8.c_str());
+    std::filesystem::path path1n(file1n_abs_utf8.c_str());
+    std::filesystem::path path2(file2_abs_utf8.c_str());
+    std::filesystem::path dir1(pwd_utf8.c_str());
+    std::filesystem::path dir2(dir_abs_utf8.c_str());
     bool tmpBool;
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path1.c_str()) && tmpBool);
@@ -389,7 +390,7 @@ TEST_F(utf8_path_tests, path) {
 }
 
 TEST_F(utf8_path_tests, file) {
-  irs::utf8_path path;
+  std::filesystem::path path;
   std::string suffix(".other");
   std::string file1("deleteme");
   std::string file2(file1 + suffix);
@@ -446,7 +447,7 @@ TEST_F(utf8_path_tests, file) {
               tmpUint == data.size() * 2);
 
   // assign test
-  auto other = irs::current_path();
+  auto other = std::filesystem::current_path();
   other.assign(path.c_str());
   ASSERT_EQ(other.string(), path.string());
 }
@@ -458,7 +459,7 @@ TEST_F(utf8_path_tests, directory) {
 
   // absolute path creation
   {
-    auto path = irs::current_path();
+    auto path = std::filesystem::current_path();
     std::string directory("deletemeA");
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && tmpBool);
@@ -490,7 +491,7 @@ TEST_F(utf8_path_tests, directory) {
 
   // relative path creation
   {
-    irs::utf8_path path;
+    std::filesystem::path path;
     std::string directory("deletemeR");
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);
@@ -524,8 +525,8 @@ TEST_F(utf8_path_tests, directory) {
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2");
-    auto path1 = irs::current_path();
-    auto path2 = irs::current_path();
+    auto path1 = std::filesystem::current_path();
+    auto path2 = std::filesystem::current_path();
 
     path1 /= directory1;
     path2 /= directory1;
@@ -592,8 +593,8 @@ TEST_F(utf8_path_tests, directory) {
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2");
-    irs::utf8_path path1;
-    irs::utf8_path path2;
+    std::filesystem::path path1;
+    std::filesystem::path path2;
 
     path1 /= directory1;
     path2 /= directory1;
@@ -661,8 +662,8 @@ TEST_F(utf8_path_tests, directory) {
     std::string data("data");
     std::string directory("deleteme");
     std::string file("deleteme.file");
-    irs::utf8_path path1;
-    irs::utf8_path path2;
+    std::filesystem::path path1;
+    std::filesystem::path path2;
 
     path1 /= file;
     path2 /= file;
@@ -710,8 +711,8 @@ TEST_F(utf8_path_tests, directory) {
     std::string directory1("deleteme1");
     std::string directory2(
       "deleteme2/deleteme3");  // explicitly use '/' and not native
-    auto path1 = irs::current_path();
-    auto path2 = irs::current_path();
+    auto path1 = std::filesystem::current_path();
+    auto path2 = std::filesystem::current_path();
 
     path1 /= directory1;
     path2 /= directory1;
@@ -779,8 +780,8 @@ TEST_F(utf8_path_tests, directory) {
     std::string directory1("deleteme1");
     std::string directory2(
       "deleteme2/deleteme3");  // explicitly use '/' and not native
-    irs::utf8_path path1;
-    irs::utf8_path path2;
+    std::filesystem::path path1;
+    std::filesystem::path path2;
 
     path1 /= directory1;
     path2 /= directory1;
@@ -846,8 +847,8 @@ TEST_F(utf8_path_tests, directory) {
   // recursive path creation with concurrency (full path exists)
   {
     std::string directory1("deleteme1/deleteme2/deleteme3");
-    irs::utf8_path path1;
-    irs::utf8_path path2;
+    std::filesystem::path path1;
+    std::filesystem::path path2;
 
     path1 /= directory1;
     path2 /= directory1;
@@ -867,8 +868,8 @@ TEST_F(utf8_path_tests, directory) {
   {
     std::string directory1("deleteme1/deleteme2/deleteme3");
     std::string directory2("deleteme4");
-    irs::utf8_path path1;
-    irs::utf8_path path2;
+    std::filesystem::path path1;
+    std::filesystem::path path2;
 
     path1 /= directory1;
     path2 /= directory1;
@@ -886,7 +887,7 @@ TEST_F(utf8_path_tests, directory) {
   {
     std::string directory1("deleteme1");
     std::string directory2("deleteme2/deleteme3/deleteme_thread");
-    irs::utf8_path pathRoot;
+    std::filesystem::path pathRoot;
     pathRoot /= directory1;
 
     // threads sync for start
@@ -911,7 +912,7 @@ TEST_F(utf8_path_tests, directory) {
         pool.emplace_back(
           std::thread([&result, &directory1, &directory2, i, &mutex, &ready_cv,
                        &readyCount, &ready]() {
-            irs::utf8_path path;
+            std::filesystem::path path;
             path /= directory1;
             std::ostringstream ss;
             ss << directory2 << i;
@@ -960,8 +961,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst0");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1006,8 +1009,10 @@ void validate_move(bool src_abs, bool dst_abs) {
   {
     std::string src("deleteme.src");
     std::string dst("deleteme.dst1");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1056,8 +1061,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst2");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1104,8 +1111,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme.file");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst3");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1159,8 +1168,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string directory("deleteme");
     std::string src("deleteme.src");
     std::string dst("deleteme.dst4");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1209,8 +1220,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src5");
     std::string dst("deleteme.dst5");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1259,10 +1272,12 @@ void validate_move(bool src_abs, bool dst_abs) {
   {
     std::string src("deleteme.src6");
     std::string dst("deleteme.dst6");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path_expected =
-      dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path_expected =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1327,8 +1342,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.src7");
     std::string dst("deleteme.dst7");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1379,8 +1396,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.src8");
     std::string dst("deleteme.dst8");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
     std::string dst_data("data");
 
     src_path /= src;
@@ -1449,12 +1468,14 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string dst_dir("deleteme.dst");
     std::string src("deleteme.src9");
     std::string dst("deleteme.dst9");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path src_path_expected =
-      src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path_expected =
-      dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path src_path_expected =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path_expected =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1533,8 +1554,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.srcA");
     std::string dst("deleteme.dstA");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1591,10 +1614,12 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string data("ABCdata123");
     std::string src("deleteme.srcB");
     std::string dst("deleteme.dstB");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path_expected =
-      dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path_expected =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1663,8 +1688,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string missing("deleteme");
     std::string src("deleteme.srcC");
     std::string dst("deleteme.dstC");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1724,8 +1751,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.srcD");
     std::string dst("deleteme.dstD");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;
@@ -1793,8 +1822,10 @@ void validate_move(bool src_abs, bool dst_abs) {
     std::string file("deleteme");
     std::string src("deleteme.srcE");
     std::string dst("deleteme.dstE");
-    irs::utf8_path src_path = src_abs ? irs::current_path() : irs::utf8_path();
-    irs::utf8_path dst_path = dst_abs ? irs::current_path() : irs::utf8_path();
+    std::filesystem::path src_path =
+      src_abs ? std::filesystem::current_path() : std::filesystem::path();
+    std::filesystem::path dst_path =
+      dst_abs ? std::filesystem::current_path() : std::filesystem::path();
 
     src_path /= src;
     dst_path /= dst;

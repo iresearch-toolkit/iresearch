@@ -23,38 +23,38 @@
 
 #include "fs_directory.hpp"
 
+#include "error/error.hpp"
 #include "shared.hpp"
 #include "store/directory_attributes.hpp"
 #include "store/directory_cleaner.hpp"
-#include "error/error.hpp"
+#include "utils/crc.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/string_utils.hpp"
-#include "utils/file_utils.hpp"
-#include "utils/crc.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>  // for GetLastError()
 #endif
 
+namespace iresearch {
 namespace {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief converts the specified IOAdvice to corresponding posix fadvice
-//////////////////////////////////////////////////////////////////////////////
-inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
+// Converts the specified IOAdvice to corresponding posix fadvice
+inline int get_posix_fadvice(IOAdvice advice) noexcept {
   switch (advice) {
-    case irs::IOAdvice::NORMAL:
+    case IOAdvice::NORMAL:
+    case IOAdvice::DIRECT_READ:
       return IR_FADVICE_NORMAL;
-    case irs::IOAdvice::SEQUENTIAL:
+    case IOAdvice::SEQUENTIAL:
       return IR_FADVICE_SEQUENTIAL;
-    case irs::IOAdvice::RANDOM:
+    case IOAdvice::RANDOM:
       return IR_FADVICE_RANDOM;
-    case irs::IOAdvice::READONCE:
+    case IOAdvice::READONCE:
       return IR_FADVICE_DONTNEED;
-    case irs::IOAdvice::READONCE_SEQUENTIAL:
+    case IOAdvice::READONCE_SEQUENTIAL:
       return IR_FADVICE_SEQUENTIAL | IR_FADVICE_NOREUSE;
-    case irs::IOAdvice::READONCE_RANDOM:
+    case IOAdvice::READONCE_RANDOM:
       return IR_FADVICE_RANDOM | IR_FADVICE_NOREUSE;
   }
 
@@ -65,9 +65,15 @@ inline int get_posix_fadvice(irs::IOAdvice advice) noexcept {
   return IR_FADVICE_NORMAL;
 }
 
+inline irs::file_utils::OpenMode get_read_mode(irs::IOAdvice advice) {
+  if (irs::IOAdvice::DIRECT_READ == (advice & irs::IOAdvice::DIRECT_READ)) {
+    return irs::file_utils::OpenMode::Read | irs::file_utils::OpenMode::Direct;
+  }
+  return irs::file_utils::OpenMode::Read;
+}
+
 }  // namespace
 
-namespace iresearch {
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(
   disable : 4996)))  // the compiler encountered a deprecated declaration
@@ -78,7 +84,7 @@ MSVC_ONLY(__pragma(warning(
 
 class fs_lock : public index_lock {
  public:
-  fs_lock(const irs::utf8_path& dir, std::string_view file)
+  fs_lock(const std::filesystem::path& dir, std::string_view file)
     : dir_{dir}, file_{file} {}
 
   virtual bool lock() override {
@@ -150,7 +156,7 @@ class fs_lock : public index_lock {
   }
 
  private:
-  irs::utf8_path dir_;
+  std::filesystem::path dir_;
   std::string file_;
   file_utils::lock_handle_t handle_;
 };  // fs_lock
@@ -171,10 +177,10 @@ class fs_index_output : public buffered_index_output {
     if (nullptr == handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                    GetLastError(), irs::utf8_path{name}.c_str());
+                    GetLastError(), std::filesystem::path{name}.c_str());
 #else
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno,
-                    irs::utf8_path{name}.c_str());
+                    std::filesystem::path{name}.c_str());
 #endif
 
       return nullptr;
@@ -261,17 +267,18 @@ class fs_index_input : public buffered_index_input {
     assert(name);
 
     auto handle = file_handle::make();
-    handle->posix_open_advice = get_posix_fadvice(advice);
-    handle->handle = irs::file_utils::open(
-      name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
+    handle->io_advice = advice;
+    handle->handle =
+      irs::file_utils::open(name, get_read_mode(handle->io_advice),
+                            get_posix_fadvice(handle->io_advice));
 
     if (nullptr == handle->handle) {
 #ifdef _WIN32
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
-                    GetLastError(), irs::utf8_path{name}.c_str());
+                    GetLastError(), std::filesystem::path{name}.c_str());
 #else
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno,
-                    irs::utf8_path{name}.c_str());
+                    std::filesystem::path{name}.c_str());
 #endif
 
       return nullptr;
@@ -286,7 +293,7 @@ class fs_index_input : public buffered_index_input {
 #endif
 
       IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s",
-                    error, irs::utf8_path{name}.c_str());
+                    error, std::filesystem::path{name}.c_str());
 
       return nullptr;
     }
@@ -356,7 +363,7 @@ class fs_index_input : public buffered_index_input {
     file_utils::handle_t handle; /* native file handle */
     size_t size{};               /* file size */
     size_t pos{};                /* current file position*/
-    int posix_open_advice{IR_FADVICE_NORMAL};
+    IOAdvice io_advice{IOAdvice::NORMAL};
   };  // file_handle
 
   fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
@@ -394,7 +401,7 @@ class pooled_fs_index_input final : public fs_index_input {
     using ptr = std::unique_ptr<file_handle>;
 
     static std::unique_ptr<file_handle> make() {
-      return memory::make_unique<file_handle>();
+      return std::make_unique<file_handle>();
     }
   };
 
@@ -406,11 +413,11 @@ class pooled_fs_index_input final : public fs_index_input {
 };  // pooled_fs_index_input
 
 index_input::ptr fs_index_input::reopen() const {
-  return memory::make_unique<pooled_fs_index_input>(*this);
+  return std::make_unique<pooled_fs_index_input>(*this);
 }
 
 pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
-  : fs_index_input(in), fd_pool_(memory::make_shared<fd_pool_t>(pool_size_)) {
+  : fs_index_input(in), fd_pool_(std::make_shared<fd_pool_t>(pool_size_)) {
   handle_ = reopen(*handle_);
 }
 
@@ -437,9 +444,9 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   if (!handle->handle) {
     handle->handle = irs::file_utils::open(
-      src, irs::file_utils::OpenMode::Read,
-      src
-        .posix_open_advice);  // same permission as in fs_index_input::open(...)
+      src, get_read_mode(src.io_advice),
+      get_posix_fadvice(
+        src.io_advice));  // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
@@ -452,7 +459,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 #endif
           ));
     }
-    handle->posix_open_advice = src.posix_open_advice;
+    handle->io_advice = src.io_advice;
   }
 
   const auto pos = irs::file_utils::ftell(
@@ -479,15 +486,15 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-fs_directory::fs_directory(irs::utf8_path dir, directory_attributes attrs,
-                           size_t fd_pool_size)
+fs_directory::fs_directory(std::filesystem::path dir,
+                           directory_attributes attrs, size_t fd_pool_size)
   : attrs_{std::move(attrs)},
     dir_{std::move(dir)},
     fd_pool_size_{fd_pool_size} {}
 
 index_output::ptr fs_directory::create(std::string_view name) noexcept {
   try {
-    irs::utf8_path path{dir_};
+    std::filesystem::path path{dir_};
     path /= name;
 
     auto out = fs_index_output::open(path.c_str());
@@ -504,7 +511,9 @@ index_output::ptr fs_directory::create(std::string_view name) noexcept {
   return nullptr;
 }
 
-const irs::utf8_path& fs_directory::directory() const noexcept { return dir_; }
+const std::filesystem::path& fs_directory::directory() const noexcept {
+  return dir_;
+}
 
 bool fs_directory::exists(bool& result, std::string_view name) const noexcept {
   auto path = dir_;
@@ -581,7 +590,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   }
 
 #ifdef _WIN32
-  irs::utf8_path path;
+  std::filesystem::path path;
   auto dir_visitor = [&path, &visitor](const file_path_t name) {
     path = name;
 

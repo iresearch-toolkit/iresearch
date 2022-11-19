@@ -200,7 +200,7 @@ bool parse_vpack_options(
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   analysis::normalizing_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return memory::make_unique<analysis::normalizing_token_stream>(
+    return std::make_unique<analysis::normalizing_token_stream>(
       std::move(options));
   } else {
     return nullptr;

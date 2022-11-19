@@ -50,7 +50,7 @@ const auto kRSQRT = irs::cache_func<uint32_t, 2048>(1, [](uint32_t i) noexcept {
 irs::sort::ptr make_from_bool(const VPackSlice slice) {
   assert(slice.isBool());
 
-  return irs::memory::make_unique<irs::tfidf_sort>(slice.getBool());
+  return std::make_unique<irs::tfidf_sort>(slice.getBool());
 }
 
 constexpr std::string_view WITH_NORMS_PARAM_NAME("withNorms");
@@ -58,7 +58,7 @@ constexpr std::string_view WITH_NORMS_PARAM_NAME("withNorms");
 irs::sort::ptr make_from_object(const VPackSlice slice) {
   assert(slice.isObject());
 
-  auto scorer = irs::memory::make_unique<irs::tfidf_sort>();
+  auto scorer = std::make_unique<irs::tfidf_sort>();
 
   {
     // optional bool
@@ -108,7 +108,7 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
     norms = arg_slice.getBool();
   }
 
-  return irs::memory::make_unique<irs::tfidf_sort>(norms);
+  return std::make_unique<irs::tfidf_sort>(norms);
 }
 
 irs::sort::ptr make_vpack(const VPackSlice slice) {
@@ -130,7 +130,7 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
 irs::sort::ptr make_vpack(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
-    return irs::memory::make_unique<irs::tfidf_sort>();
+    return std::make_unique<irs::tfidf_sort>();
   } else {
     VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
     return make_vpack(slice);
@@ -140,7 +140,7 @@ irs::sort::ptr make_vpack(std::string_view args) {
 irs::sort::ptr make_json(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
-    return irs::memory::make_unique<irs::tfidf_sort>();
+    return std::make_unique<irs::tfidf_sort>();
   } else {
     try {
       auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -323,7 +323,7 @@ template<typename Ctx>
 struct MakeScoreFunctionImpl {
   template<bool HasFilterBoost, typename... Args>
   static ScoreFunction Make(Args&&... args) {
-    return {memory::make_unique<Ctx>(std::forward<Args>(args)...),
+    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
             [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
               assert(res);
               assert(ctx);
@@ -387,7 +387,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
   }
 
   virtual field_collector::ptr prepare_field_collector() const override {
-    return irs::memory::make_unique<field_collector>();
+    return std::make_unique<field_collector>();
   }
 
   virtual ScoreFunction prepare_scorer(const sub_reader& segment,
@@ -457,7 +457,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
   }
 
   virtual term_collector::ptr prepare_term_collector() const override {
-    return irs::memory::make_unique<term_collector>();
+    return std::make_unique<term_collector>();
   }
 
  private:
@@ -478,7 +478,7 @@ tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {
-  return memory::make_unique<tfidf::sort>(normalize_, boost_as_score_);
+  return std::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
 
 }  // namespace iresearch

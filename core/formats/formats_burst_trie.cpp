@@ -2058,7 +2058,7 @@ class term_iterator_base : public seek_term_iterator {
   }
 
   seek_cookie::ptr cookie() const override final {
-    return memory::make_unique<::cookie>(
+    return std::make_unique<::cookie>(
       std::get<version10::term_meta>(attrs_));
   }
 
@@ -2566,7 +2566,7 @@ class single_term_iterator final : public seek_term_iterator {
   bool seek(bytes_view term) override;
 
   seek_cookie::ptr cookie() const override {
-    return memory::make_unique<::cookie>(meta_);
+    return std::make_unique<::cookie>(meta_);
   }
 
   void read() override { /*NOOP*/
@@ -3266,7 +3266,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
       const auto blocks_in_buffer = math::div_ceil64(
         DEFAULT_ENCRYPTION_BUFFER_SIZE, index_in_cipher->block_size());
 
-      index_in = memory::make_unique<encrypted_input>(
+      index_in = std::make_unique<encrypted_input>(
         std::move(index_in), *index_in_cipher, blocks_in_buffer, FOOTER_LEN);
     }
   }
@@ -3518,12 +3518,12 @@ namespace burst_trie {
 irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,
                                    bool consolidation) {
-  return memory::make_unique<::field_writer>(std::move(writer), consolidation,
+  return std::make_unique<::field_writer>(std::move(writer), consolidation,
                                              version);
 }
 
 irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {
-  return memory::make_unique<::field_reader>(std::move(reader));
+  return std::make_unique<::field_reader>(std::move(reader));
 }
 
 }  // namespace burst_trie

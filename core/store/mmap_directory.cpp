@@ -21,15 +21,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "store/mmap_directory.hpp"
-#include "store/store_utils.hpp"
-#include "utils/mmap_utils.hpp"
-#include "utils/memory.hpp"
 
+#include "store/store_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/mmap_utils.hpp"
+
+namespace iresearch {
 namespace {
 
-using namespace irs;
 using mmap_utils::mmap_handle;
-
 using mmap_handle_ptr = std::shared_ptr<mmap_handle>;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -38,6 +38,7 @@ using mmap_handle_ptr = std::shared_ptr<mmap_handle>;
 inline int get_posix_madvice(IOAdvice advice) {
   switch (advice) {
     case IOAdvice::NORMAL:
+    case IOAdvice::DIRECT_READ:
       return IR_MADVICE_NORMAL;
     case IOAdvice::SEQUENTIAL:
       return IR_MADVICE_SEQUENTIAL;
@@ -71,7 +72,7 @@ class mmap_index_input : public bytes_view_input {
     mmap_handle_ptr handle;
 
     try {
-      handle = memory::make_shared<mmap_handle>();
+      handle = std::make_shared<mmap_handle>();
     } catch (...) {
       return nullptr;
     }
@@ -84,7 +85,7 @@ class mmap_index_input : public bytes_view_input {
     }
 
     if (0 == handle->size()) {
-      return memory::make_unique<bytes_view_input>();
+      return std::make_unique<bytes_view_input>();
     }
 
     const int padvice = get_posix_madvice(advice);
@@ -130,19 +131,20 @@ class mmap_index_input : public bytes_view_input {
 
 }  // namespace
 
-namespace iresearch {
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                     mmap_directory implementation
 // -----------------------------------------------------------------------------
 
-mmap_directory::mmap_directory(irs::utf8_path path,
+mmap_directory::mmap_directory(std::filesystem::path path,
                                directory_attributes attrs /* = {} */)
   : fs_directory{std::move(path), std::move(attrs)} {}
 
 index_input::ptr mmap_directory::open(std::string_view name,
                                       IOAdvice advice) const noexcept {
   try {
+    if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
+      return fs_directory::open(name, advice);
+    }
     auto path = directory();
     path /= name;
 

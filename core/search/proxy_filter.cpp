@@ -48,7 +48,7 @@ class lazy_filter_bitset : private util::noncopyable {
                                                  .mode = ctx.mode}));
     words_ = bitset::bits_to_words(bits);
     cost_ = cost::extract(*real_doc_itr_);
-    set_ = memory::make_unique<word_t[]>(words_);
+    set_ = std::make_unique<word_t[]>(words_);
     std::memset(set_.get(), 0, sizeof(word_t) * words_);
     real_doc_ = irs::get<document>(*real_doc_itr_);
     begin_ = set_.get();

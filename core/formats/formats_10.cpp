@@ -3518,7 +3518,7 @@ class format10 : public irs::version10::format {
 static const ::format10 FORMAT10_INSTANCE;
 
 index_meta_writer::ptr format10::get_index_meta_writer() const {
-  return memory::make_unique<::index_meta_writer>(
+  return std::make_unique<::index_meta_writer>(
     int32_t(::index_meta_writer::FORMAT_MIN));
 }
 
@@ -3579,12 +3579,12 @@ columnstore_reader::ptr format10::get_columnstore_reader() const {
 
 irs::postings_writer::ptr format10::get_postings_writer(
   bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
+  return std::make_unique<::postings_writer<format_traits>>(
     PostingsFormat::POSITIONS_ONEBASED, consolidation);
 }
 
 irs::postings_reader::ptr format10::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
+  return std::make_unique<::postings_reader<format_traits>>();
 }
 
 /*static*/ irs::format::ptr format10::make() {
@@ -3618,7 +3618,7 @@ class format11 : public format10 {
 static const ::format11 FORMAT11_INSTANCE;
 
 index_meta_writer::ptr format11::get_index_meta_writer() const {
-  return memory::make_unique<::index_meta_writer>(
+  return std::make_unique<::index_meta_writer>(
     int32_t(::index_meta_writer::FORMAT_MAX));
 }
 
@@ -3698,12 +3698,12 @@ static const ::format13 FORMAT13_INSTANCE;
 
 irs::postings_writer::ptr format13::get_postings_writer(
   bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
+  return std::make_unique<::postings_writer<format_traits>>(
     PostingsFormat::POSITIONS_ZEROBASED, consolidation);
 }
 
 irs::postings_reader::ptr format13::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
+  return std::make_unique<::postings_reader<format_traits>>();
 }
 
 /*static*/ irs::format::ptr format13::make() {
@@ -3778,12 +3778,12 @@ static const ::format15 FORMAT15_INSTANCE;
 
 irs::postings_writer::ptr format15::get_postings_writer(
   bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
+  return std::make_unique<::postings_writer<format_traits>>(
     PostingsFormat::WAND, consolidation);
 }
 
 irs::postings_reader::ptr format15::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
+  return std::make_unique<::postings_reader<format_traits>>();
 }
 
 /*static*/ irs::format::ptr format15::make() {
@@ -3849,12 +3849,12 @@ static const ::format12simd FORMAT12SIMD_INSTANCE;
 
 irs::postings_writer::ptr format12simd::get_postings_writer(
   bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
+  return std::make_unique<::postings_writer<format_traits>>(
     PostingsFormat::POSITIONS_ONEBASED_SSE, consolidation);
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
+  return std::make_unique<::postings_reader<format_traits>>();
 }
 
 /*static*/ irs::format::ptr format12simd::make() {
@@ -3885,12 +3885,12 @@ static const ::format13simd FORMAT13SIMD_INSTANCE;
 
 irs::postings_writer::ptr format13simd::get_postings_writer(
   bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
+  return std::make_unique<::postings_writer<format_traits>>(
     PostingsFormat::POSITIONS_ZEROBASED_SSE, consolidation);
 }
 
 irs::postings_reader::ptr format13simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
+  return std::make_unique<::postings_reader<format_traits>>();
 }
 
 /*static*/ irs::format::ptr format13simd::make() {
@@ -3968,12 +3968,12 @@ static const ::format15simd FORMAT15SIMD_INSTANCE;
 
 irs::postings_writer::ptr format15simd::get_postings_writer(
   bool consolidation) const {
-  return memory::make_unique<::postings_writer<format_traits>>(
+  return std::make_unique<::postings_writer<format_traits>>(
     PostingsFormat::WAND_SSE, consolidation);
 }
 
 irs::postings_reader::ptr format15simd::get_postings_reader() const {
-  return memory::make_unique<::postings_reader<format_traits>>();
+  return std::make_unique<::postings_reader<format_traits>>();
 }
 
 /*static*/ irs::format::ptr format15simd::make() {

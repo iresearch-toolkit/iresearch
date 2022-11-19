@@ -33,14 +33,14 @@
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
+namespace iresearch {
 namespace {
-using namespace irs;
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable : 4457)))  // variable hides function param
-irs::index_file_refs::ref_t load_newest_index_meta(
-  irs::index_meta& meta, const irs::directory& dir,
-  const irs::format* codec) noexcept {
+index_file_refs::ref_t load_newest_index_meta(index_meta& meta,
+                                              const directory& dir,
+                                              const format* codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -50,7 +50,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
         return nullptr;
       }
 
-      irs::index_file_refs::ref_t ref;
+      index_file_refs::ref_t ref;
       std::string filename;
 
       // ensure have a valid ref to a filename
@@ -61,8 +61,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
           return nullptr;
         }
 
-        ref = irs::directory_utils::reference(const_cast<irs::directory&>(dir),
-                                              filename);
+        ref = directory_utils::reference(const_cast<directory&>(dir), filename);
       }
 
       if (ref) {
@@ -89,21 +88,21 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     return true;
   };
 
-  if (!irs::formats::visit(visitor)) {
+  if (!formats::visit(visitor)) {
     return nullptr;
   }
 
   struct {
     std::time_t mtime;
-    irs::index_meta_reader::ptr reader;
-    irs::index_file_refs::ref_t ref;
+    index_meta_reader::ptr reader;
+    index_file_refs::ref_t ref;
   } newest;
 
   newest.mtime = (std::numeric_limits<time_t>::min)();
 
   try {
     for (auto& name : codecs) {
-      auto codec = irs::formats::get(name);
+      auto codec = formats::get(name);
 
       if (!codec) {
         continue;  // try the next codec
@@ -115,7 +114,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
         continue;  // try the next codec
       }
 
-      irs::index_file_refs::ref_t ref;
+      index_file_refs::ref_t ref;
       std::string filename;
 
       // ensure have a valid ref to a filename
@@ -126,8 +125,7 @@ irs::index_file_refs::ref_t load_newest_index_meta(
           break;  // try the next codec
         }
 
-        ref = irs::directory_utils::reference(const_cast<irs::directory&>(dir),
-                                              filename);
+        ref = directory_utils::reference(const_cast<directory&>(dir), filename);
       }
 
       // initialize to a value that will never pass 'if' below (to make valgrind
@@ -162,37 +160,36 @@ MSVC_ONLY(__pragma(warning(pop)))
 
 }  // namespace
 
-namespace iresearch {
-
-// -------------------------------------------------------------------
-// directory_reader
-// -------------------------------------------------------------------
-
 class directory_reader_impl : public composite_reader<segment_reader> {
  public:
-  const directory& dir() const noexcept { return dir_; }
-
-  const directory_meta& meta() const noexcept { return meta_; }
-
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
   static index_reader::ptr open(const directory& dir,
+                                const index_reader_options& opts,
                                 const format* codec = nullptr,
                                 const index_reader::ptr& cached = nullptr);
 
- private:
   using segment_file_refs_t = absl::flat_hash_set<index_file_refs::ref_t>;
   using reader_file_refs_t = std::vector<segment_file_refs_t>;
 
-  directory_reader_impl(const directory& dir, reader_file_refs_t&& file_refs,
-                        directory_meta&& meta, readers_t&& readers,
-                        uint64_t docs_count, uint64_t docs_max);
+  directory_reader_impl(const directory& dir, const index_reader_options& opts,
+                        reader_file_refs_t&& file_refs, directory_meta&& meta,
+                        readers_t&& readers, uint64_t docs_count,
+                        uint64_t docs_max);
 
+  const directory& dir() const noexcept { return dir_; }
+
+  const directory_meta& meta() const noexcept { return meta_; }
+
+  const index_reader_options& opts() const noexcept { return opts_; }
+
+ private:
   const directory& dir_;
   reader_file_refs_t file_refs_;
   directory_meta meta_;
-};  // directory_reader_impl
+  index_reader_options opts_;
+};
 
 directory_reader::directory_reader(impl_ptr&& impl) noexcept
   : impl_(std::move(impl)) {}
@@ -220,8 +217,9 @@ const directory_meta& directory_reader::meta() const {
 }
 
 /*static*/ directory_reader directory_reader::open(
-  const directory& dir, format::ptr codec /*= nullptr*/) {
-  return directory_reader_impl::open(dir, codec.get());
+  const directory& dir, format::ptr codec /*= nullptr*/,
+  const index_reader_options& opts /*= directory_reader_options()*/) {
+  return directory_reader_impl::open(dir, opts, codec.get());
 }
 
 directory_reader directory_reader::reopen(
@@ -229,24 +227,25 @@ directory_reader directory_reader::reopen(
   // make a copy
   impl_ptr impl = std::atomic_load(&impl_);
 
-  return directory_reader_impl::open(
-    down_cast<directory_reader_impl>(*impl).dir(), codec.get(), impl);
+  const auto& reader_impl = down_cast<directory_reader_impl>(*impl);
+
+  return directory_reader_impl::open(reader_impl.dir(), reader_impl.opts(),
+                                     codec.get(), impl);
 }
 
-// -------------------------------------------------------------------
-// directory_reader_impl
-// -------------------------------------------------------------------
-
 directory_reader_impl::directory_reader_impl(
-  const directory& dir, reader_file_refs_t&& file_refs, directory_meta&& meta,
-  readers_t&& readers, uint64_t docs_count, uint64_t docs_max)
+  const directory& dir, const index_reader_options& opts,
+  reader_file_refs_t&& file_refs, directory_meta&& meta, readers_t&& readers,
+  uint64_t docs_count, uint64_t docs_max)
   : composite_reader(std::move(readers), docs_count, docs_max),
     dir_(dir),
     file_refs_(std::move(file_refs)),
-    meta_(std::move(meta)) {}
+    meta_(std::move(meta)),
+    opts_(opts) {}
 
 /*static*/ index_reader::ptr directory_reader_impl::open(
-  const directory& dir, const format* codec /*= nullptr*/,
+  const directory& dir, const index_reader_options& opts,
+  const format* codec /*= nullptr*/,
   const index_reader::ptr& cached /*= nullptr*/) {
   index_meta meta;
   index_file_refs::ref_t meta_file_ref =
@@ -262,10 +261,11 @@ directory_reader_impl::directory_reader_impl(
     return cached;  // no changes to refresh
   }
 
-  constexpr size_t INVALID_CANDIDATE{std::numeric_limits<size_t>::max()};
+  constexpr size_t kInvalidCandidate{std::numeric_limits<size_t>::max()};
   const size_t count = cached_impl ? cached_impl->meta_.meta.size() : 0;
-  absl::flat_hash_map<std::string_view, size_t>
-    reuse_candidates;  // map by segment name to old segment id
+
+  // map by segment name to old segment id
+  absl::flat_hash_map<std::string_view, size_t> reuse_candidates;
   reuse_candidates.reserve(count);
 
   for (size_t i = 0; i < count; ++i) {
@@ -274,17 +274,20 @@ directory_reader_impl::directory_reader_impl(
       reuse_candidates.emplace(cached_impl->meta_.meta.segment(i).meta.name, i);
 
     if (!itr.second) {
-      itr.first->second = INVALID_CANDIDATE;  // treat collisions as invalid
+      itr.first->second = kInvalidCandidate;  // treat collisions as invalid
     }
   }
 
   readers_t readers(meta.size());
   uint64_t docs_max = 0;    // overall number of documents (with deleted)
   uint64_t docs_count = 0;  // number of live documents
-  reader_file_refs_t file_refs(readers.size() +
-                               1);  // +1 for index_meta file refs
+
+  // +1 for index_meta file refs
+  reader_file_refs_t file_refs(readers.size() + 1);
   segment_file_refs_t tmp_file_refs;
-  auto visitor = [&tmp_file_refs](index_file_refs::ref_t&& ref) -> bool {
+
+  const std::function visitor =
+    [&tmp_file_refs](index_file_refs::ref_t&& ref) -> bool {
     tmp_file_refs.emplace(std::move(ref));
     return true;
   };
@@ -295,12 +298,12 @@ directory_reader_impl::directory_reader_impl(
     auto& segment_file_refs = file_refs[i];
     auto itr = reuse_candidates.find(segment.name);
 
-    if (itr != reuse_candidates.end() && itr->second != INVALID_CANDIDATE &&
+    if (itr != reuse_candidates.end() && itr->second != kInvalidCandidate &&
         segment == cached_impl->meta_.meta.segment(itr->second).meta) {
       reader = (*cached_impl)[itr->second].reopen(segment);
       reuse_candidates.erase(itr);
     } else {
-      reader = segment_reader::open(dir, segment);
+      reader = segment_reader::open(dir, segment, opts);
     }
 
     if (!reader) {
@@ -325,10 +328,9 @@ directory_reader_impl::directory_reader_impl(
   dir_meta.filename = *meta_file_ref;
   dir_meta.meta = std::move(meta);
 
-  PTR_NAMED(directory_reader_impl, reader, dir, std::move(file_refs),
-            std::move(dir_meta), std::move(readers), docs_count, docs_max);
-
-  return reader;
+  return std::make_shared<directory_reader_impl>(
+    dir, opts, std::move(file_refs), std::move(dir_meta), std::move(readers),
+    docs_count, docs_max);
 }
 
 }  // namespace iresearch

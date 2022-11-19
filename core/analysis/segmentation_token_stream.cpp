@@ -175,7 +175,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
     if (!parse_vpack_options(slice, options)) {
       return nullptr;
     }
-    return memory::make_unique<analysis::segmentation_token_stream>(
+    return std::make_unique<analysis::segmentation_token_stream>(
       std::move(options));
   } catch (const VPackException& ex) {
     IR_FRMT_ERROR(
@@ -362,7 +362,10 @@ bool segmentation_token_stream::next() {
     switch (auto& term = std::get<term_attribute>(attrs_);
             options_.case_convert) {
       case options_t::case_convert_t::NONE:
-        term.value = {reinterpret_cast<const byte_type*>(begin.base()), length};
+        assert(length);
+        // on *nix base returns pointer on msvc it return iterator
+        term.value = {reinterpret_cast<const byte_type*>(&(*begin.base())),
+                      length};
         break;
       case options_t::case_convert_t::LOWER:
         term_buf_.clear();

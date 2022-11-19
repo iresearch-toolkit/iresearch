@@ -106,7 +106,7 @@ struct aligned_scorer : public irs::sort {
       empty_scorer_(empty_scorer) {}
 
   virtual irs::sort::prepared::ptr prepare() const override {
-    return irs::memory::make_unique<aligned_scorer<StatsType>::prepared>(
+    return std::make_unique<aligned_scorer<StatsType>::prepared>(
       index_features_, empty_scorer_);
   }
 

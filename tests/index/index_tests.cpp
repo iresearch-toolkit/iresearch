@@ -6257,93 +6257,72 @@ TEST_P(index_test_case, refresh_reader) {
     writer->documents().remove(std::move(query_doc2));
     writer->commit();
   }
-
   // validate state pre/post refresh (existing segment changed)
-  {{ASSERT_EQ(1, reader.size());
-  auto& segment = reader[0];  // assume 0 is id of first/only segment
-  const auto* column = segment.column("name");
-  ASSERT_NE(nullptr, column);
-  auto values = column->iterator(irs::ColumnHint::kNormal);
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
-  auto terms = segment.field("same");
-  ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-  ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
-  ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("A", irs::to_string<std::string_view>(
-                   actual_value->value.data()));  // 'name' value in doc1
-  ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("B", irs::to_string<std::string_view>(
-                   actual_value->value.data()));  // 'name' value in doc2
-  ASSERT_FALSE(docsItr->next());
-}
-
-{
-  reader = reader.reopen();
-  ASSERT_EQ(1, reader.size());
-  auto& segment = reader[0];  // assume 0 is id of first/only segment
-  const auto* column = segment.column("name");
-  ASSERT_NE(nullptr, column);
-  auto values = column->iterator(irs::ColumnHint::kNormal);
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
-  auto terms = segment.field("same");
-  ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-  ASSERT_TRUE(termItr->next());
-  auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-  ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("A", irs::to_string<std::string_view>(
-                   actual_value->value.data()));  // 'name' value in doc1
-  ASSERT_FALSE(docsItr->next());
-}
-}
-
-// modify state (2nd segment 2 docs)
-{
-  auto writer = open_writer(irs::OM_APPEND);
-
-  ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
-                     doc3->stored.begin(), doc3->stored.end()));
-  ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
-                     doc4->stored.begin(), doc4->stored.end()));
-  writer->commit();
-}
-
-// validate state pre/post refresh (new segment added)
-{
-  ASSERT_EQ(1, reader.size());
-  auto& segment = reader[0];  // assume 0 is id of first/only segment
-  const auto* column = segment.column("name");
-  ASSERT_NE(nullptr, column);
-  auto values = column->iterator(irs::ColumnHint::kNormal);
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
-  auto terms = segment.field("same");
-  ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-  ASSERT_TRUE(termItr->next());
-  auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-  ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("A",
-            irs::to_string<std::string_view>(
-              actual_value->value.data()));  // 'name' value in doc1
-  ASSERT_FALSE(docsItr->next());
-
-  reader = reader.reopen();
-  ASSERT_EQ(2, reader.size());
-
   {
-    auto& segment = reader[0];  // assume 0 is id of first segment
+    ((void)1);  // for clang-format
+    {
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0];  // assume 0 is id of first/only segment
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc1
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc2
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      reader = reader.reopen();
+      ASSERT_EQ(1, reader.size());
+      auto& segment = reader[0];  // assume 0 is id of first/only segment
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
+  // modify state (2nd segment 2 docs)
+  {
+    auto writer = open_writer(irs::OM_APPEND);
+
+    ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
+                       doc3->stored.begin(), doc3->stored.end()));
+    ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
+                       doc4->stored.begin(), doc4->stored.end()));
+    writer->commit();
+  }
+
+  // validate state pre/post refresh (new segment added)
+  {
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -6357,13 +6336,119 @@ TEST_P(index_test_case, refresh_reader) {
     auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc1
+    ASSERT_EQ("A",
+              irs::to_string<std::string_view>(
+                actual_value->value.data()));  // 'name' value in doc1
     ASSERT_FALSE(docsItr->next());
+
+    reader = reader.reopen();
+    ASSERT_EQ(2, reader.size());
+
+    {
+      auto& segment = reader[0];  // assume 0 is id of first segment
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1];  // assume 1 is id of second segment
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("C", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc3
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("D", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
   }
 
+  // modify state (delete doc1)
   {
-    auto& segment = reader[1];  // assume 1 is id of second segment
+    auto writer = open_writer(irs::OM_APPEND);
+    auto query_doc1 = MakeByTerm("name", "A");
+
+    writer->documents().remove(std::move(query_doc1));
+    writer->commit();
+  }
+
+  // validate state pre/post refresh (old segment removed)
+  {
+    ASSERT_EQ(2, reader.size());
+
+    {
+      auto& segment = reader[0];  // assume 0 is id of first segment
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc1
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    {
+      auto& segment = reader[1];  // assume 1 is id of second segment
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("C", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc3
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("D", irs::to_string<std::string_view>(
+                       actual_value->value.data()));  // 'name' value in doc4
+      ASSERT_FALSE(docsItr->next());
+    }
+
+    reader = reader.reopen();
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0];  // assume 0 is id of second segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -6374,102 +6459,19 @@ TEST_P(index_test_case, refresh_reader) {
     ASSERT_NE(nullptr, terms);
     auto termItr = terms->iterator(irs::SeekMode::NORMAL);
     ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+    auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
+    ASSERT_EQ("C",
+              irs::to_string<std::string_view>(
+                actual_value->value.data()));  // 'name' value in doc3
     ASSERT_TRUE(docsItr->next());
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc4
+    ASSERT_EQ("D",
+              irs::to_string<std::string_view>(
+                actual_value->value.data()));  // 'name' value in doc4
     ASSERT_FALSE(docsItr->next());
   }
-}
-
-// modify state (delete doc1)
-{
-  auto writer = open_writer(irs::OM_APPEND);
-  auto query_doc1 = MakeByTerm("name", "A");
-
-  writer->documents().remove(std::move(query_doc1));
-  writer->commit();
-}
-
-// validate state pre/post refresh (old segment removed)
-{
-  ASSERT_EQ(2, reader.size());
-
-  {
-    auto& segment = reader[0];  // assume 0 is id of first segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc1
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  {
-    auto& segment = reader[1];  // assume 1 is id of second segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("D", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc4
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  reader = reader.reopen();
-  ASSERT_EQ(1, reader.size());
-  auto& segment = reader[0];  // assume 0 is id of second segment
-  const auto* column = segment.column("name");
-  ASSERT_NE(nullptr, column);
-  auto values = column->iterator(irs::ColumnHint::kNormal);
-  ASSERT_NE(nullptr, values);
-  auto* actual_value = irs::get<irs::payload>(*values);
-  ASSERT_NE(nullptr, actual_value);
-  auto terms = segment.field("same");
-  ASSERT_NE(nullptr, terms);
-  auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-  ASSERT_TRUE(termItr->next());
-  auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
-  ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("C",
-            irs::to_string<std::string_view>(
-              actual_value->value.data()));  // 'name' value in doc3
-  ASSERT_TRUE(docsItr->next());
-  ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-  ASSERT_EQ("D",
-            irs::to_string<std::string_view>(
-              actual_value->value.data()));  // 'name' value in doc4
-  ASSERT_FALSE(docsItr->next());
-}
 }
 
 TEST_P(index_test_case, reuse_segment_writer) {
@@ -6646,7 +6648,7 @@ TEST_P(index_test_case, segment_column_user_system) {
 TEST_P(index_test_case, import_concurrent) {
   struct store {
     store(const irs::format::ptr& codec)
-      : dir(irs::memory::make_unique<irs::memory_directory>()) {
+      : dir(std::make_unique<irs::memory_directory>()) {
       writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
       writer->commit();
       reader = irs::directory_reader::open(*dir);
@@ -15603,9 +15605,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -15616,9 +15618,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick - 1);
+      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
     }
 
     payload_committed_tick = 0;
@@ -15655,9 +15657,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -15668,9 +15670,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick - 1);
+      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
     }
 
     payload_committed_tick = 0;
@@ -15699,9 +15701,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -15712,9 +15714,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     payload_committed_tick = 0;
@@ -15750,9 +15752,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -15763,9 +15765,9 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     payload_committed_tick = 42;
@@ -16179,9 +16181,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -16192,9 +16194,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick - 1);
+      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
     }
 
     payload_committed_tick = 0;
@@ -16231,9 +16233,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -16244,9 +16246,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick - 1);
+      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
     }
 
     payload_committed_tick = 0;
@@ -16277,9 +16279,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -16290,9 +16292,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     payload_committed_tick = 0;
@@ -16329,9 +16331,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     // insert document (trx 1)
@@ -16342,9 +16344,9 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.tick());
-      trx.tick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.tick());
+      ASSERT_EQ(0, trx.GetLastTick());
+      trx.SetLastTick(expected_tick);
+      ASSERT_EQ(expected_tick, trx.GetLastTick());
     }
 
     payload_committed_tick = 42;
@@ -16399,6 +16401,141 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_FALSE(writer->begin());  // transaction hasn't been started, no changes
   writer->commit();
   ASSERT_EQ(reader, reader.reopen());
+}
+
+TEST_P(index_test_case_11, testExternalGeneration) {
+  tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+  auto* doc1 = gen.next();
+
+  irs::index_writer::init_options writer_options;
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+  {
+    auto trx = writer->documents();
+    trx.SetFirstTick(1);
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                     doc1->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc1->stored.begin(), doc1->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    // subcontext with remove
+    {
+      auto trx2 = writer->documents();
+      trx2.SetFirstTick(3);
+      trx2.remove(MakeByTerm("name", "A"));
+      trx2.SetLastTick(4);
+    }
+    trx.SetLastTick(3);
+  }
+  ASSERT_TRUE(writer->begin());
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(1, reader.size());
+  auto& segment = (*reader)[0];
+  ASSERT_EQ(2, segment.docs_count());
+  ASSERT_EQ(1, segment.live_docs_count());
+}
+
+TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
+  tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+  auto* doc1 = gen.next();
+
+  irs::index_writer::init_options writer_options;
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+  {
+    auto trx = writer->documents();
+    trx.SetFirstTick(1);
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                     doc1->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc1->stored.begin(), doc1->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    // subcontext with remove
+    {
+      auto trx2 = writer->documents();
+      trx2.SetFirstTick(2);
+      trx2.remove(MakeByTerm("name", "A"));
+      trx2.SetLastTick(4);
+    }
+    trx.SetLastTick(3);
+  }
+  ASSERT_TRUE(writer->begin());
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(1, reader.size());
+  auto& segment = (*reader)[0];
+  ASSERT_EQ(2, segment.docs_count());
+  ASSERT_EQ(1, segment.live_docs_count());
+}
+
+TEST_P(index_test_case_11, testExternalGenerationRemoveBeforeInsert) {
+  tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc0 = gen.next();
+  auto* doc1 = gen.next();
+
+  irs::index_writer::init_options writer_options;
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+  {
+    auto trx = writer->documents();
+    trx.SetFirstTick(2);
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    {
+      auto doc = trx.insert();
+      doc.insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                     doc1->indexed.end());
+      doc.insert<irs::Action::INDEX>(doc1->stored.begin(), doc1->stored.end());
+      ASSERT_TRUE(doc);
+    }
+    // subcontext with remove
+    {
+      auto trx2 = writer->documents();
+      trx2.SetFirstTick(1);
+      trx2.remove(MakeByTerm("name", "A"));
+      trx2.SetLastTick(2);
+    }
+    trx.SetLastTick(4);
+  }
+  ASSERT_TRUE(writer->begin());
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_EQ(1, reader.size());
+  auto& segment = (*reader)[0];
+  ASSERT_EQ(2, segment.docs_count());
+  ASSERT_EQ(2, segment.live_docs_count());
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro

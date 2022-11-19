@@ -23,6 +23,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -4450,7 +4451,8 @@ class fs_directory_test : public test_base {
   }
 
  protected:
-  static void check_files(const directory& dir, const irs::utf8_path& path) {
+  static void check_files(const directory& dir,
+                          const std::filesystem::path& path) {
     const std::string file_name = "abcd";
 
     // create empty file
@@ -4472,7 +4474,7 @@ class fs_directory_test : public test_base {
   }
 
   std::string name_;
-  irs::utf8_path path_;
+  std::filesystem::path path_;
   std::shared_ptr<fs_directory> dir_;
 };
 
