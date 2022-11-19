@@ -162,12 +162,6 @@ MSVC_ONLY(__pragma(warning(pop)))
 
 class directory_reader_impl : public composite_reader<segment_reader> {
  public:
-  const directory& dir() const noexcept { return dir_; }
-
-  const directory_meta& meta() const noexcept { return meta_; }
-
-  const index_reader_options& opts() const noexcept { return opts_; }
-
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
@@ -176,7 +170,6 @@ class directory_reader_impl : public composite_reader<segment_reader> {
                                 const format* codec = nullptr,
                                 const index_reader::ptr& cached = nullptr);
 
- private:
   using segment_file_refs_t = absl::flat_hash_set<index_file_refs::ref_t>;
   using reader_file_refs_t = std::vector<segment_file_refs_t>;
 
@@ -185,6 +178,13 @@ class directory_reader_impl : public composite_reader<segment_reader> {
                         readers_t&& readers, uint64_t docs_count,
                         uint64_t docs_max);
 
+  const directory& dir() const noexcept { return dir_; }
+
+  const directory_meta& meta() const noexcept { return meta_; }
+
+  const index_reader_options& opts() const noexcept { return opts_; }
+
+ private:
   const directory& dir_;
   reader_file_refs_t file_refs_;
   directory_meta meta_;
@@ -328,10 +328,9 @@ directory_reader_impl::directory_reader_impl(
   dir_meta.filename = *meta_file_ref;
   dir_meta.meta = std::move(meta);
 
-  PTR_NAMED(directory_reader_impl, reader, dir, opts, std::move(file_refs),
-            std::move(dir_meta), std::move(readers), docs_count, docs_max);
-
-  return reader;
+  return std::make_shared<directory_reader_impl>(
+    dir, opts, std::move(file_refs), std::move(dir_meta), std::move(readers),
+    docs_count, docs_max);
 }
 
 }  // namespace iresearch

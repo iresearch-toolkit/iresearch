@@ -543,7 +543,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
   using ptr = pool_control_ptr<element_type, releaser>;
 
   explicit unbounded_object_pool_volatile(size_t size = 0)
-    : base_t{size}, gen_{memory::make_shared<generation_t>(this)} {}
+    : base_t{size}, gen_{std::make_shared<generation_t>(this)} {}
 
   // FIXME check what if
   //
@@ -592,7 +592,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
       }
 
       // mark new generation
-      std::atomic_store(&gen_, memory::make_shared<generation_t>(this));
+      std::atomic_store(&gen_, std::make_shared<generation_t>(this));
     }
 
     typename base_t::node* head = nullptr;

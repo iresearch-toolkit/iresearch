@@ -496,7 +496,7 @@ void sparse_bitmap_iterator::read_block_header() {
       if (!ctx_.dense.index.u8data) {
         if (!block_index_data_) {
           block_index_data_ =
-            memory::make_unique<byte_type[]>(kDenseIndexBlockSizeInBytes);
+            std::make_unique<byte_type[]>(kDenseIndexBlockSizeInBytes);
         }
 
         ctx_.dense.index.u8data = block_index_data_.get();

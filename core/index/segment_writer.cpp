@@ -112,11 +112,11 @@ doc_id_t segment_writer::begin(const update_context& ctx,
   return doc_id_t(docs_cached() + doc_limits::min() - 1);
 }
 
-segment_writer::ptr segment_writer::make(
+std::unique_ptr<segment_writer> segment_writer::make(
   directory& dir, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info, const comparer* comparator) {
-  return memory::maker<segment_writer>::make(dir, column_info, feature_info,
-                                             comparator);
+  return std::make_unique<segment_writer>(ConstructToken{}, dir, column_info,
+                                          feature_info, comparator);
 }
 
 size_t segment_writer::memory_active() const noexcept {
@@ -177,7 +177,7 @@ bool segment_writer::remove(doc_id_t doc_id) {
   return true;
 }
 
-segment_writer::segment_writer(directory& dir,
+segment_writer::segment_writer(ConstructToken, directory& dir,
                                const column_info_provider_t& column_info,
                                const feature_info_provider_t& feature_info,
                                const comparer* comparator) noexcept

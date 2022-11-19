@@ -441,7 +441,7 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
     auto& file = res.first->second;
 
     if (res.second) {
-      file = memory::make_unique<memory_file>(attrs_.allocator());
+      file = std::make_unique<memory_file>(attrs_.allocator());
     }
 
     file->reset(attrs_.allocator());
@@ -503,7 +503,7 @@ index_input::ptr memory_directory::open(std::string_view name,
     const auto it = files_.find(name);
 
     if (it != files_.end()) {
-      return memory::make_unique<memory_index_input>(*it->second);
+      return std::make_unique<memory_index_input>(*it->second);
     }
 
     IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s",

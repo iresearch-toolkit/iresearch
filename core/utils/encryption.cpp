@@ -138,7 +138,7 @@ encrypted_output::encrypted_output(index_output& out,
   : out_(&out),
     cipher_(&cipher),
     buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
-    buf_(memory::make_unique<byte_type[]>(buf_size_)),
+    buf_(std::make_unique<byte_type[]>(buf_size_)),
     start_(0),
     pos_(buf_.get()),
     end_(pos_ + buf_size_) {

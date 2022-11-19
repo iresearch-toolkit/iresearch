@@ -128,7 +128,7 @@ field_visitor by_wildcard::visitor(bytes_view term) {
         automaton_table_matcher matcher;
       };
 
-      auto ctx = memory::make_shared<automaton_context>(term);
+      auto ctx = std::make_shared<automaton_context>(term);
 
       if (!validate(ctx->acceptor)) {
         return [](const sub_reader&, const term_reader&, filter_visitor&) {};

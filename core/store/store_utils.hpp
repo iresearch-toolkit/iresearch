@@ -399,7 +399,7 @@ class bytes_view_input : public index_input {
   void reset(bytes_view ref) noexcept { reset(ref.data(), ref.size()); }
 
   ptr dup() const override {
-    return memory::make_unique<bytes_view_input>(*this);
+    return std::make_unique<bytes_view_input>(*this);
   }
 
   ptr reopen() const override { return dup(); }
@@ -460,7 +460,7 @@ class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
   virtual size_t file_pointer() const noexcept override final;
 
   virtual ptr dup() const override {
-    return memory::make_unique<remapped_bytes_view_input>(*this);
+    return std::make_unique<remapped_bytes_view_input>(*this);
   }
 
   const byte_type* read_buffer(size_t offset, size_t size,

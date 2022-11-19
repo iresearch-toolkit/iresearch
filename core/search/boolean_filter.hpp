@@ -52,7 +52,7 @@ class boolean_filter : public filter, public AllDocsProvider {
     static_assert(std::is_base_of_v<filter, T>);
 
     return static_cast<T&>(*filters_.emplace_back(
-      memory::make_unique<T>(std::forward<Args>(args)...)));
+      std::make_unique<T>(std::forward<Args>(args)...)));
   }
 
   filter& add(filter::ptr&& filter) {
@@ -151,7 +151,7 @@ class Not : public filter, public AllDocsProvider {
     using type =
       typename std::enable_if_t<std::is_base_of_v<irs::filter, T>, T>;
 
-    filter_ = memory::make_unique<type>(std::forward<Args>(args)...);
+    filter_ = std::make_unique<type>(std::forward<Args>(args)...);
     return static_cast<type&>(*filter_);
   }
 

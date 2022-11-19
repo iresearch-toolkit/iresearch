@@ -156,14 +156,13 @@ class masked_docs_iterator : public doc_iterator, private util::noncopyable {
 
 namespace iresearch {
 
-// -------------------------------------------------------------------
-// segment_reader
-// -------------------------------------------------------------------
-
 class segment_reader_impl : public sub_reader {
  public:
   static sub_reader::ptr open(const directory& dir, const segment_meta& meta,
                               const index_reader_options& warmup);
+
+  segment_reader_impl(const directory& dir, uint64_t meta_version,
+                      uint64_t docs_count, const index_reader_options& opts);
 
   const directory& dir() const noexcept { return dir_; }
 
@@ -224,7 +223,6 @@ class segment_reader_impl : public sub_reader {
   using sorted_named_columns =
     std::vector<std::reference_wrapper<const irs::column_reader>>;
 
-  DECLARE_SHARED_PTR(segment_reader_impl);  // required for NAMED_PTR(...)
   columnstore_reader::ptr columnstore_reader_;
   const irs::column_reader* sort_{};
   const directory& dir_;
@@ -235,9 +233,6 @@ class segment_reader_impl : public sub_reader {
   named_columns named_columns_;
   sorted_named_columns sorted_named_columns_;
   index_reader_options opts_;
-
-  segment_reader_impl(const directory& dir, uint64_t meta_version,
-                      uint64_t docs_count, const index_reader_options& opts);
 };
 
 segment_reader::segment_reader(impl_ptr&& impl) noexcept
@@ -325,8 +320,8 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   const index_reader_options& opts) {
   auto& codec = *meta.codec;
 
-  PTR_NAMED(segment_reader_impl, reader, dir, meta.version, meta.docs_count,
-            opts);
+  auto reader = std::make_shared<segment_reader_impl>(dir, meta.version,
+                                                      meta.docs_count, opts);
 
   // read document mask
   index_utils::read_document_mask(reader->docs_mask_, dir, meta);

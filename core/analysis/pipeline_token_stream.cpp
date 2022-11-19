@@ -220,7 +220,7 @@ bool normalize_vpack_config(std::string_view args, std::string& config) {
 irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   irs::analysis::pipeline_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return irs::memory::make_unique<irs::analysis::pipeline_token_stream>(
+    return std::make_unique<irs::analysis::pipeline_token_stream>(
       std::move(options));
   } else {
     return nullptr;
@@ -428,7 +428,7 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
   : term(nullptr),
     inc(nullptr),
     offs(nullptr),
-    analyzer(memory::make_unique<empty_analyzer>()) {}
+    analyzer(std::make_unique<empty_analyzer>()) {}
 
 }  // namespace analysis
 }  // namespace iresearch

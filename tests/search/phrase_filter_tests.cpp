@@ -5008,11 +5008,11 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     };
     sort.prepare_field_collector_ =
       [&sort]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(sort);
     };
     sort.prepare_term_collector_ = [&sort]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(sort);
     };
     sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
@@ -5368,11 +5368,11 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     };
     sort.prepare_field_collector_ =
       [&sort]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(sort);
     };
     sort.prepare_term_collector_ = [&sort]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(sort);
     };
     sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {

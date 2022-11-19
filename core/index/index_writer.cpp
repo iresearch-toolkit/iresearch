@@ -1212,7 +1212,7 @@ index_writer::segment_context::ptr index_writer::segment_context::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info, const comparer* comparator) {
-  return memory::make_unique<segment_context>(
+  return std::make_unique<segment_context>(
     dir, std::move(meta_generator), column_info, feature_info, comparator);
 }
 
@@ -1312,10 +1312,10 @@ void index_writer::segment_context::reset(bool store_flushed) noexcept {
 }
 
 index_writer::index_writer(
-  index_lock::ptr&& lock, index_file_refs::ref_t&& lock_file_ref,
-  directory& dir, format::ptr codec, size_t segment_pool_size,
-  const segment_options& segment_limits, const comparer* comparator,
-  const column_info_provider_t& column_info,
+  ConstructToken, index_lock::ptr&& lock,
+  index_file_refs::ref_t&& lock_file_ref, directory& dir, format::ptr codec,
+  size_t segment_pool_size, const segment_options& segment_limits,
+  const comparer* comparator, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info,
   const payload_provider_t& meta_payload_provider, index_meta&& meta,
   committed_state_t&& committed_state)
@@ -1344,13 +1344,13 @@ index_writer::index_writer(
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
     flush_context_pool_[i].dir_ =
-      memory::make_unique<ref_tracking_directory>(dir);
+      std::make_unique<ref_tracking_directory>(dir);
     flush_context_pool_[i].next_context_ = &flush_context_pool_[i + 1];
   }
 
   // setup round-robin chain
   flush_context_pool_[flush_context_pool_.size() - 1].dir_ =
-    memory::make_unique<ref_tracking_directory>(dir);
+    std::make_unique<ref_tracking_directory>(dir);
   flush_context_pool_[flush_context_pool_.size() - 1].next_context_ =
     &flush_context_pool_[0];
 }
@@ -1369,9 +1369,9 @@ void index_writer::clear(uint64_t tick) {
   // ensure there are no active struct update operations
   std::lock_guard ctx_lock{ctx->mutex_};
 
-  auto pending_commit = memory::make_shared<committed_state_t::element_type>(
+  auto pending_commit = std::make_shared<committed_state_t::element_type>(
     std::piecewise_construct,
-    std::forward_as_tuple(memory::make_shared<index_meta>()),
+    std::forward_as_tuple(std::make_shared<index_meta>()),
     std::forward_as_tuple());
 
   auto& dir = *ctx->dir_;
@@ -1478,11 +1478,11 @@ index_writer::ptr index_writer::make(
     }
   }
 
-  auto comitted_state = memory::make_shared<committed_state_t::element_type>(
-    memory::make_shared<index_meta>(meta), std::move(file_refs));
+  auto comitted_state = std::make_shared<committed_state_t::element_type>(
+    std::make_shared<index_meta>(meta), std::move(file_refs));
 
-  PTR_NAMED(
-    index_writer, writer, std::move(lock), std::move(lockfile_ref), dir, codec,
+  auto writer = std::make_shared<index_writer>(
+    ConstructToken{}, std::move(lock), std::move(lockfile_ref), dir, codec,
     opts.segment_pool_size, segment_options(opts), opts.comparator,
     opts.column_info ? opts.column_info : kDefaultColumnInfo,
     opts.features ? opts.features : kDefaultFeatureInfo,
@@ -2124,7 +2124,7 @@ index_writer::pending_context_t index_writer::flush_all(
   sync_context to_sync;
   document_mask docs_mask;
 
-  auto pending_meta = memory::make_unique<index_meta>();
+  auto pending_meta = std::make_unique<index_meta>();
   auto& segments = pending_meta->segments_;
 
   auto ctx = get_flush_context(false);
@@ -2669,7 +2669,7 @@ bool index_writer::start(progress_report_callback const& progress) {
     // 1st phase of the transaction successfully finished here,
     // set to_commit as active flush context containing pending meta
     pending_state_.commit =
-      memory::make_shared<committed_state_t::element_type>(
+      std::make_shared<committed_state_t::element_type>(
         std::piecewise_construct,
         std::forward_as_tuple(std::move(to_commit.meta)),
         std::forward_as_tuple(std::move(pending_refs)));

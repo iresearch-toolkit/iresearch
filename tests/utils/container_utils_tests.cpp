@@ -35,7 +35,7 @@ TEST(container_utils_tests, test_bucket_allocator) {
       ACTUAL_SIZE = size;
       WAS_MADE = true;
 
-      return irs::memory::make_unique<irs::byte_type[]>(size);
+      return std::make_unique<irs::byte_type[]>(size);
     }
   };
 

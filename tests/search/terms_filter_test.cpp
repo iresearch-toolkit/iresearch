@@ -162,12 +162,12 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     };
     scorer->prepare_field_collector_ =
       [&scorer]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(*scorer);
     };
     scorer->prepare_term_collector_ =
       [&scorer]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(*scorer);
     };
 
@@ -489,12 +489,12 @@ TEST_P(terms_filter_test_case, min_match) {
     };
     scorer->prepare_field_collector_ =
       [&scorer]() -> irs::sort::field_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(*scorer);
     };
     scorer->prepare_term_collector_ =
       [&scorer]() -> irs::sort::term_collector::ptr {
-      return irs::memory::make_unique<
+      return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(*scorer);
     };
     scorer->prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&,

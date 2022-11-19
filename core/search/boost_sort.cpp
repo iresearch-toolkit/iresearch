@@ -27,7 +27,7 @@ namespace {
 using namespace irs;
 
 sort::ptr make_json(std::string_view /*args*/) {
-  return memory::make_unique<boost_sort>();
+  return std::make_unique<boost_sort>();
 }
 
 struct volatile_boost_score_ctx : score_ctx {
@@ -57,7 +57,7 @@ struct prepared final : PreparedSortBase<void> {
     }
 
     return {
-      memory::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
+      std::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
         *res = state.volatile_boost->value * state.boost;
@@ -77,7 +77,7 @@ boost_sort::boost_sort() noexcept : sort(irs::type<boost_sort>::get()) {}
 
 sort::prepared::ptr boost_sort::prepare() const {
   // FIXME can avoid allocation
-  return memory::make_unique<::prepared>();
+  return std::make_unique<::prepared>();
 }
 
 }  // namespace iresearch

@@ -112,7 +112,7 @@ analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
     return nullptr;
   }
 
-  return irs::memory::make_unique<nearest_neighbors_stream>(options,
+  return std::make_unique<nearest_neighbors_stream>(options,
                                                             std::move(model));
 }
 

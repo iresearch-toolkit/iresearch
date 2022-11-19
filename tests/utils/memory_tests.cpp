@@ -23,21 +23,21 @@
 
 #include <fstream>
 #include <list>
-#include <set>
 #include <map>
+#include <set>
 
 #include "tests_shared.hpp"
-#include "utils/memory_pool.hpp"
-#include "utils/memory.hpp"
-#include "utils/timer_utils.hpp"
 #include "utils/file_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/memory_pool.hpp"
+#include "utils/timer_utils.hpp"
 
 namespace {
 
 struct unique_base {
   using ptr = std::unique_ptr<unique_base>;
 
-  static ptr make() { return irs::memory::make_unique<unique_base>(); }
+  static ptr make() { return std::make_unique<unique_base>(); }
 };
 
 struct unique : unique_base {};
@@ -45,7 +45,7 @@ struct unique : unique_base {};
 struct shared_base {
   using ptr = std::shared_ptr<shared_base>;
 
-  static ptr make() { return irs::memory::make_shared<shared_base>(); }
+  static ptr make() { return std::make_shared<shared_base>(); }
 };
 
 struct shared : shared_base {};

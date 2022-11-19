@@ -64,6 +64,12 @@ ENABLE_BITMASK_ENUM(Action);
 // an object that represents a single ongoing transaction
 // non-thread safe
 class segment_writer : util::noncopyable {
+ private:
+  // Disallow using public constructor
+  struct ConstructToken {
+    explicit ConstructToken() = default;
+  };
+
  public:
   struct update_context {
     size_t generation;
@@ -123,11 +129,9 @@ class segment_writer : util::noncopyable {
     segment_writer& writer_;
   };
 
-  DECLARE_UNIQUE_PTR(segment_writer);
-
-  static ptr make(directory& dir, const column_info_provider_t& column_info,
-                  const feature_info_provider_t& feature_info,
-                  const comparer* comparator);
+  static std::unique_ptr<segment_writer> make(
+    directory& dir, const column_info_provider_t& column_info,
+    const feature_info_provider_t& feature_info, const comparer* comparator);
 
   // begin document-write transaction
   // Return doc_id_t as per type_limits<type_t::doc_id_t>
@@ -208,6 +212,11 @@ class segment_writer : util::noncopyable {
   void tick(uint64_t tick) noexcept { tick_ = tick; }
   uint64_t tick() const noexcept { return tick_; }
 
+  segment_writer(ConstructToken, directory& dir,
+                 const column_info_provider_t& column_info,
+                 const feature_info_provider_t& feature_info,
+                 const comparer* comparator) noexcept;
+
  private:
   struct stored_column : util::noncopyable {
     struct hash {
@@ -269,10 +278,6 @@ class segment_writer : util::noncopyable {
     irs::sorted_column stream;
     columnstore_writer::column_finalizer_f finalizer;
   };
-
-  segment_writer(directory& dir, const column_info_provider_t& column_info,
-                 const feature_info_provider_t& feature_info,
-                 const comparer* comparator) noexcept;
 
   bool index(const hashed_string_view& name, const doc_id_t doc,
              IndexFeatures index_features, const features_t& features,

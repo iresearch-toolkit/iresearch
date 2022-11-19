@@ -43,15 +43,15 @@ constexpr auto kFactories =
 #ifdef IRESEARCH_URING
     {"async",
      [](std::string_view path) -> irs::directory::ptr {
-       return irs::memory::make_unique<irs::async_directory>(path);
+       return std::make_unique<irs::async_directory>(path);
      }},
 #endif
     {"mmap",
      [](std::string_view path) -> irs::directory::ptr {
-       return irs::memory::make_unique<irs::mmap_directory>(path);
+       return std::make_unique<irs::mmap_directory>(path);
      }},
     {"fs", [](std::string_view path) -> irs::directory::ptr {
-       return irs::memory::make_unique<irs::fs_directory>(path);
+       return std::make_unique<irs::fs_directory>(path);
      }}});
 
 }  // namespace

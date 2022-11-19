@@ -124,7 +124,7 @@ bool parse_vpack_options(const VPackSlice slice,
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   analysis::collation_token_stream::options_t options;
   if (parse_vpack_options(slice, options)) {
-    return memory::make_unique<analysis::collation_token_stream>(
+    return std::make_unique<analysis::collation_token_stream>(
       std::move(options));
   } else {
     return nullptr;

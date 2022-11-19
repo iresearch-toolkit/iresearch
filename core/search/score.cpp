@@ -74,7 +74,7 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
         ScoreFunction func1;
       };
 
-      return {memory::make_unique<ctx>(std::move(scorers.front()),
+      return {std::make_unique<ctx>(std::move(scorers.front()),
                                        std::move(scorers.back())),
               [](score_ctx* ctx, score_t* res) noexcept {
                 auto* scorers = static_cast<struct ctx*>(ctx);
@@ -90,7 +90,7 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
         Scorers scorers;
       };
 
-      return {memory::make_unique<ctx>(std::move(scorers)),
+      return {std::make_unique<ctx>(std::move(scorers)),
               [](score_ctx* ctx, score_t* res) noexcept {
                 auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
                 for (auto& scorer : scorers) {

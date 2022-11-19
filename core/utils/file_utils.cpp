@@ -74,12 +74,6 @@ std::filesystem::path::string_type ensure_path_prefix(
 
 #endif
 
-#ifdef _WIN32
-const std::basic_string<wchar_t> path_separator(L"\\");
-#else
-const std::basic_string<char> path_separator("/");
-#endif
-
 inline int path_stats(file_stat_t& info, const file_path_t path) {
 #ifdef WIN32
   if (wcslen(path) >= path_prefix.size() &&
@@ -838,7 +832,7 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
     length + 1, size);  // +1 for \0
 
   auto buf_size = length + 1;  // +1 for \0
-  auto buf = irs::memory::make_unique<TCHAR[]>(buf_size);
+  auto buf = std::make_unique<TCHAR[]>(buf_size);
 
   length = GetFinalPathNameByHandle(file, buf.get(), buf_size - 1,
                                     VOLUME_NAME_DOS);  // -1 for \0
@@ -1160,7 +1154,7 @@ bool remove(const file_path_t path) noexcept {
       path,
       [path, &buf](const file_path_t name) -> bool {
         buf.assign(path);
-        buf += path_separator;
+        buf += std::filesystem::path::preferred_separator;
         buf += name;
         remove(buf.c_str());
 

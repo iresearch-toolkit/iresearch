@@ -321,7 +321,7 @@ analysis::analyzer::ptr construct(
           .first->second);
   }
 
-  return memory::make_unique<analysis::text_token_stream>(
+  return std::make_unique<analysis::text_token_stream>(
     *options_ptr, options_ptr->stopwords_);
 }
 
@@ -340,7 +340,7 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
       make_hashed_ref(std::string_view(locale.getName())));
 
     if (itr != cached_state_by_key.end()) {
-      return memory::make_unique<analysis::text_token_stream>(
+      return std::make_unique<analysis::text_token_stream>(
         itr->second, itr->second.stopwords_);
     }
   }
@@ -858,7 +858,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       auto itr = cached_state_by_key.find(make_hashed_ref(slice_ref));
 
       if (itr != cached_state_by_key.end()) {
-        return memory::make_unique<analysis::text_token_stream>(
+        return std::make_unique<analysis::text_token_stream>(
           itr->second, itr->second.stopwords_);
       }
     }
