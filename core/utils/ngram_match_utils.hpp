@@ -75,10 +75,10 @@ float_t ngram_similarity(const T* target, size_t target_size, const T* src,
       }
       return float_t(matched) / float_t(src_size);
     } else {
-      if (target_size == src_size) {
+      if (target_size != 0 && target_size == src_size) {
         return memcmp(target, src, target_size * sizeof(T)) == 0 ? 1 : 0;
       }
-      return 0;
+      return target_size == src_size;
     }
   }
 
