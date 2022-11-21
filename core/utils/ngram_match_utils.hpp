@@ -19,13 +19,12 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
+#pragma once
 
-#ifndef IRESEARCH_NGRAM_MATCH_UTILS_H
-#define IRESEARCH_NGRAM_MATCH_UTILS_H
+#include <vector>
 
 #include "shared.hpp"
 #include "utf8_utils.hpp"
-#include <vector>
 
 namespace iresearch {
 
@@ -54,7 +53,7 @@ float_t ngram_similarity(const T* target, size_t target_size, const T* src,
     return 0.f;
   }
 
-  if /*consexpr*/ (!search_semantics) {
+  if constexpr (!search_semantics) {
     if (target_size > src_size) {
       std::swap(target_size, src_size);
       std::swap(target, src);
@@ -131,5 +130,3 @@ float_t ngram_similarity(const T* target, size_t target_size, const T* src,
 }
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_NGRAM_MATCH_UTILS_H
