@@ -76,59 +76,6 @@ class segment_writer : util::noncopyable {
     size_t update_id;
   };
 
-  using update_contexts = std::vector<update_context>;
-
-  // Facade for the insertion logic
-  class document : private util::noncopyable {
-   public:
-    // cppcheck-suppress constParameter
-    explicit document(segment_writer& writer) noexcept : writer_(writer) {}
-
-    // Return current state of the object
-    // Note that if the object is in an invalid state all further operations
-    // will not take any effect
-    explicit operator bool() const noexcept { return writer_.valid(); }
-
-    // Inserts the specified field into the document according to the
-    // specified ACTION
-    // Note that 'Field' type type must satisfy the Field concept
-    // field attribute to be inserted
-    // Return true, if field was successfully insterted
-    template<Action action, typename Field>
-    bool insert(Field&& field) const {
-      return writer_.insert<action>(std::forward<Field>(field));
-    }
-
-    // Inserts the specified field (denoted by the pointer) into the
-    //        document according to the specified ACTION
-    // Note that 'Field' type type must satisfy the Field concept
-    // Note that pointer must not be nullptr
-    // field attribute to be inserted
-    // Return true, if field was successfully insterted
-    template<Action action, typename Field>
-    bool insert(Field* field) const {
-      return writer_.insert<action>(*field);
-    }
-
-    // Inserts the specified range of fields, denoted by the [begin;end)
-    // into the document according to the specified ACTION
-    // Note that 'Iterator' underline value type must satisfy the Field concept
-    // begin the beginning of the fields range
-    // end the end of the fields range
-    // Return true, if the range was successfully insterted
-    template<Action action, typename Iterator>
-    bool insert(Iterator begin, Iterator end) const {
-      for (; writer_.valid() && begin != end; ++begin) {
-        insert<action>(*begin);
-      }
-
-      return writer_.valid();
-    }
-
-   private:
-    segment_writer& writer_;
-  };
-
   static std::unique_ptr<segment_writer> make(
     directory& dir, const column_info_provider_t& column_info,
     const feature_info_provider_t& feature_info, const comparer* comparator);
@@ -420,7 +367,7 @@ class segment_writer : util::noncopyable {
 
   std::deque<cached_column> cached_columns_;  // pointers remain valid
   sorted_column sort_;
-  update_contexts docs_context_;
+  std::vector<update_context> docs_context_;
   // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   bitvector docs_mask_;
   fields_data fields_;
