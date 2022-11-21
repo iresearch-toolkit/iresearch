@@ -62,10 +62,10 @@ float_t ngram_similarity(const T* target, size_t target_size, const T* src,
   }
 
   if (target_size < ngram_size || src_size < ngram_size) {
+    if (target_size == 0 && src_size == 0) {
+      return 1;  // consider two empty strings as matched
+    }
     if constexpr (!search_semantics) {
-      if (target_size == 0 && src_size == 0) {
-        return 1;  // consider two empty strings as matched
-      }
       const T* r = src;
       size_t matched = 0;
       for (const T* it = target; it != target + target_size;) {
@@ -75,10 +75,10 @@ float_t ngram_similarity(const T* target, size_t target_size, const T* src,
       }
       return float_t(matched) / float_t(src_size);
     } else {
-      if (target_size != 0 && target_size == src_size) {
+      if (target_size == src_size) {
         return memcmp(target, src, target_size * sizeof(T)) == 0 ? 1 : 0;
       }
-      return target_size == src_size;
+      return 0;
     }
   }
 
