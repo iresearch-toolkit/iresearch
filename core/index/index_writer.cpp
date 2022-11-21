@@ -698,6 +698,7 @@ index_writer::document::~document() noexcept {
   }
 
   assert(segment_->writer_);
+  assert(&writer_ == segment_->writer_.get());
 
   try {
     writer_.commit();
