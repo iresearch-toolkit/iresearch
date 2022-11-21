@@ -92,7 +92,7 @@ enum OpenMode {
   // exists, all contents will be cleared.
   OM_CREATE = 1,
 
-  // Opens existsing index repository. In case if repository does not
+  // Opens existing index repository. In case if repository does not
   // exists, error will be generated.
   OM_APPEND = 2,
 };
@@ -107,7 +107,7 @@ class index_writer : private util::noncopyable {
   struct flush_context;
   struct segment_context;
 
-  // unique pointer required since need ponter declaration before class
+  // unique pointer required since need pointer declaration before class
   // declaration e.g. for 'documents_context'
   //
   // sizeof(std::function<void(flush_context*)>) >
@@ -184,7 +184,7 @@ class index_writer : private util::noncopyable {
     // specified ACTION
     // Note that 'Field' type type must satisfy the Field concept
     // field attribute to be inserted
-    // Return true, if field was successfully insterted
+    // Return true, if field was successfully inserted
     template<Action action, typename Field>
     bool insert(Field&& field) const {
       return writer_.insert<action>(std::forward<Field>(field));
@@ -195,7 +195,7 @@ class index_writer : private util::noncopyable {
     // Note that 'Field' type type must satisfy the Field concept
     // Note that pointer must not be nullptr
     // field attribute to be inserted
-    // Return true, if field was successfully insterted
+    // Return true, if field was successfully inserted
     template<Action action, typename Field>
     bool insert(Field* field) const {
       return writer_.insert<action>(*field);
@@ -206,7 +206,7 @@ class index_writer : private util::noncopyable {
     // Note that 'Iterator' underline value type must satisfy the Field concept
     // begin the beginning of the fields range
     // end the end of the fields range
-    // Return true, if the range was successfully insterted
+    // Return true, if the range was successfully inserted
     template<Action action, typename Iterator>
     bool insert(Iterator begin, Iterator end) const {
       for (; writer_.valid() && begin != end; ++begin) {
@@ -357,8 +357,8 @@ class index_writer : private util::noncopyable {
 
   // Options the the writer should use for segments
   struct segment_options {
-    // Segment aquisition requests will block and wait for free segments
-    // after this many segments have been aquired e.g. via documents()
+    // Segment acquisition requests will block and wait for free segments
+    // after this many segments have been acquired e.g. via documents()
     // 0 == unlimited
     size_t segment_count_max{0};
 
@@ -404,7 +404,7 @@ class index_writer : private util::noncopyable {
     // 0 == do not cache any segments, i.e. always create new segments
     size_t segment_pool_size{128};  // arbitrary size
 
-    // Aquire an exclusive lock on the repository to guard against index
+    // Acquire an exclusive lock on the repository to guard against index
     // corruption from multiple index_writers
     bool lock_repository{true};
 
@@ -432,7 +432,7 @@ class index_writer : private util::noncopyable {
     // Consolidation failed
     FAIL = 0,
 
-    // Consolidation succesfully finished
+    // Consolidation successfully finished
     OK,
 
     // Consolidation was scheduled for the upcoming commit
@@ -483,15 +483,15 @@ class index_writer : private util::noncopyable {
   // Call will rollback any opened transaction.
   void clear(uint64_t tick = 0);
 
-  // Merges segments accepted by the specified defragment policty into
+  // Merges segments accepted by the specified defragment policy into
   // a new segment. For all accepted segments frees the space occupied
-  // by the doucments marked as deleted and deduplicate terms.
-  // Policy the speicified defragmentation policy
+  // by the documents marked as deleted and deduplicate terms.
+  // Policy the specified defragmentation policy
   // Codec desired format that will be used for segment creation,
   // nullptr == use index_writer's codec
   // Progress callback triggered for consolidation steps, if the
   // callback returns false then consolidation is aborted
-  // For deffered policies during the commit stage each policy will be
+  // For deferred policies during the commit stage each policy will be
   // given the exact same index_meta containing all segments in the
   // commit, however, the resulting acceptor will only be segments not
   // yet marked for consolidation by other policies in the same commit
@@ -533,7 +533,7 @@ class index_writer : private util::noncopyable {
 
   // Begins the two-phase transaction.
   // payload arbitrary user supplied data to store in the index
-  // Returns true if transaction has been sucessflully started.
+  // Returns true if transaction has been successfully started.
   bool begin() {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{commit_lock_};
@@ -592,19 +592,19 @@ class index_writer : private util::noncopyable {
     consolidation_context_t(consolidation_context_t&&) = default;
     consolidation_context_t& operator=(consolidation_context_t&&) = delete;
 
-    consolidation_context_t(std::shared_ptr<index_meta>&& consolidaton_meta,
+    consolidation_context_t(std::shared_ptr<index_meta>&& consolidation_meta,
                             consolidation_t&& candidates,
                             merge_writer&& merger) noexcept
-      : consolidaton_meta(std::move(consolidaton_meta)),
+      : consolidation_meta(std::move(consolidation_meta)),
         candidates(std::move(candidates)),
         merger(std::move(merger)) {}
 
-    consolidation_context_t(std::shared_ptr<index_meta>&& consolidaton_meta,
+    consolidation_context_t(std::shared_ptr<index_meta>&& consolidation_meta,
                             consolidation_t&& candidates) noexcept
-      : consolidaton_meta(std::move(consolidaton_meta)),
+      : consolidation_meta(std::move(consolidation_meta)),
         candidates(std::move(candidates)) {}
 
-    std::shared_ptr<index_meta> consolidaton_meta;
+    std::shared_ptr<index_meta> consolidation_meta;
     consolidation_t candidates;
     merge_writer merger;
   };
@@ -700,9 +700,9 @@ class index_writer : private util::noncopyable {
   //    documents() {Thread A}
   // 20a) documents() validates that active context is the same && dirty_
   // 21a) documents() re-requests a new segment, i.e. continues to (1a)
-  // Note segment_writer::doc_contexts[...uncomitted_document_contexts_):
+  // Note segment_writer::doc_contexts[...uncommitted_document_contexts_):
   //   generation == flush_context::generation
-  // Note segment_writer::doc_contexts[uncomitted_document_contexts_...]:
+  // Note segment_writer::doc_contexts[uncommitted_document_contexts_...]:
   //   generation == local generation (updated when segment_context
   //   registered once again with flush_context)
   struct segment_context {
@@ -734,7 +734,7 @@ class index_writer : private util::noncopyable {
     // ref tracking for segment_writer to allow for easy ref removal on
     // segment_writer reset
     ref_tracking_directory dir_;
-    // guard 'flushed_', 'uncomitted_*' and 'writer_'
+    // guard 'flushed_', 'uncommitted_*' and 'writer_'
     // from concurrent flush
     std::mutex flush_mutex_;
     // all of the previously flushed versions of this segment,
@@ -755,15 +755,15 @@ class index_writer : private util::noncopyable {
     // sequentially increasing through all 'flushed_' offsets and into
     // 'segment_writer::doc_contexts' hence value may be greater than
     // doc_id_t::max)
-    size_t uncomitted_doc_id_begin_;
+    size_t uncommitted_doc_id_begin_;
     // current modification/update
-    // generation offset for asignment to uncommited operations (same as
-    // modification_queries_.size() - uncomitted_modification_queries_)
+    // generation offset for assignment to uncommitted operations (same as
+    // modification_queries_.size() - uncommitted_modification_queries_)
     // FIXME TODO consider removing
-    size_t uncomitted_generation_offset_;
+    size_t uncommitted_generation_offset_;
     // staring offset in
     // 'modification_queries_' that is not part of the current flush_context
-    size_t uncomitted_modification_queries_;
+    size_t uncommitted_modification_queries_;
     std::unique_ptr<segment_writer> writer_;
     // the segment_meta this writer was initialized with
     index_meta::index_segment_t writer_meta_;
@@ -784,7 +784,7 @@ class index_writer : private util::noncopyable {
 
     // Returns context for "insert" operation.
     segment_writer::update_context make_update_context() const noexcept {
-      return {uncomitted_generation_offset_, kNonUpdateRecord};
+      return {uncommitted_generation_offset_, kNonUpdateRecord};
     }
 
     // Returns context for "update" operation.
@@ -793,7 +793,7 @@ class index_writer : private util::noncopyable {
       std::shared_ptr<const filter> filter);
     segment_writer::update_context make_update_context(filter::ptr&& filter);
 
-    // Ensure writer is ready to recieve documents
+    // Ensure writer is ready to receive documents
     void prepare();
 
     // Modifies context for "remove" operation
@@ -832,7 +832,7 @@ class index_writer : private util::noncopyable {
 
   // The context containing data collected for the next commit() call
   // Note a 'segment_context' is tracked by at most 1 'flush_context', it is
-  // the job of the 'documents_context' to garantee that the
+  // the job of the 'documents_context' to guarantee that the
   // 'segment_context' is not used once the tracker 'flush_context' is no
   // longer active.
   struct flush_context {
@@ -844,36 +844,37 @@ class index_writer : private util::noncopyable {
       // flush_context range
       // [pending_segment_context::doc_id_begin_,
       // std::min(pending_segment_context::doc_id_end_,
-      // segment_context::uncomitted_doc_ids_))
+      // segment_context::uncommitted_doc_ids_))
       const size_t doc_id_begin_;
       // ending segment_context::document_contexts_ for
       // this flush_context range
       // [pending_segment_context::doc_id_begin_,
       // std::min(pending_segment_context::doc_id_end_,
-      // segment_context::uncomitted_doc_ids_))
+      // segment_context::uncommitted_doc_ids_))
       size_t doc_id_end_;
       // starting
       // segment_context::modification_queries_
       // for this flush_context range
       // [pending_segment_context::modification_offset_begin_,
       // std::min(pending_segment_context::::modification_offset_end_,
-      // segment_context::uncomitted_modification_queries_))
+      // segment_context::uncommitted_modification_queries_))
       const size_t modification_offset_begin_;
       // ending
       // segment_context::modification_queries_ for
       // this flush_context range
       // [pending_segment_context::modification_offset_begin_,
       // std::min(pending_segment_context::::modification_offset_end_,
-      // segment_context::uncomitted_modification_queries_))
+      // segment_context::uncommitted_modification_queries_))
       size_t modification_offset_end_;
       const std::shared_ptr<segment_context> segment_;
 
       pending_segment_context(std::shared_ptr<segment_context> segment,
                               size_t pending_segment_context_offset)
         : freelist_t::node_type{.value = pending_segment_context_offset},
-          doc_id_begin_(segment->uncomitted_doc_id_begin_),
+          doc_id_begin_(segment->uncommitted_doc_id_begin_),
           doc_id_end_(std::numeric_limits<size_t>::max()),
-          modification_offset_begin_(segment->uncomitted_modification_queries_),
+          modification_offset_begin_(
+            segment->uncommitted_modification_queries_),
           modification_offset_end_(std::numeric_limits<size_t>::max()),
           segment_(std::move(segment)) {
         assert(segment_);
@@ -902,7 +903,7 @@ class index_writer : private util::noncopyable {
     // segment writers with data pending for next
     // commit (all segments that have been used by
     // this flush_context) must be std::deque to
-    // garantee that element memory location does
+    // guarantee that element memory location does
     // not change for use with
     // 'pending_segment_contexts_freelist_'
     std::deque<pending_segment_context> pending_segment_contexts_;
@@ -1057,7 +1058,7 @@ class index_writer : private util::noncopyable {
   readers_cache cached_readers_;
   format::ptr codec_;
   // guard for cached_segment_readers_, commit_pool_, meta_
-  // (modification during commit()/defragment()), paylaod_buf_
+  // (modification during commit()/defragment()), payload_buf_
   std::mutex commit_lock_;
   committed_state_t committed_state_;  // last successfully committed state
   std::recursive_mutex consolidation_lock_;
@@ -1084,7 +1085,7 @@ class index_writer : private util::noncopyable {
   index_meta_writer::ptr writer_;
   // exclusive write lock for directory
   index_lock::ptr write_lock_;
-  // track ref for lock file to preven removal
+  // track ref for lock file to prevent removal
   index_file_refs::ref_t write_lock_file_ref_;
 };
 
