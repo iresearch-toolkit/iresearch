@@ -137,7 +137,7 @@ size_t segment_writer::memory_active() const noexcept {
                       return lhs + rhs.stream.memory_active();
                     });
 
-  return (docs_context_.size() * sizeof(update_contexts::value_type)) +
+  return (docs_context_.size() * sizeof(update_context)) +
          (docs_mask_.size() / 8 + docs_mask_extra)  // FIXME too rough
          + fields_.memory_active() + sort_.stream.memory_active() +
          column_cache_active;
@@ -159,7 +159,7 @@ size_t segment_writer::memory_reserved() const noexcept {
                     });
 
   return sizeof(segment_writer) +
-         (sizeof(update_contexts::value_type) * docs_context_.size()) +
+         (sizeof(update_context) * docs_context_.size()) +
          (sizeof(bitvector) + docs_mask_.size() / 8 + docs_mask_extra) +
          fields_.memory_reserved() + sort_.stream.memory_reserved() +
          column_cache_reserved;

@@ -601,12 +601,12 @@ size_t readers_cache::purge(
 }
 
 index_writer::active_segment_context::active_segment_context(
-  segment_context_ptr ctx, std::atomic<size_t>& segments_active,
+  std::shared_ptr<segment_context> ctx, std::atomic<size_t>& segments_active,
   flush_context* flush_ctx, size_t pending_segment_context_offset) noexcept
-  : ctx_(ctx),
-    flush_ctx_(flush_ctx),
-    pending_segment_context_offset_(pending_segment_context_offset),
-    segments_active_(&segments_active) {
+  : ctx_{std::move(ctx)},
+    flush_ctx_{flush_ctx},
+    pending_segment_context_offset_{pending_segment_context_offset},
+    segments_active_{&segments_active} {
 #ifdef IRESEARCH_DEBUG
   if (flush_ctx) {
     // ensure there are no active struct update operations
@@ -666,50 +666,44 @@ index_writer::active_segment_context::operator=(
   return *this;
 }
 
-index_writer::documents_context::document::document(
-  flush_context_ptr&& ctx, const segment_context_ptr& segment,
-  const segment_writer::update_context& update)
-  : segment_writer::document(*(segment->writer_)),
-    ctx_(*ctx),
-    segment_(segment),
-    update_id_(update.update_id) {
-  assert(ctx);
+index_writer::document::document(flush_context& ctx,
+                                 std::shared_ptr<segment_context> segment,
+                                 const segment_writer::update_context& update)
+  : segment_{std::move(segment)},
+    writer_{*segment_->writer_},
+    ctx_{ctx},
+    update_id_{update.update_id} {
   assert(segment_);
   assert(segment_->writer_);
-  auto& writer = *(segment_->writer_);
-  auto uncomitted_doc_id_begin =
+  const auto uncomitted_doc_id_begin =
     segment_->uncomitted_doc_id_begin_ >
         segment_->flushed_update_contexts_.size()
+      // uncomitted start in 'writer_'
       ? (segment_->uncomitted_doc_id_begin_ -
-         segment_->flushed_update_contexts_
-           .size())         // uncomitted start in 'writer_'
-      : doc_limits::min();  // uncommited start in 'flushed_'
-  assert(uncomitted_doc_id_begin <= writer.docs_cached() + doc_limits::min());
+         segment_->flushed_update_contexts_.size())
+      // uncommited start in 'flushed_'
+      : doc_limits::min();
+  assert(uncomitted_doc_id_begin <= writer_.docs_cached() + doc_limits::min());
   // ensure reset() will be noexcept
-  auto rollback_extra =
-    writer.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin;
-  ++segment->active_count_;
-  writer.begin(update, rollback_extra);  // ensure reset() will be noexcept
-  segment_->buffered_docs_.store(writer.docs_cached());
+  ++segment_->active_count_;
+  const auto rollback_extra =
+    writer_.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin;
+  writer_.begin(update, rollback_extra);  // ensure reset() will be noexcept
+  segment_->buffered_docs_.store(writer_.docs_cached());
 }
 
-index_writer::documents_context::document::document(document&& other) noexcept
-  : segment_writer::document(*(other.segment_->writer_)),
-    ctx_(other.ctx_),  // GCC does not allow moving of references
-    segment_(std::move(other.segment_)),
-    update_id_(std::move(other.update_id_)) {}
-
-index_writer::documents_context::document::~document() noexcept {
+index_writer::document::~document() noexcept {
   if (!segment_) {
     return;  // another instance will call commit()
   }
 
   assert(segment_->writer_);
+  assert(&writer_ == segment_->writer_.get());
 
   try {
-    segment_->writer_->commit();
+    writer_.commit();
   } catch (...) {
-    segment_->writer_->rollback();
+    writer_.rollback();
   }
 
   if (!*this && update_id_ != kNonUpdateRecord) {
@@ -734,10 +728,10 @@ index_writer::documents_context::document::~document() noexcept {
 }
 
 void index_writer::documents_context::AddToFlush() {
-  const auto& ctx = segment_.ctx();
-  if (!ctx) {
+  if (const auto& ctx = segment_.ctx(); !ctx) {
     return;  // nothing to do
   }
+
   writer_.get_flush_context()->AddToPending(segment_);
 }
 
@@ -1343,8 +1337,7 @@ index_writer::index_writer(
 
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
-    flush_context_pool_[i].dir_ =
-      std::make_unique<ref_tracking_directory>(dir);
+    flush_context_pool_[i].dir_ = std::make_unique<ref_tracking_directory>(dir);
     flush_context_pool_[i].next_context_ = &flush_context_pool_[i + 1];
   }
 
@@ -2052,7 +2045,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
     return segment_meta(file_name(meta_.increment()), codec_);
   };
 
-  segment_context_ptr segment_ctx{segment_writer_pool_.emplace(
+  std::shared_ptr<segment_context> segment_ctx{segment_writer_pool_.emplace(
     dir_, std::move(meta_generator), column_info_, feature_info_, comparator_)};
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
@@ -2668,11 +2661,10 @@ bool index_writer::start(progress_report_callback const& progress) {
 
     // 1st phase of the transaction successfully finished here,
     // set to_commit as active flush context containing pending meta
-    pending_state_.commit =
-      std::make_shared<committed_state_t::element_type>(
-        std::piecewise_construct,
-        std::forward_as_tuple(std::move(to_commit.meta)),
-        std::forward_as_tuple(std::move(pending_refs)));
+    pending_state_.commit = std::make_shared<committed_state_t::element_type>(
+      std::piecewise_construct,
+      std::forward_as_tuple(std::move(to_commit.meta)),
+      std::forward_as_tuple(std::move(pending_refs)));
   } catch (...) {
     writer_->rollback();  // rollback started transaction
 
