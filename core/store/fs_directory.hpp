@@ -27,7 +27,6 @@
 
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
-#include "utils/string.hpp"
 
 namespace iresearch {
 

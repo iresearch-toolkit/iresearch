@@ -494,8 +494,7 @@ fs_directory::fs_directory(std::filesystem::path dir,
 
 index_output::ptr fs_directory::create(std::string_view name) noexcept {
   try {
-    std::filesystem::path path{dir_};
-    path /= name;
+    const auto path = dir_ / name;
 
     auto out = fs_index_output::open(path.c_str());
 
@@ -516,16 +515,14 @@ const std::filesystem::path& fs_directory::directory() const noexcept {
 }
 
 bool fs_directory::exists(bool& result, std::string_view name) const noexcept {
-  auto path = dir_;
-  path /= name;
+  const auto path = dir_ / name;
 
   return file_utils::exists(result, path.c_str());
 }
 
 bool fs_directory::length(uint64_t& result,
                           std::string_view name) const noexcept {
-  auto path = dir_;
-  path /= name;
+  const auto path = dir_ / name;
 
   return file_utils::byte_size(result, path.c_str());
 }
@@ -536,16 +533,14 @@ index_lock::ptr fs_directory::make_lock(std::string_view name) noexcept {
 
 bool fs_directory::mtime(std::time_t& result,
                          std::string_view name) const noexcept {
-  auto path = dir_;
-  path /= name;
+  const auto path = dir_ / name;
 
   return file_utils::mtime(result, path.c_str());
 }
 
 bool fs_directory::remove(std::string_view name) noexcept {
   try {
-    auto path = dir_;
-    path /= name;
+    const auto path = dir_ / name;
 
     return file_utils::remove(path.c_str());
   } catch (...) {
@@ -557,8 +552,7 @@ bool fs_directory::remove(std::string_view name) noexcept {
 index_input::ptr fs_directory::open(std::string_view name,
                                     IOAdvice advice) const noexcept {
   try {
-    auto path = dir_;
-    path /= name;
+    const auto path = dir_ / name;
 
     return fs_index_input::open(path.c_str(), fd_pool_size_, advice);
   } catch (...) {
@@ -569,11 +563,8 @@ index_input::ptr fs_directory::open(std::string_view name,
 
 bool fs_directory::rename(std::string_view src, std::string_view dst) noexcept {
   try {
-    auto src_path = dir_;
-    src_path /= src;
-
-    auto dst_path = dir_;
-    dst_path /= dst;
+    const auto src_path = dir_ / src;
+    const auto dst_path = dir_ / dst;
 
     return file_utils::move(src_path.c_str(), dst_path.c_str());
   } catch (...) {
@@ -610,8 +601,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
 
 bool fs_directory::sync(std::string_view name) noexcept {
   try {
-    auto path = dir_;
-    path /= name;
+    const auto path = dir_ / name;
 
     if (file_utils::file_sync(path.c_str())) {
       return true;
