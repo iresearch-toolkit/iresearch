@@ -1956,9 +1956,7 @@ INSTANTIATE_TEST_SUITE_P(
 struct sorted_index_stress_test_case : sorted_index_test_case {};
 
 TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
-#if !GTEST_OS_LINUX
   GTEST_SKIP();  // too long for our CI
-#endif
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [](tests::document& doc, std::string_view name,
