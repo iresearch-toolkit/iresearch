@@ -115,9 +115,6 @@ class index_writer : private util::noncopyable {
   using flush_context_ptr =
     std::unique_ptr<flush_context, void (*)(flush_context*)>;
 
-  // declaration from segment_context::ptr below
-  using segment_context_ptr = std::shared_ptr<segment_context>;
-
   // Disallow using public constructor
   struct ConstructToken {
     explicit ConstructToken() = default;
@@ -135,7 +132,8 @@ class index_writer : private util::noncopyable {
    public:
     active_segment_context() = default;
     active_segment_context(
-      segment_context_ptr ctx, std::atomic<size_t>& segments_active,
+      std::shared_ptr<segment_context> ctx,
+      std::atomic<size_t>& segments_active,
       // the flush_context the segment_context is currently registered with
       flush_context* flush_ctx = nullptr,
       // the segment offset in flush_ctx_->pending_segments_
@@ -146,11 +144,14 @@ class index_writer : private util::noncopyable {
 
     ~active_segment_context();
 
-    const segment_context_ptr& ctx() const noexcept { return ctx_; }
+    const std::shared_ptr<segment_context>& ctx() const noexcept {
+      return ctx_;
+    }
 
    private:
     friend struct flush_context;  // for flush_context::emplace(...)
-    segment_context_ptr ctx_{nullptr};
+
+    std::shared_ptr<segment_context> ctx_;
     // nullptr will not match any flush_context
     flush_context* flush_ctx_{nullptr};
     // segment offset in flush_ctx_->pending_segment_contexts_
@@ -162,36 +163,76 @@ class index_writer : private util::noncopyable {
   static_assert(std::is_nothrow_move_constructible_v<active_segment_context>);
 
  public:
-  // A context allowing index modification operations
+  // A context allowing index modification operations.
   // The object is non-thread-safe, each thread should use its own
-  // separate instance
-  //
-  // Noncopyable because of segments_
+  // separate instance.
+  class document : private util::noncopyable {
+   public:
+    document(flush_context& ctx, std::shared_ptr<segment_context> segment,
+             const segment_writer::update_context& update);
+    document(document&&) = default;
+    ~document() noexcept;
+
+    document& operator=(document&&) = delete;
+
+    // Return current state of the object
+    // Note that if the object is in an invalid state all further operations
+    // will not take any effect
+    explicit operator bool() const noexcept { return writer_.valid(); }
+
+    // Inserts the specified field into the document according to the
+    // specified ACTION
+    // Note that 'Field' type type must satisfy the Field concept
+    // field attribute to be inserted
+    // Return true, if field was successfully insterted
+    template<Action action, typename Field>
+    bool insert(Field&& field) const {
+      return writer_.insert<action>(std::forward<Field>(field));
+    }
+
+    // Inserts the specified field (denoted by the pointer) into the
+    //        document according to the specified ACTION
+    // Note that 'Field' type type must satisfy the Field concept
+    // Note that pointer must not be nullptr
+    // field attribute to be inserted
+    // Return true, if field was successfully insterted
+    template<Action action, typename Field>
+    bool insert(Field* field) const {
+      return writer_.insert<action>(*field);
+    }
+
+    // Inserts the specified range of fields, denoted by the [begin;end)
+    // into the document according to the specified ACTION
+    // Note that 'Iterator' underline value type must satisfy the Field concept
+    // begin the beginning of the fields range
+    // end the end of the fields range
+    // Return true, if the range was successfully insterted
+    template<Action action, typename Iterator>
+    bool insert(Iterator begin, Iterator end) const {
+      for (; writer_.valid() && begin != end; ++begin) {
+        insert<action>(*begin);
+      }
+
+      return writer_.valid();
+    }
+
+   private:
+    // hold reference to segment to prevent if from going back into the pool
+    std::shared_ptr<segment_context> segment_;
+    segment_writer& writer_;  // cached *segment->writer_ to avoid dereference
+    flush_context& ctx_;      // for rollback operations
+    size_t update_id_;
+  };
+
   class documents_context : private util::noncopyable {
    public:
-    // A wrapper around a segment_writer::document with commit/rollback
-    class document : public segment_writer::document {
-     public:
-      document(flush_context_ptr&& ctx, const segment_context_ptr& segment,
-               const segment_writer::update_context& update);
-      document(document&& other) noexcept;
-      ~document() noexcept;
-
-     private:
-      // reference to flush_context for rollback operations
-      flush_context& ctx_;
-      // hold reference to segment to prevent if from going back into the pool
-      segment_context_ptr segment_;
-      size_t update_id_;
-    };
-
     // cppcheck-suppress constParameter
     explicit documents_context(index_writer& writer) noexcept
       : writer_(writer) {}
 
     documents_context(documents_context&& other) noexcept
       : segment_(std::move(other.segment_)),
-        segment_use_count_(std::move(other.segment_use_count_)),
+        segment_use_count_(other.segment_use_count_),
         last_operation_tick_(other.last_operation_tick_),
         first_operation_tick_(other.first_operation_tick_),
         writer_(other.writer_) {
@@ -216,8 +257,7 @@ class index_writer : private util::noncopyable {
       auto ctx = update_segment(disable_flush);
       assert(segment_.ctx());
 
-      return document(std::move(ctx), segment_.ctx(),
-                      segment_.ctx()->make_update_context());
+      return {*ctx, segment_.ctx(), segment_.ctx()->make_update_context()};
     }
 
     // Marks all documents matching the filter for removal.
@@ -249,9 +289,9 @@ class index_writer : private util::noncopyable {
       auto ctx = update_segment(false);  // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
-      return document(
-        std::move(ctx), segment_.ctx(),
-        segment_.ctx()->make_update_context(std::forward<Filter>(filter)));
+      return {
+        *ctx, segment_.ctx(),
+        segment_.ctx()->make_update_context(std::forward<Filter>(filter))};
     }
 
     // Revert all pending document modifications and release resources
@@ -267,6 +307,11 @@ class index_writer : private util::noncopyable {
     void AddToFlush();
 
    private:
+    // refresh segment if required (guarded by flush_context::flush_mutex_)
+    // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
+    // since active 'flush_context' will not change and hence no reload required
+    flush_context_ptr update_segment(bool disable_flush);
+
     // the segment_context used for storing changes (lazy-initialized)
     active_segment_context segment_;
     // segment_.ctx().use_count() at constructor/destructor time must equal
@@ -274,16 +319,7 @@ class index_writer : private util::noncopyable {
     uint64_t last_operation_tick_{0};   // transaction commit tick
     uint64_t first_operation_tick_{0};  // transaction tick
     index_writer& writer_;
-
-    // refresh segment if required (guarded by flush_context::flush_mutex_)
-    // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
-    // since active 'flush_context' will not change and hence no reload required
-    flush_context_ptr update_segment(bool disable_flush);
   };
-
-  // progress report callback types for commits.
-  using progress_report_callback =
-    std::function<void(std::string_view phase, size_t current, size_t total)>;
 
   // Additional information required for removal/update requests
   struct modification_context {
@@ -338,6 +374,10 @@ class index_writer : private util::noncopyable {
     // 0 == unlimited
     size_t segment_memory_max{0};
   };
+
+  // Progress report callback types for commits.
+  using progress_report_callback =
+    std::function<void(std::string_view phase, size_t current, size_t total)>;
 
   // Functor for creating payload. Operation tick is provided for
   // payload generation.
