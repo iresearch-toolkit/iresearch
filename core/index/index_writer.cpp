@@ -1131,10 +1131,10 @@ void index_writer::flush_context::AddToPending(
     return;
   }
   std::lock_guard lock{mutex_};
-  auto const sizeBefore = pending_segment_contexts_.size();
-  pending_segment_contexts_.emplace_back(segment.ctx_, sizeBefore);
+  auto const size_before = pending_segment_contexts_.size();
+  pending_segment_contexts_.emplace_back(segment.ctx_, size_before);
   segment.flush_ctx_ = this;
-  segment.pending_segment_context_offset_ = sizeBefore;
+  segment.pending_segment_context_offset_ = size_before;
 }
 
 void index_writer::flush_context::reset() noexcept {
