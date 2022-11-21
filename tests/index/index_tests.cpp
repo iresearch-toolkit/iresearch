@@ -2868,9 +2868,9 @@ TEST_P(index_test_case, document_context) {
         .insert<irs::Action::STORE>(field);
     });
 
+    // wait for insertion to start
     ASSERT_EQ(std::cv_status::no_timeout,
-              field.cond.wait_for(field_cond_lock,
-                                  1000ms));  // wait for insertion to start
+              field.cond.wait_for(field_cond_lock, 1000ms));
 
     std::atomic<bool> commit(false);
     std::thread thread1([&writer, &field, &commit]() -> void {
@@ -2880,8 +2880,8 @@ TEST_P(index_test_case, document_context) {
       field.cond.notify_all();
     });
 
-    auto result = field.cond.wait_for(field_cond_lock,
-                                      100ms);  // verify commit() blocks
+    // verify commit() blocks
+    auto result = field.cond.wait_for(field_cond_lock, 100ms);
 
     // As declaration for wait_for contains "It may also be unblocked
     // spuriously." for all platforms
@@ -2891,59 +2891,11 @@ TEST_P(index_test_case, document_context) {
     ASSERT_EQ(std::cv_status::timeout, result);
     field.wait = false;
     field.wait_cond.notify_all();
+
+    // verify commit() finishes
     ASSERT_EQ(std::cv_status::no_timeout,
-              field.cond.wait_for(field_cond_lock,
-                                  10000ms));  // verify commit() finishes
-    // FIXME TODO add once segment_context will not block flush_all()
-    // ASSERT_TRUE(commit);
-    thread0.join();
-    thread1.join();
-  }
+              field.cond.wait_for(field_cond_lock, 10000ms));
 
-  // during replace across commit blocks (functr)
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-    // wait for insertion to start
-    auto field_cond_lock = std::unique_lock{field.cond_mutex};
-    field.wait = true;  // prevent field from finishing
-
-    std::thread thread0([&writer, &query_doc1, &field]() -> void {
-      writer->documents().replace(
-        *query_doc1, [&field](irs::segment_writer::document& doc) -> bool {
-          doc.insert<irs::Action::STORE>(field);
-          return false;
-        });
-    });
-
-    ASSERT_EQ(std::cv_status::no_timeout,
-              field.cond.wait_for(field_cond_lock,
-                                  1000ms));  // wait for insertion to start
-
-    std::atomic<bool> commit(false);
-    std::thread thread1([&writer, &field, &commit]() -> void {
-      writer->commit();
-      commit = true;
-      auto lock = std::lock_guard{field.cond_mutex};
-      field.cond.notify_all();
-    });
-
-    auto result = field.cond.wait_for(field_cond_lock,
-                                      100ms);  // verify commit() blocks
-
-    // override spurious wakeup
-    while (!commit && result == std::cv_status::no_timeout)
-      result = field.cond.wait_for(field_cond_lock, 100ms);
-
-    ASSERT_EQ(std::cv_status::timeout, result);
-    field.wait = false;
-    field.wait_cond.notify_all();
-    ASSERT_EQ(std::cv_status::no_timeout,
-              field.cond.wait_for(field_cond_lock,
-                                  10000ms));  // verify commit() finishes
     // FIXME TODO add once segment_context will not block flush_all()
     // ASSERT_TRUE(commit);
     thread0.join();
@@ -3113,81 +3065,6 @@ TEST_P(index_test_case, document_context) {
     //  FIXME TODO add once segment_context will not block
     //  flush_all()
     // ASSERT_TRUE(commit);
-    {
-      irs::index_writer::documents_context(std::move(ctx));
-    }  // release ctx before join() in case of test failure
-    thread1.join();
-    // FIXME TODO add once segment_context will not block
-    // flush_all() writer->commit(); // commit doc replace
-
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];  // assume 0 is id of first/only segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc2
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  // holding document_context after replace across commit does not block
-  // (functr)
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-
-    auto ctx = writer->documents();
-    // wait for insertion to start
-    auto field_cond_lock = std::unique_lock{field.cond_mutex};
-    ctx.replace(*(query_doc1),
-                [&doc2](irs::segment_writer::document& doc) -> bool {
-                  doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
-                                                 doc2->indexed.end());
-                  doc.insert<irs::Action::STORE>(doc2->stored.begin(),
-                                                 doc2->stored.end());
-                  return false;
-                });
-    std::atomic<bool> commit(false);  // FIXME TODO remove once segment_context
-                                      // will not block flush_all()
-    std::thread thread1([&writer, &field, &commit]() -> void {
-      writer->commit();
-      commit = true;
-      auto lock = std::lock_guard{field.cond_mutex};
-      field.cond.notify_all();
-    });
-
-    auto result = field.cond.wait_for(
-      field_cond_lock,
-      1000ms);  // verify commit() finishes FIXME TODO remove once
-                // segment_context will not block flush_all()
-
-    // As declaration for wait_for contains "It may also be
-    // unblocked spuriously." for all platforms
-    while (!commit && result == std::cv_status::no_timeout)
-      result = field.cond.wait_for(field_cond_lock, 100ms);
-
-    ASSERT_EQ(std::cv_status::timeout, result);
-    field_cond_lock
-      .unlock();  // verify commit() finishes FIXME TODO use below
-                  // once segment_context will not block flush_all()
-    // ASSERT_EQ(std::cv_status::no_timeout, result); // verify
-    // commit() finishes
-    // FIXME TODO add once segment_context will not block
-    // flush_all() ASSERT_TRUE(commit);
     {
       irs::index_writer::documents_context(std::move(ctx));
     }  // release ctx before join() in case of test failure
@@ -3794,195 +3671,6 @@ TEST_P(index_test_case, document_context) {
         ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc3->stored.begin(),
                                                    doc3->stored.end()));
       }
-      ctx.reset();
-      {
-        auto doc = ctx.insert();
-        ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc4->indexed.begin(),
-                                                   doc4->indexed.end()));
-        ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc4->stored.begin(),
-                                                   doc4->stored.end()));
-      }
-    }
-
-    writer->commit();
-
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_EQ(2, reader.size());
-
-    {
-      auto& segment = reader[0];  // assume 0 is id of first segment
-      const auto* column = segment.column("name");
-      ASSERT_NE(nullptr, column);
-      auto values = column->iterator(irs::ColumnHint::kNormal);
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
-      auto terms = segment.field("same");
-      ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-      ASSERT_TRUE(termItr->next());
-      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-      ASSERT_TRUE(docsItr->next());
-      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("A",
-                irs::to_string<std::string_view>(
-                  actual_value->value.data()));  // 'name' value in doc1
-      ASSERT_FALSE(docsItr->next());
-    }
-
-    {
-      auto& segment = reader[1];  // assume 1 is id of second segment
-      const auto* column = segment.column("name");
-      ASSERT_NE(nullptr, column);
-      auto values = column->iterator(irs::ColumnHint::kNormal);
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
-      auto terms = segment.field("same");
-      ASSERT_NE(nullptr, terms);
-      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-      ASSERT_TRUE(termItr->next());
-      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
-      ASSERT_TRUE(docsItr->next());
-      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-      ASSERT_EQ("D",
-                irs::to_string<std::string_view>(
-                  actual_value->value.data()));  // 'name' value in doc4
-      ASSERT_FALSE(docsItr->next());
-    }
-  }
-
-  // rollback replace (functr)
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-
-    {
-      auto ctx = writer->documents();
-
-      ctx.replace(*(query_doc1),
-                  [&doc2](irs::segment_writer::document& doc) -> bool {
-                    doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
-                                                   doc2->indexed.end());
-                    doc.insert<irs::Action::STORE>(doc2->stored.begin(),
-                                                   doc2->stored.end());
-                    return false;
-                  });
-      ctx.reset();
-    }
-
-    writer->commit();
-
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];  // assume 0 is id of first/only segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc1
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  // rollback replace (functr) + some more
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-
-    {
-      auto ctx = writer->documents();
-
-      ctx.replace(*(query_doc1),
-                  [&doc2](irs::segment_writer::document& doc) -> bool {
-                    doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
-                                                   doc2->indexed.end());
-                    doc.insert<irs::Action::STORE>(doc2->stored.begin(),
-                                                   doc2->stored.end());
-                    return false;
-                  });
-      ctx.reset();
-      {
-        auto doc = ctx.insert();
-        ASSERT_TRUE(doc.insert<irs::Action::INDEX>(doc3->indexed.begin(),
-                                                   doc3->indexed.end()));
-        ASSERT_TRUE(doc.insert<irs::Action::STORE>(doc3->stored.begin(),
-                                                   doc3->stored.end()));
-      }
-    }
-
-    writer->commit();
-
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];  // assume 0 is id of first/only segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc1
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  // rollback replacements (functr) split over multiple segment_writers
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto query_doc2 = MakeByTerm("name", "B");
-    irs::index_writer::init_options options;
-    options.segment_docs_max = 1;  // each doc will have its own segment
-    auto writer = open_writer(irs::OM_CREATE, options);
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-
-    {
-      auto ctx = writer->documents();
-
-      ctx.replace(*(query_doc1),
-                  [&doc2](irs::segment_writer::document& doc) -> bool {
-                    doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
-                                                   doc2->indexed.end());
-                    doc.insert<irs::Action::STORE>(doc2->stored.begin(),
-                                                   doc2->stored.end());
-                    return false;
-                  });
-      ctx.replace(*(query_doc2),
-                  [&doc3](irs::segment_writer::document& doc) -> bool {
-                    doc.insert<irs::Action::INDEX>(doc3->indexed.begin(),
-                                                   doc3->indexed.end());
-                    doc.insert<irs::Action::STORE>(doc3->stored.begin(),
-                                                   doc3->stored.end());
-                    return false;
-                  });
       ctx.reset();
       {
         auto doc = ctx.insert();
@@ -5648,130 +5336,6 @@ TEST_P(index_test_case, doc_update) {
                      actual_value->value.data()));  // 'name' value in doc2
     ASSERT_FALSE(docsItr->next());
   }
-
-  // new segment update with single-doc functr
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto writer = open_writer();
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-    writer->documents().replace(
-      *query_doc1, [&doc2](irs::segment_writer::document& doc) -> bool {
-        doc.insert<irs::Action::INDEX>(doc2->indexed.begin(),
-                                       doc2->indexed.end());
-        doc.insert<irs::Action::STORE>(doc2->stored.begin(),
-                                       doc2->stored.end());
-        return false;
-      });
-    writer->commit();
-
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];  // assume 0 is id of first/only segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc2
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  // new segment update with multiple-doc functr
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto writer = open_writer();
-    std::vector<tests::document const*> docs = {doc2, doc3};
-    size_t i = 0;
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-    writer->documents().replace(
-      *query_doc1, [&docs, &i](irs::segment_writer::document& doc) -> bool {
-        doc.insert<irs::Action::INDEX>(docs[i]->indexed.begin(),
-                                       docs[i]->indexed.end());
-        doc.insert<irs::Action::STORE>(docs[i]->stored.begin(),
-                                       docs[i]->stored.end());
-        return ++i < docs.size();
-      });
-    writer->commit();
-
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];  // assume 0 is id of first/only segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("B", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc2
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("C", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc3
-    ASSERT_FALSE(docsItr->next());
-  }
-
-  // new segment update with multiple-doc functr + rollback due to
-  // exception
-  {
-    auto query_doc1 = MakeByTerm("name", "A");
-    auto writer = open_writer();
-    std::vector<tests::document const*> docs = {doc2, doc3};
-    size_t i = 0;
-
-    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
-                       doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_ANY_THROW(writer->documents().replace(
-      *query_doc1, [&docs, &i](irs::segment_writer::document& doc) -> bool {
-        doc.insert<irs::Action::INDEX>(docs[i]->indexed.begin(),
-                                       docs[i]->indexed.end());
-        doc.insert<irs::Action::STORE>(docs[i]->stored.begin(),
-                                       docs[i]->stored.end());
-        if (++i >= docs.size()) throw "some error";
-        return true;
-      }));
-    writer->commit();
-
-    auto reader = irs::directory_reader::open(dir(), codec());
-    ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];  // assume 0 is id of first/only segment
-    const auto* column = segment.column("name");
-    ASSERT_NE(nullptr, column);
-    auto values = column->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, values);
-    auto* actual_value = irs::get<irs::payload>(*values);
-    ASSERT_NE(nullptr, actual_value);
-    auto terms = segment.field("same");
-    ASSERT_NE(nullptr, terms);
-    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-    ASSERT_TRUE(termItr->next());
-    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
-    ASSERT_TRUE(docsItr->next());
-    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-    ASSERT_EQ("A", irs::to_string<std::string_view>(
-                     actual_value->value.data()));  // 'name' value in doc1
-    ASSERT_FALSE(docsItr->next());
-  }
 }
 
 TEST_P(index_test_case, import_reader) {
@@ -6482,82 +6046,82 @@ TEST_P(index_test_case, reuse_segment_writer) {
   auto writer = open_writer();
 
   // populate initial 2 very small segments
-  {{auto& index_ref = const_cast<tests::index_t&>(index());
-  index_ref.emplace_back(writer->feature_info());
-  gen0.reset();
-  write_segment(*writer, index_ref.back(), gen0);
-  writer->commit();
-}
+  {
+    auto& index_ref = const_cast<tests::index_t&>(index());
+    index_ref.emplace_back(writer->feature_info());
+    gen0.reset();
+    write_segment(*writer, index_ref.back(), gen0);
+    writer->commit();
+  }
 
-{
-  auto& index_ref = const_cast<tests::index_t&>(index());
-  index_ref.emplace_back(writer->feature_info());
-  gen1.reset();
-  write_segment(*writer, index_ref.back(), gen1);
-  writer->commit();
-}
-}
+  {
+    auto& index_ref = const_cast<tests::index_t&>(index());
+    index_ref.emplace_back(writer->feature_info());
+    gen1.reset();
+    write_segment(*writer, index_ref.back(), gen1);
+    writer->commit();
+  }
 
-// populate initial small segment
-{
-  auto& index_ref = const_cast<tests::index_t&>(index());
-  index_ref.emplace_back(writer->feature_info());
-  gen0.reset();
-  write_segment(*writer, index_ref.back(), gen0);
-  gen1.reset();
-  write_segment(*writer, index_ref.back(), gen1);
-  writer->commit();
-}
-
-// populate initial large segment
-{
-  auto& index_ref = const_cast<tests::index_t&>(index());
-  index_ref.emplace_back(writer->feature_info());
-
-  for (size_t i = 100; i > 0; --i) {
+  // populate initial small segment
+  {
+    auto& index_ref = const_cast<tests::index_t&>(index());
+    index_ref.emplace_back(writer->feature_info());
     gen0.reset();
     write_segment(*writer, index_ref.back(), gen0);
     gen1.reset();
     write_segment(*writer, index_ref.back(), gen1);
+    writer->commit();
   }
 
-  writer->commit();
-}
+  // populate initial large segment
+  {
+    auto& index_ref = const_cast<tests::index_t&>(index());
+    index_ref.emplace_back(writer->feature_info());
 
-// populate and validate small segments in hopes of triggering segment_writer
-// reuse 10 iterations, although 2 should be enough since
-// index_wirter::flush_context_pool_.size() == 2
-for (size_t i = 10; i > 0; --i) {
-  auto& index_ref = const_cast<tests::index_t&>(index());
-  index_ref.emplace_back(writer->feature_info());
-
-  // add varying sized segments
-  for (size_t j = 0; j < i; ++j) {
-    // add test documents
-    if (i % 3 == 0 || i % 3 == 1) {
+    for (size_t i = 100; i > 0; --i) {
       gen0.reset();
       write_segment(*writer, index_ref.back(), gen0);
-    }
-
-    // add different test docs (overlap to make every 3rd segment contain
-    // docs from both sources)
-    if (i % 3 == 1 || i % 3 == 2) {
       gen1.reset();
       write_segment(*writer, index_ref.back(), gen1);
     }
+
+    writer->commit();
   }
 
-  writer->commit();
-}
+  // populate and validate small segments in hopes of triggering segment_writer
+  // reuse 10 iterations, although 2 should be enough since
+  // index_wirter::flush_context_pool_.size() == 2
+  for (size_t i = 10; i > 0; --i) {
+    auto& index_ref = const_cast<tests::index_t&>(index());
+    index_ref.emplace_back(writer->feature_info());
 
-assert_index();
+    // add varying sized segments
+    for (size_t j = 0; j < i; ++j) {
+      // add test documents
+      if (i % 3 == 0 || i % 3 == 1) {
+        gen0.reset();
+        write_segment(*writer, index_ref.back(), gen0);
+      }
 
-// merge all segments
-{
-  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count())));
-  writer->commit();
-}
+      // add different test docs (overlap to make every 3rd segment contain
+      // docs from both sources)
+      if (i % 3 == 1 || i % 3 == 2) {
+        gen1.reset();
+        write_segment(*writer, index_ref.back(), gen1);
+      }
+    }
+
+    writer->commit();
+  }
+
+  assert_index();
+
+  // merge all segments
+  {
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
+      irs::index_utils::consolidate_count())));
+    writer->commit();
+  }
 }
 
 TEST_P(index_test_case, segment_column_user_system) {
