@@ -115,9 +115,6 @@ class index_writer : private util::noncopyable {
   using flush_context_ptr =
     std::unique_ptr<flush_context, void (*)(flush_context*)>;
 
-  // declaration from segment_context::ptr below
-  using segment_context_ptr = std::shared_ptr<segment_context>;
-
   // Disallow using public constructor
   struct ConstructToken {
     explicit ConstructToken() = default;
@@ -135,7 +132,8 @@ class index_writer : private util::noncopyable {
    public:
     active_segment_context() = default;
     active_segment_context(
-      segment_context_ptr ctx, std::atomic<size_t>& segments_active,
+      std::shared_ptr<segment_context> ctx,
+      std::atomic<size_t>& segments_active,
       // the flush_context the segment_context is currently registered with
       flush_context* flush_ctx = nullptr,
       // the segment offset in flush_ctx_->pending_segments_
@@ -146,11 +144,14 @@ class index_writer : private util::noncopyable {
 
     ~active_segment_context();
 
-    const segment_context_ptr& ctx() const noexcept { return ctx_; }
+    const std::shared_ptr<segment_context>& ctx() const noexcept {
+      return ctx_;
+    }
 
    private:
     friend struct flush_context;  // for flush_context::emplace(...)
-    segment_context_ptr ctx_{nullptr};
+
+    std::shared_ptr<segment_context> ctx_;
     // nullptr will not match any flush_context
     flush_context* flush_ctx_{nullptr};
     // segment offset in flush_ctx_->pending_segment_contexts_
@@ -162,36 +163,76 @@ class index_writer : private util::noncopyable {
   static_assert(std::is_nothrow_move_constructible_v<active_segment_context>);
 
  public:
-  // A context allowing index modification operations
+  // A context allowing index modification operations.
   // The object is non-thread-safe, each thread should use its own
-  // separate instance
-  //
-  // Noncopyable because of segments_
+  // separate instance.
+  class document : private util::noncopyable {
+   public:
+    document(flush_context& ctx, std::shared_ptr<segment_context> segment,
+             const segment_writer::update_context& update);
+    document(document&&) = default;
+    ~document() noexcept;
+
+    document& operator=(document&&) = delete;
+
+    // Return current state of the object
+    // Note that if the object is in an invalid state all further operations
+    // will not take any effect
+    explicit operator bool() const noexcept { return writer_.valid(); }
+
+    // Inserts the specified field into the document according to the
+    // specified ACTION
+    // Note that 'Field' type type must satisfy the Field concept
+    // field attribute to be inserted
+    // Return true, if field was successfully insterted
+    template<Action action, typename Field>
+    bool insert(Field&& field) const {
+      return writer_.insert<action>(std::forward<Field>(field));
+    }
+
+    // Inserts the specified field (denoted by the pointer) into the
+    //        document according to the specified ACTION
+    // Note that 'Field' type type must satisfy the Field concept
+    // Note that pointer must not be nullptr
+    // field attribute to be inserted
+    // Return true, if field was successfully insterted
+    template<Action action, typename Field>
+    bool insert(Field* field) const {
+      return writer_.insert<action>(*field);
+    }
+
+    // Inserts the specified range of fields, denoted by the [begin;end)
+    // into the document according to the specified ACTION
+    // Note that 'Iterator' underline value type must satisfy the Field concept
+    // begin the beginning of the fields range
+    // end the end of the fields range
+    // Return true, if the range was successfully insterted
+    template<Action action, typename Iterator>
+    bool insert(Iterator begin, Iterator end) const {
+      for (; writer_.valid() && begin != end; ++begin) {
+        insert<action>(*begin);
+      }
+
+      return writer_.valid();
+    }
+
+   private:
+    // hold reference to segment to prevent if from going back into the pool
+    std::shared_ptr<segment_context> segment_;
+    segment_writer& writer_;  // cached *segment->writer_ to avoid dereference
+    flush_context& ctx_;      // for rollback operations
+    size_t update_id_;
+  };
+
   class documents_context : private util::noncopyable {
    public:
-    // A wrapper around a segment_writer::document with commit/rollback
-    class document : public segment_writer::document {
-     public:
-      document(flush_context_ptr&& ctx, const segment_context_ptr& segment,
-               const segment_writer::update_context& update);
-      document(document&& other) noexcept;
-      ~document() noexcept;
-
-     private:
-      // reference to flush_context for rollback operations
-      flush_context& ctx_;
-      // hold reference to segment to prevent if from going back into the pool
-      segment_context_ptr segment_;
-      size_t update_id_;
-    };
-
     // cppcheck-suppress constParameter
     explicit documents_context(index_writer& writer) noexcept
       : writer_(writer) {}
 
     documents_context(documents_context&& other) noexcept
       : segment_(std::move(other.segment_)),
-        segment_use_count_(std::move(other.segment_use_count_)),
+        segment_use_count_(other.segment_use_count_),
         last_operation_tick_(other.last_operation_tick_),
         first_operation_tick_(other.first_operation_tick_),
         writer_(other.writer_) {
@@ -216,8 +257,7 @@ class index_writer : private util::noncopyable {
       auto ctx = update_segment(disable_flush);
       assert(segment_.ctx());
 
-      return document(std::move(ctx), segment_.ctx(),
-                      segment_.ctx()->make_update_context());
+      return {*ctx, segment_.ctx(), segment_.ctx()->make_update_context()};
     }
 
     // Marks all documents matching the filter for removal.
@@ -249,122 +289,9 @@ class index_writer : private util::noncopyable {
       auto ctx = update_segment(false);  // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
-      return document(
-        std::move(ctx), segment_.ctx(),
-        segment_.ctx()->make_update_context(std::forward<Filter>(filter)));
-    }
-
-    // Replace existing documents already in the index matching filter
-    // with the documents filled by the specified functor
-    // filter the filter selecting which documents should be replaced
-    // func the insertion logic, similar in signature to e.g.:
-    // std::function<bool(segment_writer::document&)>
-    // Note the changes are not visible until commit()
-    // Note that filter must be valid until commit()
-    // Return all fields/attributes successfully insterted
-    //         if false && valid() then it is safe to retry the operation
-    //         e.g. if the segment is full and a new one must be started
-    template<typename Filter, typename Func>
-    bool replace(Filter&& filter, Func func) {
-      flush_context* ctx;
-      segment_context_ptr segment;
-
-      {
-        // thread-safe to use ctx_/segment_ while have lock since active
-        // flush_context will not change
-        auto ctx_ptr = update_segment(false);  // updates 'segment_' and 'ctx_'
-
-        assert(ctx_ptr);
-        assert(segment_.ctx());
-        assert(segment_.ctx()->writer_);
-        ctx = ctx_ptr.get();
-        segment = segment_.ctx();
-        ++segment->active_count_;
-      }
-
-      auto clear_busy = make_finally([ctx, segment]() noexcept {
-        // FIXME make me noexcept as I'm begin called from within ~finally()
-        if (!--segment->active_count_) {
-          // lock due to context modification and notification
-          std::lock_guard lock{ctx->mutex_};
-          // in case ctx is in flush_all()
-          ctx->pending_segment_context_cond_.notify_all();
-        }
-      });
-      auto& writer = *(segment->writer_);
-      segment_writer::document doc(writer);
-      std::exception_ptr exception;
-      // 0-based offsets to rollback on failure for this specific replace(..)
-      // operation
-
-      // cppcheck-suppress shadowFunction
-      bitvector rollback;
-      auto uncomitted_doc_id_begin =
-        segment->uncomitted_doc_id_begin_ >
-            segment->flushed_update_contexts_.size()
-          // uncomitted start in 'writer_'
-          ? (segment->uncomitted_doc_id_begin_ -
-             segment->flushed_update_contexts_.size())
-          // uncommited start in 'flushed_'
-          : doc_limits::min();
-      auto update = segment->make_update_context(std::forward<Filter>(filter));
-
-      try {
-        for (;;) {
-          assert(uncomitted_doc_id_begin <=
-                 writer.docs_cached() + doc_limits::min());
-          // ensure reset() will be noexcept
-          auto rollback_extra =
-            writer.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin;
-          // reserve space for rollback
-          rollback.reserve(writer.docs_cached() + 1);
-
-          if (std::numeric_limits<doc_id_t>::max() <=
-                writer.docs_cached() + doc_limits::min() ||
-              doc_limits::eof(writer.begin(update, rollback_extra))) {
-            break;  // the segment cannot fit any more docs, must roll back
-          }
-
-          assert(writer.docs_cached());
-          rollback.set(writer.docs_cached() - 1);  // 0-based
-          segment->buffered_docs_.store(writer.docs_cached());
-
-          auto done = !func(doc);
-
-          if (writer.valid()) {
-            writer.commit();
-
-            if (done) {
-              return true;
-            }
-          }
-        }
-      } catch (...) {
-        exception = std::current_exception();  // track exception
-      }
-
-      // perform rollback
-      // implicitly noexcept since memory reserved in the call to begin(...)
-
-      writer.rollback();  // mark as failed
-
-      for (auto i = rollback.size(); i && rollback.any();) {
-        if (rollback.test(--i)) {
-          // if new doc_ids at end this allows to terminate 'for' earlier
-          rollback.unset(i);
-          assert(std::numeric_limits<doc_id_t>::max() >= i + doc_limits::min());
-          writer.remove(doc_id_t(i + doc_limits::min()));  // convert to doc_id
-        }
-      }
-
-      // mark invalid
-      segment->modification_queries_[update.update_id].filter = nullptr;
-
-      if (exception) {
-        std::rethrow_exception(exception);
-      }
-
-      return false;
+      return {
+        *ctx, segment_.ctx(),
+        segment_.ctx()->make_update_context(std::forward<Filter>(filter))};
     }
 
     // Revert all pending document modifications and release resources
@@ -380,6 +307,11 @@ class index_writer : private util::noncopyable {
     void AddToFlush();
 
    private:
+    // refresh segment if required (guarded by flush_context::flush_mutex_)
+    // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
+    // since active 'flush_context' will not change and hence no reload required
+    flush_context_ptr update_segment(bool disable_flush);
+
     // the segment_context used for storing changes (lazy-initialized)
     active_segment_context segment_;
     // segment_.ctx().use_count() at constructor/destructor time must equal
@@ -387,16 +319,7 @@ class index_writer : private util::noncopyable {
     uint64_t last_operation_tick_{0};   // transaction commit tick
     uint64_t first_operation_tick_{0};  // transaction tick
     index_writer& writer_;
-
-    // refresh segment if required (guarded by flush_context::flush_mutex_)
-    // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
-    // since active 'flush_context' will not change and hence no reload required
-    flush_context_ptr update_segment(bool disable_flush);
   };
-
-  // progress report callback types for commits.
-  using progress_report_callback =
-    std::function<void(std::string_view phase, size_t current, size_t total)>;
 
   // Additional information required for removal/update requests
   struct modification_context {
@@ -451,6 +374,10 @@ class index_writer : private util::noncopyable {
     // 0 == unlimited
     size_t segment_memory_max{0};
   };
+
+  // Progress report callback types for commits.
+  using progress_report_callback =
+    std::function<void(std::string_view phase, size_t current, size_t total)>;
 
   // Functor for creating payload. Operation tick is provided for
   // payload generation.
