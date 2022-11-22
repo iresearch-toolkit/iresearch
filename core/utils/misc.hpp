@@ -25,24 +25,27 @@
 #include <array>
 #include <cassert>
 #include <memory>
+#include <type_traits>
 
 #include "shared.hpp"
 
 namespace iresearch {
 
 // Convenient helper for simulating 'try/catch/finally' semantic
-template<typename Func>
+template<typename Tag, typename Func>
 class [[nodiscard]] Finally {
  public:
+  static_assert(std::is_void_v<Tag>, "Please use deduction guide ctor");
   static_assert(std::is_nothrow_invocable_v<Func>);
 
-  // If you need some of it, please use absl::MakeCleanup
+  // If you need some of it, please use absl::Cleanup
   Finally(Finally&&) = delete;
   Finally(Finally const&) = delete;
   Finally& operator=(Finally&&) = delete;
   Finally& operator=(Finally const&) = delete;
 
-  explicit Finally(Func&& func) : func_{std::forward<Func>(func)} {}
+  Finally(Func&& func) : func_{std::move(func)} {}
+
   ~Finally() noexcept { func_(); }
 
  private:
@@ -50,9 +53,7 @@ class [[nodiscard]] Finally {
 };
 
 template<typename Func>
-Finally<Func> make_finally(Func&& func) {
-  return Finally<Func>{std::forward<Func>(func)};
-}
+Finally(Func&& func) -> Finally<void, Func>;
 
 // Convenient helper for caching function results
 template<typename Input, Input Size, typename Func,

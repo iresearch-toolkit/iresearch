@@ -315,7 +315,7 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         queue_.pop();
 
         ++active_;
-        auto decrement = make_finally([this]() noexcept { --active_; });
+        Finally decrement = [this]() noexcept { --active_; };
         // if have more tasks but no idle thread and can grow pool
         try {
           maybe_spawn_worker();
