@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_WRITER_H
-#define IRESEARCH_INDEX_WRITER_H
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -57,7 +56,7 @@ class readers_cache final : util::noncopyable {
  public:
   struct key_t {
     // cppcheck-suppress noExplicitConstructor
-    key_t(const segment_meta& meta);  // implicit constructor
+    /* implicit */ key_t(const segment_meta& meta);
 
     bool operator==(const key_t& other) const noexcept {
       return name == other.name && version == other.version;
@@ -408,7 +407,7 @@ class index_writer : private util::noncopyable {
     // corruption from multiple index_writers
     bool lock_repository{true};
 
-    init_options() {}  // GCC5 requires non-default definition
+    init_options() {}  // compiler requires non-default definition
   };
 
   struct segment_hash {
@@ -420,7 +419,7 @@ class index_writer : private util::noncopyable {
   struct segment_equal {
     size_t operator()(const segment_meta* lhs,
                       const segment_meta* rhs) const noexcept {
-      return lhs->name == rhs->name;
+      return static_cast<size_t>(lhs->name == rhs->name);
     }
   };
 
@@ -448,7 +447,9 @@ class index_writer : private util::noncopyable {
     ConsolidationError error;
 
     // intentionally implicit
-    operator bool() const noexcept { return error != ConsolidationError::FAIL; }
+    explicit operator bool() const noexcept {
+      return error != ConsolidationError::FAIL;
+    }
   };
 
   using ptr = std::shared_ptr<index_writer>;
@@ -893,7 +894,7 @@ class index_writer : private util::noncopyable {
     // e.g. pending_segments_, pending_segment_contexts_
     std::mutex mutex_;
     // the next context to switch to
-    flush_context* next_context_;
+    flush_context* next_context_{nullptr};
     // complete segments to be added during next commit
     // (import)
     std::vector<import_context> pending_segments_;
@@ -956,8 +957,8 @@ class index_writer : private util::noncopyable {
       // cppcheck-suppress shadowFunction
       auto begin = files.begin();
 
-      for (auto& entry : segments) {
-        auto& segment = meta[entry.first];
+      for (const auto& entry : segments) {
+        const auto& segment = meta[entry.first];
 
         if (entry.second) {
           // partial update
@@ -976,7 +977,7 @@ class index_writer : private util::noncopyable {
           }
         } else {
           // full sync
-          for (auto& file : segment.meta.files) {
+          for (const auto& file : segment.meta.files) {
             if (!visitor(file)) {
               return false;
             }
@@ -1006,7 +1007,7 @@ class index_writer : private util::noncopyable {
     // file names and segments to be synced during next commit
     sync_context to_sync;
 
-    operator bool() const noexcept { return ctx && meta; }
+    explicit operator bool() const noexcept { return ctx && meta; }
   };
 
   static_assert(std::is_nothrow_move_constructible_v<pending_context_t>);
@@ -1018,7 +1019,7 @@ class index_writer : private util::noncopyable {
     // meta + references of next commit
     committed_state_t commit;
 
-    operator bool() const noexcept { return ctx && commit; }
+    explicit operator bool() const noexcept { return ctx && commit; }
 
     void reset() noexcept {
       ctx.reset();
@@ -1090,5 +1091,3 @@ class index_writer : private util::noncopyable {
 };
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_INDEX_WRITER_H
