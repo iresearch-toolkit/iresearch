@@ -31,12 +31,27 @@
 
 namespace iresearch {
 
-template<typename Impl>
-class CachingDirectory : public Impl {
+class MaxSizeAcceptor {
+ public:
+  explicit constexpr MaxSizeAcceptor(size_t max_size = 1024) noexcept
+    : max_size_{max_size} {}
+
+  bool operator()(size_t size, std::string_view, IOAdvice) const noexcept {
+    return size < max_size_;
+  }
+
+  size_t MaxSize() const noexcept { return max_size_; }
+
+ private:
+  size_t max_size_;
+};
+
+template<typename Impl, typename Acceptor = MaxSizeAcceptor>
+class CachingDirectory : public Impl, private Acceptor {
  public:
   template<typename... Args>
-  explicit CachingDirectory(size_t max_size, Args&&... args)
-    : Impl{std::forward<Args>(args)...}, max_size_{max_size} {}
+  explicit CachingDirectory(const Acceptor& acceptor, Args&&... args)
+    : Impl{std::forward<Args>(args)...}, Acceptor{acceptor} {}
 
   bool exists(bool& result, std::string_view name) const noexcept override {
     if (std::shared_lock lock{mutex_}; cache_.contains(name)) {
@@ -102,7 +117,7 @@ class CachingDirectory : public Impl {
 
     {
       std::lock_guard lock{mutex_};
-      if (cache_.size() < max_size_) {
+      if (GetAcceptor()(cache_.size(), name, advice)) {
         try {
           const auto [it, _] = cache_.try_emplace(name, std::move(stream));
           return it->second->reopen();
@@ -119,10 +134,13 @@ class CachingDirectory : public Impl {
     return cache_.size();
   }
 
-  size_t max_size() const noexcept { return max_size_; }
+  const Acceptor GetAcceptor() const noexcept {
+    return const_cast<CachingDirectory&>(*this).GetAcceptor();
+  }
 
  private:
-  size_t max_size_;
+  Acceptor& GetAcceptor() noexcept { return static_cast<Acceptor&>(*this); }
+
   mutable std::shared_mutex mutex_;
   mutable absl::flat_hash_map<std::string, index_input::ptr> cache_;
 };

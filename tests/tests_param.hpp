@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TESTS_PARAM_H
-#define IRESEARCH_TESTS_PARAM_H
+#pragma once
 
 #include <memory>
 
+#include "store/caching_directory.hpp"
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 #include "tests_shared.hpp"
@@ -35,10 +35,6 @@
 class test_base;
 
 namespace tests {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  rot13_encryption
-// -----------------------------------------------------------------------------
 
 class rot13_encryption final : public irs::ctr_encryption {
  public:
@@ -84,6 +80,30 @@ class rot13_encryption final : public irs::ctr_encryption {
   rot13_cipher cipher_;
   size_t header_length_;
 };  // rot13_encryption
+
+template<typename Impl, typename Acceptor = void>
+std::shared_ptr<irs::directory> MakePhysicalDirectory(
+  const test_base* test, irs::directory_attributes attrs) {
+  if (test) {
+    const auto dir_path = test->test_dir() / "index";
+    std::filesystem::create_directories(dir_path);
+
+    std::unique_ptr<irs::directory> dir;
+    if constexpr (std::is_same_v<Acceptor, void>) {
+      dir = std::make_unique<Impl>(dir_path, std::move(attrs));
+    } else {
+      dir = std::make_unique<irs::CachingDirectory<Impl>>(Acceptor{}, dir_path,
+                                                          std::move(attrs));
+    }
+
+    return {dir.release(), [dir_path = std::move(dir_path)](irs::directory* p) {
+              std::filesystem::remove_all(dir_path);
+              delete p;
+            }};
+  }
+
+  return nullptr;
+}
 
 std::shared_ptr<irs::directory> memory_directory(
   const test_base*, irs::directory_attributes attrs);
@@ -189,5 +209,3 @@ template<>
 struct type<tests::rot13_encryption> : type<encryption> {};
 
 }  // namespace iresearch
-
-#endif

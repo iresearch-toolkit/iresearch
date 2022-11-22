@@ -41,67 +41,19 @@ std::shared_ptr<irs::directory> memory_directory(
 
 std::shared_ptr<irs::directory> fs_directory(const test_base* test,
                                              irs::directory_attributes attrs) {
-  std::shared_ptr<irs::directory> impl;
+  return MakePhysicalDirectory<irs::fs_directory>(test, std::move(attrs));
+}
 
-  if (test) {
-    auto dir = test->test_dir();
-
-    dir /= "index";
-    irs::file_utils::mkdir(dir.c_str(), false);
-
-    impl = std::shared_ptr<irs::fs_directory>(
-      new irs::fs_directory(dir, std::move(attrs)),
-      [dir](irs::fs_directory* p) {
-        irs::file_utils::remove(dir.c_str());
-        delete p;
-      });
-  }
-
-  return impl;
+std::shared_ptr<irs::directory> mmap_directory(
+  const test_base* test, irs::directory_attributes attrs) {
+  return MakePhysicalDirectory<irs::mmap_directory>(test, std::move(attrs));
 }
 
 #ifdef IRESEARCH_URING
 std::shared_ptr<irs::directory> async_directory(
   const test_base* test, irs::directory_attributes attrs) {
-  std::shared_ptr<irs::directory> impl;
-
-  if (test) {
-    auto dir = test->test_dir();
-
-    dir /= "index";
-    irs::file_utils::mkdir(dir.c_str(), false);
-
-    impl = std::shared_ptr<irs::async_directory>(
-      new irs::async_directory(dir, std::move(attrs)),
-      [dir](irs::fs_directory* p) {
-        irs::file_utils::remove(dir.c_str());
-        delete p;
-      });
-  }
-
-  return impl;
+  return MakePhysicalDirectory<irs::async_directory>(test, std::move(attrs));
 }
 #endif
-
-std::shared_ptr<irs::directory> mmap_directory(
-  const test_base* test, irs::directory_attributes attrs) {
-  std::shared_ptr<irs::directory> impl;
-
-  if (test) {
-    auto dir = test->test_dir();
-
-    dir /= "index";
-    irs::file_utils::mkdir(dir.c_str(), false);
-
-    impl = std::shared_ptr<irs::mmap_directory>(
-      new irs::mmap_directory(dir, std::move(attrs)),
-      [dir](irs::mmap_directory* p) {
-        irs::file_utils::remove(dir.c_str());
-        delete p;
-      });
-  }
-
-  return impl;
-}
 
 }  // namespace tests
