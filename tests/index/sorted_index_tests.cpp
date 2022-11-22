@@ -2042,7 +2042,7 @@ TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
         const auto& segment = reader[0];
         const auto* column = segment.sort();
         ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(irs::IsNull(column->name()));
+        ASSERT_TRUE(column->name().null());
         ASSERT_EQ(0, column->payload().size());
         auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
