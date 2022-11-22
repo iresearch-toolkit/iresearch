@@ -23,7 +23,7 @@ namespace boost { namespace text { namespace detail {
     {
         Iter f_;
         Sentinel l_;
-        Tag tag_;
+        Tag tag_{};
     };
 
     template<
