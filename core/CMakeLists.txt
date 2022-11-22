@@ -699,7 +699,6 @@ set_target_properties(iresearch-analyzer-segmentation-static
   )
 
 target_include_directories(iresearch-analyzer-segmentation-static
-  SYSTEM
   PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
   )
 
