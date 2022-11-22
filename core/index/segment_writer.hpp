@@ -409,7 +409,7 @@ class segment_writer : util::noncopyable {
   }
 
   // Flushes document mask to directory, returns number of masked documens
-  size_t flush_doc_mask(const segment_meta& meta);
+  size_t flush_doc_mask(const segment_meta& meta, const doc_map& docmap);
   // Flushes indexed fields to directory
   void flush_fields(const doc_map& docmap);
 

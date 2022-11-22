@@ -1935,11 +1935,13 @@ TEST_P(sorted_index_test_case,
 const auto kSortedIndexTestCaseValues = ::testing::Values(
   tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
   tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"},
-  tests::format_info{"1_3simd", "1_0"}, tests::format_info{"1_4simd", "1_0"});
+  tests::format_info{"1_5", "1_0"}, tests::format_info{"1_3simd", "1_0"},
+  tests::format_info{"1_4simd", "1_0"}, tests::format_info{"1_5simd", "1_0"});
 #else
 const auto kSortedIndexTestCaseValues = ::testing::Values(
   tests::format_info{"1_1", "1_0"}, tests::format_info{"1_2", "1_0"},
-  tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"});
+  tests::format_info{"1_3", "1_0"}, tests::format_info{"1_4", "1_0"},
+  tests::format_info{"1_5", "1_0"});
 #endif
 
 INSTANTIATE_TEST_SUITE_P(
@@ -1950,5 +1952,125 @@ INSTANTIATE_TEST_SUITE_P(
                       &tests::directory<&tests::mmap_directory>),
     kSortedIndexTestCaseValues),
   sorted_index_test_case::to_string);
+
+struct sorted_index_stress_test_case : sorted_index_test_case {};
+
+TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
+#if !GTEST_OS_LINUX
+  GTEST_SKIP();  // too long for our CI
+#endif
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      if (name == "name" && data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.sorted = field;
+        doc.insert(field);
+      }
+    });
+
+  static constexpr size_t kLen = 5;
+  std::array<std::pair<size_t, tests::document const*>, kLen> insert_docs;
+  for (size_t i = 0; i < kLen; ++i) {
+    insert_docs[i] = {i, gen.next()};
+  }
+  std::array<std::pair<size_t, std::unique_ptr<irs::by_term>>, kLen>
+    remove_docs;
+  for (size_t i = 0; i < kLen; ++i) {
+    remove_docs[i] = {i, MakeByTerm("name", static_cast<tests::string_field&>(
+                                              *insert_docs[i].second->sorted)
+                                              .value())};
+  }
+  std::array<bool, kLen> in_store;
+  std::array<char, kLen> results{'A', 'B', 'C', 'D', 'E'};
+  for (size_t reset = 0; reset < 32; ++reset) {
+    std::sort(insert_docs.begin(), insert_docs.end(),
+              [](auto& a, auto& b) { return a.first < b.first; });
+    do {
+      std::sort(remove_docs.begin(), remove_docs.end(),
+                [](auto& a, auto& b) { return a.first < b.first; });
+      do {
+        in_store.fill(false);
+        // open writer
+        string_comparer less;
+        irs::index_writer::init_options opts;
+        opts.comparator = &less;
+        opts.features = features();
+        auto writer = open_writer(irs::OM_CREATE, opts);
+        ASSERT_NE(nullptr, writer);
+        ASSERT_EQ(&less, writer->comparator());
+        for (size_t i = 0; i < kLen; ++i) {
+          {
+            auto ctx = writer->documents();
+            auto doc = ctx.insert();
+            ASSERT_TRUE(doc.insert<irs::Action::STORE_SORTED>(
+              *insert_docs[i].second->sorted));
+            ASSERT_TRUE(doc.insert<irs::Action::INDEX>(
+              insert_docs[i].second->indexed.begin(),
+              insert_docs[i].second->indexed.end()));
+            ASSERT_TRUE(doc.insert<irs::Action::STORE>(
+              insert_docs[i].second->stored.begin(),
+              insert_docs[i].second->stored.end()));
+            if (((reset >> i) & 1U) == 1U) {
+              ctx.reset();
+            } else {
+              in_store[insert_docs[i].first] = true;
+            }
+          }
+          writer->documents().remove(*(remove_docs[i].second));
+          in_store[remove_docs[i].first] = false;
+        }
+        writer->commit();
+        writer = nullptr;
+        // Check consolidated segment
+        auto reader = irs::directory_reader::open(dir(), codec());
+        ASSERT_TRUE(reader);
+        size_t in_store_count = 0;
+        for (auto v : in_store) {
+          in_store_count += static_cast<size_t>(v);
+        }
+        if (in_store_count == 0) {
+          ASSERT_EQ(0, reader.size());
+          ASSERT_EQ(0, reader->docs_count());
+          ASSERT_EQ(0, reader->live_docs_count());
+          continue;
+        }
+        ASSERT_EQ(1, reader.size());
+        ASSERT_EQ(kLen, reader->docs_count());
+        ASSERT_EQ(in_store_count, reader->live_docs_count());
+        const auto& segment = reader[0];
+        const auto* column = segment.sort();
+        ASSERT_NE(nullptr, column);
+        ASSERT_TRUE(column->name().null());
+        ASSERT_EQ(0, column->payload().size());
+        auto values = column->iterator(irs::ColumnHint::kNormal);
+        ASSERT_NE(nullptr, values);
+        const auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
+        const auto* terms = segment.field("name");
+        ASSERT_NE(nullptr, terms);
+        auto docs = segment.docs_iterator();
+        for (size_t i = kLen; i > 0; --i) {
+          if (!in_store[i - 1]) {
+            continue;
+          }
+          ASSERT_TRUE(docs->next());
+          ASSERT_EQ(docs->value(), values->seek(docs->value()));
+          ASSERT_EQ(results[i - 1], irs::to_string<std::string_view>(
+                                      actual_value->value.data())[0]);
+        }
+        ASSERT_FALSE(docs->next());
+      } while (std::next_permutation(remove_docs.begin(), remove_docs.end()));
+    } while (std::next_permutation(insert_docs.begin(), insert_docs.end()));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  sorted_index_stress_test, sorted_index_stress_test_case,
+  ::testing::Combine(
+    ::testing::Values(&tests::directory<&tests::memory_directory>),
+    ::testing::Values(tests::format_info{"1_5", "1_0"})),
+  sorted_index_stress_test_case::to_string);
 
 }  // namespace

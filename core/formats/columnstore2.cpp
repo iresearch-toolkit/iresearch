@@ -1061,7 +1061,9 @@ class sparse_column final : public column_base {
 
         length = block.last_size + start;
       }
-      assert(length);
+      // ALL_EQUAL could also be an empty block but still need this chunk to
+      // properly calculate offsets
+      assert(length || bitpack::ALL_EQUAL == block.bits);
       chunks.emplace_back(block_idx++, false, chunks_size, length, block.data);
       chunks_size += length;
     }
@@ -1073,7 +1075,7 @@ class sparse_column final : public column_base {
     }
 
     std::sort(chunks.begin(), chunks.end(),
-              [&blocks](const auto& lhs, const auto& rhs) {
+              [](const auto& lhs, const auto& rhs) {
                 return std::get<4>(lhs) < std::get<4>(rhs);
               });
 

@@ -21,14 +21,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include <array>
 
 #include "analysis/token_attributes.hpp"
 #include "index/comparer.hpp"
-#include "index/segment_writer.hpp"
 #include "index/index_tests.hpp"
+#include "index/segment_writer.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+#include "tests_shared.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace {
@@ -55,6 +56,8 @@ class segment_writer_tests : public test_base {
         irs::feature_writer_factory_t{});
     };
   }
+
+  static auto default_codec() { return irs::formats::get("1_5"); }
 };
 
 struct token_stream_mock final : public irs::token_stream {
@@ -516,5 +519,106 @@ TEST_F(segment_writer_tests, index_field) {
     ASSERT_FALSE(writer->insert<irs::Action::INDEX>(field));
     ASSERT_FALSE(writer->valid());
     writer->commit();
+  }
+}
+
+struct string_comparer final : irs::comparer {
+  bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
+    if (lhs.empty() && rhs.empty()) {
+      return true;
+    } else if (rhs.empty()) {
+      return false;
+    } else if (lhs.empty()) {
+      return true;
+    }
+
+    const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.data());
+    const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.data());
+
+    return lhs_value < rhs_value;
+  }
+};
+
+void reorder(std::span<tests::document const*> docs,
+             std::span<irs::segment_writer::update_context> ctxs,
+             std::vector<size_t> order) {
+  for (size_t i = 0; i < order.size(); ++i) {
+    auto new_i = order[i];
+    while (i != new_i) {
+      std::swap(docs[i], docs[new_i]);
+      std::swap(ctxs[i], ctxs[new_i]);
+      std::swap(new_i, order[new_i]);
+    }
+  }
+}
+
+TEST_F(segment_writer_tests, reorder) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      if (name == "name" && data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.sorted = field;
+        doc.insert(field);
+      }
+    });
+  static constexpr size_t kLen = 5;
+  std::array<tests::document const*, kLen> docs;
+  std::array<irs::segment_writer::update_context, kLen> ctxs;
+  for (size_t i = 0; i < kLen; ++i) {
+    docs[i] = gen.next();
+    ctxs[i] = {i, i};
+  }
+  const std::vector<size_t> expected{0, 1, 2, 3, 4};
+  auto cases = std::array<std::vector<size_t>, 5>{
+    std::vector<size_t>{0, 1, 2, 3, 4},  // no reorder
+    std::vector<size_t>{2, 3, 1, 4, 0},  // single cycle
+    std::vector<size_t>{3, 0, 4, 1, 2},  // two intersected cycles
+    std::vector<size_t>{4, 0, 3, 2, 1},  // two nested cycles
+    std::vector<size_t>{2, 0, 1, 4, 3},  // two not intersected cycles
+  };
+
+  for (auto& order : cases) {
+    reorder(docs, ctxs, order);
+
+    auto column_info = default_column_info();
+    auto feature_info = default_feature_info();
+    string_comparer less;
+
+    irs::memory_directory dir;
+    auto writer =
+      irs::segment_writer::make(dir, column_info, feature_info, &less);
+    ASSERT_EQ(0, writer->memory_active());
+
+    irs::segment_meta segment;
+    segment.name = "foo";
+    segment.codec = default_codec();
+    writer->reset(segment);
+    ASSERT_EQ(0, writer->memory_active());
+
+    for (size_t i = 0; i < kLen; ++i) {
+      writer->begin(ctxs[i]);
+      ASSERT_TRUE(writer->valid());
+      ASSERT_TRUE(writer->insert<irs::Action::STORE_SORTED>(*docs[i]->sorted));
+      ASSERT_TRUE(writer->valid());
+      writer->commit();
+    }
+
+    // we don't count stored field without comparator
+    ASSERT_GT(writer->memory_active(), 0);
+    irs::index_meta::index_segment_t index_segment;
+    index_segment.meta.codec = default_codec();
+    writer->flush(index_segment);
+    auto docs_context = writer->docs_context();
+    ASSERT_EQ(docs_context.size(), kLen);
+    for (size_t i = 0; i < kLen; ++i) {
+      EXPECT_EQ(expected[i], docs_context[i].generation);
+      EXPECT_EQ(expected[i], docs_context[i].update_id);
+    }
+
+    writer->reset();
+
+    ASSERT_EQ(0, writer->memory_active());
   }
 }
