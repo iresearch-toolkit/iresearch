@@ -31,7 +31,6 @@
 #ifdef IRESEARCH_URING
 #include "store/async_directory.hpp"
 #endif
-#include "store/caching_directory.hpp"
 #include "store/memory_directory.hpp"
 #include "store/mmap_directory.hpp"
 #include "store/store_utils.hpp"
@@ -4693,23 +4692,5 @@ TEST(memory_directory_test, rewrite) {
   in.read_bytes(reinterpret_cast<irs::byte_type*>(value.data()), value.size());
   ASSERT_EQ(expected, value);
 }
-
-class CachingDirectoryTestCase : public tests::directory_test_case_base<> {};
-
-TEST_P(CachingDirectoryTestCase, TestCaching) {}
-
-template<size_t Size>
-struct MaxSizeAcceptor : irs::MaxSizeAcceptor {
-  MaxSizeAcceptor() noexcept : irs::MaxSizeAcceptor{Size} {}
-};
-
-INSTANTIATE_TEST_SUITE_P(
-  CachingDirectoryTest, CachingDirectoryTestCase,
-  ::testing::Values(
-    &tests::directory<
-      &tests::MakePhysicalDirectory<irs::fs_directory, MaxSizeAcceptor<10>>>,
-    &tests::directory<
-      &tests::MakePhysicalDirectory<irs::mmap_directory, MaxSizeAcceptor<10>>>),
-  CachingDirectoryTestCase::to_string);
 
 }  // namespace
