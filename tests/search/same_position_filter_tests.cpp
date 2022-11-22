@@ -21,14 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "analysis/token_attributes.hpp"
 #include "filter_test_case_base.hpp"
 #include "formats/formats_10.hpp"
-#include "store/memory_directory.hpp"
-#include "filter_test_case_base.hpp"
-#include "analysis/token_attributes.hpp"
 #include "search/same_position_filter.hpp"
 #include "search/term_filter.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 
 class same_position_filter_test_case : public tests::FilterTestCaseBase {
  protected:
@@ -590,73 +589,76 @@ TEST(by_same_position_test, ctor) {
 
 TEST(by_same_position_test, boost) {
   // no boost
-  {// no branches
-   {irs::by_same_position q;
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// single term
-{
-  irs::by_same_position q;
-  q.mutable_options()->terms.emplace_back(
-    "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// multiple terms
-{
-  irs::by_same_position q;
-  q.mutable_options()->terms.emplace_back(
-    "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
-  q.mutable_options()->terms.emplace_back(
-    "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
-
-  auto prepared = q.prepare(irs::sub_reader::empty());
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-}
-
-// with boost
-{
-  irs::score_t boost = 1.5f;
-
-  // no terms, return empty query
   {
-    irs::by_same_position q;
-    q.boost(boost);
+    (void)1;  // format work-around
+    // no branches
+    {
+      irs::by_same_position q;
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::kNoBoost, prepared->boost());
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // single term
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back(
+        "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back(
+        "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
+      q.mutable_options()->terms.emplace_back(
+        "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
   }
 
-  // single term
+  // with boost
   {
-    irs::by_same_position q;
-    q.mutable_options()->terms.emplace_back(
-      "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
-    q.boost(boost);
+    irs::score_t boost = 1.5f;
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
+    // no terms, return empty query
+    {
+      irs::by_same_position q;
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // single term
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back(
+        "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
+
+    // single multiple terms
+    {
+      irs::by_same_position q;
+      q.mutable_options()->terms.emplace_back(
+        "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
+      q.mutable_options()->terms.emplace_back(
+        "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
+      q.boost(boost);
+
+      auto prepared = q.prepare(irs::sub_reader::empty());
+      ASSERT_EQ(boost, prepared->boost());
+    }
   }
-
-  // single multiple terms
-  {
-    irs::by_same_position q;
-    q.mutable_options()->terms.emplace_back(
-      "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
-    q.mutable_options()->terms.emplace_back(
-      "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
-    q.boost(boost);
-
-    auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, prepared->boost());
-  }
-}
 }
 
 TEST(by_same_position_test, equal) {

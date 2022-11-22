@@ -134,62 +134,66 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
   ASSERT_EQ(1, rdr.size());
   auto& segment = rdr[0];
 
-  {// no terms no field
-   {irs::by_ngram_similarity q;
-
-  auto prepared = q.prepare(segment);
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// simple disjunction
-{
-  irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
-
-  auto prepared = q.prepare(segment);
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-
-// multiple terms
-{
-  irs::by_ngram_similarity q = make_filter("field", {"1", "2", "3", "4"}, 0.5f);
-
-  auto prepared = q.prepare(segment);
-  ASSERT_EQ(irs::kNoBoost, prepared->boost());
-}
-}  // namespace tests
-
-// with boost
-{
-  iresearch::score_t boost = 1.5f;
-
-  // no terms, return empty query
   {
-    irs::by_ngram_similarity q;
-    q.boost(boost);
+    (void)1;  // format work-around
+    // no terms no field
+    {
+      irs::by_ngram_similarity q;
 
-    auto prepared = q.prepare(segment);
-    ASSERT_EQ(irs::kNoBoost, prepared->boost());
-  }
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
 
-  // simple disjunction
+    // simple disjunction
+    {
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_ngram_similarity q =
+        make_filter("field", {"1", "2", "3", "4"}, 0.5f);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+  }  // namespace tests
+
+  // with boost
   {
-    irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
-    q.boost(boost);
+    iresearch::score_t boost = 1.5f;
 
-    auto prepared = q.prepare(segment);
-    ASSERT_EQ(boost, prepared->boost());
+    // no terms, return empty query
+    {
+      irs::by_ngram_similarity q;
+      q.boost(boost);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(irs::kNoBoost, prepared->boost());
+    }
+
+    // simple disjunction
+    {
+      irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
+      q.boost(boost);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(boost, prepared->boost());
+    }
+
+    // multiple terms
+    {
+      irs::by_ngram_similarity q =
+        make_filter("field", {"1", "2", "3", "4"}, 0.5f);
+      q.boost(boost);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(boost, prepared->boost());
+    }
   }
-
-  // multiple terms
-  {
-    irs::by_ngram_similarity q =
-      make_filter("field", {"1", "2", "3", "4"}, 0.5f);
-    q.boost(boost);
-
-    auto prepared = q.prepare(segment);
-    ASSERT_EQ(boost, prepared->boost());
-  }
-}
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
@@ -940,8 +944,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   };
   scorer.prepare_term_collector_ =
     [&scorer]() -> irs::sort::term_collector::ptr {
-    return std::make_unique<
-      tests::sort::custom_sort::prepared::term_collector>(scorer);
+    return std::make_unique<tests::sort::custom_sort::prepared::term_collector>(
+      scorer);
   };
   scorer.prepare_scorer =
     [&frequency, &filter_boost](
@@ -950,14 +954,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
-    return {std::make_unique<test_score_ctx>(&frequency, freq,
-                                                     &filter_boost, boost),
-            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
-              freq.freq->push_back(freq.freq_from_filter->value);
-              freq.filter_boost->push_back(freq.boost_from_filter->value);
-              *res = {};
-            }};
+    return {
+      std::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
+        freq.freq->push_back(freq.freq_from_filter->value);
+        freq.filter_boost->push_back(freq.boost_from_filter->value);
+        *res = {};
+      }};
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{
@@ -1019,8 +1023,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   };
   scorer.prepare_term_collector_ =
     [&scorer]() -> irs::sort::term_collector::ptr {
-    return std::make_unique<
-      tests::sort::custom_sort::prepared::term_collector>(scorer);
+    return std::make_unique<tests::sort::custom_sort::prepared::term_collector>(
+      scorer);
   };
   scorer.prepare_scorer =
     [&frequency, &filter_boost](
@@ -1029,14 +1033,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
-    return {std::make_unique<test_score_ctx>(&frequency, freq,
-                                                     &filter_boost, boost),
-            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
-              freq.freq->push_back(freq.freq_from_filter->value);
-              freq.filter_boost->push_back(freq.boost_from_filter->value);
-              *res = {};
-            }};
+    return {
+      std::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
+        freq.freq->push_back(freq.freq_from_filter->value);
+        freq.filter_boost->push_back(freq.boost_from_filter->value);
+        *res = {};
+      }};
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{
@@ -1241,4 +1245,4 @@ INSTANTIATE_TEST_SUITE_P(
                       tests::format_info{"1_3", "1_0"})),
   ngram_similarity_filter_test_case::to_string);
 
-}  // tests
+}  // namespace tests
