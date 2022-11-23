@@ -200,13 +200,13 @@ class directory_test_case : public tests::directory_test_case_base<> {
         // failed direct buffer access doesn't move file pointer
         {
           const auto fp = file->file_pointer();
-          auto cleanup = make_finally([fp, &file]() noexcept {
+          Finally cleanup = [fp, &file]() noexcept {
             try {
               file->seek(fp);
             } catch (...) {
               ASSERT_TRUE(false);
             }
-          });
+          };
 
           ASSERT_GT(file->length(), 1);
           file->seek(file->length() - 1);
@@ -219,13 +219,13 @@ class directory_test_case : public tests::directory_test_case_base<> {
             dynamic_cast<memory_directory*>(&dir) ||
             dynamic_cast<fs_directory*>(&dir)) {
           const auto fp = file->file_pointer();
-          auto cleanup = make_finally([fp, &file]() noexcept {
+          Finally cleanup = [fp, &file]() noexcept {
             try {
               file->seek(fp);
             } catch (...) {
               ASSERT_FALSE(true);
             }
-          });
+          };
 
           // sequential direct access
           {
@@ -251,13 +251,13 @@ class directory_test_case : public tests::directory_test_case_base<> {
         // mmap direct buffer access
         if (dynamic_cast<mmap_directory*>(&dir)) {
           const auto fp = file->file_pointer();
-          auto cleanup = make_finally([fp, &file]() noexcept {
+          Finally cleanup = [fp, &file]() noexcept {
             try {
               file->seek(fp);
             } catch (...) {
               ASSERT_FALSE(true);
             }
-          });
+          };
 
           // sequential direct access
           {
@@ -4508,118 +4508,128 @@ TEST_F(fs_directory_test, orphaned_lock) {
   }
 
   // orphaned lock file with invalid pid (not a number), same hostname
-  {// create lock file
-   {char hostname[256] = {};
-  ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
-
-  const std::string pid = "invalid_pid";
-  auto out = dir_->create("lock");
-  ASSERT_FALSE(!out);
-  out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                   strlen(hostname));
-  out->write_byte(0);
-  out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()), pid.size());
-}
-
-// try to obtain lock
-{
-  auto lock = dir_->make_lock("lock");
-  ASSERT_FALSE(!lock);
-  ASSERT_TRUE(lock->lock());
-  ASSERT_TRUE(lock->unlock());
-  bool exists;
-  ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
-}
-}  // namespace
-
-// orphaned empty lock file
-{// create lock file
- {auto out = dir_->create("lock");
-ASSERT_FALSE(!out);
-out->flush();
-}
-
-// try to obtain lock
-{
-  auto lock = dir_->make_lock("lock");
-  ASSERT_FALSE(!lock);
-  ASSERT_TRUE(lock->lock());
-  ASSERT_TRUE(lock->unlock());
-  bool exists;
-  ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
-}
-}
-
-// orphaned lock file with hostname only
-{// create lock file
- {char hostname[256] = {};
-ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
-auto out = dir_->create("lock");
-ASSERT_FALSE(!out);
-out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                 strlen(hostname));
-}
-
-// try to obtain lock
-{
-  auto lock = dir_->make_lock("lock");
-  ASSERT_FALSE(!lock);
-  ASSERT_TRUE(lock->lock());
-  ASSERT_TRUE(lock->unlock());
-  bool exists;
-  ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
-}
-}
-
-// orphaned lock file with valid pid, same hostname
-{
-  // create lock file
   {
-    char hostname[256] = {};
-    ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
-    const std::string pid = std::to_string(iresearch::get_pid());
-    auto out = dir_->create("lock");
-    ASSERT_FALSE(!out);
-    out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                     strlen(hostname));
-    out->write_byte(0);
-    out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
-                     pid.size());
+    (void)1;  // format work-around
+    // create lock file
+    {
+      char hostname[256] = {};
+      ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
+
+      const std::string pid = "invalid_pid";
+      auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
+      out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
+                       strlen(hostname));
+      out->write_byte(0);
+      out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
+                       pid.size());
+    }
+
+    // try to obtain lock
+    {
+      auto lock = dir_->make_lock("lock");
+      ASSERT_FALSE(!lock);
+      ASSERT_TRUE(lock->lock());
+      ASSERT_TRUE(lock->unlock());
+      bool exists;
+      ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
+    }
+  }  // namespace
+
+  // orphaned empty lock file
+  {
+    (void)1;  // format work-around
+    // create lock file
+    {
+      auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
+      out->flush();
+    }
+
+    // try to obtain lock
+    {
+      auto lock = dir_->make_lock("lock");
+      ASSERT_FALSE(!lock);
+      ASSERT_TRUE(lock->lock());
+      ASSERT_TRUE(lock->unlock());
+      bool exists;
+      ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
+    }
   }
 
-  bool exists;
-  ASSERT_TRUE(dir_->exists(exists, "lock") && exists);
-
-  // try to obtain lock, after closing stream
-  auto lock = dir_->make_lock("lock");
-  ASSERT_FALSE(!lock);
-  ASSERT_FALSE(lock->lock());  // still have different hostname
-}
-
-// orphaned lock file with valid pid, different hostname
-{
-  // create lock file
+  // orphaned lock file with hostname only
   {
-    char hostname[] = "not_a_valid_hostname_//+&*(%$#@! }";
+    (void)1;  // format work-around
+    // create lock file
+    {
+      char hostname[256] = {};
+      ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
+      auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
+      out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
+                       strlen(hostname));
+    }
 
-    const std::string pid = std::to_string(iresearch::get_pid());
-    auto out = dir_->create("lock");
-    ASSERT_FALSE(!out);
-    out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                     strlen(hostname));
-    out->write_byte(0);
-    out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
-                     pid.size());
+    // try to obtain lock
+    {
+      auto lock = dir_->make_lock("lock");
+      ASSERT_FALSE(!lock);
+      ASSERT_TRUE(lock->lock());
+      ASSERT_TRUE(lock->unlock());
+      bool exists;
+      ASSERT_TRUE(dir_->exists(exists, "lock") && !exists);
+    }
   }
 
-  bool exists;
-  ASSERT_TRUE(dir_->exists(exists, "lock") && exists);
+  // orphaned lock file with valid pid, same hostname
+  {
+    // create lock file
+    {
+      char hostname[256] = {};
+      ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
+      const std::string pid = std::to_string(iresearch::get_pid());
+      auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
+      out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
+                       strlen(hostname));
+      out->write_byte(0);
+      out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
+                       pid.size());
+    }
 
-  // try to obtain lock, after closing stream
-  auto lock = dir_->make_lock("lock");
-  ASSERT_FALSE(!lock);
-  ASSERT_FALSE(lock->lock());  // still have different hostname
-}
+    bool exists;
+    ASSERT_TRUE(dir_->exists(exists, "lock") && exists);
+
+    // try to obtain lock, after closing stream
+    auto lock = dir_->make_lock("lock");
+    ASSERT_FALSE(!lock);
+    ASSERT_FALSE(lock->lock());  // still have different hostname
+  }
+
+  // orphaned lock file with valid pid, different hostname
+  {
+    // create lock file
+    {
+      char hostname[] = "not_a_valid_hostname_//+&*(%$#@! }";
+
+      const std::string pid = std::to_string(iresearch::get_pid());
+      auto out = dir_->create("lock");
+      ASSERT_FALSE(!out);
+      out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
+                       strlen(hostname));
+      out->write_byte(0);
+      out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
+                       pid.size());
+    }
+
+    bool exists;
+    ASSERT_TRUE(dir_->exists(exists, "lock") && exists);
+
+    // try to obtain lock, after closing stream
+    auto lock = dir_->make_lock("lock");
+    ASSERT_FALSE(!lock);
+    ASSERT_FALSE(lock->lock());  // still have different hostname
+  }
 }
 
 TEST(memory_directory_test, construct_check_allocator) {
@@ -4697,4 +4707,4 @@ TEST(memory_directory_test, rewrite) {
   in.read_bytes(reinterpret_cast<irs::byte_type*>(value.data()), value.size());
   ASSERT_EQ(expected, value);
 }
-}
+}  // namespace

@@ -241,9 +241,9 @@ class fs_index_input : public buffered_index_input {
 
   virtual int64_t checksum(size_t offset) const override final {
     // "read_internal" modifies pos_
-    auto restore_position = make_finally([pos = this->pos_, this]() noexcept {
+    Finally restore_position = [pos = this->pos_, this]() noexcept {
       const_cast<fs_index_input*>(this)->pos_ = pos;
-    });
+    };
 
     const auto begin = pos_;
     const auto end = (std::min)(begin + offset, handle_->size);

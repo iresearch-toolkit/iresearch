@@ -321,8 +321,8 @@ analysis::analyzer::ptr construct(
           .first->second);
   }
 
-  return std::make_unique<analysis::text_token_stream>(
-    *options_ptr, options_ptr->stopwords_);
+  return std::make_unique<analysis::text_token_stream>(*options_ptr,
+                                                       options_ptr->stopwords_);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1159,11 +1159,11 @@ bool text_token_stream::next_ngram() {
 
   bool finished{};
   // cppcheck-suppress unreadVariable
-  auto set_ngram_finished = make_finally([this, &finished]() noexcept -> void {
+  Finally set_ngram_finished = [this, &finished]() noexcept -> void {
     if (finished) {
       state_->set_ngram_finished();
     }
-  });
+  };
 
   // if a word has finished
   if (state_->ngram.it == end) {

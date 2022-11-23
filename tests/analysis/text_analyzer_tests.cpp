@@ -765,10 +765,10 @@ TEST_F(TextAnalyzerParserTestSuite,
   SetStopwordsPath(nullptr);
 
   // no stopwords, but valid CWD
-  auto reset_stopword_path =
-    irs::make_finally([oldCWD = std::filesystem::current_path()]() noexcept {
+  irs::Finally reset_stopword_path =
+    [oldCWD = std::filesystem::current_path()]() noexcept {
       EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
-    });
+    };
   irs::file_utils::set_cwd(
     std::filesystem::path(IResearch_test_resource_dir).c_str());
 
@@ -855,10 +855,10 @@ TEST_F(TextAnalyzerParserTestSuite,
        test_load_stopwords_path_override_emptypath) {
   // no stopwords, but empty stopwords path (we need to shift CWD to our test
   // resources, to be able to load stopwords)
-  auto reset_stopword_path =
-    irs::make_finally([oldCWD = std::filesystem::current_path()]() noexcept {
+  irs::Finally reset_stopword_path =
+    [oldCWD = std::filesystem::current_path()]() noexcept {
       EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
-    });
+    };
   irs::file_utils::set_cwd(
     std::filesystem::path(IResearch_test_resource_dir).c_str());
 
@@ -1026,10 +1026,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   // no stopwords, but empty stopwords path (we need to shift CWD to our test
   // resources, to be able to load stopwords)
   {
-    auto reset_stopword_path =
-      irs::make_finally([oldCWD = std::filesystem::current_path()]() noexcept {
+    irs::Finally reset_stopword_path =
+      [oldCWD = std::filesystem::current_path()]() noexcept {
         EXPECT_TRUE(irs::file_utils::set_cwd(oldCWD.c_str()));
-      });
+      };
     irs::file_utils::set_cwd(
       std::filesystem::path(IResearch_test_resource_dir).c_str());
 

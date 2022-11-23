@@ -226,8 +226,7 @@ filter::prepared::ptr by_same_position::prepare(
     size_t term_idx = 0;
 
     for (const auto& branch : terms) {
-      auto next_stats =
-        irs::make_finally([&term_idx]() noexcept { ++term_idx; });
+      Finally next_stats = [&term_idx]() noexcept { ++term_idx; };
 
       // get term dictionary for field
       const term_reader* field = segment.field(branch.first);

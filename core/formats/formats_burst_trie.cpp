@@ -2058,8 +2058,7 @@ class term_iterator_base : public seek_term_iterator {
   }
 
   seek_cookie::ptr cookie() const override final {
-    return std::make_unique<::cookie>(
-      std::get<version10::term_meta>(attrs_));
+    return std::make_unique<::cookie>(std::get<version10::term_meta>(attrs_));
   }
 
   bytes_view value() const noexcept final {
@@ -2468,8 +2467,7 @@ SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
 
   cur_block_->load(terms_input(), terms_cipher());
 
-  auto refresh_value =
-    make_finally([this]() noexcept { this->refresh_value(); });
+  Finally refresh_value = [this]() noexcept { this->refresh_value(); };
 
   assert(term.starts_with(term_buf_));
   return cur_block_->scan_to_term(term, append_suffix);
@@ -2494,8 +2492,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
 
   cur_block_->load(terms_input(), terms_cipher());
 
-  auto refresh_value =
-    make_finally([this]() noexcept { this->refresh_value(); });
+  Finally refresh_value = [this]() noexcept { this->refresh_value(); };
 
   assert(term.starts_with(term_buf_));
   switch (cur_block_->scan_to_term(term, append_suffix)) {
@@ -3518,7 +3515,7 @@ irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,
                                    bool consolidation) {
   return std::make_unique<::field_writer>(std::move(writer), consolidation,
-                                             version);
+                                          version);
 }
 
 irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {
