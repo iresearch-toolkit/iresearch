@@ -96,7 +96,7 @@ class CachingDirectory : public Impl, private Acceptor {
       }
       return true;
     }
-    return true;
+    return false;
   }
 
   index_input::ptr open(std::string_view name,
