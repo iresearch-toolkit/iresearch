@@ -1666,7 +1666,7 @@ bool merge_writer::flush(index_meta::index_segment_t& segment,
 
   bool result = false;  // overall flush result
 
-  auto segment_invalidator = irs::make_finally([&result, &segment]() noexcept {
+  Finally segment_invalidator = [&result, &segment]() noexcept {
     if (result) {
       // all good
       return;
@@ -1682,7 +1682,7 @@ bool merge_writer::flush(index_meta::index_segment_t& segment,
     meta.live_docs_count = 0;
     meta.size = 0;
     meta.version = 0;
-  });
+  };
 
   const auto& progress_callback = progress ? progress : kProgressNoop;
 

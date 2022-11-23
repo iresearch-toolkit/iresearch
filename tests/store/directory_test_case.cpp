@@ -4151,13 +4151,13 @@ TEST_P(directory_test_case, smoke_store) {
       // failed direct buffer access doesn't move file pointer
       {
         const auto fp = file->file_pointer();
-        auto cleanup = make_finally([fp, &file]() noexcept {
+        Finally cleanup = [fp, &file]() noexcept {
           try {
             file->seek(fp);
           } catch (...) {
             ASSERT_TRUE(false);
           }
-        });
+        };
 
         ASSERT_GT(file->length(), 1);
         file->seek(file->length() - 1);
@@ -4170,13 +4170,13 @@ TEST_P(directory_test_case, smoke_store) {
           dynamic_cast<memory_directory*>(&dir) ||
           dynamic_cast<fs_directory*>(&dir)) {
         const auto fp = file->file_pointer();
-        auto cleanup = make_finally([fp, &file]() noexcept {
+        Finally cleanup = [fp, &file]() noexcept {
           try {
             file->seek(fp);
           } catch (...) {
             ASSERT_FALSE(true);
           }
-        });
+        };
 
         // sequential direct access
         {
@@ -4202,13 +4202,13 @@ TEST_P(directory_test_case, smoke_store) {
       // mmap direct buffer access
       if (dynamic_cast<mmap_directory*>(&dir)) {
         const auto fp = file->file_pointer();
-        auto cleanup = make_finally([fp, &file]() noexcept {
+        Finally cleanup = [fp, &file]() noexcept {
           try {
             file->seek(fp);
           } catch (...) {
             ASSERT_FALSE(true);
           }
-        });
+        };
 
         // sequential direct access
         {

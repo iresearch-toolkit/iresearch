@@ -865,79 +865,82 @@ TEST_P(format_test_case, fields_read_write) {
     }
 
     // seek to nil (the smallest possible term)
-    {// with state
-     {auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_FALSE(term->seek(irs::bytes_view{}));
-    ASSERT_EQ((term_reader->min)(), term->value());
-    ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_view{}));
-    ASSERT_EQ((term_reader->min)(), term->value());
-  }
+    {
+      (void)1;  // format work-around
+      // with state
+      {
+        auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+        ASSERT_FALSE(term->seek(irs::bytes_view{}));
+        ASSERT_EQ((term_reader->min)(), term->value());
+        ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_view{}));
+        ASSERT_EQ((term_reader->min)(), term->value());
+      }
 
-  // without state
-  {
-    auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_FALSE(term->seek(irs::bytes_view{}));
-    ASSERT_EQ((term_reader->min)(), term->value());
-  }
+      // without state
+      {
+        auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+        ASSERT_FALSE(term->seek(irs::bytes_view{}));
+        ASSERT_EQ((term_reader->min)(), term->value());
+      }
 
-  {
-    auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_view{}));
-    ASSERT_EQ((term_reader->min)(), term->value());
-  }
-}
-
-/* Here is the structure of blocks:
- *   TERM aaLorem
- *   TERM abaLorem
- *   BLOCK abab ------> Integer
- *                      ...
- *                      ...
- *   TERM abcaLorem
- *   ...
- *
- * Here we seek to "abaN" and since first entry that
- * is greater than "abaN" is BLOCK entry "abab".
- *
- * In case of "seek" we end our scan on BLOCK entry "abab",
- * and further "next" cause the skipping of the BLOCK "abab".
- *
- * In case of "seek_next" we also end our scan on BLOCK entry "abab"
- * but furher "next" get us to the TERM "ababInteger" */
-{
-  auto seek_term = irs::ViewCast<irs::byte_type>(std::string_view("abaN"));
-  auto seek_result =
-    irs::ViewCast<irs::byte_type>(std::string_view("ababInteger"));
-
-  /* seek exactly to term */
-  {
-    auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_FALSE(term->seek(seek_term));
-    /* we on the BLOCK "abab" */
-    ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abab")),
-              term->value());
-    ASSERT_TRUE(term->next());
-    ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcaLorem")),
-              term->value());
-  }
-
-  /* seek to term which is equal or greater than current */
-  {
-    auto term = term_reader->iterator(irs::SeekMode::NORMAL);
-    ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(seek_term));
-    ASSERT_EQ(seek_result, term->value());
-
-    /* iterate over the rest of the terms */
-    auto expected_sorted_term = sorted_terms.find(seek_result);
-    ASSERT_NE(sorted_terms.end(), expected_sorted_term);
-    for (++expected_sorted_term; term->next(); ++expected_sorted_term) {
-      ASSERT_EQ(*expected_sorted_term, term->value());
+      {
+        auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+        ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_view{}));
+        ASSERT_EQ((term_reader->min)(), term->value());
+      }
     }
-    ASSERT_FALSE(term->next());
-    ASSERT_EQ(sorted_terms.end(), expected_sorted_term);
-  }
-}
-}  // namespace tests
+
+    /* Here is the structure of blocks:
+     *   TERM aaLorem
+     *   TERM abaLorem
+     *   BLOCK abab ------> Integer
+     *                      ...
+     *                      ...
+     *   TERM abcaLorem
+     *   ...
+     *
+     * Here we seek to "abaN" and since first entry that
+     * is greater than "abaN" is BLOCK entry "abab".
+     *
+     * In case of "seek" we end our scan on BLOCK entry "abab",
+     * and further "next" cause the skipping of the BLOCK "abab".
+     *
+     * In case of "seek_next" we also end our scan on BLOCK entry "abab"
+     * but furher "next" get us to the TERM "ababInteger" */
+    {
+      auto seek_term = irs::ViewCast<irs::byte_type>(std::string_view("abaN"));
+      auto seek_result =
+        irs::ViewCast<irs::byte_type>(std::string_view("ababInteger"));
+
+      /* seek exactly to term */
+      {
+        auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+        ASSERT_FALSE(term->seek(seek_term));
+        /* we on the BLOCK "abab" */
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abab")),
+                  term->value());
+        ASSERT_TRUE(term->next());
+        ASSERT_EQ(irs::ViewCast<irs::byte_type>(std::string_view("abcaLorem")),
+                  term->value());
+      }
+
+      /* seek to term which is equal or greater than current */
+      {
+        auto term = term_reader->iterator(irs::SeekMode::NORMAL);
+        ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(seek_term));
+        ASSERT_EQ(seek_result, term->value());
+
+        /* iterate over the rest of the terms */
+        auto expected_sorted_term = sorted_terms.find(seek_result);
+        ASSERT_NE(sorted_terms.end(), expected_sorted_term);
+        for (++expected_sorted_term; term->next(); ++expected_sorted_term) {
+          ASSERT_EQ(*expected_sorted_term, term->value());
+        }
+        ASSERT_FALSE(term->next());
+        ASSERT_EQ(sorted_terms.end(), expected_sorted_term);
+      }
+    }
+  }  // namespace tests
 }
 
 TEST_P(format_test_case, segment_meta_read_write) {
@@ -2425,7 +2428,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
   const uint64_t keys[] = {42, 42};
   const irs::bytes_view keys_ref(reinterpret_cast<const irs::byte_type*>(&keys),
-                                sizeof keys);
+                                 sizeof keys);
 
   irs::columnstore_writer::column_t dense_fixed_offset_column;
   irs::columnstore_writer::column_t sparse_fixed_offset_column;
@@ -2714,7 +2717,7 @@ state.doc_count = meta0.docs_count;
 state.name = meta0.name;
 
 ASSERT_TRUE(writer->commit(state));
-}
+}  // namespace tests
 
 // write _2 segment, reuse writer
 {
@@ -2808,7 +2811,8 @@ ASSERT_TRUE(writer->commit(state));
     std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
       {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
 
-    auto visitor = [&expected_values](irs::doc_id_t doc, irs::bytes_view value) {
+    auto visitor = [&expected_values](irs::doc_id_t doc,
+                                      irs::bytes_view value) {
       const auto actual_value = irs::to_string<std::string_view>(value.data());
 
       auto it = expected_values.find(actual_value);
@@ -3027,8 +3031,8 @@ ASSERT_TRUE(writer->commit(state));
       std::vector<std::string_view> actual_str_values;
       actual_str_values.push_back(
         irs::to_string<std::string_view>(payload->value.data()));
-      actual_str_values.push_back(
-        irs::to_string<std::string_view>(reinterpret_cast<const irs::byte_type*>(
+      actual_str_values.push_back(irs::to_string<std::string_view>(
+        reinterpret_cast<const irs::byte_type*>(
           actual_str_values.back().data() + actual_str_values.back().size())));
 
       ASSERT_EQ(expected_value.second, it->value());
@@ -3068,8 +3072,8 @@ ASSERT_TRUE(writer->commit(state));
       std::vector<std::string_view> actual_str_values;
       actual_str_values.push_back(
         irs::to_string<std::string_view>(payload->value.data()));
-      actual_str_values.push_back(
-        irs::to_string<std::string_view>(reinterpret_cast<const irs::byte_type*>(
+      actual_str_values.push_back(irs::to_string<std::string_view>(
+        reinterpret_cast<const irs::byte_type*>(
           actual_str_values.back().data() + actual_str_values.back().size())));
 
       ASSERT_EQ(expected_value, actual_str_values);
