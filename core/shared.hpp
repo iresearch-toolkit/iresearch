@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SHARED_H
-#define IRESEARCH_SHARED_H
+#pragma once
 
 #include <bit>
 #include <cfloat>
@@ -32,11 +31,6 @@
 #include <string>
 
 #include "types.hpp"  // iresearch types
-
-#if (defined(__GNUC__) && __GNUC__ == 8 && __GNUC_MINOR__ < 1)
-// protection against broken GCC 8.0 from Ubuntu 18.04 official repository
-#error "GCC 8.0 isn't officially supported (https://gcc.gnu.org/releases.html)"
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// C++ standard
@@ -50,25 +44,22 @@
 #define IRESEARCH_CXX_11 201103L  // c++11
 #define IRESEARCH_CXX_14 201402L  // c++14
 #define IRESEARCH_CXX_17 201703L  // c++17
+#define IRESEARCH_CXX_20 202002L  // c++20
 
 #if defined(_MSC_VER)
 // MSVC doesn't honor __cplusplus macro,
 // it always equals to IRESEARCH_CXX_98
 // therefore we use _MSC_VER
-#if _MSC_VER < 1910  // before MSVC2017
-#error "at least C++17 is required"
-#elif _MSC_VER >= 1910 && _MSC_VER < 1920  // MSVC2017 and later
-#define IRESEARCH_CXX IRESEARCH_CXX_17
-#elif _MSC_VER >= 1920  // MSVC2019 and later
-#define IRESEARCH_CXX IRESEARCH_CXX_17
+#if _MSC_VER < 1920  // before MSVC2019
+#error "at least C++20 is required"
 #endif
 #else  // GCC/Clang
-#if __cplusplus < IRESEARCH_CXX_17
-#error "at least C++17 is required"
+#if __cplusplus < IRESEARCH_CXX_20
+#error "at least C++20 is required"
+#endif
 #endif
 
-#define IRESEARCH_CXX IRESEARCH_CXX_17
-#endif
+#define IRESEARCH_CXX IRESEARCH_CXX_20
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Export/Import definitions
@@ -82,14 +73,8 @@
 #define IRESEARCH_HELPER_TEMPLATE_IMPORT
 #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
-#if _MSC_VER < 1900  // before msvc2015
+#if _MSC_VER < 1920  // before msvc2019
 #error "compiler is not supported"
-#else
-// MSVC2017.1 - MSVC2017.7 does not correctly support alignas()
-// FIXME TODO find a workaround or do not use alignas(...) and remove definition
-// from CMakeLists.txt
-static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916,
-              "_MSC_VER > 1910 && _MSC_VER < 1915");
 #endif
 
 #define FORCE_INLINE inline __forceinline
@@ -97,11 +82,11 @@ static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916,
 #define RESTRICT __restrict
 #define IRS_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
-#if (defined(__GNUC__) && (__GNUC__ >= 4))
+#if (defined(__GNUC__) && (__GNUC__ >= 9))
 #define IRESEARCH_HELPER_DLL_IMPORT __attribute__((visibility("default")))
 #define IRESEARCH_HELPER_DLL_EXPORT __attribute__((visibility("default")))
 #define IRESEARCH_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
-#else
+#else  // before GCC9
 #error "compiler is not supported"
 #endif
 #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT
@@ -111,36 +96,6 @@ static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916,
 #define NO_INLINE __attribute__((noinline))
 #define RESTRICT __restrict__
 #define IRS_NO_UNIQUE_ADDRESS [[no_unique_address]]
-#endif
-
-// hook for GCC 8.1/8.2 optimized code
-// these versions produce incorrect code when inlining optimizations are enabled
-#if defined(__OPTIMIZE__) && defined(__GNUC__) && \
-  ((__GNUC__ == 8 && __GNUC_MINOR__ == 1) ||      \
-   (__GNUC__ == 8 && __GNUC_MINOR__ == 2))
-#define GCC8_12_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
-#else
-#define GCC8_12_OPTIMIZED_WORKAROUND(...)
-#endif
-
-// hook for MSVC2017.3-9 optimized code
-// these versions produce incorrect code when inlining optimizations are enabled
-// for versions @see
-// https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
-// and https://dev.to/yumetodo/list-of-mscver-and-mscfullver-8nd
-// seems MSVC2019.0+ also have this problem
-#if defined(_MSC_VER) && !defined(_DEBUG) &&                         \
-  (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) || \
-   ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)) || \
-   ((_MSC_FULL_VER >= 191225830) && (_MSC_FULL_VER <= 191225835)) || \
-   ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) || \
-   ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) || \
-   ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) || \
-   ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627034)) || \
-   (_MSC_FULL_VER >= 192027508))
-#define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
-#else
-#define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
