@@ -26,11 +26,10 @@
 #include <map>
 #include <memory>
 
-#include "shared.hpp"
-#include "ebo.hpp"
 #include "map_utils.hpp"
-#include "noncopyable.hpp"
 #include "memory.hpp"
+#include "noncopyable.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace memory {
@@ -233,43 +232,29 @@ struct identity_grow {
 ///        BlockAllocator and GrowPolicy for all derivatives
 ///////////////////////////////////////////////////////////////////////////////
 template<typename GrowPolicy, typename BlockAllocator>
-class pool_base : private compact_ref<0, BlockAllocator>,
-                  private compact<0, GrowPolicy>,
-                  private util::noncopyable {
+class pool_base : private util::noncopyable {
  public:
-  typedef GrowPolicy grow_policy_t;
-  typedef compact<0, GrowPolicy> grow_policy_store_t;
-
-  typedef BlockAllocator block_allocator_t;
-  typedef compact_ref<0, BlockAllocator> block_allocator_store_t;
+  using grow_policy_t = GrowPolicy;
+  using block_allocator_t = BlockAllocator;
 
   pool_base(const grow_policy_t& policy, const block_allocator_t& allocator)
-    : block_allocator_store_t(allocator), grow_policy_store_t(policy) {}
+    : alloc_{allocator}, grow_policy_{policy} {}
 
-  pool_base(pool_base&& rhs)
-    : block_allocator_store_t(std::move(rhs)),
-      grow_policy_store_t(std::move(rhs)) {}
+  pool_base(pool_base&& rhs) noexcept
+    : alloc_{std::move(rhs.alloc)}, grow_policy_(std::move(rhs.grow_policy_)) {}
 
-  pool_base& operator=(pool_base&& rhs) {
+  pool_base& operator=(pool_base&& rhs) noexcept {
     if (this != &rhs) {
-      block_allocator_store_t::operator=(std::move(rhs));
-      grow_policy_store_t::operator=(std::move(rhs));
+      alloc_ = std::move(rhs.alloc_);
+      grow_policy_ = std::move(rhs.grow_policy_);
     }
     return *this;
   }
 
-  const grow_policy_t& grow_policy() const {
-    return grow_policy_store_t::get();
-  }
-
-  grow_policy_t& grow_policy() { return grow_policy_store_t::get(); }
-
-  const block_allocator_t& allocator() const {
-    return block_allocator_store_t::get();
-  }
-
-  block_allocator_t& allocator() { return block_allocator_store_t::get(); }
-};  // pool_base
+ protected:
+  IRS_NO_UNIQUE_ADDRESS ebo_ref_t<block_allocator_t> alloc_;
+  IRS_NO_UNIQUE_ADDRESS grow_policy_t grow_policy_;
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class memory_pool

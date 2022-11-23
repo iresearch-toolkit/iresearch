@@ -20,15 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_PQ_ITERATOR_H
-#define IRESEARCH_PQ_ITERATOR_H
+#pragma once
 
 #include <algorithm>
 #include <vector>
 
 #include "iterators.hpp"
 #include "shared.hpp"
-#include "utils/ebo.hpp"
 
 namespace iresearch {
 
@@ -45,13 +43,9 @@ namespace iresearch {
 //      [n] <-- end
 // ----------------------------------------------------------------------------
 template<typename Context>
-class ExternalHeapIterator : private compact<0, Context> {
- private:
-  using context_store_t = compact<0, Context>;
-
+class ExternalHeapIterator {
  public:
-  explicit ExternalHeapIterator(Context&& ctx = {})
-    : context_store_t(std::move(ctx)) {}
+  explicit ExternalHeapIterator(Context&& ctx) : ctx_{std::move(ctx)} {}
 
   void reset(size_t size) {
     heap_.resize(size);
@@ -69,7 +63,7 @@ class ExternalHeapIterator : private compact<0, Context> {
     while (lead_) {
       auto it = std::end(heap_) - lead_--;
 
-      if (!context()(*it)) {  // advance iterator
+      if (!ctx_(*it)) {  // advance iterator
         if (!remove_lead(it)) {
           assert(heap_.empty());
           return false;
@@ -78,11 +72,11 @@ class ExternalHeapIterator : private compact<0, Context> {
         continue;
       }
 
-      std::push_heap(begin, ++it, context());
+      std::push_heap(begin, ++it, ctx_);
     }
 
     assert(!heap_.empty());
-    std::pop_heap(begin, std::end(heap_), context());
+    std::pop_heap(begin, std::end(heap_), ctx_);
     lead_ = 1;
 
     return true;
@@ -95,9 +89,6 @@ class ExternalHeapIterator : private compact<0, Context> {
 
   size_t size() const noexcept { return heap_.size(); }
 
-  const Context& context() const noexcept { return context_store_t::get(); }
-  Context& context() noexcept { return context_store_t::get(); }
-
  private:
   bool remove_lead(std::vector<size_t>::iterator it) {
     if (&*it != &heap_.back()) {
@@ -107,10 +98,9 @@ class ExternalHeapIterator : private compact<0, Context> {
     return !heap_.empty();
   }
 
+  IRS_NO_UNIQUE_ADDRESS Context ctx_;
   std::vector<size_t> heap_;
   size_t lead_{};
 };
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_PQ_ITERATOR_H
