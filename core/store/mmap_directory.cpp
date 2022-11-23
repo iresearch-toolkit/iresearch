@@ -32,9 +32,7 @@ namespace {
 using mmap_utils::mmap_handle;
 using mmap_handle_ptr = std::shared_ptr<mmap_handle>;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief converts the specified IOAdvice to corresponding posix madvice
-//////////////////////////////////////////////////////////////////////////////
+// Converts the specified IOAdvice to corresponding posix madvice
 inline int get_posix_madvice(IOAdvice advice) {
   switch (advice) {
     case IOAdvice::NORMAL:
@@ -59,10 +57,7 @@ inline int get_posix_madvice(IOAdvice advice) {
   return IR_MADVICE_NORMAL;
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct mmap_index_input
-/// @brief input stream for memory mapped directory
-//////////////////////////////////////////////////////////////////////////////
+// Input stream for memory mapped directory
 class mmap_index_input : public bytes_view_input {
  public:
   static index_input::ptr open(const file_path_t file,
@@ -127,26 +122,22 @@ class mmap_index_input : public bytes_view_input {
   mmap_index_input& operator=(const mmap_index_input&) = delete;
 
   mmap_handle_ptr handle_;
-};  // mmap_index_input
+};
 
 }  // namespace
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     mmap_directory implementation
-// -----------------------------------------------------------------------------
-
 mmap_directory::mmap_directory(std::filesystem::path path,
-                               directory_attributes attrs /* = {} */)
+                               directory_attributes attrs)
   : fs_directory{std::move(path), std::move(attrs)} {}
 
 index_input::ptr mmap_directory::open(std::string_view name,
                                       IOAdvice advice) const noexcept {
+  if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
+    return fs_directory::open(name, advice);
+  }
+
   try {
-    if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
-      return fs_directory::open(name, advice);
-    }
-    auto path = directory();
-    path /= name;
+    const auto path = directory() / name;
 
     return mmap_index_input::open(path.c_str(), advice);
   } catch (...) {
