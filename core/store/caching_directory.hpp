@@ -53,8 +53,6 @@ class CachingDirectory : public Impl, private Acceptor {
   explicit CachingDirectory(const Acceptor& acceptor, Args&&... args)
     : Impl{std::forward<Args>(args)...}, Acceptor{acceptor} {}
 
-  // FIXME(gnusi): cache existence in "create"?
-
   bool exists(bool& result, std::string_view name) const noexcept override {
     if (std::shared_lock lock{mutex_}; cache_.contains(name)) {
       result = true;

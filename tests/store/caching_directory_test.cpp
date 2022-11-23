@@ -155,6 +155,11 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   check_file("0", 42);  // Entry is cached after first  check
   ASSERT_EQ(1, dir.size());
 
+  // Rename
+  ASSERT_TRUE(dir.rename("0", "2"));
+  check_file("2", 42);  // Entry is cached after first  check
+  ASSERT_EQ(1, dir.size());
+
   // Following entry must not be cached because of cache size
   dir.ExpectExists(true);
   dir.ExpectLength(true);
@@ -164,6 +169,21 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   ASSERT_EQ(1, dir.size());
   check_file("1", 24);
   ASSERT_EQ(1, dir.size());
+  check_file("1", 24);
+  ASSERT_EQ(1, dir.size());
+
+  // Remove
+  ASSERT_TRUE(dir.remove("2"));
+  ASSERT_EQ(0, dir.size());
+
+  // We now can use cache
+  check_file("1", 24);
+  ASSERT_EQ(1, dir.size());
+
+  dir.ExpectExists(false);
+  dir.ExpectLength(false);
+  dir.ExpectOpen(false);
+
   check_file("1", 24);
   ASSERT_EQ(1, dir.size());
 }
