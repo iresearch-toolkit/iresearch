@@ -26,7 +26,6 @@
 
 #include <memory>
 
-#include "ebo.hpp"
 #include "log.hpp"
 #include "math_utils.hpp"
 #include "noncopyable.hpp"
@@ -176,94 +175,90 @@ struct aligned_type {
 };  // aligned_type
 
 template<typename Alloc>
-struct allocator_deallocator : public compact<0, Alloc> {
-  typedef compact<0, Alloc> allocator_t;
-  typedef typename allocator_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
-
-  explicit allocator_deallocator(const allocator_type& alloc) noexcept
-    : allocator_t(alloc) {}
-
-  void operator()(pointer p) const noexcept {
-    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
-
-    // deallocate storage
-    std::allocator_traits<allocator_type>::deallocate(alloc, p, 1);
-  }
-};  // allocator_deallocator
-
-template<typename Alloc>
-struct allocator_deleter : public compact<0, Alloc> {
-  typedef compact<0, Alloc> allocator_t;
-  typedef typename allocator_t::type allocator_type;
-  typedef typename allocator_type::pointer pointer;
-
-  explicit allocator_deleter(const allocator_type& alloc) noexcept
-    : allocator_t(alloc) {}
-
-  void operator()(pointer p) const noexcept {
-    typedef std::allocator_traits<allocator_type> traits_t;
-
-    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
-
-    // destroy object
-    traits_t::destroy(alloc, p);
-
-    // deallocate storage
-    traits_t::deallocate(alloc, p, 1);
-  }
-};  // allocator_deleter
-
-template<typename Alloc>
-class allocator_array_deallocator : public compact<0, Alloc> {
+class allocator_deallocator {
  public:
-  typedef compact<0, Alloc> allocator_t;
-  typedef typename allocator_t::type allocator_type;
-  typedef typename std::allocator_traits<allocator_t>::pointer pointer;
+  using allocator_type = Alloc;
+  using pointer = typename allocator_type::pointer;
 
-  allocator_array_deallocator(const allocator_type& alloc, size_t size) noexcept
-    : allocator_t(alloc), size_(size) {}
+  explicit allocator_deallocator(const allocator_type& alloc) : alloc_{alloc} {}
 
   void operator()(pointer p) const noexcept {
-    typedef std::allocator_traits<allocator_type> traits_t;
-
-    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
-
     // deallocate storage
-    traits_t::deallocate(alloc, p, size_);
+    std::allocator_traits<allocator_type>::deallocate(alloc_, p, 1);
   }
 
  private:
-  size_t size_;
-};  // allocator_array_deallocator
+  IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
+};
 
 template<typename Alloc>
-class allocator_array_deleter : public compact<0, Alloc> {
+class allocator_deleter {
  public:
-  typedef compact<0, Alloc> allocator_t;
-  typedef typename allocator_t::type allocator_type;
-  typedef typename std::allocator_traits<allocator_type>::pointer pointer;
+  using allocator_type = Alloc;
+  using pointer = typename allocator_type::pointer;
 
-  allocator_array_deleter(const allocator_type& alloc, size_t size) noexcept
-    : allocator_t(alloc), size_(size) {}
+  explicit allocator_deleter(const allocator_type& alloc) : alloc_{alloc} {}
 
   void operator()(pointer p) const noexcept {
-    typedef std::allocator_traits<allocator_type> traits_t;
+    using traits_t = std::allocator_traits<allocator_type>;
 
-    auto& alloc = const_cast<allocator_type&>(allocator_t::get());
+    // destroy object
+    traits_t::destroy(alloc_, p);
+
+    // deallocate storage
+    traits_t::deallocate(alloc_, p, 1);
+  }
+
+ private:
+  IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
+};
+
+template<typename Alloc>
+class allocator_array_deallocator {
+ public:
+  using allocator_type = Alloc;
+  using pointer = typename std::allocator_traits<allocator_type>::pointer;
+
+  allocator_array_deallocator(const allocator_type& alloc, size_t size)
+    : alloc_{alloc}, size_{size} {}
+
+  void operator()(pointer p) const noexcept {
+    using traits_t = std::allocator_traits<allocator_type>;
+
+    // deallocate storage
+    traits_t::deallocate(alloc_, p, size_);
+  }
+
+ private:
+  IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
+  size_t size_;
+};
+
+template<typename Alloc>
+class allocator_array_deleter {
+ public:
+  using allocator_type = Alloc;
+  using pointer = typename std::allocator_traits<allocator_type>::pointer;
+
+  allocator_array_deleter(const allocator_type& alloc, size_t size)
+    : alloc_{alloc}, size_{size} {}
+
+  void operator()(pointer p) const noexcept {
+    using traits_t = std::allocator_traits<allocator_type>;
 
     // destroy objects
     for (auto begin = p, end = p + size_; begin != end; ++begin) {
-      traits_t::destroy(alloc, begin);
+      traits_t::destroy(alloc_, begin);
     }
 
     // deallocate storage
-    traits_t::deallocate(alloc, p, size_);
+    traits_t::deallocate(alloc_, p, size_);
   }
 
  private:
+  IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
   size_t size_;
-};  // allocator_array_deleter
+};
 
 struct noop_deleter {
   template<typename T>

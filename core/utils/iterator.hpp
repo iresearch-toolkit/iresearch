@@ -23,20 +23,15 @@
 #ifndef IRESEARCH_ITERATOR_H
 #define IRESEARCH_ITERATOR_H
 
-#include "ebo.hpp"
+#include <boost/iterator/iterator_facade.hpp>
+#include <cassert>
+#include <memory>
+
+#include "misc.hpp"
 #include "noncopyable.hpp"
 #include "std.hpp"
-#include "misc.hpp"
-
-#include <memory>
-#include <cassert>
-#include <boost/iterator/iterator_facade.hpp>
 
 namespace iresearch {
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                             Java style iterators
-// ----------------------------------------------------------------------------
 
 template<typename T>
 struct iterator {
@@ -47,10 +42,7 @@ struct iterator {
 
 template<typename Key, typename Value, typename Iterator, typename Base,
          typename Less = std::less<Key>>
-class iterator_adaptor : public Base, private irs::compact<0, Less> {
- private:
-  typedef irs::compact<0, Less> comparer_t;
-
+class iterator_adaptor : public Base {
  public:
   typedef Iterator iterator_type;
   typedef Key key_type;
@@ -59,12 +51,12 @@ class iterator_adaptor : public Base, private irs::compact<0, Less> {
 
   iterator_adaptor(iterator_type begin, iterator_type end,
                    const Less& less = Less())
-    : comparer_t(less), begin_{begin}, cur_{begin}, end_{end} {}
+    : begin_{begin}, cur_{begin}, end_{end}, less_{less} {}
 
   const_reference value() const noexcept override { return *cur_; }
 
   bool seek(key_type key) noexcept override {
-    begin_ = std::lower_bound(cur_, end_, key, comparer_t::get());
+    begin_ = std::lower_bound(cur_, end_, key, less_);
     return next();
   }
 
@@ -82,11 +74,8 @@ class iterator_adaptor : public Base, private irs::compact<0, Less> {
   iterator_type begin_;
   iterator_type cur_;
   iterator_type end_;
-};  // iterator_adaptor
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                              C++ style iterators
-// ----------------------------------------------------------------------------
+  IRS_NO_UNIQUE_ADDRESS Less less_;
+};
 
 namespace detail {
 
@@ -148,17 +137,7 @@ class ptr_iterator
   typedef typename iterator_facade::reference reference;
   typedef typename iterator_facade::difference_type difference_type;
 
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                      constructors and
-  // destructors
-  // -----------------------------------------------------------------------------
-
   ptr_iterator(const IteratorImpl& it) : it_(it) {}
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                   cast
-  // operations
-  // -----------------------------------------------------------------------------
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns downcasted reference to the iterator's value

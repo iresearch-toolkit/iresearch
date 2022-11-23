@@ -24,12 +24,12 @@
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
 
+#include <bit>
 #include <cfloat>
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
-#include <cmath>
 #include <string>
-#include <bit>
 
 #include "types.hpp"  // iresearch types
 
@@ -95,7 +95,7 @@ static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916,
 #define FORCE_INLINE inline __forceinline
 #define NO_INLINE __declspec(noinline)
 #define RESTRICT __restrict
-#define IRESEARCH_IGNORE_UNUSED /* unused */
+#define IRS_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
 #if (defined(__GNUC__) && (__GNUC__ >= 4))
 #define IRESEARCH_HELPER_DLL_IMPORT __attribute__((visibility("default")))
@@ -110,7 +110,7 @@ static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916,
 #define FORCE_INLINE inline __attribute__((always_inline))
 #define NO_INLINE __attribute__((noinline))
 #define RESTRICT __restrict__
-#define IRESEARCH_IGNORE_UNUSED __attribute__((unused))
+#define IRS_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
 // hook for GCC 8.1/8.2 optimized code

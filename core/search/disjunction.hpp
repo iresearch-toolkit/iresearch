@@ -1292,9 +1292,9 @@ class block_disjunction final : public doc_iterator,
   doc_id_t max_{doc_limits::invalid()};  // max doc id in the current mask
   attributes attrs_;
   size_t match_count_;
-  size_t buf_offset_{};              // offset within a buffer
-  score_buffer_type score_buf_;      // FIXME EBO
-  min_match_buffer_type match_buf_;  // FIXME EBO
+  size_t buf_offset_{};  // offset within a buffer
+  IRS_NO_UNIQUE_ADDRESS score_buffer_type score_buf_;
+  IRS_NO_UNIQUE_ADDRESS min_match_buffer_type match_buf_;
   const score_t* score_value_{score_buf_.data()};
 };  // block_disjunction
 
