@@ -31,7 +31,8 @@ class mmap_directory : public fs_directory {
   explicit mmap_directory(std::filesystem::path dir,
                           directory_attributes attrs = directory_attributes{});
 
-  index_input::ptr open(std::string_view name, IOAdvice advice) const noexcept;
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
 };
 
 }  // namespace iresearch

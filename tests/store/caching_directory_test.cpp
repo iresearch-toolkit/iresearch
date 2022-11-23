@@ -73,16 +73,14 @@ struct CachingDirectory : public irs::CachingDirectory<DirectoryProxy<Impl>> {
   using irs::CachingDirectory<DirectoryProxy<Impl>>::GetAcceptor;
 };
 
-template<size_t Size>
-struct MaxSizeAcceptor : irs::MaxSizeAcceptor {
-  MaxSizeAcceptor() noexcept : irs::MaxSizeAcceptor{Size} {}
+template<size_t Count>
+struct MaxCountAcceptor : irs::MaxCountAcceptor {
+  MaxCountAcceptor() noexcept : irs::MaxCountAcceptor{Count} {}
 };
 
-template<typename Directory, const char* TypeName>
+template<typename Directory>
 class CachingDirectoryTestCase : public test_base {
  public:
-  static std::string ToString() { return TypeName; }
-
   void SetUp() override {
     test_base::SetUp();
     dir_ = std::static_pointer_cast<Directory>(
@@ -103,11 +101,10 @@ class CachingDirectoryTestCase : public test_base {
   std::shared_ptr<Directory> dir_;
 };
 
-const char kTypeMMap[] = "mmap";
 using CachingMMapDirectory =
-  CachingDirectory<irs::mmap_directory, MaxSizeAcceptor<1>>;
+  CachingDirectory<irs::mmap_directory, MaxCountAcceptor<1>>;
 using CachingMMapDirectoryTestCase =
-  CachingDirectoryTestCase<CachingMMapDirectory, kTypeMMap>;
+  CachingDirectoryTestCase<CachingMMapDirectory>;
 
 TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   auto& dir = GetDirectory();
@@ -127,8 +124,8 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
     ASSERT_EQ(1, stream->file_pointer());
   };
 
-  ASSERT_EQ(0, dir.size());
-  ASSERT_EQ(1, dir.GetAcceptor().MaxSize());
+  ASSERT_EQ(0, dir.Count());
+  ASSERT_EQ(1, dir.GetAcceptor().MaxCount());
 
   dir.ExpectExists(true);
   dir.ExpectLength(true);
@@ -144,21 +141,21 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   ASSERT_EQ(nullptr, dir.open("0", irs::IOAdvice::NORMAL));
 
   create_file("0", 42);  // Entry isn't cached yet
-  ASSERT_EQ(0, dir.size());
+  ASSERT_EQ(0, dir.Count());
   check_file("0", 42);  // Entry is cached after first  check
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
 
   // Ensure we use cache
   dir.ExpectExists(false);
   dir.ExpectLength(false);
   dir.ExpectOpen(false);
   check_file("0", 42);  // Entry is cached after first  check
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
 
   // Rename
   ASSERT_TRUE(dir.rename("0", "2"));
   check_file("2", 42);  // Entry is cached after first  check
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
 
   // Following entry must not be cached because of cache size
   dir.ExpectExists(true);
@@ -166,26 +163,26 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   dir.ExpectOpen(true);
 
   create_file("1", 24);
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
   check_file("1", 24);
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
   check_file("1", 24);
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
 
   // Remove
   ASSERT_TRUE(dir.remove("2"));
-  ASSERT_EQ(0, dir.size());
+  ASSERT_EQ(0, dir.Count());
 
   // We now can use cache
   check_file("1", 24);
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
 
   dir.ExpectExists(false);
   dir.ExpectLength(false);
   dir.ExpectOpen(false);
 
   check_file("1", 24);
-  ASSERT_EQ(1, dir.size());
+  ASSERT_EQ(1, dir.Count());
 }
 
 }  // namespace tests
