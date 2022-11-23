@@ -112,16 +112,14 @@ class CachingDirectory : public Impl, private Acceptor {
       return nullptr;
     }
 
-    {
-      std::unique_lock lock{mutex_};
-      if (GetAcceptor()(cache_.size(), name, advice)) {
-        try {
-          const auto [it, is_new] = cache_.try_emplace(name, std::move(stream));
-          if (is_new) {
-            return it->second->reopen();
-          }
-        } catch (...) {
+    if (std::unique_lock lock{mutex_};
+        GetAcceptor()(cache_.size(), name, advice)) {
+      try {
+        const auto [it, is_new] = cache_.try_emplace(name, std::move(stream));
+        if (is_new) {
+          return it->second->reopen();
         }
+      } catch (...) {
       }
     }
 
