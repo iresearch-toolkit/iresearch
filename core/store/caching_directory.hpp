@@ -53,6 +53,8 @@ class CachingDirectory : public Impl, private Acceptor {
   explicit CachingDirectory(const Acceptor& acceptor, Args&&... args)
     : Impl{std::forward<Args>(args)...}, Acceptor{acceptor} {}
 
+  // FIXME(gnusi): cache existence in "create"?
+
   bool exists(bool& result, std::string_view name) const noexcept override {
     if (std::shared_lock lock{mutex_}; cache_.contains(name)) {
       result = true;
@@ -117,7 +119,7 @@ class CachingDirectory : public Impl, private Acceptor {
 
     {
       std::lock_guard lock{mutex_};
-      if (GetAcceptor()(cache_.size(), name, advice)) {
+      if (Acceptor::operator()(cache_.size(), name, advice)) {
         try {
           const auto [it, _] = cache_.try_emplace(name, std::move(stream));
           return it->second->reopen();
@@ -134,13 +136,11 @@ class CachingDirectory : public Impl, private Acceptor {
     return cache_.size();
   }
 
-  const Acceptor GetAcceptor() const noexcept {
-    return const_cast<CachingDirectory&>(*this).GetAcceptor();
+  const Acceptor& GetAcceptor() const noexcept {
+    return static_cast<const Acceptor&>(*this);
   }
 
  private:
-  Acceptor& GetAcceptor() noexcept { return static_cast<Acceptor&>(*this); }
-
   mutable std::shared_mutex mutex_;
   mutable absl::flat_hash_map<std::string, index_input::ptr> cache_;
 };
