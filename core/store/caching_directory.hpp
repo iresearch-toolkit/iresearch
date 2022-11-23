@@ -87,6 +87,7 @@ class CachingDirectory : public Impl, private Acceptor {
         auto tmp = std::move(src_it->second);
         cache_.erase(src_it);
         try {
+          assert(!cache_.contains(dst));
           cache_[dst] = std::move(tmp);
         } catch (...) {
         }
@@ -116,7 +117,7 @@ class CachingDirectory : public Impl, private Acceptor {
       if (GetAcceptor()(cache_.size(), name, advice)) {
         try {
           const auto [it, is_new] = cache_.try_emplace(name, std::move(stream));
-          if (!is_new) {
+          if (is_new) {
             return it->second->reopen();
           }
         } catch (...) {
