@@ -32,10 +32,9 @@
 namespace iresearch {
 
 // Convenient helper for simulating 'try/catch/finally' semantic
-template<typename Tag, typename Func>
+template<typename Func>
 class [[nodiscard]] Finally {
  public:
-  static_assert(std::is_void_v<Tag>, "Please use deduction guide ctor");
   static_assert(std::is_nothrow_invocable_v<Func>);
 
   // If you need some of it, please use absl::Cleanup
@@ -51,9 +50,6 @@ class [[nodiscard]] Finally {
  private:
   Func func_;
 };
-
-template<typename Func>
-Finally(Func&& func) -> Finally<void, Func>;
 
 // Convenient helper for caching function results
 template<typename Input, Input Size, typename Func,
