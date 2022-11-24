@@ -26,11 +26,12 @@
 #include <array>
 #include <memory>
 
-#include "math_utils.hpp"
-#include "memory.hpp"
-#include "noncopyable.hpp"
-#include "object_pool.hpp"
 #include "shared.hpp"
+#include "utils/ebo_ref.hpp"
+#include "utils/math_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/noncopyable.hpp"
+#include "utils/object_pool.hpp"
 
 namespace iresearch {
 namespace container_utils {

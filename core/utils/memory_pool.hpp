@@ -20,20 +20,19 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MEMORY_POOL_H
-#define IRESEARCH_MEMORY_POOL_H
+#pragma once
 
 #include <map>
 #include <memory>
 
-#include "map_utils.hpp"
-#include "memory.hpp"
-#include "misc.hpp"
-#include "noncopyable.hpp"
 #include "shared.hpp"
+#include "utils/ebo_ref.hpp"
+#include "utils/map_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/misc.hpp"
+#include "utils/noncopyable.hpp"
 
-namespace iresearch {
-namespace memory {
+namespace iresearch::memory {
 
 class freelist : private util::noncopyable {
  private:
@@ -674,7 +673,4 @@ constexpr inline bool operator!=(
   return !(lhs == rhs);
 }
 
-}  // namespace memory
-}  // namespace iresearch
-
-#endif  // IRESEARCH_MEMORY_POOL_H
+}  // namespace iresearch::memory
