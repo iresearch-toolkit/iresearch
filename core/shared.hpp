@@ -27,7 +27,6 @@
 #include <cfloat>
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
 #include <string>
 
 #include "types.hpp"  // iresearch types
@@ -51,15 +50,15 @@
 // it always equals to IRESEARCH_CXX_98
 // therefore we use _MSC_VER
 #if _MSC_VER < 1920  // before MSVC2019
-#error "at least C++20 is required"
+#error "at least C++17 is required"
 #endif
 #else  // GCC/Clang
-#if __cplusplus < IRESEARCH_CXX_20
-#error "at least C++20 is required"
+#if __cplusplus < IRESEARCH_CXX_17
+#error "at least C++17 is required"
 #endif
 #endif
 
-#define IRESEARCH_CXX IRESEARCH_CXX_20
+#define IRESEARCH_CXX IRESEARCH_CXX_17
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Export/Import definitions
@@ -283,5 +282,3 @@ namespace irs = ::iresearch;
 // CMPXCHG16B requires that the destination
 // (memory) operand be 16-byte aligned
 #define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
-
-#endif  // IRESEARCH_SHARED_H

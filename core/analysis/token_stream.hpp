@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TOKEN_STREAM_H
-#define IRESEARCH_TOKEN_STREAM_H
+#pragma once
 
 #include <memory>
 
@@ -39,5 +38,3 @@ class token_stream : public attribute_provider {
 };
 
 }  // namespace iresearch
-
-#endif

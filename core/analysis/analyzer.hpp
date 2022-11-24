@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ANALYZER_H
-#define IRESEARCH_ANALYZER_H
+#pragma once
 
 #include "analysis/token_stream.hpp"
 #include "utils/type_info.hpp"
@@ -44,7 +43,9 @@ class analyzer : public token_stream {
 
 class empty_analyzer final : public analyzer {
  public:
-  static constexpr std::string_view type_name() noexcept { return "empty_analyzer"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "empty_analyzer";
+  }
 
   empty_analyzer() noexcept;
 
@@ -58,5 +59,3 @@ class empty_analyzer final : public analyzer {
 };
 
 }  // namespace iresearch::analysis
-
-#endif
