@@ -68,11 +68,6 @@ constexpr std::string_view ctti() noexcept {
 // --SECTION--                                             template type traits
 // ----------------------------------------------------------------------------
 
-template<typename T>
-using ebo_ref_t =
-  std::conditional_t<std::is_empty_v<T>, T,
-                     std::add_const_t<std::add_lvalue_reference_t<T>>>;
-
 template<typename... Types>
 struct template_traits_t;
 

@@ -31,6 +31,37 @@
 
 namespace iresearch {
 
+template<typename T>
+class EboRef {
+ private:
+  template<typename U>
+  class Pointer {
+   public:
+    Pointer(const U& value) noexcept : value_{const_cast<T*>(&value)} {}
+
+    explicit operator U&() const noexcept { return *value_; }
+
+   private:
+    U* value_;
+  };
+
+  using EboType = std::conditional_t<std::is_empty_v<T>, T, Pointer<T>>;
+
+ public:
+  explicit EboRef(const T& value) noexcept : value_{value} {}
+
+  EboRef& operator=(T& value) noexcept {
+    value_ = EboType{value};
+    return *this;
+  }
+
+  T& get() noexcept { return static_cast<T&>(value_); }
+  const T& get() const noexcept { return static_cast<const T&>(value_); }
+
+ private:
+  IRS_NO_UNIQUE_ADDRESS EboType value_;
+};
+
 // Convenient helper for simulating 'try/catch/finally' semantic
 template<typename Func>
 class [[nodiscard]] Finally {
@@ -48,7 +79,7 @@ class [[nodiscard]] Finally {
   ~Finally() noexcept { func_(); }
 
  private:
-  Func func_;
+  IRS_NO_UNIQUE_ADDRESS Func func_;
 };
 
 // Convenient helper for caching function results
@@ -80,7 +111,7 @@ class CachedFunc {
   constexpr size_t size() const noexcept { return cache_.size(); }
 
  private:
-  Func func_;
+  IRS_NO_UNIQUE_ADDRESS Func func_;
   std::array<output_type, Size> cache_{};
 };
 

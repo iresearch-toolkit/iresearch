@@ -247,7 +247,7 @@ class raw_block_vector_base : private util::noncopyable {
     : alloc_{alloc} {}
 
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept
-    : alloc_{rhs.alloc_}, buffers_(std::move(rhs.buffers_)) {}
+    : alloc_{std::move(rhs.alloc_)}, buffers_(std::move(rhs.buffers_)) {}
 
   FORCE_INLINE size_t buffer_count() const noexcept { return buffers_.size(); }
 
@@ -283,11 +283,11 @@ class raw_block_vector_base : private util::noncopyable {
                 "default move constructor expected");
 
   buffer_t& push_buffer(size_t offset, const bucket_size_t& bucket) {
-    buffers_.emplace_back(offset, bucket.size, alloc_.allocate(bucket));
+    buffers_.emplace_back(offset, bucket.size, alloc_.get().allocate(bucket));
     return buffers_.back();
   }
 
-  IRS_NO_UNIQUE_ADDRESS ebo_ref_t<allocator_type> alloc_;
+  IRS_NO_UNIQUE_ADDRESS EboRef<allocator_type> alloc_;
   std::vector<buffer_entry_t> buffers_;
 };
 

@@ -103,7 +103,7 @@ class memory_file
   void reset(const memory_allocator& alloc) noexcept {
     reset();
     // change internal allocator
-    static_cast<allocator_ref_t&>(*this) = static_cast<allocator_type&>(alloc);
+    alloc_ = static_cast<allocator_type&>(alloc);
   }
 
   void clear() noexcept {

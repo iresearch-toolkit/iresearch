@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BLOCK_POOL_H
-#define IRESEARCH_BLOCK_POOL_H
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -165,7 +164,7 @@ class block_pool_const_iterator {
 
   void refresh() noexcept {
     const auto pos = this->offset();
-    block_ = parent().get_blocks()[block_offset() / block_type::SIZE];
+    block_ = parent().blocks_[block_offset() / block_type::SIZE];
     pos_ = block_->data + pos;
   }
 
@@ -177,7 +176,7 @@ class block_pool_const_iterator {
       return;
     }
 
-    auto& blocks = parent().get_blocks();
+    auto& blocks = parent().blocks_;
     const size_t idx = offset / block_type::SIZE;
     assert(idx < blocks.size());
 
@@ -1182,5 +1181,3 @@ class block_pool {
 };
 
 }  // namespace iresearch
-
-#endif

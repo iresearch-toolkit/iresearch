@@ -105,7 +105,7 @@ class dynamic_bitset {
     const auto num_words = bits_to_words(bits);
 
     if (num_words > words_) {
-      data_ = memory::allocate_unique<word_t[]>(this->allocator(), num_words,
+      data_ = memory::allocate_unique<word_t[]>(alloc_, num_words,
                                                 memory::allocate_only);
     }
 

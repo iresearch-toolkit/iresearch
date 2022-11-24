@@ -28,15 +28,13 @@
 
 #include "map_utils.hpp"
 #include "memory.hpp"
+#include "misc.hpp"
 #include "noncopyable.hpp"
 #include "shared.hpp"
 
 namespace iresearch {
 namespace memory {
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class freelist
-///////////////////////////////////////////////////////////////////////////////
 class freelist : private util::noncopyable {
  private:
   union slot {
@@ -252,7 +250,7 @@ class pool_base : private util::noncopyable {
   }
 
  protected:
-  IRS_NO_UNIQUE_ADDRESS ebo_ref_t<block_allocator_t> alloc_;
+  IRS_NO_UNIQUE_ADDRESS EboRef<block_allocator_t> alloc_;
   IRS_NO_UNIQUE_ADDRESS grow_policy_t grow_policy_;
 };
 
@@ -309,7 +307,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
     while (!blocks_.empty()) {
       auto* block = blocks_.pop();
 
-      this->allocator().deallocate(
+      this->alloc_.get().deallocate(
         reinterpret_cast<char*>(block),    // begin of the allocated block
         *reinterpret_cast<size_t*>(block)  // size of the block
       );
@@ -389,7 +387,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
     // allocate memory block
     const auto size_in_bytes =
       block_size * slot_size_ + sizeof(size_t) + freelist::MIN_SIZE;
-    char* begin = this->allocator().allocate(size_in_bytes);
+    char* begin = this->alloc_.get().allocate(size_in_bytes);
 
     if (!begin) {
       throw std::bad_alloc();
@@ -400,7 +398,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
 
     // noexcept
     capacity_ += block_size;
-    next_size_ = this->grow_policy()(next_size_);
+    next_size_ = this->grow_policy_(next_size_);
 
     // use 1st slot in a block to store pointer
     // to the prevoiusly allocated block
@@ -436,7 +434,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
 
   template<typename, typename, typename>
   friend class memory_pool_allocator;
-};  // memory_pool
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class template<typename T> allocator_base
@@ -579,7 +577,7 @@ class memory_multi_size_pool : public pool_base<GrowPolicy, BlockAllocator> {
 
   memory_pool_t& pool(const size_t size) const {
     const auto res = pools_.try_emplace(size, size, initial_size_,
-                                        this->allocator(), this->grow_policy());
+                                        this->alloc_.get(), this->grow_policy_);
 
     return res.first->second;
   }
@@ -587,7 +585,7 @@ class memory_multi_size_pool : public pool_base<GrowPolicy, BlockAllocator> {
  private:
   mutable std::map<size_t, memory_pool_t> pools_;
   const size_t initial_size_;  // initial size for all sub-allocators
-};                             // memory_multi_size_pool
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class template<typename T> memory_pool_multi_size_allocator
@@ -660,7 +658,7 @@ class memory_pool_multi_size_allocator : public allocator_base<T> {
 
   template<typename U, typename, typename>
   friend class memory_pool_multi_size_allocator;
-};  // memory_pool_multi_size_allocator
+};
 
 template<typename T, typename U, typename AllocatorsPool, typename Tag>
 constexpr inline bool operator==(

@@ -110,7 +110,6 @@ set(IReSearch_tests_sources
   ./utils/string_tests.cpp
   ./utils/simd_utils_test.cpp
   ./utils/bitset_tests.cpp
-  ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
   ./utils/misc_test.cpp
   ./utils/std_test.cpp

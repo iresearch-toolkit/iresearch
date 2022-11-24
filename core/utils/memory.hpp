@@ -182,7 +182,7 @@ class allocator_deallocator {
 
   explicit allocator_deallocator(const allocator_type& alloc) : alloc_{alloc} {}
 
-  void operator()(pointer p) const noexcept {
+  void operator()(pointer p) noexcept {
     // deallocate storage
     std::allocator_traits<allocator_type>::deallocate(alloc_, p, 1);
   }
@@ -199,7 +199,7 @@ class allocator_deleter {
 
   explicit allocator_deleter(const allocator_type& alloc) : alloc_{alloc} {}
 
-  void operator()(pointer p) const noexcept {
+  void operator()(pointer p) noexcept {
     using traits_t = std::allocator_traits<allocator_type>;
 
     // destroy object
@@ -222,7 +222,7 @@ class allocator_array_deallocator {
   allocator_array_deallocator(const allocator_type& alloc, size_t size)
     : alloc_{alloc}, size_{size} {}
 
-  void operator()(pointer p) const noexcept {
+  void operator()(pointer p) noexcept {
     using traits_t = std::allocator_traits<allocator_type>;
 
     // deallocate storage
@@ -243,7 +243,7 @@ class allocator_array_deleter {
   allocator_array_deleter(const allocator_type& alloc, size_t size)
     : alloc_{alloc}, size_{size} {}
 
-  void operator()(pointer p) const noexcept {
+  void operator()(pointer p) noexcept {
     using traits_t = std::allocator_traits<allocator_type>;
 
     // destroy objects

@@ -25,16 +25,13 @@
 
 #include <vector>
 
-#include "shared.hpp"
 #include "memory.hpp"
 #include "noncopyable.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace memory {
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class arena_allocator
-///////////////////////////////////////////////////////////////////////////////
 template<size_t Size, size_t Alignment = alignof(std::max_align_t)>
 struct memory_arena : private aligned_storage<Size, Alignment>,
                       private util::noncopyable {
@@ -97,10 +94,10 @@ struct memory_arena : private aligned_storage<Size, Alignment>,
   }
 
  private:
-  typedef aligned_storage<Size, Alignment> buffer_t;
+  using buffer_t = aligned_storage<Size, Alignment>;
 
   char* p_{buffer_t::data};  // current position
-};                           // memory_arena
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class arena_allocator_wrapper

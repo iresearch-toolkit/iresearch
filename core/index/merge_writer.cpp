@@ -592,11 +592,6 @@ class compound_term_iterator final : public term_iterator {
                     const doc_map_f* doc_map)
       : first(std::move(term_itr)), second(doc_map) {}
 
-    // GCC 8.1.0/8.2.0 optimized code requires an *explicit* noexcept
-    // non-inlined move constructor implementation, otherwise the move
-    // constructor is fully optimized out
-    // (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87665)
-    GCC8_12_OPTIMIZED_WORKAROUND(__attribute__((noinline)))
     term_iterator_t(term_iterator_t&& other) noexcept
       : first(std::move(other.first)), second(std::move(other.second)) {}
   };
