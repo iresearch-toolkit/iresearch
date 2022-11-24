@@ -78,11 +78,12 @@
 #define RESTRICT __restrict
 #define IRS_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
-#if (defined(__GNUC__) && (__GNUC__ >= 10))
+#if ((defined(__GNUC__) && (__GNUC__ >= 10)) || \
+     (defined(__clang__) && (__clang_major__ >= 11)))
 #define IRESEARCH_HELPER_DLL_IMPORT __attribute__((visibility("default")))
 #define IRESEARCH_HELPER_DLL_EXPORT __attribute__((visibility("default")))
 #define IRESEARCH_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
-#else  // before GCC9
+#else  // before GCC9/clang11
 #error "compiler is not supported"
 #endif
 #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT

@@ -23,6 +23,7 @@
 #pragma once
 
 #include <ctime>
+#include <functional>
 #include <span>
 
 #include "store/data_input.hpp"
