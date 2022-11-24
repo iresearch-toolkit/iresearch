@@ -24,25 +24,26 @@
 
 #include <filesystem>
 
+#include "store/caching_directory.hpp"
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 
 namespace iresearch {
 
-class fs_directory : public directory {
+class FSDirectory : public directory {
  public:
   static constexpr size_t kDefaultPoolSize = 8;
 
-  explicit fs_directory(std::filesystem::path dir,
-                        directory_attributes attrs = directory_attributes{},
-                        size_t fd_pool_size = kDefaultPoolSize);
+  explicit FSDirectory(std::filesystem::path dir,
+                       directory_attributes attrs = directory_attributes{},
+                       size_t fd_pool_size = kDefaultPoolSize);
+
+  const std::filesystem::path& directory() const noexcept;
 
   using directory::attributes;
   directory_attributes& attributes() noexcept override { return attrs_; }
 
   index_output::ptr create(std::string_view name) noexcept override;
-
-  const std::filesystem::path& directory() const noexcept;
 
   bool exists(bool& result, std::string_view name) const noexcept override;
 
@@ -68,6 +69,32 @@ class fs_directory : public directory {
   directory_attributes attrs_;
   std::filesystem::path dir_;
   size_t fd_pool_size_;
+};
+
+class MaxCountAcceptor {
+ public:
+  explicit constexpr MaxCountAcceptor(size_t max_count = 1024) noexcept
+    : max_count_{max_count} {}
+
+  bool operator()(size_t count, std::string_view, IOAdvice) const noexcept {
+    return count < max_count_;
+  }
+
+  size_t MaxCount() const noexcept { return max_count_; }
+
+ private:
+  size_t max_count_;
+};
+
+class CachingFSDirectory
+  : public CachingDirectoryBase<FSDirectory, uint64_t, MaxCountAcceptor> {
+ public:
+  using CachingDirectoryBase::CachingDirectoryBase;
+
+  bool length(uint64_t& result, std::string_view name) const noexcept override;
+
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
 };
 
 }  // namespace iresearch

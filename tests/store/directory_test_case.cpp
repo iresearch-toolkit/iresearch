@@ -4166,9 +4166,9 @@ TEST_P(directory_test_case, smoke_store) {
         ASSERT_EQ(file->length() - 1, file->file_pointer());
       }
 
-      if (dynamic_cast<mmap_directory*>(&dir) ||
+      if (dynamic_cast<MMapDirectory*>(&dir) ||
           dynamic_cast<memory_directory*>(&dir) ||
-          dynamic_cast<fs_directory*>(&dir)) {
+          dynamic_cast<FSDirectory*>(&dir)) {
         const auto fp = file->file_pointer();
         Finally cleanup = [fp, &file]() noexcept {
           try {
@@ -4200,7 +4200,7 @@ TEST_P(directory_test_case, smoke_store) {
       }
 
       // mmap direct buffer access
-      if (dynamic_cast<mmap_directory*>(&dir)) {
+      if (dynamic_cast<MMapDirectory*>(&dir)) {
         const auto fp = file->file_pointer();
         Finally cleanup = [fp, &file]() noexcept {
           try {
@@ -4436,7 +4436,7 @@ class fs_directory_test : public test_base {
     path_ = test_case_dir() / name_;
 
     irs::file_utils::mkdir(path_.c_str(), false);
-    dir_ = std::make_shared<fs_directory>(path_);
+    dir_ = std::make_shared<FSDirectory>(path_);
   }
 
   virtual void TearDown() override {
@@ -4470,7 +4470,7 @@ class fs_directory_test : public test_base {
 
   std::string name_;
   std::filesystem::path path_;
-  std::shared_ptr<fs_directory> dir_;
+  std::shared_ptr<FSDirectory> dir_;
 };
 
 TEST_F(fs_directory_test, orphaned_lock) {

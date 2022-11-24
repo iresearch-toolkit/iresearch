@@ -22,14 +22,31 @@
 
 #pragma once
 
-#include "fs_directory.hpp"
+#include "store/caching_directory.hpp"
+#include "store/fs_directory.hpp"
 
 namespace iresearch {
+namespace mmap_utils {
+class mmap_handle;
+}
 
-class mmap_directory : public fs_directory {
+class MMapDirectory : public FSDirectory {
  public:
-  explicit mmap_directory(std::filesystem::path dir,
-                          directory_attributes attrs = directory_attributes{});
+  explicit MMapDirectory(std::filesystem::path dir,
+                         directory_attributes attrs = directory_attributes{});
+
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
+};
+
+class CachingMMapDirectory
+  : public CachingDirectoryBase<MMapDirectory,
+                                std::shared_ptr<mmap_utils::mmap_handle>,
+                                MaxCountAcceptor> {
+ public:
+  using CachingDirectoryBase::CachingDirectoryBase;
+
+  bool length(uint64_t& result, std::string_view name) const noexcept override;
 
   index_input::ptr open(std::string_view name,
                         IOAdvice advice) const noexcept override;

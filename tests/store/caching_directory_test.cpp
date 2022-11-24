@@ -102,7 +102,7 @@ class CachingDirectoryTestCase : public test_base {
 };
 
 using CachingMMapDirectory =
-  CachingDirectory<irs::mmap_directory, MaxCountAcceptor<1>>;
+  CachingDirectory<irs::MMapDirectory, MaxCountAcceptor<1>>;
 using CachingMMapDirectoryTestCase =
   CachingDirectoryTestCase<CachingMMapDirectory>;
 

@@ -26,52 +26,86 @@
 
 #include <shared_mutex>
 
+#include "shared.hpp"
 #include "store/directory.hpp"
 
 namespace iresearch {
 
-class MaxCountAcceptor {
+template<typename Value, typename Acceptor>
+class CachingHelper {
  public:
-  explicit constexpr MaxCountAcceptor(size_t max_count = 1024) noexcept
-    : max_count_{max_count} {}
+  explicit CachingHelper(const Acceptor& acceptor) : acceptor_{acceptor} {}
 
-  bool operator()(size_t count, std::string_view, IOAdvice) const noexcept {
-    return count < max_count_;
+  template<typename Visitor>
+  bool Visit(std::string_view key, Visitor&& visitor) const noexcept {
+    const size_t key_hash = cache_.hash_function()(key);
+
+    {
+      std::shared_lock lock{mutex_};
+      if (auto it = cache_.find(key, key_hash); it != cache_.end()) {
+        return visitor(it->second);
+      }
+    }
+
+    return false;
   }
 
-  size_t MaxCount() const noexcept { return max_count_; }
+  template<typename Constructor>
+  bool Put(std::string_view key, IOAdvice advice, Constructor&& ctor) {
+    bool is_new = false;
+
+    if (std::unique_lock lock{mutex_}; acceptor_(cache_.size(), key, advice)) {
+      try {
+        cache_.lazy_emplace(key, [&](const auto& map_ctor) {
+          is_new = true;
+          map_ctor(key, ctor());
+        });
+      } catch (...) {
+      }
+    }
+
+    return is_new;
+  }
+
+  void Remove(std::string_view key) {
+    std::lock_guard lock{mutex_};
+    cache_.erase(key);
+  }
+
+  void Rename(std::string_view src, std::string_view dst) {
+    const auto src_hash = cache_.hash_function()(src);
+
+    std::lock_guard lock{mutex_};
+    if (auto src_it = cache_.find(src, src_hash); src_it != cache_.end()) {
+      auto tmp = std::move(src_it->second);
+      cache_.erase(src_it);
+      try {
+        assert(!cache_.contains(dst));
+        cache_[dst] = std::move(tmp);
+      } catch (...) {
+      }
+    }
+  }
+
+  size_t Count() const {
+    std::lock_guard lock{mutex_};
+    return cache_.size();
+  }
+
+  const Acceptor& GetAcceptor() const noexcept { return acceptor_; }
 
  private:
-  size_t max_count_;
+  mutable std::shared_mutex mutex_;
+  mutable absl::flat_hash_map<std::string, Value> cache_;
+  IRS_NO_UNIQUE_ADDRESS Acceptor acceptor_;
 };
 
-template<typename Impl, typename Acceptor = MaxCountAcceptor>
-class CachingDirectory : public Impl, private Acceptor {
+template<typename Impl, typename Value, typename Acceptor>
+class CachingDirectoryBase : public Impl {
  public:
-  template<typename... Args>
-  explicit CachingDirectory(const Acceptor& acceptor, Args&&... args)
-    : Impl{std::forward<Args>(args)...}, Acceptor{acceptor} {}
-
-  bool exists(bool& result, std::string_view name) const noexcept override {
-    if (Find(name, [&](auto&) noexcept { result = true; })) {
-      return true;
-    }
-
-    return Impl::exists(result, name);
-  }
-
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
-    if (Find(name, [&](auto& stream) noexcept { result = stream.length(); })) {
-      return true;
-    }
-
-    return Impl::length(result, name);
-  }
-
   bool remove(std::string_view name) noexcept override {
     if (Impl::remove(name)) {
-      std::lock_guard lock{mutex_};
-      cache_.erase(name);
+      cache_.Remove(name);
       return true;
     }
     return false;
@@ -79,29 +113,66 @@ class CachingDirectory : public Impl, private Acceptor {
 
   bool rename(std::string_view src, std::string_view dst) noexcept override {
     if (Impl::rename(src, dst)) {
-      const auto src_hash = cache_.hash_function()(src);
-
-      std::lock_guard lock{mutex_};
-      if (auto src_it = cache_.find(src, src_hash); src_it != cache_.end()) {
-        auto tmp = std::move(src_it->second);
-        cache_.erase(src_it);
-        try {
-          assert(!cache_.contains(dst));
-          cache_[dst] = std::move(tmp);
-        } catch (...) {
-        }
-      }
+      cache_.Rename(src, dst);
       return true;
     }
     return false;
+  }
+
+  bool exists(bool& result, std::string_view name) const noexcept override {
+    if (cache_.Visit(name, [&](auto&) noexcept {
+          result = true;
+          return true;
+        })) {
+      return true;
+    }
+
+    return Impl::exists(result, name);
+  }
+
+  size_t Count() const noexcept { return cache_.Count(); }
+
+  const Acceptor& GetAcceptor() const noexcept { return cache_.GetAcceptor(); }
+
+ protected:
+  template<typename... Args>
+  explicit CachingDirectoryBase(const Acceptor& acceptor, Args&&... args)
+    : Impl{std::forward<Args>(args)...}, cache_{acceptor} {}
+
+  mutable CachingHelper<Value, Acceptor> cache_;
+};
+
+template<typename Impl, typename Acceptor>
+class CachingDirectory
+  : public CachingDirectoryBase<Impl, index_input::ptr, Acceptor> {
+ public:
+  template<typename... Args>
+  explicit CachingDirectory(Args&&... args)
+    : CachingDirectoryBase<Impl, index_input::ptr, Acceptor>{
+        std::forward<Args>(args)...} {}
+
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
+    if (this->cache_.Visit(name, [&](auto& stream) noexcept {
+          if (stream) {
+            result = stream->length();
+            return true;
+          }
+          return true;
+        })) {
+      return true;
+    }
+
+    return Impl::length(result, name);
   }
 
   index_input::ptr open(std::string_view name,
                         IOAdvice advice) const noexcept override {
     index_input::ptr stream;
 
-    if (Find(name, [&](auto& cached) noexcept { stream = cached.reopen(); }) &&
-        stream) {
+    if (this->cache_.Visit(name, [&](const auto& cached) noexcept {
+          stream = cached->reopen();
+          return stream != nullptr;
+        })) {
       return stream;
     }
 
@@ -111,48 +182,10 @@ class CachingDirectory : public Impl, private Acceptor {
       return nullptr;
     }
 
-    if (std::unique_lock lock{mutex_};
-        GetAcceptor()(cache_.size(), name, advice)) {
-      try {
-        const auto [it, is_new] = cache_.try_emplace(name, std::move(stream));
-        if (is_new) {
-          return it->second->reopen();
-        }
-      } catch (...) {
-      }
-    }
+    this->cache_.Put(name, advice, [&]() { return stream->reopen(); });
 
     return stream;
   }
-
-  size_t Count() const noexcept {
-    std::shared_lock lock{mutex_};
-    return cache_.size();
-  }
-
-  const Acceptor& GetAcceptor() const noexcept {
-    return static_cast<const Acceptor&>(*this);
-  }
-
- private:
-  template<typename Visitor>
-  bool Find(std::string_view key, Visitor&& visitor) const noexcept {
-    const size_t key_hash = cache_.hash_function()(key);
-
-    {
-      std::shared_lock lock{mutex_};
-      if (auto it = cache_.find(key, key_hash); it != cache_.end()) {
-        assert(it->second);
-        visitor(*it->second);
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  mutable std::shared_mutex mutex_;
-  mutable absl::flat_hash_map<std::string, index_input::ptr> cache_;
 };
 
 }  // namespace iresearch

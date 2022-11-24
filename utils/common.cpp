@@ -48,10 +48,10 @@ constexpr auto kFactories =
 #endif
     {"mmap",
      [](std::string_view path) -> irs::directory::ptr {
-       return std::make_unique<irs::mmap_directory>(path);
+       return std::make_unique<irs::MMapDirectory>(path);
      }},
     {"fs", [](std::string_view path) -> irs::directory::ptr {
-       return std::make_unique<irs::fs_directory>(path);
+       return std::make_unique<irs::FSDirectory>(path);
      }}});
 
 }  // namespace
