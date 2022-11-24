@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <string_view>
+
 #include "shared.hpp"
 
 namespace iresearch {
