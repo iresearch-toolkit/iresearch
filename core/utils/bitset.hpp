@@ -73,12 +73,12 @@ class dynamic_bitset {
             word_ptr_deleter_t{alloc_, 0}} {}
 
   explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc())
-    : dynamic_bitset(alloc) {
+    : dynamic_bitset{alloc} {
     reset(bits);
   }
 
   dynamic_bitset(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_constructible_v<Alloc>)
+    std::is_nothrow_move_constructible_v<allocator_type>)
     : alloc_{std::move(alloc_)},
       bits_{rhs.bits_},
       words_{rhs.words_},
@@ -88,7 +88,7 @@ class dynamic_bitset {
   }
 
   dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_assignable_v<Alloc>) {
+    std::is_nothrow_move_assignable_v<allocator_type>) {
     if (this != &rhs) {
       alloc_ = std::move(rhs.alloc_);
       bits_ = rhs.bits_;
@@ -198,7 +198,7 @@ class dynamic_bitset {
     data_[words_ - 1] &= mask;
   }
 
-  IRS_NO_UNIQUE_ADDRESS Alloc alloc_;
+  IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
   size_t bits_{};    // number of bits in a bitset
   size_t words_{};   // number of words used for storing data
   word_ptr_t data_;  // words array
