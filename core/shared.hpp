@@ -25,9 +25,6 @@
 
 #include <bit>
 #include <cfloat>
-#include <cmath>
-#include <cstdlib>
-#include <string>
 
 #include "types.hpp"  // iresearch types
 
@@ -81,7 +78,7 @@
 #define RESTRICT __restrict
 #define IRS_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
-#if (defined(__GNUC__) && (__GNUC__ >= 9))
+#if (defined(__GNUC__) && (__GNUC__ >= 10))
 #define IRESEARCH_HELPER_DLL_IMPORT __attribute__((visibility("default")))
 #define IRESEARCH_HELPER_DLL_EXPORT __attribute__((visibility("default")))
 #define IRESEARCH_HELPER_DLL_LOCAL __attribute__((visibility("hidden")))
