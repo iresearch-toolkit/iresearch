@@ -24,7 +24,7 @@
 #pragma once
 
 #include <bit>
-#include <cfloat>
+#include <cfloat>  // for FLT_EVAL_METHOD
 
 #include "types.hpp"  // iresearch types
 
