@@ -48,7 +48,7 @@ class [[nodiscard]] Finally {
   ~Finally() noexcept { func_(); }
 
  private:
-  Func func_;
+  IRS_NO_UNIQUE_ADDRESS Func func_;
 };
 
 // Convenient helper for caching function results
@@ -80,7 +80,7 @@ class CachedFunc {
   constexpr size_t size() const noexcept { return cache_.size(); }
 
  private:
-  Func func_;
+  IRS_NO_UNIQUE_ADDRESS Func func_;
   std::array<output_type, Size> cache_{};
 };
 

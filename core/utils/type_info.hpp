@@ -20,11 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TYPE_INDEX_H
-#define IRESEARCH_TYPE_INDEX_H
+#pragma once
+
+#include <string_view>
 
 #include "shared.hpp"
-#include "string.hpp"
 
 namespace iresearch {
 
@@ -97,5 +97,3 @@ struct hash<::iresearch::type_info> {
 };
 
 }  // namespace std
-
-#endif  // IRESEARCH_TYPE_INDEX_H

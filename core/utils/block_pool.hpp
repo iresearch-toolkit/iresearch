@@ -20,28 +20,23 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BLOCK_POOL_H
-#define IRESEARCH_BLOCK_POOL_H
+#pragma once
 
-#include <vector>
-#include <functional>
 #include <algorithm>
-#include <memory>
-#include <cmath>
-#include <iterator>
 #include <cassert>
+#include <cmath>
 #include <cstring>
+#include <functional>
+#include <iterator>
+#include <memory>
+#include <vector>
 
-#include "memory.hpp"
-#include "ebo.hpp"
 #include "bytes_utils.hpp"
+#include "memory.hpp"
 #include "misc.hpp"
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_const_iterator
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_const_iterator {
  public:
@@ -169,7 +164,7 @@ class block_pool_const_iterator {
 
   void refresh() noexcept {
     const auto pos = this->offset();
-    block_ = parent().get_blocks()[block_offset() / block_type::SIZE];
+    block_ = parent().blocks_[block_offset() / block_type::SIZE];
     pos_ = block_->data + pos;
   }
 
@@ -181,7 +176,7 @@ class block_pool_const_iterator {
       return;
     }
 
-    auto& blocks = parent().get_blocks();
+    auto& blocks = parent().blocks_;
     const size_t idx = offset / block_type::SIZE;
     assert(idx < blocks.size());
 
@@ -215,7 +210,7 @@ class block_pool_const_iterator {
   block_type* block_;
   pointer pos_;
   size_t block_start_;
-};  // block_pool_const_iterator
+};
 
 template<typename ContType>
 typename ContType::block_type
@@ -227,9 +222,6 @@ block_pool_const_iterator<ContType> operator+(
   return it + offset;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_iterator
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_iterator : public block_pool_const_iterator<ContType> {
  public:
@@ -300,7 +292,7 @@ class block_pool_iterator : public block_pool_const_iterator<ContType> {
   }
 
   pointer buffer() noexcept { return const_cast<pointer>(base::buffer()); }
-};  // block_pool_iterator
+};
 
 template<typename ContType>
 block_pool_iterator<ContType> operator+(
@@ -308,9 +300,6 @@ block_pool_iterator<ContType> operator+(
   return it + offset;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_reader
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_reader {
  public:
@@ -385,14 +374,14 @@ class block_pool_reader {
 
  private:
   const_iterator where_;
-};  // block_pool_reader
+};
 
 namespace detail {
 
 struct level {
   size_t next;  // next level
   size_t size;  // size of the level in bytes
-};              // level
+};
 
 constexpr const level LEVELS[] = {{1, 5},   {2, 14}, {3, 20}, {4, 30},
                                   {5, 40},  {6, 40}, {7, 80}, {8, 80},
@@ -403,9 +392,6 @@ constexpr const size_t LEVEL_SIZE_MAX = 200;  // FIXME compile time
 
 }  // namespace detail
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_sliced_reader_base
-////////////////////////////////////////////////////////////////////////////////
 template<typename ReaderType, typename ContType>
 class block_pool_sliced_reader_base {
  public:
@@ -499,11 +485,8 @@ class block_pool_sliced_reader_base {
  protected:
   const_iterator where_;
   size_t left_{};
-};  // block_pool_sliced_reader_base
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_sliced_reader
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_sliced_reader
   : public block_pool_sliced_reader_base<block_pool_sliced_reader<ContType>,
@@ -577,9 +560,6 @@ bool block_pool_sliced_reader<ContType>::eof() const noexcept {
   return this->where_.pool_offset() == end_;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_sliced_greedy_reader
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_sliced_greedy_reader
   : public block_pool_sliced_reader_base<
@@ -627,7 +607,7 @@ class block_pool_sliced_greedy_reader
   }
 
   size_t level_{};
-};  // block_pool_sliced_greedy_reader
+};
 
 template<typename ContType>
 block_pool_sliced_greedy_reader<ContType>::block_pool_sliced_greedy_reader(
@@ -648,9 +628,6 @@ class block_pool_sliced_inserter;
 template<typename ContType>
 class block_pool_sliced_greedy_inserter;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_inserter
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_inserter {
  public:
@@ -841,11 +818,8 @@ class block_pool_inserter {
   }
 
   typename container::iterator where_;
-};  // block_pool_inserter
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_sliced_inserter
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_sliced_inserter {
  public:
@@ -889,10 +863,6 @@ class block_pool_sliced_inserter {
 
   block_pool_sliced_inserter& operator++() noexcept { return *this; }
 
-  // MSVC 2017.3 through 2017.9 incorectly count offsets if this function is
-  // inlined during optimization MSVC 2017.2 and below work correctly for both
-  // debug and release
-  MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(__declspec(noinline))
   void write(typename container::const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {
@@ -914,11 +884,8 @@ class block_pool_sliced_inserter {
  private:
   typename container::iterator where_;
   typename container::inserter* writer_;
-};  // block_pool_sliced_inserter
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool_sliced_greedy_inserter
-////////////////////////////////////////////////////////////////////////////////
 template<typename ContType>
 class block_pool_sliced_greedy_inserter {
  public:
@@ -946,10 +913,6 @@ class block_pool_sliced_greedy_inserter {
 
   container& parent() noexcept { return where_.parent(); }
 
-  // At least MSVC 2017.9 incorectly process increment if this function is
-  // inlined during optimization Other MSVC 2017 versions could have similar
-  // issue
-  MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(__declspec(noinline))
   block_pool_sliced_greedy_inserter& operator=(
     typename container::const_reference value) {
     assert(!*where_);  // we're not at the address part
@@ -971,10 +934,6 @@ class block_pool_sliced_greedy_inserter {
 
   block_pool_sliced_greedy_inserter& operator++() noexcept { return *this; }
 
-  // MSVC 2017.3 through 2017.9 incorectly count offsets if this function is
-  // inlined during optimization MSVC 2017.2 and below work correctly for both
-  // debug and release
-  MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(__declspec(noinline))
   void write(typename container::const_pointer b, size_t len) {
     assert(!*where_);  // we're not at the address part
 
@@ -1013,11 +972,8 @@ class block_pool_sliced_greedy_inserter {
   size_t slice_offset_;
   typename container::iterator where_;
   typename container::inserter* writer_;
-};  // block_pool_sliced_greedy_inserter
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct proxy_block_t
-////////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t Size>
 struct proxy_block_t {
   typedef T value_type;
@@ -1026,55 +982,47 @@ struct proxy_block_t {
 
   value_type data[SIZE];  // begin of valid bytes
   size_t start;           // where block starts
-};                        // proxy_block_t
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class block_pool
-////////////////////////////////////////////////////////////////////////////////
 template<typename T, size_t BlockSize, typename AllocType = std::allocator<T>>
 class block_pool {
  public:
-  typedef proxy_block_t<T, BlockSize> block_type;
-  typedef AllocType allocator;
-  typedef typename allocator::value_type value_type;
-  typedef typename allocator::value_type& reference;
-  typedef typename allocator::value_type const& const_reference;
-  typedef typename std::allocator_traits<allocator>::pointer pointer;
-  typedef
-    typename std::allocator_traits<allocator>::const_pointer const_pointer;
-  typedef block_pool<value_type, BlockSize, allocator> my_type;
-
-  typedef block_pool_iterator<my_type> iterator;
-  typedef block_pool_const_iterator<my_type> const_iterator;
-
-  typedef block_pool_reader<my_type> reader;
-  typedef block_pool_sliced_reader<my_type> sliced_reader;
-
-  typedef block_pool_inserter<my_type> inserter;
-  typedef block_pool_sliced_inserter<my_type> sliced_inserter;
-
-  typedef block_pool_sliced_greedy_inserter<my_type> sliced_greedy_inserter;
-  typedef block_pool_sliced_greedy_reader<my_type> sliced_greedy_reader;
+  using block_type = proxy_block_t<T, BlockSize>;
+  using allocator = AllocType;
+  using value_type = typename allocator::value_type;
+  using reference = typename allocator::value_type&;
+  using const_reference = typename allocator::value_type const&;
+  using pointer = typename std::allocator_traits<allocator>::pointer;
+  using const_pointer =
+    typename std::allocator_traits<allocator>::const_pointer;
+  using my_type = block_pool<value_type, BlockSize, allocator>;
+  using iterator = block_pool_iterator<my_type>;
+  using const_iterator = block_pool_const_iterator<my_type>;
+  using reader = block_pool_reader<my_type>;
+  using sliced_reader = block_pool_sliced_reader<my_type>;
+  using inserter = block_pool_inserter<my_type>;
+  using sliced_inserter = block_pool_sliced_inserter<my_type>;
+  using sliced_greedy_inserter = block_pool_sliced_greedy_inserter<my_type>;
+  using sliced_greedy_reader = block_pool_sliced_greedy_reader<my_type>;
 
   explicit block_pool(const allocator& alloc = allocator())
-    : rep_(blocks_t(block_ptr_allocator(alloc)), alloc) {
+    : alloc_{alloc}, blocks_{block_ptr_allocator{alloc_}} {
     static_assert(block_type::SIZE > 0, "block_type::SIZE == 0");
   }
 
   ~block_pool() { free(); }
 
   void alloc_buffer(size_t count = 1) {
-    proxy_allocator proxy_alloc(get_allocator());
-    auto& blocks = get_blocks();
+    proxy_allocator proxy_alloc{alloc_};
 
     while (count--) {
       auto* p = proxy_alloc.allocate(1);
       assert(p);
 
-      p->start = blocks.size() * block_type::SIZE;
+      p->start = blocks_.size() * block_type::SIZE;
 
       try {
-        blocks.emplace_back(p);
+        blocks_.emplace_back(p);
       } catch (...) {
         proxy_alloc.deallocate(p, 1);
         throw;
@@ -1082,7 +1030,7 @@ class block_pool {
     }
   }
 
-  size_t block_count() const noexcept { return get_blocks().size(); }
+  size_t block_count() const noexcept { return blocks_.size(); }
 
   size_t value_count() const noexcept {
     return block_type::SIZE * block_count();
@@ -1153,7 +1101,7 @@ class block_pool {
 
   void clear() noexcept {
     free();
-    get_blocks().clear();
+    blocks_.clear();
   }
 
   const_reference at(size_t offset) const noexcept {
@@ -1166,7 +1114,7 @@ class block_pool {
     const size_t idx = offset / block_type::SIZE;
     const size_t pos = offset % block_type::SIZE;
 
-    return *(get_blocks()[idx]->data + pos);
+    return *(blocks_[idx]->data + pos);
   }
 
   reference operator[](size_t offset) noexcept { return at(offset); }
@@ -1195,12 +1143,12 @@ class block_pool {
 
   pointer buffer(size_t i) noexcept {
     assert(i < block_count());
-    return get_blocks()[i];
+    return blocks_[i];
   }
 
   const_pointer buffer(size_t i) const noexcept {
     assert(i < block_count());
-    return get_blocks()[i];
+    return blocks_[i];
   }
 
   size_t block_offset(size_t i) const noexcept {
@@ -1213,31 +1161,23 @@ class block_pool {
   friend const_iterator;
 
   void free() noexcept {
-    proxy_allocator proxy_alloc{get_allocator()};
+    proxy_allocator proxy_alloc{alloc_};
 
-    for (auto* p : get_blocks()) {
+    for (auto* p : blocks_) {
       proxy_alloc.deallocate(p, 1);
     }
   }
 
-  typedef
-    typename std::allocator_traits<allocator>::template rebind_alloc<block_type>
-      proxy_allocator;
-  typedef typename std::allocator_traits<allocator>::template rebind_alloc<
-    block_type*>
-    block_ptr_allocator;
-  typedef std::vector<block_type*, block_ptr_allocator> blocks_t;
+  using proxy_allocator = typename std::allocator_traits<
+    allocator>::template rebind_alloc<block_type>;
+  using block_ptr_allocator = typename std::allocator_traits<
+    allocator>::template rebind_alloc<block_type*>;
+  using blocks_t = std::vector<block_type*, block_ptr_allocator>;
 
   static_assert(std::is_nothrow_constructible_v<proxy_allocator, allocator>);
 
-  const blocks_t& get_blocks() const noexcept { return rep_.first(); }
-  blocks_t& get_blocks() noexcept { return rep_.first(); }
-  const allocator& get_allocator() const noexcept { return rep_.second(); }
-  allocator& get_allocator() noexcept { return rep_.second(); }
-
-  compact_pair<blocks_t, allocator> rep_;
-};  // block_pool
+  IRS_NO_UNIQUE_ADDRESS allocator alloc_;
+  blocks_t blocks_;
+};
 
 }  // namespace iresearch
-
-#endif

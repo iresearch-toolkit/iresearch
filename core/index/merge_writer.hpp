@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MERGE_WRITER_H
-#define IRESEARCH_MERGE_WRITER_H
+#pragma once
 
 #include <vector>
 
@@ -115,5 +114,3 @@ class merge_writer : public util::noncopyable {
 static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
 
 }  // namespace iresearch
-
-#endif

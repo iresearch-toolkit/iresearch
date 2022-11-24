@@ -21,8 +21,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FILE_UTILS_H
-#define IRESEARCH_FILE_UTILS_H
+#pragma once
 
 #include <fcntl.h>  // open/_wopen
 
@@ -181,5 +180,3 @@ bool file_sync(const file_path_t name) noexcept;
 bool file_sync(int fd) noexcept;
 
 }  // namespace iresearch::file_utils
-
-#endif
