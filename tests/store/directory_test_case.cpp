@@ -4064,7 +4064,7 @@ TEST_P(directory_test_case, smoke_store) {
     EXPECT_EQ(it->size() + sizeof buf, file->file_pointer());
     crc.process_bytes(buf, sizeof buf);
     file->write_byte(++b);
-    crc.process_byte(b);
+    crc.process_bytes(&b, sizeof b);
     EXPECT_EQ(it->size() + sizeof buf + 1, file->file_pointer());
 
     EXPECT_EQ(crc.checksum(), file->checksum());
@@ -4286,7 +4286,8 @@ TEST_P(directory_test_case, smoke_store) {
 
       crc.process_bytes(buf.c_str(), buf.size());
       crc.process_bytes(readbuf, sizeof readbuf);
-      crc.process_byte(b + 1);
+      const irs::byte_type t = b + 1;
+      crc.process_bytes(&t, sizeof t);
       ++b;
 
       EXPECT_TRUE(file->eof());

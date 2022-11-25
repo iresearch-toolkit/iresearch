@@ -22,8 +22,8 @@
 
 #include <benchmark/benchmark.h>
 
-#include "search/top_terms_collector.hpp"
 #include "formats/empty_term_reader.hpp"
+#include "search/top_terms_collector.hpp"
 
 namespace {
 
@@ -49,34 +49,29 @@ namespace {
 template<typename T>
 class seek_term_iterator final : public irs::seek_term_iterator {
  public:
-  typedef const std::tuple<irs::bytes_ref, term_meta, T>* iterator_type;
+  using iterator_type = const std::tuple<irs::bytes_view, term_meta, T>*;
 
   seek_term_iterator(iterator_type begin, size_t count)
     : begin_(begin), end_(begin + count), cookie_ptr_(begin) {}
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref&) override {
+  irs::SeekResult seek_ge(irs::bytes_view) override {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(const irs::bytes_ref&) override { return false; }
+  bool seek(irs::bytes_view) override { return false; }
 
-  virtual bool seek(const irs::bytes_ref&, const irs::seek_cookie&) override {
-    return true;
+  irs::seek_cookie::ptr cookie() const override {
+    return std::make_unique<seek_ptr>(cookie_ptr_);
   }
 
-  virtual irs::seek_cookie::ptr cookie() const override {
-    return irs::memory::make_unique<struct seek_ptr>(cookie_ptr_);
-  }
-
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<decltype(meta_)>::id()) {
       return &meta_;
     }
     return nullptr;
   }
 
-  virtual bool next() noexcept override {
+  bool next() noexcept override {
     if (begin_ == end_) {
       return false;
     }
@@ -88,63 +83,64 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  virtual const irs::bytes_ref& value() const noexcept override {
-    return value_;
-  }
+  irs::bytes_view value() const noexcept override { return value_; }
 
-  virtual void read() override {}
+  void read() override {}
 
-  virtual irs::doc_iterator::ptr postings(
+  irs::doc_iterator::ptr postings(
     irs::IndexFeatures /*features*/) const override {
     return irs::doc_iterator::empty();
   }
 
-  struct seek_ptr : irs::seek_cookie {
+  struct seek_ptr final : irs::seek_cookie {
     explicit seek_ptr(iterator_type ptr) noexcept : ptr(ptr) {}
 
-    virtual irs::attribute* get_mutable(
-      irs::type_info::type_id) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
       return nullptr;
     }
+
+    bool IsEqual(const seek_cookie& rhs) const override { return false; }
+
+    size_t Hash() const override { return 0; }
 
     iterator_type ptr;
   };
 
  private:
   term_meta meta_;
-  irs::bytes_ref value_;
+  irs::bytes_view value_;
   iterator_type begin_;
   iterator_type end_;
   iterator_type cookie_ptr_;
-};  // term_iterator
+};
 
 struct sub_reader final : irs::sub_reader {
   explicit sub_reader(size_t num_docs) : num_docs(num_docs) {}
-  virtual const irs::column_reader* column(irs::string_ref) const override {
+  const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  virtual irs::column_iterator::ptr columns() const override {
+  irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
-  virtual const irs::column_reader* column(irs::field_id) const override {
+  const irs::column_reader* column(irs::field_id) const override {
     return nullptr;
   }
-  virtual uint64_t docs_count() const override { return 0; }
-  virtual irs::doc_iterator::ptr docs_iterator() const override {
+  uint64_t docs_count() const override { return 0; }
+  irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
-  virtual const irs::term_reader* field(irs::string_ref) const override {
+  const irs::term_reader* field(std::string_view) const override {
     return nullptr;
   }
-  virtual irs::field_iterator::ptr fields() const override {
+  irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  virtual uint64_t live_docs_count() const override { return 0; }
-  virtual const irs::sub_reader& operator[](size_t) const override {
+  uint64_t live_docs_count() const override { return 0; }
+  const irs::sub_reader& operator[](size_t) const override {
     throw std::out_of_range("index out of range");
   }
-  virtual size_t size() const override { return 0; }
-  virtual const irs::column_reader* sort() const override { return nullptr; }
+  size_t size() const override { return 0; }
+  const irs::column_reader* sort() const override { return nullptr; }
 
   size_t num_docs;
 };  // index_reader
@@ -153,7 +149,7 @@ struct state {
   struct segment_state {
     const irs::term_reader* field;
     uint32_t docs_count;
-    std::vector<const std::pair<irs::string_ref, term_meta>*> cookies;
+    std::vector<const std::pair<std::string_view, term_meta>*> cookies;
   };
 
   std::map<const irs::sub_reader*, segment_state> segments;
@@ -165,10 +161,11 @@ void BM_top_term_collector(benchmark::State& state) {
   irs::empty_term_reader term_reader(42);
   sub_reader segment(100);
 
-  std::vector<std::tuple<irs::bytes_ref, term_meta, int>> terms(state.range(0));
+  std::vector<std::tuple<irs::bytes_view, term_meta, int>> terms(
+    state.range(0));
   for (auto& term : terms) {
     auto& key = std::get<2>(term) = ::rand();
-    std::get<0>(term) = irs::bytes_ref(
+    std::get<0>(term) = irs::bytes_view(
       reinterpret_cast<const irs::byte_type*>(&key), sizeof(key));
   }
 
@@ -177,7 +174,7 @@ void BM_top_term_collector(benchmark::State& state) {
     collector.prepare(segment, term_reader, it);
 
     while (it.next()) {
-      collector.visit(*reinterpret_cast<const int*>(it.value().c_str()));
+      collector.visit(*reinterpret_cast<const int*>(it.value().data()));
     }
   }
 }

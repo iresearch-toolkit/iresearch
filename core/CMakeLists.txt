@@ -59,8 +59,8 @@ if (MSVC)
 else ()
   add_definitions(-Wall)
 
-  if (NOT APPLE)
-    set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+  if (NOT APPLE AND NOT (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug"))
+    add_link_options(-s)
   endif ()
 
   # set OS specific headers
@@ -420,6 +420,7 @@ target_link_libraries(iresearch-static
   ${URING_LIBRARIES}
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
+  absl::crc32c
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
