@@ -139,49 +139,4 @@ class CachingDirectoryBase : public Impl {
   mutable CachingHelper<Value> cache_;
 };
 
-template<typename Impl>
-class CachingDirectory : public CachingDirectoryBase<Impl, index_input::ptr> {
- public:
-  template<typename... Args>
-  explicit CachingDirectory(Args&&... args)
-    : CachingDirectoryBase<Impl, index_input::ptr>{
-        std::forward<Args>(args)...} {}
-
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
-    if (this->cache_.Visit(name, [&](auto& stream) noexcept {
-          if (stream) {
-            result = stream->length();
-            return true;
-          }
-          return true;
-        })) {
-      return true;
-    }
-
-    return Impl::length(result, name);
-  }
-
-  index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override {
-    index_input::ptr stream;
-
-    if (this->cache_.Visit(name, [&](const auto& cached) noexcept {
-          stream = cached->reopen();
-          return stream != nullptr;
-        })) {
-      return stream;
-    }
-
-    stream = Impl::open(name, advice);
-
-    if (!stream) {
-      return nullptr;
-    }
-
-    this->cache_.Put(name, advice, [&]() { return stream->reopen(); });
-
-    return stream;
-  }
-};
-
 }  // namespace iresearch
