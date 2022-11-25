@@ -51,7 +51,7 @@ class CachingHelper {
   }
 
   template<typename Constructor>
-  bool Put(std::string_view key, Constructor&& ctor) {
+  bool Put(std::string_view key, Constructor&& ctor) noexcept {
     bool is_new = false;
 
     if (std::unique_lock lock{mutex_}; cache_.size() < max_count_) {
@@ -67,12 +67,12 @@ class CachingHelper {
     return is_new;
   }
 
-  void Remove(std::string_view key) {
+  void Remove(std::string_view key) noexcept {
     std::lock_guard lock{mutex_};
     cache_.erase(key);
   }
 
-  void Rename(std::string_view src, std::string_view dst) {
+  void Rename(std::string_view src, std::string_view dst) noexcept {
     const auto src_hash = cache_.hash_function()(src);
 
     std::lock_guard lock{mutex_};
@@ -87,7 +87,7 @@ class CachingHelper {
     }
   }
 
-  size_t Count() const {
+  size_t Count() const noexcept {
     std::lock_guard lock{mutex_};
     return cache_.size();
   }
