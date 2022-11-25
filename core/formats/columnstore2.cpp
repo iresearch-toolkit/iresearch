@@ -447,8 +447,8 @@ class column_base : public column_reader, private util::noncopyable {
     assert(hdr.docs_index);
     in.read_bytes(hdr.docs_index, column_data_.data() + buffer_offset,
                   bitmap_size);
-    if (is_encrypted(hdr)) {
-      assert(mapping);
+    assert(mapping || !is_encrypted(hdr));
+    if (is_encrypted(hdr) && mapping) {
       mapping->emplace_back(hdr.docs_index, buffer_offset);
     } else {
       hdr.docs_index = buffer_offset;
