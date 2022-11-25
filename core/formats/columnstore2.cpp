@@ -440,6 +440,7 @@ class column_base : public column_reader, private util::noncopyable {
     return file_len - header().docs_index;
   }
 
+  template<bool Encrypted>
   void store_bitmap_index(size_t bitmap_size, size_t buffer_offset,
                           remapped_bytes_view_input::mapping* mapping,
                           column_header& hdr, index_input& in) {
@@ -702,7 +703,11 @@ class dense_fixed_length_column final : public column_base {
     in.read_bytes(data_, column_data_.data(), data_size);
     irs::remapped_bytes_view_input::mapping mapping;
     if (bitmap_size) {
-      store_bitmap_index(bitmap_size, data_size, &mapping, hdr, in);
+      if (is_encrypted(hdr)) {
+        store_bitmap_index<true>(bitmap_size, data_size, &mapping, hdr, in);
+      } else {
+        store_bitmap_index<false>(bitmap_size, data_size, nullptr, hdr, in);
+      }
     }
     if (is_encrypted(hdr)) {
       mapping.emplace_back(data_, 0);
@@ -863,7 +868,7 @@ class fixed_length_column final : public column_base {
     uint64_t len_;
   };  // payload_reader
 
-  template<bool encrypted>
+  template<bool Encrypted>
   bool make_buffered_data(
     uint64_t len, column_header& hdr, irs::index_input& in,
     std::vector<uint64_t>& blocks, std::vector<irs::byte_type>& column_data,
@@ -899,7 +904,7 @@ class fixed_length_column final : public column_base {
       auto& block = blocks[std::get<0>(offset)];
       in.read_bytes(block, column_data.data() + std::get<1>(offset),
                     std::get<2>(offset));
-      if constexpr (encrypted) {
+      if constexpr (Encrypted) {
         assert(mapping);
         mapping->emplace_back(block, std::get<1>(offset));
       } else {
@@ -907,7 +912,8 @@ class fixed_length_column final : public column_base {
       }
     }
     if (bitmap_index_size) {
-      store_bitmap_index(bitmap_index_size, blocks_data_size, mapping, hdr, in);
+      store_bitmap_index<Encrypted>(bitmap_index_size, blocks_data_size,
+                                    mapping, hdr, in);
     }
     return true;
   }
@@ -1022,7 +1028,7 @@ class sparse_column final : public column_base {
     const column_block* blocks_;
   };
 
-  template<bool encrypted>
+  template<bool Encrypted>
   bool make_buffered_data(
     column_header& hdr, irs::index_input& in, std::vector<column_block>& blocks,
     std::vector<irs::byte_type>& column_data,
@@ -1099,7 +1105,7 @@ class sparse_column final : public column_base {
         assert(block.addr == std::get<4>(chunk));
         in.read_bytes(block.addr, column_data.data() + std::get<2>(chunk),
                       std::get<3>(chunk));
-        if constexpr (encrypted) {
+        if constexpr (Encrypted) {
           assert(mapping);
           mapping->emplace_back(block.addr, std::get<2>(chunk));
         } else {
@@ -1108,7 +1114,7 @@ class sparse_column final : public column_base {
       }
     }
     if (bitmap_size) {
-      store_bitmap_index(bitmap_size, chunks_size, mapping, hdr, in);
+      store_bitmap_index<Encrypted>(bitmap_size, chunks_size, mapping, hdr, in);
     }
     return true;
   }
