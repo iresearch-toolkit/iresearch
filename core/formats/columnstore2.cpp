@@ -448,7 +448,8 @@ class column_base : public column_reader, private util::noncopyable {
     assert(hdr.docs_index);
     in.read_bytes(hdr.docs_index, column_data_.data() + buffer_offset,
                   bitmap_size);
-    if (is_encrypted(hdr)) {
+    if (Encrypted) {
+      assert(is_encrypted(hdr));
       assert(mapping);
       mapping->emplace_back(hdr.docs_index, buffer_offset);
     } else {
@@ -1091,7 +1092,7 @@ class sparse_column final : public column_base {
         assert(block.data == std::get<4>(chunk));
         in.read_bytes(block.data, column_data.data() + std::get<2>(chunk),
                       std::get<3>(chunk));
-        if constexpr (encrypted) {
+        if constexpr (Encrypted) {
           assert(mapping);
           mapping->emplace_back(block.data, std::get<2>(chunk));
         } else {
