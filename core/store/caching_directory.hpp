@@ -103,6 +103,8 @@ class CachingHelper {
 template<typename Impl, typename Value>
 class CachingDirectoryBase : public Impl {
  public:
+  using ImplType = Impl;
+
   template<typename... Args>
   explicit CachingDirectoryBase(size_t max_count, Args&&... args)
     : Impl{std::forward<Args>(args)...}, cache_{max_count} {}

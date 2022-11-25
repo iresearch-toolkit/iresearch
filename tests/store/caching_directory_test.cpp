@@ -30,13 +30,95 @@
 
 namespace tests {
 
-template<typename Directory, size_t MaxCount>
+template<typename Impl>
+class DirectoryProxy : public Impl {
+ public:
+  template<typename... Args>
+  explicit DirectoryProxy(Args&&... args) noexcept
+    : Impl{std::forward<Args>(args)...} {}
+
+  bool exists(bool& result, std::string_view name) const noexcept override {
+    EXPECT_TRUE(expect_call_);
+    return Impl::exists(result, name);
+  }
+
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
+    EXPECT_TRUE(expect_call_);
+    return Impl::length(result, name);
+  }
+
+  irs::index_input::ptr open(std::string_view name,
+                             irs::IOAdvice advice) const noexcept override {
+    EXPECT_TRUE(expect_call_);
+    return Impl::open(name, advice);
+  }
+
+  void ExpectCall(bool v) noexcept { expect_call_ = v; }
+
+ private:
+  bool expect_call_{false};
+};
+
+template<typename Directory>
+struct IsProxy : std::false_type {};
+
+template<typename Impl>
+struct IsProxy<DirectoryProxy<Impl>> : std::true_type {};
+
+template<typename Impl>
+class CachingDirectory
+  : public irs::CachingDirectoryBase<Impl, irs::index_input::ptr> {
+ public:
+  template<typename... Args>
+  explicit CachingDirectory(Args&&... args)
+    : irs::CachingDirectoryBase<Impl, irs::index_input::ptr>{
+        std::forward<Args>(args)...} {}
+
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
+    if (this->cache_.Visit(name, [&](auto& stream) noexcept {
+          result = stream->length();
+          return true;
+        })) {
+      return true;
+    }
+
+    return Impl::length(result, name);
+  }
+
+  irs::index_input::ptr open(std::string_view name,
+                             irs::IOAdvice advice) const noexcept override {
+    if (bool(advice & (irs::IOAdvice::READONCE | irs::IOAdvice::DIRECT_READ))) {
+      return Impl::open(name, advice);
+    }
+
+    irs::index_input::ptr stream;
+
+    if (this->cache_.Visit(name, [&](auto& cached) noexcept {
+          stream = cached->reopen();
+          return stream != nullptr;
+        })) {
+      return stream;
+    }
+
+    stream = Impl::open(name, advice);
+
+    if (!stream) {
+      return nullptr;
+    }
+
+    this->cache_.Put(name, [&]() { return stream->reopen(); });
+
+    return stream;
+  }
+};
+
+template<typename Directory>
 class CachingDirectoryTestCase : public test_base {
  protected:
   void SetUp() override {
     test_base::SetUp();
     dir_ = std::static_pointer_cast<Directory>(MakePhysicalDirectory<Directory>(
-      this, irs::directory_attributes{}, MaxCount));
+      this, irs::directory_attributes{}, size_t{1}));
   }
 
   void TearDown() override {
@@ -56,9 +138,9 @@ class CachingDirectoryTestCase : public test_base {
   std::shared_ptr<Directory> dir_;
 };
 
-template<typename Directory, size_t MaxCount>
+template<typename Directory>
 template<typename IsCached>
-void CachingDirectoryTestCase<Directory, MaxCount>::TestCachingImpl(
+void CachingDirectoryTestCase<Directory>::TestCachingImpl(
   IsCached&& is_cached) {
   auto& dir = GetDirectory();
 
@@ -69,9 +151,8 @@ void CachingDirectoryTestCase<Directory, MaxCount>::TestCachingImpl(
   };
 
   auto check_file = [&](std::string_view name, irs::byte_type b,
-                        bool readonce = false) {
-    auto stream = dir.open(
-      name, readonce ? irs::IOAdvice::READONCE : irs::IOAdvice::NORMAL);
+                        irs::IOAdvice advice = irs::IOAdvice::NORMAL) {
+    auto stream = dir.open(name, advice);
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(1, stream->length());
     ASSERT_EQ(0, stream->file_pointer());
@@ -81,6 +162,10 @@ void CachingDirectoryTestCase<Directory, MaxCount>::TestCachingImpl(
 
   ASSERT_EQ(0, dir.Cache().Count());
   ASSERT_EQ(1, dir.Cache().MaxCount());
+
+  if constexpr (IsProxy<typename Directory::ImplType>::value) {
+    dir.ExpectCall(true);
+  }
 
   bool exists = true;
   uint64_t length{};
@@ -97,6 +182,11 @@ void CachingDirectoryTestCase<Directory, MaxCount>::TestCachingImpl(
   ASSERT_EQ(0, dir.Cache().Count());
   check_file("0", 42);
   ASSERT_EQ(1, dir.Cache().Count());
+
+  if constexpr (IsProxy<Directory>::value) {
+    dir.ExpectCall(false);
+  }
+
   ASSERT_TRUE(is_cached("0"));
   check_file("0", 42);
   ASSERT_EQ(1, dir.Cache().Count());
@@ -110,6 +200,9 @@ void CachingDirectoryTestCase<Directory, MaxCount>::TestCachingImpl(
   ASSERT_TRUE(is_cached("2"));
 
   // Following entry must not be cached because of cache size
+  if constexpr (IsProxy<typename Directory::ImplType>::value) {
+    dir.ExpectCall(true);
+  }
   create_file("1", 24);
   ASSERT_FALSE(is_cached("1"));
   ASSERT_EQ(1, dir.Cache().Count());
@@ -126,22 +219,39 @@ void CachingDirectoryTestCase<Directory, MaxCount>::TestCachingImpl(
   ASSERT_FALSE(is_cached("2"));
 
   // We don't use cache for readonce files
-  check_file("1", 24, true);
+  check_file("1", 24, irs::IOAdvice::READONCE);
   ASSERT_EQ(0, dir.Cache().Count());
   ASSERT_FALSE(is_cached("1"));
 
-  // We now can use cache
   check_file("1", 24);
   ASSERT_EQ(1, dir.Cache().Count());
   ASSERT_TRUE(is_cached("1"));
 
+  // We now can use cache
+  if constexpr (IsProxy<typename Directory::ImplType>::value) {
+    dir.ExpectCall(false);
+  }
   check_file("1", 24);
   ASSERT_EQ(1, dir.Cache().Count());
   ASSERT_TRUE(is_cached("1"));
 }
 
+using CachingDirectoryTest = CachingDirectoryTestCase<
+  CachingDirectory<DirectoryProxy<irs::MMapDirectory>>>;
+
+TEST_F(CachingDirectoryTest, TestCaching) {
+  TestCachingImpl([&](std::string_view name) -> bool {
+    irs::index_input* handle{};
+    const bool found = GetDirectory().Cache().Visit(name, [&](auto& cached) {
+      handle = cached.get();
+      return true;
+    });
+    return found && handle;
+  });
+}
+
 using CachingMMapDirectoryTest =
-  CachingDirectoryTestCase<irs::CachingMMapDirectory, 1>;
+  CachingDirectoryTestCase<irs::CachingMMapDirectory>;
 
 TEST_F(CachingMMapDirectoryTest, TestCaching) {
   TestCachingImpl([&](std::string_view name) -> bool {
@@ -155,7 +265,7 @@ TEST_F(CachingMMapDirectoryTest, TestCaching) {
 }
 
 using CachingFSDirectoryTest =
-  CachingDirectoryTestCase<irs::CachingFSDirectory, 1>;
+  CachingDirectoryTestCase<irs::CachingFSDirectory>;
 
 TEST_F(CachingFSDirectoryTest, TestCaching) {
   TestCachingImpl([&](std::string_view name) -> bool {
