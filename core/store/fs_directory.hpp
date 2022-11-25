@@ -71,23 +71,7 @@ class FSDirectory : public directory {
   size_t fd_pool_size_;
 };
 
-class MaxCountAcceptor {
- public:
-  explicit constexpr MaxCountAcceptor(size_t max_count = 1024) noexcept
-    : max_count_{max_count} {}
-
-  bool operator()(size_t count, std::string_view, IOAdvice) const noexcept {
-    return count < max_count_;
-  }
-
-  size_t MaxCount() const noexcept { return max_count_; }
-
- private:
-  size_t max_count_;
-};
-
-class CachingFSDirectory
-  : public CachingDirectoryBase<FSDirectory, uint64_t, MaxCountAcceptor> {
+class CachingFSDirectory : public CachingDirectoryBase<FSDirectory, uint64_t> {
  public:
   using CachingDirectoryBase::CachingDirectoryBase;
 

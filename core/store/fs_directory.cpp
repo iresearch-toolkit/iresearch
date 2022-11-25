@@ -640,8 +640,8 @@ index_input::ptr CachingFSDirectory::open(std::string_view name,
                                           IOAdvice advice) const noexcept {
   auto stream = FSDirectory::open(name, advice);
 
-  if (stream) {
-    cache_.Put(name, advice, [&]() noexcept { return stream->length(); });
+  if ((IOAdvice::READONCE != (advice & IOAdvice::READONCE)) && stream) {
+    cache_.Put(name, [&]() noexcept { return stream->length(); });
   }
 
   return stream;

@@ -75,20 +75,21 @@ class rot13_encryption final : public irs::ctr_encryption {
 
    private:
     size_t block_size_;
-  };  // rot13_cipher
+  };
 
   rot13_cipher cipher_;
   size_t header_length_;
-};  // rot13_encryption
+};
 
-template<typename Impl>
+template<typename Impl, typename... Args>
 std::shared_ptr<irs::directory> MakePhysicalDirectory(
-  const test_base* test, irs::directory_attributes attrs) {
+  const test_base* test, irs::directory_attributes attrs, Args&&... args) {
   if (test) {
     const auto dir_path = test->test_dir() / "index";
     std::filesystem::create_directories(dir_path);
 
-    auto dir = std::make_unique<Impl>(dir_path, std::move(attrs));
+    auto dir = std::make_unique<Impl>(std::forward<Args>(args)..., dir_path,
+                                      std::move(attrs));
 
     return {dir.release(), [dir_path = std::move(dir_path)](irs::directory* p) {
               std::filesystem::remove_all(dir_path);

@@ -41,8 +41,7 @@ class MMapDirectory : public FSDirectory {
 
 class CachingMMapDirectory
   : public CachingDirectoryBase<MMapDirectory,
-                                std::shared_ptr<mmap_utils::mmap_handle>,
-                                MaxCountAcceptor> {
+                                std::shared_ptr<mmap_utils::mmap_handle>> {
  public:
   using CachingDirectoryBase::CachingDirectoryBase;
 

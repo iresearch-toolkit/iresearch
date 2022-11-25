@@ -30,61 +30,13 @@
 
 namespace tests {
 
-template<typename Impl>
-class DirectoryProxy : public Impl {
- public:
-  template<typename... Args>
-  explicit DirectoryProxy(Args&&... args) noexcept
-    : Impl{std::forward<Args>(args)...} {}
-
-  bool exists(bool& result, std::string_view name) const noexcept override {
-    EXPECT_TRUE(exists_expected_);
-    return Impl::exists(result, name);
-  }
-
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
-    EXPECT_TRUE(length_expected_);
-    return Impl::length(result, name);
-  }
-
-  irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept override {
-    EXPECT_TRUE(open_expected_);
-    return Impl::open(name, advice);
-  }
-
-  void ExpectExists(bool v) noexcept { exists_expected_ = v; }
-  void ExpectLength(bool v) noexcept { length_expected_ = v; }
-  void ExpectOpen(bool v) noexcept { open_expected_ = v; }
-
- private:
-  bool exists_expected_{false};
-  bool length_expected_{false};
-  bool open_expected_{false};
-};
-
-template<typename Impl, typename Acceptor>
-struct CachingDirectory : public irs::CachingDirectory<DirectoryProxy<Impl>> {
-  template<typename... Args>
-  CachingDirectory(Args&&... args)
-    : irs::CachingDirectory<DirectoryProxy<Impl>>{
-        Acceptor{}, std::forward<Args>(args)...} {}
-
-  using irs::CachingDirectory<DirectoryProxy<Impl>>::GetAcceptor;
-};
-
-template<size_t Count>
-struct MaxCountAcceptor : irs::MaxCountAcceptor {
-  MaxCountAcceptor() noexcept : irs::MaxCountAcceptor{Count} {}
-};
-
-template<typename Directory>
+template<typename Directory, size_t MaxCount>
 class CachingDirectoryTestCase : public test_base {
  public:
   void SetUp() override {
     test_base::SetUp();
-    dir_ = std::static_pointer_cast<Directory>(
-      MakePhysicalDirectory<Directory>(this, irs::directory_attributes{}));
+    dir_ = std::static_pointer_cast<Directory>(MakePhysicalDirectory<Directory>(
+      this, irs::directory_attributes{}, MaxCount));
   }
 
   void TearDown() override {
@@ -101,10 +53,8 @@ class CachingDirectoryTestCase : public test_base {
   std::shared_ptr<Directory> dir_;
 };
 
-using CachingMMapDirectory =
-  CachingDirectory<irs::MMapDirectory, MaxCountAcceptor<1>>;
 using CachingMMapDirectoryTestCase =
-  CachingDirectoryTestCase<CachingMMapDirectory>;
+  CachingDirectoryTestCase<irs::CachingMMapDirectory, 1>;
 
 TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   auto& dir = GetDirectory();
@@ -124,12 +74,17 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
     ASSERT_EQ(1, stream->file_pointer());
   };
 
-  ASSERT_EQ(0, dir.Count());
-  ASSERT_EQ(1, dir.GetAcceptor().MaxCount());
+  auto is_cached = [&](std::string_view name) -> bool {
+    std::shared_ptr<irs::mmap_utils::mmap_handle> handle;
+    const bool found = dir.Cache().Visit(name, [&](auto& cached) {
+      handle = cached;
+      return true;
+    });
+    return found && 2 == handle.use_count();
+  };
 
-  dir.ExpectExists(true);
-  dir.ExpectLength(true);
-  dir.ExpectOpen(true);
+  ASSERT_EQ(0, dir.Cache().Count());
+  ASSERT_EQ(1, dir.Cache().MaxCount());
 
   bool exists = true;
   uint64_t length{};
@@ -140,49 +95,48 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   ASSERT_FALSE(dir.length(length, "0"));
   ASSERT_EQ(nullptr, dir.open("0", irs::IOAdvice::NORMAL));
 
-  create_file("0", 42);  // Entry isn't cached yet
-  ASSERT_EQ(0, dir.Count());
-  check_file("0", 42);  // Entry is cached after first  check
-  ASSERT_EQ(1, dir.Count());
-
-  // Ensure we use cache
-  dir.ExpectExists(false);
-  dir.ExpectLength(false);
-  dir.ExpectOpen(false);
-  check_file("0", 42);  // Entry is cached after first  check
-  ASSERT_EQ(1, dir.Count());
+  ASSERT_FALSE(is_cached("0"));
+  create_file("0", 42);
+  ASSERT_FALSE(is_cached("0"));
+  ASSERT_EQ(0, dir.Cache().Count());
+  check_file("0", 42);
+  ASSERT_EQ(1, dir.Cache().Count());
+  ASSERT_TRUE(is_cached("0"));
+  check_file("0", 42);
+  ASSERT_EQ(1, dir.Cache().Count());
+  ASSERT_TRUE(is_cached("0"));
 
   // Rename
   ASSERT_TRUE(dir.rename("0", "2"));
+  ASSERT_TRUE(is_cached("2"));
   check_file("2", 42);  // Entry is cached after first  check
-  ASSERT_EQ(1, dir.Count());
+  ASSERT_EQ(1, dir.Cache().Count());
+  ASSERT_TRUE(is_cached("2"));
 
   // Following entry must not be cached because of cache size
-  dir.ExpectExists(true);
-  dir.ExpectLength(true);
-  dir.ExpectOpen(true);
-
   create_file("1", 24);
-  ASSERT_EQ(1, dir.Count());
+  ASSERT_FALSE(is_cached("1"));
+  ASSERT_EQ(1, dir.Cache().Count());
   check_file("1", 24);
-  ASSERT_EQ(1, dir.Count());
+  ASSERT_FALSE(is_cached("1"));
+  ASSERT_EQ(1, dir.Cache().Count());
   check_file("1", 24);
-  ASSERT_EQ(1, dir.Count());
+  ASSERT_FALSE(is_cached("1"));
+  ASSERT_EQ(1, dir.Cache().Count());
 
   // Remove
   ASSERT_TRUE(dir.remove("2"));
-  ASSERT_EQ(0, dir.Count());
+  ASSERT_EQ(0, dir.Cache().Count());
+  ASSERT_FALSE(is_cached("2"));
 
   // We now can use cache
   check_file("1", 24);
-  ASSERT_EQ(1, dir.Count());
-
-  dir.ExpectExists(false);
-  dir.ExpectLength(false);
-  dir.ExpectOpen(false);
+  ASSERT_EQ(1, dir.Cache().Count());
+  ASSERT_TRUE(is_cached("1"));
 
   check_file("1", 24);
-  ASSERT_EQ(1, dir.Count());
+  ASSERT_EQ(1, dir.Cache().Count());
+  ASSERT_TRUE(is_cached("1"));
 }
 
 }  // namespace tests

@@ -31,10 +31,10 @@
 
 namespace iresearch {
 
-template<typename Value, typename Acceptor>
+template<typename Value>
 class CachingHelper {
  public:
-  explicit CachingHelper(const Acceptor& acceptor) : acceptor_{acceptor} {}
+  explicit CachingHelper(size_t max_count) noexcept : max_count_{max_count} {}
 
   template<typename Visitor>
   bool Visit(std::string_view key, Visitor&& visitor) const noexcept {
@@ -51,10 +51,10 @@ class CachingHelper {
   }
 
   template<typename Constructor>
-  bool Put(std::string_view key, IOAdvice advice, Constructor&& ctor) {
+  bool Put(std::string_view key, Constructor&& ctor) {
     bool is_new = false;
 
-    if (std::unique_lock lock{mutex_}; acceptor_(cache_.size(), key, advice)) {
+    if (std::unique_lock lock{mutex_}; cache_.size() < max_count_) {
       try {
         cache_.lazy_emplace(key, [&](const auto& map_ctor) {
           is_new = true;
@@ -92,23 +92,24 @@ class CachingHelper {
     return cache_.size();
   }
 
-  const Acceptor& GetAcceptor() const noexcept { return acceptor_; }
+  size_t MaxCount() const noexcept { return max_count_; }
 
  private:
   mutable std::shared_mutex mutex_;
   mutable absl::flat_hash_map<std::string, Value> cache_;
-  IRS_NO_UNIQUE_ADDRESS Acceptor acceptor_;
+  size_t max_count_;
 };
 
-template<typename Impl, typename Value, typename Acceptor>
+template<typename Impl, typename Value>
 class CachingDirectoryBase : public Impl {
  public:
+  template<typename... Args>
+  explicit CachingDirectoryBase(size_t max_count, Args&&... args)
+    : Impl{std::forward<Args>(args)...}, cache_{max_count} {}
+
   bool remove(std::string_view name) noexcept override {
-    if (Impl::remove(name)) {
-      cache_.Remove(name);
-      return true;
-    }
-    return false;
+    cache_.Remove(name);  // On windows it's important to first close the handle
+    return Impl::remove(name);
   }
 
   bool rename(std::string_view src, std::string_view dst) noexcept override {
@@ -130,25 +131,18 @@ class CachingDirectoryBase : public Impl {
     return Impl::exists(result, name);
   }
 
-  size_t Count() const noexcept { return cache_.Count(); }
-
-  const Acceptor& GetAcceptor() const noexcept { return cache_.GetAcceptor(); }
+  const auto& Cache() const noexcept { return cache_; }
 
  protected:
-  template<typename... Args>
-  explicit CachingDirectoryBase(const Acceptor& acceptor, Args&&... args)
-    : Impl{std::forward<Args>(args)...}, cache_{acceptor} {}
-
-  mutable CachingHelper<Value, Acceptor> cache_;
+  mutable CachingHelper<Value> cache_;
 };
 
-template<typename Impl, typename Acceptor>
-class CachingDirectory
-  : public CachingDirectoryBase<Impl, index_input::ptr, Acceptor> {
+template<typename Impl>
+class CachingDirectory : public CachingDirectoryBase<Impl, index_input::ptr> {
  public:
   template<typename... Args>
   explicit CachingDirectory(Args&&... args)
-    : CachingDirectoryBase<Impl, index_input::ptr, Acceptor>{
+    : CachingDirectoryBase<Impl, index_input::ptr>{
         std::forward<Args>(args)...} {}
 
   bool length(uint64_t& result, std::string_view name) const noexcept override {

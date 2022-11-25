@@ -32,7 +32,7 @@ namespace {
 using mmap_utils::mmap_handle;
 
 // Converts the specified IOAdvice to corresponding posix madvice
-inline int get_posix_madvice(IOAdvice advice) {
+inline int GetPosixMadvice(IOAdvice advice) {
   switch (advice) {
     case IOAdvice::NORMAL:
     case IOAdvice::DIRECT_READ:
@@ -78,7 +78,7 @@ std::shared_ptr<mmap_handle> OpenHandle(const file_path_t file,
     return handle;
   }
 
-  const int padvice = get_posix_madvice(advice);
+  const int padvice = GetPosixMadvice(advice);
 
   if (IR_MADVICE_NORMAL != padvice && !handle->advise(padvice)) {
     IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER
@@ -105,9 +105,9 @@ std::shared_ptr<mmap_handle> OpenHandle(const std::filesystem::path& dir,
 }
 
 // Input stream for memory mapped directory
-class mmap_index_input final : public bytes_view_input {
+class MMapIndexInput final : public bytes_view_input {
  public:
-  explicit mmap_index_input(std::shared_ptr<mmap_handle>&& handle) noexcept
+  explicit MMapIndexInput(std::shared_ptr<mmap_handle>&& handle) noexcept
     : handle_{std::move(handle)} {
     if (IRS_LIKELY(handle_ && handle_->size())) {
       assert(handle_->addr() != MAP_FAILED);
@@ -118,15 +118,15 @@ class mmap_index_input final : public bytes_view_input {
     }
   }
 
-  mmap_index_input(const mmap_index_input& rhs) noexcept
+  MMapIndexInput(const MMapIndexInput& rhs) noexcept
     : bytes_view_input{rhs}, handle_{rhs.handle_} {}
 
-  ptr dup() const override { return std::make_unique<mmap_index_input>(*this); }
+  ptr dup() const override { return std::make_unique<MMapIndexInput>(*this); }
 
   ptr reopen() const override { return dup(); }
 
  private:
-  mmap_index_input& operator=(const mmap_index_input&) = delete;
+  MMapIndexInput& operator=(const MMapIndexInput&) = delete;
 
   std::shared_ptr<mmap_utils::mmap_handle> handle_;
 };
@@ -150,7 +150,7 @@ index_input::ptr MMapDirectory::open(std::string_view name,
   }
 
   try {
-    return std::make_unique<mmap_index_input>(std::move(handle));
+    return std::make_unique<MMapIndexInput>(std::move(handle));
   } catch (...) {
   }
 
@@ -171,37 +171,37 @@ bool CachingMMapDirectory::length(uint64_t& result,
 
 index_input::ptr CachingMMapDirectory::open(std::string_view name,
                                             IOAdvice advice) const noexcept {
-  if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
-    return FSDirectory::open(name, advice);
+  if (bool(advice & (IOAdvice::READONCE | IOAdvice::DIRECT_READ))) {
+    return MMapDirectory::open(name, advice);
   }
 
-  std::shared_ptr<mmap_utils::mmap_handle> handle;
-
-  auto make_stream = [&]() noexcept -> index_input::ptr {
-    if (!handle) {
-      return nullptr;
-    }
+  auto make_stream = [](auto&& handle) noexcept -> index_input::ptr {
+    assert(handle);
 
     try {
-      return std::make_unique<mmap_index_input>(std::move(handle));
+      return std::make_unique<MMapIndexInput>(std::move(handle));
     } catch (...) {
     }
 
     return nullptr;
   };
 
+  std::shared_ptr<mmap_utils::mmap_handle> handle;
+
   if (cache_.Visit(name, [&](const auto& cached) noexcept {
         handle = cached;
         return handle != nullptr;
       })) {
-    return make_stream();
+    return make_stream(std::move(handle));
   }
 
   if (handle = OpenHandle(directory(), name, advice); handle) {
-    cache_.Put(name, advice, [&]() noexcept { return handle; });
+    cache_.Put(name, [&]() noexcept { return handle; });
+
+    return make_stream(std::move(handle));
   }
 
-  return make_stream();
+  return nullptr;
 }
 
 }  // namespace iresearch
