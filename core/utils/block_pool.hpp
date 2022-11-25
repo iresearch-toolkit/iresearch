@@ -863,6 +863,10 @@ class block_pool_sliced_inserter {
 
   block_pool_sliced_inserter& operator++() noexcept { return *this; }
 
+  // MSVC starting 2017.3  incorectly count offsets if this function is
+  // inlined during optimization MSVC 2017.2 and below work correctly for both
+  // debug and release
+  MSVC_ONLY(__declspec(noinline))
   void write(typename container::const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {
@@ -913,6 +917,10 @@ class block_pool_sliced_greedy_inserter {
 
   container& parent() noexcept { return where_.parent(); }
 
+  // MSVC starting 2017.3  incorectly count offsets if this function is
+  // inlined during optimization MSVC 2017.2 and below work correctly for both
+  // debug and release
+  MSVC_ONLY(__declspec(noinline))
   block_pool_sliced_greedy_inserter& operator=(
     typename container::const_reference value) {
     assert(!*where_);  // we're not at the address part
@@ -934,6 +942,10 @@ class block_pool_sliced_greedy_inserter {
 
   block_pool_sliced_greedy_inserter& operator++() noexcept { return *this; }
 
+  // MSVC starting 2017.3  incorectly count offsets if this function is
+  // inlined during optimization MSVC 2017.2 and below work correctly for both
+  // debug and release
+  MSVC_ONLY(__declspec(noinline))
   void write(typename container::const_pointer b, size_t len) {
     assert(!*where_);  // we're not at the address part
 
