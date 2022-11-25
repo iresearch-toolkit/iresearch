@@ -32,7 +32,7 @@ namespace tests {
 
 template<typename Directory, size_t MaxCount>
 class CachingDirectoryTestCase : public test_base {
- public:
+ protected:
   void SetUp() override {
     test_base::SetUp();
     dir_ = std::static_pointer_cast<Directory>(MakePhysicalDirectory<Directory>(
@@ -49,14 +49,17 @@ class CachingDirectoryTestCase : public test_base {
     return *dir_;
   }
 
+  template<typename IsCached>
+  void TestCachingImpl(IsCached&& is_cached);
+
  private:
   std::shared_ptr<Directory> dir_;
 };
 
-using CachingMMapDirectoryTestCase =
-  CachingDirectoryTestCase<irs::CachingMMapDirectory, 1>;
-
-TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
+template<typename Directory, size_t MaxCount>
+template<typename IsCached>
+void CachingDirectoryTestCase<Directory, MaxCount>::TestCachingImpl(
+  IsCached&& is_cached) {
   auto& dir = GetDirectory();
 
   auto create_file = [&](std::string_view name, irs::byte_type b) {
@@ -65,22 +68,15 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
     stream->write_byte(b);
   };
 
-  auto check_file = [&](std::string_view name, irs::byte_type b) {
-    auto stream = dir.open(name, irs::IOAdvice::NORMAL);
+  auto check_file = [&](std::string_view name, irs::byte_type b,
+                        bool readonce = false) {
+    auto stream = dir.open(
+      name, readonce ? irs::IOAdvice::READONCE : irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(1, stream->length());
     ASSERT_EQ(0, stream->file_pointer());
     ASSERT_EQ(b, stream->read_byte());
     ASSERT_EQ(1, stream->file_pointer());
-  };
-
-  auto is_cached = [&](std::string_view name) -> bool {
-    std::shared_ptr<irs::mmap_utils::mmap_handle> handle;
-    const bool found = dir.Cache().Visit(name, [&](auto& cached) {
-      handle = cached;
-      return true;
-    });
-    return found && 2 == handle.use_count();
   };
 
   ASSERT_EQ(0, dir.Cache().Count());
@@ -129,6 +125,11 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   ASSERT_EQ(0, dir.Cache().Count());
   ASSERT_FALSE(is_cached("2"));
 
+  // We don't use cache for readonce files
+  check_file("1", 24, true);
+  ASSERT_EQ(0, dir.Cache().Count());
+  ASSERT_FALSE(is_cached("1"));
+
   // We now can use cache
   check_file("1", 24);
   ASSERT_EQ(1, dir.Cache().Count());
@@ -137,6 +138,34 @@ TEST_F(CachingMMapDirectoryTestCase, TestCaching) {
   check_file("1", 24);
   ASSERT_EQ(1, dir.Cache().Count());
   ASSERT_TRUE(is_cached("1"));
+}
+
+using CachingMMapDirectoryTest =
+  CachingDirectoryTestCase<irs::CachingMMapDirectory, 1>;
+
+TEST_F(CachingMMapDirectoryTest, TestCaching) {
+  TestCachingImpl([&](std::string_view name) -> bool {
+    std::shared_ptr<irs::mmap_utils::mmap_handle> handle;
+    const bool found = GetDirectory().Cache().Visit(name, [&](auto& cached) {
+      handle = cached;
+      return true;
+    });
+    return found && 2 == handle.use_count();
+  });
+}
+
+using CachingFSDirectoryTest =
+  CachingDirectoryTestCase<irs::CachingFSDirectory, 1>;
+
+TEST_F(CachingFSDirectoryTest, TestCaching) {
+  TestCachingImpl([&](std::string_view name) -> bool {
+    uint64_t size = std::numeric_limits<uint64_t>::max();
+    const bool found = GetDirectory().Cache().Visit(name, [&](uint64_t cached) {
+      size = cached;
+      return true;
+    });
+    return found && 1 == size;
+  });
 }
 
 }  // namespace tests
