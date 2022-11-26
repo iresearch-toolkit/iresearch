@@ -71,7 +71,9 @@ class CachingHelper {
     const size_t key_hash = cache_.hash_function()(key);
 
     std::lock_guard lock{mutex_};
-    cache_.erase(key, key_hash);
+    if (const auto it = cache_.find(key, key_hash); it != cache_.end()) {
+      cache_.erase(it);
+    }
   }
 
   void Rename(std::string_view src, std::string_view dst) noexcept {
