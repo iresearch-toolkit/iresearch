@@ -68,8 +68,10 @@ class CachingHelper {
   }
 
   void Remove(std::string_view key) noexcept {
+    const size_t key_hash = cache_.hash_function()(key);
+
     std::lock_guard lock{mutex_};
-    cache_.erase(key);
+    cache_.erase(key, key_hash);
   }
 
   void Rename(std::string_view src, std::string_view dst) noexcept {
@@ -110,7 +112,7 @@ class CachingDirectoryBase : public Impl {
     : Impl{std::forward<Args>(args)...}, cache_{max_count} {}
 
   bool remove(std::string_view name) noexcept override {
-    cache_.Remove(name);  // On windows it's important to first close the handle
+    cache_.Remove(name);  // On Windows it's important to first close the handle
     return Impl::remove(name);
   }
 

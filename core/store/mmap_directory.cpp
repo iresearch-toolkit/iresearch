@@ -204,4 +204,12 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
   return nullptr;
 }
 
+#ifdef _MSC_VER
+bool CachingMMapDirectory::rename(std::string_view src,
+                                  std::string_view dst) noexcept {
+  cache_.Remove(src);  // On Windows it's impossible to move opened file
+  return MMapDirectory::rename(src, dst);
+}
+#endif
+
 }  // namespace iresearch
