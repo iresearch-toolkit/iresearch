@@ -209,7 +209,7 @@ void CachingDirectoryTestCase<Directory>::TestCachingImpl(
   ASSERT_EQ(kIsCachedAfterRename, is_cached("2"));
   check_file("2", 42);  // Entry is cached after first check
   ASSERT_EQ(1, dir.Cache().Count());
-  ASSERT_EQ(kIsCachedAfterRename, is_cached("2"));
+  ASSERT_TRUE(is_cached("2"));
 
   // Following entry must not be cached because of cache size
   if constexpr (IsProxy<typename Directory::ImplType>::value) {
