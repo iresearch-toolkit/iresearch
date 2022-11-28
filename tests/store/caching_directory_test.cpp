@@ -85,13 +85,6 @@ class CachingDirectory
     return Impl::length(result, name);
   }
 
-#ifdef _MSC_VER
-  bool rename(std::string_view src, std::string_view dst) noexcept override {
-    this->cache_.Remove(src);  // On Windows it's impossible to move opened file
-    return Impl::rename(src, dst);
-  }
-#endif
-
   irs::index_input::ptr open(std::string_view name,
                              irs::IOAdvice advice) const noexcept override {
     if (bool(advice & (irs::IOAdvice::READONCE | irs::IOAdvice::DIRECT_READ))) {

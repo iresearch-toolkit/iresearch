@@ -49,10 +49,6 @@ class CachingMMapDirectory
 
   index_input::ptr open(std::string_view name,
                         IOAdvice advice) const noexcept override;
-
-#ifdef _MSC_VER
-  bool rename(std::string_view src, std::string_view name) noexcept override;
-#endif
 };
 
 }  // namespace iresearch

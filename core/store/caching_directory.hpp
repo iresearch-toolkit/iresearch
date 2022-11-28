@@ -114,16 +114,29 @@ class CachingDirectoryBase : public Impl {
     : Impl{std::forward<Args>(args)...}, cache_{max_count} {}
 
   bool remove(std::string_view name) noexcept override {
+#ifdef _MSC_VER
     cache_.Remove(name);  // On Windows it's important to first close the handle
     return Impl::remove(name);
+#else
+    if (Impl::remove(name)) {
+      cache_.Remove(name);
+      return true;
+    }
+    return false;
+#endif
   }
 
   bool rename(std::string_view src, std::string_view dst) noexcept override {
+#ifdef _MSC_VER
+    cache_.Remove(src);  // On Windows it's impossible to move opened file
+    return Impl::rename(src, dst);
+#else
     if (Impl::rename(src, dst)) {
       cache_.Rename(src, dst);
       return true;
     }
     return false;
+#endif
   }
 
   bool exists(bool& result, std::string_view name) const noexcept override {
