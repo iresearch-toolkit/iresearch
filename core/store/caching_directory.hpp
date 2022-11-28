@@ -91,6 +91,11 @@ class CachingHelper {
     }
   }
 
+  void Clear() const {
+    std::lock_guard lock{mutex_};
+    cache_.clear();
+  }
+
   size_t Count() const noexcept {
     std::lock_guard lock{mutex_};
     return cache_.size();

@@ -239,6 +239,10 @@ void CachingDirectoryTestCase<Directory>::TestCachingImpl(
   check_file("1", 24);
   ASSERT_EQ(1, dir.Cache().Count());
   ASSERT_TRUE(is_cached("1"));
+
+  dir.Cache().Clear();
+  ASSERT_EQ(0, dir.Cache().Count());
+  ASSERT_FALSE(is_cached("1"));
 }
 
 using CachingDirectoryTest = CachingDirectoryTestCase<
