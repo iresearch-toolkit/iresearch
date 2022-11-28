@@ -85,6 +85,13 @@ class CachingDirectory
     return Impl::length(result, name);
   }
 
+#ifdef _MSC_VER
+  bool rename(std::string_view src, std::string_view dst) noexcept override {
+    this->cache_.Remove(src);  // On Windows it's impossible to move opened file
+    return Impl::rename(src, dst);
+  }
+#endif
+
   irs::index_input::ptr open(std::string_view name,
                              irs::IOAdvice advice) const noexcept override {
     if (bool(advice & (irs::IOAdvice::READONCE | irs::IOAdvice::DIRECT_READ))) {
@@ -192,12 +199,17 @@ void CachingDirectoryTestCase<Directory>::TestCachingImpl(
   ASSERT_EQ(1, dir.Cache().Count());
   ASSERT_TRUE(is_cached("0"));
 
-  // Rename
+// Rename
+#ifdef _MSC_VER
+  constexpr bool kIsCachedAfterRename = false;
+#else
+  constexpr bool kIsCachedAfterRename = true;
+#endif
   ASSERT_TRUE(dir.rename("0", "2"));
-  ASSERT_TRUE(is_cached("2"));
-  check_file("2", 42);  // Entry is cached after first  check
+  ASSERT_EQ(kIsCachedAfterRename, is_cached("2"));
+  check_file("2", 42);  // Entry is cached after first check
   ASSERT_EQ(1, dir.Cache().Count());
-  ASSERT_TRUE(is_cached("2"));
+  ASSERT_EQ(kIsCachedAfterRename, is_cached("2"));
 
   // Following entry must not be cached because of cache size
   if constexpr (IsProxy<typename Directory::ImplType>::value) {
