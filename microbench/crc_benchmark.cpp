@@ -44,7 +44,7 @@ BENCHMARK(BM_Calculate2)->Arg(0)->Arg(1)->Arg(100)->Arg(10000)->Arg(500000);
 void BM_Extend(benchmark::State& state) {
   int len = state.range(0);
   std::string extension = TestString(len);
-  absl::crc32c_t base = absl::ToCrc32c(0xC99465AA);  // CRC32C of "Hello World"
+  absl::crc32c_t base{0xC99465AA};  // CRC32C of "Hello World"
   for (auto s : state) {
     benchmark::DoNotOptimize(base);
     benchmark::DoNotOptimize(extension);
