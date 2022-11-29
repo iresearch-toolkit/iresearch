@@ -26,7 +26,6 @@
 #include <absl/container/flat_hash_map.h>
 
 #include <array>
-#include <boost/iterator/filter_iterator.hpp>
 #include <deque>
 
 #include "analysis/token_attributes.hpp"
@@ -44,6 +43,10 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
+
+#ifdef IRESEARCH_DEBUG
+#include <boost/iterator/filter_iterator.hpp>
+#endif
 
 namespace {
 

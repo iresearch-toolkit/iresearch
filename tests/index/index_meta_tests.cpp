@@ -21,8 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/algorithm/string/predicate.hpp>
-
 #include "formats/formats_10.hpp"
 #include "index/index_meta.hpp"
 #include "store/memory_directory.hpp"
