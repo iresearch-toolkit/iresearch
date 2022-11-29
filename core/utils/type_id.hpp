@@ -53,9 +53,9 @@ struct type {
   static constexpr std::string_view name() noexcept {
     if constexpr (detail::has_member_type_name_v<T>) {
       return T::type_name();
+    } else {
+      return ctti<T>();
     }
-
-    return ctti<T>();
   }
 
   //////////////////////////////////////////////////////////////////////////////
