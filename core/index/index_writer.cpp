@@ -922,10 +922,11 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   }
 
   auto* flush_ctx = segment.flush_ctx_;
-  assert(flush_ctx != nullptr);  // we already set it in AddToFlush
 
   // failure may indicate a dangling 'document' instance
   assert(
+    // +1 for 'active_segment_context::ctx_'
+    (!flush_ctx && segment.ctx_.use_count() == 1) ||
     // +1 for 'active_segment_context::ctx_'
     // (flush_context switching made a full-circle)
     (this == flush_ctx && segment.ctx_->dirty_.load() &&
@@ -936,10 +937,10 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
      segment.ctx_.use_count() == 2) ||
     // +1 for 'active_segment_context::ctx_',
     // +1 for 'pending_segment_context::segment_'
-    (this != flush_ctx && segment.ctx_.use_count() == 2) ||
+    (this != flush_ctx && flush_ctx && segment.ctx_.use_count() == 2) ||
     // +1 for 'active_segment_context::ctx_',
     // +0 for 'pending_segment_context::segment_' that was already cleared
-    (this != flush_ctx && segment.ctx_.use_count() == 1));
+    (this != flush_ctx && flush_ctx && segment.ctx_.use_count() == 1));
 
   freelist_t::node_type* freelist_node = nullptr;
   size_t modification_count{};
@@ -955,7 +956,10 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
 
     // update pending_segment_context
     // this segment_context has not yet been seen by this flush_context
-    if (this != flush_ctx) {
+    if (flush_ctx == nullptr) {
+      freelist_node = &pending_segment_contexts_.emplace_back(
+        segment.ctx_, pending_segment_contexts_.size());
+    } else if (this != flush_ctx) {
       ctx.dirty_.store(true, std::memory_order_relaxed);
       // 'segment.flush_ctx_' may be asynchronously flushed
       flush_lock.lock();
