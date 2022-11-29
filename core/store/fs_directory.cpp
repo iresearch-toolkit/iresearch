@@ -486,13 +486,13 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 // --SECTION--                                       fs_directory implementation
 // -----------------------------------------------------------------------------
 
-fs_directory::fs_directory(std::filesystem::path dir,
-                           directory_attributes attrs, size_t fd_pool_size)
+FSDirectory::FSDirectory(std::filesystem::path dir, directory_attributes attrs,
+                         size_t fd_pool_size)
   : attrs_{std::move(attrs)},
     dir_{std::move(dir)},
     fd_pool_size_{fd_pool_size} {}
 
-index_output::ptr fs_directory::create(std::string_view name) noexcept {
+index_output::ptr FSDirectory::create(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
@@ -510,35 +510,35 @@ index_output::ptr fs_directory::create(std::string_view name) noexcept {
   return nullptr;
 }
 
-const std::filesystem::path& fs_directory::directory() const noexcept {
+const std::filesystem::path& FSDirectory::directory() const noexcept {
   return dir_;
 }
 
-bool fs_directory::exists(bool& result, std::string_view name) const noexcept {
+bool FSDirectory::exists(bool& result, std::string_view name) const noexcept {
   const auto path = dir_ / name;
 
   return file_utils::exists(result, path.c_str());
 }
 
-bool fs_directory::length(uint64_t& result,
-                          std::string_view name) const noexcept {
+bool FSDirectory::length(uint64_t& result,
+                         std::string_view name) const noexcept {
   const auto path = dir_ / name;
 
   return file_utils::byte_size(result, path.c_str());
 }
 
-index_lock::ptr fs_directory::make_lock(std::string_view name) noexcept {
+index_lock::ptr FSDirectory::make_lock(std::string_view name) noexcept {
   return index_lock::make<fs_lock>(dir_, name);
 }
 
-bool fs_directory::mtime(std::time_t& result,
-                         std::string_view name) const noexcept {
+bool FSDirectory::mtime(std::time_t& result,
+                        std::string_view name) const noexcept {
   const auto path = dir_ / name;
 
   return file_utils::mtime(result, path.c_str());
 }
 
-bool fs_directory::remove(std::string_view name) noexcept {
+bool FSDirectory::remove(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
@@ -549,8 +549,8 @@ bool fs_directory::remove(std::string_view name) noexcept {
   return false;
 }
 
-index_input::ptr fs_directory::open(std::string_view name,
-                                    IOAdvice advice) const noexcept {
+index_input::ptr FSDirectory::open(std::string_view name,
+                                   IOAdvice advice) const noexcept {
   try {
     const auto path = dir_ / name;
 
@@ -561,7 +561,7 @@ index_input::ptr fs_directory::open(std::string_view name,
   return nullptr;
 }
 
-bool fs_directory::rename(std::string_view src, std::string_view dst) noexcept {
+bool FSDirectory::rename(std::string_view src, std::string_view dst) noexcept {
   try {
     const auto src_path = dir_ / src;
     const auto dst_path = dir_ / dst;
@@ -573,7 +573,7 @@ bool fs_directory::rename(std::string_view src, std::string_view dst) noexcept {
   return false;
 }
 
-bool fs_directory::visit(const directory::visitor_f& visitor) const {
+bool FSDirectory::visit(const directory::visitor_f& visitor) const {
   bool exists;
 
   if (!file_utils::exists_directory(exists, dir_.c_str()) || !exists) {
@@ -599,7 +599,7 @@ bool fs_directory::visit(const directory::visitor_f& visitor) const {
   return file_utils::visit_directory(dir_.c_str(), dir_visitor, false);
 }
 
-bool fs_directory::sync(std::string_view name) noexcept {
+bool FSDirectory::sync(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
@@ -623,5 +623,28 @@ bool fs_directory::sync(std::string_view name) noexcept {
 }
 
 MSVC_ONLY(__pragma(warning(pop)))
+
+bool CachingFSDirectory::length(uint64_t& result,
+                                std::string_view name) const noexcept {
+  if (cache_.Visit(name, [&](const auto length) noexcept {
+        result = length;
+        return true;
+      })) {
+    return true;
+  }
+
+  return FSDirectory::length(result, name);
+}
+
+index_input::ptr CachingFSDirectory::open(std::string_view name,
+                                          IOAdvice advice) const noexcept {
+  auto stream = FSDirectory::open(name, advice);
+
+  if ((IOAdvice::READONCE != (advice & IOAdvice::READONCE)) && stream) {
+    cache_.Put(name, [&]() noexcept { return stream->length(); });
+  }
+
+  return stream;
+}
 
 }  // namespace iresearch
