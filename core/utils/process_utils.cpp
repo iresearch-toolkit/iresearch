@@ -20,18 +20,20 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "process_utils.hpp"
+#include "utils/process_utils.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>
 #include <process.h>  // _getpid
 #include <tlhelp32.h>
 #else
-#include <sys/types.h>
-#include <unistd.h>
-#include <signal.h>
-#endif  // _WIN32
+#include <unistd.h>  // getpid
+
+#include <csignal>
+#endif
+
+#include <cstdlib>
+#include <numeric>
 
 namespace iresearch {
 
@@ -54,7 +56,7 @@ bool is_running(pid_t pid) {
   return false;
 #else
   return 0 == kill(pid, 0);
-#endif  // _WIN32
+#endif
 }
 
 pid_t get_pid() {
@@ -62,7 +64,7 @@ pid_t get_pid() {
   return _getpid();
 #else
   return getpid();
-#endif  // _WIN32
+#endif
 }
 
 bool is_valid_pid(const char* buf) {
