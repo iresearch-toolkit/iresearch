@@ -22,8 +22,6 @@
 
 #include "same_position_filter.hpp"
 
-#include <boost/functional/hash.hpp>
-
 #include "analysis/token_attributes.hpp"
 #include "index/field_meta.hpp"
 #include "search/collectors.hpp"

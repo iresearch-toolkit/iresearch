@@ -22,7 +22,7 @@
 
 #include "boolean_filter.hpp"
 
-#include <boost/functional/hash.hpp>
+#include <boost/container_hash/hash.hpp>
 
 #include "conjunction.hpp"
 #include "disjunction.hpp"
