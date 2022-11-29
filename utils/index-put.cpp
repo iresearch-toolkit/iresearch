@@ -547,16 +547,16 @@ int put(const std::string& path, const std::string& dir_type,
         size_t i = 0;
 
         do {
-          auto builder = ctx.insert();
+          auto builder = ctx.Insert();
 
           doc.fill(const_cast<std::string*>(buf.data()));
 
           for (auto& field : doc.elements) {
-            builder.insert<irs::Action::INDEX>(*field);
+            builder.Insert<irs::Action::INDEX>(*field);
           }
 
           for (auto& field : doc.store) {
-            builder.insert<irs::Action::STORE>(*field);
+            builder.Insert<irs::Action::STORE>(*field);
           }
 
         } while (++i < buf.size());

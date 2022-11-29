@@ -166,14 +166,14 @@ class index_writer : private util::noncopyable {
   // A context allowing index modification operations.
   // The object is non-thread-safe, each thread should use its own
   // separate instance.
-  class document : private util::noncopyable {
+  class Document : private util::noncopyable {
    public:
-    document(flush_context& ctx, std::shared_ptr<segment_context> segment,
+    Document(flush_context& ctx, std::shared_ptr<segment_context> segment,
              const segment_writer::update_context& update);
-    document(document&&) = default;
-    ~document() noexcept;
+    Document(Document&&) = default;
+    ~Document() noexcept;
 
-    document& operator=(document&&) = delete;
+    Document& operator=(Document&&) = delete;
 
     // Return current state of the object
     // Note that if the object is in an invalid state all further operations
@@ -186,7 +186,7 @@ class index_writer : private util::noncopyable {
     // field attribute to be inserted
     // Return true, if field was successfully insterted
     template<Action action, typename Field>
-    bool insert(Field&& field) const {
+    bool Insert(Field&& field) const {
       return writer_.insert<action>(std::forward<Field>(field));
     }
 
@@ -197,7 +197,7 @@ class index_writer : private util::noncopyable {
     // field attribute to be inserted
     // Return true, if field was successfully insterted
     template<Action action, typename Field>
-    bool insert(Field* field) const {
+    bool Insert(Field* field) const {
       return writer_.insert<action>(*field);
     }
 
@@ -208,9 +208,9 @@ class index_writer : private util::noncopyable {
     // end the end of the fields range
     // Return true, if the range was successfully insterted
     template<Action action, typename Iterator>
-    bool insert(Iterator begin, Iterator end) const {
+    bool Insert(Iterator begin, Iterator end) const {
       for (; writer_.valid() && begin != end; ++begin) {
-        insert<action>(*begin);
+        Insert<action>(*begin);
       }
 
       return writer_.valid();
@@ -224,24 +224,18 @@ class index_writer : private util::noncopyable {
     size_t update_id_;
   };
 
-  class documents_context : private util::noncopyable {
+  class Transaction : private util::noncopyable {
    public:
     // cppcheck-suppress constParameter
-    explicit documents_context(index_writer& writer) noexcept
+    explicit Transaction(index_writer& writer) noexcept
       : writer_(writer) {}
 
-    documents_context(documents_context&& other) noexcept
-      : segment_(std::move(other.segment_)),
-        segment_use_count_(other.segment_use_count_),
-        last_operation_tick_(other.last_operation_tick_),
-        first_operation_tick_(other.first_operation_tick_),
-        writer_(other.writer_) {
-      other.last_operation_tick_ = 0;
-      other.first_operation_tick_ = 0;
-      other.segment_use_count_ = 0;
-    }
+    Transaction(Transaction&& other) noexcept = default;
 
-    ~documents_context() noexcept;
+    ~Transaction() {
+      // FIXME(gnusi): consider calling reset in future
+      Commit();
+    }
 
     // Create a document to filled by the caller
     // for insertion into the index index
@@ -249,12 +243,12 @@ class index_writer : private util::noncopyable {
     // `disable_flush` don't trigger segment flush
     //
     // The changes are not visible until commit()
-    document insert(bool disable_flush = false) {
+    Document Insert(bool disable_flush = false) {
       // thread-safe to use ctx_/segment_ while have lock since active
       // flush_context will not change
 
       // updates 'segment_' and 'ctx_'
-      auto ctx = update_segment(disable_flush);
+      auto ctx = UpdateSegment(disable_flush);
       assert(segment_.ctx());
 
       return {*ctx, segment_.ctx(), segment_.ctx()->make_update_context()};
@@ -265,10 +259,10 @@ class index_writer : private util::noncopyable {
     // Note that changes are not visible until commit().
     // Note that filter must be valid until commit().
     template<typename Filter>
-    void remove(Filter&& filter) {
+    void Remove(Filter&& filter) {
       // thread-safe to use ctx_/segment_ while have lock since active
       // flush_context will not change cppcheck-suppress unreadVariable
-      auto ctx = update_segment(false);  // updates 'segment_' and 'ctx_'
+      auto ctx = UpdateSegment(false);  // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
       // guarded by flush_context::flush_mutex_
@@ -283,10 +277,10 @@ class index_writer : private util::noncopyable {
     // Note the changes are not visible until commit()
     // Note that filter must be valid until commit()
     template<typename Filter>
-    document replace(Filter&& filter) {
+    Document Replace(Filter&& filter) {
       // thread-safe to use ctx_/segment_ while have lock since active
       // flush_context will not change
-      auto ctx = update_segment(false);  // updates 'segment_' and 'ctx_'
+      auto ctx = UpdateSegment(false);  // updates 'segment_' and 'ctx_'
       assert(segment_.ctx());
 
       return {
@@ -294,9 +288,12 @@ class index_writer : private util::noncopyable {
         segment_.ctx()->make_update_context(std::forward<Filter>(filter))};
     }
 
+    // Commit all accumulated modifications and release resources
+    bool Commit() noexcept;
+
     // Revert all pending document modifications and release resources
     // noexcept because all insertions reserve enough space for rollback
-    void reset() noexcept;
+    void Reset() noexcept;
 
     void SetLastTick(uint64_t tick) noexcept { last_operation_tick_ = tick; }
     uint64_t GetLastTick() const noexcept { return last_operation_tick_; }
@@ -304,21 +301,24 @@ class index_writer : private util::noncopyable {
     void SetFirstTick(uint64_t tick) noexcept { first_operation_tick_ = tick; }
     uint64_t GetFirstTick() const noexcept { return first_operation_tick_; }
 
-    void AddToFlush();
+    // Register underlying segment to be flushed with the upcoming index commit
+    void ForceFlush();
 
    private:
     // refresh segment if required (guarded by flush_context::flush_mutex_)
     // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
     // since active 'flush_context' will not change and hence no reload required
-    flush_context_ptr update_segment(bool disable_flush);
+    flush_context_ptr UpdateSegment(bool disable_flush);
 
     // the segment_context used for storing changes (lazy-initialized)
     active_segment_context segment_;
-    // segment_.ctx().use_count() at constructor/destructor time must equal
-    uint64_t segment_use_count_{0};
     uint64_t last_operation_tick_{0};   // transaction commit tick
     uint64_t first_operation_tick_{0};  // transaction tick
     index_writer& writer_;
+#ifdef IRESEARCH_DEBUG
+    // segment_.ctx().use_count() at constructor/destructor time must equal
+    uint64_t segment_use_count_{0};
+#endif
   };
 
   // Additional information required for removal/update requests
@@ -502,7 +502,7 @@ class index_writer : private util::noncopyable {
   // Returns a context allowing index modification operations
   // All document insertions will be applied to the same segment on a
   // best effort basis, e.g. a flush_all() will cause a segment switch
-  documents_context documents() noexcept { return documents_context(*this); }
+  Transaction documents() noexcept { return Transaction(*this); }
 
   // Imports index from the specified index reader into new segment
   // Reader the index reader to import.

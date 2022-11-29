@@ -114,16 +114,16 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      auto doc = ctx.insert();
+      auto doc = ctx.Insert();
 
       if (field.value % 2) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.Insert<irs::Action::STORE>(field);
         ++inserted;
       }
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -1152,17 +1152,17 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++docs_count < BLOCK_SIZE);  // insert BLOCK_SIZE documents
 
-    ctx.insert().insert<irs::Action::STORE>(gap);
+    ctx.Insert().Insert<irs::Action::STORE>(gap);
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++docs_count < MAX_DOCS);  // insert BLOCK_SIZE documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -1978,18 +1978,18 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++field.value < BLOCK_SIZE);  // insert MAX_DOCS documents
 
-    ctx.insert().insert<irs::Action::STORE>(gap);  // gap
+    ctx.Insert().Insert<irs::Action::STORE>(gap);  // gap
     ++field.value;
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++field.value <= MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -3073,20 +3073,20 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
       ++inserted;
     } while (++field.value < BLOCK_SIZE);  // insert BLOCK_SIZE documents
 
-    ctx.insert().insert<irs::Action::STORE>(gap);  // gap
+    ctx.Insert().Insert<irs::Action::STORE>(gap);  // gap
     ++field.value;
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
       ++inserted;
     } while (++field.value < (1 + MAX_DOCS));  // insert BLOCK_SIZE documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -3293,11 +3293,11 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -3481,20 +3481,20 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
       ++inserted;
     } while (++field.value < BLOCK_SIZE);  // insert BLOCK_SIZE documents
 
-    ctx.insert().insert<irs::Action::STORE>(gap);  // gap
+    ctx.Insert().Insert<irs::Action::STORE>(gap);  // gap
     ++field.value;
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
       ++inserted;
     } while (++field.value < (1 + MAX_DOCS));  // insert BLOCK_SIZE documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -4470,15 +4470,15 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      auto doc = ctx.insert();
+      auto doc = ctx.Insert();
 
       if (docs_count % 2) {
-        doc.insert<irs::Action::STORE>(field);
+        doc.Insert<irs::Action::STORE>(field);
       }
     } while (++docs_count < MAX_DOCS);  // insert MAX_DOCS/2 documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -5290,11 +5290,11 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++docs_count < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -5942,11 +5942,11 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }
@@ -6767,11 +6767,11 @@ TEST_P(index_column_test_case,
     auto ctx = writer->documents();
 
     do {
-      ctx.insert().insert<irs::Action::STORE>(field);
+      ctx.Insert().Insert<irs::Action::STORE>(field);
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::documents_context(std::move(ctx));
+      irs::index_writer::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->commit();
   }

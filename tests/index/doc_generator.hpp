@@ -652,71 +652,71 @@ void normalized_string_json_field_factory(
 template<typename Indexed>
 bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend) {
   auto ctx = writer.documents();
-  auto doc = ctx.insert();
+  auto doc = ctx.Insert();
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
 bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
             Stored sbegin, Stored send) {
   auto ctx = writer.documents();
-  auto doc = ctx.insert();
+  auto doc = ctx.Insert();
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend) &&
-         doc.insert<irs::Action::STORE>(sbegin, send);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
+         doc.Insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed, typename Stored, typename Sorted>
 bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
             Stored sbegin, Stored send, Sorted sorted = nullptr) {
   auto ctx = writer.documents();
-  auto doc = ctx.insert();
+  auto doc = ctx.Insert();
 
-  if (sorted && !doc.insert<irs::Action::STORE_SORTED>(*sorted)) {
+  if (sorted && !doc.Insert<irs::Action::STORE_SORTED>(*sorted)) {
     return false;
   }
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend) &&
-         doc.insert<irs::Action::STORE>(sbegin, send);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
+         doc.Insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
 bool update(irs::index_writer& writer, const irs::filter& filter,
             Indexed ibegin, Indexed iend) {
   auto ctx = writer.documents();
-  auto doc = ctx.replace(filter);
+  auto doc = ctx.Replace(filter);
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
 bool update(irs::index_writer& writer, const irs::filter& filter,
             Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.documents();
-  auto doc = ctx.replace(filter);
+  auto doc = ctx.Replace(filter);
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend) &&
-         doc.insert<irs::Action::STORE>(sbegin, send);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
+         doc.Insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
 bool update(irs::index_writer& writer, irs::filter::ptr&& filter,
             Indexed ibegin, Indexed iend) {
   auto ctx = writer.documents();
-  auto doc = ctx.replace(std::move(filter));
+  auto doc = ctx.Replace(std::move(filter));
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
 bool update(irs::index_writer& writer, irs::filter::ptr&& filter,
             Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.documents();
-  auto doc = ctx.replace(std::move(filter));
+  auto doc = ctx.Replace(std::move(filter));
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend) &&
-         doc.insert<irs::Action::STORE>(sbegin, send);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
+         doc.Insert<irs::Action::STORE>(sbegin, send);
 }
 
 template<typename Indexed>
@@ -724,9 +724,9 @@ bool update(irs::index_writer& writer,
             const std::shared_ptr<irs::filter>& filter, Indexed ibegin,
             Indexed iend) {
   auto ctx = writer.documents();
-  auto doc = ctx.replace(filter);
+  auto doc = ctx.Replace(filter);
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend);
 }
 
 template<typename Indexed, typename Stored>
@@ -734,10 +734,10 @@ bool update(irs::index_writer& writer,
             const std::shared_ptr<irs::filter>& filter, Indexed ibegin,
             Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.documents();
-  auto doc = ctx.replace(filter);
+  auto doc = ctx.Replace(filter);
 
-  return doc.insert<irs::Action::INDEX>(ibegin, iend) &&
-         doc.insert<irs::Action::STORE>(sbegin, send);
+  return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
+         doc.Insert<irs::Action::STORE>(sbegin, send);
 }
 
 }  // namespace tests

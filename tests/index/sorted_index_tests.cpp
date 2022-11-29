@@ -1071,29 +1071,29 @@ TEST_P(sorted_index_test_case, multi_valued_sorting_field) {
     auto docs = writer->documents();
 
     {
-      auto doc = docs.insert();
+      auto doc = docs.Insert();
 
       // Compound sorted field
       field.value = "A";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
       field.value = "B";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
 
       // Indexed field
-      doc.insert<irs::Action::INDEX>(same);
+      doc.Insert<irs::Action::INDEX>(same);
     }
 
     {
-      auto doc = docs.insert();
+      auto doc = docs.Insert();
 
       // Compound sorted field
       field.value = "C";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
       field.value = "D";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
 
       // Indexed field
-      doc.insert<irs::Action::INDEX>(same);
+      doc.Insert<irs::Action::INDEX>(same);
     }
   }
 
@@ -1466,7 +1466,7 @@ TEST_P(sorted_index_test_case,
   // Remove document
   {
     auto query_doc1 = MakeByTerm("name", "C");
-    writer->documents().remove(*query_doc1);
+    writer->documents().Remove(*query_doc1);
     writer->commit();
   }
 
@@ -1650,10 +1650,10 @@ TEST_P(sorted_index_test_case, doc_removal_same_key_within_trx) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
-    writer->documents().remove(*(query_doc1));
+    writer->documents().Remove(*(query_doc1));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-    writer->documents().remove(*(query_doc2));
+    writer->documents().Remove(*(query_doc2));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
     ASSERT_TRUE(writer->commit());
@@ -2003,22 +2003,22 @@ TEST_P(sorted_index_stress_test_case, doc_removal_same_key_within_trx) {
         for (size_t i = 0; i < kLen; ++i) {
           {
             auto ctx = writer->documents();
-            auto doc = ctx.insert();
-            ASSERT_TRUE(doc.insert<irs::Action::STORE_SORTED>(
+            auto doc = ctx.Insert();
+            ASSERT_TRUE(doc.Insert<irs::Action::STORE_SORTED>(
               *insert_docs[i].second->sorted));
-            ASSERT_TRUE(doc.insert<irs::Action::INDEX>(
+            ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(
               insert_docs[i].second->indexed.begin(),
               insert_docs[i].second->indexed.end()));
-            ASSERT_TRUE(doc.insert<irs::Action::STORE>(
+            ASSERT_TRUE(doc.Insert<irs::Action::STORE>(
               insert_docs[i].second->stored.begin(),
               insert_docs[i].second->stored.end()));
             if (((reset >> i) & 1U) == 1U) {
-              ctx.reset();
+              ctx.Reset();
             } else {
               in_store[insert_docs[i].first] = true;
             }
           }
-          writer->documents().remove(*(remove_docs[i].second));
+          writer->documents().Remove(*(remove_docs[i].second));
           in_store[remove_docs[i].first] = false;
         }
         writer->commit();

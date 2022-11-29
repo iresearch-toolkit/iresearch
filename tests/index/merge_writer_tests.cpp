@@ -218,16 +218,16 @@ struct merge_writer_test_case
 
 void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   auto insert_documents = [primary_sort](
-                            irs::index_writer::documents_context& ctx,
+                            irs::index_writer::Transaction& ctx,
                             irs::doc_id_t seed, irs::doc_id_t count) {
     for (; seed < count; ++seed) {
-      auto doc = ctx.insert();
+      auto doc = ctx.Insert();
       if (const tests::string_field field{"foo", "bar"}; primary_sort) {
-        doc.insert<irs::Action::STORE_SORTED | irs::Action::INDEX>(field);
+        doc.Insert<irs::Action::STORE_SORTED | irs::Action::INDEX>(field);
       } else {
-        doc.insert<irs::Action::INDEX>(field);
+        doc.Insert<irs::Action::INDEX>(field);
       }
-      doc.insert<irs::Action::STORE>(
+      doc.Insert<irs::Action::STORE>(
         tests::string_field{"seq", std::to_string(seed)});
     }
   };
@@ -377,7 +377,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc4));
+    writer->documents().Remove(std::move(query_doc4));
     writer->commit();
   }
 
@@ -1325,7 +1325,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc4));
+    writer->documents().Remove(std::move(query_doc4));
     writer->commit();
   }
 
@@ -2926,7 +2926,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     // correct order. to trigger error documents from second segment need
     // docuemnt from first segment to maintain merged order
     irs::filter::ptr query = MakeByTerm(field, "A");
-    writer->documents().remove(std::move(query));
+    writer->documents().Remove(std::move(query));
     writer->commit();
   }
 
@@ -3229,7 +3229,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
     writer->commit();
-    writer->documents().remove(std::move(query_doc4));
+    writer->documents().Remove(std::move(query_doc4));
     writer->commit();
   }
 

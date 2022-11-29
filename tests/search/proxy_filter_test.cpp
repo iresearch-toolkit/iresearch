@@ -154,9 +154,9 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
     {  // make dummy document so we could have non-empty index
       auto ctx = writer->documents();
       for (size_t i = 0; i < GetParam(); ++i) {
-        auto doc = ctx.insert();
+        auto doc = ctx.Insert();
         auto field = std::make_shared<tests::string_field>("foo", "bar");
-        doc.insert<Action::INDEX>(*field);
+        doc.Insert<Action::INDEX>(*field);
       }
     }
     writer->commit();

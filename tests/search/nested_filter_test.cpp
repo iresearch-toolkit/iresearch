@@ -280,27 +280,27 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
   static constexpr auto kIndexAndStore =
     irs::Action::INDEX | irs::Action::STORE;
 
-  static void InsertItemDocument(irs::index_writer::documents_context& trx,
+  static void InsertItemDocument(irs::index_writer::Transaction& trx,
                                  std::string_view item, int32_t price,
                                  int32_t count) {
-    auto doc = trx.insert();
-    ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"item", item}));
-    ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::int_field{
+    auto doc = trx.Insert();
+    ASSERT_TRUE(doc.Insert<kIndexAndStore>(tests::string_field{"item", item}));
+    ASSERT_TRUE(doc.Insert<kIndexAndStore>(tests::int_field{
       "price", price, irs::type<irs::granularity_prefix>::id()}));
-    ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::int_field{
+    ASSERT_TRUE(doc.Insert<kIndexAndStore>(tests::int_field{
       "count", count, irs::type<irs::granularity_prefix>::id()}));
     ASSERT_TRUE(doc);
   }
 
-  static void InsertOrderDocument(irs::index_writer::documents_context& trx,
+  static void InsertOrderDocument(irs::index_writer::Transaction& trx,
                                   std::string_view customer,
                                   std::string_view date) {
-    auto doc = trx.insert();
+    auto doc = trx.Insert();
     if (!customer.empty()) {
       ASSERT_TRUE(
-        doc.insert<kIndexAndStore>(tests::string_field{"customer", customer}));
+        doc.Insert<kIndexAndStore>(tests::string_field{"customer", customer}));
     }
-    ASSERT_TRUE(doc.insert<kIndexAndStore>(tests::string_field{"date", date}));
+    ASSERT_TRUE(doc.Insert<kIndexAndStore>(tests::string_field{"date", date}));
     ASSERT_TRUE(doc);
   }
 

@@ -283,7 +283,7 @@ void open_reader(
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->documents().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }
@@ -1007,7 +1007,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->documents().Remove(*query_doc2);
 
       ASSERT_THROW(writer->begin(), irs::io_error);
       ASSERT_FALSE(writer->begin());  // nothing to flush
@@ -1054,7 +1054,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->documents().Remove(*query_doc2);
 
       ASSERT_THROW(writer->begin(), irs::io_error);
     }
@@ -1147,7 +1147,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->documents().Remove(*query_doc2);
 
       ASSERT_THROW(writer->begin(), irs::io_error);
     }
@@ -1201,7 +1201,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->documents().Remove(*query_doc2);
 
       ASSERT_THROW(writer->begin(), irs::io_error);
     }
@@ -3482,7 +3482,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->documents().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }
@@ -3576,7 +3576,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->documents().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }
@@ -3800,7 +3800,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->documents().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->commit());
   }

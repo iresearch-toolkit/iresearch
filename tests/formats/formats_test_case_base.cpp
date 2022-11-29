@@ -228,7 +228,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // delete record from first segment (creating new index_meta file + doc_mask
     // file, remove old)
     {
-      writer->documents().remove(*query_doc1);
+      writer->documents().Remove(*query_doc1);
       writer->commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -237,7 +237,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // delete all record from first segment (creating new index_meta file,
     // remove old meta + unused segment)
     {
-      writer->documents().remove(*query_doc2);
+      writer->documents().Remove(*query_doc2);
       writer->commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -246,7 +246,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // delete all records from second segment (creating new index_meta file,
     // remove old meta + unused segment)
     {
-      writer->documents().remove(*query_doc2);
+      writer->documents().Remove(*query_doc2);
       writer->commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -292,7 +292,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
     // delete record from first segment (creating new doc_mask file)
     {
-      writer->documents().remove(*query_doc1);
+      writer->documents().Remove(*query_doc1);
       writer->commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
@@ -330,7 +330,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // delete record from first segment (creating new doc_mask file, not-remove
     // old)
     {
-      writer->documents().remove(*(query_doc2));
+      writer->documents().Remove(*(query_doc2));
       writer->commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -339,7 +339,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // delete all record from first segment (creating new index_meta file,
     // remove old meta but leave first segment)
     {
-      writer->documents().remove(*(query_doc3));
+      writer->documents().Remove(*(query_doc3));
       writer->commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -348,7 +348,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // delete all records from second segment (creating new index_meta file,
     // remove old meta + unused segment)
     {
-      writer->documents().remove(*(query_doc4));
+      writer->documents().Remove(*(query_doc4));
       writer->commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
@@ -389,7 +389,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
       writer->commit();  // add second segment
-      writer->documents().remove(*(query_doc1));
+      writer->documents().Remove(*(query_doc1));
       writer->commit();  // remove first segment
     }
 

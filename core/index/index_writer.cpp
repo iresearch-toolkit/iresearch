@@ -666,7 +666,7 @@ index_writer::active_segment_context::operator=(
   return *this;
 }
 
-index_writer::document::document(flush_context& ctx,
+index_writer::Document::Document(flush_context& ctx,
                                  std::shared_ptr<segment_context> segment,
                                  const segment_writer::update_context& update)
   : segment_{std::move(segment)},
@@ -692,7 +692,7 @@ index_writer::document::document(flush_context& ctx,
   segment_->buffered_docs_.store(writer_.docs_cached());
 }
 
-index_writer::document::~document() noexcept {
+index_writer::Document::~Document() noexcept {
   if (!segment_) {
     return;  // another instance will call commit()
   }
@@ -727,7 +727,7 @@ index_writer::document::~document() noexcept {
   }
 }
 
-void index_writer::documents_context::AddToFlush() {
+void index_writer::Transaction::ForceFlush() {
   if (const auto& ctx = segment_.ctx(); !ctx) {
     return;  // nothing to do
   }
@@ -735,7 +735,7 @@ void index_writer::documents_context::AddToFlush() {
   writer_.get_flush_context()->AddToPending(segment_);
 }
 
-index_writer::documents_context::~documents_context() noexcept {
+bool index_writer::Transaction::Commit() noexcept {
   auto& ctx = segment_.ctx();
 
   // failure may indicate a dangling 'document' instance
@@ -743,7 +743,7 @@ index_writer::documents_context::~documents_context() noexcept {
          static_cast<uint64_t>(ctx.use_count()) == segment_use_count_);
 
   if (!ctx) {
-    return;  // nothing to do
+    return true;  // nothing to do
   }
 
   if (auto& writer = *ctx->writer_; writer.tick() < last_operation_tick_) {
@@ -754,12 +754,14 @@ index_writer::documents_context::~documents_context() noexcept {
     // FIXME move emplace into active_segment_context destructor commit segment
     writer_.get_flush_context()->emplace(std::move(segment_),
                                          first_operation_tick_);
+    return true;
   } catch (...) {
-    reset();  // abort segment
+    Reset();  // abort segment
+    return false;
   }
 }
 
-void index_writer::documents_context::reset() noexcept {
+void index_writer::Transaction::Reset() noexcept {
   last_operation_tick_ = 0;  // reset tick
 
   auto& ctx = segment_.ctx();
@@ -847,7 +849,7 @@ void index_writer::documents_context::reset() noexcept {
   }
 }
 
-index_writer::flush_context_ptr index_writer::documents_context::update_segment(
+index_writer::flush_context_ptr index_writer::Transaction::UpdateSegment(
   bool disable_flush) {
   auto ctx = writer_.get_flush_context();
 
@@ -855,7 +857,9 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
 
   while (!segment_.ctx()) {  // no segment (lazy initialized)
     segment_ = writer_.get_segment_context(*ctx);
+#ifdef IRESEARCH_DEBUG
     segment_use_count_ = segment_.ctx().use_count();
+#endif
 
     // must unlock/relock flush_context before retrying to get a new segment so
     // as to avoid a deadlock due to a read-write-read situation for
