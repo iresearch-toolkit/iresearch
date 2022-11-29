@@ -36,7 +36,7 @@ void BM_segmentation_analyzer(benchmark::State& state) {
 
   segmentation_token_stream stream(std::move(opts));
 
-  const irs::string_ref str = "QUICK BROWN FOX JUMPS OVER THE LAZY DOG";
+  const std::string_view str = "QUICK BROWN FOX JUMPS OVER THE LAZY DOG";
   for (auto _ : state) {
     stream.reset(str);
     while (const bool has_next = stream.next()) {

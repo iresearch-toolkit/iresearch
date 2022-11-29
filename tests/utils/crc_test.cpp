@@ -21,13 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
-#ifdef IRESEARCH_SSE4_2
-
 #include "utils/crc.hpp"
 
 #include <fstream>
+
+#include "tests_shared.hpp"
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4244)
@@ -44,14 +42,6 @@
 #elif defined(__GNUC__)
 // NOOP
 #endif
-
-TEST(crc_test, check_invalid_range) {
-  irs::crc32c crc;
-
-  char buf[1257]{1, 2, 3};
-  crc.process_block(std::end(buf), std::begin(buf));
-  ASSERT_EQ(0, crc.checksum());
-}
 
 TEST(crc_test, check) {
   typedef boost::crc_optimal<32, 0x1EDC6F41, 0, 0, true, true> crc32c_expected;
@@ -74,5 +64,3 @@ TEST(crc_test, check) {
 
   ASSERT_EQ(crc.checksum(), crc_expected.checksum());
 }
-
-#endif

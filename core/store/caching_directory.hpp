@@ -24,6 +24,7 @@
 
 #include <absl/container/flat_hash_map.h>
 
+#include <mutex>  // unique_lock
 #include <shared_mutex>
 
 #include "shared.hpp"
@@ -38,7 +39,7 @@ class CachingHelper {
 
   template<typename Visitor>
   bool Visit(std::string_view key, Visitor&& visitor) const noexcept {
-    const size_t key_hash = cache_.hash_function()(key);
+    const size_t key_hash = cache_.hash_ref()(key);
 
     {
       std::shared_lock lock{mutex_};
@@ -68,7 +69,7 @@ class CachingHelper {
   }
 
   void Remove(std::string_view key) noexcept {
-    const size_t key_hash = cache_.hash_function()(key);
+    const size_t key_hash = cache_.hash_ref()(key);
 
     std::lock_guard lock{mutex_};
     if (const auto it = cache_.find(key, key_hash); it != cache_.end()) {
@@ -77,7 +78,7 @@ class CachingHelper {
   }
 
   void Rename(std::string_view src, std::string_view dst) noexcept {
-    const auto src_hash = cache_.hash_function()(src);
+    const auto src_hash = cache_.hash_ref()(src);
 
     std::lock_guard lock{mutex_};
     if (auto src_it = cache_.find(src, src_hash); src_it != cache_.end()) {

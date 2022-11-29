@@ -63,8 +63,6 @@
 // NOOP
 #endif
 
-#include "boost/crc.hpp"
-
 #if defined(_MSC_VER)
 #pragma warning(default : 4244)
 #pragma warning(default : 4245)

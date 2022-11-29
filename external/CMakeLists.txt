@@ -173,7 +173,6 @@ if (NOT TARGET absl::base)
   if ("${ABSL_ROOT}" STREQUAL "")
     message(FATAL_ERROR "ABSL_ROOT not set")
   else ()
-    set(CMAKE_CXX_STANDARD 17)
     set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "" FORCE)
     set(ABSL_BUILD_TESTING OFF CACHE BOOL "" FORCE)
     set(ABSL_PROPAGATE_CXX_STD ON CACHE BOOL "" FORCE)
@@ -182,7 +181,6 @@ if (NOT TARGET absl::base)
     add_subdirectory(${ABSL_ROOT_EXP}
       ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-abseil-cpp.dir
       EXCLUDE_FROM_ALL)
-    set(CMAKE_CXX_STANDARD 20)
   endif ()
 endif ()
 
