@@ -122,6 +122,8 @@ class CachingDirectoryTestCase : public test_base {
   }
 
   void TearDown() override {
+    ASSERT_NE(nullptr, dir_);
+    dir_->Cache().Clear();
     dir_ = nullptr;
     test_base::TearDown();
   }
