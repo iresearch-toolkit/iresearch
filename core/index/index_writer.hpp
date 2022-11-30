@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_WRITER_H
-#define IRESEARCH_INDEX_WRITER_H
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -57,7 +56,7 @@ class readers_cache final : util::noncopyable {
  public:
   struct key_t {
     // cppcheck-suppress noExplicitConstructor
-    key_t(const segment_meta& meta);  // implicit constructor
+    /* implicit */ key_t(const segment_meta& meta);
 
     bool operator==(const key_t& other) const noexcept {
       return name == other.name && version == other.version;
@@ -92,7 +91,7 @@ enum OpenMode {
   // exists, all contents will be cleared.
   OM_CREATE = 1,
 
-  // Opens existsing index repository. In case if repository does not
+  // Opens existing index repository. In case if repository does not
   // exists, error will be generated.
   OM_APPEND = 2,
 };
@@ -107,7 +106,7 @@ class index_writer : private util::noncopyable {
   struct flush_context;
   struct segment_context;
 
-  // unique pointer required since need ponter declaration before class
+  // unique pointer required since need pointer declaration before class
   // declaration e.g. for 'documents_context'
   //
   // sizeof(std::function<void(flush_context*)>) >
@@ -184,7 +183,7 @@ class index_writer : private util::noncopyable {
     // specified ACTION
     // Note that 'Field' type type must satisfy the Field concept
     // field attribute to be inserted
-    // Return true, if field was successfully insterted
+    // Return true, if field was successfully inserted
     template<Action action, typename Field>
     bool Insert(Field&& field) const {
       return writer_.insert<action>(std::forward<Field>(field));
@@ -195,7 +194,7 @@ class index_writer : private util::noncopyable {
     // Note that 'Field' type type must satisfy the Field concept
     // Note that pointer must not be nullptr
     // field attribute to be inserted
-    // Return true, if field was successfully insterted
+    // Return true, if field was successfully inserted
     template<Action action, typename Field>
     bool Insert(Field* field) const {
       return writer_.insert<action>(*field);
@@ -206,7 +205,7 @@ class index_writer : private util::noncopyable {
     // Note that 'Iterator' underline value type must satisfy the Field concept
     // begin the beginning of the fields range
     // end the end of the fields range
-    // Return true, if the range was successfully insterted
+    // Return true, if the range was successfully inserted
     template<Action action, typename Iterator>
     bool Insert(Iterator begin, Iterator end) const {
       for (; writer_.valid() && begin != end; ++begin) {
@@ -227,8 +226,7 @@ class index_writer : private util::noncopyable {
   class Transaction : private util::noncopyable {
    public:
     // cppcheck-suppress constParameter
-    explicit Transaction(index_writer& writer) noexcept
-      : writer_(writer) {}
+    explicit Transaction(index_writer& writer) noexcept : writer_(writer) {}
 
     Transaction(Transaction&& other) noexcept = default;
 
@@ -357,8 +355,8 @@ class index_writer : private util::noncopyable {
 
   // Options the the writer should use for segments
   struct segment_options {
-    // Segment aquisition requests will block and wait for free segments
-    // after this many segments have been aquired e.g. via documents()
+    // Segment acquisition requests will block and wait for free segments
+    // after this many segments have been acquired e.g. via documents()
     // 0 == unlimited
     size_t segment_count_max{0};
 
@@ -404,11 +402,11 @@ class index_writer : private util::noncopyable {
     // 0 == do not cache any segments, i.e. always create new segments
     size_t segment_pool_size{128};  // arbitrary size
 
-    // Aquire an exclusive lock on the repository to guard against index
+    // Acquire an exclusive lock on the repository to guard against index
     // corruption from multiple index_writers
     bool lock_repository{true};
 
-    init_options() {}  // GCC5 requires non-default definition
+    init_options() {}  // compiler requires non-default definition
   };
 
   struct segment_hash {
@@ -418,8 +416,8 @@ class index_writer : private util::noncopyable {
   };
 
   struct segment_equal {
-    size_t operator()(const segment_meta* lhs,
-                      const segment_meta* rhs) const noexcept {
+    bool operator()(const segment_meta* lhs,
+                    const segment_meta* rhs) const noexcept {
       return lhs->name == rhs->name;
     }
   };
@@ -432,7 +430,7 @@ class index_writer : private util::noncopyable {
     // Consolidation failed
     FAIL = 0,
 
-    // Consolidation succesfully finished
+    // Consolidation successfully finished
     OK,
 
     // Consolidation was scheduled for the upcoming commit
@@ -483,15 +481,15 @@ class index_writer : private util::noncopyable {
   // Call will rollback any opened transaction.
   void clear(uint64_t tick = 0);
 
-  // Merges segments accepted by the specified defragment policty into
+  // Merges segments accepted by the specified defragment policy into
   // a new segment. For all accepted segments frees the space occupied
-  // by the doucments marked as deleted and deduplicate terms.
-  // Policy the speicified defragmentation policy
+  // by the documents marked as deleted and deduplicate terms.
+  // Policy the specified defragmentation policy
   // Codec desired format that will be used for segment creation,
   // nullptr == use index_writer's codec
   // Progress callback triggered for consolidation steps, if the
   // callback returns false then consolidation is aborted
-  // For deffered policies during the commit stage each policy will be
+  // For deferred policies during the commit stage each policy will be
   // given the exact same index_meta containing all segments in the
   // commit, however, the resulting acceptor will only be segments not
   // yet marked for consolidation by other policies in the same commit
@@ -533,7 +531,7 @@ class index_writer : private util::noncopyable {
 
   // Begins the two-phase transaction.
   // payload arbitrary user supplied data to store in the index
-  // Returns true if transaction has been sucessflully started.
+  // Returns true if transaction has been successflully started.
   bool begin() {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{commit_lock_};
@@ -572,6 +570,8 @@ class index_writer : private util::noncopyable {
     return feature_info_;
   }
 
+  bool FlushRequired(const segment_writer& writer) const noexcept;
+
   // public because we want to use std::make_shared
   index_writer(ConstructToken, index_lock::ptr&& lock,
                index_file_refs::ref_t&& lock_file_ref, directory& dir,
@@ -592,19 +592,19 @@ class index_writer : private util::noncopyable {
     consolidation_context_t(consolidation_context_t&&) = default;
     consolidation_context_t& operator=(consolidation_context_t&&) = delete;
 
-    consolidation_context_t(std::shared_ptr<index_meta>&& consolidaton_meta,
+    consolidation_context_t(std::shared_ptr<index_meta>&& consolidation_meta,
                             consolidation_t&& candidates,
                             merge_writer&& merger) noexcept
-      : consolidaton_meta(std::move(consolidaton_meta)),
-        candidates(std::move(candidates)),
-        merger(std::move(merger)) {}
+      : consolidation_meta{std::move(consolidation_meta)},
+        candidates{std::move(candidates)},
+        merger{std::move(merger)} {}
 
-    consolidation_context_t(std::shared_ptr<index_meta>&& consolidaton_meta,
+    consolidation_context_t(std::shared_ptr<index_meta>&& consolidation_meta,
                             consolidation_t&& candidates) noexcept
-      : consolidaton_meta(std::move(consolidaton_meta)),
-        candidates(std::move(candidates)) {}
+      : consolidation_meta{std::move(consolidation_meta)},
+        candidates{std::move(candidates)} {}
 
-    std::shared_ptr<index_meta> consolidaton_meta;
+    std::shared_ptr<index_meta> consolidation_meta;
     consolidation_t candidates;
     merge_writer merger;
   };
@@ -793,7 +793,7 @@ class index_writer : private util::noncopyable {
       std::shared_ptr<const filter> filter);
     segment_writer::update_context make_update_context(filter::ptr&& filter);
 
-    // Ensure writer is ready to recieve documents
+    // Ensure writer is ready to receive documents
     void prepare();
 
     // Modifies context for "remove" operation
@@ -832,7 +832,7 @@ class index_writer : private util::noncopyable {
 
   // The context containing data collected for the next commit() call
   // Note a 'segment_context' is tracked by at most 1 'flush_context', it is
-  // the job of the 'documents_context' to garantee that the
+  // the job of the 'documents_context' to guarantee that the
   // 'segment_context' is not used once the tracker 'flush_context' is no
   // longer active.
   struct flush_context {
@@ -955,7 +955,7 @@ class index_writer : private util::noncopyable {
       // cppcheck-suppress shadowFunction
       auto begin = files.begin();
 
-      for (auto& entry : segments) {
+      for (const auto& entry : segments) {
         auto& segment = meta[entry.first];
 
         if (entry.second) {
@@ -975,7 +975,7 @@ class index_writer : private util::noncopyable {
           }
         } else {
           // full sync
-          for (auto& file : segment.meta.files) {
+          for (const auto& file : segment.meta.files) {
             if (!visitor(file)) {
               return false;
             }
@@ -1005,7 +1005,7 @@ class index_writer : private util::noncopyable {
     // file names and segments to be synced during next commit
     sync_context to_sync;
 
-    operator bool() const noexcept { return ctx && meta; }
+    explicit operator bool() const noexcept { return ctx && meta; }
   };
 
   static_assert(std::is_nothrow_move_constructible_v<pending_context_t>);
@@ -1017,7 +1017,7 @@ class index_writer : private util::noncopyable {
     // meta + references of next commit
     committed_state_t commit;
 
-    operator bool() const noexcept { return ctx && commit; }
+    explicit operator bool() const noexcept { return ctx && commit; }
 
     void reset() noexcept {
       ctx.reset();
@@ -1057,7 +1057,7 @@ class index_writer : private util::noncopyable {
   readers_cache cached_readers_;
   format::ptr codec_;
   // guard for cached_segment_readers_, commit_pool_, meta_
-  // (modification during commit()/defragment()), paylaod_buf_
+  // (modification during commit()/defragment()), payload_buf_
   std::mutex commit_lock_;
   committed_state_t committed_state_;  // last successfully committed state
   std::recursive_mutex consolidation_lock_;
@@ -1084,10 +1084,8 @@ class index_writer : private util::noncopyable {
   index_meta_writer::ptr writer_;
   // exclusive write lock for directory
   index_lock::ptr write_lock_;
-  // track ref for lock file to preven removal
+  // track ref for lock file to prevent removal
   index_file_refs::ref_t write_lock_file_ref_;
 };
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_INDEX_WRITER_H
