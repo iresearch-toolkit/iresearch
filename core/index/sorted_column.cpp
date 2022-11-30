@@ -43,7 +43,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
   // first - position in 'index_', eof() - not present
   // second - old document id, 'doc_limit::min()'-based
   std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> new_old(
-    doc_limits::min() + max, std::make_pair(doc_limits::eof(), 0));
+    doc_limits::min() + max, std::pair{doc_limits::eof(), 0U});
 
   doc_id_t new_doc_id = irs::doc_limits::min();
   for (size_t i = 0, size = index_.size() - 1; i < size; ++i) {
@@ -54,16 +54,17 @@ std::pair<doc_map, field_id> sorted_column::flush(
       ++new_doc_id;
     }
 
-    new_old[new_doc_id].first = doc_id_t(i);
-    new_old[new_doc_id].second = new_doc_id;
+    auto& entry = new_old[new_doc_id];
+    entry.first = static_cast<doc_id_t>(i);
+    entry.second = new_doc_id;
     ++new_doc_id;
   }
 
-  auto get_value = [this](irs::doc_id_t doc) {
+  auto get_value = [this](irs::doc_id_t doc) noexcept {
     return doc_limits::eof(doc)
              ? bytes_view{}
              : bytes_view{data_buf_.c_str() + index_[doc].second,
-                         index_[doc + 1].second - index_[doc].second};
+                          index_[doc + 1].second - index_[doc].second};
   };
 
   auto comparer = [&less, &get_value](
@@ -132,8 +133,7 @@ bool sorted_column::flush_dense(
   }
 
   buffer.clear();
-  buffer.resize(total,
-                std::make_pair(doc_limits::eof(), doc_limits::invalid()));
+  buffer.resize(total, std::pair{doc_limits::eof(), doc_limits::invalid()});
 
   for (size_t i = 0; i < size; ++i) {
     buffer[docmap[index_[i].first] - doc_limits::min()].first = doc_id_t(i);
@@ -161,7 +161,7 @@ void sorted_column::flush_sparse(
   buffer.resize(size);
 
   for (size_t i = 0; i < size; ++i) {
-    buffer[i] = std::make_pair(doc_id_t(i), docmap[index_[i].first]);
+    buffer[i] = std::pair{doc_id_t(i), docmap[index_[i].first]};
   }
 
   std::sort(buffer.begin(), buffer.end(),

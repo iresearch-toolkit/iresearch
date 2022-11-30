@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SORTED_COLUMN_H
-#define IRESEARCH_SORTED_COLUMN_H
+#pragma once
 
 #include <vector>
 
@@ -122,5 +121,3 @@ class sorted_column final : public column_output, private util::noncopyable {
 };  // sorted_column
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_SORTED_COLUMN_H
