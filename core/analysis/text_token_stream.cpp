@@ -447,8 +447,8 @@ constexpr std::string_view MIN_PARAM_NAME{"min"};
 constexpr std::string_view MAX_PARAM_NAME{"max"};
 constexpr std::string_view PRESERVE_ORIGINAL_PARAM_NAME{"preserveOriginal"};
 
-const frozen::unordered_map<std::string_view,
-                            analysis::text_token_stream::case_convert_t, 3>
+constexpr frozen::unordered_map<std::string_view,
+                                analysis::text_token_stream::case_convert_t, 3>
   CASE_CONVERT_MAP = {
     {"lower", analysis::text_token_stream::case_convert_t::LOWER},
     {"none", analysis::text_token_stream::case_convert_t::NONE},
