@@ -1809,65 +1809,63 @@ TEST_P(sorted_index_test_case,
     }
   }
 
-  /*
-    // Consolidate segments
+  // Consolidate segments
+  {
+    irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+  }
+
+  // Check consolidated segment
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
+
+    // Check segment 0
     {
-      irs::index_utils::consolidate_count consolidate_all;
-      ASSERT_TRUE(writer->consolidate(
-        irs::index_utils::consolidation_policy(consolidate_all)));
-      writer->commit();
-    }
+      auto& segment = reader[0];
+      const auto* column = segment.sort();
+      ASSERT_EQ(4, column->size());
+      ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(irs::IsNull(column->name()));
+      ASSERT_EQ(0, column->payload().size());
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_TRUE(actual_value->value.empty());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_TRUE(actual_value->value.empty());
+      ASSERT_FALSE(docsItr->next());
 
-    // Check consolidated segment
-    {
-      auto reader = irs::directory_reader::open(dir(), codec());
-      ASSERT_TRUE(reader);
-      ASSERT_EQ(1, reader.size());
-      ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
-
-      // Check segment 0
-      {
-        auto& segment = reader[0];
-        const auto* column = segment.sort();
-        ASSERT_EQ(4, column->size());
-        ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(irs::IsNull(column->name()));
-        ASSERT_EQ(0, column->payload().size());
-        auto values = column->iterator(irs::ColumnHint::kNormal);
-        ASSERT_NE(nullptr, values);
-        auto* actual_value = irs::get<irs::payload>(*values);
-        ASSERT_NE(nullptr, actual_value);
-        auto terms = segment.field("same");
-        ASSERT_NE(nullptr, terms);
-        auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-        ASSERT_TRUE(termItr->next());
-        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ("B",
-                  irs::to_string<std::string_view>(actual_value->value.data()));
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ("A",
-                  irs::to_string<std::string_view>(actual_value->value.data()));
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_TRUE(actual_value->value.empty());
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_TRUE(actual_value->value.empty());
-        ASSERT_FALSE(docsItr->next());
-
-        // Check pluggable features in consolidated segment
-        if (supports_pluggable_features()) {
-          check_features(segment, "name", 4, true);
-          check_features(segment, "same", 4, true);
-          check_features(segment, "duplicated", 3, true);
-          check_features(segment, "prefix", 2, true);
-        }
+      // Check pluggable features in consolidated segment
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 4, true);
+        check_features(segment, "same", 4, true);
+        check_features(segment, "duplicated", 3, true);
+        check_features(segment, "prefix", 2, true);
       }
     }
-    */
+  }
 
   // FIXME(gnusi)
   // We can't use assert_index() to check the
@@ -2069,65 +2067,63 @@ TEST_P(sorted_index_test_case,
     }
   }
 
-  /*
-    // Consolidate segments
+  // Consolidate segments
+  {
+    irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::consolidation_policy(consolidate_all)));
+    writer->commit();
+  }
+
+  // Check consolidated segment
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
+
+    // Check segment 0
     {
-      irs::index_utils::consolidate_count consolidate_all;
-      ASSERT_TRUE(writer->consolidate(
-        irs::index_utils::consolidation_policy(consolidate_all)));
-      writer->commit();
-    }
+      auto& segment = reader[0];
+      const auto* column = segment.sort();
+      ASSERT_EQ(4, column->size());
+      ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(irs::IsNull(column->name()));
+      ASSERT_EQ(0, column->payload().size());
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("B",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_EQ("A",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_TRUE(actual_value->value.empty());
+      ASSERT_TRUE(docsItr->next());
+      ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+      ASSERT_TRUE(actual_value->value.empty());
+      ASSERT_FALSE(docsItr->next());
 
-    // Check consolidated segment
-    {
-      auto reader = irs::directory_reader::open(dir(), codec());
-      ASSERT_TRUE(reader);
-      ASSERT_EQ(1, reader.size());
-      ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
-
-      // Check segment 0
-      {
-        auto& segment = reader[0];
-        const auto* column = segment.sort();
-        ASSERT_EQ(4, column->size());
-        ASSERT_NE(nullptr, column);
-        ASSERT_TRUE(irs::IsNull(column->name()));
-        ASSERT_EQ(0, column->payload().size());
-        auto values = column->iterator(irs::ColumnHint::kNormal);
-        ASSERT_NE(nullptr, values);
-        auto* actual_value = irs::get<irs::payload>(*values);
-        ASSERT_NE(nullptr, actual_value);
-        auto terms = segment.field("same");
-        ASSERT_NE(nullptr, terms);
-        auto termItr = terms->iterator(irs::SeekMode::NORMAL);
-        ASSERT_TRUE(termItr->next());
-        auto docsItr = termItr->postings(irs::IndexFeatures::NONE);
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ("B",
-                  irs::to_string<std::string_view>(actual_value->value.data()));
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_EQ("A",
-                  irs::to_string<std::string_view>(actual_value->value.data()));
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_TRUE(actual_value->value.empty());
-        ASSERT_TRUE(docsItr->next());
-        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
-        ASSERT_TRUE(actual_value->value.empty());
-        ASSERT_FALSE(docsItr->next());
-
-        // Check pluggable features in consolidated segment
-        if (supports_pluggable_features()) {
-          check_features(segment, "name", 4, true);
-          check_features(segment, "same", 4, true);
-          check_features(segment, "duplicated", 3, true);
-          check_features(segment, "prefix", 2, true);
-        }
+      // Check pluggable features in consolidated segment
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 4, true);
+        check_features(segment, "same", 4, true);
+        check_features(segment, "duplicated", 3, true);
+        check_features(segment, "prefix", 2, true);
       }
     }
-    */
+  }
 
   // FIXME(gnusi)
   // We can't use assert_index() to check the

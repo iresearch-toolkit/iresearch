@@ -1051,6 +1051,7 @@ struct SortingIteratorAdapter {
   doc_iterator::ptr it;
   const irs::document* doc;
   const irs::payload* payload;
+  doc_id_t prev{};
 };
 
 class SortingCompoundDocIterator : util::noncopyable {
@@ -1078,7 +1079,9 @@ class SortingCompoundDocIterator : util::noncopyable {
     // advance
     bool operator()(const size_t i) const {
       assert(i < itrs_.size());
-      return itrs_[i].it->next();
+      auto& [it, doc, _, prev] = itrs_[i];
+      prev = doc->value;
+      return it->next();
     }
 
     // compare
@@ -1086,8 +1089,8 @@ class SortingCompoundDocIterator : util::noncopyable {
       assert(lhs < itrs_.size());
       assert(rhs < itrs_.size());
 
-      const auto& [lhs_it, lhs_doc, lhs_pay] = itrs_[lhs];
-      const auto& [rhs_it, rhs_doc, rhs_pay] = itrs_[rhs];
+      const auto& [lhs_it, lhs_doc, lhs_pay, _] = itrs_[lhs];
+      const auto& [rhs_it, rhs_doc, rhs_pay, __] = itrs_[rhs];
 
       // FIXME(gnusi): Consider changing comparator to 3-way comparison
       if (const bytes_view lhs_value = lhs_pay->value,
@@ -1330,8 +1333,9 @@ const merge_writer::flush_progress_t kProgressNoop = []() { return true; };
 namespace iresearch {
 
 merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
-  : reader{std::move(reader)},
-    doc_map([](doc_id_t) noexcept { return doc_limits::eof(); }) {
+  : reader{std::move(reader)}, doc_map{[](doc_id_t) noexcept {
+      return doc_limits::eof();
+    }} {
   assert(this->reader);
 }
 
@@ -1563,7 +1567,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
 
   // get column info for sorted column
   const auto info = (*column_info_)({});
-  auto column = writer->push_column(info, {});
+  auto [column_id, column_writer] = writer->push_column(info, {});
 
   for (doc_id_t next_id = doc_limits::min(); columns_it.next();) {
     const auto [index, it] = columns_it.value();
@@ -1577,13 +1581,17 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
       continue;
     }
 
-    auto& payload = it->payload->value;
-
     // fill doc id map
-    readers_[index].doc_id_map[it->it->value()] = next_id;
+    auto min = it->prev + 1;
+    auto& doc_id_map = readers_[index].doc_id_map;
+    for (const auto max = it->doc->value; min < max; ++min) {
+      doc_id_map[min] = next_id++;
+    }
+    doc_id_map[min] = next_id;
 
     // write value into new column
-    auto& stream = column.second(next_id);
+    const auto& payload = it->payload->value;
+    auto& stream = column_writer(next_id);
     stream.write_bytes(payload.data(), payload.size());
 
     ++next_id;
@@ -1650,7 +1658,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   }
 
   segment.meta.column_store = cs.flush(state);  // flush columnstore
-  segment.meta.sort = column.first;             // set sort column identifier
+  segment.meta.sort = column_id;                // set sort column identifier
   // all merged documents are live
   segment.meta.live_docs_count = segment.meta.docs_count;
 

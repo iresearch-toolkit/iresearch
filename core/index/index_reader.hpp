@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_READER_H
-#define IRESEARCH_INDEX_READER_H
+#pragma once
 
 #include <functional>
 #include <numeric>
@@ -171,5 +170,3 @@ void visit(const index_reader& index, std::string_view field,
 }
 
 }  // namespace iresearch
-
-#endif
