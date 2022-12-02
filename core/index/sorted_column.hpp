@@ -78,7 +78,7 @@ class sorted_column final : public column_output, private util::noncopyable {
   std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
     columnstore_writer::column_finalizer_f header_writer,
-    doc_id_t max,  // total number of docs in segment
+    doc_id_t docs_count,  // total number of docs in segment
     const comparer& less);
 
   field_id flush(columnstore_writer& writer,
@@ -98,14 +98,28 @@ class sorted_column final : public column_output, private util::noncopyable {
   const column_info& info() const noexcept { return info_; }
 
  private:
-  void write_value(data_output& out, const size_t idx) {
-    assert(idx + 1 < index_.size());
-    const auto begin = index_[idx].second;
-    const auto end = index_[idx + 1].second;
+  bytes_view get_value(
+    const std::pair<doc_id_t, size_t>* value) const noexcept {
+    assert(index_.data() <= value);
+    assert(value < index_.data() + index_.size());
+    assert(!doc_limits::eof(value->first));
+
+    const auto begin = value->second;
+    const auto end = (value + 1)->second;
     assert(begin <= end);
 
-    out.write_bytes(data_buf_.c_str() + begin, end - begin);
+    return {data_buf_.c_str() + begin, end - begin};
+  };
+
+  void write_value(data_output& out,
+                   const std::pair<doc_id_t, size_t>* value) const {
+    const auto payload = get_value(value);
+    out.write_bytes(payload.data(), payload.size());
   }
+
+  bool flush_sprase_primary(doc_map& docmap,
+                            const columnstore_writer::values_writer_f& writer,
+                            doc_id_t docs_count, const comparer& less);
 
   void flush_already_sorted(const columnstore_writer::values_writer_f& writer);
 

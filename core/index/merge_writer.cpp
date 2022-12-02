@@ -1100,7 +1100,7 @@ class SortingCompoundDocIterator : util::noncopyable {
 
       // tie braker to avoid splitting document blocks
       return lhs_it < rhs_it ||
-             (lhs_it < rhs_it && lhs_doc->value < rhs_doc->value);
+             (lhs_it == rhs_it && lhs_doc->value < rhs_doc->value);
     }
 
    private:
