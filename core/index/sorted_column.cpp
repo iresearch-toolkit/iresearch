@@ -58,8 +58,8 @@ bool sorted_column::flush_sprase_primary(
   for (size_t idx : sorted_index) {
     const auto* value = &index_[idx];
 
-    doc_id_t min =
-      doc_limits::min() + static_cast<bool>(idx) * std::prev(value)->first;
+    doc_id_t min = doc_limits::min() +
+                   static_cast<doc_id_t>(idx != 0) * std::prev(value)->first;
 
     for (const doc_id_t max = value->first; min < max; ++min) {
       docmap[min] = new_doc++;
