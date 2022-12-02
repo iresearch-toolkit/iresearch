@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SORTED_COLUMN_H
-#define IRESEARCH_SORTED_COLUMN_H
+#pragma once
 
 #include <vector>
 
@@ -49,13 +48,13 @@ class sorted_column final : public column_output, private util::noncopyable {
     }
   }
 
-  virtual void write_byte(byte_type b) override { data_buf_ += b; }
+  void write_byte(byte_type b) override { data_buf_ += b; }
 
-  virtual void write_bytes(const byte_type* b, size_t size) override {
+  void write_bytes(const byte_type* b, size_t size) override {
     data_buf_.append(b, size);
   }
 
-  virtual void reset() override {
+  void reset() override {
     if (index_.empty()) {
       return;
     }
@@ -133,8 +132,6 @@ class sorted_column final : public column_output, private util::noncopyable {
   // doc_id + offset in 'data_buf_'
   std::vector<std::pair<irs::doc_id_t, size_t>> index_;
   column_info info_;
-};  // sorted_column
+};
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_SORTED_COLUMN_H

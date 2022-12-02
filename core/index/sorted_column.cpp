@@ -22,10 +22,8 @@
 
 #include "sorted_column.hpp"
 
-#include "comparer.hpp"
+#include "index/comparer.hpp"
 #include "shared.hpp"
-#include "utils/lz4compression.hpp"
-#include "utils/misc.hpp"
 #include "utils/type_limits.hpp"
 
 namespace iresearch {
