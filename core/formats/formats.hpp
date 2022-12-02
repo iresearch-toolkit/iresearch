@@ -239,6 +239,13 @@ struct term_reader : public attribute_provider {
   virtual seek_term_iterator::ptr iterator(SeekMode mode) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief read 'count' number of documents containing 'term' to 'docs'
+  /// @returns number of read documents
+  //////////////////////////////////////////////////////////////////////////////
+  virtual size_t read_documents(bytes_view term, doc_id_t* docs,
+                                size_t count) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @returns an intersection of a specified automaton and term reader
   //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator(
