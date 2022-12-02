@@ -46,7 +46,7 @@ bool sorted_column::flush_sprase_primary(
     return false;
   }
 
-  docmap.resize(doc_limits::eof() + docs_count);
+  docmap.resize(doc_limits::min() + docs_count);
 
   std::vector<size_t> sorted_index(index_.size() - 1);
   std::iota(sorted_index.begin(), sorted_index.end(), 0);
@@ -55,31 +55,26 @@ bool sorted_column::flush_sprase_primary(
               return comparer(index_[lhs], index_[rhs]);
             });
 
-  doc_id_t new_doc = 0;
+  doc_id_t new_doc = doc_limits::min();
 
-  auto fill = [&](const std::pair<doc_id_t, size_t>* value) mutable {
-    const doc_id_t max = value->first;
+  for (size_t idx : sorted_index) {
+    const auto* value = &index_[idx];
+
     doc_id_t min =
-      (value == index_.data() ? 0 : (value - 1)->first) + doc_limits::min();
+      doc_limits::min() + static_cast<bool>(idx) * std::prev(value)->first;
 
-    ++new_doc;
-
-    for (; min < max; ++min) {
+    for (const doc_id_t max = value->first; min < max; ++min) {
       docmap[min] = new_doc++;
     }
 
     docmap[min] = new_doc;
-  };
-
-  for (size_t idx : sorted_index) {
-    const auto& value = index_[idx];
-    fill(&value);
-    write_value(writer(new_doc), &value);
+    write_value(writer(new_doc), value);
+    ++new_doc;
   }
 
-  for (++new_doc; new_doc < docs_count;) {
-    auto& doc = docmap[new_doc];
-    doc = new_doc++;
+  for (auto begin = std::next(docmap.begin(), new_doc); begin != docmap.end();
+       ++begin) {
+    *begin = new_doc++;
   }
 
   return true;
@@ -90,6 +85,10 @@ std::pair<doc_map, field_id> sorted_column::flush(
   doc_id_t docs_count, const comparer& less) {
   assert(index_.size() <= docs_count);
   assert(index_.empty() || index_.back().first <= docs_count);
+
+  if (IRS_UNLIKELY(index_.empty())) {
+    return {{}, field_limits::invalid()};
+  }
 
   // temporarily push sentinel
   index_.emplace_back(doc_limits::eof(), data_buf_.size());
@@ -177,7 +176,7 @@ field_id sorted_column::flush(columnstore_writer& writer,
                               const doc_map& docmap, flush_buffer_t& buffer) {
   assert(docmap.size() < irs::doc_limits::eof());
 
-  if (index_.empty()) {
+  if (IRS_UNLIKELY(index_.empty())) {
     return field_limits::invalid();
   }
 
