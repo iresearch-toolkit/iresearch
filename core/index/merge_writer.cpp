@@ -1545,8 +1545,10 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
       return false;
     }
 
-    reader_ctx.doc_map = [&doc_id_map](doc_id_t doc) noexcept {
-      return doc >= doc_id_map.size() ? doc_limits::eof() : doc_id_map[doc];
+    reader_ctx.doc_map = [doc_id_map =
+                            std::span{doc_id_map}](size_t doc) noexcept {
+      // doc_id_map[0] == doc_limits::eof() always
+      return doc_id_map[doc * static_cast<bool>(doc < doc_id_map.size())];
     };
   }
 
