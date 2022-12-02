@@ -1062,11 +1062,16 @@ class SortingCompoundDocIterator : util::noncopyable {
     heap_it_.reset(itrs_.size());
   }
 
-  bool next() { return heap_it_.next(); }
+  bool Next() { return heap_it_.next(); }
 
-  std::pair<size_t, const SortingIteratorAdapter*> value() const noexcept {
+  std::pair<size_t, const SortingIteratorAdapter*> Value() const noexcept {
     const auto idx = heap_it_.value();
     return {idx, &itrs_[idx]};
+  }
+
+  const SortingIteratorAdapter& Iterator(size_t i) const noexcept {
+    assert(i < itrs_.size());
+    return itrs_[i];
   }
 
  private:
@@ -1571,8 +1576,8 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   const auto info = (*column_info_)({});
   auto [column_id, column_writer] = writer->push_column(info, {});
 
-  for (doc_id_t next_id = doc_limits::min(); columns_it.next();) {
-    const auto [index, it] = columns_it.value();
+  for (doc_id_t next_id = doc_limits::min(); columns_it.Next();) {
+    const auto [index, it] = columns_it.Value();
     assert(it);
 
     if (IRS_UNLIKELY(!it->valid())) {
@@ -1601,6 +1606,13 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     if (!progress()) {
       return false;  // progress callback requested termination
     }
+  }
+
+  for (size_t i = 0; auto& reader_ctx : readers_) {
+    const auto& it = columns_it.Iterator(i);
+
+    const auto min = it.prev;
+    const auto max = reader_ctx.reader->docs_count();
   }
 
 #ifdef IRESEARCH_DEBUG
