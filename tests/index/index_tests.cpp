@@ -4164,14 +4164,13 @@ TEST_P(index_test_case, get_term) {
   ASSERT_NE(nullptr, field);
 
   {
-    const auto meta =
-      field->get_term(irs::ViewCast<irs::byte_type>("invalid"sv));
+    const auto meta = field->term(irs::ViewCast<irs::byte_type>("invalid"sv));
     ASSERT_EQ(0, meta.docs_count);
     ASSERT_EQ(0, meta.freq);
   }
 
   {
-    const auto meta = field->get_term(irs::ViewCast<irs::byte_type>("A"sv));
+    const auto meta = field->term(irs::ViewCast<irs::byte_type>("A"sv));
     ASSERT_EQ(1, meta.docs_count);
     ASSERT_EQ(1, meta.freq);
   }
