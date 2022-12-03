@@ -3112,6 +3112,15 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_);
     }
 
+    term_meta get_term(bytes_view term) const override {
+      single_term_iterator<FST> it{meta(), *owner_->pr_,
+                                   owner_->terms_in_->reopen(),
+                                   owner_->terms_in_cipher_.get(), *fst_};
+
+      it.seek(term);
+      return it.meta();
+    }
+
     size_t read_documents(bytes_view term, doc_id_t* docs,
                           size_t count) const override {
       if (IRS_UNLIKELY(!count || !docs)) {
@@ -3126,7 +3135,7 @@ class field_reader final : public irs::field_reader {
       }
 
       if (const auto& meta = it.meta(); meta.docs_count == 1) {
-        *docs = meta.e_single_doc;
+        *docs = doc_limits::min() + meta.e_single_doc;
         return 1;
       }
 

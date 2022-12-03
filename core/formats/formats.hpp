@@ -245,6 +245,8 @@ struct term_reader : public attribute_provider {
   virtual size_t read_documents(bytes_view term, doc_id_t* docs,
                                 size_t count) const = 0;
 
+  virtual term_meta get_term(bytes_view term) const = 0;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @returns an intersection of a specified automaton and term reader
   //////////////////////////////////////////////////////////////////////////////
