@@ -52,7 +52,7 @@ class empty_term_reader final : public irs::term_reader {
     return 0;
   }
 
-  term_meta get_term(bytes_view) const noexcept override { return {}; }
+  term_meta term(bytes_view) const noexcept override { return {}; }
 
   doc_iterator::ptr postings(const seek_cookie&,
                              IndexFeatures) const noexcept override {

@@ -3112,7 +3112,7 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_);
     }
 
-    term_meta get_term(bytes_view term) const override {
+    term_meta term(bytes_view term) const override {
       single_term_iterator<FST> it{meta(), *owner_->pr_,
                                    owner_->terms_in_->reopen(),
                                    owner_->terms_in_cipher_.get(), *fst_};
