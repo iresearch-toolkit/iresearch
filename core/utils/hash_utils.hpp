@@ -21,18 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_HASH_UTILS_H
-#define IRESEARCH_HASH_UTILS_H
+#pragma once
 
 #include <absl/hash/hash.h>
 #include <frozen/string.h>
 
-#include "shared.hpp"
 #include "string.hpp"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        hash utils
-// -----------------------------------------------------------------------------
 
 namespace iresearch {
 
@@ -81,10 +75,6 @@ using hashed_bytes_view = hashed_basic_string_view<byte_type>;
 
 }  // namespace iresearch
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 frozen extensions
-// -----------------------------------------------------------------------------
-
 namespace frozen {
 
 template<>
@@ -100,10 +90,6 @@ struct elsa<std::string_view> {
 
 }  // namespace frozen
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   absl extensions
-// -----------------------------------------------------------------------------
-
 namespace absl {
 namespace hash_internal {
 
@@ -118,10 +104,6 @@ struct HashImpl<::iresearch::hashed_basic_string_view<Char>> {
 }  // namespace hash_internal
 }  // namespace absl
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    std extensions
-// -----------------------------------------------------------------------------
-
 namespace std {
 
 template<typename Char>
@@ -133,5 +115,3 @@ struct hash<::iresearch::hashed_basic_string_view<Char>> {
 };
 
 }  // namespace std
-
-#endif
