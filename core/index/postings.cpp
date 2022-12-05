@@ -77,7 +77,7 @@ std::pair<posting*, bool> postings::emplace(bytes_view term) {
   assert(size() < doc_limits::eof());  // not larger then the static flag
   assert(map_.size() == postings_.size());
 
-  const auto hashed_term = make_hashed_ref(term);
+  const hashed_bytes_view hashed_term{term};
 
   bool is_new = false;
   const auto it = map_.lazy_emplace(

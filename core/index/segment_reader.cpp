@@ -284,7 +284,7 @@ segment_reader_impl::segment_reader_impl(const directory& dir,
 
 const irs::column_reader* segment_reader_impl::column(
   std::string_view name) const {
-  auto it = named_columns_.find(make_hashed_ref(name));
+  auto it = named_columns_.find(hashed_string_view{name});
   return it == named_columns_.end() ? nullptr : it->second;
 }
 
@@ -377,7 +377,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
 
       if (!IsNull(name)) {
         const auto [it, is_new] =
-          named_columns.emplace(make_hashed_ref(name), &column);
+          named_columns.emplace(hashed_string_view{name}, &column);
         UNUSED(it);
 
         if (IRS_UNLIKELY(!is_new)) {
