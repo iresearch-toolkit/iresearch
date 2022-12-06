@@ -7,7 +7,7 @@ if (SUPPRESS_EXTERNAL_WARNINGS)
   else ()
     add_compile_options(-Wno-all)
   endif ()
-endif()
+endif ()
 
 ################################################################################
 ### Highway library
@@ -31,22 +31,7 @@ if (IS_ARM)
     SYSTEM
     INTERFACE ${SSE2NEON_ROOT}
   )
-endif()
-
-################################################################################
-### CmdLine library
-################################################################################
-
-add_library(
-  iresearch-cmdline
-  INTERFACE
-)
-
-target_include_directories(
-  iresearch-cmdline
-  SYSTEM
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/cmdline
-)
+endif ()
 
 ################################################################################
 ### OpenFST + Kaldi library
@@ -57,7 +42,7 @@ set(Kaldi_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/io-funcs.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-error.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-utils.cc
-)
+  )
 
 set(OpenFST_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/compat.cc
@@ -72,7 +57,7 @@ set(OpenFST_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/util.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/weight.cc
   ${Kaldi_sources}
-)
+  )
 
 add_library(
   iresearch-ofst
@@ -89,7 +74,7 @@ if (MSVC)
     # MSVC2015-2017 require "/bigobj" to compile debug build
     PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
-else()
+else ()
   CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
   if (SUPPORT_FPIC)
     target_compile_options(
@@ -97,14 +82,14 @@ else()
       PRIVATE "-fPIC"
     )
   endif ()
-endif()
+endif ()
 
 # force c++17 for ofst as transitional step
 set_target_properties(iresearch-ofst
-    PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED YES
-)
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  )
 
 target_include_directories(
   iresearch-ofst
@@ -114,40 +99,10 @@ target_include_directories(
 )
 
 ################################################################################
-### RapidJSON library
-################################################################################
-
-add_library(
-  iresearch-rapidjson
-  INTERFACE
-)
-
-target_include_directories(
-  iresearch-rapidjson
-  SYSTEM
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/rapidjson
-)
-
-################################################################################
 ### SIMDCOMP library
 ################################################################################
 
 add_subdirectory(simdcomp)
-
-################################################################################
-### utfcpp library
-################################################################################
-
-add_library(
-  iresearch-utfcpp
-  INTERFACE
-)
-
-target_include_directories(
-  iresearch-utfcpp
-  SYSTEM
-  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/utfcpp
-)
 
 ################################################################################
 ### frozen library
@@ -216,13 +171,21 @@ set(CXX_STD 17 CACHE STRING "Set to 14, 17, etc., to enable C++14, C++17, etc." 
 add_subdirectory(text)
 # force c++17
 set_target_properties(text
-    PROPERTIES
-        CXX_STANDARD 17
-        CXX_STANDARD_REQUIRED YES
-)
+  PROPERTIES
+  CXX_STANDARD 17
+  CXX_STANDARD_REQUIRED YES
+  )
 
 ################################################################################
 ### fastText library
 ################################################################################
 
 add_subdirectory(fastText)
+
+################################################################################
+### tests only library
+################################################################################
+
+if (USE_UTILS OR USE_TESTS OR USE_MICROBENCH OR USE_PYRESEARCH)
+  add_subdirectory(tests)
+endif ()
