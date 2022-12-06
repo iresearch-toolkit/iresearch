@@ -188,6 +188,11 @@ if (MSVC)
     )
 endif ()
 
+set_target_properties(iresearch-tests-static
+  PROPERTIES
+  OUTPUT_NAME iresearch-tests-s
+  )
+
 target_link_libraries(iresearch-tests-static
   ${GCOV_LIBRARY}
   iresearch-static

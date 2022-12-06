@@ -384,6 +384,13 @@ if (MSVC)
     )
 endif ()
 
+set_target_properties(iresearch-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME iresearch-s
+  )
+
 if (USE_IWYU)
   set_property(TARGET iresearch-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
 endif ()
@@ -444,6 +451,13 @@ add_library(iresearch-analyzer-delimiter-static
 
 set_ipo(iresearch-analyzer-delimiter-static)
 
+set_target_properties(iresearch-analyzer-delimiter-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-delimiter-s
+  )
+
 target_link_libraries(iresearch-analyzer-delimiter-static
   iresearch-static
   )
@@ -464,6 +478,13 @@ target_include_directories(iresearch-analyzer-text-static
   SYSTEM
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   PRIVATE ${Snowball_INCLUDE_DIR}
+  )
+
+set_target_properties(iresearch-analyzer-text-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-text-s
   )
 
 target_link_libraries(iresearch-analyzer-text-static
@@ -487,6 +508,13 @@ target_include_directories(iresearch-analyzer-collation-static
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
   )
 
+set_target_properties(iresearch-analyzer-collation-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-collation-s
+  )
+
 target_link_libraries(iresearch-analyzer-collation-static
   iresearch-static
   )
@@ -501,6 +529,13 @@ add_library(iresearch-analyzer-minhash-static
   )
 
 set_ipo(iresearch-analyzer-minhash-static)
+
+set_target_properties(iresearch-analyzer-minhash-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-minhash-s
+  )
 
 target_link_libraries(iresearch-analyzer-minhash-static
   iresearch-static
@@ -520,6 +555,13 @@ set_ipo(iresearch-analyzer-norm-static)
 target_include_directories(iresearch-analyzer-norm-static
   SYSTEM
   PRIVATE ${ICU_INCLUDE_DIR} # cmake on MSVC does not properly expand dependencies for linked libraries
+  )
+
+set_target_properties(iresearch-analyzer-norm-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-norm-s
   )
 
 target_link_libraries(iresearch-analyzer-norm-static
@@ -544,6 +586,13 @@ target_include_directories(iresearch-analyzer-stem-static
   PRIVATE ${ICU_INCLUDE_DIR}
   )
 
+set_target_properties(iresearch-analyzer-stem-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-stem-s
+  )
+
 target_link_libraries(iresearch-analyzer-stem-static
   iresearch-static
   stemmer-static
@@ -560,6 +609,13 @@ add_library(iresearch-analyzer-stopwords-static
 
 set_ipo(iresearch-analyzer-stopwords-static)
 
+set_target_properties(iresearch-analyzer-stopwords-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-stopwords-s
+  )
+
 target_link_libraries(iresearch-analyzer-stopwords-static
   iresearch-static
   )
@@ -575,6 +631,13 @@ add_library(iresearch-analyzer-ngram-static
 
 set_ipo(iresearch-analyzer-ngram-static)
 
+set_target_properties(iresearch-analyzer-ngram-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-ngram-s
+  )
+
 target_link_libraries(iresearch-analyzer-ngram-static
   iresearch-static
   )
@@ -589,6 +652,14 @@ add_library(iresearch-analyzer-pipeline-static
   )
 
 set_ipo(iresearch-analyzer-pipeline-static)
+
+
+set_target_properties(iresearch-analyzer-pipeline-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-pipeline-s
+  )
 
 target_link_libraries(iresearch-analyzer-pipeline-static
   iresearch-static
@@ -610,6 +681,13 @@ target_link_libraries(
 
 set_ipo(iresearch-analyzer-segmentation-static)
 
+set_target_properties(iresearch-analyzer-segmentation-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-segmentation-s
+  )
+
 target_include_directories(iresearch-analyzer-segmentation-static
   PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
   )
@@ -628,6 +706,13 @@ add_library(iresearch-analyzer-classification-static
   )
 
 set_ipo(iresearch-analyzer-classification-static)
+
+set_target_properties(iresearch-analyzer-classification-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-classification-s
+  )
 
 target_link_libraries(iresearch-analyzer-classification-static
   iresearch-static
@@ -649,6 +734,13 @@ add_library(iresearch-analyzer-nearest-neighbors-static
   )
 
 set_ipo(iresearch-analyzer-nearest-neighbors-static)
+
+set_target_properties(iresearch-analyzer-nearest-neighbors-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME analyzer-nearest-neighbors-s
+  )
 
 target_link_libraries(iresearch-analyzer-nearest-neighbors-static
   iresearch-static
@@ -681,6 +773,14 @@ add_library(iresearch-format-1_0-static
 
 set_ipo(iresearch-format-1_0-static)
 
+set_target_properties(iresearch-format-1_0-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME format-1_0-s
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;${FORMAT_10_EXTRA_DEFS}"
+  )
+
 target_include_directories(iresearch-format-1_0-static
   SYSTEM
   PRIVATE $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES> # used by formats_burst_trie
@@ -708,6 +808,13 @@ add_library(iresearch-scorer-tfidf-static
 
 set_ipo(iresearch-scorer-tfidf-static)
 
+set_target_properties(iresearch-scorer-tfidf-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME scorer-tfidf-s
+  )
+
 target_link_libraries(iresearch-scorer-tfidf-static
   iresearch-static
   )
@@ -726,6 +833,13 @@ add_library(iresearch-scorer-bm25-static
   )
 
 set_ipo(iresearch-scorer-bm25-static)
+
+set_target_properties(iresearch-scorer-bm25-static
+  PROPERTIES
+  PREFIX lib
+  IMPORT_PREFIX lib
+  OUTPUT_NAME scorer-bm25-s
+  )
 
 target_link_libraries(iresearch-scorer-bm25-static
   iresearch-static
