@@ -32,8 +32,6 @@
 #include "utils/lz4compression.hpp"
 #include "utils/type_limits.hpp"
 
-// FIXME check gaps && deleted docs
-
 namespace {
 
 struct Comparator final : irs::comparer {
