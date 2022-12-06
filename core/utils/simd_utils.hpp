@@ -76,8 +76,8 @@ std::pair<T, T> maxmin(const T* begin, size_t size) noexcept {
     begin += Unroll * Step;
   }
 
-  std::pair<T, T> minmax = {GetLane(MinOfLanes(minacc)),
-                            GetLane(MaxOfLanes(maxacc))};
+  std::pair<T, T> minmax = {GetLane(MinOfLanes(simd_tag, minacc)),
+                            GetLane(MaxOfLanes(simd_tag, maxacc))};
 
   for (; begin != end; ++begin) {
     minmax.first = std::min(*begin, minmax.first);
@@ -110,7 +110,7 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
   }
 
   // FIXME use OrOfLanes instead
-  auto max = GetLane(MaxOfLanes(oracc));
+  auto max = GetLane(MaxOfLanes(simd_tag, oracc));
 
   for (; begin != end; ++begin) {
     max |= *begin;
@@ -138,7 +138,8 @@ bool all_equal(const T* begin, size_t size) noexcept {
 
   for (size_t steps = size / (Unroll * Step); steps; --steps) {
     for (size_t j = 0; j < Unroll; ++j) {
-      if (!AllTrue(vvalue == simd_helper::load(simd_tag, begin + j * Step))) {
+      if (!AllTrue(simd_tag,
+                   vvalue == simd_helper::load(simd_tag, begin + j * Step))) {
         return false;
       }
     }
@@ -245,7 +246,7 @@ void delta_encode(T* begin, T init) noexcept {
 
     for (size_t i = 0; i < Length; i += Step) {
       const auto vec = simd_helper::load(simd_tag, begin + i);
-      const auto delta = vec - CombineShiftRightLanes<3>(vec, prev);
+      const auto delta = vec - CombineShiftRightLanes<3>(simd_tag, vec, prev);
       simd_helper::store(delta, simd_tag, begin + i);
       prev = vec;
     }
