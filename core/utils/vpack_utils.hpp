@@ -23,10 +23,10 @@
 #ifndef IRESEARCH_VPACK_UTILS_H
 #define IRESEARCH_VPACK_UTILS_H
 
+#include "string.hpp"
+#include "velocypack/Options.h"
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
-#include "velocypack/Options.h"
-#include "string.hpp"
 
 namespace iresearch {
 

@@ -23,8 +23,9 @@
 #ifndef IRESEARCH_SIMD_UTILS_H
 #define IRESEARCH_SIMD_UTILS_H
 
-#include <algorithm>
 #include <hwy/highway.h>
+
+#include <algorithm>
 
 #include "shared.hpp"
 #include "utils/bit_packing.hpp"

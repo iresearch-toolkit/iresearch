@@ -20,14 +20,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
-#include "data_input.hpp"
 #include "data_output.hpp"
 
-#include "utils/std.hpp"
-#include "utils/bytes_utils.hpp"
-
 #include <memory>
+
+#include "data_input.hpp"
+#include "shared.hpp"
+#include "utils/bytes_utils.hpp"
+#include "utils/std.hpp"
 
 namespace iresearch {
 

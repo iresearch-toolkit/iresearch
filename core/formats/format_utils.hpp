@@ -23,9 +23,9 @@
 #ifndef IRESEARCH_FORMATS_UTILS_H
 #define IRESEARCH_FORMATS_UTILS_H
 
+#include "index/field_meta.hpp"
 #include "store/store_utils.hpp"
 #include "utils/string_utils.hpp"
-#include "index/field_meta.hpp"
 
 namespace iresearch {
 

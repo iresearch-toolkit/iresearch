@@ -55,7 +55,9 @@ class classification_stream final : public analyzer, private util::noncopyable {
     int32_t top_k;
   };
 
-  static constexpr std::string_view type_name() noexcept { return "classification"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "classification";
+  }
 
   static void init();  // for registration in a static build
 

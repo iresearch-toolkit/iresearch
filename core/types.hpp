@@ -24,8 +24,8 @@
 #ifndef IRESEARCH_TYPES_H
 #define IRESEARCH_TYPES_H
 
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 
 namespace iresearch {
 

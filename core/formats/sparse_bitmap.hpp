@@ -163,7 +163,9 @@ class sparse_bitmap_writer {
 
 // Denotes a position of a value associated with a document.
 struct value_index : document {
-  static constexpr std::string_view type_name() noexcept { return "value_index"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "value_index";
+  }
 };
 
 class sparse_bitmap_iterator final : public resettable_doc_iterator {

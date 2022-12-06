@@ -32,7 +32,8 @@ namespace iresearch {
 struct attributes {
   static bool exists(std::string_view name, bool load_library = true);
 
-  static type_info get(std::string_view name, bool load_library = true) noexcept;
+  static type_info get(std::string_view name,
+                       bool load_library = true) noexcept;
 
   attributes() = delete;
 };

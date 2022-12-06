@@ -24,10 +24,10 @@
 #ifndef IRESEARCH_PIPELINE_TOKEN_STREAM_H
 #define IRESEARCH_PIPELINE_TOKEN_STREAM_H
 
-#include "shared.hpp"
 #include "analyzers.hpp"
-#include "token_stream.hpp"
+#include "shared.hpp"
 #include "token_attributes.hpp"
+#include "token_stream.hpp"
 #include "utils/attribute_helper.hpp"
 
 namespace iresearch {

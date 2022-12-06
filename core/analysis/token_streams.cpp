@@ -66,9 +66,9 @@ bool string_token_stream::next() noexcept {
 // -----------------------------------------------------------------------------
 
 bytes_view numeric_token_stream::numeric_term::value(byte_type* buf,
-                                                    NumericType type,
-                                                    value_t val,
-                                                    uint32_t shift) {
+                                                     NumericType type,
+                                                     value_t val,
+                                                     uint32_t shift) {
   switch (type) {
     case NT_LONG: {
       using traits_t = numeric_utils::numeric_traits<int64_t>;
@@ -168,7 +168,8 @@ void numeric_token_stream::reset(double_t value,
 }
 #endif
 
-/*static*/ bytes_view numeric_token_stream::value(bstring& buf, double_t value) {
+/*static*/ bytes_view numeric_token_stream::value(bstring& buf,
+                                                  double_t value) {
   return numeric_term::value(buf, value);
 }
 

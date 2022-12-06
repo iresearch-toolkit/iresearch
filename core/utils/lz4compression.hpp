@@ -23,11 +23,11 @@
 #ifndef IRESEARCH_LZ4COMPRESSION_H
 #define IRESEARCH_LZ4COMPRESSION_H
 
-#include "string.hpp"
+#include <memory>
+
 #include "compression.hpp"
 #include "noncopyable.hpp"
-
-#include <memory>
+#include "string.hpp"
 
 namespace iresearch {
 namespace compression {
@@ -59,7 +59,7 @@ struct lz4 {
     int acceleration() const noexcept { return acceleration_; }
 
     virtual bytes_view compress(byte_type* src, size_t size,
-                               bstring& out) override
+                                bstring& out) override
       IRESEARCH_ATTRIBUTE_NONNULL();
 
    private:
@@ -69,7 +69,7 @@ struct lz4 {
   class lz4decompressor final : public compression::decompressor {
    public:
     virtual bytes_view decompress(const byte_type* src, size_t src_size,
-                                 byte_type* dst, size_t dst_size) override
+                                  byte_type* dst, size_t dst_size) override
       IRESEARCH_ATTRIBUTE_NONNULL();
   };
 

@@ -359,7 +359,8 @@ TEST(postings_tests, clear) {
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
 
-  [[maybe_unused]] auto res = bh.emplace(tests::detail::to_bytes_view("string"));
+  [[maybe_unused]] auto res =
+    bh.emplace(tests::detail::to_bytes_view("string"));
   ASSERT_FALSE(bh.empty());
   ASSERT_EQ(1, bh.size());
 

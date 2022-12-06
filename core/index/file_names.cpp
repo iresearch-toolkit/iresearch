@@ -68,7 +68,8 @@ void file_name(std::string& out, std::string_view name, std::string_view ext) {
   out.append(ext);
 }
 
-std::string file_name(std::string_view name, uint64_t gen, std::string_view ext) {
+std::string file_name(std::string_view name, uint64_t gen,
+                      std::string_view ext) {
   char buf[21];  // can hold : -2^63 .. 2^64-1, plus 0
   auto buf_size = sprintf(buf, "%" PRIu64, gen);
 

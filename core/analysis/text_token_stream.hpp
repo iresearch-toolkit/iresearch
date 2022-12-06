@@ -29,10 +29,10 @@
 #include <absl/container/flat_hash_set.h>
 #include <unicode/locid.h>
 
-#include "shared.hpp"
 #include "analyzers.hpp"
-#include "token_stream.hpp"
+#include "shared.hpp"
 #include "token_attributes.hpp"
+#include "token_stream.hpp"
 #include "utils/attribute_helper.hpp"
 
 namespace iresearch {

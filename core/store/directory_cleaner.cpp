@@ -21,9 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "directory_cleaner.hpp"
+
 #include "directory.hpp"
 #include "directory_attributes.hpp"
-#include "directory_cleaner.hpp"
 
 namespace iresearch {
 

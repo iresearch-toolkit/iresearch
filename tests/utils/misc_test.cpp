@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "utils/misc.hpp"
+
+#include "tests_shared.hpp"
 
 TEST(misc_test, cached_func_contexpr) {
   constexpr auto cached_func =

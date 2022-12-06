@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitset_doc_iterator.hpp"
+
 #include "formats/empty_term_reader.hpp"
 #include "utils/math_utils.hpp"
 

@@ -21,8 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "utils/math_utils.hpp"
+
+#include "tests_shared.hpp"
 
 namespace math = iresearch::math;
 

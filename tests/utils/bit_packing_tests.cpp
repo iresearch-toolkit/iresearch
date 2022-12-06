@@ -21,12 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
-#include "utils/bit_packing.hpp"
-
-#include <vector>
 #include <algorithm>
+#include <vector>
+
+#include "tests_shared.hpp"
+#include "utils/bit_packing.hpp"
 
 using namespace iresearch;
 

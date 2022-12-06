@@ -94,7 +94,8 @@ void by_term::visit(const sub_reader& segment, const term_reader& field,
 
 filter::prepared::ptr by_term::prepare(const index_reader& index,
                                        const Order& ord, score_t boost,
-                                       std::string_view field, bytes_view term) {
+                                       std::string_view field,
+                                       bytes_view term) {
   TermQuery::States states(index);
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);

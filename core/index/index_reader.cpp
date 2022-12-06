@@ -20,13 +20,14 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "index_reader.hpp"
-#include "segment_reader.hpp"
+
 #include "index_meta.hpp"
+#include "segment_reader.hpp"
+#include "shared.hpp"
 #include "utils/directory_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 

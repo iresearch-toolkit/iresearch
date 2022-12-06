@@ -63,7 +63,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
     return doc_limits::eof(doc)
              ? bytes_view{}
              : bytes_view{data_buf_.c_str() + index_[doc].second,
-                         index_[doc + 1].second - index_[doc].second};
+                          index_[doc + 1].second - index_[doc].second};
   };
 
   auto comparer = [&less, &get_value](

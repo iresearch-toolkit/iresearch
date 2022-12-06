@@ -23,9 +23,9 @@
 #ifndef IRESEARCH_ENCRYPTION_H
 #define IRESEARCH_ENCRYPTION_H
 
-#include "store/directory_attributes.hpp"
-#include "store/data_output.hpp"
 #include "store/data_input.hpp"
+#include "store/data_output.hpp"
+#include "store/directory_attributes.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 

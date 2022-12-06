@@ -23,9 +23,9 @@
 #ifndef IRESEARCH_DELTA_COMPRESSION_H
 #define IRESEARCH_DELTA_COMPRESSION_H
 
-#include "string.hpp"
 #include "compression.hpp"
 #include "noncopyable.hpp"
+#include "string.hpp"
 
 namespace iresearch {
 namespace compression {

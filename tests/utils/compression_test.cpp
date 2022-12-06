@@ -32,7 +32,7 @@ namespace {
 
 struct dummy_compressor final : irs::compression::compressor {
   virtual irs::bytes_view compress(irs::byte_type*, size_t,
-                                  irs::bstring& /*buf*/) {
+                                   irs::bstring& /*buf*/) {
     return irs::bytes_view{};
   }
 
@@ -41,7 +41,7 @@ struct dummy_compressor final : irs::compression::compressor {
 
 struct dummy_decompressor final : irs::compression::decompressor {
   virtual irs::bytes_view decompress(const irs::byte_type*, size_t,
-                                    irs::byte_type*, size_t) {
+                                     irs::byte_type*, size_t) {
     return irs::bytes_view{};
   }
 
@@ -148,7 +148,7 @@ TEST(compression_test, lz4) {
     std::memcpy(&data_buf[0], data.data(), data_buf.size());
 
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
-                        data.size() * sizeof(size_t)),
+                         data.size() * sizeof(size_t)),
               bytes_view(data_buf));
 
     const auto compressed =
@@ -158,7 +158,7 @@ TEST(compression_test, lz4) {
 
     // lz4 doesn't modify data_buf
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
-                        data.size() * sizeof(size_t)),
+                         data.size() * sizeof(size_t)),
               bytes_view(data_buf));
 
     bstring decompression_buf(data_buf.size(),
@@ -196,7 +196,7 @@ TEST(compression_test, delta) {
     std::memcpy(&data_buf[0], data.data(), data_buf.size());
 
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
-                        data.size() * sizeof(size_t)),
+                         data.size() * sizeof(size_t)),
               bytes_view(data_buf));
 
     const auto compressed =
@@ -211,10 +211,10 @@ TEST(compression_test, delta) {
                               &decompression_buf[0], decompression_buf.size());
 
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
-                        data.size() * sizeof(size_t)),
+                         data.size() * sizeof(size_t)),
               bytes_view(decompression_buf));
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
-                        data.size() * sizeof(size_t)),
+                         data.size() * sizeof(size_t)),
               bytes_view(decompressed));
   }
 }

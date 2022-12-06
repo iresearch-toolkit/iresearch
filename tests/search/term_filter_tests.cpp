@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
+#include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
 #include "search/term_query.hpp"
-#include "search/range_filter.hpp"
+#include "tests_shared.hpp"
 
 namespace {
 

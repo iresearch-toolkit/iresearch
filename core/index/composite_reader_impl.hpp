@@ -23,8 +23,8 @@
 #ifndef IRESEARCH_COMPOSITE_READER_H
 #define IRESEARCH_COMPOSITE_READER_H
 
-#include "shared.hpp"
 #include "index_reader.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 

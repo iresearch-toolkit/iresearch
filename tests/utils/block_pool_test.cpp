@@ -145,7 +145,8 @@ class block_pool_test : public test_base {
     decltype(slice_chain_begin) slice_chain_end;
 
     bytes_view data0 = ViewCast<byte_type>(std::string_view("first_payload"));
-    bytes_view data1 = ViewCast<byte_type>(std::string_view("second_payload_1234"));
+    bytes_view data1 =
+      ViewCast<byte_type>(std::string_view("second_payload_1234"));
 
     // write data
     {
@@ -377,7 +378,7 @@ class block_pool_test : public test_base {
 
         ASSERT_EQ(
           irs::bytes_view(reinterpret_cast<const byte_type*>(str.c_str()),
-                         str.size()),
+                          str.size()),
           irs::bytes_view(read, str.size()));
       }
 

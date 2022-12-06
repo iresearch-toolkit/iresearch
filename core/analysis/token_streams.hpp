@@ -57,9 +57,13 @@ class basic_token_stream : public analysis::analyzer {
 class boolean_token_stream final : public basic_token_stream,
                                    private util::noncopyable {
  public:
-  static constexpr std::string_view value_true() noexcept { return {"\xFF", 1}; }
+  static constexpr std::string_view value_true() noexcept {
+    return {"\xFF", 1};
+  }
 
-  static constexpr std::string_view value_false() noexcept { return {"\x00", 1}; }
+  static constexpr std::string_view value_false() noexcept {
+    return {"\x00", 1};
+  }
 
   static constexpr std::string_view value(bool val) noexcept {
     return val ? value_true() : value_false();
@@ -247,7 +251,7 @@ class numeric_token_stream final : public basic_token_stream,
     };
 
     static irs::bytes_view value(byte_type* buf, NumericType type, value_t val,
-                                uint32_t shift);
+                                 uint32_t shift);
 
     byte_type data_[numeric_utils::numeric_traits<double_t>::size()];
     value_t val_;

@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "token_attributes.hpp"
+
+#include "shared.hpp"
 
 namespace {
 

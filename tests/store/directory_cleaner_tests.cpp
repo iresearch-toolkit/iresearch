@@ -21,14 +21,14 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "formats/formats_10.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
 #include "index/index_writer.hpp"
+#include "search/term_filter.hpp"
 #include "store/directory_cleaner.hpp"
 #include "store/memory_directory.hpp"
-#include "search/term_filter.hpp"
+#include "tests_shared.hpp"
 #include "utils/directory_utils.hpp"
 
 using namespace std::chrono_literals;

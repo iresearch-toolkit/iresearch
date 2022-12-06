@@ -106,7 +106,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   };
 
   const std::string_view TARGETS[]{"atlas",     "bloom",    "burden", "del",
-                                  "survenius", "surbenus", ""};
+                                   "survenius", "surbenus", ""};
 
   // add data
   {

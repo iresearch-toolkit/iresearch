@@ -23,17 +23,15 @@
 #ifndef IRESEARCH_DATAINPUT_H
 #define IRESEARCH_DATAINPUT_H
 
+#include <iterator>
 #include <memory>
 
 #include "error/error.hpp"
-
 #include "utils/bit_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
-#include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
-
-#include <iterator>
+#include "utils/string.hpp"
 
 namespace iresearch {
 

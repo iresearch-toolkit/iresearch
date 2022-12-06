@@ -134,8 +134,7 @@ analyzer::ptr construct(const classification_stream::Options& options) {
     return nullptr;
   }
 
-  return std::make_unique<classification_stream>(options,
-                                                         std::move(model));
+  return std::make_unique<classification_stream>(options, std::move(model));
 }
 
 analyzer::ptr make_vpack(const VPackSlice slice) {

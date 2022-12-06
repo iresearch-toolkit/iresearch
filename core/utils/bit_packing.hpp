@@ -24,12 +24,12 @@
 #ifndef IRESEARCH_BIT_PACKING_H
 #define IRESEARCH_BIT_PACKING_H
 
-#include "shared.hpp"
-#include "math_utils.hpp"
-
 #include <cmath>
-#include <limits>
 #include <iterator>
+#include <limits>
+
+#include "math_utils.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace packed {

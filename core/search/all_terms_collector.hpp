@@ -23,10 +23,10 @@
 #ifndef IRESEARCH_ALL_TERMS_COLLECTOR_H
 #define IRESEARCH_ALL_TERMS_COLLECTOR_H
 
-#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
-#include "search/sort.hpp"
 #include "search/collectors.hpp"
+#include "search/sort.hpp"
+#include "shared.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {

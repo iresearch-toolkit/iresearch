@@ -20,13 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "skip_list.hpp"
 
-#include "store/store_utils.hpp"
-
 #include "index/iterators.hpp"
-
+#include "shared.hpp"
+#include "store/store_utils.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/std.hpp"
 

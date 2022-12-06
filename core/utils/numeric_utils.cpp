@@ -183,49 +183,49 @@ uint64_t decoded64(const byte_type* in) { return decode<double_t>(in); }
 
 bytes_view mini32() {
   static bytes_view data = encode(static_buf<int32_t, buf_id_t::MIN>(),
-                                 std::numeric_limits<int32_t>::min());
+                                  std::numeric_limits<int32_t>::min());
   return data;
 }
 
 bytes_view maxi32() {
   static bytes_view data = encode(static_buf<int32_t, buf_id_t::MAX>(),
-                                 std::numeric_limits<int32_t>::max());
+                                  std::numeric_limits<int32_t>::max());
   return data;
 }
 
 bytes_view minu32() {
   static bytes_view data = encode(static_buf<uint32_t, buf_id_t::MIN>(),
-                                 std::numeric_limits<uint32_t>::min());
+                                  std::numeric_limits<uint32_t>::min());
   return data;
 }
 
 bytes_view maxu32() {
   static bytes_view data = encode(static_buf<uint32_t, buf_id_t::MAX>(),
-                                 std::numeric_limits<uint32_t>::max());
+                                  std::numeric_limits<uint32_t>::max());
   return data;
 }
 
 bytes_view mini64() {
   static bytes_view data = encode(static_buf<int64_t, buf_id_t::MIN>(),
-                                 std::numeric_limits<int64_t>::min());
+                                  std::numeric_limits<int64_t>::min());
   return data;
 }
 
 bytes_view maxi64() {
   static bytes_view data = encode(static_buf<int64_t, buf_id_t::MAX>(),
-                                 std::numeric_limits<int64_t>::max());
+                                  std::numeric_limits<int64_t>::max());
   return data;
 }
 
 bytes_view minu64() {
   static bytes_view data = encode(static_buf<uint64_t, buf_id_t::MIN>(),
-                                 std::numeric_limits<uint64_t>::min());
+                                  std::numeric_limits<uint64_t>::min());
   return data;
 }
 
 bytes_view maxu64() {
   static bytes_view data = encode(static_buf<uint64_t, buf_id_t::MAX>(),
-                                 std::numeric_limits<uint64_t>::max());
+                                  std::numeric_limits<uint64_t>::max());
   return data;
 }
 
@@ -293,26 +293,27 @@ bytes_view finf32() {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (float)");
   static bytes_view data = encode(static_buf<float_t, buf_id_t::INF>(),
-                                 std::numeric_limits<float_t>::infinity());
+                                  std::numeric_limits<float_t>::infinity());
   return data;
 }
 
 bytes_view nfinf32() {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (float)");
-  static bytes_view data = encode(static_buf<float_t, buf_id_t::NINF>(),
-                                 -1 * std::numeric_limits<float_t>::infinity());
+  static bytes_view data =
+    encode(static_buf<float_t, buf_id_t::NINF>(),
+           -1 * std::numeric_limits<float_t>::infinity());
   return data;
 }
 bytes_view minf32() {
   static bytes_view data = encode(static_buf<float_t, buf_id_t::MIN>(),
-                                 (std::numeric_limits<float_t>::min)());
+                                  (std::numeric_limits<float_t>::min)());
   return data;
 }
 
 bytes_view maxf32() {
   static bytes_view data = encode(static_buf<float_t, buf_id_t::MAX>(),
-                                 (std::numeric_limits<float_t>::max)());
+                                  (std::numeric_limits<float_t>::max)());
   return data;
 }
 
@@ -320,7 +321,7 @@ bytes_view dinf64() {
   static_assert(std::numeric_limits<double_t>::is_iec559,
                 "compiler does not support ieee754 (double)");
   static bytes_view data = encode(static_buf<double_t, buf_id_t::INF>(),
-                                 std::numeric_limits<double_t>::infinity());
+                                  std::numeric_limits<double_t>::infinity());
   return data;
 }
 
@@ -335,13 +336,13 @@ bytes_view ndinf64() {
 
 bytes_view mind64() {
   static bytes_view data = encode(static_buf<double_t, buf_id_t::MIN>(),
-                                 (std::numeric_limits<double_t>::min)());
+                                  (std::numeric_limits<double_t>::min)());
   return data;
 }
 
 bytes_view maxd64() {
   static bytes_view data = encode(static_buf<double_t, buf_id_t::MAX>(),
-                                 (std::numeric_limits<double_t>::max)());
+                                  (std::numeric_limits<double_t>::max)());
   return data;
 }
 

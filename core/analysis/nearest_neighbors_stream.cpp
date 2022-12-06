@@ -112,8 +112,7 @@ analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
     return nullptr;
   }
 
-  return std::make_unique<nearest_neighbors_stream>(options,
-                                                            std::move(model));
+  return std::make_unique<nearest_neighbors_stream>(options, std::move(model));
 }
 
 analyzer::ptr make_vpack(const VPackSlice slice) {

@@ -40,16 +40,16 @@ struct get_visitor {
 
   result_type operator()(const by_term_options& part) const {
     return [term = bytes_view(part.term)](const sub_reader& segment,
-                                         const term_reader& field,
-                                         filter_visitor& visitor) {
+                                          const term_reader& field,
+                                          filter_visitor& visitor) {
       return by_term::visit(segment, field, term, visitor);
     };
   }
 
   result_type operator()(const by_prefix_options& part) const {
     return [term = bytes_view(part.term)](const sub_reader& segment,
-                                         const term_reader& field,
-                                         filter_visitor& visitor) {
+                                          const term_reader& field,
+                                          filter_visitor& visitor) {
       return by_prefix::visit(segment, field, term, visitor);
     };
   }

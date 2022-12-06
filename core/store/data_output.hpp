@@ -23,12 +23,12 @@
 #ifndef IRESEARCH_DATAOUTPUT_H
 #define IRESEARCH_DATAOUTPUT_H
 
-#include "utils/string.hpp"
-#include "utils/io_utils.hpp"
-#include "utils/bytes_utils.hpp"
-#include "utils/noncopyable.hpp"
-
 #include <streambuf>
+
+#include "utils/bytes_utils.hpp"
+#include "utils/io_utils.hpp"
+#include "utils/noncopyable.hpp"
+#include "utils/string.hpp"
 
 namespace iresearch {
 

@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "search/filter.hpp"
+#include "tests_shared.hpp"
 
 TEST(boost_attribute_test, consts) { static_assert(1.f == irs::kNoBoost); }

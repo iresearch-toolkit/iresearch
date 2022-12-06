@@ -23,10 +23,10 @@
 #ifndef IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
 #define IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
 
-#include "shared.hpp"
 #include "analyzers.hpp"
-#include "token_stream.hpp"
+#include "shared.hpp"
 #include "token_attributes.hpp"
+#include "token_stream.hpp"
 #include "utils/attribute_helper.hpp"
 
 namespace iresearch {
@@ -34,7 +34,9 @@ namespace analysis {
 class segmentation_token_stream final : public analyzer,
                                         private util::noncopyable {
  public:
-  static constexpr std::string_view type_name() noexcept { return "segmentation"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "segmentation";
+  }
   static void init();  // for triggering registration in a static build
 
   struct options_t {

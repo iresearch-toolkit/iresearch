@@ -21,11 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "formats/skip_list.hpp"
-#include "store/memory_directory.hpp"
-#include "index/iterators.hpp"
+
 #include "index/index_tests.hpp"
+#include "index/iterators.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 
 using namespace std::chrono_literals;
 

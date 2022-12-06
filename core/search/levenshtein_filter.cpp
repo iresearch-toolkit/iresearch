@@ -57,9 +57,9 @@ FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
 template<typename Invalid, typename Term, typename Levenshtein>
 inline auto executeLevenshtein(byte_type max_distance,
                                by_edit_distance_options::pdp_f provider,
-                               bool with_transpositions, const bytes_view prefix,
-                               const bytes_view target, Invalid&& inv, Term&& t,
-                               Levenshtein&& lev) {
+                               bool with_transpositions,
+                               const bytes_view prefix, const bytes_view target,
+                               Invalid&& inv, Term&& t, Levenshtein&& lev) {
   if (!provider) {
     provider = &default_pdp;
   }
@@ -198,8 +198,8 @@ bool collect_terms(const index_reader& index, std::string_view field,
 
 filter::prepared::ptr prepare_levenshtein_filter(
   const index_reader& index, const Order& order, score_t boost,
-  std::string_view field, bytes_view prefix, bytes_view term, size_t terms_limit,
-  const parametric_description& d) {
+  std::string_view field, bytes_view prefix, bytes_view term,
+  size_t terms_limit, const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
   MultiTermQuery::States states{index};

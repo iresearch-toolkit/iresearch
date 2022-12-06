@@ -23,8 +23,9 @@
 #ifndef IRESEARCH_BIT_UTILS_H
 #define IRESEARCH_BIT_UTILS_H
 
-#include "shared.hpp"
 #include <numeric>
+
+#include "shared.hpp"
 
 namespace iresearch {
 

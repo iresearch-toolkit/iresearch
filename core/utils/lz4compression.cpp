@@ -76,7 +76,7 @@ lz4stream_decode lz4_make_stream_decode() {
 // -----------------------------------------------------------------------------
 
 bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
-                                       bstring& out) {
+                                        bstring& out) {
   IRS_ASSERT(size <= static_cast<unsigned>(
                        std::numeric_limits<int>::max()));  // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
@@ -98,8 +98,8 @@ bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
 }
 
 bytes_view lz4::lz4decompressor::decompress(const byte_type* src,
-                                           size_t src_size, byte_type* dst,
-                                           size_t dst_size) {
+                                            size_t src_size, byte_type* dst,
+                                            size_t dst_size) {
   IRS_ASSERT(src_size <=
              static_cast<unsigned>(
                std::numeric_limits<int>::max()));  // LZ4 API uses int

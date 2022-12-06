@@ -25,9 +25,9 @@
 #include <chrono>
 #include <thread>
 
-#include "shared.hpp"
 #include "data_input.hpp"
 #include "data_output.hpp"
+#include "shared.hpp"
 #include "utils/log.hpp"
 #include "utils/thread_utils.hpp"
 

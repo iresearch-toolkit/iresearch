@@ -23,16 +23,14 @@
 #ifndef IRESEARCH_TOKEN_ATTRIBUTES_H
 #define IRESEARCH_TOKEN_ATTRIBUTES_H
 
-#include "store/data_input.hpp"
-
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
-
+#include "store/data_input.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
+#include "utils/iterator.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/iterator.hpp"
 
 namespace iresearch {
 
@@ -58,7 +56,9 @@ struct increment final : attribute {
 
 // Represents term value in a stream
 struct term_attribute final : attribute {
-  static constexpr std::string_view type_name() noexcept { return "term_attribute"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "term_attribute";
+  }
 
   bytes_view value;
 };

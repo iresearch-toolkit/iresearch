@@ -51,8 +51,8 @@ class boolean_filter : public filter, public AllDocsProvider {
   T& add(Args&&... args) {
     static_assert(std::is_base_of_v<filter, T>);
 
-    return static_cast<T&>(*filters_.emplace_back(
-      std::make_unique<T>(std::forward<Args>(args)...)));
+    return static_cast<T&>(
+      *filters_.emplace_back(std::make_unique<T>(std::forward<Args>(args)...)));
   }
 
   filter& add(filter::ptr&& filter) {

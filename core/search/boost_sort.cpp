@@ -56,12 +56,11 @@ struct prepared final : PreparedSortBase<void> {
       return ScoreFunction::Constant(boost);
     }
 
-    return {
-      std::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
-      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-        auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
-        *res = state.volatile_boost->value * state.boost;
-      }};
+    return {std::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
+            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+              auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
+              *res = state.volatile_boost->value * state.boost;
+            }};
   }
 };
 
