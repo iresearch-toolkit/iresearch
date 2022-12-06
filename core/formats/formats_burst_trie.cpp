@@ -22,9 +22,10 @@
 
 #include "formats_burst_trie.hpp"
 
-#include <cassert>
 #include <list>
 #include <variant>
+
+#include "utils/assert.hpp"
 
 // clang-format off
 
@@ -180,9 +181,9 @@ struct block_t : private util::noncopyable {
     explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
       : prefix(std::move(prefix)) {}
 
-    virtual void write_byte(byte_type b) override final { weight.PushBack(b); }
+    void write_byte(byte_type b) final { weight.PushBack(b); }
 
-    virtual void write_bytes(const byte_type* b, size_t len) override final {
+    void write_bytes(const byte_type* b, size_t len) final {
       weight.PushBack(b, b + len);
     }
 
@@ -471,7 +472,7 @@ void write_field_features_legacy(FeatureMap& feature_map, data_output& out,
                                  const irs::feature_map_t& features) {
   auto write_feature = [&out, &feature_map](irs::type_info::type_id feature) {
     const auto it = feature_map.find(feature);
-    assert(it != feature_map.end());
+    IRS_ASSERT(it != feature_map.end());
 
     if (feature_map.end() == it) {
       // should not happen in reality
@@ -579,7 +580,7 @@ void write_field_features(FeatureMap& feature_map, data_output& out,
                           const irs::feature_map_t& features) {
   auto write_feature = [&out, feature_map](irs::type_info::type_id feature) {
     const auto it = feature_map.find(feature);
-    assert(it != feature_map.end());
+    IRS_ASSERT(it != feature_map.end());
 
     if (feature_map.end() == it) {
       // should not happen in reality
@@ -659,7 +660,7 @@ void read_field_features(data_input& in, const feature_map_t& feature_map,
 inline void prepare_output(std::string& str, index_output::ptr& out,
                            const flush_state& state, std::string_view ext,
                            std::string_view format, const int32_t version) {
-  assert(!out);
+  IRS_ASSERT(!out);
 
   file_name(str, state.name, ext);
   out = state.dir->create(str);
@@ -677,7 +678,7 @@ inline int32_t prepare_input(std::string& str, index_input::ptr& in,
                              std::string_view ext, std::string_view format,
                              const int32_t min_ver, const int32_t max_ver,
                              int64_t* checksum = nullptr) {
-  assert(!in);
+  IRS_ASSERT(!in);
 
   file_name(str, state.meta->name, ext);
   in = state.dir->open(str, advice);
@@ -697,7 +698,7 @@ inline int32_t prepare_input(std::string& str, index_input::ptr& in,
 struct cookie final : seek_cookie {
   explicit cookie(const version10::term_meta& meta) noexcept : meta(meta) {}
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) override {
+  attribute* get_mutable(irs::type_info::type_id type) override {
     if (IRS_LIKELY(type == irs::type<term_meta>::id())) {
       return &meta;
     }
@@ -747,7 +748,7 @@ const fst::FstReadOptions& fst_read_options() {
 [[maybe_unused]] constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
 void merge_blocks(std::vector<entry>& blocks) {
-  assert(!blocks.empty());
+  IRS_ASSERT(!blocks.empty());
 
   auto it = blocks.begin();
 
@@ -765,7 +766,7 @@ void merge_blocks(std::vector<entry>& blocks) {
   //   fst::kStringInfinity } Suffix = fst::Divide(StringWeight1, CommonPrefix)
   //   -> { fst::kStringBad }
   // But actually Suffix should be equal to { 0x22 ... }
-  assert(char(root_block.meta) != fst::kStringInfinity);
+  IRS_ASSERT(char(root_block.meta) != fst::kStringInfinity);
 
   // will store just several bytes here
   auto& out = *root_index.begin();
@@ -773,12 +774,12 @@ void merge_blocks(std::vector<entry>& blocks) {
   out.write_vlong(root_block.start);  // start pointer of the block
 
   if (block_meta::floor(root_block.meta)) {
-    assert(blocks.size() - 1 < std::numeric_limits<uint32_t>::max());
+    IRS_ASSERT(blocks.size() - 1 < std::numeric_limits<uint32_t>::max());
     out.write_vint(static_cast<uint32_t>(blocks.size() - 1));
     for (++it; it != blocks.end(); ++it) {
       const auto* block = &it->block();
-      assert(block->label != block_t::INVALID_LABEL);
-      assert(block->start > root_block.start);
+      IRS_ASSERT(block->label != block_t::INVALID_LABEL);
+      IRS_ASSERT(block->start > root_block.start);
 
       const uint64_t start_delta = it->block().start - root_block.start;
       out.write_byte(static_cast<byte_type>(block->label & 0xFF));
@@ -795,13 +796,13 @@ void merge_blocks(std::vector<entry>& blocks) {
 
   // ensure weight we've written doesn't interfere
   // with semiring members and other constants
-  assert(out.weight != byte_weight::One() &&
-         out.weight != byte_weight::Zero() &&
-         out.weight != byte_weight::NoWeight() &&
-         out.weight.Size() >= MIN_WEIGHT_SIZE &&
-         byte_weight::One().Size() < MIN_WEIGHT_SIZE &&
-         byte_weight::Zero().Size() < MIN_WEIGHT_SIZE &&
-         byte_weight::NoWeight().Size() < MIN_WEIGHT_SIZE);
+  IRS_ASSERT(out.weight != byte_weight::One() &&
+             out.weight != byte_weight::Zero() &&
+             out.weight != byte_weight::NoWeight() &&
+             out.weight.Size() >= MIN_WEIGHT_SIZE &&
+             byte_weight::One().Size() < MIN_WEIGHT_SIZE &&
+             byte_weight::Zero().Size() < MIN_WEIGHT_SIZE &&
+             byte_weight::NoWeight().Size() < MIN_WEIGHT_SIZE);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -865,9 +866,9 @@ class field_writer final : public irs::field_writer {
 
   virtual ~field_writer();
 
-  virtual void prepare(const irs::flush_state& state) override;
+  void prepare(const irs::flush_state& state) override;
 
-  virtual void end() override;
+  void end() override;
 
   virtual void write(std::string_view name, IndexFeatures index_features,
                      const irs::feature_map_t& features,
@@ -924,7 +925,7 @@ class field_writer final : public irs::field_writer {
 
 void field_writer::write_block(size_t prefix, size_t begin, size_t end,
                                irs::byte_type meta, uint16_t label) {
-  assert(end > begin);
+  IRS_ASSERT(end > begin);
 
   // begin of the block
   const uint64_t block_start = terms_out_->file_pointer();
@@ -948,10 +949,10 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
     auto& e = stack_[begin];
     const irs::bytes_view data = e.data();
     const EntryType type = e.type();
-    assert(data.starts_with({last_term_.view().data(), prefix}));
+    IRS_ASSERT(data.starts_with({last_term_.view().data(), prefix}));
 
     // only terms under 32k are allowed
-    assert(data.size() - prefix <= UINT32_C(0x7FFFFFFF));
+    IRS_ASSERT(data.size() - prefix <= UINT32_C(0x7FFFFFFF));
     const uint32_t suf_size = static_cast<uint32_t>(data.size() - prefix);
 
     suffix_.stream.write_vint(
@@ -961,10 +962,10 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
     if (ET_TERM == type) {
       pw_->encode(stats_.stream, *e.term());
     } else {
-      assert(ET_BLOCK == type);
+      IRS_ASSERT(ET_BLOCK == type);
 
       // current block start pointer should be greater
-      assert(block_start > e.block().start);
+      IRS_ASSERT(block_start > e.block().start);
       suffix_.stream.write_vlong(block_start - e.block().start);
       index.splice(index.end(), e.block().index);
     }
@@ -987,7 +988,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
     auto offset = block_start;
 
     auto encrypt_and_copy = [this, &offset](irs::byte_type* b, size_t len) {
-      assert(terms_out_cipher_);
+      IRS_ASSERT(terms_out_cipher_);
 
       if (!terms_out_cipher_->encrypt(offset, b, len)) {
         return false;
@@ -1025,8 +1026,8 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
 
 void field_writer::write_blocks(size_t prefix, size_t count) {
   // only root node able to write whole stack
-  assert(prefix || count == stack_.size());
-  assert(blocks_.empty());
+  IRS_ASSERT(prefix || count == stack_.size());
+  IRS_ASSERT(blocks_.empty());
 
   // block metadata
   irs::byte_type meta{};
@@ -1136,12 +1137,12 @@ field_writer::field_writer(
     min_block_size_(min_block_size),
     max_block_size_(max_block_size),
     consolidation_(consolidation) {
-  assert(this->pw_);
-  assert(min_block_size > 1);
-  assert(min_block_size <= max_block_size);
-  assert(2 * (min_block_size - 1) <= max_block_size);
-  assert(version_ >= burst_trie::Version::MIN &&
-         version_ <= burst_trie::Version::MAX);
+  IRS_ASSERT(this->pw_);
+  IRS_ASSERT(min_block_size > 1);
+  IRS_ASSERT(min_block_size <= max_block_size);
+  IRS_ASSERT(2 * (min_block_size - 1) <= max_block_size);
+  IRS_ASSERT(version_ >= burst_trie::Version::MIN &&
+             version_ <= burst_trie::Version::MAX);
 
   min_term_.first = false;
 }
@@ -1149,7 +1150,7 @@ field_writer::field_writer(
 field_writer::~field_writer() { delete fst_buf_; }
 
 void field_writer::prepare(const irs::flush_state& state) {
-  assert(state.dir);
+  IRS_ASSERT(state.dir);
 
   // reset writer state
   last_term_.clear();
@@ -1175,7 +1176,8 @@ void field_writer::prepare(const irs::flush_state& state) {
     // encrypt term dictionary
     const auto encrypt =
       irs::encrypt(filename, *terms_out_, enc, enc_header, terms_out_cipher_);
-    assert(!encrypt || (terms_out_cipher_ && terms_out_cipher_->block_size()));
+    IRS_ASSERT(!encrypt ||
+               (terms_out_cipher_ && terms_out_cipher_->block_size()));
     UNUSED(encrypt);
   }
 
@@ -1187,7 +1189,7 @@ void field_writer::prepare(const irs::flush_state& state) {
     // encrypt term index
     if (irs::encrypt(filename, *index_out_, enc, enc_header,
                      index_out_cipher_)) {
-      assert(index_out_cipher_ && index_out_cipher_->block_size());
+      IRS_ASSERT(index_out_cipher_ && index_out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
         DEFAULT_ENCRYPTION_BUFFER_SIZE, index_out_cipher_->block_size());
@@ -1225,7 +1227,7 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
     IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
 
   auto* docs = irs::get<version10::documents>(*pw_);
-  assert(docs);
+  IRS_ASSERT(docs);
 
   for (; terms.next();) {
     auto postings = terms.postings(index_features);
@@ -1261,13 +1263,13 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
 }
 
 void field_writer::begin_field(IndexFeatures features) {
-  assert(terms_out_);
-  assert(index_out_);
+  IRS_ASSERT(terms_out_);
+  IRS_ASSERT(index_out_);
 
   // at the beginning of the field
   // there should be no pending
   // entries at all
-  assert(stack_.empty());
+  IRS_ASSERT(stack_.empty());
 
   // reset first field term
   min_term_.first = false;
@@ -1282,8 +1284,8 @@ void field_writer::end_field(std::string_view name,
                              const irs::feature_map_t& features,
                              uint64_t total_doc_freq, uint64_t total_term_freq,
                              size_t doc_count) {
-  assert(terms_out_);
-  assert(index_out_);
+  IRS_ASSERT(terms_out_);
+  IRS_ASSERT(index_out_);
   if (!term_count_) {
     // nothing to write
     return;
@@ -1294,7 +1296,7 @@ void field_writer::end_field(std::string_view name,
 
   // write root block with empty prefix
   write_blocks(0, stack_.size());
-  assert(1 == stack_.size());
+  IRS_ASSERT(1 == stack_.size());
 
   // write field meta
   write_string(*index_out_, name);
@@ -1315,7 +1317,7 @@ void field_writer::end_field(std::string_view name,
 
   // build fst
   const entry& root = *stack_.begin();
-  assert(fst_buf_);
+  IRS_ASSERT(fst_buf_);
   [[maybe_unused]] const auto fst_stats = fst_buf_->reset(root.block().index);
   const vector_byte_fst& fst = *fst_buf_;
 
@@ -1333,7 +1335,7 @@ void field_writer::end_field(std::string_view name,
       stats(arcs.Value().weight);
     }
   }
-  assert(stats == fst_stats);
+  IRS_ASSERT(stats == fst_stats);
 #endif
 
   // write FST
@@ -1357,8 +1359,8 @@ void field_writer::end_field(std::string_view name,
 }
 
 void field_writer::end() {
-  assert(terms_out_);
-  assert(index_out_);
+  IRS_ASSERT(terms_out_);
+  IRS_ASSERT(index_out_);
 
   // finish postings
   pw_->end();
@@ -1386,11 +1388,11 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   term_reader_base(term_reader_base&& rhs) = default;
   term_reader_base& operator=(term_reader_base&&) = delete;
 
-  virtual const field_meta& meta() const noexcept override { return field_; }
-  virtual size_t size() const noexcept override { return terms_count_; }
-  virtual uint64_t docs_count() const noexcept override { return doc_count_; }
-  virtual bytes_view min() const noexcept override { return min_term_ref_; }
-  virtual bytes_view max() const noexcept override { return max_term_ref_; }
+  const field_meta& meta() const noexcept override { return field_; }
+  size_t size() const noexcept override { return terms_count_; }
+  uint64_t docs_count() const noexcept override { return doc_count_; }
+  bytes_view min() const noexcept override { return min_term_ref_; }
+  bytes_view max() const noexcept override { return max_term_ref_; }
   virtual attribute* get_mutable(
     irs::type_info::type_id type) noexcept override;
 
@@ -1461,7 +1463,7 @@ class block_iterator : util::noncopyable {
       cur_end_{start},
       prefix_{static_cast<uint32_t>(prefix)},
       sub_count_{UNDEFINED_COUNT} {
-    assert(prefix <= std::numeric_limits<uint32_t>::max());
+    IRS_ASSERT(prefix <= std::numeric_limits<uint32_t>::max());
   }
 
   void load(index_input& in, encryption::stream* cipher);
@@ -1490,7 +1492,7 @@ class block_iterator : util::noncopyable {
 
   template<typename Reader>
   void next(Reader&& reader) {
-    assert(!dirty_ && cur_ent_ < ent_count_);
+    IRS_ASSERT(!dirty_ && cur_ent_ < ent_count_);
     if (leaf_) {
       read_entry_leaf(std::forward<Reader>(reader));
     } else {
@@ -1515,8 +1517,8 @@ class block_iterator : util::noncopyable {
 
   template<typename Reader>
   SeekResult scan_to_term(bytes_view term, Reader&& reader) {
-    assert(term.size() >= prefix_);
-    assert(!dirty_);
+    IRS_ASSERT(term.size() >= prefix_);
+    IRS_ASSERT(!dirty_);
 
     return leaf_ ? scan_to_term_leaf(term, std::forward<Reader>(reader))
                  : scan_to_term_nonleaf(term, std::forward<Reader>(reader));
@@ -1524,7 +1526,7 @@ class block_iterator : util::noncopyable {
 
   template<typename Reader>
   SeekResult scan(Reader&& reader) {
-    assert(!dirty_);
+    IRS_ASSERT(!dirty_);
 
     return leaf_ ? scan_leaf(std::forward<Reader>(reader))
                  : scan_nonleaf(std::forward<Reader>(reader));
@@ -1575,10 +1577,10 @@ class block_iterator : util::noncopyable {
 
     [[maybe_unused]] void assert_block_boundaries() {
 #ifdef IRESEARCH_DEBUG
-      assert(begin <= end);
+      IRS_ASSERT(begin <= end);
       if (!block.empty()) {
-        assert(end <= (block.c_str() + block.size()));
-        assert(block.c_str() <= begin);
+        IRS_ASSERT(end <= (block.c_str() + block.size()));
+        IRS_ASSERT(block.c_str() <= begin);
       }
 #endif
     }
@@ -1595,7 +1597,7 @@ class block_iterator : util::noncopyable {
 
   template<typename Reader>
   void read_entry_leaf(Reader&& reader) {
-    assert(leaf_ && cur_ent_ < ent_count_);
+    IRS_ASSERT(leaf_ && cur_ent_ < ent_count_);
     cur_type_ = ET_TERM;  // always term
     ++term_count_;
     suffix_length_ = vread<uint32_t>(suffix_.begin);
@@ -1645,7 +1647,7 @@ block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
   : header_{std::move(header)},
     prefix_{static_cast<uint32_t>(prefix)},
     sub_count_{0} {
-  assert(prefix <= std::numeric_limits<uint32_t>::max());
+  IRS_ASSERT(prefix <= std::numeric_limits<uint32_t>::max());
 
   cur_meta_ = meta_ = *header_.begin++;
   cur_end_ = cur_start_ = start_ = vread<uint64_t>(header_.begin);
@@ -1677,13 +1679,9 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   if (!suffix_.begin) {
     suffix_.block.resize(block_size);
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(suffix_.block.data(), block_size);
-    assert(read == block_size);
-    UNUSED(read);
-#else
-    in.read_bytes(suffix_.block.data(), block_size);
-#endif  // IRESEARCH_DEBUG
+    [[maybe_unused]] const auto read =
+      in.read_bytes(suffix_.block.data(), block_size);
+    IRS_ASSERT(read == block_size);
     suffix_.begin = suffix_.block.c_str();
 
     if (cipher) {
@@ -1692,7 +1690,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
   }
 #ifdef IRESEARCH_DEBUG
   suffix_.end = suffix_.begin + block_size;
-#endif  // IRESEARCH_DEBUG
+#endif
   suffix_.assert_block_boundaries();
 
   // read stats block
@@ -1704,18 +1702,14 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
   if (!stats_.begin) {
     stats_.block.resize(block_size);
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(stats_.block.data(), block_size);
-    assert(read == block_size);
-    UNUSED(read);
-#else
-    in.read_bytes(stats_.block.data(), block_size);
-#endif  // IRESEARCH_DEBUG
+    [[maybe_unused]] const auto read =
+      in.read_bytes(stats_.block.data(), block_size);
+    IRS_ASSERT(read == block_size);
     stats_.begin = stats_.block.c_str();
   }
 #ifdef IRESEARCH_DEBUG
   stats_.end = stats_.begin + block_size;
-#endif  // IRESEARCH_DEBUG
+#endif
   stats_.assert_block_boundaries();
 
   cur_end_ = in.file_pointer();
@@ -1728,7 +1722,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 
 template<typename Reader>
 void block_iterator::read_entry_nonleaf(Reader&& reader) {
-  assert(!leaf_ && cur_ent_ < ent_count_);
+  IRS_ASSERT(!leaf_ && cur_ent_ < ent_count_);
 
   cur_type_ = shift_unpack_32<EntryType, size_t>(vread<uint32_t>(suffix_.begin),
                                                  suffix_length_);
@@ -1739,7 +1733,7 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
   if (ET_TERM == cur_type_) {
     ++term_count_;
   } else {
-    assert(ET_BLOCK == cur_type_);
+    IRS_ASSERT(ET_BLOCK == cur_type_);
     cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_.begin);
     suffix_.assert_block_boundaries();
   }
@@ -1750,9 +1744,9 @@ void block_iterator::read_entry_nonleaf(Reader&& reader) {
 
 template<typename Reader>
 SeekResult block_iterator::scan_leaf(Reader&& reader) {
-  assert(leaf_);
-  assert(!dirty_);
-  assert(ent_count_ >= cur_ent_);
+  IRS_ASSERT(leaf_);
+  IRS_ASSERT(!dirty_);
+  IRS_ASSERT(ent_count_ >= cur_ent_);
 
   SeekResult res = SeekResult::END;
   cur_type_ = ET_TERM;  // leaf block contains terms only
@@ -1783,8 +1777,8 @@ SeekResult block_iterator::scan_leaf(Reader&& reader) {
 
 template<typename Reader>
 SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
-  assert(!leaf_);
-  assert(!dirty_);
+  IRS_ASSERT(!leaf_);
+  IRS_ASSERT(!dirty_);
 
   SeekResult res = SeekResult::END;
 
@@ -1802,7 +1796,7 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
     if (ET_TERM == cur_type_) {
       ++term_count_;
     } else {
-      assert(cur_type_ == ET_BLOCK);
+      IRS_ASSERT(cur_type_ == ET_BLOCK);
       cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_.begin);
       suffix_.assert_block_boundaries();
     }
@@ -1823,9 +1817,9 @@ SeekResult block_iterator::scan_nonleaf(Reader&& reader) {
 
 template<typename Reader>
 SeekResult block_iterator::scan_to_term_leaf(bytes_view term, Reader&& reader) {
-  assert(leaf_);
-  assert(!dirty_);
-  assert(term.size() >= prefix_);
+  IRS_ASSERT(leaf_);
+  IRS_ASSERT(!dirty_);
+  IRS_ASSERT(term.size() >= prefix_);
 
   const size_t term_suffix_length = term.size() - prefix_;
   const byte_type* term_suffix = term.data() + prefix_;
@@ -1869,9 +1863,9 @@ SeekResult block_iterator::scan_to_term_leaf(bytes_view term, Reader&& reader) {
 template<typename Reader>
 SeekResult block_iterator::scan_to_term_nonleaf(bytes_view term,
                                                 Reader&& reader) {
-  assert(!leaf_);
-  assert(!dirty_);
-  assert(term.size() >= prefix_);
+  IRS_ASSERT(!leaf_);
+  IRS_ASSERT(!dirty_);
+  IRS_ASSERT(term.size() >= prefix_);
 
   const size_t term_suffix_length = term.size() - prefix_;
   const byte_type* term_suffix = term.data() + prefix_;
@@ -1891,7 +1885,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(bytes_view term,
     if (ET_TERM == cur_type_) {
       ++term_count_;
     } else {
-      assert(ET_BLOCK == cur_type_);
+      IRS_ASSERT(ET_BLOCK == cur_type_);
       cur_block_start_ = cur_start_ - vread<uint64_t>(suffix_.begin);
       suffix_.assert_block_boundaries();
     }
@@ -1920,7 +1914,7 @@ SeekResult block_iterator::scan_to_term_nonleaf(bytes_view term,
 }
 
 void block_iterator::scan_to_sub_block(byte_type label) {
-  assert(sub_count_ != UNDEFINED_COUNT);
+  IRS_ASSERT(sub_count_ != UNDEFINED_COUNT);
 
   if (!sub_count_ || !block_meta::floor(meta_)) {
     // no sub-blocks, nothing to do
@@ -1983,7 +1977,7 @@ void block_iterator::scan_to_block(uint64_t start) {
     if (ET_TERM == type) {
       ++term_count_;
     } else {
-      assert(ET_BLOCK == type);
+      IRS_ASSERT(ET_BLOCK == type);
       if (vread<uint64_t>(suffix_.begin) == target) {
         suffix_.assert_block_boundaries();
         cur_block_start_ = target;
@@ -1993,13 +1987,13 @@ void block_iterator::scan_to_block(uint64_t start) {
     }
   }
 
-  assert(false);
+  IRS_ASSERT(false);
 }
 
 void block_iterator::load_data(const field_meta& meta,
                                version10::term_meta& state,
                                irs::postings_reader& pr) {
-  assert(ET_TERM == cur_type_);
+  IRS_ASSERT(ET_TERM == cur_type_);
 
   if (cur_stats_ent_ >= term_count_) {
     return;
@@ -2028,7 +2022,7 @@ void block_iterator::reset() {
   cur_start_ = start_;
   cur_meta_ = meta_;
   if (block_meta::floor(meta_)) {
-    assert(sub_count_ != UNDEFINED_COUNT);
+    IRS_ASSERT(sub_count_ != UNDEFINED_COUNT);
     header_.begin = header_.block.c_str() + 1;  // +1 to skip meta
     vskip<uint64_t>(header_.begin);             // skip address
     sub_count_ = vread<uint32_t>(header_.begin);
@@ -2051,11 +2045,11 @@ class term_iterator_base : public seek_term_iterator {
     std::get<attribute_ptr<payload>>(attrs_) = pay;
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  seek_cookie::ptr cookie() const override final {
+  seek_cookie::ptr cookie() const final {
     return std::make_unique<::cookie>(std::get<version10::term_meta>(attrs_));
   }
 
@@ -2137,7 +2131,7 @@ class term_iterator final : public term_iterator_base {
   }
 
   void read() override {
-    assert(cur_block_);
+    IRS_ASSERT(cur_block_);
     read_impl(*cur_block_);
   }
 
@@ -2184,13 +2178,13 @@ class term_iterator final : public term_iterator_base {
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
-    assert(!block_stack_.empty());
+    IRS_ASSERT(!block_stack_.empty());
     return &block_stack_.back();
   }
 
   block_iterator* push_block(bytes_view out, size_t prefix) {
     // ensure final weight correctess
-    assert(out.size() >= MIN_WEIGHT_SIZE);
+    IRS_ASSERT(out.size() >= MIN_WEIGHT_SIZE);
 
     block_stack_.emplace_back(out, prefix);
     return &block_stack_.back();
@@ -2198,7 +2192,7 @@ class term_iterator final : public term_iterator_base {
 
   block_iterator* push_block(byte_weight&& out, size_t prefix) {
     // ensure final weight correctess
-    assert(out.Size() >= MIN_WEIGHT_SIZE);
+    IRS_ASSERT(out.Size() >= MIN_WEIGHT_SIZE);
 
     block_stack_.emplace_back(std::move(out), prefix);
     return &block_stack_.back();
@@ -2249,7 +2243,7 @@ bool term_iterator<FST>::next() {
       cur_block_ = push_block(fst_->Final(fst_->Start()), 0);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
-      assert(false);
+      IRS_ASSERT(false);
       // FIXME(gnusi): consider removing this, as that seems to be impossible
       // anymore
 
@@ -2259,13 +2253,8 @@ bool term_iterator<FST>::next() {
       // term_.reset() internally,
       // note, that since we do not create extra copy of term_
       // make sure that it does not reallocate memory !!!
-#ifdef IRESEARCH_DEBUG
-      const SeekResult res = seek_equal(value());
-      assert(SeekResult::FOUND == res);
-      UNUSED(res);
-#else
-      seek_equal(value());
-#endif
+      [[maybe_unused]] const auto res = seek_equal(value());
+      IRS_ASSERT(SeekResult::FOUND == res);
     }
   }
 
@@ -2284,7 +2273,7 @@ bool term_iterator<FST>::next() {
       std::get<version10::term_meta>(attrs_) = cur_block_->state();
       if (cur_block_->dirty() || cur_block_->block_start() != start) {
         // here we're currently at non block that was not loaded yet
-        assert(cur_block_->prefix() < term_buf_.size());
+        IRS_ASSERT(cur_block_->prefix() < term_buf_.size());
         // to sub-block
         cur_block_->scan_to_sub_block(term_buf_[cur_block_->prefix()]);
         cur_block_->load(terms_input(), terms_cipher());
@@ -2321,7 +2310,7 @@ template<typename FST>
 ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
                                           size_t& block, byte_weight& weight,
                                           bytes_view target) {
-  assert(!block_stack_.empty());
+  IRS_ASSERT(!block_stack_.empty());
   const auto term = value();
   const byte_type* pterm = term.data();
   const byte_type* ptarget = target.data();
@@ -2353,7 +2342,7 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
   if (cmp) {
     // truncate block_stack_ to match path
     const auto begin = block_stack_.begin() + (block + 1);
-    assert(begin <= block_stack_.end());
+    IRS_ASSERT(begin <= block_stack_.end());
     block_stack_.erase(begin, block_stack_.end());
   }
 
@@ -2365,7 +2354,7 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
 
 template<typename FST>
 bool term_iterator<FST>::seek_to_block(bytes_view term, size_t& prefix) {
-  assert(fst_->GetImpl());
+  IRS_ASSERT(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
   prefix = 0;                     // number of current symbol to process
@@ -2416,7 +2405,7 @@ bool term_iterator<FST>::seek_to_block(bytes_view term, size_t& prefix) {
       // the only case when it's wrong is degenerated FST composed of only
       // 'fst_byte_builder::final' state.
       // in that case we'll never get there due to the loop condition above.
-      assert(fst.FinalRef(fst_buffer::fst_byte_builder::final).Empty());
+      IRS_ASSERT(fst.FinalRef(fst_buffer::fst_byte_builder::final).Empty());
 
       push_block(std::move(weight_), prefix);
       ++block;
@@ -2448,7 +2437,7 @@ SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
     return SeekResult::FOUND;
   }
 
-  assert(cur_block_);
+  IRS_ASSERT(cur_block_);
 
   if (!block_meta::terms(cur_block_->meta())) {
     // current block has no terms
@@ -2467,7 +2456,7 @@ SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
 
   Finally refresh_value = [this]() noexcept { this->refresh_value(); };
 
-  assert(term.starts_with(term_buf_));
+  IRS_ASSERT(term.starts_with(term_buf_));
   return cur_block_->scan_to_term(term, append_suffix);
 }
 
@@ -2479,7 +2468,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
   }
   UNUSED(prefix);
 
-  assert(cur_block_);
+  IRS_ASSERT(cur_block_);
 
   auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
     const auto prefix = cur_block_->prefix();
@@ -2492,10 +2481,10 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
 
   Finally refresh_value = [this]() noexcept { this->refresh_value(); };
 
-  assert(term.starts_with(term_buf_));
+  IRS_ASSERT(term.starts_with(term_buf_));
   switch (cur_block_->scan_to_term(term, append_suffix)) {
     case SeekResult::FOUND:
-      assert(ET_TERM == cur_block_->type());
+      IRS_ASSERT(ET_TERM == cur_block_->type());
       return SeekResult::FOUND;
     case SeekResult::NOT_FOUND:
       switch (cur_block_->type()) {
@@ -2508,7 +2497,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
           cur_block_->load(terms_input(), terms_cipher());
           break;
         default:
-          assert(false);
+          IRS_ASSERT(false);
           return SeekResult::END;
       }
       [[fallthrough]];
@@ -2517,7 +2506,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
                     : SeekResult::END;       // have no more terms
   }
 
-  assert(false);
+  IRS_ASSERT(false);
   return SeekResult::END;
 }
 
@@ -2541,7 +2530,7 @@ class single_term_iterator final : public seek_term_iterator {
       postings_{&postings},
       field_{&field},
       fst_{&fst} {
-    assert(terms_in_);
+    IRS_ASSERT(terms_in_);
   }
 
   attribute* get_mutable(irs::type_info::type_id type) override {
@@ -2589,7 +2578,7 @@ class single_term_iterator final : public seek_term_iterator {
 
 template<typename FST>
 bool single_term_iterator<FST>::seek(bytes_view term) {
-  assert(fst_->GetImpl());
+  IRS_ASSERT(fst_->GetImpl());
   auto& fst = *fst_->GetImpl();
 
   auto state = fst.Start();
@@ -2655,13 +2644,13 @@ class automaton_arc_matcher {
     : begin_(arcs), end_(arcs + narcs) {}
 
   const automaton::Arc* seek(uint32_t label) noexcept {
-    assert(begin_ != end_ && begin_->max < label);
+    IRS_ASSERT(begin_ != end_ && begin_->max < label);
     // linear search is faster for a small number of arcs
 
     while (++begin_ != end_ && begin_->max < label) {
     }
 
-    assert(begin_ == end_ || label <= begin_->max);
+    IRS_ASSERT(begin_ == end_ || label <= begin_->max);
 
     return begin_ != end_ && begin_->min <= label ? begin_ : nullptr;
   }
@@ -2723,9 +2712,9 @@ class automaton_term_iterator final : public term_iterator_base {
       matcher_(&matcher),
       fst_matcher_(&fst, fst::MATCH_INPUT),
       sink_(matcher.sink()) {
-    assert(terms_in_);
-    assert(fst::kNoStateId != acceptor_->Start());
-    assert(acceptor_->NumArcs(acceptor_->Start()));
+    IRS_ASSERT(terms_in_);
+    IRS_ASSERT(fst::kNoStateId != acceptor_->Start());
+    IRS_ASSERT(acceptor_->NumArcs(acceptor_->Start()));
 
     // init payload value
     payload_.value = {&payload_value_, sizeof(payload_value_)};
@@ -2746,7 +2735,7 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
   void read() override {
-    assert(cur_block_);
+    IRS_ASSERT(cur_block_);
     read_impl(*cur_block_);
   }
 
@@ -2785,7 +2774,7 @@ class automaton_term_iterator final : public term_iterator_base {
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
-    assert(!block_stack_.empty());
+    IRS_ASSERT(!block_stack_.empty());
     return &block_stack_.back();
   }
 
@@ -2793,11 +2782,11 @@ class automaton_term_iterator final : public term_iterator_base {
                              size_t weight_prefix, automaton::StateId state,
                              typename FST::StateId fst_state) {
     // ensure final weight correctness
-    assert(out.size() >= MIN_WEIGHT_SIZE);
+    IRS_ASSERT(out.size() >= MIN_WEIGHT_SIZE);
 
     fst::ArcIteratorData<automaton::Arc> data;
     acceptor_->InitArcIterator(state, &data);
-    assert(data.narcs);  // ensured by term_reader::iterator(...)
+    IRS_ASSERT(data.narcs);  // ensured by term_reader::iterator(...)
 
     block_stack_.emplace_back(out, fst, prefix, weight_prefix, state, fst_state,
                               data.arcs, data.narcs);
@@ -2810,7 +2799,7 @@ class automaton_term_iterator final : public term_iterator_base {
   // therefore we prefer greedy strategy for term dictionary stream
   // initialization
   index_input& terms_input() const noexcept {
-    assert(terms_in_);
+    IRS_ASSERT(terms_in_);
     return *terms_in_;
   }
 
@@ -2829,7 +2818,7 @@ class automaton_term_iterator final : public term_iterator_base {
 
 template<typename FST>
 bool automaton_term_iterator<FST>::next() {
-  assert(fst_matcher_.GetFst().GetImpl());
+  IRS_ASSERT(fst_matcher_.GetFst().GetImpl());
   auto& fst = *fst_matcher_.GetFst().GetImpl();
 
   // iterator at the beginning or seek to cached state was called
@@ -2840,14 +2829,14 @@ bool automaton_term_iterator<FST>::next() {
                               acceptor_->Start(), fst_start);
       cur_block_->load(terms_input(), terms_cipher());
     } else {
-      assert(false);
+      IRS_ASSERT(false);
       // FIXME(gnusi): consider removing this, as that seems to be impossible
       // anymore
 
       // seek to the term with the specified state was called from
       // term_iterator::seek(bytes_view, const attribute&),
       const SeekResult res = seek_ge(value());
-      assert(SeekResult::FOUND == res);
+      IRS_ASSERT(SeekResult::FOUND == res);
       UNUSED(res);
     }
   }
@@ -2858,7 +2847,7 @@ bool automaton_term_iterator<FST>::next() {
                                           size_t suffix_size) -> SeekResult {
     if (suffix_size) {
       auto& arcs = cur_block_->arcs();
-      assert(!arcs.done());
+      IRS_ASSERT(!arcs.done());
 
       const auto* arc = arcs.value();
 
@@ -2880,7 +2869,7 @@ bool automaton_term_iterator<FST>::next() {
         }
       }
 
-      assert(*suffix >= arc->min && *suffix <= arc->max);
+      IRS_ASSERT(*suffix >= arc->min && *suffix <= arc->max);
       state = arc->nextstate;
 
       if (state == sink_) {
@@ -2888,7 +2877,8 @@ bool automaton_term_iterator<FST>::next() {
       }
 
 #ifdef IRESEARCH_DEBUG
-      assert(matcher_->Peek(cur_block_->acceptor_state(), *suffix) == state);
+      IRS_ASSERT(matcher_->Peek(cur_block_->acceptor_state(), *suffix) ==
+                 state);
 #endif
 
       const auto* end = suffix + suffix_size;
@@ -2915,7 +2905,7 @@ bool automaton_term_iterator<FST>::next() {
         return SeekResult::FOUND;
       }
     } else {
-      assert(ET_BLOCK == cur_block_->type());
+      IRS_ASSERT(ET_BLOCK == cur_block_->type());
       fst::ArcIteratorData<automaton::Arc> data;
       acceptor_->InitArcIterator(state, &data);
 
@@ -2928,14 +2918,14 @@ bool automaton_term_iterator<FST>::next() {
         if (const auto* end = suffix + suffix_size; suffix < end) {
           auto& fst_arcs = cur_block_->fst_arcs();
           fst_arcs.seek(*suffix++);
-          assert(!fst_arcs.done());
+          IRS_ASSERT(!fst_arcs.done());
           const auto* arc = fst_arcs.value();
           weight_.PushBack(arc->weight.begin(), arc->weight.end());
 
           fst_state = fst_arcs.value()->nextstate;
           for (fst_matcher_.SetState(fst_state); suffix < end; ++suffix) {
             [[maybe_unused]] const bool found = fst_matcher_.Find(*suffix);
-            assert(found);
+            IRS_ASSERT(found);
 
             const auto& arc = fst_matcher_.Value();
             fst_state = arc.nextstate;
@@ -2945,8 +2935,8 @@ bool automaton_term_iterator<FST>::next() {
         }
 
         const auto& weight = fst.FinalRef(fst_state);
-        assert(!weight.Empty() ||
-               fst_buffer::fst_byte_builder::final == fst_state);
+        IRS_ASSERT(!weight.Empty() ||
+                   fst_buffer::fst_byte_builder::final == fst_state);
         const auto weight_prefix = weight_.Size();
         weight_.PushBack(weight.begin(), weight.end());
         block_stack_.emplace_back(static_cast<bytes_view>(weight_), *fst_,
@@ -2954,8 +2944,9 @@ bool automaton_term_iterator<FST>::next() {
                                   fst_state, data.arcs, data.narcs);
         cur_block_ = &block_stack_.back();
 
-        assert(block_stack_.size() < 2 ||
-               (++block_stack_.rbegin())->block_start() == cur_block_->start());
+        IRS_ASSERT(block_stack_.size() < 2 ||
+                   (++block_stack_.rbegin())->block_start() ==
+                     cur_block_->start());
 
         if (!acceptor_->Final(state)) {
           cur_block_->scan_to_sub_block(data.arcs->min);
@@ -2973,19 +2964,19 @@ bool automaton_term_iterator<FST>::next() {
     while (cur_block_->done()) {
       if (cur_block_->sub_count()) {
         // we always instantiate block with header
-        assert(block_t::INVALID_LABEL != cur_block_->next_label());
+        IRS_ASSERT(block_t::INVALID_LABEL != cur_block_->next_label());
 
         const uint32_t next_label = cur_block_->next_label();
 
         auto& arcs = cur_block_->arcs();
-        assert(!arcs.done());
+        IRS_ASSERT(!arcs.done());
         const auto* arc = arcs.value();
 
         if (next_label < arc->min) {
-          assert(arc->min <= std::numeric_limits<byte_type>::max());
+          IRS_ASSERT(arc->min <= std::numeric_limits<byte_type>::max());
           cur_block_->scan_to_sub_block(byte_type(arc->min));
-          assert(cur_block_->next_label() == block_t::INVALID_LABEL ||
-                 arc->min < uint32_t(cur_block_->next_label()));
+          IRS_ASSERT(cur_block_->next_label() == block_t::INVALID_LABEL ||
+                     arc->min < uint32_t(cur_block_->next_label()));
         } else if (arc->max < next_label) {
           arc = arcs.seek(next_label);
 
@@ -3002,16 +2993,17 @@ bool automaton_term_iterator<FST>::next() {
           }
 
           if (!arc) {
-            assert(arcs.value()->min <= std::numeric_limits<byte_type>::max());
+            IRS_ASSERT(arcs.value()->min <=
+                       std::numeric_limits<byte_type>::max());
             cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
-            assert(cur_block_->next_label() == block_t::INVALID_LABEL ||
-                   arcs.value()->min < uint32_t(cur_block_->next_label()));
+            IRS_ASSERT(cur_block_->next_label() == block_t::INVALID_LABEL ||
+                       arcs.value()->min < uint32_t(cur_block_->next_label()));
           } else {
-            assert(arc->min <= next_label && next_label <= arc->max);
+            IRS_ASSERT(arc->min <= next_label && next_label <= arc->max);
             cur_block_->template next_sub_block<true>();
           }
         } else {
-          assert(arc->min <= next_label && next_label <= arc->max);
+          IRS_ASSERT(arc->min <= next_label && next_label <= arc->max);
           cur_block_->template next_sub_block<true>();
         }
 
@@ -3026,7 +3018,7 @@ bool automaton_term_iterator<FST>::next() {
         std::get<version10::term_meta>(attrs_) = cur_block_->state();
         if (cur_block_->dirty() || cur_block_->block_start() != start) {
           // here we're currently at non block that was not loaded yet
-          assert(cur_block_->prefix() < term_buf_.size());
+          IRS_ASSERT(cur_block_->prefix() < term_buf_.size());
           // to sub-block
           cur_block_->scan_to_sub_block(term_buf_[cur_block_->prefix()]);
           cur_block_->load(terms_input(), terms_cipher());
@@ -3070,11 +3062,9 @@ class field_reader final : public irs::field_reader {
   virtual void prepare(const directory& dir, const segment_meta& meta,
                        const document_mask& mask) override;
 
-  virtual const irs::term_reader* field(std::string_view field) const override;
-  virtual irs::field_iterator::ptr iterator() const override;
-  virtual size_t size() const noexcept override {
-    return name_to_field_.size();
-  }
+  const irs::term_reader* field(std::string_view field) const override;
+  irs::field_iterator::ptr iterator() const override;
+  size_t size() const noexcept override { return name_to_field_.size(); }
 
  private:
   template<typename FST>
@@ -3099,7 +3089,7 @@ class field_reader final : public irs::field_reader {
       }
     }
 
-    virtual seek_term_iterator::ptr iterator(SeekMode mode) const override {
+    seek_term_iterator::ptr iterator(SeekMode mode) const override {
       if (mode == SeekMode::RANDOM_ONLY) {
         auto terms_in =
           owner_->terms_in_->reopen();  // reopen thread-safe stream
@@ -3203,7 +3193,7 @@ class field_reader final : public irs::field_reader {
 
 field_reader::field_reader(irs::postings_reader::ptr&& pr)
   : pr_(std::move(pr)) {
-  assert(pr_);
+  IRS_ASSERT(pr_);
 }
 
 void field_reader::prepare(const directory& dir, const segment_meta& meta,
@@ -3255,7 +3245,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
 
   if (term_index_version > burst_trie::Version::MIN) {
     if (irs::decrypt(filename, *index_in, enc, index_in_cipher)) {
-      assert(index_in_cipher && index_in_cipher->block_size());
+      IRS_ASSERT(index_in_cipher && index_in_cipher->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
         DEFAULT_ENCRYPTION_BUFFER_SIZE, index_in_cipher->block_size());
@@ -3327,7 +3317,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
 
   if (term_dict_version > burst_trie::Version::MIN) {
     if (irs::decrypt(filename, *terms_in_, enc, terms_in_cipher_)) {
-      assert(terms_in_cipher_ && terms_in_cipher_->block_size());
+      IRS_ASSERT(terms_in_cipher_ && terms_in_cipher_->block_size());
     }
   }
 
@@ -3413,7 +3403,7 @@ class term_reader_visitor {
         if (ET_TERM == cur_block->type()) {
           visitor.push_term(term_);
         } else {
-          assert(ET_BLOCK == cur_block->type());
+          IRS_ASSERT(ET_BLOCK == cur_block->type());
           cur_block = push_block(cur_block->block_start(), term_.size());
           cur_block->load(*terms_in_, terms_in_cipher_);
           visitor.push_block(term_, *cur_block);
@@ -3431,13 +3421,13 @@ class term_reader_visitor {
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
-    assert(!block_stack_.empty());
+    IRS_ASSERT(!block_stack_.empty());
     return &block_stack_.back();
   }
 
   block_iterator* push_block(byte_weight&& out, size_t prefix) {
     // ensure final weight correctess
-    assert(out.Size() >= MIN_WEIGHT_SIZE);
+    IRS_ASSERT(out.Size() >= MIN_WEIGHT_SIZE);
 
     block_stack_.emplace_back(std::move(out), prefix);
     return &block_stack_.back();

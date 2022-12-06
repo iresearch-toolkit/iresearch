@@ -124,7 +124,7 @@ struct postings_writer : attribute_provider {
 };
 
 void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
-  assert(owner_ && meta);
+  IRS_ASSERT(owner_ && meta);
   owner_->release(meta);
 }
 

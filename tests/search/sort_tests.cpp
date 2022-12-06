@@ -62,10 +62,10 @@ struct aligned_scorer : public irs::sort {
                       bool empty_scorer) noexcept
       : empty_scorer_(empty_scorer), index_features_(index_features) {}
 
-    virtual field_collector::ptr prepare_field_collector() const override {
+    field_collector::ptr prepare_field_collector() const override {
       return nullptr;
     }
-    virtual term_collector::ptr prepare_term_collector() const override {
+    term_collector::ptr prepare_term_collector() const override {
       return nullptr;
     }
     virtual void collect(irs::byte_type*, const irs::index_reader&,
@@ -85,9 +85,7 @@ struct aligned_scorer : public irs::sort {
       return {nullptr, [](irs::score_ctx*, irs::score_t*) noexcept {}};
     }
 
-    virtual irs::IndexFeatures features() const override {
-      return index_features_;
-    }
+    irs::IndexFeatures features() const override { return index_features_; }
 
     irs::IndexFeatures index_features_;
     bool empty_scorer_;
@@ -105,7 +103,7 @@ struct aligned_scorer : public irs::sort {
       index_features_(index_features_),
       empty_scorer_(empty_scorer) {}
 
-  virtual irs::sort::prepared::ptr prepare() const override {
+  irs::sort::prepared::ptr prepare() const override {
     return std::make_unique<aligned_scorer<StatsType>::prepared>(
       index_features_, empty_scorer_);
   }
@@ -116,7 +114,7 @@ struct aligned_scorer : public irs::sort {
 
 struct dummy_scorer0 : public irs::sort {
   dummy_scorer0() : irs::sort(irs::type<dummy_scorer0>::get()) {}
-  virtual prepared::ptr prepare() const override { return nullptr; }
+  prepared::ptr prepare() const override { return nullptr; }
 };
 
 }  // namespace

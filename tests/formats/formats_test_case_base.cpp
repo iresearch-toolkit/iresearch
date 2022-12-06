@@ -1029,7 +1029,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
       using directory::attributes;
 
-      virtual irs::directory_attributes& attributes() noexcept override {
+      irs::directory_attributes& attributes() noexcept override {
         return dir_.attributes();
       }
 
@@ -1065,7 +1065,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
         return dir_.open(name, advice);
       }
 
-      virtual bool remove(std::string_view name) noexcept override {
+      bool remove(std::string_view name) noexcept override {
         return dir_.remove(name);
       }
 
@@ -1074,7 +1074,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
         return dir_.rename(src, dst);
       }
 
-      virtual bool sync(std::string_view name) noexcept override {
+      bool sync(std::string_view name) noexcept override {
         return dir_.sync(name);
       }
 

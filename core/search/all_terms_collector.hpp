@@ -62,7 +62,7 @@ class all_terms_collector : util::noncopyable {
   }
 
   void visit(const score_t boost) {
-    assert(state_);
+    IRS_ASSERT(state_);
     term_stats_.collect(*state_.segment, *state_.state->reader, stat_index_,
                         *state_.terms);
 

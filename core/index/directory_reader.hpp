@@ -70,15 +70,11 @@ class directory_reader final : public index_reader {
   directory_reader* operator->() noexcept { return this; }
   const directory_reader* operator->() const noexcept { return this; }
 
-  virtual const sub_reader& operator[](size_t i) const override {
-    return (*impl_)[i];
-  }
+  const sub_reader& operator[](size_t i) const override { return (*impl_)[i]; }
 
-  virtual uint64_t docs_count() const override { return impl_->docs_count(); }
+  uint64_t docs_count() const override { return impl_->docs_count(); }
 
-  virtual uint64_t live_docs_count() const override {
-    return impl_->live_docs_count();
-  }
+  uint64_t live_docs_count() const override { return impl_->live_docs_count(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return the directory_meta this reader is based upon
@@ -86,7 +82,7 @@ class directory_reader final : public index_reader {
   //////////////////////////////////////////////////////////////////////////////
   const directory_meta& meta() const;
 
-  virtual size_t size() const override { return impl_->size(); }
+  size_t size() const override { return impl_->size(); }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an index reader over the specified directory

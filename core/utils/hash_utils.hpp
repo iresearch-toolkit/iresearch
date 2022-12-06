@@ -87,7 +87,7 @@ hashed_basic_string_view<Elem> make_hashed_ref(
 
 template<typename T>
 inline size_t hash(const T* begin, size_t size) noexcept {
-  assert(begin);
+  IRS_ASSERT(begin);
 
   size_t hash = 0;
   for (auto end = begin + size; begin != end;) {

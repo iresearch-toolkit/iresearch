@@ -153,12 +153,12 @@ class filter_with_options : public filter {
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
 
-  virtual size_t hash() const noexcept override {
+  size_t hash() const noexcept override {
     return hash_combine(filter::hash(), options_.hash());
   }
 
  protected:
-  virtual bool equals(const filter& rhs) const noexcept override {
+  bool equals(const filter& rhs) const noexcept override {
     return filter::equals(rhs) &&
            options_ == down_cast<filter_type>(rhs).options_;
   }
@@ -177,13 +177,13 @@ class filter_base : public filter_with_options<Options> {
   std::string_view field() const noexcept { return field_; }
   std::string* mutable_field() noexcept { return &field_; }
 
-  virtual size_t hash() const noexcept override {
+  size_t hash() const noexcept override {
     return hash_combine(hash_utils::Hash(field_),
                         filter_with_options<options_type>::hash());
   }
 
  protected:
-  virtual bool equals(const filter& rhs) const noexcept override {
+  bool equals(const filter& rhs) const noexcept override {
     return filter_with_options<options_type>::equals(rhs) &&
            field_ == down_cast<filter_type>(rhs).field_;
   }

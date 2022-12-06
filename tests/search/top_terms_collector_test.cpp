@@ -74,13 +74,13 @@ struct sort : irs::sort {
         }
       }
 
-      virtual void reset() noexcept override {
+      void reset() noexcept override {
         docs_with_field = 0;
         total_term_freq = 0;
       }
 
-      virtual void collect(irs::bytes_view) override {}
-      virtual void write(irs::data_output&) const override {}
+      void collect(irs::bytes_view) override {}
+      void write(irs::data_output&) const override {}
     };
 
     struct term_collector final : irs::sort::term_collector {
@@ -96,17 +96,17 @@ struct sort : irs::sort {
         }
       }
 
-      virtual void reset() noexcept override { docs_with_term = 0; }
+      void reset() noexcept override { docs_with_term = 0; }
 
-      virtual void collect(irs::bytes_view) override {}
-      virtual void write(irs::data_output&) const override {}
+      void collect(irs::bytes_view) override {}
+      void write(irs::data_output&) const override {}
     };
 
     virtual void collect(irs::byte_type*, const irs::index_reader&,
                          const irs::sort::field_collector*,
                          const irs::sort::term_collector*) const override {}
 
-    virtual irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 
@@ -128,12 +128,10 @@ struct sort : irs::sort {
       return {nullptr, nullptr};
     }
 
-    virtual std::pair<size_t, size_t> stats_size() const override {
-      return {0, 0};
-    }
+    std::pair<size_t, size_t> stats_size() const override { return {0, 0}; }
   };
 
-  virtual irs::sort::prepared::ptr prepare() const override {
+  irs::sort::prepared::ptr prepare() const override {
     return std::make_unique<prepared>();
   }
 };
@@ -145,13 +143,13 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   seek_term_iterator(iterator_type begin, iterator_type end)
     : begin_(begin), end_(end), cookie_ptr_(begin) {}
 
-  virtual irs::SeekResult seek_ge(irs::bytes_view) override {
+  irs::SeekResult seek_ge(irs::bytes_view) override {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual bool seek(irs::bytes_view) override { return false; }
+  bool seek(irs::bytes_view) override { return false; }
 
-  virtual irs::seek_cookie::ptr cookie() const override {
+  irs::seek_cookie::ptr cookie() const override {
     return std::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
@@ -166,7 +164,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return nullptr;
   }
 
-  virtual bool next() noexcept override {
+  bool next() noexcept override {
     if (begin_ == end_) {
       return false;
     }
@@ -178,11 +176,9 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  virtual irs::bytes_view value() const noexcept override {
-    return value_.value;
-  }
+  irs::bytes_view value() const noexcept override { return value_.value; }
 
-  virtual void read() override {}
+  void read() override {}
 
   virtual irs::doc_iterator::ptr postings(
     irs::IndexFeatures /*features*/) const override {
@@ -217,31 +213,31 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 
 struct sub_reader final : irs::sub_reader {
   explicit sub_reader(size_t num_docs) : num_docs(num_docs) {}
-  virtual irs::column_iterator::ptr columns() const override {
+  irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
-  virtual const irs::column_reader* column(irs::field_id) const override {
+  const irs::column_reader* column(irs::field_id) const override {
     return nullptr;
   }
-  virtual const irs::column_reader* column(std::string_view) const override {
+  const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  virtual uint64_t docs_count() const override { return 0; }
-  virtual irs::doc_iterator::ptr docs_iterator() const override {
+  uint64_t docs_count() const override { return 0; }
+  irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
-  virtual const irs::term_reader* field(std::string_view) const override {
+  const irs::term_reader* field(std::string_view) const override {
     return nullptr;
   }
-  virtual irs::field_iterator::ptr fields() const override {
+  irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  virtual uint64_t live_docs_count() const override { return 0; }
-  virtual const irs::sub_reader& operator[](size_t) const override {
+  uint64_t live_docs_count() const override { return 0; }
+  const irs::sub_reader& operator[](size_t) const override {
     throw std::out_of_range("index out of range");
   }
-  virtual size_t size() const override { return 0; }
-  virtual const irs::column_reader* sort() const override { return nullptr; }
+  size_t size() const override { return 0; }
+  const irs::column_reader* sort() const override { return nullptr; }
 
   size_t num_docs;
 };  // index_reader

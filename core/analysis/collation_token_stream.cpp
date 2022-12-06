@@ -279,9 +279,9 @@ bool collation_token_stream::reset(std::string_view data) {
   // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/classicu_1_1Collator.html
   // according to ICU docs sort keys are always zero-terminated,
   // there is no reason to store terminal zero in term dictionary
-  assert(term_size > 0);
+  IRS_ASSERT(term_size > 0);
   --term_size;
-  assert(0 == buf[term_size]);
+  IRS_ASSERT(0 == buf[term_size]);
   if (term_size > static_cast<int32_t>(sizeof raw_term_buf)) {
     IR_FRMT_ERROR(
       "Collated token is %d bytes length which exceeds maximum allowed "
@@ -292,7 +292,7 @@ bool collation_token_stream::reset(std::string_view data) {
   size_t termBufIdx = static_cast<size_t>(term_size);
   if (state_->options.forceUtf8) {
     // enforce valid UTF-8 string
-    assert(buf == raw_term_buf);
+    IRS_ASSERT(buf == raw_term_buf);
     termBufIdx = 0;
     for (decltype(term_size) i{}; i < term_size; ++i) {
       static_assert(sizeof(raw_term_buf[i]) * (1 << CHAR_BIT) <=
@@ -304,7 +304,7 @@ bool collation_token_stream::reset(std::string_view data) {
           static_cast<int32_t>(sizeof state_->term_buf));
         return false;
       }
-      assert(size <= 2);
+      IRS_ASSERT(size <= 2);
       state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset];
       if (size == 2) {
         state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset + 1];

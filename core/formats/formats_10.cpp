@@ -101,18 +101,18 @@ struct format_traits {
   FORCE_INLINE static void pack32(const uint32_t* RESTRICT decoded,
                                   uint32_t* RESTRICT encoded, size_t size,
                                   const uint32_t bits) noexcept {
-    assert(encoded);
-    assert(decoded);
-    assert(size);
+    IRS_ASSERT(encoded);
+    IRS_ASSERT(decoded);
+    IRS_ASSERT(size);
     packed::pack(decoded, decoded + size, encoded, bits);
   }
 
   FORCE_INLINE static void pack64(const uint64_t* RESTRICT decoded,
                                   uint64_t* RESTRICT encoded, size_t size,
                                   const uint32_t bits) noexcept {
-    assert(encoded);
-    assert(decoded);
-    assert(size);
+    IRS_ASSERT(encoded);
+    IRS_ASSERT(decoded);
+    IRS_ASSERT(size);
     packed::pack(decoded, decoded + size, encoded, bits);
   }
 
@@ -135,9 +135,9 @@ template<typename T, typename M>
 std::string file_name(const M& meta);
 
 void prepare_output(std::string& str, index_output::ptr& out,
-                    const flush_state& state, std::string_view ext, std::string_view format,
-                    const int32_t version) {
-  assert(!out);
+                    const flush_state& state, std::string_view ext,
+                    std::string_view format, const int32_t version) {
+  IRS_ASSERT(!out);
   irs::file_name(str, state.name, ext);
   out = state.dir->create(str);
 
@@ -150,9 +150,10 @@ void prepare_output(std::string& str, index_output::ptr& out,
 }
 
 void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
-                   const reader_state& state, std::string_view ext, std::string_view format,
-                   const int32_t min_ver, const int32_t max_ver) {
-  assert(!in);
+                   const reader_state& state, std::string_view ext,
+                   std::string_view format, const int32_t min_ver,
+                   const int32_t max_ver) {
+  IRS_ASSERT(!in);
   irs::file_name(str, state.meta->name, ext);
   in = state.dir->open(str, advice);
 
@@ -254,7 +255,7 @@ struct pay_buffer : skip_buffer {
   }
 
   void push_offset(uint32_t i, uint32_t start, uint32_t end) noexcept {
-    assert(start >= last && start <= end);
+    IRS_ASSERT(start >= last && start <= end);
 
     offs_start_buf[i] = start - last;
     offs_len_buf[i] = end - start;
@@ -348,9 +349,11 @@ class postings_writer_base : public irs::postings_writer {
   static constexpr std::string_view kPosFormatName =
     "iresearch_10_postings_positions";
   static constexpr std::string_view kPosExt = "pos";
-  static constexpr std::string_view kPayFormatName = "iresearch_10_postings_payloads";
+  static constexpr std::string_view kPayFormatName =
+    "iresearch_10_postings_payloads";
   static constexpr std::string_view kPayExt = "pay";
-  static constexpr std::string_view kTermsFormatName = "iresearch_10_postings_terms";
+  static constexpr std::string_view kTermsFormatName =
+    "iresearch_10_postings_terms";
 
  protected:
   postings_writer_base(doc_id_t block_size, std::span<doc_id_t> docs,
@@ -368,10 +371,10 @@ class postings_writer_base : public irs::postings_writer {
       buf_{enc_buf},
       postings_format_version_{postings_format_version},
       terms_format_version_{terms_format_version} {
-    assert(postings_format_version >= PostingsFormat::MIN &&
-           postings_format_version <= PostingsFormat::MAX);
-    assert(terms_format_version >= TermsFormat::MIN &&
-           terms_format_version <= TermsFormat::MAX);
+    IRS_ASSERT(postings_format_version >= PostingsFormat::MIN &&
+               postings_format_version <= PostingsFormat::MAX);
+    IRS_ASSERT(terms_format_version >= TermsFormat::MIN &&
+               terms_format_version <= TermsFormat::MAX);
   }
 
  public:
@@ -380,22 +383,22 @@ class postings_writer_base : public irs::postings_writer {
     return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
 
-  virtual void begin_field(IndexFeatures features) final {
+  void begin_field(IndexFeatures features) final {
     features_ = features;
     docs_.value.clear();
     last_state_.clear();
   }
 
-  virtual void begin_block() final {
+  void begin_block() final {
     // clear state in order to write
     // absolute address of the first
     // entry in the block
     last_state_.clear();
   }
 
-  virtual void prepare(index_output& out, const irs::flush_state& state) final;
-  virtual void encode(data_output& out, const irs::term_meta& attrs) final;
-  virtual void end() final;
+  void prepare(index_output& out, const irs::flush_state& state) final;
+  void encode(data_output& out, const irs::term_meta& attrs) final;
+  void end() final;
 
  protected:
   struct attributes {
@@ -421,9 +424,9 @@ class postings_writer_base : public irs::postings_writer {
     }
   };
 
-  virtual void release(irs::term_meta* meta) noexcept final {
+  void release(irs::term_meta* meta) noexcept final {
     auto* state = static_cast<version10::term_meta*>(meta);
-    assert(state);
+    IRS_ASSERT(state);
 
     alloc_.destroy(state);
     alloc_.deallocate(state);
@@ -474,7 +477,7 @@ void postings_writer_base::write_skip(size_t level,
 
     if (IndexFeatures::NONE !=
         (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
-      assert(pay_out_);
+      IRS_ASSERT(pay_out_);
 
       if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
         out.write_vint(static_cast<uint32_t>(pay_.block_last));
@@ -490,8 +493,8 @@ void postings_writer_base::write_skip(size_t level,
 
 void postings_writer_base::prepare(index_output& out,
                                    const irs::flush_state& state) {
-  assert(state.dir);
-  assert(!IsNull(state.name));
+  IRS_ASSERT(state.dir);
+  IRS_ASSERT(!IsNull(state.name));
 
   std::string name;
 
@@ -531,7 +534,7 @@ void postings_writer_base::encode(data_output& out,
 
   out.write_vint(meta.docs_count);
   if (meta.freq != std::numeric_limits<uint32_t>::max()) {
-    assert(meta.freq >= meta.docs_count);
+    IRS_ASSERT(meta.freq >= meta.docs_count);
     out.write_vint(meta.freq - meta.docs_count);
   }
 
@@ -573,12 +576,12 @@ void postings_writer_base::begin_term() {
   doc_.start = doc_out_->file_pointer();
   std::fill_n(doc_.skip_ptr, kMaxSkipLevels, doc_.start);
   if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
-    assert(pos_out_);
+    IRS_ASSERT(pos_out_);
     pos_.start = pos_out_->file_pointer();
     std::fill_n(pos_.skip_ptr, kMaxSkipLevels, pos_.start);
     if (IndexFeatures::NONE !=
         (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
-      assert(pay_out_);
+      IRS_ASSERT(pay_out_);
       pay_.start = pay_out_->file_pointer();
       std::fill_n(pay_.skip_ptr, kMaxSkipLevels, pay_.start);
     }
@@ -594,14 +597,14 @@ void postings_writer_base::end_doc() {
     doc_.block_last = doc_.last;
     doc_.end = doc_out_->file_pointer();
     if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
-      assert(pos_out_);
+      IRS_ASSERT(pos_out_);
       pos_.end = pos_out_->file_pointer();
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_.block_last = pos_.size;
       if (IndexFeatures::NONE !=
           (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
-        assert(pay_out_);
+        IRS_ASSERT(pay_out_);
         pay_.end = pay_out_->file_pointer();
         pay_.block_last = pay_.pay_buf_.size();
       }
@@ -655,7 +658,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
   // write remaining position using
   // variable length encoding
   if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
-    assert(pos_out_);
+    IRS_ASSERT(pos_out_);
 
     if (meta.freq > skip_.Skip0()) {
       meta.pos_end = pos_out_->file_pointer() - pos_.start;
@@ -669,7 +672,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
       for (uint32_t i = 0; i < pos_.size; ++i) {
         const uint32_t pos_delta = pos_.buf[i];
         if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
-          assert(pay_out_);
+          IRS_ASSERT(pay_out_);
 
           const uint32_t size = pay_.pay_sizes[i];
           if (last_pay_size != size) {
@@ -689,7 +692,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
         }
 
         if (IndexFeatures::NONE != (features_ & IndexFeatures::OFFS)) {
-          assert(pay_out_);
+          IRS_ASSERT(pay_out_);
 
           const uint32_t pay_offs_delta = pay_.offs_start_buf[i];
           const uint32_t len = pay_.offs_len_buf[i];
@@ -704,7 +707,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
       }
 
       if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
-        assert(pay_out_);
+        IRS_ASSERT(pay_out_);
         pay_.pay_buf_.clear();
       }
     }
@@ -758,12 +761,12 @@ class postings_writer final : public postings_writer_base {
                            version,
                            TermsFormat::MAX},
       volatile_attributes_{volatile_attributes} {
-    assert((postings_format_version_ >= PostingsFormat::POSITIONS_ZEROBASED
-              ? pos_limits::invalid()
-              : pos_limits::min()) == FormatTraits::pos_min());
+    IRS_ASSERT((postings_format_version_ >= PostingsFormat::POSITIONS_ZEROBASED
+                  ? pos_limits::invalid()
+                  : pos_limits::min()) == FormatTraits::pos_min());
   }
 
-  virtual irs::postings_writer::state write(irs::doc_iterator& docs) override;
+  irs::postings_writer::state write(irs::doc_iterator& docs) override;
 
  private:
   void add_position(uint32_t pos);
@@ -810,7 +813,7 @@ void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
                                                             doc_.block_last);
       FormatTraits::write_block(*doc_out_, doc_.docs.data(), buf_);
       if (attrs_.freq_) {
-        assert(freq);
+        IRS_ASSERT(freq);
         FormatTraits::write_block(*doc_out_, doc_.freqs.data(), buf_);
       }
     }
@@ -831,8 +834,9 @@ void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
 template<typename FormatTraits>
 void postings_writer<FormatTraits>::add_position(uint32_t pos) {
   // at least positions stream should be created
-  assert(IndexFeatures::NONE != (features_ & IndexFeatures::POS) && pos_out_);
-  assert(!attrs_.offs_ || attrs_.offs_->start <= attrs_.offs_->end);
+  IRS_ASSERT(IndexFeatures::NONE != (features_ & IndexFeatures::POS) &&
+             pos_out_);
+  IRS_ASSERT(!attrs_.offs_ || attrs_.offs_->start <= attrs_.offs_->end);
 
   pos_.pos(pos - pos_.last);
 
@@ -851,7 +855,7 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
     pos_.size = 0;
 
     if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
-      assert(pay_out_);
+      IRS_ASSERT(pay_out_);
       auto& pay_buf = pay_.pay_buf_;
 
       pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
@@ -863,7 +867,7 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
     }
 
     if (IndexFeatures::NONE != (features_ & IndexFeatures::OFFS)) {
-      assert(pay_out_);
+      IRS_ASSERT(pay_out_);
       FormatTraits::write_block(*pay_out_, pay_.offs_start_buf, buf_);
       FormatTraits::write_block(*pay_out_, pay_.offs_len_buf, buf_);
     }
@@ -885,7 +889,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
   auto* doc = irs::get<document>(docs);
 
   if (!doc) {
-    assert(false);
+    IRS_ASSERT(false);
     throw illegal_argument{"'document' attribute is missing"};
   }
 
@@ -900,7 +904,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
     refresh(docs);
   } else {
     auto* subscription = irs::get<attribute_provider_change>(docs);
-    assert(subscription);
+    IRS_ASSERT(subscription);
 
     subscription->subscribe(
       [refresh](attribute_provider& attrs) { refresh(attrs); });
@@ -920,8 +924,8 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   while (docs.next()) {
     const auto did = doc->value;
-    assert(doc_limits::valid(did));
-    assert(freq);
+    IRS_ASSERT(doc_limits::valid(did));
+    IRS_ASSERT(freq);
     const uint32_t freqv = freq->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
@@ -952,9 +956,9 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
       score_levels_[0].add(freqv);
     }
 
-    assert(attrs_.pos_);
+    IRS_ASSERT(attrs_.pos_);
     while (attrs_.pos_->next()) {
-      assert(pos_limits::valid(attrs_.pos_->value()));
+      IRS_ASSERT(pos_limits::valid(attrs_.pos_->value()));
       add_position(attrs_.pos_->value());
     }
 
@@ -1092,7 +1096,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
     offs_.end = offs_.start + offs_lengts_[this->buf_pos_];
 
     pay_.value = bytes_view(pay_data_.c_str() + pay_data_pos_,
-                           pay_lengths_[this->buf_pos_]);
+                            pay_lengths_[this->buf_pos_]);
     pay_data_pos_ += pay_lengths_[this->buf_pos_];
   }
 
@@ -1110,13 +1114,9 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
       IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
       string_utils::oversize(pay_data_, size);
 
-#ifdef IRESEARCH_DEBUG
-      const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
-      assert(read == size);
-      UNUSED(read);
-#else
-      pay_in_->read_bytes(&(pay_data_[0]), size);
-#endif  // IRESEARCH_DEBUG
+      [[maybe_unused]] const auto read =
+        pay_in_->read_bytes(&(pay_data_[0]), size);
+      IRS_ASSERT(read == size);
     }
 
     // read offsets
@@ -1134,7 +1134,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
       if (shift_unpack_32(this->pos_in_->read_vint(), base::pos_deltas_[i])) {
         pay_lengths_[i] = this->pos_in_->read_vint();
       } else {
-        assert(i);
+        IRS_ASSERT(i);
         pay_lengths_[i] = pay_lengths_[i - 1];
       }
 
@@ -1143,14 +1143,9 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
 
         string_utils::oversize(pay_data_, pos + size);
 
-#ifdef IRESEARCH_DEBUG
-        const auto read =
+        [[maybe_unused]] const auto read =
           this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-        assert(read == size);
-        UNUSED(read);
-#else
-        this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-#endif  // IRESEARCH_DEBUG
+        IRS_ASSERT(read == size);
 
         pos += size;
       }
@@ -1158,7 +1153,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
       if (shift_unpack_32(this->pos_in_->read_vint(), offs_start_deltas_[i])) {
         offs_lengts_[i] = this->pos_in_->read_vint();
       } else {
-        assert(i);
+        IRS_ASSERT(i);
         offs_lengts_[i] = offs_lengts_[i - 1];
       }
     }
@@ -1229,7 +1224,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
 
   void read_attributes() noexcept {
     pay_.value = bytes_view(pay_data_.c_str() + pay_data_pos_,
-                           pay_lengths_[this->buf_pos_]);
+                            pay_lengths_[this->buf_pos_]);
     pay_data_pos_ += pay_lengths_[this->buf_pos_];
   }
 
@@ -1244,13 +1239,9 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
       IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
       string_utils::oversize(pay_data_, size);
 
-#ifdef IRESEARCH_DEBUG
-      const auto read = pay_in_->read_bytes(&(pay_data_[0]), size);
-      assert(read == size);
-      UNUSED(read);
-#else
-      pay_in_->read_bytes(&(pay_data_[0]), size);
-#endif  // IRESEARCH_DEBUG
+      [[maybe_unused]] const auto read =
+        pay_in_->read_bytes(&(pay_data_[0]), size);
+      IRS_ASSERT(read == size);
     }
 
     if constexpr (FieldTraits::offset()) {
@@ -1268,7 +1259,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
       if (shift_unpack_32(this->pos_in_->read_vint(), this->pos_deltas_[i])) {
         pay_lengths_[i] = this->pos_in_->read_vint();
       } else {
-        assert(i);
+        IRS_ASSERT(i);
         pay_lengths_[i] = pay_lengths_[i - 1];
       }
 
@@ -1277,14 +1268,9 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
 
         string_utils::oversize(pay_data_, pos + size);
 
-#ifdef IRESEARCH_DEBUG
-        const auto read =
+        [[maybe_unused]] const auto read =
           this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-        assert(read == size);
-        UNUSED(read);
-#else
-        this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
-#endif  // IRESEARCH_DEBUG
+        IRS_ASSERT(read == size);
 
         pos += size;
       }
@@ -1395,7 +1381,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, false>
       if (shift_unpack_32(this->pos_in_->read_vint(), offs_start_deltas_[i])) {
         offs_lengts_[i] = this->pos_in_->read_vint();
       } else {
-        assert(i);
+        IRS_ASSERT(i);
         offs_lengts_[i] = offs_lengts_[i - 1];
       }
     }
@@ -1536,11 +1522,11 @@ class position final : public irs::position,
  public:
   using impl = position_impl<IteratorTraits, FieldTraits>;
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) override {
     return impl::attribute(type);
   }
 
-  virtual value_t seek(value_t target) override {
+  value_t seek(value_t target) override {
     const uint32_t freq = *this->freq_;
     if (this->pend_pos_ > freq) {
       skip(this->pend_pos_ - freq);
@@ -1555,7 +1541,7 @@ class position final : public irs::position,
         value_ += (uint32_t)(!pos_limits::valid(value_));
       }
       value_ += this->pos_deltas_[this->buf_pos_];
-      assert(irs::pos_limits::valid(value_));
+      IRS_ASSERT(irs::pos_limits::valid(value_));
       this->read_attributes();
 
       ++this->buf_pos_;
@@ -1567,7 +1553,7 @@ class position final : public irs::position,
     return value_;
   }
 
-  virtual bool next() override {
+  bool next() override {
     if (0 == this->pend_pos_) {
       value_ = pos_limits::eof();
 
@@ -1589,7 +1575,7 @@ class position final : public irs::position,
       value_ += (uint32_t)(!pos_limits::valid(value_));
     }
     value_ += this->pos_deltas_[this->buf_pos_];
-    assert(irs::pos_limits::valid(value_));
+    IRS_ASSERT(irs::pos_limits::valid(value_));
     this->read_attributes();
 
     ++this->buf_pos_;
@@ -1597,7 +1583,7 @@ class position final : public irs::position,
     return true;
   }
 
-  virtual void reset() override {
+  void reset() override {
     value_ = pos_limits::invalid();
     impl::reset();
   }
@@ -1689,7 +1675,7 @@ class doc_iterator_base : public irs::doc_iterator {
  protected:
   // returns current position in the document block 'docs_'
   doc_id_t relative_pos() noexcept {
-    assert(begin_ >= buf_.docs);
+    IRS_ASSERT(begin_ >= buf_.docs);
     return static_cast<doc_id_t>(begin_ - buf_.docs);
   }
 
@@ -1780,11 +1766,11 @@ class single_doc_iterator final
                [[maybe_unused]] const index_input* pos_in,
                [[maybe_unused]] const index_input* pay_in);
 
-  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t target) final {
+  doc_id_t seek(doc_id_t target) final {
     auto& doc = std::get<document>(attrs_);
 
     while (doc.value < target) {
@@ -1794,11 +1780,11 @@ class single_doc_iterator final
     return doc.value;
   }
 
-  virtual doc_id_t value() const noexcept final {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() final {
+  bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     doc.value = next_;
@@ -1826,7 +1812,7 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
   [[maybe_unused]] const index_input* pay_in) {
   // use single_doc_iterator for singleton docs only,
   // must be ensured by the caller
-  assert(meta.docs_count == 1);
+  IRS_ASSERT(meta.docs_count == 1);
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   next_ = doc_limits::min() + term_state.e_single_doc;
@@ -1835,7 +1821,7 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
   if constexpr (IteratorTraits::frequency()) {
     const auto term_freq = meta.freq;
 
-    assert(term_freq);
+    IRS_ASSERT(term_freq);
     std::get<frequency>(attrs_).value = term_freq;
 
     if constexpr (IteratorTraits::position()) {
@@ -1885,8 +1871,9 @@ class doc_iterator final
   doc_iterator()
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
             ReadSkip{}} {
-    assert(std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
-                       [](doc_id_t doc) { return !doc_limits::valid(doc); }));
+    IRS_ASSERT(
+      std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
+                  [](doc_id_t doc) { return !doc_limits::valid(doc); }));
   }
 
   void prepare(const term_meta& meta, const index_input* doc_in,
@@ -1898,9 +1885,9 @@ class doc_iterator final
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t target) override;
+  doc_id_t seek(doc_id_t target) override;
 
-  virtual doc_id_t value() const noexcept final {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
@@ -1911,7 +1898,7 @@ class doc_iterator final
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-  virtual bool next() override {
+  bool next() override {
     auto& doc = std::get<document>(attrs_);
 
     if (this->begin_ == std::end(this->buf_.docs)) {
@@ -1957,13 +1944,13 @@ class doc_iterator final
     }
 
     void Disable() noexcept {
-      assert(!skip_levels_.empty());
-      assert(!doc_limits::valid(skip_levels_.back().doc));
+      IRS_ASSERT(!skip_levels_.empty());
+      IRS_ASSERT(!doc_limits::valid(skip_levels_.back().doc));
       skip_levels_.back().doc = doc_limits::eof();
     }
 
     void Enable(const version10::term_meta& state) noexcept {
-      assert(state.docs_count > IteratorTraits::block_size());
+      IRS_ASSERT(state.docs_count > IteratorTraits::block_size());
 
       // since we store pointer deltas, add postings offset
       auto& top = skip_levels_.front();
@@ -1972,7 +1959,7 @@ class doc_iterator final
     }
 
     void Init(size_t num_levels) {
-      assert(num_levels);
+      IRS_ASSERT(num_levels);
       skip_levels_.resize(num_levels);
     }
 
@@ -1983,14 +1970,14 @@ class doc_iterator final
     void MoveDown(size_t level) noexcept {
       auto& next = skip_levels_[level];
       // move to the more granular level
-      assert(prev_);
+      IRS_ASSERT(prev_);
       CopyState<IteratorTraits>(next, *prev_);
     }
 
     void Read(size_t level, ptrdiff_t left, index_input& in);
 
     void Reset(SkipState& state) noexcept {
-      assert(std::is_sorted(
+      IRS_ASSERT(std::is_sorted(
         std::begin(skip_levels_), std::end(skip_levels_),
         [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
 
@@ -1998,14 +1985,14 @@ class doc_iterator final
     }
 
     doc_id_t UpperBound() const noexcept {
-      assert(!skip_levels_.empty());
+      IRS_ASSERT(!skip_levels_.empty());
       return skip_levels_.back().doc;
     }
 
    private:
     void Enable() noexcept {
-      assert(!skip_levels_.empty());
-      assert(doc_limits::eof(skip_levels_.back().doc));
+      IRS_ASSERT(!skip_levels_.empty());
+      IRS_ASSERT(doc_limits::eof(skip_levels_.back().doc));
       skip_levels_.back().doc = doc_limits::invalid();
     }
 
@@ -2046,19 +2033,19 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   const term_meta& meta, const index_input* doc_in,
   [[maybe_unused]] const index_input* pos_in,
   [[maybe_unused]] const index_input* pay_in) {
-  assert(!IteratorTraits::frequency() ||
-         IteratorTraits::frequency() == FieldTraits::frequency());
-  assert(!IteratorTraits::position() ||
-         IteratorTraits::position() == FieldTraits::position());
-  assert(!IteratorTraits::offset() ||
-         IteratorTraits::offset() == FieldTraits::offset());
-  assert(!IteratorTraits::payload() ||
-         IteratorTraits::payload() == FieldTraits::payload());
+  IRS_ASSERT(!IteratorTraits::frequency() ||
+             IteratorTraits::frequency() == FieldTraits::frequency());
+  IRS_ASSERT(!IteratorTraits::position() ||
+             IteratorTraits::position() == FieldTraits::position());
+  IRS_ASSERT(!IteratorTraits::offset() ||
+             IteratorTraits::offset() == FieldTraits::offset());
+  IRS_ASSERT(!IteratorTraits::payload() ||
+             IteratorTraits::payload() == FieldTraits::payload());
 
   // don't use doc_iterator for singleton docs
   // must be ensured by the caller
-  assert(meta.docs_count > 1);
-  assert(this->begin_ == std::end(this->buf_.docs));
+  IRS_ASSERT(meta.docs_count > 1);
+  IRS_ASSERT(this->begin_ == std::end(this->buf_.docs));
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   this->left_ = term_state.docs_count;
@@ -2076,12 +2063,12 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   }
 
   this->doc_in_->seek(term_state.doc_start);
-  assert(!this->doc_in_->eof());
+  IRS_ASSERT(!this->doc_in_->eof());
 
   std::get<cost>(attrs_).reset(term_state.docs_count);  // estimate iterator
 
   if constexpr (IteratorTraits::frequency()) {
-    assert(meta.freq);
+    IRS_ASSERT(meta.freq);
 
     if constexpr (IteratorTraits::position()) {
       DocState state;
@@ -2148,14 +2135,14 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       if (doc.value >= target) {
         if constexpr (IteratorTraits::frequency()) {
           this->freq_ = this->buf_.freqs + this->relative_pos();
-          assert((this->freq_ - 1) >= this->buf_.freqs);
-          assert((this->freq_ - 1) < std::end(this->buf_.freqs));
+          IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
+          IRS_ASSERT((this->freq_ - 1) < std::end(this->buf_.freqs));
           std::get<frequency>(attrs_).value = this->freq_[-1];
         }
         return doc.value;
       }
     } else {
-      assert(IteratorTraits::frequency());
+      IRS_ASSERT(IteratorTraits::frequency());
       auto& freq = std::get<frequency>(attrs_);
       auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
       freq.value = *this->freq_++;
@@ -2182,7 +2169,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   // ensured by caller
-  assert(skip_.Reader().UpperBound() < target);
+  IRS_ASSERT(skip_.Reader().UpperBound() < target);
 
   SkipState last;  // where block starts
   skip_.Reader().Reset(last);
@@ -2190,7 +2177,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   // init skip writer in lazy fashion
   if (IRS_LIKELY(!docs_count_)) {
   seek_after_initialization:
-    assert(skip_.NumLevels());
+    IRS_ASSERT(skip_.NumLevels());
 
     this->left_ = skip_.Seek(target);
     this->doc_in_->seek(last.doc_ptr);
@@ -2212,7 +2199,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     throw io_error("Failed to duplicate document input");
   }
 
-  assert(!skip_.NumLevels());
+  IRS_ASSERT(!skip_.NumLevels());
   skip_in->seek(skip_offs_);
   skip_.Prepare(std::move(skip_in), docs_count_);
   docs_count_ = 0;
@@ -2220,12 +2207,12 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   // initialize skip levels
   if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(
         num_levels > 0 && num_levels <= postings_writer_base::kMaxSkipLevels)) {
-    assert(!doc_limits::valid(skip_.Reader().UpperBound()));
+    IRS_ASSERT(!doc_limits::valid(skip_.Reader().UpperBound()));
     skip_.Reader().Init(num_levels);
 
     goto seek_after_initialization;
   } else {
-    assert(false);
+    IRS_ASSERT(false);
     throw index_error{string_utils::to_string(
       "Invalid number of skip levels %u, must be in range of [1, %u].",
       num_levels, postings_writer_base::kMaxSkipLevels)};
@@ -2258,7 +2245,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
   wanderator()
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
             ReadSkip{}} {
-    assert(
+    IRS_ASSERT(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
   }
@@ -2272,13 +2259,13 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t target) override;
+  doc_id_t seek(doc_id_t target) override;
 
-  virtual doc_id_t value() const noexcept final {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() override { return !doc_limits::eof(seek(value() + 1)); }
+  bool next() override { return !doc_limits::eof(seek(value() + 1)); }
 
  private:
   class ReadSkip {
@@ -2311,8 +2298,8 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
     // check whether it makes sense to use skip-list
     if (skip_.Reader().IsLessThanUpperBound(target)) {
       // ensured by prepare(...)
-      assert(skip_.NumLevels());
-      assert(0 == skip_.Reader().State().doc_ptr);
+      IRS_ASSERT(skip_.NumLevels());
+      IRS_ASSERT(0 == skip_.Reader().State().doc_ptr);
       skip_.Reader().EnsureSorted();
 
       this->left_ = skip_.Seek(target);
@@ -2340,10 +2327,10 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
 template<typename IteratorTraits, typename FieldTraits>
 void wanderator<IteratorTraits, FieldTraits>::ReadSkip::EnsureSorted()
   const noexcept {
-  assert(std::is_sorted(
+  IRS_ASSERT(std::is_sorted(
     std::begin(skip_levels_), std::end(skip_levels_),
     [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
-  assert(
+  IRS_ASSERT(
     std::is_sorted(std::begin(skip_scores_), std::end(skip_scores_),
                    [](const auto& lhs, const auto& rhs) { return lhs > rhs; }));
 }
@@ -2354,7 +2341,7 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Init(
   score_threshold& threshold) {
   // don't use wanderator for short posting lists,
   // must be ensured by the caller
-  assert(term_state.docs_count > IteratorTraits::block_size());
+  IRS_ASSERT(term_state.docs_count > IteratorTraits::block_size());
 
   skip_levels_.resize(num_levels);
   skip_scores_.resize(num_levels);
@@ -2422,19 +2409,19 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   const term_meta& meta, const index_input* doc_in,
   [[maybe_unused]] const index_input* pos_in,
   [[maybe_unused]] const index_input* pay_in) {
-  assert(!IteratorTraits::frequency() ||
-         IteratorTraits::frequency() == FieldTraits::frequency());
-  assert(!IteratorTraits::position() ||
-         IteratorTraits::position() == FieldTraits::position());
-  assert(!IteratorTraits::offset() ||
-         IteratorTraits::offset() == FieldTraits::offset());
-  assert(!IteratorTraits::payload() ||
-         IteratorTraits::payload() == FieldTraits::payload());
+  IRS_ASSERT(!IteratorTraits::frequency() ||
+             IteratorTraits::frequency() == FieldTraits::frequency());
+  IRS_ASSERT(!IteratorTraits::position() ||
+             IteratorTraits::position() == FieldTraits::position());
+  IRS_ASSERT(!IteratorTraits::offset() ||
+             IteratorTraits::offset() == FieldTraits::offset());
+  IRS_ASSERT(!IteratorTraits::payload() ||
+             IteratorTraits::payload() == FieldTraits::payload());
 
   // don't use wanderator for short posting lists,
   // must be ensured by the caller
-  assert(meta.docs_count > IteratorTraits::block_size());
-  assert(this->begin_ == std::end(this->buf_.docs));
+  IRS_ASSERT(meta.docs_count > IteratorTraits::block_size());
+  IRS_ASSERT(this->begin_ == std::end(this->buf_.docs));
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   this->left_ = term_state.docs_count;
@@ -2452,12 +2439,12 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   }
 
   this->doc_in_->seek(term_state.doc_start);
-  assert(!this->doc_in_->eof());
+  IRS_ASSERT(!this->doc_in_->eof());
 
   std::get<cost>(attrs_).reset(term_state.docs_count);  // estimate iterator
 
   if constexpr (IteratorTraits::frequency()) {
-    assert(meta.freq);
+    IRS_ASSERT(meta.freq);
 
     if constexpr (IteratorTraits::position()) {
       DocState state;
@@ -2500,7 +2487,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     skip_.Reader().Init(term_state, num_levels,
                         std::get<score_threshold>(attrs_));
   } else {
-    assert(false);
+    IRS_ASSERT(false);
     throw index_error{string_utils::to_string(
       "Invalid number of skip levels %u, must be in range of [1, %u].",
       num_levels, postings_writer_base::kMaxSkipLevels)};
@@ -2551,8 +2538,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       if (doc.value >= target) {
         if constexpr (IteratorTraits::frequency()) {
           this->freq_ = this->buf_.freqs + this->relative_pos();
-          assert((this->freq_ - 1) >= this->buf_.freqs);
-          assert((this->freq_ - 1) < std::end(this->buf_.freqs));
+          IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
+          IRS_ASSERT((this->freq_ - 1) < std::end(this->buf_.freqs));
 
           auto& freq = std::get<frequency>(attrs_);
           freq.value = this->freq_[-1];
@@ -2564,7 +2551,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
         return doc.value;
       }
     } else {
-      assert(IteratorTraits::frequency());
+      IRS_ASSERT(IteratorTraits::frequency());
       auto& freq = std::get<frequency>(attrs_);
       auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
       freq.value = *this->freq_++;
@@ -2603,14 +2590,14 @@ struct index_meta_writer final : public irs::index_meta_writer {
   enum { HAS_PAYLOAD = 1 };
 
   explicit index_meta_writer(int32_t version) noexcept : version_(version) {
-    assert(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
+    IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
-  virtual std::string filename(const index_meta& meta) const override;
+  std::string filename(const index_meta& meta) const override;
   using irs::index_meta_writer::prepare;
-  virtual bool prepare(directory& dir, index_meta& meta) override;
-  virtual bool commit() override;
-  virtual void rollback() noexcept override;
+  bool prepare(directory& dir, index_meta& meta) override;
+  bool commit() override;
+  void rollback() noexcept override;
 
  private:
   directory* dir_ = nullptr;
@@ -2629,9 +2616,10 @@ struct index_meta_reader final : public irs::index_meta_reader {
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const override;
 
-  virtual void read(const directory& dir, index_meta& meta,
-                    std::string_view filename = {}) override;  // null == use meta
-};                                                       // index_meta_reader
+  virtual void read(
+    const directory& dir, index_meta& meta,
+    std::string_view filename = {}) override;  // null == use meta
+};                                             // index_meta_reader
 
 template<>
 std::string file_name<irs::index_meta_reader, index_meta>(
@@ -2664,7 +2652,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     format_utils::write_header(*out, FORMAT_NAME, version_);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
-    assert(meta.size() <= std::numeric_limits<uint32_t>::max());
+    IRS_ASSERT(meta.size() <= std::numeric_limits<uint32_t>::max());
     out->write_vint(uint32_t(meta.size()));
 
     for (auto& segment : meta) {
@@ -2752,7 +2740,7 @@ void index_meta_writer::rollback() noexcept {
 }
 
 uint64_t parse_generation(std::string_view segments_file) {
-  assert(segments_file.starts_with(index_meta_writer::FORMAT_PREFIX));
+  IRS_ASSERT(segments_file.starts_with(index_meta_writer::FORMAT_PREFIX));
 
   const char* gen_str =
     segments_file.data() + index_meta_writer::FORMAT_PREFIX.size();
@@ -2845,7 +2833,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer {
   enum { HAS_COLUMN_STORE = 1, SORTED = 2 };
 
   explicit segment_meta_writer(int32_t version) noexcept : version_(version) {
-    assert(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
+    IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
   virtual void write(directory& dir, std::string& filename,
@@ -2904,8 +2892,9 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
 }
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
-  virtual void read(const directory& dir, segment_meta& meta,
-                    std::string_view filename = {}) override;  // null == use meta
+  virtual void read(
+    const directory& dir, segment_meta& meta,
+    std::string_view filename = {}) override;  // null == use meta
 };
 
 void segment_meta_reader::read(const directory& dir, segment_meta& meta,
@@ -2995,7 +2984,7 @@ class document_mask_writer final : public irs::document_mask_writer {
 
   virtual ~document_mask_writer() = default;
 
-  virtual std::string filename(const segment_meta& meta) const override;
+  std::string filename(const segment_meta& meta) const override;
 
   virtual void write(directory& dir, const segment_meta& meta,
                      const document_mask& docs_mask) override;
@@ -3023,7 +3012,7 @@ void document_mask_writer::write(directory& dir, const segment_meta& meta,
   }
 
   // segment can't have more than std::numeric_limits<uint32_t>::max() documents
-  assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
+  IRS_ASSERT(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
   const auto count = static_cast<uint32_t>(docs_mask.size());
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
@@ -3205,7 +3194,7 @@ size_t postings_reader_base::decode(const byte_type* in, IndexFeatures features,
     term_meta.e_skip_start = vread<uint64_t>(p);
   }
 
-  assert(p >= in);
+  IRS_ASSERT(p >= in);
   return size_t(std::distance(in, p));
 }
 
@@ -3434,7 +3423,7 @@ size_t postings_reader<FormatTraits>::bit_union(
   const bool has_freq =
     IndexFeatures::NONE != (field_features & IndexFeatures::FREQ);
 
-  assert(doc_in_);
+  IRS_ASSERT(doc_in_);
   auto doc_in = doc_in_->reopen();  // reopen thread-safe stream
 
   if (!doc_in) {
@@ -3450,7 +3439,7 @@ size_t postings_reader<FormatTraits>::bit_union(
 
     if (term_state.docs_count > 1) {
       doc_in->seek(term_state.doc_start);
-      assert(!doc_in->eof());
+      IRS_ASSERT(!doc_in->eof());
 
       if (has_freq) {
         using field_traits_t = iterator_traits<true, false, false, false>;
@@ -3484,28 +3473,25 @@ class format10 : public irs::version10::format {
 
   format10() noexcept : format10(irs::type<format10>::get()) {}
 
-  virtual index_meta_writer::ptr get_index_meta_writer() const override;
-  virtual index_meta_reader::ptr get_index_meta_reader() const override final;
+  index_meta_writer::ptr get_index_meta_writer() const override;
+  index_meta_reader::ptr get_index_meta_reader() const final;
 
-  virtual segment_meta_writer::ptr get_segment_meta_writer() const override;
-  virtual segment_meta_reader::ptr get_segment_meta_reader()
-    const override final;
+  segment_meta_writer::ptr get_segment_meta_writer() const override;
+  segment_meta_reader::ptr get_segment_meta_reader() const final;
 
-  virtual document_mask_writer::ptr get_document_mask_writer()
-    const override final;
-  virtual document_mask_reader::ptr get_document_mask_reader()
-    const override final;
+  document_mask_writer::ptr get_document_mask_writer() const final;
+  document_mask_reader::ptr get_document_mask_reader() const final;
 
-  virtual field_writer::ptr get_field_writer(bool consolidation) const override;
-  virtual field_reader::ptr get_field_reader() const override final;
+  field_writer::ptr get_field_writer(bool consolidation) const override;
+  field_reader::ptr get_field_reader() const final;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
     bool consolidation) const override;
-  virtual columnstore_reader::ptr get_columnstore_reader() const override;
+  columnstore_reader::ptr get_columnstore_reader() const override;
 
   virtual irs::postings_writer::ptr get_postings_writer(
     bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format10(const irs::type_info& type) noexcept
@@ -3598,12 +3584,11 @@ class format11 : public format10 {
 
   format11() noexcept : format10(irs::type<format11>::get()) {}
 
-  virtual index_meta_writer::ptr get_index_meta_writer() const override final;
+  index_meta_writer::ptr get_index_meta_writer() const final;
 
-  virtual field_writer::ptr get_field_writer(bool consolidation) const override;
+  field_writer::ptr get_field_writer(bool consolidation) const override;
 
-  virtual segment_meta_writer::ptr get_segment_meta_writer()
-    const override final;
+  segment_meta_writer::ptr get_segment_meta_writer() const final;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
     bool /*consolidation*/) const override;
@@ -3685,7 +3670,7 @@ class format13 : public format12 {
 
   virtual irs::postings_writer::ptr get_postings_writer(
     bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format13(const irs::type_info& type) noexcept : format12(type) {}
@@ -3724,7 +3709,7 @@ class format14 : public format13 {
 
   virtual irs::columnstore_writer::ptr get_columnstore_writer(
     bool consolidation) const override;
-  virtual irs::columnstore_reader::ptr get_columnstore_reader() const override;
+  irs::columnstore_reader::ptr get_columnstore_reader() const override;
 
  protected:
   explicit format14(const irs::type_info& type) noexcept : format13(type) {}
@@ -3765,7 +3750,7 @@ class format15 : public format14 {
 
   virtual irs::postings_writer::ptr get_postings_writer(
     bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format15(const irs::type_info& type) noexcept : format14(type) {}
@@ -3839,7 +3824,7 @@ class format12simd final : public format12 {
 
   virtual irs::postings_writer::ptr get_postings_writer(
     bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 };  // format12simd
 
 static const ::format12simd FORMAT12SIMD_INSTANCE;
@@ -3872,7 +3857,7 @@ class format13simd : public format13 {
 
   virtual irs::postings_writer::ptr get_postings_writer(
     bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format13simd(const irs::type_info& type) noexcept : format13(type) {}
@@ -3908,7 +3893,7 @@ class format14simd : public format13simd {
 
   virtual columnstore_writer::ptr get_columnstore_writer(
     bool consolidation) const override;
-  virtual columnstore_reader::ptr get_columnstore_reader() const override;
+  columnstore_reader::ptr get_columnstore_reader() const override;
 
   virtual irs::field_writer::ptr get_field_writer(
     bool consolidation) const override;
@@ -3954,7 +3939,7 @@ class format15simd : public format14simd {
 
   virtual irs::postings_writer::ptr get_postings_writer(
     bool consolidation) const override;
-  virtual irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format15simd(const irs::type_info& type) noexcept

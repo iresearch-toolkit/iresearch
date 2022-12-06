@@ -68,7 +68,7 @@ class break_iterator {
   const std::string* operator->() const { return &res_; }
 
   bool operator==(const break_iterator& rhs) const {
-    assert(end_ == rhs.end_);
+    IRS_ASSERT(end_ == rhs.end_);
     return (wbegin_ == rhs.wbegin_ && wend_ == rhs.wend_);
   }
 
@@ -467,28 +467,28 @@ json_doc_generator::json_doc_generator(
   const json_doc_generator::factory_f& factory) {
   std::ifstream input(std::filesystem::path(file).string().c_str(),
                       std::ios::in | std::ios::binary);
-  assert(input);
+  IRS_ASSERT(input);
 
   rapidjson::IStreamWrapper stream(input);
   parse_json_handler handler(factory, docs_);
   rapidjson::Reader reader;
 
   const auto res = reader.Parse(stream, handler);
-  assert(!res.IsError());
+  IRS_ASSERT(!res.IsError());
 
   next_ = docs_.begin();
 }
 
 json_doc_generator::json_doc_generator(
   const char* data, const json_doc_generator::factory_f& factory) {
-  assert(data);
+  IRS_ASSERT(data);
 
   rapidjson::StringStream stream(data);
   parse_json_handler handler(factory, docs_);
   rapidjson::Reader reader;
 
   const auto res = reader.Parse(stream, handler);
-  assert(!res.IsError());
+  IRS_ASSERT(!res.IsError());
 
   next_ = docs_.begin();
 }
@@ -511,9 +511,9 @@ void json_doc_generator::reset() { next_ = docs_.begin(); }
 
 token_stream_payload::token_stream_payload(irs::token_stream* impl)
   : impl_(impl) {
-  assert(impl_);
+  IRS_ASSERT(impl_);
   term_ = irs::get<irs::term_attribute>(*impl_);
-  assert(term_);
+  IRS_ASSERT(term_);
 }
 
 irs::attribute* token_stream_payload::get_mutable(

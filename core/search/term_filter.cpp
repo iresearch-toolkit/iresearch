@@ -46,7 +46,7 @@ class term_visitor : private util::noncopyable {
 
   void visit(score_t /*boost*/) {
     // collect statistics
-    assert(segment_ && reader_ && terms_);
+    IRS_ASSERT(segment_ && reader_ && terms_);
     term_stats_.collect(*segment_, *reader_, 0, *terms_);
 
     // Cache term state in prepared query attributes.

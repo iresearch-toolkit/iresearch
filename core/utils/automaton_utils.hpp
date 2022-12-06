@@ -80,21 +80,21 @@ class automaton_term_iterator final : public seek_term_iterator {
  public:
   automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_), it_(std::move(it)) {
-    assert(it_);
+    IRS_ASSERT(it_);
     auto* term = irs::get<term_attribute>(*it_);
-    assert(term);
+    IRS_ASSERT(term);
     value_ = &term->value;
   }
 
-  virtual bytes_view value() const noexcept override { return *value_; }
+  bytes_view value() const noexcept override { return *value_; }
 
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const override {
     return it_->postings(features);
   }
 
-  virtual void read() override { it_->read(); }
+  void read() override { it_->read(); }
 
-  virtual bool next() override {
+  bool next() override {
     bool next = it_->next();
 
     while (next && !accept()) {
@@ -104,11 +104,11 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next;
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept override {
     return it_->get_mutable(type);
   }
 
-  virtual SeekResult seek_ge(bytes_view target) override {
+  SeekResult seek_ge(bytes_view target) override {
     it_->seek_ge(target);
 
     if (accept()) {
@@ -118,11 +118,11 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next() ? SeekResult::NOT_FOUND : SeekResult::END;
   }
 
-  virtual bool seek(bytes_view target) override {
+  bool seek(bytes_view target) override {
     return SeekResult::FOUND == seek_ge(target);
   }
 
-  virtual seek_cookie::ptr cookie() const override { return it_->cookie(); }
+  seek_cookie::ptr cookie() const override { return it_->cookie(); }
 
  private:
   bool accept() { return irs::match(matcher_, *value_); }
@@ -139,14 +139,14 @@ class automaton_term_iterator final : public seek_term_iterator {
 //////////////////////////////////////////////////////////////////////////////
 inline void add_or_expand_arc(automaton& a, automaton::StateId from,
                               range_label label, automaton::StateId to) {
-  assert(fst::kILabelSorted == a.Properties(fst::kILabelSorted, true));
+  IRS_ASSERT(fst::kILabelSorted == a.Properties(fst::kILabelSorted, true));
 
   fst::ArcIteratorData<automaton::Arc> data;
   a.InitArcIterator(from, &data);
 
   if (data.narcs) {
     auto& prev = const_cast<automaton::Arc&>(data.arcs[data.narcs - 1]);
-    assert(prev < label);
+    IRS_ASSERT(prev < label);
     if (prev.nextstate == to && label.min - prev.max <= 1) {
       prev.ilabel = range_label{prev.min, label.max};
       return;
@@ -190,7 +190,7 @@ class utf8_transitions_builder {
 
     for (; begin != end; ++begin) {
       // we expect sorted input
-      assert(last_ <= static_cast<bytes_view>(std::get<0>(*begin)));
+      IRS_ASSERT(last_ <= static_cast<bytes_view>(std::get<0>(*begin)));
 
       const auto& label = std::get<0>(*begin);
       insert(a, label.data(), label.size(), std::get<1>(*begin));
@@ -385,7 +385,7 @@ inline bool validate(const automaton& a,
 template<typename Visitor>
 void visit(const sub_reader& segment, const term_reader& reader,
            automaton_table_matcher& matcher, Visitor& visitor) {
-  assert(fst::kError != matcher.Properties(0));
+  IRS_ASSERT(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
 
   if (IRS_UNLIKELY(!terms)) {

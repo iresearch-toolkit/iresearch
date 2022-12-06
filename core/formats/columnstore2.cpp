@@ -64,7 +64,7 @@ std::string index_file_name(std::string_view prefix) {
 
 void write_header(index_output& out, const column_header& hdr) {
   out.write_long(hdr.docs_index);
-  assert(hdr.id < std::numeric_limits<uint32_t>::max());
+  IRS_ASSERT(hdr.id < std::numeric_limits<uint32_t>::max());
   out.write_int(static_cast<uint32_t>(hdr.id & 0xFFFFFFFF));
   out.write_int(hdr.min);
   out.write_int(hdr.docs_count);
@@ -186,8 +186,8 @@ class range_column_iterator final : public resettable_doc_iterator,
       min_base_{header.min},
       min_doc_{min_base_},
       max_doc_{min_base_ + header.docs_count - 1} {
-    assert(min_doc_ <= max_doc_);
-    assert(!doc_limits::eof(max_doc_));
+    IRS_ASSERT(min_doc_ <= max_doc_);
+    IRS_ASSERT(!doc_limits::eof(max_doc_));
     std::get<cost>(attrs_).reset(header.docs_count);
     if (track_prev) {
       std::get<prev_doc>(attrs_).reset(
@@ -215,11 +215,11 @@ class range_column_iterator final : public resettable_doc_iterator,
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
-  virtual doc_id_t seek(irs::doc_id_t doc) override {
+  doc_id_t seek(irs::doc_id_t doc) override {
     if (IRS_LIKELY(min_doc_ <= doc && doc <= max_doc_)) {
       std::get<document>(attrs_).value = doc;
       min_doc_ = doc + 1;
@@ -244,7 +244,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     return value();
   }
 
-  virtual bool next() override {
+  bool next() override {
     if (min_doc_ <= max_doc_) {
       std::get<document>(attrs_).value = min_doc_++;
       std::get<irs::payload>(attrs_).value = this->payload(value() - min_base_);
@@ -256,7 +256,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     return false;
   }
 
-  virtual void reset() noexcept override {
+  void reset() noexcept override {
     min_doc_ = min_base_;
     max_doc_ = min_doc_ + std::get<cost>(attrs_).estimate() - 1;
     std::get<document>(attrs_).value = doc_limits::invalid();
@@ -300,12 +300,12 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  virtual doc_id_t seek(irs::doc_id_t doc) override {
-    assert(doc_limits::valid(doc) || doc_limits::valid(value()));
+  doc_id_t seek(irs::doc_id_t doc) override {
+    IRS_ASSERT(doc_limits::valid(doc) || doc_limits::valid(value()));
     doc = bitmap_.seek(doc);
 
     if (!doc_limits::eof(doc)) {
@@ -317,7 +317,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     return doc_limits::eof();
   }
 
-  virtual bool next() override {
+  bool next() override {
     if (bitmap_.next()) {
       std::get<irs::payload>(attrs_).value = this->payload(bitmap_.index());
       return true;
@@ -327,7 +327,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     return false;
   }
 
-  virtual void reset() override { bitmap_.reset(); }
+  void reset() override { bitmap_.reset(); }
 
  private:
   sparse_bitmap_iterator bitmap_;
@@ -345,7 +345,7 @@ class column_base : public column_reader, private util::noncopyable {
       index_{std::move(index)},
       payload_{std::move(payload)},
       name_{std::move(name)} {
-    assert(!is_encrypted(hdr_) || cipher_);
+    IRS_ASSERT(!is_encrypted(hdr_) || cipher_);
   }
 
   ~column_base() override {
@@ -363,11 +363,11 @@ class column_base : public column_reader, private util::noncopyable {
     return name_.has_value() ? name_.value() : std::string_view{};
   }
 
-  virtual field_id id() const noexcept final { return hdr_.id; }
+  field_id id() const noexcept final { return hdr_.id; }
 
-  virtual bytes_view payload() const final { return payload_; }
+  bytes_view payload() const final { return payload_; }
 
-  virtual doc_id_t size() const noexcept final { return hdr_.docs_count; }
+  doc_id_t size() const noexcept final { return hdr_.docs_count; }
 
   const column_header& header() const noexcept { return hdr_; }
 
@@ -384,7 +384,7 @@ class column_base : public column_reader, private util::noncopyable {
   }
 
   const index_input& stream() const noexcept {
-    assert(stream_);
+    IRS_ASSERT(stream_);
     return *stream_;
   }
 
@@ -400,8 +400,8 @@ class column_base : public column_reader, private util::noncopyable {
 
   bool allocate_buffered_memory(
     size_t size, memory_accounting_f& buffered_memory_accounter) {
-    assert(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
-    assert(buffered_memory_accounter);
+    IRS_ASSERT(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
+    IRS_ASSERT(buffered_memory_accounter);
     if (!buffered_memory_accounter(static_cast<int64_t>(size))) {
       auto column_name = name();
       if (irs::IsNull(column_name)) {
@@ -416,7 +416,7 @@ class column_base : public column_reader, private util::noncopyable {
       return false;
     }
     // should be only one alllocation
-    assert(column_data_.empty());
+    IRS_ASSERT(column_data_.empty());
     column_data_.resize(size);
     buffered_memory_accounter_ = buffered_memory_accounter;
     return true;
@@ -430,24 +430,24 @@ class column_base : public column_reader, private util::noncopyable {
     }
     for (const auto& c : next_sorted_columns) {
       auto column = static_cast<column_base*>(c.get());
-      assert(column != nullptr);
+      IRS_ASSERT(column != nullptr);
       if (column->header().docs_index) {
         file_len = column->header().docs_index;
         break;
       }
     }
-    assert(header().docs_index < file_len);
+    IRS_ASSERT(header().docs_index < file_len);
     return file_len - header().docs_index;
   }
 
   void store_bitmap_index(size_t bitmap_size, size_t buffer_offset,
                           remapped_bytes_view_input::mapping* mapping,
                           column_header& hdr, index_input& in) {
-    assert(bitmap_size);
-    assert(hdr.docs_index);
+    IRS_ASSERT(bitmap_size);
+    IRS_ASSERT(hdr.docs_index);
     in.read_bytes(hdr.docs_index, column_data_.data() + buffer_offset,
                   bitmap_size);
-    assert(mapping || !is_encrypted(hdr));
+    IRS_ASSERT(mapping || !is_encrypted(hdr));
     if (is_encrypted(hdr) && mapping) {
       mapping->emplace_back(hdr.docs_index, buffer_offset);
     } else {
@@ -495,7 +495,7 @@ doc_iterator::ptr column_base::make_iterator(ValueReader&& rdr,
 template<typename Factory>
 doc_iterator::ptr column_base::make_iterator(Factory&& f,
                                              ColumnHint hint) const {
-  assert(header().docs_count);
+  IRS_ASSERT(header().docs_count);
 
   index_input::ptr value_in = stream().reopen();
 
@@ -520,7 +520,7 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f,
   }
 
   if (is_encrypted(header())) {
-    assert(cipher_);
+    IRS_ASSERT(cipher_);
     return make_iterator(f(std::move(value_in), *cipher_), std::move(index_in),
                          hint);
   } else {
@@ -543,7 +543,7 @@ struct noop_value_reader {
 class value_direct_reader {
  protected:
   explicit value_direct_reader(const byte_type* data) noexcept : data_{data} {
-    assert(data);
+    IRS_ASSERT(data);
   }
 
   bytes_view value(uint64_t offset, size_t length) noexcept {
@@ -568,7 +568,7 @@ class value_reader {
 
     [[maybe_unused]] const size_t read =
       data_in_->read_bytes(offset, buf, length);
-    assert(read == length);
+    IRS_ASSERT(read == length);
 
     return {buf, length};
   }
@@ -593,10 +593,10 @@ class encrypted_value_reader {
 
     [[maybe_unused]] const size_t read =
       data_in_->read_bytes(offset, buf, length);
-    assert(read == length);
+    IRS_ASSERT(read == length);
 
     [[maybe_unused]] const bool ok = cipher_->decrypt(offset, buf, length);
-    assert(ok);
+    IRS_ASSERT(ok);
 
     return {buf, length};
   }
@@ -652,10 +652,10 @@ struct mask_column final : public column_base {
     : column_base{std::move(name), std::move(payload),
                   std::move(hdr),  std::move(index),
                   data_in,         cipher} {
-    assert(ColumnType::kMask == header().type);
+    IRS_ASSERT(ColumnType::kMask == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(ColumnHint hint) const override;
+  doc_iterator::ptr iterator(ColumnHint hint) const override;
 };
 
 doc_iterator::ptr mask_column::iterator(ColumnHint hint) const {
@@ -682,11 +682,11 @@ class dense_fixed_length_column final : public column_base {
       inflater_{std::move(inflater)},
       data_{data},
       len_{len} {
-    assert(header().docs_count);
-    assert(ColumnType::kDenseFixed == header().type);
+    IRS_ASSERT(header().docs_count);
+    IRS_ASSERT(ColumnType::kDenseFixed == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(ColumnHint hint) const override;
+  doc_iterator::ptr iterator(ColumnHint hint) const override;
 
   void make_buffered(
     irs::index_input& in, memory_accounting_f& memory_accounter,
@@ -807,11 +807,11 @@ class fixed_length_column final : public column_base {
       blocks_{blocks},
       inflater_{std::move(inflater)},
       len_{len} {
-    assert(header().docs_count);
-    assert(ColumnType::kFixed == header().type);
+    IRS_ASSERT(header().docs_count);
+    IRS_ASSERT(ColumnType::kFixed == header().type);
   }
 
-  virtual doc_iterator::ptr iterator(ColumnHint hint) const override;
+  doc_iterator::ptr iterator(ColumnHint hint) const override;
 
   void make_buffered(
     irs::index_input& in, memory_accounting_f& memory_accounter,
@@ -870,7 +870,7 @@ class fixed_length_column final : public column_base {
     std::span<std::unique_ptr<column_reader>> next_sorted_columns,
     memory_accounting_f& memory_accounter,
     remapped_bytes_view_input::mapping* mapping) {
-    assert(!blocks.empty());
+    IRS_ASSERT(!blocks.empty());
     auto const last_block_full = hdr.docs_count % column::kBlockSize == 0;
     auto last_offset = blocks.back();
     std::vector<std::tuple<size_t, size_t, size_t>> blocks_offsets;
@@ -900,7 +900,7 @@ class fixed_length_column final : public column_base {
       in.read_bytes(block, column_data.data() + std::get<1>(offset),
                     std::get<2>(offset));
       if constexpr (encrypted) {
-        assert(mapping);
+        IRS_ASSERT(mapping);
         mapping->emplace_back(block, std::get<1>(offset));
       } else {
         block = std::get<1>(offset);
@@ -973,8 +973,8 @@ class sparse_column final : public column_base {
                   data_in,         cipher},
       blocks_{std::move(blocks)},
       inflater_{std::move(inflater)} {
-    assert(header().docs_count);
-    assert(ColumnType::kSparse == header().type);
+    IRS_ASSERT(header().docs_count);
+    IRS_ASSERT(ColumnType::kSparse == header().type);
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const override;
@@ -1063,7 +1063,7 @@ class sparse_column final : public column_base {
       }
       // ALL_EQUAL could also be an empty block but still need this chunk to
       // properly calculate offsets
-      assert(length || bitpack::ALL_EQUAL == block.bits);
+      IRS_ASSERT(length || bitpack::ALL_EQUAL == block.bits);
       chunks.emplace_back(block_idx++, false, chunks_size, length, block.data);
       chunks_size += length;
     }
@@ -1082,11 +1082,11 @@ class sparse_column final : public column_base {
     for (const auto& chunk : chunks) {
       auto& block = blocks[std::get<0>(chunk)];
       if (bitpack::ALL_EQUAL == block.bits || !std::get<1>(chunk)) {
-        assert(block.data == std::get<4>(chunk));
+        IRS_ASSERT(block.data == std::get<4>(chunk));
         in.read_bytes(block.data, column_data.data() + std::get<2>(chunk),
                       std::get<3>(chunk));
         if constexpr (encrypted) {
-          assert(mapping);
+          IRS_ASSERT(mapping);
           mapping->emplace_back(block.data, std::get<2>(chunk));
         } else {
           block.data = std::get<2>(chunk);
@@ -1095,12 +1095,12 @@ class sparse_column final : public column_base {
           }
         }
       } else {
-        assert(std::get<1>(chunk));
-        assert(block.addr == std::get<4>(chunk));
+        IRS_ASSERT(std::get<1>(chunk));
+        IRS_ASSERT(block.addr == std::get<4>(chunk));
         in.read_bytes(block.addr, column_data.data() + std::get<2>(chunk),
                       std::get<3>(chunk));
         if constexpr (encrypted) {
-          assert(mapping);
+          IRS_ASSERT(mapping);
           mapping->emplace_back(block.addr, std::get<2>(chunk));
         } else {
           block.addr = std::get<2>(chunk);
@@ -1249,10 +1249,7 @@ namespace iresearch {
 namespace columnstore2 {
 
 void column::prepare(doc_id_t key) {
-#ifdef IRESEARCH_DEBUG
-  assert(!sealed_);
-#endif
-
+  IRS_ASSERT(!sealed_);
   if (IRS_LIKELY(key > pend_)) {
     if (addr_table_.full()) {
       flush_block();
@@ -1271,15 +1268,15 @@ void column::reset() {
   }
 
   [[maybe_unused]] const bool res = docs_writer_.erase(pend_);
-  assert(res);
+  IRS_ASSERT(res);
   data_.stream.seek(addr_table_.back());
   addr_table_.pop_back();
   pend_ = prev_;
 }
 
 void column::flush_block() {
-  assert(!addr_table_.empty());
-  assert(ctx_.data_out);
+  IRS_ASSERT(!addr_table_.empty());
+  IRS_ASSERT(ctx_.data_out);
   data_.stream.flush();
 
   auto& data_out = *ctx_.data_out;
@@ -1304,7 +1301,7 @@ void column::flush_block() {
   }
 
   if (all_equal) {
-    assert(simd::all_equal<false>(begin, addr_table_size) && (0 == *begin));
+    IRS_ASSERT(simd::all_equal<false>(begin, addr_table_size) && (0 == *begin));
     block.bits = bitpack::ALL_EQUAL;
 
     // column is fixed length IFF
@@ -1337,7 +1334,7 @@ void column::flush_block() {
 
       auto encrypt_and_copy = [&data_out, cipher = ctx_.cipher, &offset](
                                 irs::byte_type* b, size_t len) {
-        assert(cipher);
+        IRS_ASSERT(cipher);
 
         if (!cipher->encrypt(offset, b, len)) {
           return false;
@@ -1365,8 +1362,8 @@ void column::flush_block() {
 }
 
 void column::finish(index_output& index_out) {
-  assert(id_ < field_limits::invalid());
-  assert(ctx_.data_out);
+  IRS_ASSERT(id_ < field_limits::invalid());
+  IRS_ASSERT(ctx_.data_out);
 
   docs_writer_.finish();
   docs_.stream.flush();
@@ -1418,7 +1415,7 @@ void column::finish(index_output& index_out) {
         auto next = std::next(prev);
 
         for (; next != std::end(blocks_); ++next) {
-          assert(next->data == prev->size + prev->data);
+          IRS_ASSERT(next->data == prev->size + prev->data);
           prev = next;
         }
       }
@@ -1443,7 +1440,8 @@ void column::finish(index_output& index_out) {
       irs::write_string(index_out, name_);
     }
   } else {
-    assert(ColumnProperty::kNoName == (ColumnProperty::kNoName & hdr.props));
+    IRS_ASSERT(ColumnProperty::kNoName ==
+               (ColumnProperty::kNoName & hdr.props));
   }
 
   if (hdr.docs_index) {
@@ -1458,7 +1456,7 @@ void column::finish(index_output& index_out) {
     if (ColumnType::kDenseFixed == hdr.type) {
       index_out.write_long(blocks_.front().data);
     } else {
-      assert(ColumnType::kFixed == hdr.type);
+      IRS_ASSERT(ColumnType::kFixed == hdr.type);
       write_blocks_dense(index_out, blocks_);
     }
   }
@@ -1490,7 +1488,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   auto* enc = dir.attributes().encryption();
   const auto encrypt =
     irs::encrypt(filename, *data_out, enc, enc_header, data_cipher);
-  assert(!encrypt || (data_cipher && data_cipher->block_size()));
+  IRS_ASSERT(!encrypt || (data_cipher && data_cipher->block_size()));
   UNUSED(encrypt);
 
   // noexcept block
@@ -1546,7 +1544,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
             // to avoid extra (and useless in our case) check for block index
             // emptiness in 'writer::column::prepare', we disallow passing
             // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
-            assert(doc > doc_limits::invalid() && doc < doc_limits::eof());
+            IRS_ASSERT(doc > doc_limits::invalid() && doc < doc_limits::eof());
 
             column.prepare(doc);
             return column;
@@ -1554,7 +1552,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
 }
 
 bool writer::commit(const flush_state& /*state*/) {
-  assert(dir_);
+  IRS_ASSERT(dir_);
 
   // remove all empty columns from tail
   while (!columns_.empty() && columns_.back().empty()) {
@@ -1572,7 +1570,7 @@ bool writer::commit(const flush_state& /*state*/) {
     return false;  // nothing to flush
   }
 
-  assert(sorted_columns_.empty());
+  IRS_ASSERT(sorted_columns_.empty());
   sorted_columns_.reserve(columns_.size());
 
   for (auto& column : columns_) {
@@ -1586,8 +1584,8 @@ bool writer::commit(const flush_state& /*state*/) {
             });
 
   // Ensured by `push_column(...)`
-  assert(columns_.size() < field_limits::invalid());
-  assert(columns_.size() == sorted_columns_.size());
+  IRS_ASSERT(columns_.size() < field_limits::invalid());
+  IRS_ASSERT(columns_.size() == sorted_columns_.size());
   const field_id count = static_cast<field_id>(columns_.size());
 
   const std::string_view segment_name{
@@ -1651,7 +1649,7 @@ void reader::prepare_data(const directory& dir, std::string_view filename) {
   encryption::stream::ptr cipher;
   auto* enc = dir.attributes().encryption();
   if (irs::decrypt(filename, *data_in, enc, cipher)) {
-    assert(cipher && cipher->block_size());
+    IRS_ASSERT(cipher && cipher->block_size());
   }
 
   // since columns data are too large
@@ -1743,7 +1741,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
       name = irs::read_string<std::string>(*index_in);
 
       if (encrypted) {
-        assert(data_cipher_);
+        IRS_ASSERT(data_cipher_);
         data_cipher_->decrypt(
           offset, reinterpret_cast<byte_type*>(name->data()), name->size());
       }
@@ -1756,7 +1754,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
       auto column = kFactories[idx](
         std::move(name), std::move(payload), std::move(hdr), std::move(index),
         *index_in, *data_in_, std::move(inflater), data_cipher_.get());
-      assert(column);
+      IRS_ASSERT(column);
 
       if (!sorted_columns.empty() &&
           ::less(column->name(), sorted_columns.back()->name())) {
@@ -1764,7 +1762,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
           "invalid column order in segment '%s'", meta.name.c_str()));
       }
 
-      assert(hdr.id < columns.size());
+      IRS_ASSERT(hdr.id < columns.size());
       columns[hdr.id] = column.get();
       sorted_columns.emplace_back(std::move(column));
     } else {
@@ -1806,7 +1804,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
   columns_ = std::move(columns);
   sorted_columns_ = std::move(sorted_columns);
 
-  assert(columns_.size() == sorted_columns_.size());
+  IRS_ASSERT(columns_.size() == sorted_columns_.size());
 }
 
 bool reader::prepare(const directory& dir, const segment_meta& meta,
@@ -1826,7 +1824,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
   }
 
   prepare_data(dir, data_filename);
-  assert(data_in_);
+  IRS_ASSERT(data_in_);
 
   const auto index_filename = index_file_name(meta.name);
 
@@ -1848,7 +1846,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
 
 bool reader::visit(const column_visitor_f& visitor) const {
   for (const auto& column : sorted_columns_) {
-    assert(column);
+    IRS_ASSERT(column);
     if (!visitor(*column)) {
       return false;
     }

@@ -32,15 +32,14 @@ namespace compression {
 
 class delta_compressor : public compressor, private util::noncopyable {
  public:
-  virtual bytes_view compress(byte_type* src, size_t size,
-                             bstring& out) override final;
+  bytes_view compress(byte_type* src, size_t size, bstring& out) final;
 };  // delta_compressor
 
 class delta_decompressor : public decompressor, private util::noncopyable {
  public:
   /// @returns bytes_view::NIL in case of error
   virtual bytes_view decompress(const byte_type* src, size_t src_size,
-                               byte_type* dst, size_t dst_size) override final;
+                                byte_type* dst, size_t dst_size) final;
 };  // delta_decompressor
 
 struct delta {

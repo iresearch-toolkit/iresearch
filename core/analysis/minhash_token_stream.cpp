@@ -239,7 +239,7 @@ std::pair<std::string_view, velocypack::Slice> ParseAnalyzer(
 }
 
 bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
-  assert(opts);
+  IRS_ASSERT(opts);
 
   if (const auto num_hashesSlice = slice.get(kNumHashes);
       !num_hashesSlice.isNumber()) {
@@ -482,7 +482,7 @@ bool MinHashTokenStream::next() {
     absl::strings_internal::Base64EscapeInternal(
       reinterpret_cast<const byte_type*>(&value), sizeof value, buf_.data(),
       buf_.size(), absl::strings_internal::kBase64Chars, false);
-  assert(length == buf_.size());
+  IRS_ASSERT(length == buf_.size());
 
   std::get<increment>(attrs_).value = std::exchange(next_inc_.value, 0);
   ++begin_;
@@ -504,7 +504,7 @@ void MinHashTokenStream::ComputeSignature() {
   next_inc_.value = 1;
 
   if (opts_.analyzer->next()) {
-    assert(term_);
+    IRS_ASSERT(term_);
 
     const offset* offs = offset_ ? offset_ : &kEmptyOffset;
     auto& [start, end] = std::get<offset>(attrs_);

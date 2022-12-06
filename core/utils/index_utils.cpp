@@ -83,12 +83,12 @@ struct consolidation_candidate {
   iterator_t end() const noexcept { return segments.second; }
 
   const segment_stat& front() const noexcept {
-    assert(segments.first != segments.second);
+    IRS_ASSERT(segments.first != segments.second);
     return *segments.first;
   }
 
   const segment_stat& back() const noexcept {
-    assert(segments.first != segments.second);
+    IRS_ASSERT(segments.first != segments.second);
     auto curr_end = segments.second;
     return *(--curr_end);
   }
@@ -525,9 +525,9 @@ void read_document_mask(irs::document_mask& docs_mask,
 }
 
 void flush_index_segment(directory& dir, index_meta::index_segment_t& segment) {
-  assert(segment.meta.codec);
-  assert(!segment.meta.size);  // assume segment size will be calculated in a
-                               // single place, here
+  IRS_ASSERT(segment.meta.codec);
+  IRS_ASSERT(!segment.meta.size);  // assume segment size will be calculated in
+                                   // a single place, here
 
   // estimate meta segment size
   for (auto& filename : segment.meta.files) {

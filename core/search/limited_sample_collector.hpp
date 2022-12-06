@@ -78,7 +78,7 @@ class limited_sample_collector : private util::noncopyable {
   /// @brief collect current term
   //////////////////////////////////////////////////////////////////////////////
   void collect(const Key& key) {
-    assert(state_.segment && state_.terms && state_.state);
+    IRS_ASSERT(state_.segment && state_.terms && state_.state);
 
     if (!scored_terms_limit_) {
       // state will not be scored
@@ -104,7 +104,7 @@ class limited_sample_collector : private util::noncopyable {
 
       auto& min_state = scored_states_[min_state_idx];
 
-      assert(min_state.cookie);
+      IRS_ASSERT(min_state.cookie);
       // state will not be scored
       min_state.state->unscored_terms.emplace_back(std::move(min_state.cookie));
       min_state.state->unscored_states_estimation += min_state.docs_count;
@@ -140,7 +140,7 @@ class limited_sample_collector : private util::noncopyable {
     // iterate over all the states from which statistcis should be collected
     uint32_t stats_offset = 0;
     for (auto& scored_state : scored_states_) {
-      assert(scored_state.cookie);
+      IRS_ASSERT(scored_state.cookie);
       auto& field = *scored_state.state->reader;
 
       // find the stats for the current term
@@ -219,7 +219,7 @@ class limited_sample_collector : private util::noncopyable {
         segment(state.segment),
         term(state.terms->value()),
         docs_count(*state.docs_count) {
-      assert(this->cookie);
+      IRS_ASSERT(this->cookie);
     }
 
     scored_term_state(scored_term_state&&) = default;
@@ -304,7 +304,7 @@ class multiterm_visitor {
   // FIXME can incorporate boost into collecting logic
   void visit(score_t boost) {
     // fill scoring candidates
-    assert(docs_count_);
+    IRS_ASSERT(docs_count_);
     key_.frequency = *docs_count_;
     key_.boost = boost;
     collector_.collect(key_);

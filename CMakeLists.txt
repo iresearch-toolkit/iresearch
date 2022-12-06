@@ -91,6 +91,11 @@ option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_MICROBENCH "Build micro-benchmark project" OFF)
 option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
+option(ENABLE_IRS_ASSERT "Enable IRS_ASSERT" OFF)
+
+if (ENABLE_IRS_ASSERT)
+  add_definitions(-DIRESEARCH_ASSERT)
+endif ()
 
 add_option_gprof(FALSE)
 

@@ -24,7 +24,6 @@
 #include "index/field_data.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <set>
 
 #include "analysis/analyzer.hpp"
@@ -37,6 +36,7 @@
 #include "shared.hpp"
 #include "store/directory.hpp"
 #include "store/store_utils.hpp"
+#include "utils/assert.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
@@ -70,7 +70,7 @@ void write_offset(posting& p, Stream& out, IndexFeatures& features,
   const uint32_t start_offset = base + offs.start;
   const uint32_t end_offset = base + offs.end;
 
-  assert(start_offset >= p.offs);
+  IRS_ASSERT(start_offset >= p.offs);
 
   irs::vwrite<uint32_t>(out, start_offset - p.offs);
   irs::vwrite<uint32_t>(out, end_offset - start_offset);
@@ -102,7 +102,7 @@ FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
 }
 
 FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) noexcept {
-  assert(offset <= std::numeric_limits<byte_type>::max());
+  IRS_ASSERT(offset <= std::numeric_limits<byte_type>::max());
   return static_cast<uint64_t>(slice_offset) << 8 |
          static_cast<byte_type>(offset);
 }
@@ -153,7 +153,7 @@ class pos_iterator final : public irs::position {
 
   // reset field
   void reset(IndexFeatures features, const frequency& freq) {
-    assert(IndexFeatures::FREQ == (features & IndexFeatures::FREQ));
+    IRS_ASSERT(IndexFeatures::FREQ == (features & IndexFeatures::FREQ));
 
     freq_ = &freq;
 
@@ -171,13 +171,12 @@ class pos_iterator final : public irs::position {
     prox_in_ = prox;
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id id) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
-  virtual bool next() override {
-    assert(freq_);
+  bool next() override {
+    IRS_ASSERT(freq_);
 
     if (pos_ == freq_->value) {
       value_ = irs::pos_limits::eof();
@@ -195,7 +194,7 @@ class pos_iterator final : public irs::position {
     }
 
     value_ += pos;
-    assert(pos_limits::valid(value_));
+    IRS_ASSERT(pos_limits::valid(value_));
 
     if (std::get<attribute_ptr<offset>>(attrs_).ptr) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
@@ -207,8 +206,8 @@ class pos_iterator final : public irs::position {
     return true;
   }
 
-  virtual void reset() override {
-    assert(false);  // unsupported
+  void reset() override {
+    IRS_ASSERT(false);  // unsupported
   }
 
  private:
@@ -279,21 +278,20 @@ class doc_iterator final : public irs::doc_iterator {
 
   size_t cost() const noexcept { return posting_->size; }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t doc) override {
+  doc_id_t seek(doc_id_t doc) override {
     irs::seek(*this, doc);
     return value();
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() override {
+  bool next() override {
     auto& doc = std::get<document>(attrs_);
 
     if (freq_in_.eof()) {
@@ -320,7 +318,7 @@ class doc_iterator final : public irs::doc_iterator {
           freq_.value = irs::vread<uint32_t>(freq_in_);
         }
 
-        assert(delta < doc_limits::eof());
+        IRS_ASSERT(delta < doc_limits::eof());
         doc.value += doc_id_t(delta);
 
         if (has_cookie_) {
@@ -330,7 +328,7 @@ class doc_iterator final : public irs::doc_iterator {
         doc.value += irs::vread<uint32_t>(freq_in_);
       }
 
-      assert(doc.value != posting_->doc);
+      IRS_ASSERT(doc.value != posting_->doc);
     }
 
     pos_.clear();
@@ -359,7 +357,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
  public:
   // reset field
   void reset(const field_data& field) {
-    assert(field.prox_random_access());
+    IRS_ASSERT(field.prox_random_access());
     byte_pool_ = &field.byte_writer_->parent();
 
     auto& pfreq = std::get<attribute_ptr<frequency>>(attrs_);
@@ -406,21 +404,20 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     it_ = docs_.begin();
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t doc) noexcept override {
+  doc_id_t seek(doc_id_t doc) noexcept override {
     irs::seek(*this, doc);
     return value();
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() noexcept override {
+  bool next() noexcept override {
     // cppcheck-suppress shadowFunction
     auto& value = std::get<document>(attrs_);
 
@@ -465,14 +462,14 @@ class sorting_doc_iterator final : public irs::doc_iterator {
 
   void reset_dense(detail::doc_iterator& it, const frequency& freq,
                    std::span<const doc_id_t> docmap) {
-    assert(!docmap.empty());
-    assert(irs::use_dense_sort(it.cost(),
-                               docmap.size() - 1));  // -1 for first element
+    IRS_ASSERT(!docmap.empty());
+    IRS_ASSERT(irs::use_dense_sort(it.cost(),
+                                   docmap.size() - 1));  // -1 for first element
 
     docs_.resize(docmap.size() - 1);  // -1 for first element
 
     while (it.next()) {
-      assert(it.value() - doc_limits::min() < docmap.size());
+      IRS_ASSERT(it.value() - doc_limits::min() < docmap.size());
       const auto new_doc = docmap[it.value()];
 
       if (doc_limits::eof(new_doc)) {
@@ -489,12 +486,13 @@ class sorting_doc_iterator final : public irs::doc_iterator {
 
   void reset_sparse(detail::doc_iterator& it, const frequency& freq,
                     std::span<const doc_id_t> docmap) {
-    assert(!docmap.empty());
-    assert(!irs::use_dense_sort(it.cost(),
-                                docmap.size() - 1));  // -1 for first element
+    IRS_ASSERT(!docmap.empty());
+    IRS_ASSERT(
+      !irs::use_dense_sort(it.cost(),
+                           docmap.size() - 1));  // -1 for first element
 
     while (it.next()) {
-      assert(it.value() - doc_limits::min() < docmap.size());
+      IRS_ASSERT(it.value() - doc_limits::min() < docmap.size());
       const auto new_doc = docmap[it.value()];
 
       if (doc_limits::eof(new_doc)) {
@@ -554,28 +552,28 @@ class term_iterator : public irs::term_iterator {
     }
   }
 
-  virtual bytes_view value() const noexcept override {
-    assert(it_ != end_);
+  bytes_view value() const noexcept override {
+    IRS_ASSERT(it_ != end_);
     return (*it_)->term;
   }
 
-  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
-  virtual void read() noexcept override {
+  void read() noexcept override {
     // Does nothing now
   }
 
   virtual irs::doc_iterator::ptr postings(
     IndexFeatures /*features*/) const override {
     REGISTER_TIMER_DETAILED();
-    assert(it_ != end_);
+    IRS_ASSERT(it_ != end_);
 
     return (this->*POSTINGS[size_t(field_->prox_random_access())])(**it_);
   }
 
-  virtual bool next() override {
+  bool next() override {
     if (next_ == end_) {
       return false;
     }
@@ -594,7 +592,7 @@ class term_iterator : public irs::term_iterator {
   static const postings_f POSTINGS[2];
 
   irs::doc_iterator::ptr postings(const posting& posting) const {
-    assert(!doc_map_);
+    IRS_ASSERT(!doc_map_);
 
     // where the term data starts
     auto ptr = field_->int_writer_->parent().seek(posting.int_start);
@@ -658,19 +656,17 @@ class term_reader final : public irs::basic_term_reader,
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
 
-  virtual irs::bytes_view(min)() const noexcept override { return min_; }
+  irs::bytes_view(min)() const noexcept override { return min_; }
 
-  virtual irs::bytes_view(max)() const noexcept override { return max_; }
+  irs::bytes_view(max)() const noexcept override { return max_; }
 
-  virtual const irs::field_meta& meta() const noexcept override {
-    return it_.meta();
-  }
+  const irs::field_meta& meta() const noexcept override { return it_.meta(); }
 
-  virtual irs::term_iterator::ptr iterator() const noexcept override {
+  irs::term_iterator::ptr iterator() const noexcept override {
     return memory::to_managed<irs::term_iterator, false>(&it_);
   }
 
-  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
@@ -710,7 +706,7 @@ field_data::field_data(std::string_view name, const features_t& features,
     requested_features_{index_features},
     last_doc_{doc_limits::invalid()} {
   for (const type_info::type_id feature : features) {
-    assert(feature_columns);
+    IRS_ASSERT(feature_columns);
     auto [feature_column_info, feature_writer_factory] =
       feature_columns(feature);
 
@@ -749,7 +745,7 @@ field_data::field_data(std::string_view name, const features_t& features,
 }
 
 void field_data::reset(doc_id_t doc_id) {
-  assert(doc_limits::valid(doc_id));
+  IRS_ASSERT(doc_limits::valid(doc_id));
 
   if (doc_id == last_doc_) {
     return;  // nothing to do
@@ -808,7 +804,7 @@ void field_data::add_term(posting& p, doc_id_t did, const payload* pay,
                           const offset* offs) {
   if (IndexFeatures::NONE == (requested_features_ & IndexFeatures::FREQ)) {
     if (p.doc != did) {
-      assert(did > p.doc);
+      IRS_ASSERT(did > p.doc);
 
       auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
       byte_block_pool::sliced_inserter doc_out(*byte_writer_, doc_stream_end);
@@ -820,7 +816,7 @@ void field_data::add_term(posting& p, doc_id_t did, const payload* pay,
       ++stats_.num_unique;
     }
   } else if (p.doc != did) {
-    assert(did > p.doc);
+    IRS_ASSERT(did > p.doc);
 
     auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
     byte_block_pool::sliced_inserter doc_out(*byte_writer_, doc_stream_end);
@@ -924,7 +920,7 @@ void field_data::add_term_random_access(posting& p, doc_id_t did,
                                         const offset* offs) {
   if (IndexFeatures::NONE == (requested_features_ & IndexFeatures::FREQ)) {
     if (p.doc != did) {
-      assert(did > p.doc);
+      IRS_ASSERT(did > p.doc);
 
       auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
       byte_block_pool::sliced_inserter doc_out(*byte_writer_, doc_stream_end);
@@ -937,7 +933,7 @@ void field_data::add_term_random_access(posting& p, doc_id_t did,
       ++stats_.num_unique;
     }
   } else if (p.doc != did) {
-    assert(did > p.doc);
+    IRS_ASSERT(did > p.doc);
 
     auto& doc_stream_end = *int_writer_->parent().seek(p.int_start);
     byte_block_pool::sliced_inserter doc_out(*byte_writer_, doc_stream_end);
@@ -1007,7 +1003,7 @@ void field_data::add_term_random_access(posting& p, doc_id_t did,
 
 bool field_data::invert(token_stream& stream, doc_id_t id) {
   REGISTER_TIMER_DETAILED();
-  assert(id < doc_limits::eof());  // 0-based document id
+  IRS_ASSERT(id < doc_limits::eof());  // 0-based document id
 
   const auto* term = get<term_attribute>(stream);
   const auto* inc = get<increment>(stream);
@@ -1115,7 +1111,7 @@ field_data* fields_data::emplace(const hashed_string_view& name,
                                  IndexFeatures index_features,
                                  const features_t& features,
                                  columnstore_writer& columns) {
-  assert(fields_map_.size() == fields_.size());
+  IRS_ASSERT(fields_map_.size() == fields_.size());
 
   auto it = fields_map_.lazy_emplace(
     name, [&name](const fields_map::constructor& ctor) {

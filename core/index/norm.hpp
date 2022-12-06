@@ -55,9 +55,9 @@ class Norm : public attribute {
   static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
 
   static auto MakeReader(Context&& ctx) {
-    assert(ctx.it);
-    assert(ctx.payload);
-    assert(ctx.doc);
+    IRS_ASSERT(ctx.it);
+    IRS_ASSERT(ctx.payload);
+    IRS_ASSERT(ctx.doc);
 
     return [ctx = std::move(ctx)]() mutable -> float_t {
       if (const auto doc = ctx.doc->value; doc != ctx.it->seek(doc)) {
@@ -93,7 +93,7 @@ class Norm2Header final {
   }
 
   explicit Norm2Header(Norm2Encoding encoding) noexcept : encoding_{encoding} {
-    assert(CheckNumBytes(static_cast<size_t>(encoding_)));
+    IRS_ASSERT(CheckNumBytes(static_cast<size_t>(encoding_)));
   }
 
   void Reset(uint32_t value) noexcept {
@@ -164,7 +164,7 @@ class Norm2Writer final : public feature_writer {
     WriteValue(out, value);
   }
 
-  virtual void finish(bstring& out) final { Norm2Header::Write(hdr_, out); }
+  void finish(bstring& out) final { Norm2Header::Write(hdr_, out); }
 
  private:
   static void WriteValue(data_output& out, uint32_t value) {
@@ -210,15 +210,15 @@ class Norm2 : public attribute {
   static auto MakeReader(Context&& ctx) {
     static_assert(std::is_same_v<T, byte_type> || std::is_same_v<T, uint16_t> ||
                   std::is_same_v<T, uint32_t>);
-    assert(ctx.num_bytes == sizeof(T));
-    assert(ctx.it);
-    assert(ctx.payload);
-    assert(ctx.doc);
+    IRS_ASSERT(ctx.num_bytes == sizeof(T));
+    IRS_ASSERT(ctx.it);
+    IRS_ASSERT(ctx.payload);
+    IRS_ASSERT(ctx.doc);
 
     return [ctx = std::move(ctx)]() -> ValueType {
       if (const doc_id_t doc = ctx.doc->value;
           IRS_LIKELY(doc == ctx.it->seek(doc))) {
-        assert(sizeof(T) == ctx.payload->value.size());
+        IRS_ASSERT(sizeof(T) == ctx.payload->value.size());
         const auto* value = ctx.payload->value.data();
 
         if constexpr (std::is_same_v<T, irs::byte_type>) {
@@ -229,7 +229,7 @@ class Norm2 : public attribute {
       }
 
       // we should investigate why we failed to find a norm2 value for doc
-      assert(false);
+      IRS_ASSERT(false);
 
       return 1;
     };
@@ -237,7 +237,7 @@ class Norm2 : public attribute {
 
   template<typename Func>
   static auto MakeReader(Context&& ctx, Func&& func) {
-    assert(Norm2Header::CheckNumBytes(ctx.num_bytes));
+    IRS_ASSERT(Norm2Header::CheckNumBytes(ctx.num_bytes));
 
     switch (ctx.num_bytes) {
       case sizeof(uint8_t):

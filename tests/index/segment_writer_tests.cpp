@@ -67,7 +67,7 @@ struct token_stream_mock final : public irs::token_stream {
     const auto it = attrs.find(type);
     return it == attrs.end() ? nullptr : it->second;
   }
-  virtual bool next() override { return --token_count; }
+  bool next() override { return --token_count; }
 };
 
 }  // namespace

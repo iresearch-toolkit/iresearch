@@ -39,7 +39,7 @@ result::result(Code code) : code_(code) {
 }
 
 result::result(Code code, std::string_view msg1, std::string_view msg2) : code_(code) {
-  assert(code_ != OK);
+  IRS_ASSERT(code_ != OK);
   const size_t len1 = msg1.size();
   const size_t len2 = msg2.size();
   const size_t size = len1 + (len2 ? (len2 + 2) : 0);

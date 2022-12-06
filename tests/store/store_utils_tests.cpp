@@ -50,55 +50,45 @@ class bytes_input final : public data_input, public bytes_view {
   bytes_input& operator=(bytes_view data);
 
   void skip(size_t size) {
-    assert(pos_ + size <= this->end());
+    IRS_ASSERT(pos_ + size <= this->end());
     pos_ += size;
   }
 
   void seek(size_t pos) {
-    assert(this->begin() + pos <= this->end());
+    IRS_ASSERT(this->begin() + pos <= this->end());
     pos_ = this->data() + pos;
   }
 
-  virtual size_t file_pointer() const override {
+  size_t file_pointer() const override {
     return std::distance(this->data(), pos_);
   }
 
-  virtual size_t length() const override { return this->size(); }
+  size_t length() const override { return this->size(); }
 
-  virtual bool eof() const override {
-    return pos_ >= (this->data() + this->size());
-  }
+  bool eof() const override { return pos_ >= (this->data() + this->size()); }
 
   virtual const byte_type* read_buffer(size_t /*count*/,
                                        BufferHint /*hint*/) override {
     return nullptr;
   }
 
-  virtual byte_type read_byte() override final {
-    assert(pos_ < this->end());
+  byte_type read_byte() final {
+    IRS_ASSERT(pos_ < this->end());
     return *pos_++;
   }
 
-  virtual size_t read_bytes(byte_type* b, size_t size) override final;
+  size_t read_bytes(byte_type* b, size_t size) final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
 
-  virtual int32_t read_int() override final {
-    return irs::read<uint32_t>(pos_);
-  }
+  int32_t read_int() final { return irs::read<uint32_t>(pos_); }
 
-  virtual int64_t read_long() override final {
-    return irs::read<uint64_t>(pos_);
-  }
+  int64_t read_long() final { return irs::read<uint64_t>(pos_); }
 
-  virtual uint32_t read_vint() override final {
-    return irs::vread<uint32_t>(pos_);
-  }
+  uint32_t read_vint() final { return irs::vread<uint32_t>(pos_); }
 
-  virtual uint64_t read_vlong() override final {
-    return irs::vread<uint64_t>(pos_);
-  }
+  uint64_t read_vlong() final { return irs::vread<uint64_t>(pos_); }
 
  private:
   bstring buf_;
@@ -148,17 +138,12 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
 
   buf.resize(used + size);
 
-#ifdef IRESEARCH_DEBUG
-  const auto read = read_bytes(&(buf[0]) + used, size);
-  assert(read == size);
-  UNUSED(read);
-#else
-  read_bytes(&(buf[0]) + used, size);
-#endif  // IRESEARCH_DEBUG
+  [[maybe_unused]] const auto read = read_bytes(&(buf[0]) + used, size);
+  IRS_ASSERT(read == size);
 }
 
 size_t bytes_input::read_bytes(byte_type* b, size_t size) {
-  assert(pos_ + size <= this->end());
+  IRS_ASSERT(pos_ + size <= this->end());
   size =
     std::min(size, size_t(std::distance(pos_, this->data() + this->size())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
@@ -221,7 +206,7 @@ void packed_read_write_core(const std::vector<uint32_t>& src) {
   static constexpr size_t BLOCK_SIZE = 128;
   uint32_t encoded[BLOCK_SIZE];
   const auto blocks = src.size() / BLOCK_SIZE;
-  assert(blocks);
+  IRS_ASSERT(blocks);
 
   // compress data to stream
   irs::bstring buf;

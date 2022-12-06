@@ -69,7 +69,7 @@ class memory_file
       len -= to_copy;
     }
 
-    assert(!len);  // everything copied
+    IRS_ASSERT(!len);  // everything copied
 
     return *this;
   }
@@ -148,31 +148,31 @@ class memory_index_input final : public index_input {
  public:
   explicit memory_index_input(const memory_file& file) noexcept;
 
-  virtual index_input::ptr dup() const override;
-  virtual int64_t checksum(size_t offset) const override;
-  virtual bool eof() const override;
-  virtual byte_type read_byte() override;
+  index_input::ptr dup() const override;
+  int64_t checksum(size_t offset) const override;
+  bool eof() const override;
+  byte_type read_byte() override;
   virtual const byte_type* read_buffer(size_t size,
                                        BufferHint hint) noexcept override;
   virtual const byte_type* read_buffer(size_t offset, size_t size,
                                        BufferHint hint) noexcept override;
-  virtual size_t read_bytes(byte_type* b, size_t len) override;
-  virtual size_t read_bytes(size_t offset, byte_type* b, size_t len) override {
+  size_t read_bytes(byte_type* b, size_t len) override;
+  size_t read_bytes(size_t offset, byte_type* b, size_t len) override {
     seek(offset);
     return read_bytes(b, len);
   }
-  virtual index_input::ptr reopen() const override;
-  virtual size_t length() const override;
+  index_input::ptr reopen() const override;
+  size_t length() const override;
 
-  virtual size_t file_pointer() const override;
+  size_t file_pointer() const override;
 
-  virtual void seek(size_t pos) override;
+  void seek(size_t pos) override;
 
-  virtual int16_t read_short() override;
-  virtual int32_t read_int() override;
-  virtual int64_t read_long() override;
-  virtual uint32_t read_vint() override;
-  virtual uint64_t read_vlong() override;
+  int16_t read_short() override;
+  int32_t read_int() override;
+  int64_t read_long() override;
+  uint32_t read_vint() override;
+  uint64_t read_vlong() override;
 
   byte_type operator*() { return read_byte(); }
   memory_index_input& operator++() noexcept { return *this; }
@@ -207,29 +207,29 @@ class memory_index_output : public index_output {
 
   // data_output
 
-  virtual void close() override final;
+  void close() final;
 
-  virtual void write_byte(byte_type b) override final;
+  void write_byte(byte_type b) final;
 
-  virtual void write_bytes(const byte_type* b, size_t len) override final;
+  void write_bytes(const byte_type* b, size_t len) final;
 
   // index_output
 
-  virtual void flush() override;  // deprecated
+  void flush() override;  // deprecated
 
-  virtual size_t file_pointer() const override final;
+  size_t file_pointer() const final;
 
-  virtual int64_t checksum() const override;
+  int64_t checksum() const override;
 
   void operator>>(data_output& out);
 
-  virtual void write_int(int32_t v) override final;
+  void write_int(int32_t v) final;
 
-  virtual void write_long(int64_t v) override final;
+  void write_long(int64_t v) final;
 
-  virtual void write_vint(uint32_t v) override final;
+  void write_vint(uint32_t v) final;
 
-  virtual void write_vlong(uint64_t v) override final;
+  void write_vlong(uint64_t v) final;
 
   void seek(size_t pos);
 
@@ -268,11 +268,9 @@ class memory_directory final : public directory {
 
   virtual ~memory_directory() noexcept;
 
-  virtual directory_attributes& attributes() noexcept override {
-    return attrs_;
-  }
+  directory_attributes& attributes() noexcept override { return attrs_; }
 
-  virtual index_output::ptr create(std::string_view name) noexcept override;
+  index_output::ptr create(std::string_view name) noexcept override;
 
   virtual bool exists(bool& result,
                       std::string_view name) const noexcept override;
@@ -280,7 +278,7 @@ class memory_directory final : public directory {
   virtual bool length(uint64_t& result,
                       std::string_view name) const noexcept override;
 
-  virtual index_lock::ptr make_lock(std::string_view name) noexcept override;
+  index_lock::ptr make_lock(std::string_view name) noexcept override;
 
   virtual bool mtime(std::time_t& result,
                      std::string_view name) const noexcept override;
@@ -288,14 +286,14 @@ class memory_directory final : public directory {
   virtual index_input::ptr open(std::string_view name,
                                 IOAdvice advice) const noexcept override;
 
-  virtual bool remove(std::string_view name) noexcept override;
+  bool remove(std::string_view name) noexcept override;
 
   virtual bool rename(std::string_view src,
                       std::string_view dst) noexcept override;
 
-  virtual bool sync(std::string_view name) noexcept override;
+  bool sync(std::string_view name) noexcept override;
 
-  virtual bool visit(const visitor_f& visitor) const override;
+  bool visit(const visitor_f& visitor) const override;
 
  private:
   friend class single_instance_lock;

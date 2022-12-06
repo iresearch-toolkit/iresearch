@@ -46,7 +46,7 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
     return false;
   }
 
-  assert(enc);
+  IRS_ASSERT(enc);
 
   if (!enc->create_header(filename, &header[0])) {
     throw index_error(string_utils::to_string(
@@ -143,7 +143,7 @@ encrypted_output::encrypted_output(index_output& out,
     start_(0),
     pos_(buf_.get()),
     end_(pos_ + buf_size_) {
-  assert(buf_size_);
+  IRS_ASSERT(buf_size_);
 }
 
 encrypted_output::encrypted_output(index_output::ptr&& out,
@@ -194,7 +194,7 @@ void encrypted_output::write_byte(byte_type b) {
 }
 
 void encrypted_output::write_bytes(const byte_type* b, size_t length) {
-  assert(pos_ <= end_);
+  IRS_ASSERT(pos_ <= end_);
   auto left = size_t(std::distance(pos_, end_));
 
   // is there enough space in the buffer?
@@ -229,7 +229,7 @@ void encrypted_output::write_bytes(const byte_type* b, size_t length) {
 }
 
 size_t encrypted_output::file_pointer() const noexcept {
-  assert(buf_.get() <= pos_);
+  IRS_ASSERT(buf_.get() <= pos_);
   return start_ + size_t(std::distance(buf_.get(), pos_));
 }
 
@@ -238,7 +238,7 @@ void encrypted_output::flush() {
     return;
   }
 
-  assert(buf_.get() <= pos_);
+  IRS_ASSERT(buf_.get() <= pos_);
   const auto size = size_t(std::distance(buf_.get(), pos_));
 
   if (!cipher_->encrypt(out_->file_pointer(), buf_.get(), size)) {
@@ -271,8 +271,8 @@ encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
     cipher_(&cipher),
     start_(in_->file_pointer()),
     length_(in_->length() - start_ - padding) {
-  assert(cipher.block_size() && buf_size_);
-  assert(in_ && in_->length() >= in_->file_pointer() + padding);
+  IRS_ASSERT(cipher.block_size() && buf_size_);
+  IRS_ASSERT(in_ && in_->length() >= in_->file_pointer() + padding);
   buffered_index_input::reset(buf_.get(), buf_size_, 0);
 }
 
@@ -292,7 +292,7 @@ encrypted_input::encrypted_input(const encrypted_input& rhs,
     cipher_(rhs.cipher_),
     start_(rhs.start_),
     length_(rhs.length_) {
-  assert(cipher_->block_size());
+  IRS_ASSERT(cipher_->block_size());
   buffered_index_input::reset(buf_.get(), buf_size_, rhs.file_pointer());
 }
 

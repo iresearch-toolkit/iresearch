@@ -153,7 +153,7 @@ class attribute_provider_change final : public attribute {
   }
 
   void operator()(attribute_provider& attrs) const {
-    assert(callback_);
+    IRS_ASSERT(callback_);
     callback_(attrs);
   }
 

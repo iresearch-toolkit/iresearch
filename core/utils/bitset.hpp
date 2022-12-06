@@ -140,7 +140,7 @@ class dynamic_bitset {
   const word_t* end() const noexcept { return data() + words_; }
 
   word_t operator[](size_t i) const noexcept {
-    assert(i < words_);
+    IRS_ASSERT(i < words_);
     return data_[i];
   }
 
@@ -186,7 +186,7 @@ class dynamic_bitset {
 
  private:
   void sanitize() noexcept {
-    assert(bits_ <= capacity());
+    IRS_ASSERT(bits_ <= capacity());
     auto last_word_bits = bits_ % bits_required<word_t>();
 
     if (!last_word_bits) {

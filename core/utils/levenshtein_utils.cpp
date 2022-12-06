@@ -193,13 +193,13 @@ class parametric_states {
       states_by_id_.emplace_back(&res.first->first);
     }
 
-    assert(states_.size() == states_by_id_.size());
+    IRS_ASSERT(states_.size() == states_by_id_.size());
 
     return res.first->second;
   }
 
   const parametric_state& operator[](size_t i) const noexcept {
-    assert(i < states_by_id_.size());
+    IRS_ASSERT(i < states_by_id_.size());
     return *states_by_id_[i];
   }
 
@@ -281,7 +281,7 @@ void add_transition(parametric_state& to, const parametric_state& from,
                     const bool with_transpositions) {
   to.clear();
   for (const auto& pos : from) {
-    assert(pos.offset < irs::bits_required<decltype(cv)>());
+    IRS_ASSERT(pos.offset < irs::bits_required<decltype(cv)>());
     const auto chi = cv >> pos.offset;
     add_elementary_transitions(to, pos, chi, max_distance, with_transpositions);
   }
@@ -342,7 +342,7 @@ uint32_t normalize(parametric_state& state) noexcept {
 
 uint32_t distance(const parametric_state& state, const uint32_t max_distance,
                   const uint32_t offset) noexcept {
-  assert(max_distance < parametric_description::MAX_DISTANCE);
+  IRS_ASSERT(max_distance < parametric_description::MAX_DISTANCE);
   uint32_t min_dist = max_distance + 1;
 
   for (auto& pos : state) {
@@ -457,8 +457,8 @@ parametric_description::parametric_description(
     chi_max_(::chi_max(chi_size_)),  // can't be 0
     num_states_(transitions_.size() / chi_max_),
     max_distance_(max_distance) {
-  assert(0 == (transitions_.size() % chi_max_));
-  assert(0 == (distance_.size() % chi_size_));
+  IRS_ASSERT(0 == (transitions_.size() % chi_max_));
+  IRS_ASSERT(0 == (distance_.size() % chi_size_));
 }
 
 parametric_description make_parametric_description(byte_type max_distance,
@@ -485,12 +485,12 @@ parametric_description make_parametric_description(byte_type max_distance,
   // empty state
   parametric_state to;
   size_t from_id = states.emplace(std::move(to));
-  assert(to.empty());
+  IRS_ASSERT(to.empty());
 
   // initial state
   to.emplace(UINT32_C(0), UINT8_C(0), false);
   states.emplace(std::move(to));
-  assert(to.empty());
+  IRS_ASSERT(to.empty());
 
   for (; from_id != states.size(); ++from_id) {
     for (uint64_t chi = 0; chi < chi_max; ++chi) {
@@ -565,7 +565,7 @@ parametric_description read(data_input& in) {
 
 automaton make_levenshtein_automaton(const parametric_description& description,
                                      bytes_view prefix, bytes_view target) {
-  assert(description);
+  IRS_ASSERT(description);
 
   struct state {
     state(size_t offset, uint32_t state_id, automaton::StateId from) noexcept
@@ -590,7 +590,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
 
   // terminal state without outbound transitions
   const auto invalid_state = a.AddState();
-  assert(INVALID_STATE == invalid_state);
+  IRS_ASSERT(INVALID_STATE == invalid_state);
   UNUSED(invalid_state);
 
   // initial state
@@ -639,7 +639,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
 
       const size_t offset =
         transition.first ? transition.second + state.offset : 0;
-      assert(transition.first * num_offsets + offset < transitions.size());
+      IRS_ASSERT(transition.first * num_offsets + offset < transitions.size());
       auto& to = transitions[transition.first * num_offsets + offset];
 
       if (INVALID_STATE == transition.first) {
@@ -660,7 +660,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
         arcs.emplace_back(bytes_view(entry.utf8, entry.size), to);
         ascii &= (entry.size == 1);
       } else {
-        assert(fst::kNoStateId == default_state || to == default_state);
+        IRS_ASSERT(fst::kNoStateId == default_state || to == default_state);
         default_state = to;
       }
     }
@@ -672,7 +672,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
                !a.Final(state.from)) {
       // optimization for ascii only input without default state and weight
       for (auto& arc : arcs) {
-        assert(1 == arc.first.size());
+        IRS_ASSERT(1 == arc.first.size());
         a.EmplaceArc(state.from, range_label::fromRange(arc.first.front()),
                      arc.second);
       }
@@ -681,16 +681,15 @@ automaton make_levenshtein_automaton(const parametric_description& description,
     }
   }
 
-#ifdef IRESEARCH_DEBUG
+#if defined(IRESEARCH_DEBUG) && defined(IRESEARCH_ASSERT)
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_PROPERTIES =
     fst::kIDeterministic | fst::kILabelSorted | fst::kOLabelSorted |
     fst::kAcceptor | fst::kUnweighted;
-  assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
-  UNUSED(EXPECTED_PROPERTIES);
+  IRS_ASSERT(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
 
   // ensure invalid state has no outbound transitions
-  assert(0 == a.NumArcs(INVALID_STATE));
+  IRS_ASSERT(0 == a.NumArcs(INVALID_STATE));
 #endif
 
   return a;
@@ -699,7 +698,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
 size_t edit_distance(const parametric_description& description,
                      const byte_type* lhs, size_t lhs_size,
                      const byte_type* rhs, size_t rhs_size) {
-  assert(description);
+  IRS_ASSERT(description);
 
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
@@ -733,7 +732,7 @@ size_t edit_distance(const parametric_description& description,
 bool edit_distance(size_t& distance, const parametric_description& description,
                    const byte_type* lhs, size_t lhs_size, const byte_type* rhs,
                    size_t rhs_size) {
-  assert(description);
+  IRS_ASSERT(description);
 
   memory::arena<uint32_t, 16> arena;
   memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);

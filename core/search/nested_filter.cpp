@@ -70,7 +70,7 @@ class ScorerWrapper final : public doc_iterator {
  public:
   explicit ScorerWrapper(doc_iterator::ptr it, ScoreFunction&& score) noexcept
     : it_{std::move(it)} {
-    assert(it_);
+    IRS_ASSERT(it_);
     score_ = std::move(score);
   }
 
@@ -104,13 +104,13 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
       parent_{std::move(parent)},
       child_{std::move(child)},
       prev_parent_{&prev_parent} {
-    assert(parent_);
-    assert(prev_parent);
-    assert(child_);
+    IRS_ASSERT(parent_);
+    IRS_ASSERT(prev_parent);
+    IRS_ASSERT(child_);
 
     std::get<attribute_ptr<document>>(attrs_) =
       irs::get_mutable<irs::document>(parent_.get());
-    assert(std::get<attribute_ptr<document>>(attrs_).ptr);
+    IRS_ASSERT(std::get<attribute_ptr<document>>(attrs_).ptr);
 
     child_doc_ = irs::get<irs::document>(*child_);
 
@@ -162,12 +162,12 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
 
   // Returns min possible first child given the current parent.
   doc_id_t FirstChildApprox() const {
-    assert(!doc_limits::eof((*prev_parent_)()));
+    IRS_ASSERT(!doc_limits::eof((*prev_parent_)()));
     return (*prev_parent_)() + 1;
   }
 
   doc_id_t SeekInternal(doc_id_t parent) {
-    assert(!doc_limits::eof(parent));
+    IRS_ASSERT(!doc_limits::eof(parent));
 
     for (doc_id_t first_child = child_->seek(FirstChildApprox());
          (first_child = Matcher::Accept(first_child, parent));
@@ -202,7 +202,7 @@ void ChildToParentJoin<Matcher>::PrepareScore() {
   if (!std::is_same_v<Matcher, NoneMatcher> &&
       (!child_doc_ || !child_score_ ||
        *child_score_ == ScoreFunction::kDefault)) {
-    assert(Matcher::size());
+    IRS_ASSERT(Matcher::size());
     score = ScoreFunction::Default(Matcher::size());
   } else {
     static_assert(HasScore_v<Matcher>);
@@ -247,7 +247,7 @@ class NoneMatcher : public NoopAggregator {
 
   constexpr doc_id_t Accept(const doc_id_t child,
                             const doc_id_t parent) const noexcept {
-    assert(!doc_limits::eof(parent));
+    IRS_ASSERT(!doc_limits::eof(parent));
     return child < parent ? parent + 1 : 0;
   }
 
@@ -269,7 +269,7 @@ class AnyMatcher : public Merger, private score_ctx {
 
   constexpr doc_id_t Accept(const doc_id_t child,
                             const doc_id_t parent) const noexcept {
-    assert(!doc_limits::eof(parent));
+    IRS_ASSERT(!doc_limits::eof(parent));
     return child < parent ? 0 : child;
   }
 
@@ -277,8 +277,8 @@ class AnyMatcher : public Merger, private score_ctx {
     static_assert(HasScore_v<Merger>);
 
     return {this, [](score_ctx* ctx, score_t* res) {
-              assert(ctx);
-              assert(res);
+              IRS_ASSERT(ctx);
+              IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
               auto& merger = static_cast<Merger&>(self);
 
@@ -313,11 +313,11 @@ class PredMatcher : public Merger,
     }
 
     pred_doc_ = irs::get<document>(*pred_);
-    assert(pred_doc_);
+    IRS_ASSERT(pred_doc_);
   }
 
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
-    assert(!doc_limits::eof(parent));
+    IRS_ASSERT(!doc_limits::eof(parent));
 
     if (first_child > parent) {
       return first_child;
@@ -358,8 +358,8 @@ class PredMatcher : public Merger,
     static_assert(HasScore_v<Merger>);
 
     return {this, [](score_ctx* ctx, score_t* res) {
-              assert(ctx);
-              assert(res);
+              IRS_ASSERT(ctx);
+              IRS_ASSERT(res);
               auto& self = static_cast<PredMatcher&>(*ctx);
               auto& merger = static_cast<Merger&>(self);
               auto& buf = static_cast<ScoreBuffer<Merger>&>(self);
@@ -385,14 +385,14 @@ class RangeMatcher : public Merger,
       BufferType{static_cast<const Merger&>(*this)},
       match_{match} {
     // This case is handled by MinMatcher
-    assert(match_ != Match{0});
+    IRS_ASSERT(match_ != Match{0});
   }
 
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
-    assert(!doc_limits::eof(parent));
+    IRS_ASSERT(!doc_limits::eof(parent));
 
     const auto [min, max] = match_;
-    assert(min <= max);
+    IRS_ASSERT(min <= max);
 
     if (first_child > parent) {
       if (min == 0) {
@@ -441,8 +441,8 @@ class RangeMatcher : public Merger,
     static_assert(HasScore_v<Merger>);
 
     return {this, [](score_ctx* ctx, score_t* res) {
-              assert(ctx);
-              assert(res);
+              IRS_ASSERT(ctx);
+              IRS_ASSERT(res);
               auto& self = static_cast<RangeMatcher&>(*ctx);
               auto& merger = static_cast<Merger&>(self);
               auto& buf = static_cast<ScoreBuffer<Merger>&>(self);
@@ -470,7 +470,7 @@ class MinMatcher : public Merger,
       min_{min} {}
 
   doc_id_t Accept(const doc_id_t first_child, const doc_id_t parent) {
-    assert(!doc_limits::eof(parent));
+    IRS_ASSERT(!doc_limits::eof(parent));
 
     if (0 == min_) {
       if constexpr (HasScore_v<Merger>) {
@@ -523,8 +523,8 @@ class MinMatcher : public Merger,
     static_assert(HasScore_v<Merger>);
 
     return {this, [](score_ctx* ctx, score_t* res) {
-              assert(ctx);
-              assert(res);
+              IRS_ASSERT(ctx);
+              IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
               auto& merger = static_cast<Merger&>(self);
               auto& buf = static_cast<BufferType&>(self);
@@ -564,7 +564,7 @@ auto ResolveMatchType(const sub_reader& segment,
         } else if (v == kMatchAny) {
           return visitor(AnyMatcher<A>{std::forward<A>(aggregator)});
         } else if (v.IsMinMatch()) {
-          assert(doc_limits::eof(v.Max));
+          IRS_ASSERT(doc_limits::eof(v.Max));
           return visitor(MinMatcher<A>{v.Min, std::forward<A>(aggregator)});
         } else {
           return visitor(RangeMatcher<A>{v, std::forward<A>(aggregator)});
@@ -590,9 +590,9 @@ class ByNestedQuery final : public filter::prepared {
       match_{match},
       merge_type_{merge_type},
       none_boost_{none_boost} {
-    assert(parent_);
-    assert(child_);
-    assert(IsValid(match_));
+    IRS_ASSERT(parent_);
+    IRS_ASSERT(child_);
+    IRS_ASSERT(IsValid(match_));
   }
 
   using filter::prepared::execute;
@@ -606,7 +606,7 @@ class ByNestedQuery final : public filter::prepared {
       return;
     }
 
-    assert(child_);
+    IRS_ASSERT(child_);
     child_->visit(segment, visitor, boost);
   }
 

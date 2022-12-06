@@ -50,13 +50,12 @@ class segmentation_token_stream final : public analyzer,
     word_break_t word_break{word_break_t::ALPHA};
   };
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
   explicit segmentation_token_stream(options_t&& opts);
-  virtual bool next() override;
-  virtual bool reset(std::string_view data) override;
+  bool next() override;
+  bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

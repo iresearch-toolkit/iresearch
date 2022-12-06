@@ -25,6 +25,8 @@
 #include <cstddef>
 #include <string_view>
 
+#include "shared.hpp"
+
 namespace iresearch {
 
 enum class LogLevel : unsigned char {
@@ -32,12 +34,14 @@ enum class LogLevel : unsigned char {
   Count = 1,
 };
 
+#ifdef IRESEARCH_ASSERT
 namespace detail {
 
 void LogMessage(LogLevel level, std::string_view file, std::size_t line,
                 std::string_view func, std::string_view condition) noexcept;
 
-}
+}  // namespace detail
+#endif
 
 using LogCallback = void (*)(std::string_view file, std::size_t line,
                              std::string_view function,
@@ -47,22 +51,12 @@ void SetCallback(LogLevel level, LogCallback callback) noexcept;
 
 }  // namespace iresearch
 
-#ifndef IRS_FUNC_NAME
-#if defined(__clang__) || defined(__GNUC__)
-#define IRS_FUNC_NAME __PRETTY_FUNCTION__
-#elif defined(_MSC_VER)
-#define IRS_FUNC_NAME __FUNCSIG__
-#else
-#define IRS_FUNC_NAME __func__
-#endif
-#endif
-
-#define IRS_LOG_MESSAGE(level, cond)                                      \
-  do {                                                                    \
-    if (!!(cond)) {                                                       \
-      ::IRS::detail::LogMessage(level, __FILE__, __LINE__, IRS_FUNC_NAME, \
-                                #cond);                                   \
-    }                                                                     \
+#define IRS_LOG_MESSAGE(level, cond)                             \
+  do {                                                           \
+    if (!!(cond)) {                                              \
+      ::iresearch::detail::LogMessage(level, __FILE__, __LINE__, \
+                                      IRS_FUNC_NAME, #cond);     \
+    }                                                            \
   } while (false)
 
 #ifdef NDEBUG
@@ -76,7 +70,7 @@ void SetCallback(LogLevel level, LogCallback callback) noexcept;
   } while (false)
 #endif
 
-#ifdef IRESEARCH_DEBUG
+#ifdef IRESEARCH_ASSERT
 #define IRS_ASSERT(cond) IRS_LOG_MESSAGE(::iresearch::LogLevel::Assert, !(cond))
 #else
 #define IRS_ASSERT(cond) IRS_STUB1(!(cond))

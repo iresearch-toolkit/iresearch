@@ -61,7 +61,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   }
 
   auto* reader = phrase_state->reader;
-  assert(reader);
+  IRS_ASSERT(reader);
 
   if (kRequiredFeatures !=
       (reader->meta().index_features & kRequiredFeatures)) {
@@ -80,7 +80,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   auto position = std::begin(positions_);
 
   for (const auto& term_state : phrase_state->terms) {
-    assert(term_state.first);
+    IRS_ASSERT(term_state.first);
 
     // get postings using cached state
     auto& docs =
@@ -133,19 +133,19 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
   positions.reserve(phrase_state->terms.size());
 
   auto* reader = phrase_state->reader;
-  assert(reader);
+  IRS_ASSERT(reader);
 
   if (kRequireOffs != (reader->meta().index_features & kRequireOffs)) {
     return doc_iterator::empty();
   }
 
   auto position = std::begin(positions_);
-  assert(!phrase_state->terms.empty());
+  IRS_ASSERT(!phrase_state->terms.empty());
 
   auto term_state = std::begin(phrase_state->terms);
 
   auto add_iterator = [&](IndexFeatures features) {
-    assert(term_state->first);
+    IRS_ASSERT(term_state->first);
 
     // get postings using cached state
     auto& docs =
@@ -214,7 +214,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
 
   // find term using cached state
   auto* reader = phrase_state->reader;
-  assert(reader);
+  IRS_ASSERT(reader);
 
   if (kRequiredFeatures !=
       (reader->meta().index_features & kRequiredFeatures)) {
@@ -246,7 +246,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
     disj_itrs.reserve(num_terms);
     for (const auto end = term_state + num_terms; term_state != end;
          ++term_state) {
-      assert(term_state->first);
+      IRS_ASSERT(term_state->first);
 
       auto it = reader->postings(*term_state->first, features);
 
@@ -274,7 +274,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
     conj_itrs.emplace_back(std::move(disj));
     ++position;
   }
-  assert(term_state == std::end(phrase_state->terms));
+  IRS_ASSERT(term_state == std::end(phrase_state->terms));
 
   if (ord.empty()) {
     return memory::make_managed<
@@ -323,7 +323,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
 
   // find term using cached state
   auto* reader = phrase_state->reader;
-  assert(reader);
+  IRS_ASSERT(reader);
 
   if (kRequireOffs != (reader->meta().index_features & kRequireOffs)) {
     return doc_iterator::empty();
@@ -343,7 +343,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
     disj_itrs.reserve(num_terms);
     for (const auto end = term_state + num_terms; term_state != end;
          ++term_state) {
-      assert(term_state->first);
+      IRS_ASSERT(term_state->first);
 
       auto it = reader->postings(*term_state->first, features);
 
@@ -395,7 +395,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
       return doc_iterator::empty();
     }
   }
-  assert(term_state == std::end(phrase_state->terms));
+  IRS_ASSERT(term_state == std::end(phrase_state->terms));
 
   return memory::make_managed<FixedPhraseIterator>(std::move(conj_itrs),
                                                    std::move(positions));

@@ -43,13 +43,13 @@ class NormWriter final : public feature_writer {
     }
   }
 
-  virtual void write(data_output& out, bytes_view payload) final {
+  void write(data_output& out, bytes_view payload) final {
     if (!payload.empty()) {
       out.write_bytes(payload.data(), payload.size());
     }
   }
 
-  virtual void finish(bstring& /*out*/) final {}
+  void finish(bstring& /*out*/) final {}
 };
 
 NormWriter kNormWriter;
@@ -169,7 +169,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
     case sizeof(uint16_t):
       return memory::make_managed<Norm2Writer<uint16_t>>();
     default:
-      assert(max_bytes == sizeof(uint32_t));
+      IRS_ASSERT(max_bytes == sizeof(uint32_t));
       return memory::make_managed<Norm2Writer<uint32_t>>();
   }
 

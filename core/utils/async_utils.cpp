@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "async_utils.hpp"
+#include "utils/async_utils.hpp"
 
-#include <cassert>
 #include <functional>
 
+#include "utils/assert.hpp"
 #include "utils/log.hpp"
 #include "utils/misc.hpp"
 #include "utils/std.hpp"
@@ -225,7 +225,7 @@ void thread_pool::limits(size_t max_threads, size_t max_idle) {
 }
 
 bool thread_pool::maybe_spawn_worker() {
-  assert(!shared_state_->lock.try_lock());  // lock must be held
+  IRS_ASSERT(!shared_state_->lock.try_lock());  // lock must be held
 
   // create extra thread if all threads are busy and can grow pool
   const size_t pool_size = threads_.load();
@@ -307,7 +307,7 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
   lock.lock();
 
   while (State::ABORT != state.load() && threads_.load() <= max_threads_) {
-    assert(lock.owns_lock());
+    IRS_ASSERT(lock.owns_lock());
     if (!queue_.empty()) {
       if (const auto& top = queue_.top(); top.at <= clock_t::now()) {
         func_t fn;
@@ -342,7 +342,7 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         continue;
       }
     }
-    assert(active_ <= threads_.load());
+    IRS_ASSERT(active_ <= threads_.load());
 
     if (const auto idle = threads_.load() - active_;
         (idle <= max_idle_ || (!queue_.empty() && threads_.load() == 1))) {
@@ -351,10 +351,10 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         const auto at = queue_.top().at;  // queue_ might be modified
         shared_state->cond.wait_until(lock, at);
       } else if (State::RUN == run_state) {
-        assert(queue_.empty());
+        IRS_ASSERT(queue_.empty());
         shared_state->cond.wait(lock);
       } else {
-        assert(State::RUN != run_state);
+        IRS_ASSERT(State::RUN != run_state);
         return;  // termination requested
       }
     } else {

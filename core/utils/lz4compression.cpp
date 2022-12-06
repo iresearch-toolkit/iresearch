@@ -39,7 +39,7 @@ irs::compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
 
 inline int acceleration(const irs::compression::options::Hint hint) noexcept {
   static const int FACTORS[]{0, 2, 0};
-  assert(static_cast<size_t>(hint) < std::size(FACTORS));
+  IRS_ASSERT(static_cast<size_t>(hint) < std::size(FACTORS));
 
   return FACTORS[static_cast<size_t>(hint)];
 }
@@ -77,8 +77,8 @@ lz4stream_decode lz4_make_stream_decode() {
 
 bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
                                        bstring& out) {
-  assert(size <= static_cast<unsigned>(
-                   std::numeric_limits<int>::max()));  // LZ4 API uses int
+  IRS_ASSERT(size <= static_cast<unsigned>(
+                       std::numeric_limits<int>::max()));  // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
 
   // ensure we have enough space to store compressed data
@@ -100,8 +100,9 @@ bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
 bytes_view lz4::lz4decompressor::decompress(const byte_type* src,
                                            size_t src_size, byte_type* dst,
                                            size_t dst_size) {
-  assert(src_size <= static_cast<unsigned>(
-                       std::numeric_limits<int>::max()));  // LZ4 API uses int
+  IRS_ASSERT(src_size <=
+             static_cast<unsigned>(
+               std::numeric_limits<int>::max()));  // LZ4 API uses int
 
   const auto lz4_size = LZ4_decompress_safe(
     reinterpret_cast<const char*>(src), reinterpret_cast<char*>(dst),

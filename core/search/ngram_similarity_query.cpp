@@ -37,9 +37,9 @@ struct Position {
     : pos{&position::get_mutable(itr)},
       doc{irs::get<document>(itr)},
       scr{&irs::score::get(itr)} {
-    assert(doc);
-    assert(pos);
-    assert(scr);
+    IRS_ASSERT(doc);
+    IRS_ASSERT(pos);
+    IRS_ASSERT(scr);
   }
 
   position* pos;
@@ -52,7 +52,7 @@ struct PositionWithOffset : Position {
   explicit PositionWithOffset(Iterator& itr) noexcept
     : Position{itr}, offs{irs::get<offset>(*this->pos)} {
     if (IRS_UNLIKELY(!offs)) {
-      assert(false);
+      IRS_ASSERT(false);
       offs = &kEmptyOffset;
     }
   }
@@ -143,7 +143,7 @@ class NGramPosition : public position {
       next = next->parent.get();
     }
 
-    assert(cur->offs <= state.offs);
+    IRS_ASSERT(cur->offs <= state.offs);
     return {{}, cur->offs, state.offs};
   }
 
@@ -225,7 +225,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
       if (potential <= longest_sequence_len || potential < min_match_count_) {
         // this term could not start largest (or long enough) sequence.
         // skip it to first position to append to any existing candidates
-        assert(!search_buf_.empty());
+        IRS_ASSERT(!search_buf_.empty());
         pos.seek(std::rbegin(search_buf_)->first + 1);
       } else {
         pos.next();
@@ -240,7 +240,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
             if (last_found_pos != found->first) {
               last_found_pos = found->first;
               const auto* found_state = found->second.get();
-              assert(found_state);
+              IRS_ASSERT(found_state);
               auto current_sequence = found;
               // if we hit same position - set length to 0 to force checking
               // candidates to the left
@@ -258,7 +258,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
                 // to them rather than the closest one found
                 for (++found; found != std::end(search_buf_); ++found) {
                   found_state = found->second.get();
-                  assert(found_state);
+                  IRS_ASSERT(found_state);
                   if (found_state->scr != pos_iterator.scr &&
                       found_state->len + 1 > current_found_len) {
                     // we have better option. Replace this match!
@@ -311,7 +311,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
         } while (pos.next());
         for (auto& p : swap_cache) {
           auto res = search_buf_.find(p.first);
-          assert(res != std::end(search_buf_));
+          IRS_ASSERT(res != std::end(search_buf_));
           std::swap(res->second, p.second);
         }
       }
@@ -366,7 +366,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
       for (auto i = std::begin(search_buf_); i != std::end(search_buf_);) {
         pos_sequence_.clear();
         const auto* state = i->second.get();
-        assert(state && state->len <= longest_sequence_len);
+        IRS_ASSERT(state && state->len <= longest_sequence_len);
         if (state->len == longest_sequence_len) {
           bool delete_candidate = false;
           // only first longest sequence will contribute to frequency
@@ -388,7 +388,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
               auto cur_parent = state->parent;
               size_t j = 1;
               while (cur_parent) {
-                assert(j < longest_sequence_.size());
+                IRS_ASSERT(j < longest_sequence_.size());
                 if (longest_sequence_[j] != cur_parent->scr ||
                     used_pos_.find(cur_parent->pos) != std::end(used_pos_)) {
                   delete_candidate = true;
@@ -415,12 +415,12 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
     } else {
       freq = 1;
       if constexpr (HasPosition) {
-        assert(last_state);
+        IRS_ASSERT(last_state);
         static_cast<NGramPosition&>(*this).PushOffset(*last_state);
       }
     }
     seq_freq_.value = freq;
-    assert(!pos_.empty());
+    IRS_ASSERT(!pos_.empty());
     filter_boost_.value =
       static_cast<score_t>(longest_sequence_len) / total_terms_count_;
 
@@ -464,13 +464,13 @@ class NGramSimilarityDocIterator final : public doc_iterator,
     }
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept override {
     auto* attr = irs::get_mutable(attrs_, type);
 
     return attr ? attr : checker_.GetMutable(type);
   }
 
-  virtual bool next() override {
+  bool next() override {
     bool next = false;
     while ((next = approx_.next()) &&
            !checker_.Check(approx_.match_count(), value())) {
@@ -478,11 +478,11 @@ class NGramSimilarityDocIterator final : public doc_iterator,
     return next;
   }
 
-  virtual doc_id_t value() const override {
+  doc_id_t value() const override {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
 
     if (doc_->value >= target) {
@@ -548,7 +548,7 @@ NGramApprox::doc_iterators_t Execute(const NGramState& query_state,
 doc_iterator::ptr NGramSimilarityQuery::execute(
   const ExecutionContext& ctx) const {
   auto& ord = ctx.scorers;
-  assert(1 != min_match_count_ || !ord.empty());
+  IRS_ASSERT(1 != min_match_count_ || !ord.empty());
 
   auto& segment = ctx.segment;
   auto query_state = states_.find(segment);

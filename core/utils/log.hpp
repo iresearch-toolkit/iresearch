@@ -21,13 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_LOG_H
-#define IRESEARCH_LOG_H
+#pragma once
 
+#include <cstdarg>
+#include <exception>
 #include <string>
-#include <iostream>
+
 #include "shared.hpp"
-#include "stdarg.h"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
 #define IR_FILEPATH_SPECIFIER "%ws"
@@ -54,12 +54,17 @@
 static_assert(false, "Unknown size_t, ssize_t, ptrdiff_t specifiers");
 #endif
 
-namespace iresearch {
-namespace logger {
+namespace iresearch::logger {
 
-// use a prefx that does not clash with any predefined macros (e.g. win32
-// 'ERROR')
-enum level_t { IRL_FATAL, IRL_ERROR, IRL_WARN, IRL_INFO, IRL_DEBUG, IRL_TRACE };
+// Use a prefix that doesn't clash with any predefined macros e.g. Win32 'ERROR'
+enum level_t {
+  IRL_FATAL,
+  IRL_ERROR,
+  IRL_WARN,
+  IRL_INFO,
+  IRL_DEBUG,
+  IRL_TRACE,
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log appender callback
@@ -94,14 +99,14 @@ void stack_trace(level_t level, const std::exception_ptr& eptr);
 irs::logger::level_t stack_trace_level();  // stack trace output level
 void stack_trace_level(level_t level);     // stack trace output level
 
-#ifndef _MSC_VER
-                                        // +1 to skip stack_trace_nomalloc(...)
+#ifndef _MSC_VER  // +1 to skip stack_trace_nomalloc(...)
 void stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
 #endif
 
 namespace detail {
+
 // not everyone who includes header actually logs something, that`s ok
-[[maybe_unused]] static void log_formatted(const char* function,
+[[maybe_unused]] inline void log_formatted(const char* function,
                                            const char* file, int line,
                                            level_t level, const char* format,
                                            ...) {
@@ -110,17 +115,18 @@ namespace detail {
   const ptrdiff_t required_len = vsnprintf(nullptr, 0, format, args);
   va_end(args);
   if (required_len > 0) {
-    std::string buf(size_t(required_len) + 1, 0);
+    std::string buf(static_cast<size_t>(required_len) + 1, 0);
     va_list args1;
     va_start(args1, format);
-    vsnprintf(buf.data(), buf.size(), format, args1);
+    static_cast<void>(vsnprintf(buf.data(), buf.size(), format, args1));
     va_end(args1);
-    log(function, file, line, level, buf.data(), size_t(required_len));
+    log(function, file, line, level, buf.data(),
+        static_cast<size_t>(required_len));
   }
 }
+
 }  // namespace detail
-}  // namespace logger
-}  // namespace iresearch
+}  // namespace iresearch::logger
 
 #if defined(_MSC_VER)
 #define IR_LOG_FORMATED(level, format, ...)                              \
@@ -142,11 +148,10 @@ namespace detail {
 #define IR_FRMT_TRACE(format, ...) \
   IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, format, __VA_ARGS__)
 #else  // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
-#define IR_LOG_FORMATED(level, format, ...)                              \
-  if (::iresearch::logger::enabled(level))                               \
-  ::iresearch::logger::detail::log_formatted(IRESEARCH_CURRENT_FUNCTION, \
-                                             __FILE__, __LINE__, level,  \
-                                             format, ##__VA_ARGS__)
+#define IR_LOG_FORMATED(level, format, ...)   \
+  if (::iresearch::logger::enabled(level))    \
+  ::iresearch::logger::detail::log_formatted( \
+    IRS_FUNC_NAME, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
 
 #define IR_FRMT_FATAL(format, ...) \
   IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, ##__VA_ARGS__)
@@ -162,22 +167,11 @@ namespace detail {
   IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, format, ##__VA_ARGS__)
 #endif
 
-#define IR_LOG_EXCEPTION()                                                     \
-  if (::iresearch::logger::enabled(                                            \
-        ::iresearch::logger::stack_trace_level())) {                           \
-    IR_LOG_FORMATED(                                                           \
-      ::iresearch::logger::stack_trace_level(),                                \
-      "@%s\n Exception stack trace:", IRESEARCH_CURRENT_FUNCTION);             \
-    ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), \
-                                     std::current_exception());                \
+#define IR_LOG_STACK_TRACE()                                  \
+  if (::iresearch::logger::enabled(                           \
+        ::iresearch::logger::stack_trace_level())) {          \
+    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), \
+                    "@%s\nstack trace:", IRS_FUNC_NAME);      \
+    ::iresearch::logger::stack_trace(                         \
+      ::iresearch::logger::stack_trace_level());              \
   }
-#define IR_LOG_STACK_TRACE()                                          \
-  if (::iresearch::logger::enabled(                                   \
-        ::iresearch::logger::stack_trace_level())) {                  \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(),         \
-                    "@%s\nstack trace:", IRESEARCH_CURRENT_FUNCTION); \
-    ::iresearch::logger::stack_trace(                                 \
-      ::iresearch::logger::stack_trace_level());                      \
-  }
-
-#endif

@@ -137,7 +137,7 @@ int64_t checksum(const index_input& in) {
     stream = dup.get();
   }
 
-  assert(0 == stream->file_pointer());
+  IRS_ASSERT(0 == stream->file_pointer());
   return stream->checksum(length - sizeof(uint64_t));
 }
 

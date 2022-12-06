@@ -34,7 +34,7 @@ struct boost_sort final : public sort {
 
   boost_sort() noexcept;
 
-  virtual sort::prepared::ptr prepare() const override;
+  sort::prepared::ptr prepare() const override;
 };  // boost_sort
 
 }  // namespace iresearch

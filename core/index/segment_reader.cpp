@@ -43,7 +43,7 @@ class all_iterator final : public doc_iterator {
   explicit all_iterator(doc_id_t docs_count) noexcept
     : max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {}
 
-  virtual bool next() noexcept override {
+  bool next() noexcept override {
     if (doc_.value < max_doc_) {
       doc_.value++;
       return true;
@@ -53,13 +53,13 @@ class all_iterator final : public doc_iterator {
     }
   }
 
-  virtual doc_id_t seek(doc_id_t target) noexcept override {
+  doc_id_t seek(doc_id_t target) noexcept override {
     doc_.value = target <= max_doc_ ? target : doc_limits::eof();
 
     return doc_.value;
   }
 
-  virtual doc_id_t value() const noexcept override { return doc_.value; }
+  doc_id_t value() const noexcept override { return doc_.value; }
 
   virtual attribute* get_mutable(
     irs::type_info::type_id type) noexcept override {
@@ -77,7 +77,7 @@ class mask_doc_iterator final : public doc_iterator {
                              const document_mask& mask) noexcept
     : mask_(mask), it_(std::move(it)) {}
 
-  virtual bool next() override {
+  bool next() override {
     while (it_->next()) {
       if (!mask_.contains(value())) {
         return true;
@@ -87,7 +87,7 @@ class mask_doc_iterator final : public doc_iterator {
     return false;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     const auto doc = it_->seek(target);
 
     if (!mask_.contains(doc)) {
@@ -99,7 +99,7 @@ class mask_doc_iterator final : public doc_iterator {
     return value();
   }
 
-  virtual doc_id_t value() const override { return it_->value(); }
+  doc_id_t value() const override { return it_->value(); }
 
   virtual attribute* get_mutable(
     irs::type_info::type_id type) noexcept override {
@@ -117,7 +117,7 @@ class masked_docs_iterator : public doc_iterator, private util::noncopyable {
                        const document_mask& docs_mask)
     : docs_mask_(docs_mask), end_(end), next_(begin) {}
 
-  virtual bool next() override {
+  bool next() override {
     while (next_ < end_) {
       current_.value = next_++;
 
@@ -131,7 +131,7 @@ class masked_docs_iterator : public doc_iterator, private util::noncopyable {
     return false;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     next_ = target;
     next();
 
@@ -143,7 +143,7 @@ class masked_docs_iterator : public doc_iterator, private util::noncopyable {
     return irs::type<document>::id() == type ? &current_ : nullptr;
   }
 
-  virtual doc_id_t value() const override { return current_.value; }
+  doc_id_t value() const override { return current_.value; }
 
  private:
   document current_;
@@ -200,7 +200,7 @@ class segment_reader_impl : public sub_reader {
   uint64_t meta_version() const noexcept { return meta_version_; }
 
   const sub_reader& operator[](size_t i) const noexcept override {
-    assert(!i);
+    IRS_ASSERT(!i);
     UNUSED(i);
     return *this;
   }

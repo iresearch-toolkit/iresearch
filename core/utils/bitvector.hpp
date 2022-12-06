@@ -94,7 +94,7 @@ class bitvector final {
     auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
-      assert(i < set_.words() && i < other.set_.words());
+      IRS_ASSERT(i < set_.words() && i < other.set_.words());
       *(data + i) &= *(other.data() + i);
     }
 
@@ -103,7 +103,7 @@ class bitvector final {
     const auto mask = (word_t(1) << last_word_bits) -
                       1;  // set all bits that are not part of 'other.size()'
 
-    assert(last_word < set_.words() && last_word < other.set_.words());
+    IRS_ASSERT(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) &= (*(other.data() + last_word) & mask);
     std::memset(
       data + last_word + 1, 0,
@@ -124,7 +124,7 @@ class bitvector final {
     auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
 
     for (size_t i = 0; i <= last_word; ++i) {
-      assert(i < set_.words() && i < other.set_.words());
+      IRS_ASSERT(i < set_.words() && i < other.set_.words());
       *(data + i) |= *(other.data() + i);
     }
 
@@ -143,7 +143,7 @@ class bitvector final {
     auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
-      assert(i < set_.words() && i < other.set_.words());
+      IRS_ASSERT(i < set_.words() && i < other.set_.words());
       *(data + i) ^= *(other.data() + i);
     }
 
@@ -157,7 +157,7 @@ class bitvector final {
                                          // 'other.size()'
     }
 
-    assert(last_word < set_.words() && last_word < other.set_.words());
+    IRS_ASSERT(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) ^= (*(other.data() + last_word) & mask);
 
     return *this;
@@ -174,7 +174,7 @@ class bitvector final {
     auto last_word = bitset::word(other.size() - 1);  // -1 for bit offset
 
     for (size_t i = 0; i < last_word; ++i) {
-      assert(i < set_.words() && i < other.set_.words());
+      IRS_ASSERT(i < set_.words() && i < other.set_.words());
       *(data + i) &= ~(*(other.data() + i));
     }
 
@@ -188,7 +188,7 @@ class bitvector final {
                                          // 'other.size()'
     }
 
-    assert(last_word < set_.words() && last_word < other.set_.words());
+    IRS_ASSERT(last_word < set_.words() && last_word < other.set_.words());
     *(data + last_word) &= ~(*(other.data() + last_word) & mask);
 
     return *this;

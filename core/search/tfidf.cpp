@@ -48,7 +48,7 @@ const auto kRSQRT = irs::cache_func<uint32_t, 2048>(1, [](uint32_t i) noexcept {
 });
 
 irs::sort::ptr make_from_bool(const VPackSlice slice) {
-  assert(slice.isBool());
+  IRS_ASSERT(slice.isBool());
 
   return std::make_unique<irs::tfidf_sort>(slice.getBool());
 }
@@ -56,7 +56,7 @@ irs::sort::ptr make_from_bool(const VPackSlice slice) {
 constexpr std::string_view WITH_NORMS_PARAM_NAME("withNorms");
 
 irs::sort::ptr make_from_object(const VPackSlice slice) {
-  assert(slice.isObject());
+  IRS_ASSERT(slice.isObject());
 
   auto scorer = std::make_unique<irs::tfidf_sort>();
 
@@ -80,7 +80,7 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
 }
 
 irs::sort::ptr make_from_array(const VPackSlice slice) {
-  assert(slice.isArray());
+  IRS_ASSERT(slice.isArray());
 
   VPackArrayIterator array = VPackArrayIterator(slice);
   VPackValueLength size = array.size();
@@ -195,9 +195,9 @@ struct field_collector final : public irs::sort::field_collector {
     docs_with_field += field.docs_count();
   }
 
-  virtual void reset() noexcept override { docs_with_field = 0; }
+  void reset() noexcept override { docs_with_field = 0; }
 
-  virtual void collect(irs::bytes_view in) override {
+  void collect(irs::bytes_view in) override {
     byte_ref_iterator itr(in);
     auto docs_with_field_value = irs::vread<uint64_t>(itr);
 
@@ -208,7 +208,7 @@ struct field_collector final : public irs::sort::field_collector {
     docs_with_field += docs_with_field_value;
   }
 
-  virtual void write(irs::data_output& out) const override {
+  void write(irs::data_output& out) const override {
     out.write_vlong(docs_with_field);
   }
 };
@@ -227,9 +227,9 @@ struct term_collector final : public irs::sort::term_collector {
     }
   }
 
-  virtual void reset() noexcept override { docs_with_term = 0; }
+  void reset() noexcept override { docs_with_term = 0; }
 
-  virtual void collect(irs::bytes_view in) override {
+  void collect(irs::bytes_view in) override {
     byte_ref_iterator itr(in);
     auto docs_with_term_value = irs::vread<uint64_t>(itr);
 
@@ -240,7 +240,7 @@ struct term_collector final : public irs::sort::term_collector {
     docs_with_term += docs_with_term_value;
   }
 
-  virtual void write(irs::data_output& out) const override {
+  void write(irs::data_output& out) const override {
     out.write_vlong(docs_with_term);
   }
 };
@@ -267,7 +267,7 @@ struct ScoreContext : public irs::score_ctx {
     : freq{freq ? *freq : kEmptyFreq},
       filter_boost{filter_boost},
       idf{boost * idf.value} {
-    assert(freq);
+    IRS_ASSERT(freq);
   }
 
   ScoreContext(const ScoreContext&) = delete;
@@ -325,14 +325,14 @@ struct MakeScoreFunctionImpl {
   static ScoreFunction Make(Args&&... args) {
     return {std::make_unique<Ctx>(std::forward<Args>(args)...),
             [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              assert(res);
-              assert(ctx);
+              IRS_ASSERT(res);
+              IRS_ASSERT(ctx);
 
               auto& state = *static_cast<Ctx*>(ctx);
 
               float_t idf;
               if constexpr (HasFilterBoost) {
-                assert(state.filter_boost);
+                IRS_ASSERT(state.filter_boost);
                 idf = state.idf * state.filter_boost->value;
               } else {
                 idf = state.idf;
@@ -379,14 +379,14 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
 
     idf.value += float_t(
       std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
-    assert(idf.value >= 0.f);
+    IRS_ASSERT(idf.value >= 0.f);
   }
 
-  virtual IndexFeatures features() const noexcept override {
+  IndexFeatures features() const noexcept override {
     return IndexFeatures::FREQ;
   }
 
-  virtual field_collector::ptr prepare_field_collector() const override {
+  field_collector::ptr prepare_field_collector() const override {
     return std::make_unique<field_collector>();
   }
 
@@ -456,7 +456,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     return MakeScoreFunction<ScoreContext>(filter_boost, boost, stats, freq);
   }
 
-  virtual term_collector::ptr prepare_term_collector() const override {
+  term_collector::ptr prepare_term_collector() const override {
     return std::make_unique<term_collector>();
   }
 

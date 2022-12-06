@@ -45,7 +45,7 @@ template<typename T>
 bool parse_vpack_options(const VPackSlice slice, T& options) {
   if constexpr (std::is_same_v<
                   T, irs::analysis::pipeline_token_stream::options_t>) {
-    assert(options.empty());
+    IRS_ASSERT(options.empty());
   }
   if (!slice.isObject()) {
     IR_FRMT_ERROR(
@@ -315,7 +315,7 @@ pipeline_token_stream::pipeline_token_stream(
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
   for (auto& p : options) {
-    assert(p);
+    IRS_ASSERT(p);
     pipeline_.emplace_back(std::move(p), track_offset);
   }
   options.clear();  // mimic move semantic
@@ -377,14 +377,15 @@ bool pipeline_token_stream::next() {
       }
       if (!current_->next()) {  // empty one found. Another round from the very
                                 // beginning.
-        assert(current_ != top_);
+        IRS_ASSERT(current_ != top_);
         --current_;
         break;
       }
       pipeline_inc += current_->inc->value;
-      assert(current_->inc->value > 0);  // first increment after reset should
-                                         // be positive to give 0 or next pos!
-      assert(pipeline_inc > 0);
+      IRS_ASSERT(current_->inc->value >
+                 0);  // first increment after reset should
+                      // be positive to give 0 or next pos!
+      IRS_ASSERT(pipeline_inc > 0);
       pipeline_inc--;  // compensate placing sub_analyzer from max to 0 due to
                        // reset as this step actually does not move whole
                        // pipeline sub analyzer just stays same pos as it`s
@@ -420,8 +421,8 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t(
     inc(irs::get<irs::increment>(*a)),
     offs(track_offset ? irs::get<irs::offset>(*a) : &NO_OFFSET),
     analyzer(std::move(a)) {
-  assert(inc);
-  assert(term);
+  IRS_ASSERT(inc);
+  IRS_ASSERT(term);
 }
 
 pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()

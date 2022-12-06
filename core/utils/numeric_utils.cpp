@@ -142,7 +142,7 @@ typename EncodeTraits::type decode(const byte_type* in) {
   return value;
 }
 
-// assert that signed right shift works as expected
+// IRS_ASSERT that signed right shift works as expected
 static_assert(static_cast<uint32_t>(INT32_C(-1) >> 31) == UINT32_C(0xFFFFFFFF));
 static_assert(static_cast<uint64_t>(INT64_C(-1) >> 63) ==
               UINT64_C(0xFFFFFFFFFFFFFFFF));

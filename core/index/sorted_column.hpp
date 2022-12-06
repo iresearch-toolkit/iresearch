@@ -42,20 +42,20 @@ class sorted_column final : public column_output, private util::noncopyable {
   explicit sorted_column(const column_info& info) : info_{info} {}
 
   void prepare(doc_id_t key) {
-    assert(index_.empty() || key >= index_.back().first);
+    IRS_ASSERT(index_.empty() || key >= index_.back().first);
 
     if (index_.empty() || index_.back().first != key) {
       index_.emplace_back(key, data_buf_.size());
     }
   }
 
-  virtual void write_byte(byte_type b) override { data_buf_ += b; }
+  void write_byte(byte_type b) override { data_buf_ += b; }
 
-  virtual void write_bytes(const byte_type* b, size_t size) override {
+  void write_bytes(const byte_type* b, size_t size) override {
     data_buf_.append(b, size);
   }
 
-  virtual void reset() override {
+  void reset() override {
     if (index_.empty()) {
       return;
     }
@@ -99,10 +99,10 @@ class sorted_column final : public column_output, private util::noncopyable {
 
  private:
   void write_value(data_output& out, const size_t idx) {
-    assert(idx + 1 < index_.size());
+    IRS_ASSERT(idx + 1 < index_.size());
     const auto begin = index_[idx].second;
     const auto end = index_[idx + 1].second;
-    assert(begin <= end);
+    IRS_ASSERT(begin <= end);
 
     out.write_bytes(data_buf_.c_str() + begin, end - begin);
   }

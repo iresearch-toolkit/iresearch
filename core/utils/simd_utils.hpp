@@ -206,7 +206,7 @@ template<size_t Length, bool Aligned, typename T, int O = HWY_CAP_GE256>
 void delta_encode(T* begin, T init) noexcept {
   static_assert(Length);
   using simd_helper = simd_helper<Aligned>;
-  assert(std::is_sorted(begin, begin + Length));
+  IRS_ASSERT(std::is_sorted(begin, begin + Length));
 
   if constexpr (O == 1) {  // 256-bit and greater
     constexpr HWY_FULL(T) simd_tag;
@@ -238,7 +238,7 @@ void delta_encode(T* begin, T init) noexcept {
     // FIXME this is true only for 32-bit values
     constexpr HWY_CAPPED(T, 4) simd_tag;
     const size_t Step = Lanes(simd_tag);
-    assert(0 == (Length % Step));
+    IRS_ASSERT(0 == (Length % Step));
 
     auto prev = Set(simd_tag, init);
 
@@ -268,7 +268,7 @@ std::pair<T, T> avg_encode(T* begin) noexcept {
   constexpr size_t Unroll = 2 * Step;
   static_assert(Length);
   static_assert(0 == (Length % (Unroll * Step)));
-  assert(begin[Length - 1] >= begin[0]);
+  IRS_ASSERT(begin[Length - 1] >= begin[0]);
 
   const unsigned_type base = *begin;
 
@@ -308,7 +308,7 @@ void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
   constexpr size_t Unroll = 2 * Step;
   static_assert(Length);
   static_assert(0 == (Length % (Unroll * Step)));
-  assert(begin[Length - 1] >= begin[0]);
+  IRS_ASSERT(begin[Length - 1] >= begin[0]);
 
   auto vbase = Iota(simd_tag, 0) * Set(simd_tag, avg) + Set(simd_tag, base);
   const auto vavg = Set(simd_tag, avg) * Set(simd_tag, Step);

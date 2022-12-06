@@ -51,7 +51,7 @@ class pipeline_test_analyzer : public irs::analysis::analyzer,
     }
     payload_.value = payload;
   }
-  virtual bool next() override {
+  bool next() override {
     if (term_emitted) {
       return false;
     }
@@ -62,7 +62,7 @@ class pipeline_test_analyzer : public irs::analysis::analyzer,
       static_cast<uint32_t>(std::get<irs::term_attribute>(attrs_).value.size());
     return true;
   }
-  virtual bool reset(std::string_view data) override {
+  bool reset(std::string_view data) override {
     term_emitted = false;
     std::get<irs::term_attribute>(attrs_).value =
       irs::ViewCast<irs::byte_type>(data);
@@ -103,7 +103,7 @@ class pipeline_test_analyzer2 : public irs::analysis::analyzer,
     current_reset_ = resets_.begin();
     current_term_ = terms_.begin();
   }
-  virtual bool next() override {
+  bool next() override {
     if (current_next_ != nexts_.end()) {
       auto next_val = *(current_next_++);
       if (next_val) {
@@ -135,7 +135,7 @@ class pipeline_test_analyzer2 : public irs::analysis::analyzer,
     }
     return false;
   }
-  virtual bool reset(std::string_view /*data*/) override {
+  bool reset(std::string_view /*data*/) override {
     if (current_reset_ != resets_.end()) {
       return *(current_reset_++);
     }

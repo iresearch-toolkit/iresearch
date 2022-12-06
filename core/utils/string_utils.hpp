@@ -37,8 +37,8 @@ namespace string_utils {
 
 inline size_t oversize(size_t chunk_size, size_t size,
                        size_t min_size) noexcept {
-  assert(chunk_size);
-  assert(min_size > size);
+  IRS_ASSERT(chunk_size);
+  IRS_ASSERT(min_size > size);
 
   typedef math::math_traits<size_t> math_traits;
 
@@ -100,8 +100,8 @@ inline std::string to_string(const char* format, Args&&... args) {
   std::string buf;
   const auto result = to_string(buf, format, std::forward<Args>(args)...);
 
-  assert(result >= 0);
-  assert(size_t(result) == buf.size());
+  IRS_ASSERT(result >= 0);
+  IRS_ASSERT(size_t(result) == buf.size());
   UNUSED(result);
 
   return buf;

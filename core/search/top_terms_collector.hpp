@@ -89,7 +89,7 @@ struct top_term_state : top_term<T> {
 
   template<typename CollectorState>
   void emplace(const CollectorState& state) {
-    assert(state.segment && state.docs_count && state.field);
+    IRS_ASSERT(state.segment && state.docs_count && state.field);
 
     const auto* segment = state.segment;
     const auto docs_count = *state.docs_count;
@@ -148,7 +148,7 @@ class top_terms_collector : private util::noncopyable {
     if (auto* term = irs::get<term_attribute>(terms); IRS_LIKELY(term)) {
       state_.term = &term->value;
     } else {
-      assert(false);
+      IRS_ASSERT(false);
       static const bytes_view kNoTerm;
       state_.term = &kNoTerm;
     }
@@ -197,14 +197,14 @@ class top_terms_collector : private util::noncopyable {
       pop();
       terms_.erase(min);
       const auto res = emplace(hashed_term, key);
-      assert(res.second);
+      IRS_ASSERT(res.second);
 
       heap_.back() = res.first;
       push();
 
       res.first->second.emplace(state_);
     } else {
-      assert(it->second.key == key);
+      IRS_ASSERT(it->second.key == key);
       // update existing entry
       it->second.emplace(state_);
     }

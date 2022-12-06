@@ -109,7 +109,7 @@ struct DocIdScorer : irs::sort {
   DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
 
   struct Prepared final : irs::PreparedSortBase<void> {
-    virtual irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 

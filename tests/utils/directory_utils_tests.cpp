@@ -21,12 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "index/index_meta.hpp"
-#include "store/memory_directory.hpp"
-#include "utils/directory_utils.hpp"
-
 #include "index/index_tests.hpp"
+#include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
+#include "utils/directory_utils.hpp"
 
 namespace {
 
@@ -42,27 +41,25 @@ class directory_utils_tests : public ::testing::Test {
 
     using directory::attributes;
 
-    virtual irs::directory_attributes& attributes() noexcept override {
-      return attrs_;
-    }
+    irs::directory_attributes& attributes() noexcept override { return attrs_; }
 
-    virtual irs::index_output::ptr create(std::string_view) noexcept override {
+    irs::index_output::ptr create(std::string_view) noexcept override {
       return nullptr;
     }
 
-    virtual bool exists(bool&, std::string_view) const noexcept override {
+    bool exists(bool&, std::string_view) const noexcept override {
       return false;
     }
 
-    virtual bool length(uint64_t&, std::string_view) const noexcept override {
+    bool length(uint64_t&, std::string_view) const noexcept override {
       return false;
     }
 
-    virtual irs::index_lock::ptr make_lock(std::string_view) noexcept override {
+    irs::index_lock::ptr make_lock(std::string_view) noexcept override {
       return nullptr;
     }
 
-    virtual bool mtime(std::time_t&, std::string_view) const noexcept override {
+    bool mtime(std::time_t&, std::string_view) const noexcept override {
       return false;
     }
 
@@ -71,15 +68,15 @@ class directory_utils_tests : public ::testing::Test {
       return nullptr;
     }
 
-    virtual bool remove(std::string_view) noexcept override { return false; }
+    bool remove(std::string_view) noexcept override { return false; }
 
-    virtual bool rename(std::string_view, std::string_view) noexcept override {
+    bool rename(std::string_view, std::string_view) noexcept override {
       return false;
     }
 
-    virtual bool sync(std::string_view) noexcept override { return false; }
+    bool sync(std::string_view) noexcept override { return false; }
 
-    virtual bool visit(const irs::directory::visitor_f&) const override {
+    bool visit(const irs::directory::visitor_f&) const override {
       return false;
     }
 
@@ -673,34 +670,32 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
   struct error_directory : public irs::directory {
     irs::directory_attributes attrs{};
-    virtual irs::directory_attributes& attributes() noexcept override {
-      return attrs;
-    }
-    virtual irs::index_output::ptr create(std::string_view) noexcept override {
+    irs::directory_attributes& attributes() noexcept override { return attrs; }
+    irs::index_output::ptr create(std::string_view) noexcept override {
       return nullptr;
     }
-    virtual bool exists(bool&, std::string_view) const noexcept override {
+    bool exists(bool&, std::string_view) const noexcept override {
       return false;
     }
-    virtual bool length(uint64_t&, std::string_view) const noexcept override {
+    bool length(uint64_t&, std::string_view) const noexcept override {
       return false;
     }
-    virtual bool visit(const visitor_f&) const override { return false; }
-    virtual irs::index_lock::ptr make_lock(std::string_view) noexcept override {
+    bool visit(const visitor_f&) const override { return false; }
+    irs::index_lock::ptr make_lock(std::string_view) noexcept override {
       return nullptr;
     }
-    virtual bool mtime(std::time_t&, std::string_view) const noexcept override {
+    bool mtime(std::time_t&, std::string_view) const noexcept override {
       return false;
     }
     virtual irs::index_input::ptr open(std::string_view,
                                        irs::IOAdvice) const noexcept override {
       return nullptr;
     }
-    virtual bool remove(std::string_view) noexcept override { return false; }
-    virtual bool rename(std::string_view, std::string_view) noexcept override {
+    bool remove(std::string_view) noexcept override { return false; }
+    bool rename(std::string_view, std::string_view) noexcept override {
       return false;
     }
-    virtual bool sync(std::string_view) noexcept override { return false; }
+    bool sync(std::string_view) noexcept override { return false; }
   } error_dir;
 
   // test create failure

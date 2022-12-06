@@ -76,8 +76,8 @@ class sparse_bitmap_writer {
 
   void push_back(doc_id_t value) {
     static_assert(math::is_power2(kBlockSize));
-    assert(doc_limits::valid(value));
-    assert(!doc_limits::eof(value));
+    IRS_ASSERT(doc_limits::valid(value));
+    IRS_ASSERT(!doc_limits::eof(value));
 
     const uint32_t block = value / kBlockSize;
 
@@ -123,14 +123,14 @@ class sparse_bitmap_writer {
   }
 
   FORCE_INLINE void set(doc_id_t value) noexcept {
-    assert(value < kBlockSize);
+    IRS_ASSERT(value < kBlockSize);
 
     irs::set_bit(bits_[value / bits_required<size_t>()],
                  value % bits_required<size_t>());
   }
 
   FORCE_INLINE void reset(doc_id_t value) noexcept {
-    assert(value < kBlockSize);
+    IRS_ASSERT(value < kBlockSize);
 
     irs::unset_bit(bits_[value / bits_required<size_t>()],
                    value % bits_required<size_t>());
@@ -138,7 +138,7 @@ class sparse_bitmap_writer {
 
   FORCE_INLINE void add_block(uint32_t block_id) {
     const uint64_t offset = out_->file_pointer() - origin_;
-    assert(offset <= std::numeric_limits<uint32_t>::max());
+    IRS_ASSERT(offset <= std::numeric_limits<uint32_t>::max());
 
     uint32_t count = 1 + block_id - static_cast<uint32_t>(block_index_.size());
 
@@ -203,22 +203,19 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t seek(doc_id_t target) override final;
+  doc_id_t seek(doc_id_t target) final;
 
-  virtual bool next() override final {
-    return !doc_limits::eof(seek(value() + 1));
-  }
+  bool next() final { return !doc_limits::eof(seek(value() + 1)); }
 
-  virtual doc_id_t value() const noexcept override final {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  virtual void reset() override final;
+  void reset() final;
 
   // The value is undefined for
   // doc_limits::invalid() and doc_limits::eof()

@@ -143,13 +143,8 @@ void bytes_view_input::read_bytes(bstring& buf, size_t size) {
 
   buf.resize(used + size);
 
-#ifdef IRESEARCH_DEBUG
-  const auto read = read_bytes(&(buf[0]) + used, size);
-  assert(read == size);
-  UNUSED(read);
-#else
-  read_bytes(&(buf[0]) + used, size);
-#endif  // IRESEARCH_DEBUG
+  [[maybe_unused]] const auto read = read_bytes(&(buf[0]) + used, size);
+  IRS_ASSERT(read == size);
 }
 
 int64_t bytes_view_input::checksum(size_t offset) const {
@@ -161,14 +156,14 @@ int64_t bytes_view_input::checksum(size_t offset) const {
 }
 
 size_t remapped_bytes_view_input::src_to_internal(size_t t) const noexcept {
-  assert(!mapping_.empty());
+  IRS_ASSERT(!mapping_.empty());
   auto it =
     std::lower_bound(mapping_.begin(), mapping_.end(), t,
                      [](const auto& l, const auto& r) { return l.first < r; });
   if (it == mapping_.end()) {
     --it;
   } else if (it->first > t) {
-    assert(it != mapping_.begin());
+    IRS_ASSERT(it != mapping_.begin());
     --it;
   }
   return it->second + (t - it->first);
@@ -177,7 +172,7 @@ size_t remapped_bytes_view_input::src_to_internal(size_t t) const noexcept {
 size_t remapped_bytes_view_input::file_pointer() const noexcept {
   auto const addr = bytes_view_input::file_pointer();
   auto diff = std::numeric_limits<size_t>::max();
-  assert(!mapping_.empty());
+  IRS_ASSERT(!mapping_.empty());
   mapping_value src = mapping_.front();
   for (auto const& m : mapping_) {
     if (m.second < addr) {
@@ -188,7 +183,7 @@ size_t remapped_bytes_view_input::file_pointer() const noexcept {
     }
   }
   if (IRS_UNLIKELY(diff == std::numeric_limits<size_t>::max())) {
-    assert(false);
+    IRS_ASSERT(false);
     return 0;
   }
   return src.first + (addr - src.second);

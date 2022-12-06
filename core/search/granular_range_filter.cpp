@@ -496,8 +496,8 @@ void visit(const irs::sub_reader& segment, const irs::term_reader& reader,
   const size_t prefix_size =
     reader.meta().features.count(irs::type<irs::granularity_prefix>::id());
 
-  assert(!rng.min.empty() || irs::BoundType::UNBOUNDED == rng.min_type);
-  assert(!rng.max.empty() || irs::BoundType::UNBOUNDED == rng.max_type);
+  IRS_ASSERT(!rng.min.empty() || irs::BoundType::UNBOUNDED == rng.min_type);
+  IRS_ASSERT(!rng.max.empty() || irs::BoundType::UNBOUNDED == rng.max_type);
 
   if (rng.min.empty()) {    // open min range
     if (rng.max.empty()) {  // open max range
@@ -549,7 +549,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   boundary.clear();
 
   for (auto* term_attr = get<term_attribute>(term); term.next();) {
-    assert(term_attr);
+    IRS_ASSERT(term_attr);
     boundary.emplace_back(term_attr->value);
   }
 }

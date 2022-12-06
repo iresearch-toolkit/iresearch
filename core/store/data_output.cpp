@@ -35,7 +35,7 @@ namespace iresearch {
 // --SECTION--                                         output_buf implementation
 // -----------------------------------------------------------------------------
 
-output_buf::output_buf(index_output* out) : out_(out) { assert(out_); }
+output_buf::output_buf(index_output* out) : out_(out) { IRS_ASSERT(out_); }
 
 std::streamsize output_buf::xsputn(const char_type* c, std::streamsize size) {
   out_->write_bytes(reinterpret_cast<const byte_type*>(c), size);
@@ -92,7 +92,7 @@ void buffered_index_output::write_byte(byte_type b) {
 }
 
 void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
-  assert(pos_ <= end_);
+  IRS_ASSERT(pos_ <= end_);
   auto left = size_t(std::distance(pos_, end_));
 
   // is there enough space in the buffer?
@@ -134,12 +134,12 @@ void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
 }
 
 size_t buffered_index_output::file_pointer() const {
-  assert(buf_ <= pos_);
+  IRS_ASSERT(buf_ <= pos_);
   return start_ + size_t(std::distance(buf_, pos_));
 }
 
 void buffered_index_output::flush() {
-  assert(buf_ <= pos_);
+  IRS_ASSERT(buf_ <= pos_);
   const auto size = size_t(std::distance(buf_, pos_));
   if (size) {
     flush_buffer(buf_, size);

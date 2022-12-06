@@ -34,7 +34,7 @@ struct volatile_boost_score_ctx : score_ctx {
   volatile_boost_score_ctx(const filter_boost* volatile_boost,
                            score_t boost) noexcept
     : boost{boost}, volatile_boost{volatile_boost} {
-    assert(volatile_boost);
+    IRS_ASSERT(volatile_boost);
   }
 
   score_t boost;

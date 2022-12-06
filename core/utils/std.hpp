@@ -20,13 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_STD_H
-#define IRESEARCH_STD_H
+#pragma once
 
 #include <algorithm>
 #include <iterator>
 
 #include "shared.hpp"
+#include "utils/assert.hpp"
 
 namespace iresearch {
 namespace irstd {
@@ -60,7 +60,7 @@ constexpr std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
 
 template<typename Container, typename Iterator>
 void swap_remove(Container& cont, Iterator it) {
-  assert(!cont.empty());
+  IRS_ASSERT(!cont.empty());
   std::swap(*it, cont.back());
   cont.pop_back();
 }
@@ -300,5 +300,3 @@ class static_lazy_array {
 
 }  // namespace irstd
 }  // namespace iresearch
-
-#endif

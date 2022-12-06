@@ -372,7 +372,7 @@ void ngram_token_stream_base::emit_original() noexcept {
   switch (emit_original_) {
     case EmitOriginal::WithoutMarkers:
       term.value = data_;
-      assert(data_.size() <= std::numeric_limits<uint32_t>::max());
+      IRS_ASSERT(data_.size() <= std::numeric_limits<uint32_t>::max());
       offset.end = uint32_t(data_.size());
       emit_original_ = EmitOriginal::None;
       inc.value = next_inc_val_;
@@ -385,8 +385,8 @@ void ngram_token_stream_base::emit_original() noexcept {
       marked_term_buffer_.append(options_.end_marker.begin(),
                                  options_.end_marker.end());
       term.value = marked_term_buffer_;
-      assert(marked_term_buffer_.size() <=
-             std::numeric_limits<uint32_t>::max());
+      IRS_ASSERT(marked_term_buffer_.size() <=
+                 std::numeric_limits<uint32_t>::max());
       offset.start = 0;
       offset.end = uint32_t(data_.size());
       emit_original_ = EmitOriginal::None;  // end marker is emitted last, so we
@@ -401,8 +401,8 @@ void ngram_token_stream_base::emit_original() noexcept {
                                  options_.start_marker.end());
       marked_term_buffer_.append(data_.data(), data_end_);
       term.value = marked_term_buffer_;
-      assert(marked_term_buffer_.size() <=
-             std::numeric_limits<uint32_t>::max());
+      IRS_ASSERT(marked_term_buffer_.size() <=
+                 std::numeric_limits<uint32_t>::max());
       offset.start = 0;
       offset.end = uint32_t(data_.size());
       emit_original_ = options_.end_marker.empty()
@@ -453,7 +453,7 @@ bool ngram_token_stream_base::reset(std::string_view value) noexcept {
     emit_original_ = EmitOriginal::None;
   }
   next_inc_val_ = 1;
-  assert(length_ < options_.min_gram);
+  IRS_ASSERT(length_ < options_.min_gram);
   const size_t max_marker_size =
     std::max(options_.start_marker.size(), options_.end_marker.size());
   if (max_marker_size > 0) {
@@ -502,8 +502,8 @@ bool ngram_token_stream<StreamType>::next() noexcept {
       ++length_;
       if (length_ >= options_.min_gram) {
         IRS_ASSERT(begin_ <= ngram_end_);
-        assert(static_cast<size_t>(std::distance(begin_, ngram_end_)) <=
-               std::numeric_limits<uint32_t>::max());
+        IRS_ASSERT(static_cast<size_t>(std::distance(begin_, ngram_end_)) <=
+                   std::numeric_limits<uint32_t>::max());
         const auto ngram_byte_len =
           static_cast<uint32_t>(std::distance(begin_, ngram_end_));
         if (EmitOriginal::None == emit_original_ || 0 != offset.start ||
@@ -522,8 +522,8 @@ bool ngram_token_stream<StreamType>::next() noexcept {
                                        options_.start_marker.end());
             marked_term_buffer_.append(begin_, ngram_byte_len);
             term.value = marked_term_buffer_;
-            assert(marked_term_buffer_.size() <=
-                   std::numeric_limits<uint32_t>::max());
+            IRS_ASSERT(marked_term_buffer_.size() <=
+                       std::numeric_limits<uint32_t>::max());
             if (ngram_byte_len == data_.size() && !end_marker_empty_) {
               // this term is whole original stream and we have end marker, so
               // we need to emit this term again with end marker just like

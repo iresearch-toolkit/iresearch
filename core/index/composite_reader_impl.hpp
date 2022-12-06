@@ -48,21 +48,19 @@ class composite_reader : public index_reader {
       docs_max_(docs_max) {}
 
   // returns corresponding sub-reader
-  virtual const reader_type& operator[](size_t i) const noexcept override {
-    assert(i < readers_.size());
+  const reader_type& operator[](size_t i) const noexcept override {
+    IRS_ASSERT(i < readers_.size());
     return *(readers_[i]);
   }
 
   // maximum number of documents
-  virtual uint64_t docs_count() const noexcept override { return docs_max_; }
+  uint64_t docs_count() const noexcept override { return docs_max_; }
 
   // number of live documents
-  virtual uint64_t live_docs_count() const noexcept override {
-    return docs_count_;
-  }
+  uint64_t live_docs_count() const noexcept override { return docs_count_; }
 
   // returns total number of opened writers
-  virtual size_t size() const noexcept override { return readers_.size(); }
+  size_t size() const noexcept override { return readers_.size(); }
 
  private:
   readers_t readers_;

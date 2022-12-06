@@ -45,7 +45,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
   static void init();  // for triggering registration in a static build
 
   explicit pipeline_token_stream(options_t&& options);
-  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     auto attr = irs::get_mutable(attrs_, id);
     if (!attr) {
       // if attribute is not strictly pipeline-controlled let`s find nearest to
@@ -61,8 +61,8 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     }
     return attr;
   }
-  virtual bool next() override;
-  virtual bool reset(std::string_view data) override;
+  bool next() override;
+  bool reset(std::string_view data) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief calls visitor on pipeline members in respective order. Visiting is
@@ -115,12 +115,12 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     }
 
     uint32_t start() const noexcept {
-      assert(offs);
+      IRS_ASSERT(offs);
       return data_start + offs->start;
     }
 
     uint32_t end() const noexcept {
-      assert(offs);
+      IRS_ASSERT(offs);
       return offs->end == data_size ? data_end
                                     : start() + offs->end - offs->start;
     }
@@ -133,7 +133,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     uint32_t pos{std::numeric_limits<uint32_t>::max()};
 
     const irs::analysis::analyzer& get_stream() const noexcept {
-      assert(analyzer);
+      IRS_ASSERT(analyzer);
       return *analyzer;
     }
 

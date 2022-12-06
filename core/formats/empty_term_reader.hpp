@@ -61,7 +61,7 @@ class empty_term_reader final : public irs::term_reader {
     return doc_iterator::empty();
   }
 
-  virtual const irs::field_meta& meta() const noexcept override {
+  const irs::field_meta& meta() const noexcept override {
     return irs::field_meta::kEmpty;
   }
 
@@ -71,18 +71,18 @@ class empty_term_reader final : public irs::term_reader {
   }
 
   // total number of terms
-  virtual size_t size() const noexcept override {
+  size_t size() const noexcept override {
     return 0;  // no terms in reader
   }
 
   // total number of documents
-  virtual uint64_t docs_count() const noexcept override { return docs_count_; }
+  uint64_t docs_count() const noexcept override { return docs_count_; }
 
   // least significant term
-  virtual irs::bytes_view(min)() const noexcept override { return {}; }
+  irs::bytes_view(min)() const noexcept override { return {}; }
 
   // most significant term
-  virtual irs::bytes_view(max)() const noexcept override { return {}; }
+  irs::bytes_view(max)() const noexcept override { return {}; }
 
  private:
   uint64_t docs_count_;

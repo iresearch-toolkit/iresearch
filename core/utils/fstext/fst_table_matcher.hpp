@@ -47,8 +47,8 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
         fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
-        assert(range.min <= std::numeric_limits<irs::byte_type>::max());
-        assert(range.max <= std::numeric_limits<irs::byte_type>::max());
+        IRS_ASSERT(range.min <= std::numeric_limits<irs::byte_type>::max());
+        IRS_ASSERT(range.max <= std::numeric_limits<irs::byte_type>::max());
         range.max += decltype(range.max)(
           range.max < std::numeric_limits<irs::byte_type>::max());
 
@@ -89,8 +89,8 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
         fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
-        assert(range.min <= std::numeric_limits<uint32_t>::max());
-        assert(range.max <= std::numeric_limits<uint32_t>::max());
+        IRS_ASSERT(range.min <= std::numeric_limits<uint32_t>::max());
+        IRS_ASSERT(range.max <= std::numeric_limits<uint32_t>::max());
         range.max +=
           decltype(range.max)(range.max < std::numeric_limits<uint32_t>::max());
 
@@ -135,7 +135,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
       fst_(&fst),
       error_(test_props &&
              (fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES)) {
-    assert(!start_labels_.empty());
+    IRS_ASSERT(!start_labels_.empty());
 
     if (error_) {
       return;
@@ -163,10 +163,10 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
       for (; arc != arc_end && label != start_labels_.end(); ++arc) {
         const fsa::RangeLabel range{get_label(*arc)};
-        assert(range.min <= range.max);
+        IRS_ASSERT(range.min <= range.max);
 
         label = std::find(label, start_labels_.end(), range.min);
-        assert(label != start_labels_.end());
+        IRS_ASSERT(label != start_labels_.end());
 
         auto* label_transitions =
           state_transitions + std::distance(start_labels_.begin(), label);
@@ -197,11 +197,9 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     transitions_begin_ = transitions_.data();
   }
 
-  virtual TableMatcher* Copy(bool) const override {
-    return new TableMatcher(*this);
-  }
+  TableMatcher* Copy(bool) const override { return new TableMatcher(*this); }
 
-  virtual MatchType Type(bool test) const override {
+  MatchType Type(bool test) const override {
     if constexpr (MATCH_TYPE == MATCH_NONE) {
       return MATCH_TYPE;
     }
@@ -224,7 +222,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
   }
 
   StateId Peek(StateId s, Label label) noexcept {
-    assert(!error_);
+    IRS_ASSERT(!error_);
 
     size_t label_offset;
     if constexpr (ByteLabel &&
@@ -236,20 +234,20 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
                         : find_label_offset(label));
     }
 
-    assert(label_offset < num_labels_);
+    IRS_ASSERT(label_offset < num_labels_);
     return (transitions_begin_ + s * num_labels_)[label_offset];
   }
 
-  virtual void SetState(StateId s) noexcept final {
-    assert(!error_);
-    assert(s * num_labels_ < transitions_.size());
+  void SetState(StateId s) noexcept final {
+    IRS_ASSERT(!error_);
+    IRS_ASSERT(s * num_labels_ < transitions_.size());
     state_begin_ = transitions_begin_ + s * num_labels_;
     state_ = state_begin_;
     state_end_ = state_begin_ + num_labels_;
   }
 
-  virtual bool Find(Label label) noexcept override final {
-    assert(!error_);
+  bool Find(Label label) noexcept final {
+    IRS_ASSERT(!error_);
 
     size_t label_offset;
     if constexpr (ByteLabel &&
@@ -262,24 +260,24 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     }
 
     state_ = state_begin_ + label_offset;
-    assert(state_ < state_end_);
+    IRS_ASSERT(state_ < state_end_);
 
     arc_.nextstate = *state_;
     return arc_.nextstate != kNoStateId;
   }
 
-  virtual bool Done() const noexcept override final {
-    assert(!error_);
+  bool Done() const noexcept final {
+    IRS_ASSERT(!error_);
     return state_ == state_end_;
   }
 
-  virtual const Arc& Value() const noexcept override final {
-    assert(!error_);
+  const Arc& Value() const noexcept final {
+    IRS_ASSERT(!error_);
     return arc_;
   }
 
-  virtual void Next() noexcept override final {
-    assert(!error_);
+  void Next() noexcept final {
+    IRS_ASSERT(!error_);
 
     if (Done()) {
       return;
@@ -289,7 +287,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
     for (; !Done(); ++state_) {
       if (*state_ != kNoLabel) {
-        assert(state_ > state_begin_ && state_ < state_end_);
+        IRS_ASSERT(state_ > state_begin_ && state_ < state_end_);
         const auto label =
           start_labels_[size_t(std::distance(state_begin_, state_))];
         if constexpr (MATCH_TYPE == MATCH_INPUT) {
@@ -303,15 +301,11 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     }
   }
 
-  virtual Weight Final(StateId s) const override final {
-    return MatcherBase<Arc>::Final(s);
-  }
+  Weight Final(StateId s) const final { return MatcherBase<Arc>::Final(s); }
 
-  virtual ssize_t Priority(StateId s) override final {
-    return MatcherBase<Arc>::Priority(s);
-  }
+  ssize_t Priority(StateId s) final { return MatcherBase<Arc>::Priority(s); }
 
-  virtual const FST& GetFst() const noexcept override { return *fst_; }
+  const FST& GetFst() const noexcept override { return *fst_; }
 
   virtual std::uint64_t Properties(
     std::uint64_t inprops) const noexcept override {
@@ -334,8 +328,8 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     const auto it = std::lower_bound(
       start_labels_.rbegin(), start_labels_.rend(), label, std::greater<>());
 
-    assert(it != start_labels_.rend());  // we cover the whole range
-    assert(start_labels_.rbegin() <= it);
+    IRS_ASSERT(it != start_labels_.rend());  // we cover the whole range
+    IRS_ASSERT(start_labels_.rbegin() <= it);
     return size_t(std::distance(start_labels_.begin(), it.base())) - 1;
   }
 

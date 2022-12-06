@@ -41,7 +41,7 @@ bytes_view delta_compressor::compress(byte_type* src, size_t size,
   encode::delta::encode(begin, end);
 
   // ensure we have enough space in the worst case
-  assert(end >= begin);
+  IRS_ASSERT(end >= begin);
   buf.resize(size_t(std::distance(begin, end)) *
              bytes_io<uint64_t>::const_max_vsize);
 
@@ -50,7 +50,7 @@ bytes_view delta_compressor::compress(byte_type* src, size_t size,
     vwrite(out, zig_zag_encode64(int64_t(*begin)));
   }
 
-  assert(out >= buf.data());
+  IRS_ASSERT(out >= buf.data());
   return {buf.c_str(), size_t(out - buf.data())};
 }
 

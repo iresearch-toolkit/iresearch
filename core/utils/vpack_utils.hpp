@@ -50,7 +50,7 @@ inline std::string slice_to_string(
 // get string from slice
 template<typename T>
 T get_string(VPackSlice slice) {
-  assert(slice.isString());
+  IRS_ASSERT(slice.isString());
   VPackValueLength length;
   const char* ptr = slice.getString(length);
 

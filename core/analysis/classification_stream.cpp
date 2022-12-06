@@ -251,7 +251,7 @@ classification_stream::classification_stream(const Options& options,
     predictions_it_{predictions_.end()},
     threshold_{options.threshold},
     top_k_{options.top_k} {
-  assert(model_);
+  IRS_ASSERT(model_);
 }
 
 bool classification_stream::next() {

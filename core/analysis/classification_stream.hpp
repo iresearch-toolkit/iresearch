@@ -67,8 +67,8 @@ class classification_stream final : public analyzer, private util::noncopyable {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual bool next() override;
-  virtual bool reset(std::string_view data) override;
+  bool next() override;
+  bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

@@ -44,16 +44,14 @@ TEST(formats_tests, duplicate_register) {
       const override {
       return nullptr;
     }
-    virtual irs::field_writer::ptr get_field_writer(bool) const override {
+    irs::field_writer::ptr get_field_writer(bool) const override {
       return nullptr;
     }
-    virtual irs::field_reader::ptr get_field_reader() const override {
+    irs::field_reader::ptr get_field_reader() const override { return nullptr; }
+    irs::index_meta_writer::ptr get_index_meta_writer() const override {
       return nullptr;
     }
-    virtual irs::index_meta_writer::ptr get_index_meta_writer() const override {
-      return nullptr;
-    }
-    virtual irs::index_meta_reader::ptr get_index_meta_reader() const override {
+    irs::index_meta_reader::ptr get_index_meta_reader() const override {
       return nullptr;
     }
     virtual irs::segment_meta_writer::ptr get_segment_meta_writer()

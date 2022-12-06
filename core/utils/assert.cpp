@@ -34,7 +34,7 @@ static std::array<LogCallback, static_cast<std::size_t>(LogLevel::Count)>
 void LogMessage(LogLevel level, std::string_view file, std::size_t line,
                 std::string_view func, std::string_view condition) noexcept {
   if (const auto callback = sCallbacks[static_cast<std::size_t>(level)];
-      callback != nullptr) {
+      IRS_LIKELY(callback != nullptr)) {
     callback(file, line, func, condition);
   }
 }

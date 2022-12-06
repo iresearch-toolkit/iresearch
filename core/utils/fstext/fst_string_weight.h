@@ -298,7 +298,7 @@ inline StringLeftWeight<Label> Plus(const StringLeftWeight<Label>& lhs,
     std::swap(plhs, prhs);
   }
 
-  assert(prhs->Size() <= plhs->Size());
+  IRS_ASSERT(prhs->Size() <= plhs->Size());
 
   return Weight(prhs->begin(),
                 std::mismatch(prhs->begin(), prhs->end(), plhs->begin()).first);
@@ -345,7 +345,7 @@ inline StringLeftWeight<Label> DivideLeft(const StringLeftWeight<Label>& lhs,
     return Weight();
   }
 
-  assert(std::basic_string_view<Label>(lhs).starts_with(rhs));
+  IRS_ASSERT(std::basic_string_view<Label>(lhs).starts_with(rhs));
 
   return Weight(lhs.begin() + rhs.Size(), lhs.end());
 }
@@ -354,7 +354,7 @@ template<typename Label>
 inline StringLeftWeight<Label> Divide(const StringLeftWeight<Label>& lhs,
                                       const StringLeftWeight<Label>& rhs,
                                       DivideType typ) {
-  assert(DIVIDE_LEFT == typ);
+  IRS_ASSERT(DIVIDE_LEFT == typ);
   return DivideLeft(lhs, rhs);
 }
 
@@ -442,7 +442,7 @@ inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
     std::swap(plhs, prhs);
   }
 
-  assert(prhs->Size() <= plhs->Size());
+  IRS_ASSERT(prhs->Size() <= plhs->Size());
 
   return Weight(
     prhs->c_str(),
@@ -507,7 +507,7 @@ inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
     return Weight();
   }
 
-  assert(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
+  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
 
   return Weight(lhs.c_str() + rhs.Size(), lhs.Size() - rhs.Size());
 }
@@ -524,7 +524,7 @@ inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
     return Weight();
   }
 
-  assert(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
+  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
 
   return Weight(lhs.data() + rhs.Size(), lhs.size() - rhs.Size());
 }
@@ -541,7 +541,7 @@ inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
     return Weight();
   }
 
-  assert(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
+  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
 
   return Weight(lhs.c_str() + rhs.size(), lhs.Size() - rhs.size());
 }
@@ -549,7 +549,7 @@ inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
 inline StringLeftWeight<irs::byte_type> Divide(
   const StringLeftWeight<irs::byte_type>& lhs,
   const StringLeftWeight<irs::byte_type>& rhs, DivideType typ) {
-  assert(DIVIDE_LEFT == typ);
+  IRS_ASSERT(DIVIDE_LEFT == typ);
   return StringLeftWeight<irs::byte_type>(DivideLeft(lhs, rhs));
 }
 

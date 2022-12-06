@@ -84,27 +84,23 @@ class noop_directory : public directory {
     return INSTANCE;
   }
 
-  virtual directory_attributes& attributes() noexcept override {
-    return attrs_;
-  }
+  directory_attributes& attributes() noexcept override { return attrs_; }
 
-  virtual index_output::ptr create(std::string_view) noexcept override {
+  index_output::ptr create(std::string_view) noexcept override {
     return nullptr;
   }
 
-  virtual bool exists(bool&, std::string_view) const noexcept override {
+  bool exists(bool&, std::string_view) const noexcept override { return false; }
+
+  bool length(uint64_t&, std::string_view) const noexcept override {
     return false;
   }
 
-  virtual bool length(uint64_t&, std::string_view) const noexcept override {
-    return false;
-  }
-
-  virtual index_lock::ptr make_lock(std::string_view) noexcept override {
+  index_lock::ptr make_lock(std::string_view) noexcept override {
     return nullptr;
   }
 
-  virtual bool mtime(std::time_t&, std::string_view) const noexcept override {
+  bool mtime(std::time_t&, std::string_view) const noexcept override {
     return false;
   }
 
@@ -113,17 +109,15 @@ class noop_directory : public directory {
     return nullptr;
   }
 
-  virtual bool remove(std::string_view) noexcept override { return false; }
+  bool remove(std::string_view) noexcept override { return false; }
 
-  virtual bool rename(std::string_view, std::string_view) noexcept override {
+  bool rename(std::string_view, std::string_view) noexcept override {
     return false;
   }
 
-  virtual bool sync(std::string_view) noexcept override { return false; }
+  bool sync(std::string_view) noexcept override { return false; }
 
-  virtual bool visit(const directory::visitor_f&) const override {
-    return false;
-  }
+  bool visit(const directory::visitor_f&) const override { return false; }
 
  private:
   noop_directory() = default;
@@ -136,7 +130,7 @@ class progress_tracker {
   explicit progress_tracker(const merge_writer::flush_progress_t& progress,
                             size_t count) noexcept
     : progress_(&progress), count_(count) {
-    assert(progress);
+    IRS_ASSERT(progress);
   }
 
   bool operator()() {
@@ -167,14 +161,14 @@ class remapping_doc_iterator final : public doc_iterator {
   remapping_doc_iterator(doc_iterator::ptr&& it,
                          const doc_map_f& mapper) noexcept
     : it_{std::move(it)}, mapper_{&mapper}, src_{irs::get<document>(*it_)} {
-    assert(it_ && src_);
+    IRS_ASSERT(it_ && src_);
   }
 
   bool next() override;
 
-  virtual doc_id_t value() const noexcept override { return doc_.value; }
+  doc_id_t value() const noexcept override { return doc_.value; }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     irs::seek(*this, target);
     return value();
   }
@@ -235,8 +229,7 @@ class compound_doc_iterator : public doc_iterator {
 
   bool aborted() const noexcept { return !static_cast<bool>(progress_); }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (irs::type<irs::document>::id() == type) {
       return &doc_;
     }
@@ -246,14 +239,14 @@ class compound_doc_iterator : public doc_iterator {
              : nullptr;
   }
 
-  virtual bool next() override;
+  bool next() override;
 
-  virtual doc_id_t seek(doc_id_t target) override final {
+  doc_id_t seek(doc_id_t target) final {
     irs::seek(*this, target);
     return value();
   }
 
-  virtual doc_id_t value() const noexcept override final { return doc_.value; }
+  doc_id_t value() const noexcept final { return doc_.value; }
 
  private:
   friend class sorting_compound_doc_iterator;
@@ -329,14 +322,14 @@ class sorting_compound_doc_iterator final : public doc_iterator {
     return doc_it_->get_mutable(type);
   }
 
-  virtual bool next() override;
+  bool next() override;
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     irs::seek(*this, target);
     return value();
   }
 
-  virtual doc_id_t value() const noexcept override { return doc_it_->value(); }
+  doc_id_t value() const noexcept override { return doc_it_->value(); }
 
  private:
   class min_heap_context {
@@ -346,7 +339,7 @@ class sorting_compound_doc_iterator final : public doc_iterator {
 
     // advance
     bool operator()(const size_t i) const {
-      assert(i < itrs_->size());
+      IRS_ASSERT(i < itrs_->size());
       auto& doc_it = (*itrs_)[i];
       auto const& map = doc_it.second.get();
       while (doc_it.first->next()) {
@@ -364,7 +357,7 @@ class sorting_compound_doc_iterator final : public doc_iterator {
 
    private:
     doc_id_t remap(const size_t i) const {
-      assert(i < itrs_->size());
+      IRS_ASSERT(i < itrs_->size());
       auto& doc_it = (*itrs_)[i];
       return doc_it.second.get()(doc_it.first->value());
     }
@@ -441,7 +434,7 @@ class compound_column_iterator final {
 
   void add(const sub_reader& reader, const doc_map_f& doc_map) {
     auto it = reader.columns();
-    assert(it);
+    IRS_ASSERT(it);
 
     if (IRS_LIKELY(it)) {
       iterator_mask_.emplace_back(iterators_.size());
@@ -497,7 +490,7 @@ class compound_column_iterator final {
 
       const auto& value = it->value();
       const std::string_view key = value.name();
-      assert(!IsNull(key));
+      IRS_ASSERT(!IsNull(key));
 
       if (!iterator_mask_.empty() && current_key_ < key) {
         continue;  // empty field or value too large
@@ -510,7 +503,8 @@ class compound_column_iterator final {
         current_value_ = &value;
       }
 
-      assert(value.name() == current_value_->name());  // validated by caller
+      IRS_ASSERT(value.name() ==
+                 current_value_->name());  // validated by caller
       iterator_mask_.push_back(i);
     }
 
@@ -569,22 +563,22 @@ class compound_term_iterator final : public term_iterator {
 
   const field_meta& meta() const noexcept { return *meta_; }
   void add(const term_reader& reader, const doc_map_f& doc_map);
-  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept override {
     // no way to merge attributes for the same term spread over multiple
     // iterators would require API change for attributes
-    assert(false);
+    IRS_ASSERT(false);
     return nullptr;
   }
-  virtual bool next() override;
-  virtual doc_iterator::ptr postings(IndexFeatures features) const override;
-  virtual void read() override {
+  bool next() override;
+  doc_iterator::ptr postings(IndexFeatures features) const override;
+  void read() override {
     for (auto& itr_id : term_iterator_mask_) {
       if (term_iterators_[itr_id].first) {
         term_iterators_[itr_id].first->read();
       }
     }
   }
-  virtual bytes_view value() const override { return current_term_; }
+  bytes_view value() const override { return current_term_; }
 
  private:
   struct term_iterator_t {
@@ -617,7 +611,7 @@ class compound_term_iterator final : public term_iterator {
 void compound_term_iterator::add(const term_reader& reader,
                                  const doc_map_f& doc_id_map) {
   auto it = reader.iterator(SeekMode::NORMAL);
-  assert(it);
+  IRS_ASSERT(it);
 
   if (IRS_LIKELY(it)) {
     // mark as used to trigger next()
@@ -682,7 +676,7 @@ doc_iterator::ptr compound_term_iterator::postings(
       auto& term_itr = term_iterators_[itr_id];
 
       auto it = term_itr.first->postings(meta().index_features);
-      assert(it);
+      IRS_ASSERT(it);
 
       if (IRS_LIKELY(it)) {
         itrs.emplace_back(std::move(it), *term_itr.second);
@@ -736,20 +730,20 @@ class compound_field_iterator final : public basic_term_reader {
     return true;
   }
 
-  virtual const field_meta& meta() const noexcept override {
-    assert(current_meta_);
+  const field_meta& meta() const noexcept override {
+    IRS_ASSERT(current_meta_);
     return *current_meta_;
   }
 
-  virtual bytes_view(min)() const noexcept override { return min_; }
+  bytes_view(min)() const noexcept override { return min_; }
 
-  virtual bytes_view(max)() const noexcept override { return max_; }
+  bytes_view(max)() const noexcept override { return max_; }
 
-  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
-  virtual term_iterator::ptr iterator() const override;
+  term_iterator::ptr iterator() const override;
 
   bool aborted() const {
     return !static_cast<bool>(progress_) || term_itr_.aborted();
@@ -791,7 +785,7 @@ class compound_field_iterator final : public basic_term_reader {
 void compound_field_iterator::add(const sub_reader& reader,
                                   const doc_map_f& doc_id_map) {
   auto it = reader.fields();
-  assert(it);
+  IRS_ASSERT(it);
 
   if (IRS_LIKELY(it)) {
     field_iterator_mask_.emplace_back(
@@ -848,8 +842,8 @@ bool compound_field_iterator::next() {
     }
 
     // validated by caller
-    assert(is_subset_of(field_meta.features, meta().features));
-    assert(field_meta.index_features <= meta().index_features);
+    IRS_ASSERT(is_subset_of(field_meta.features, meta().features));
+    IRS_ASSERT(field_meta.index_features <= meta().index_features);
 
     field_iterator_mask_.emplace_back(
       term_iterator_t{i, &field_meta, field_terms});
@@ -1077,14 +1071,14 @@ class SortingCompoundDocIterator : util::noncopyable {
 
     // advance
     bool operator()(const size_t i) const {
-      assert(i < itrs_.size());
+      IRS_ASSERT(i < itrs_.size());
       return itrs_[i].it->next();
     }
 
     // compare
     bool operator()(const size_t lhs, const size_t rhs) const {
-      assert(lhs < itrs_.size());
-      assert(rhs < itrs_.size());
+      IRS_ASSERT(lhs < itrs_.size());
+      IRS_ASSERT(rhs < itrs_.size());
 
       const auto& [lhs_it, lhs_doc, lhs_pay] = itrs_[lhs];
       const auto& [rhs_it, rhs_doc, rhs_pay] = itrs_[rhs];
@@ -1118,8 +1112,8 @@ bool write_columns(columnstore& cs, Iterator& columns,
                    compound_column_iterator& column_itr,
                    const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
-  assert(cs.valid());
-  assert(progress);
+  IRS_ASSERT(cs.valid());
+  IRS_ASSERT(progress);
 
   auto add_iterators = [&column_itr](auto& itrs) {
     auto add_iterators = [&itrs](const sub_reader& /*segment*/,
@@ -1130,7 +1124,7 @@ bool write_columns(columnstore& cs, Iterator& columns,
       if (IRS_LIKELY(it && irs::get<document>(*it))) {
         itrs.emplace_back(std::move(it), doc_map);
       } else {
-        assert(false);
+        IRS_ASSERT(false);
         IR_FRMT_ERROR(
           "Got an invalid iterator during consolidationg of the columnstore, "
           "skipping it");
@@ -1176,7 +1170,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
                   compound_field_iterator& field_itr,
                   const merge_writer::flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
-  assert(cs.valid());
+  IRS_ASSERT(cs.valid());
 
   feature_map_t features;
   irs::type_info::type_id feature{};
@@ -1200,7 +1194,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
       // Tail columns can be removed if empty.
       if (reader) {
         auto it = reader->iterator(ColumnHint::kConsolidation);
-        assert(it);
+        IRS_ASSERT(it);
 
         if (IRS_LIKELY(it)) {
           hdrs.emplace_back(reader->payload());
@@ -1208,7 +1202,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
           if (IRS_LIKELY(irs::get<document>(*it))) {
             itrs.emplace_back(std::move(it), doc_map);
           } else {
-            assert(false);
+            IRS_ASSERT(false);
             IR_FRMT_ERROR(
               "Failed to get document attribute from the iterator, skipping "
               "it");
@@ -1315,8 +1309,8 @@ doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const sub_reader& reader,
   for (auto docs_itr = reader.docs_iterator(); docs_itr->next(); ++next_id) {
     auto src_doc_id = docs_itr->value();
 
-    assert(src_doc_id >= doc_limits::min());
-    assert(src_doc_id < reader.docs_count() + doc_limits::min());
+    IRS_ASSERT(src_doc_id >= doc_limits::min());
+    IRS_ASSERT(src_doc_id < reader.docs_count() + doc_limits::min());
     doc_id_map[src_doc_id] = next_id;  // set to next valid doc_id
   }
 
@@ -1332,7 +1326,7 @@ namespace iresearch {
 merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
   : reader{std::move(reader)},
     doc_map([](doc_id_t) noexcept { return doc_limits::eof(); }) {
-  assert(this->reader);
+  IRS_ASSERT(this->reader);
 }
 
 merge_writer::merge_writer() noexcept
@@ -1349,10 +1343,10 @@ bool merge_writer::flush(tracking_directory& dir,
                          index_meta::index_segment_t& segment,
                          const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
-  assert(progress);
-  assert(!comparator_);
-  assert(column_info_ && *column_info_);
-  assert(feature_info_ && *feature_info_);
+  IRS_ASSERT(progress);
+  IRS_ASSERT(!comparator_);
+  IRS_ASSERT(column_info_ && *column_info_);
+  IRS_ASSERT(feature_info_ && *feature_info_);
 
   const size_t size = readers_.size();
 
@@ -1369,7 +1363,7 @@ bool merge_writer::flush(tracking_directory& dir,
   // collect field meta and field term data
   for (auto& reader_ctx : readers_) {
     // ensured by merge_writer::add(...)
-    assert(reader_ctx.reader);
+    IRS_ASSERT(reader_ctx.reader);
 
     auto& reader = *reader_ctx.reader;
     const auto docs_count = reader.docs_count();
@@ -1459,10 +1453,10 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
                                 index_meta::index_segment_t& segment,
                                 const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
-  assert(progress);
-  assert(comparator_);
-  assert(column_info_ && *column_info_);
-  assert(feature_info_ && *feature_info_);
+  IRS_ASSERT(progress);
+  IRS_ASSERT(comparator_);
+  IRS_ASSERT(column_info_ && *column_info_);
+  IRS_ASSERT(feature_info_ && *feature_info_);
 
   const size_t size = readers_.size();
 
@@ -1496,7 +1490,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   // Init doc map for each reader
   for (auto& reader_ctx : readers_) {
     // ensured by merge_writer::add(...)
-    assert(reader_ctx.reader);
+    IRS_ASSERT(reader_ctx.reader);
 
     auto& reader = *reader_ctx.reader;
 
@@ -1567,10 +1561,10 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
 
   for (doc_id_t next_id = doc_limits::min(); columns_it.next();) {
     const auto [index, it] = columns_it.value();
-    assert(it);
+    IRS_ASSERT(it);
 
     if (IRS_UNLIKELY(!it->valid())) {
-      assert(false);
+      IRS_ASSERT(false);
       IR_FRMT_ERROR(
         "Got an invalid iterator during consolidationg of sorted index, "
         "skipping it");
@@ -1603,8 +1597,8 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   // ensure doc ids for each segment are sorted
   for (auto& reader : readers_) {
     auto& doc_map = reader.doc_id_map;
-    assert(doc_map.size() >= doc_limits::min());
-    assert(std::is_sorted(
+    IRS_ASSERT(doc_map.size() >= doc_limits::min());
+    IRS_ASSERT(std::is_sorted(
       boost::make_filter_iterator(ne_eof(), doc_map.begin(), doc_map.end()),
       boost::make_filter_iterator(ne_eof(), doc_map.end(), doc_map.end())));
     UNUSED(doc_map);
@@ -1660,7 +1654,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
 bool merge_writer::flush(index_meta::index_segment_t& segment,
                          const flush_progress_t& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
-  assert(segment.meta.codec);  // must be set outside
+  IRS_ASSERT(segment.meta.codec);  // must be set outside
 
   bool result = false;  // overall flush result
 

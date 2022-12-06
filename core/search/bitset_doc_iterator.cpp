@@ -65,7 +65,7 @@ bool bitset_doc_iterator::next() noexcept {
 
   // FIXME remove conversion
   const doc_id_t delta = doc_id_t(std::countr_zero(word_));
-  assert(delta < bits_required<word_t>());
+  IRS_ASSERT(delta < bits_required<word_t>());
 
   word_ = (word_ >> delta) >> 1;
   doc_.value += 1 + delta;

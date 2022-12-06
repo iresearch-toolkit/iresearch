@@ -22,12 +22,12 @@
 
 #pragma once
 
-#include <cassert>
 #include <cstring>
 #include <string>
 #include <string_view>
 
 #include "shared.hpp"
+#include "utils/assert.hpp"
 
 // MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
 // MacOS requires this definition to be before first usage (i.e. in bytes_view)

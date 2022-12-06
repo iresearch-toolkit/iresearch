@@ -76,7 +76,7 @@ class array
   }
 
   constexpr reference operator[](size_t i) noexcept {
-    assert(i < Size);
+    IRS_ASSERT(i < Size);
     return *(begin() + i);
   }
 
@@ -195,7 +195,7 @@ class bucket_allocator : private util::noncopyable {
   explicit bucket_allocator(size_t pool_size) : pools_(pool_size) {}
 
   value_type allocate(const bucket_size_t& bucket) {
-    assert(bucket.index < pools_.size());
+    IRS_ASSERT(bucket.index < pools_.size());
     return pools_[bucket.index].emplace(bucket.size);
   }
 
@@ -329,8 +329,9 @@ class raw_block_vector : public raw_block_vector_base<Allocator> {
     }
 
     // non-precomputed buckets, offset is the sum of previous buckets
-    assert(!base_t::buffers_
-              .empty());  // otherwise do not know what size buckets to create
+    IRS_ASSERT(
+      !base_t::buffers_
+         .empty());  // otherwise do not know what size buckets to create
     const auto& bucket =
       base_t::buffers_.back();  // most of the meta from last computed bucket
     return base_t::push_buffer(bucket.offset + bucket.size, META.back());

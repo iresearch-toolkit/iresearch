@@ -95,10 +95,10 @@ TEST(directory_reader_test, open_newest_index) {
    public:
     mutable test_index_meta_reader index_meta_reader;
     test_format(const irs::type_info& type) : irs::format(type) {}
-    virtual irs::index_meta_writer::ptr get_index_meta_writer() const override {
+    irs::index_meta_writer::ptr get_index_meta_writer() const override {
       return nullptr;
     }
-    virtual irs::index_meta_reader::ptr get_index_meta_reader() const override {
+    irs::index_meta_reader::ptr get_index_meta_reader() const override {
       return irs::memory::to_managed<irs::index_meta_reader, false>(
         &index_meta_reader);
     }
@@ -118,12 +118,10 @@ TEST(directory_reader_test, open_newest_index) {
       const override {
       return nullptr;
     }
-    virtual irs::field_writer::ptr get_field_writer(bool) const override {
+    irs::field_writer::ptr get_field_writer(bool) const override {
       return nullptr;
     }
-    virtual irs::field_reader::ptr get_field_reader() const override {
-      return nullptr;
-    }
+    irs::field_reader::ptr get_field_reader() const override { return nullptr; }
     virtual irs::columnstore_writer::ptr get_columnstore_writer(
       bool) const override {
       return nullptr;

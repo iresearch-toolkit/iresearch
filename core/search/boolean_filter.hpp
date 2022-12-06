@@ -56,11 +56,11 @@ class boolean_filter : public filter, public AllDocsProvider {
   }
 
   filter& add(filter::ptr&& filter) {
-    assert(filter);
+    IRS_ASSERT(filter);
     return *filters_.emplace_back(std::move(filter));
   }
 
-  virtual size_t hash() const noexcept override;
+  size_t hash() const noexcept override;
 
   void clear() { return filters_.clear(); }
   bool empty() const { return filters_.empty(); }
@@ -72,7 +72,7 @@ class boolean_filter : public filter, public AllDocsProvider {
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
-  virtual bool equals(const filter& rhs) const noexcept override;
+  bool equals(const filter& rhs) const noexcept override;
 
   virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
@@ -164,10 +164,10 @@ class Not : public filter, public AllDocsProvider {
     const index_reader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const override;
 
-  virtual size_t hash() const noexcept override;
+  size_t hash() const noexcept override;
 
  protected:
-  virtual bool equals(const irs::filter& rhs) const noexcept override;
+  bool equals(const irs::filter& rhs) const noexcept override;
 
  private:
   filter::ptr filter_;

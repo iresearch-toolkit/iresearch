@@ -51,7 +51,7 @@ irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
                                         irs::sort::MergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
-  assert(std::distance(begin, end) >= 0);
+  IRS_ASSERT(std::distance(begin, end) >= 0);
   const size_t size = size_t(std::distance(begin, end));
 
   // check the size before the execution
@@ -90,7 +90,7 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
                                         irs::sort::MergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
-  assert(std::distance(begin, end) >= 0);
+  IRS_ASSERT(std::distance(begin, end) >= 0);
   const size_t size = std::distance(begin, end);
 
   // check size before the execution
@@ -142,7 +142,7 @@ class BooleanQuery : public filter::prepared {
       return doc_iterator::empty();
     }
 
-    assert(excl_);
+    IRS_ASSERT(excl_);
     const auto excl_begin = this->excl_begin();
     const auto end = this->end();
 
@@ -255,12 +255,12 @@ class MinMatchQuery final : public BooleanQuery {
  public:
   explicit MinMatchQuery(size_t min_match_count) noexcept
     : min_match_count_{min_match_count} {
-    assert(min_match_count_ > 1);
+    IRS_ASSERT(min_match_count_ > 1);
   }
 
   virtual doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                                     iterator end) const override {
-    assert(std::distance(begin, end) >= 0);
+    IRS_ASSERT(std::distance(begin, end) >= 0);
     const size_t size = size_t(std::distance(begin, end));
 
     // 1 <= min_match_count
@@ -337,7 +337,7 @@ filter::prepared::ptr boolean_filter::prepare(
 
   if (size == 1) {
     auto* filter = filters_.front().get();
-    assert(filter);
+    IRS_ASSERT(filter);
 
     // FIXME(gnusi): let Not handle everything?
     if (filter->type() != irs::type<irs::Not>::id()) {
@@ -542,7 +542,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
       // if we have at least one all in include group - all other filters are
       // not necessary in case there is no scoring and 'all' count satisfies
       // min_match
-      assert(incl_all != nullptr);
+      IRS_ASSERT(incl_all != nullptr);
       incl.resize(1);
       incl.front() = incl_all;
       optimized_match_count = all_count - 1;
@@ -578,8 +578,8 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
     return incl.front()->prepare(rdr, ord, boost, ctx);
   }
 
-  assert(adjusted_min_match_count > 0 &&
-         adjusted_min_match_count <= incl.size());
+  IRS_ASSERT(adjusted_min_match_count > 0 &&
+             adjusted_min_match_count <= incl.size());
 
   memory::managed_ptr<BooleanQuery> q;
   if (adjusted_min_match_count == incl.size()) {

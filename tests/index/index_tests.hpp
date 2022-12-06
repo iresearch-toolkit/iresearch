@@ -51,7 +51,7 @@ class directory_mock : public irs::directory {
 
   using directory::attributes;
 
-  virtual irs::directory_attributes& attributes() noexcept override {
+  irs::directory_attributes& attributes() noexcept override {
     return impl_.attributes();
   }
 
@@ -85,7 +85,7 @@ class directory_mock : public irs::directory {
     return impl_.open(name, advice);
   }
 
-  virtual bool remove(std::string_view name) noexcept override {
+  bool remove(std::string_view name) noexcept override {
     return impl_.remove(name);
   }
 
@@ -94,11 +94,11 @@ class directory_mock : public irs::directory {
     return impl_.rename(src, dst);
   }
 
-  virtual bool sync(std::string_view name) noexcept override {
+  bool sync(std::string_view name) noexcept override {
     return impl_.sync(name);
   }
 
-  virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+  bool visit(const irs::directory::visitor_f& visitor) const override {
     return impl_.visit(visitor);
   }
 
@@ -218,7 +218,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
       static_cast<irs::index_reader::ptr>(open_reader()), index(), skip);
   }
 
-  virtual void SetUp() override {
+  void SetUp() override {
     test_base::SetUp();
 
     // set directory
@@ -230,7 +230,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     ASSERT_NE(nullptr, codec_);
   }
 
-  virtual void TearDown() override {
+  void TearDown() override {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();

@@ -37,10 +37,10 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
 
   bitset_doc_iterator(const word_t* begin, const word_t* end) noexcept;
 
-  virtual bool next() noexcept override final;
-  virtual doc_id_t seek(doc_id_t target) noexcept override final;
-  virtual doc_id_t value() const noexcept override final { return doc_.value; }
-  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override;
+  bool next() noexcept final;
+  doc_id_t seek(doc_id_t target) noexcept final;
+  doc_id_t value() const noexcept final { return doc_.value; }
+  attribute* get_mutable(irs::type_info::type_id id) noexcept override;
 
  protected:
   explicit bitset_doc_iterator(cost::cost_t cost) noexcept
@@ -59,7 +59,7 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
     word_ = 0;
     base_ =
       doc_limits::invalid() - bits_required<word_t>();  // before the first word
-    assert(begin_ <= end_);
+    IRS_ASSERT(begin_ <= end_);
   }
 
   cost cost_;

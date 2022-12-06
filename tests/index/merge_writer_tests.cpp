@@ -82,11 +82,11 @@ class test_feature_writer final : public irs::feature_writer {
     writer(doc).write_int(stats.len + value_);
   }
 
-  virtual void write(irs::data_output& out, irs::bytes_view payload) final {
+  void write(irs::data_output& out, irs::bytes_view payload) final {
     out.write_bytes(payload.data(), payload.size());
   }
 
-  virtual void finish(irs::bstring& out) final {
+  void finish(irs::bstring& out) final {
     EXPECT_TRUE(out.empty());
     out.resize(sizeof(value_));
     auto* p = out.data();

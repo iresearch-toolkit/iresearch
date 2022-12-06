@@ -76,11 +76,11 @@ TEST_F(analyzer_test, duplicate_register) {
     static bool normalize(std::string_view, std::string&) { return true; }
     dummy_analyzer()
       : irs::analysis::analyzer(irs::type<dummy_analyzer>::get()) {}
-    virtual irs::attribute* get_mutable(irs::type_info::type_id) override {
+    irs::attribute* get_mutable(irs::type_info::type_id) override {
       return nullptr;
     }
-    virtual bool next() override { return false; }
-    virtual bool reset(std::string_view) override { return false; }
+    bool next() override { return false; }
+    bool reset(std::string_view) override { return false; }
   };
 
   static bool initial_expected = true;

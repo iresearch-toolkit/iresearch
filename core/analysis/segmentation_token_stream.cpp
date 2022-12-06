@@ -287,7 +287,7 @@ bool accept_token(Iterator begin, Iterator end, word_break_t wb) {
     case word_break_t::ALPHA:
       return std::find_if(begin, end, utf8_utils::char_is_alphanumeric) != end;
     default:
-      assert(false);
+      IRS_ASSERT(false);
       return false;
   }
 }
@@ -349,7 +349,7 @@ bool segmentation_token_stream::next() {
     }
 
     auto& offset = std::get<irs::offset>(attrs_);
-    assert(offset.end + length <= std::numeric_limits<uint32_t>::max());
+    IRS_ASSERT(offset.end + length <= std::numeric_limits<uint32_t>::max());
 
     offset.start = offset.end;
     offset.end += static_cast<uint32_t>(length);
@@ -362,7 +362,7 @@ bool segmentation_token_stream::next() {
     switch (auto& term = std::get<term_attribute>(attrs_);
             options_.case_convert) {
       case options_t::case_convert_t::NONE:
-        assert(length);
+        IRS_ASSERT(length);
         // on *nix base returns pointer on msvc it return iterator
         term.value = {reinterpret_cast<const byte_type*>(&(*begin.base())),
                       length};

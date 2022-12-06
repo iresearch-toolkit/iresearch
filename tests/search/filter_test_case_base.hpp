@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FILTER_TEST_CASE_BASE
-#define IRESEARCH_FILTER_TEST_CASE_BASE
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "index/index_tests.hpp"
@@ -54,7 +53,7 @@ struct boost : public irs::sort {
    public:
     prepared() = default;
 
-    virtual irs::IndexFeatures features() const noexcept override {
+    irs::IndexFeatures features() const noexcept override {
       return irs::IndexFeatures::NONE;
     }
 
@@ -96,17 +95,17 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void reset() override {
+      void reset() override {
         if (sort_.field_reset_) {
           sort_.field_reset_();
         }
       }
 
-      virtual void collect(irs::bytes_view in) override {
+      void collect(irs::bytes_view in) override {
         // NOOP
       }
 
-      virtual void write(irs::data_output& out) const override {
+      void write(irs::data_output& out) const override {
         // NOOP
       }
 
@@ -126,17 +125,17 @@ struct custom_sort : public irs::sort {
         }
       }
 
-      virtual void reset() override {
+      void reset() override {
         if (sort_.term_reset_) {
           sort_.term_reset_();
         }
       }
 
-      virtual void collect(irs::bytes_view in) override {
+      void collect(irs::bytes_view in) override {
         // NOOP
       }
 
-      virtual void write(irs::data_output& out) const override {
+      void write(irs::data_output& out) const override {
         // NOOP
       }
 
@@ -173,7 +172,7 @@ struct custom_sort : public irs::sort {
       }
     }
 
-    virtual irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 
@@ -270,13 +269,13 @@ struct frequency_sort : public irs::sort {
         docs_count += meta_attr->docs_count;
       }
 
-      virtual void reset() noexcept override { docs_count = 0; }
+      void reset() noexcept override { docs_count = 0; }
 
-      virtual void collect(irs::bytes_view in) override {
+      void collect(irs::bytes_view in) override {
         // NOOP
       }
 
-      virtual void write(irs::data_output& out) const override {
+      void write(irs::data_output& out) const override {
         // NOOP
       }
     };
@@ -303,7 +302,7 @@ struct frequency_sort : public irs::sort {
       }
     }
 
-    virtual irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 
@@ -319,19 +318,19 @@ struct frequency_sort : public irs::sort {
       auto* doc = irs::get<irs::document>(doc_attrs);
       auto& stats = stats_cast(stats_buf);
       const irs::doc_id_t* docs_count = &stats.count;
-      return {std::make_unique<frequency_sort::prepared::scorer>(
-                docs_count, doc),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                const auto& state = *reinterpret_cast<scorer*>(ctx);
+      return {
+        std::make_unique<frequency_sort::prepared::scorer>(docs_count, doc),
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          const auto& state = *reinterpret_cast<scorer*>(ctx);
 
-                // docs_count may be nullptr if no collector called,
-                // e.g. by range_query for bitset_doc_iterator
-                if (state.docs_count) {
-                  *res = 1.f / (*state.docs_count);
-                } else {
-                  *res = std::numeric_limits<irs::score_t>::infinity();
-                }
-              }};
+          // docs_count may be nullptr if no collector called,
+          // e.g. by range_query for bitset_doc_iterator
+          if (state.docs_count) {
+            *res = 1.f / (*state.docs_count);
+          } else {
+            *res = std::numeric_limits<irs::score_t>::infinity();
+          }
+        }};
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector()
@@ -462,7 +461,7 @@ class empty_filter_visitor : public irs::filter_visitor {
     ++prepare_calls_counter_;
   }
 
-  virtual void visit(irs::score_t boost) noexcept override {
+  void visit(irs::score_t boost) noexcept override {
     ASSERT_NE(nullptr, it_);
     terms_.emplace_back(it_->value(), boost);
     ++visit_calls_counter_;
@@ -509,8 +508,6 @@ class empty_filter_visitor : public irs::filter_visitor {
   std::vector<std::pair<irs::bstring, irs::score_t>> terms_;
   size_t prepare_calls_counter_ = 0;
   size_t visit_calls_counter_ = 0;
-};  // empty_filter_visitor
+};
 
 }  // namespace tests
-
-#endif  // IRESEARCH_FILTER_TEST_CASE_BASE

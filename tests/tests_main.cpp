@@ -362,11 +362,15 @@ void test_base::SetUp() {
   irs::file_utils::mkdir(test_dir_.c_str(), false);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
+static void AssertCallback(std::string_view file, std::size_t line,
+                           std::string_view function,
+                           std::string_view condition) noexcept {
+  FAIL() << file << ":" << line << ": " << function << ": Condition '"
+         << condition << "' is true.";
+}
 
 int main(int argc, char* argv[]) {
+  irs::SetCallback(irs::LogLevel::Assert, AssertCallback);
   install_stack_trace_handler();
 
   const int code = test_env::initialize(argc, argv);

@@ -33,8 +33,8 @@ namespace iresearch {
 std::pair<doc_map, field_id> sorted_column::flush(
   columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
   doc_id_t max, const comparer& less) {
-  assert(index_.size() <= max);
-  assert(index_.empty() || index_.back().first <= max);
+  IRS_ASSERT(index_.size() <= max);
+  IRS_ASSERT(index_.empty() || index_.back().first <= max);
 
   // temporarily push sentinel
   index_.emplace_back(doc_limits::eof(), data_buf_.size());
@@ -122,7 +122,7 @@ void sorted_column::flush_already_sorted(
 bool sorted_column::flush_dense(
   const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
   flush_buffer_t& buffer) {
-  assert(!docmap.empty());
+  IRS_ASSERT(!docmap.empty());
 
   const size_t total = docmap.size() - 1;  // -1 for first element
   const size_t size = index_.size() - 1;   // -1 for sentinel
@@ -154,7 +154,7 @@ bool sorted_column::flush_dense(
 void sorted_column::flush_sparse(
   const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
   flush_buffer_t& buffer) {
-  assert(!docmap.empty());
+  IRS_ASSERT(!docmap.empty());
 
   const size_t size = index_.size() - 1;  // -1 for sentinel
 
@@ -178,7 +178,7 @@ void sorted_column::flush_sparse(
 field_id sorted_column::flush(columnstore_writer& writer,
                               columnstore_writer::column_finalizer_f finalizer,
                               const doc_map& docmap, flush_buffer_t& buffer) {
-  assert(docmap.size() < irs::doc_limits::eof());
+  IRS_ASSERT(docmap.size() < irs::doc_limits::eof());
 
   if (index_.empty()) {
     return field_limits::invalid();
