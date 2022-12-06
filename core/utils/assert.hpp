@@ -34,7 +34,7 @@ enum class LogLevel : unsigned char {
   Count = 1,
 };
 
-#ifdef IRESEARCH_ASSERT
+#ifdef IRESEARCH_DEBUG
 namespace detail {
 
 void LogMessage(LogLevel level, std::string_view file, std::size_t line,
@@ -70,7 +70,7 @@ void SetCallback(LogLevel level, LogCallback callback) noexcept;
   } while (false)
 #endif
 
-#ifdef IRESEARCH_ASSERT
+#ifdef IRESEARCH_DEBUG
 #define IRS_ASSERT(cond) IRS_LOG_MESSAGE(::iresearch::LogLevel::Assert, !(cond))
 #else
 #define IRS_ASSERT(cond) IRS_STUB1(!(cond))

@@ -189,7 +189,7 @@ automaton from_wildcard(bytes_view expr) {
     fst::Concat(*begin, &nfa);
   }
 
-#if defined(IRESEARCH_DEBUG) && defined(IRESEARCH_ASSERT)
+#ifdef IRESEARCH_DEBUG
   // ensure nfa is sorted
   static constexpr auto EXPECTED_NFA_PROPERTIES =
     fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
@@ -207,7 +207,7 @@ automaton from_wildcard(bytes_view expr) {
     return {};
   }
 
-#if defined(IRESEARCH_DEBUG) && defined(IRESEARCH_ASSERT)
+#ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_DFA_PROPERTIES =
     fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;

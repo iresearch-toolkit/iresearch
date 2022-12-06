@@ -38,12 +38,6 @@ target_include_directories(iresearch-microbench
   PRIVATE ${PROJECT_BINARY_DIR}/core
   )
 
-set_target_properties(iresearch-microbench
-  PROPERTIES
-  OUTPUT_NAME iresearch-microbench
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
 target_link_libraries(iresearch-microbench
   iresearch-analyzer-nearest-neighbors-static
   iresearch-static

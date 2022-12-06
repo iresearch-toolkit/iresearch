@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ASSERT_FORMAT_H
-#define IRESEARCH_ASSERT_FORMAT_H
+#pragma once
 
 #include "doc_generator.hpp"
 #include "formats/formats.hpp"
@@ -269,5 +268,3 @@ void assert_index(const irs::directory& dir, irs::format::ptr codec,
                   irs::automaton_table_matcher* matcher = nullptr);
 
 }  // namespace tests
-
-#endif

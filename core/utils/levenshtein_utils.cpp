@@ -681,7 +681,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
     }
   }
 
-#if defined(IRESEARCH_DEBUG) && defined(IRESEARCH_ASSERT)
+#ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
   static constexpr auto EXPECTED_PROPERTIES =
     fst::kIDeterministic | fst::kILabelSorted | fst::kOLabelSorted |

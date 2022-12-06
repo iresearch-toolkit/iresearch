@@ -91,10 +91,14 @@ option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_MICROBENCH "Build micro-benchmark project" OFF)
 option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
-option(ENABLE_IRS_ASSERT "Enable IRS_ASSERT" OFF)
+option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 
-if (ENABLE_IRS_ASSERT)
-  add_definitions(-DIRESEARCH_ASSERT)
+if (CMAKE_BUILD_TYPE MATCHES "Debug|Coverage")
+  set(IRESEARCH_DEBUG ON)
+endif ()
+
+if (IRESEARCH_DEBUG)
+  add_definitions(-DIRESEARCH_DEBUG)
 endif ()
 
 add_option_gprof(FALSE)
@@ -331,12 +335,6 @@ if (USE_PVS_STUDIO)
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
-  set_target_properties(
-    iresearch-pvs-check
-    PROPERTIES
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
   pvs_studio_add_target(
     TARGET iresearch-pvs-check-html ALL
     FORMAT fullhtml
@@ -346,12 +344,6 @@ if (USE_PVS_STUDIO)
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
   )
 
-  set_target_properties(
-    iresearch-pvs-check-html
-    PROPERTIES
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
   pvs_studio_add_target(
     TARGET iresearch-pvs-check-xml ALL
     FORMAT xml
@@ -359,12 +351,6 @@ if (USE_PVS_STUDIO)
     MODE GA:1,2 OP
     LOG iresearch-xml.err
     CONFIG "${CMAKE_SOURCE_DIR}/PVSIResearch.cfg"
-  )
-
-  set_target_properties(
-    iresearch-pvs-check-xml
-    PROPERTIES
-    COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 endif ()
 
