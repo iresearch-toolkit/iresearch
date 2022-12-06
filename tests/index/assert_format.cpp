@@ -486,14 +486,14 @@ class doc_iterator : public irs::doc_iterator {
 
     void clear() {
       next_ = owner_.prev_->positions().begin();
-      value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
+      value_ = irs::pos_limits::invalid();
       offs_.clear();
       pay_.value = irs::bytes_view{};
     }
 
     bool next() override {
       if (next_ == owner_.prev_->positions().end()) {
-        value_ = irs::type_limits<irs::type_t::pos_t>::eof();
+        value_ = irs::pos_limits::eof();
         return false;
       }
 

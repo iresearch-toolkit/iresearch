@@ -151,8 +151,7 @@ TEST(index_meta_tests, ctor) {
   EXPECT_EQ(0, meta.counter());
   EXPECT_EQ(0, meta.size());
   EXPECT_TRUE(irs::IsNull(meta.payload()));
-  EXPECT_EQ(irs::type_limits<type_t::index_gen_t>::invalid(),
-            meta.generation());
+  EXPECT_EQ(irs::index_gen_limits::invalid(), meta.generation());
 }
 
 TEST(index_meta_tests, last_generation) {

@@ -112,8 +112,8 @@ bool segment_meta::operator!=(const segment_meta& other) const noexcept {
  * ------------------------------------------------------------------*/
 
 index_meta::index_meta()
-  : gen_(type_limits<type_t::index_gen_t>::invalid()),
-    last_gen_(type_limits<type_t::index_gen_t>::invalid()),
+  : gen_(index_gen_limits::invalid()),
+    last_gen_(index_gen_limits::invalid()),
     seg_counter_(0) {}
 index_meta::index_meta(const index_meta& rhs)
   : gen_(rhs.gen_),
@@ -166,7 +166,7 @@ bool index_meta::operator==(const index_meta& other) const noexcept {
 }
 
 uint64_t index_meta::next_generation() const noexcept {
-  return type_limits<type_t::index_gen_t>::valid(gen_) ? (gen_ + 1) : 1;
+  return index_gen_limits::valid(gen_) ? (gen_ + 1) : 1;
 }
 
 /* -------------------------------------------------------------------

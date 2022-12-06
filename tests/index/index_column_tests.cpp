@@ -227,7 +227,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -316,7 +316,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -389,7 +389,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -478,7 +478,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -531,7 +531,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -584,7 +584,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -639,7 +639,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -694,7 +694,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -725,7 +725,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -755,7 +755,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -782,7 +782,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -861,7 +861,7 @@ TEST_P(index_column_test_case,
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -909,7 +909,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -959,7 +959,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -1009,7 +1009,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -1089,7 +1089,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -1193,7 +1193,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -1226,7 +1226,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -1265,12 +1265,12 @@ TEST_P(index_column_test_case,
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(irs::bytes_view{},
@@ -1309,7 +1309,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -1349,12 +1349,12 @@ TEST_P(index_column_test_case,
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(irs::bytes_view{},
@@ -1377,7 +1377,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -1416,12 +1416,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
         ASSERT_EQ(irs::bytes_view{},
@@ -1460,7 +1460,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -1499,12 +1499,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; expected_doc <= MAX_DOCS + 1;) {
         if (expected_doc == 1 + BLOCK_SIZE) {
           ASSERT_EQ(expected_doc + 1, it->seek(expected_doc));
@@ -1536,11 +1536,11 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t docs_count = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -1573,11 +1573,11 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t docs_count = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
@@ -1610,7 +1610,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       ASSERT_EQ(MAX_DOCS + 1, it->seek(MAX_DOCS + 1));
@@ -1629,7 +1629,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
@@ -1654,7 +1654,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       it->seek(MAX_DOCS + 2);
@@ -1676,7 +1676,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc = BLOCK_SIZE + 2;
@@ -1709,11 +1709,11 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t docs_count = 0;
 
       for (;;) {
@@ -1769,7 +1769,7 @@ TEST_P(index_column_test_case,
       const size_t steps_forward = 5;
 
       const irs::doc_id_t min_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_doc = MAX_DOCS + 1;
       size_t docs_count = 0;
 
@@ -1781,7 +1781,7 @@ TEST_P(index_column_test_case,
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_TRUE(payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
 
         ++docs_count;
@@ -1819,7 +1819,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       ASSERT_EQ(min_doc, it->seek(expected_doc));
@@ -1849,7 +1849,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc = MAX_DOCS;
@@ -1873,7 +1873,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -1911,12 +1911,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         if (docs_count == BLOCK_SIZE) {
           ++expected_doc;  // gap
@@ -2019,7 +2019,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -2060,7 +2060,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -2107,13 +2107,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -2162,7 +2162,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -2209,13 +2209,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -2248,7 +2248,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -2295,13 +2295,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -2350,7 +2350,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -2397,13 +2397,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; expected_doc <= MAX_DOCS + 1;) {
         if (expected_doc == BLOCK_SIZE + 1) {
@@ -2452,13 +2452,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -2513,13 +2513,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
@@ -2574,7 +2574,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -2606,7 +2606,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -2650,7 +2650,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -2677,13 +2677,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       for (;;) {
@@ -2760,7 +2760,7 @@ TEST_P(index_column_test_case,
       const size_t steps_forward = 5;
 
       const irs::doc_id_t min_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_doc = MAX_DOCS + 1;
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
@@ -2773,7 +2773,7 @@ TEST_P(index_column_test_case,
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -2831,7 +2831,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -2881,7 +2881,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -2930,7 +2930,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -2977,13 +2977,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -3117,7 +3117,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -3158,7 +3158,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -3204,13 +3204,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         const auto actual_data = payload->value;
 
@@ -3327,7 +3327,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t count = 0;
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -3365,7 +3365,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t count = 0;
       auto visitor = [&count, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -3409,13 +3409,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         const auto actual_data = payload->value;
 
@@ -3525,7 +3525,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -3561,7 +3561,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -3602,13 +3602,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -3653,7 +3653,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -3695,13 +3695,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -3730,7 +3730,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -3772,13 +3772,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -3823,7 +3823,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -3865,12 +3865,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; expected_doc <= 1 + MAX_DOCS;) {
         if (expected_doc == 1025) {
@@ -3912,12 +3912,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -3961,12 +3961,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
@@ -4009,7 +4009,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4036,7 +4036,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4072,7 +4072,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4098,7 +4098,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_TRUE(payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc = BLOCK_SIZE + 2;
@@ -4137,12 +4137,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       for (;;) {
@@ -4209,7 +4209,7 @@ TEST_P(index_column_test_case,
       const size_t steps_forward = 5;
 
       const irs::doc_id_t min_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
@@ -4222,7 +4222,7 @@ TEST_P(index_column_test_case,
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4283,7 +4283,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4323,7 +4323,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4369,7 +4369,7 @@ TEST_P(index_column_test_case,
     {
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&count, &expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -4411,13 +4411,13 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       size_t count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -4567,7 +4567,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4639,7 +4639,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4695,7 +4695,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4767,7 +4767,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4804,7 +4804,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4848,7 +4848,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4890,7 +4890,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4926,7 +4926,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4961,7 +4961,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -4982,7 +4982,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5003,7 +5003,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5030,7 +5030,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5088,7 +5088,7 @@ TEST_P(index_column_test_case,
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5115,7 +5115,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5145,7 +5145,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5176,7 +5176,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5240,7 +5240,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -5325,7 +5325,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -5353,7 +5353,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -5386,12 +5386,12 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
         ++expected_doc;
@@ -5423,7 +5423,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -5456,12 +5456,12 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
         ++expected_doc;
@@ -5477,7 +5477,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -5510,12 +5510,12 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
         ++expected_doc;
@@ -5547,7 +5547,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -5580,12 +5580,12 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
         ++expected_doc;
@@ -5610,11 +5610,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t docs_count = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -5641,11 +5641,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t docs_count = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
@@ -5672,7 +5672,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       ASSERT_EQ(MAX_DOCS, it->seek(MAX_DOCS));
@@ -5690,7 +5690,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       ASSERT_EQ(MAX_DOCS - 1, it->seek(MAX_DOCS - 1));
@@ -5711,7 +5711,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       it->seek(MAX_DOCS + 1);
@@ -5735,11 +5735,11 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       size_t docs_count = 0;
 
       for (;;) {
@@ -5776,7 +5776,7 @@ TEST_P(index_column_test_case,
       const size_t steps_forward = 5;
 
       const irs::doc_id_t min_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_doc = MAX_DOCS;
       size_t docs_count = 0;
 
@@ -5788,7 +5788,7 @@ TEST_P(index_column_test_case,
 
         ASSERT_TRUE(
           !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
 
         ++docs_count;
@@ -5810,7 +5810,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       it->seek(expected_doc);
@@ -5836,7 +5836,7 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t expected_doc = MAX_DOCS;
@@ -5857,7 +5857,7 @@ TEST_P(index_column_test_case,
     {
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       auto visitor = [&docs_count, &expected_doc](
                        irs::doc_id_t actual_doc,
                        const irs::bytes_view& actual_data) {
@@ -5890,12 +5890,12 @@ TEST_P(index_column_test_case,
 
       ASSERT_TRUE(
         !irs::get<irs::payload>(*it));  // dense_mask does not have a payload
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
 
       irs::doc_id_t docs_count = 0;
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       for (; it->next();) {
         ASSERT_EQ(expected_doc, it->value());
         ++expected_doc;
@@ -5976,7 +5976,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6006,7 +6006,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6042,12 +6042,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -6086,7 +6086,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6122,12 +6122,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -6150,7 +6150,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6186,12 +6186,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -6230,7 +6230,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6266,12 +6266,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -6307,12 +6307,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -6351,12 +6351,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
@@ -6394,7 +6394,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -6421,7 +6421,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -6457,7 +6457,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -6484,12 +6484,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       for (;;) {
@@ -6541,7 +6541,7 @@ TEST_P(index_column_test_case,
       const size_t steps_forward = 5;
 
       const irs::doc_id_t min_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
@@ -6554,7 +6554,7 @@ TEST_P(index_column_test_case,
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -6593,7 +6593,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -6633,7 +6633,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -6667,7 +6667,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6703,12 +6703,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_value_str =
@@ -6801,7 +6801,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6836,7 +6836,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6877,12 +6877,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -6925,7 +6925,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -6966,12 +6966,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -6998,7 +6998,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -7039,12 +7039,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -7087,7 +7087,7 @@ TEST_P(index_column_test_case,
     // visit values (not cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -7128,12 +7128,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; expected_doc <= MAX_DOCS;) {
         ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -7174,12 +7174,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc));
@@ -7227,12 +7227,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       ASSERT_EQ(expected_doc, it->seek(expected_doc - 1));
@@ -7280,7 +7280,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -7312,7 +7312,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -7356,7 +7356,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -7383,12 +7383,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
 
       for (;;) {
@@ -7447,7 +7447,7 @@ TEST_P(index_column_test_case,
       const size_t steps_forward = 5;
 
       const irs::doc_id_t min_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_doc = MAX_DOCS;
       irs::doc_id_t expected_value = expected_doc - 1;
       size_t docs_count = 0;
@@ -7460,7 +7460,7 @@ TEST_P(index_column_test_case,
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -7507,7 +7507,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -7557,7 +7557,7 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -7601,7 +7601,7 @@ TEST_P(index_column_test_case,
     // visit values (cached)
     {
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       auto visitor = [&expected_value, &expected_doc](
                        irs::doc_id_t actual_doc,
@@ -7642,12 +7642,12 @@ TEST_P(index_column_test_case,
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
       irs::doc_id_t expected_doc =
-        (irs::type_limits<irs::type_t::doc_id_t>::min)();
+        (irs::doc_limits::min)();
       irs::doc_id_t expected_value = 0;
       for (; it->next();) {
         const auto actual_str_value =
@@ -7816,7 +7816,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -7919,7 +7919,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8013,7 +8013,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8079,7 +8079,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8151,7 +8151,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8216,7 +8216,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 
         auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
-        ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+        ASSERT_EQ(irs::doc_limits::invalid(),
                   it->value());
         ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8299,7 +8299,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8331,7 +8331,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8375,7 +8375,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8407,7 +8407,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8439,7 +8439,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 
@@ -8471,7 +8471,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 
       auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+      ASSERT_EQ(irs::doc_limits::invalid(),
                 it->value());
       ASSERT_EQ(irs::bytes_view{}, payload->value);
 

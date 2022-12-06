@@ -254,7 +254,7 @@ TEST_P(SortedColumnTestCase, Sort) {
     ASSERT_EQ(0, col.memory_active());
     ASSERT_GE(col.memory_reserved(), 0);
 
-    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    irs::doc_id_t doc = irs::doc_limits::min();
     for (const auto value : values) {
       // write value
       col.prepare(doc);
@@ -285,7 +285,7 @@ TEST_P(SortedColumnTestCase, Sort) {
     ASSERT_EQ(0, col.memory_active());
     ASSERT_GE(col.memory_reserved(), 0);
     ASSERT_EQ(1 + std::size(values), order.size());
-    ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(column_id));
+    ASSERT_TRUE(irs::field_limits::valid(column_id));
 
     irs::flush_state state;
     state.dir = &dir;
@@ -333,7 +333,7 @@ TEST_P(SortedColumnTestCase, Sort) {
     ASSERT_TRUE(payload);
 
     auto begin = sorted_values.begin();
-    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    irs::doc_id_t doc = irs::doc_limits::min();
     while (it->next()) {
       ASSERT_EQ(doc, it->value());
       const auto* pvalue = payload->value.data();
