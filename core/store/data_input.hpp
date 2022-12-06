@@ -20,11 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DATAINPUT_H
-#define IRESEARCH_DATAINPUT_H
+#pragma once
 
 #include <iterator>
 #include <memory>
+#include <streambuf>
 
 #include "error/error.hpp"
 #include "utils/bit_utils.hpp"
@@ -267,5 +267,3 @@ class buffered_index_input : public index_input {
 };                          // buffered_index_input
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_DATAINPUT_H
