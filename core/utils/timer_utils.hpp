@@ -85,9 +85,9 @@ timer_stat_t& get_stat(const std::string& key);
   REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
 #define REGISTER_TIMER_DETAILED() \
   REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, ":" TOSTRING(__LINE__)))
-#define REGISTER_TIMER_DETAILED_VERBOSE()                             \
-  REGISTER_TIMER(absl::StrCat(__FILE__ ":" TOSTRING(__LINE__) " -> ", \
-                              IRESEARCH_CURRENT_FUNCTION))
+#define REGISTER_TIMER_DETAILED_VERBOSE() \
+  REGISTER_TIMER(                         \
+    absl::StrCat(__FILE__ ":" TOSTRING(__LINE__) " -> ", IRS_FUNC_NAME))
 #define REGISTER_TIMER_NAMED_DETAILED(timer_name) \
   REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, " \"", timer_name, "\""))
 #define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)             \

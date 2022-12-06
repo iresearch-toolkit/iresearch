@@ -129,11 +129,10 @@ namespace detail {
 }  // namespace iresearch::logger
 
 #if defined(_MSC_VER)
-#define IR_LOG_FORMATED(level, format, ...)                              \
-  if (::iresearch::logger::enabled(level))                               \
-  ::iresearch::logger::detail::log_formatted(IRESEARCH_CURRENT_FUNCTION, \
-                                             __FILE__, __LINE__, level,  \
-                                             format, __VA_ARGS__)
+#define IR_LOG_FORMATED(level, format, ...)   \
+  if (::iresearch::logger::enabled(level))    \
+  ::iresearch::logger::detail::log_formatted( \
+    IRS_FUNC_NAME, __FILE__, __LINE__, level, format, __VA_ARGS__)
 
 #define IR_FRMT_FATAL(format, ...) \
   IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, __VA_ARGS__)
