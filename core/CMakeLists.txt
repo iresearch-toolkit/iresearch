@@ -79,6 +79,7 @@ source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
 set(IResearch_core_sources
+  ./utils/assert.cpp
   ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
@@ -175,6 +176,7 @@ set(IResearch_core_sources
   )
 
 set(IResearch_core_headers
+  ./utils/assert.hpp
   ./analysis/analyzer.hpp
   ./analysis/analyzer.hpp
   ./analysis/token_attributes.hpp
