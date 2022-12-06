@@ -25,7 +25,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #ifdef IRESEARCH_DEBUG
-#include <boost/iterator/filter_iterator.hpp>
+#include <ranges>
 #endif
 
 #include "analysis/token_attributes.hpp"
@@ -43,9 +43,8 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
+namespace iresearch {
 namespace {
-
-using namespace irs;
 
 bool is_subset_of(const feature_map_t& lhs, const feature_map_t& rhs) noexcept {
   for (auto& entry : lhs) {
@@ -1307,11 +1306,24 @@ doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const sub_reader& reader,
   return next_id;
 }
 
+#ifdef IRESEARCH_DEBUG
+void EnsureSorted(const auto& readers) {
+  for (const auto& reader : readers) {
+    const auto& doc_map = reader.doc_id_map;
+    assert(doc_map.size() >= doc_limits::min());
+
+    auto view = doc_map | std::views::filter([](doc_id_t doc) noexcept {
+                  return !doc_limits::eof(doc);
+                });
+
+    assert(std::ranges::is_sorted(view));
+  }
+}
+#endif
+
 const merge_writer::flush_progress_t kProgressNoop = []() { return true; };
 
 }  // namespace
-
-namespace iresearch {
 
 merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
   : reader{std::move(reader)}, doc_map{[](doc_id_t) noexcept {
@@ -1562,25 +1574,33 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
 
   doc_id_t next_id = doc_limits::min();
 
-  auto fill_map = [&](doc_id_map_t& doc_id_map, PrimarySortIteratorAdapter& it,
-                      doc_id_t max) {
+  auto fill_doc_map = [&](doc_id_map_t& doc_id_map,
+                          PrimarySortIteratorAdapter& it, doc_id_t max) {
     if (auto min = it.min; min < max) {
       if (it.live_docs) {
         auto& live_docs = *it.live_docs;
         for (live_docs.seek(min); live_docs.value() < max; live_docs.next()) {
           doc_id_map[min] = next_id++;
+          if (!progress()) {
+            return false;
+          }
         }
       } else {
         do {
           doc_id_map[min] = next_id++;
           ++min;
+          if (!progress()) {
+            return false;
+          }
         } while (min < max);
       }
     }
+    return true;
   };
 
-  for (ExternalHeapIterator columns_it{MinHeapContext{itrs, *comparator_}};
-       columns_it.next();) {
+  ExternalHeapIterator columns_it{MinHeapContext{itrs, *comparator_}};
+
+  for (columns_it.reset(itrs.size()); columns_it.next();) {
     const auto index = columns_it.value();
     auto& it = itrs[index];
     assert(it.valid());
@@ -1589,7 +1609,9 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     auto& doc_id_map = readers_[index].doc_id_map;
 
     // fill doc id map
-    fill_map(doc_id_map, it, max);
+    if (!fill_doc_map(doc_id_map, it, max)) {
+      return false;  // progress callback requested termination
+    }
     doc_id_map[max] = next_id;
 
     // write value into new column if present
@@ -1604,26 +1626,17 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     }
   }
 
+  // Handle empty values greater than the last document in sort column
   for (auto it = itrs.begin(); auto& reader : readers_) {
-    fill_map(reader.doc_id_map, *it, reader.reader->docs_count());
+    if (!fill_doc_map(reader.doc_id_map, *it,
+                      doc_limits::min() + reader.reader->docs_count())) {
+      return false;  // progress callback requested termination
+    }
+    ++it;
   }
 
 #ifdef IRESEARCH_DEBUG
-  struct ne_eof {
-    bool operator()(doc_id_t doc) const noexcept {
-      return !doc_limits::eof(doc);
-    }
-  };
-
-  // ensure doc ids for each segment are sorted
-  for (auto& reader : readers_) {
-    auto& doc_map = reader.doc_id_map;
-    assert(doc_map.size() >= doc_limits::min());
-    assert(std::is_sorted(
-      boost::make_filter_iterator(ne_eof(), doc_map.begin(), doc_map.end()),
-      boost::make_filter_iterator(ne_eof(), doc_map.end(), doc_map.end())));
-    UNUSED(doc_map);
-  }
+  EnsureSorted(readers_);
 #endif
 
   columnstore cs(std::move(writer), progress);
