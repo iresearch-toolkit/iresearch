@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,16 +15,15 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>  // memcpy
+
+#include <algorithm>  // std::fill
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/combine_test.cc"
-#include "hwy/foreach_target.h"
-
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/tests/test_util-inl.h"
-
-// Not yet implemented
-#if HWY_TARGET != HWY_RVV
 
 HWY_BEFORE_NAMESPACE();
 namespace hwy {
@@ -85,8 +85,14 @@ struct TestLowerQuarter {
 };
 
 HWY_NOINLINE void TestAllLowerHalf() {
-  ForAllTypes(ForDemoteVectors<TestLowerHalf>());
-  ForAllTypes(ForDemoteVectors<TestLowerQuarter, 4>());
+  ForAllTypes(ForHalfVectors<TestLowerHalf>());
+
+  // The minimum vector size is 128 bits, so there's no guarantee we can have
+  // quarters of 64-bit lanes, hence test 'all' other types.
+  ForHalfVectors<TestLowerQuarter, 2> test_quarter;
+  ForUI8(test_quarter);
+  ForUI16(test_quarter);  // exclude float16_t - cannot compare
+  ForUIF32(test_quarter);
 }
 
 struct TestUpperHalf {
@@ -95,21 +101,14 @@ struct TestUpperHalf {
     // Scalar does not define UpperHalf.
 #if HWY_TARGET != HWY_SCALAR
     const Half<D> d2;
-
-    const auto v = Iota(d, 1);
-    const size_t N = Lanes(d);
-    auto lanes = AllocateAligned<T>(N);
-    std::fill(lanes.get(), lanes.get() + N, T(0));
-
-    Store(UpperHalf(d2, v), d2, lanes.get());
+    const size_t N2 = Lanes(d2);
+    HWY_ASSERT(N2 * 2 == Lanes(d));
+    auto expected = AllocateAligned<T>(N2);
     size_t i = 0;
-    for (; i < Lanes(d2); ++i) {
-      HWY_ASSERT_EQ(T(Lanes(d2) + 1 + i), lanes[i]);
+    for (; i < N2; ++i) {
+      expected[i] = static_cast<T>(N2 + 1 + i);
     }
-    // Other half remains unchanged
-    for (; i < N; ++i) {
-      HWY_ASSERT_EQ(T(0), lanes[i]);
-    }
+    HWY_ASSERT_VEC_EQ(d2, expected.get(), UpperHalf(d2, Iota(d, 1)));
 #else
     (void)d;
 #endif
@@ -117,7 +116,7 @@ struct TestUpperHalf {
 };
 
 HWY_NOINLINE void TestAllUpperHalf() {
-  ForAllTypes(ForShrinkableVectors<TestUpperHalf>());
+  ForAllTypes(ForHalfVectors<TestUpperHalf>());
 }
 
 struct TestZeroExtendVector {
@@ -126,23 +125,23 @@ struct TestZeroExtendVector {
     const Twice<D> d2;
 
     const auto v = Iota(d, 1);
+    const size_t N = Lanes(d);
     const size_t N2 = Lanes(d2);
+    // If equal, then N was already MaxLanes(d) and it's not clear what
+    // Combine or ZeroExtendVector should return.
+    if (N2 == N) return;
+    HWY_ASSERT(N2 == 2 * N);
     auto lanes = AllocateAligned<T>(N2);
     Store(v, d, &lanes[0]);
-    Store(v, d, &lanes[N2 / 2]);
+    Store(v, d, &lanes[N]);
 
     const auto ext = ZeroExtendVector(d2, v);
     Store(ext, d2, lanes.get());
 
-    size_t i = 0;
     // Lower half is unchanged
-    for (; i < N2 / 2; ++i) {
-      HWY_ASSERT_EQ(T(1 + i), lanes[i]);
-    }
+    HWY_ASSERT_VEC_EQ(d, v, Load(d, &lanes[0]));
     // Upper half is zero
-    for (; i < N2; ++i) {
-      HWY_ASSERT_EQ(T(0), lanes[i]);
-    }
+    HWY_ASSERT_VEC_EQ(d, Zero(d), Load(d, &lanes[N]));
   }
 };
 
@@ -158,7 +157,7 @@ struct TestCombine {
     auto lanes = AllocateAligned<T>(N2);
 
     const auto lo = Iota(d, 1);
-    const auto hi = Iota(d, N2 / 2 + 1);
+    const auto hi = Iota(d, static_cast<T>(N2 / 2 + 1));
     const auto combined = Combine(d2, hi, lo);
     Store(combined, d2, lanes.get());
 
@@ -227,6 +226,35 @@ HWY_NOINLINE void TestAllConcat() {
   ForAllTypes(ForShrinkableVectors<TestConcat>());
 }
 
+struct TestConcatOddEven {
+  template <class T, class D>
+  HWY_NOINLINE void operator()(T /*unused*/, D d) {
+#if HWY_TARGET != HWY_SCALAR
+    const size_t N = Lanes(d);
+    const auto hi = Iota(d, static_cast<T>(N));
+    const auto lo = Iota(d, 0);
+    const auto even = Add(Iota(d, 0), Iota(d, 0));
+    const auto odd = Add(even, Set(d, 1));
+    HWY_ASSERT_VEC_EQ(d, odd, ConcatOdd(d, hi, lo));
+    HWY_ASSERT_VEC_EQ(d, even, ConcatEven(d, hi, lo));
+
+    // This test catches inadvertent saturation.
+    const auto min = Set(d, LowestValue<T>());
+    const auto max = Set(d, HighestValue<T>());
+    HWY_ASSERT_VEC_EQ(d, max, ConcatOdd(d, max, max));
+    HWY_ASSERT_VEC_EQ(d, max, ConcatEven(d, max, max));
+    HWY_ASSERT_VEC_EQ(d, min, ConcatOdd(d, min, min));
+    HWY_ASSERT_VEC_EQ(d, min, ConcatEven(d, min, min));
+#else
+    (void)d;
+#endif
+  }
+};
+
+HWY_NOINLINE void TestAllConcatOddEven() {
+  ForAllTypes(ForShrinkableVectors<TestConcatOddEven>());
+}
+
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
 }  // namespace hwy
@@ -241,16 +269,7 @@ HWY_EXPORT_AND_TEST_P(HwyCombineTest, TestAllUpperHalf);
 HWY_EXPORT_AND_TEST_P(HwyCombineTest, TestAllZeroExtendVector);
 HWY_EXPORT_AND_TEST_P(HwyCombineTest, TestAllCombine);
 HWY_EXPORT_AND_TEST_P(HwyCombineTest, TestAllConcat);
+HWY_EXPORT_AND_TEST_P(HwyCombineTest, TestAllConcatOddEven);
 }  // namespace hwy
 
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
-
 #endif  // HWY_ONCE
-
-#else
-int main(int, char**) { return 0; }
-#endif  // HWY_TARGET != HWY_RVV

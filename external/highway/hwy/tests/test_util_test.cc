@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +16,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <string>
+
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/test_util_test.cc"
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/tests/test_util-inl.h"
 
@@ -30,19 +33,19 @@ struct TestName {
   HWY_NOINLINE void operator()(T t, D d) {
     char num[10];
     std::string expected = IsFloat<T>() ? "f" : (IsSigned<T>() ? "i" : "u");
-    snprintf(num, sizeof(num), "%zu", sizeof(T) * 8);
+    snprintf(num, sizeof(num), "%u" , static_cast<unsigned>(sizeof(T) * 8));
     expected += num;
 
     const size_t N = Lanes(d);
     if (N != 1) {
       expected += 'x';
-      snprintf(num, sizeof(num), "%zu", N);
+      snprintf(num, sizeof(num), "%u", static_cast<unsigned>(N));
       expected += num;
     }
     const std::string actual = TypeName(t, N);
     if (expected != actual) {
-      NotifyFailure(__FILE__, __LINE__, expected.c_str(), 0, expected.c_str(),
-                    actual.c_str());
+      HWY_ABORT("%s mismatch: expected '%s', got '%s'.\n",
+                hwy::TargetName(HWY_TARGET), expected.c_str(), actual.c_str());
     }
   }
 };
@@ -52,10 +55,10 @@ HWY_NOINLINE void TestAllName() { ForAllTypes(ForPartialVectors<TestName>()); }
 struct TestEqualInteger {
   template <class T>
   HWY_NOINLINE void operator()(T /*t*/) const {
-    HWY_ASSERT(IsEqual(T(0), T(0)));
-    HWY_ASSERT(IsEqual(T(1), T(1)));
-    HWY_ASSERT(IsEqual(T(-1), T(-1)));
-    HWY_ASSERT(IsEqual(LimitsMin<T>(), LimitsMin<T>()));
+    HWY_ASSERT_EQ(T(0), T(0));
+    HWY_ASSERT_EQ(T(1), T(1));
+    HWY_ASSERT_EQ(T(-1), T(-1));
+    HWY_ASSERT_EQ(LimitsMin<T>(), LimitsMin<T>());
 
     HWY_ASSERT(!IsEqual(T(0), T(1)));
     HWY_ASSERT(!IsEqual(T(1), T(0)));
@@ -100,11 +103,5 @@ HWY_BEFORE_TEST(TestUtilTest);
 HWY_EXPORT_AND_TEST_P(TestUtilTest, TestAllName);
 HWY_EXPORT_AND_TEST_P(TestUtilTest, TestAllEqual);
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif

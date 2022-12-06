@@ -1,4 +1,5 @@
 // Copyright 2020 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -36,9 +37,7 @@
 // undefine them in this header; these functions are anyway deprecated.
 // TODO(janwas): remove when these functions are removed.
 #pragma push_macro("LoadFence")
-#pragma push_macro("StoreFence")
 #undef LoadFence
-#undef StoreFence
 
 namespace hwy {
 
@@ -52,10 +51,10 @@ namespace hwy {
 #define HWY_ATTR_CACHE
 #endif
 
-// Delays subsequent loads until prior loads are visible. On Intel CPUs, also
-// serves as a full fence (waits for all prior instructions to complete).
-// No effect on non-x86.
-// DEPRECATED due to differing behavior across architectures AND vendors.
+// Delays subsequent loads until prior loads are visible. Beware of potentially
+// differing behavior across architectures and vendors: on Intel but not
+// AMD CPUs, also serves as a full fence (waits for all prior instructions to
+// complete).
 HWY_INLINE HWY_ATTR_CACHE void LoadFence() {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
   _mm_lfence();
@@ -72,16 +71,13 @@ HWY_INLINE HWY_ATTR_CACHE void FlushStream() {
 #endif
 }
 
-// DEPRECATED, replace with `FlushStream`.
-HWY_INLINE HWY_ATTR_CACHE void StoreFence() { FlushStream(); }
-
 // Optionally begins loading the cache line containing "p" to reduce latency of
 // subsequent actual loads.
 template <typename T>
 HWY_INLINE HWY_ATTR_CACHE void Prefetch(const T* p) {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
   _mm_prefetch(reinterpret_cast<const char*>(p), _MM_HINT_T0);
-#elif HWY_COMPILER_GCC || HWY_COMPILER_CLANG
+#elif HWY_COMPILER_GCC  // includes clang
   // Hint=0 (NTA) behavior differs, but skipping outer caches is probably not
   // desirable, so use the default 3 (keep in caches).
   __builtin_prefetch(p, /*write=*/0, /*hint=*/3);
@@ -109,7 +105,6 @@ HWY_INLINE HWY_ATTR_CACHE void Pause() {
 }  // namespace hwy
 
 // TODO(janwas): remove when these functions are removed. (See above.)
-#pragma pop_macro("StoreFence")
 #pragma pop_macro("LoadFence")
 
 #endif  // HIGHWAY_HWY_CACHE_CONTROL_H_
