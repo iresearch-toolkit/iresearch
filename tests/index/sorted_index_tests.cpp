@@ -30,6 +30,34 @@
 
 namespace {
 
+struct EmptyField : tests::ifield {
+  std::string_view name() const override {
+    EXPECT_FALSE(true);
+    throw irs::not_impl_error{};
+  }
+
+  irs::token_stream& get_tokens() const override {
+    EXPECT_FALSE(true);
+    throw irs::not_impl_error{};
+  }
+
+  irs::features_t features() const override {
+    EXPECT_FALSE(true);
+    throw irs::not_impl_error{};
+  }
+
+  irs::IndexFeatures index_features() const override {
+    EXPECT_FALSE(true);
+    throw irs::not_impl_error{};
+  }
+
+  bool write(irs::data_output&) const override { return false; }
+
+  mutable irs::null_token_stream stream_;
+};
+
+const EmptyField kEmpty;
+
 auto MakeByTerm(std::string_view name, std::string_view value) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
@@ -1867,64 +1895,27 @@ TEST_P(sorted_index_test_case,
     }
   }
 
-  // FIXME(gnusi)
-  // We can't use assert_index() to check the
-  // whole index because sort is not stable
-  //
-  //  struct empty_field : tests::ifield {
-  //    std::string_view name() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //    irs::token_stream& get_tokens() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //    irs::features_t features() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //
-  //    irs::IndexFeatures index_features() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //    bool write(irs::data_output&) const override {
-  //      return true;
-  //    }
-  //
-  //    mutable irs::null_token_stream stream_;
-  //  } empty;
-  //
-  //  // Create expected index
-  //  auto& expected_index = index();
-  //  expected_index.emplace_back(writer->feature_info());
-  //  expected_index.back().insert(
-  //    doc2->indexed.begin(), doc2->indexed.end(),
-  //    doc2->stored.begin(), doc2->stored.end(),
-  //    &empty);
-  //  expected_index.back().insert(
-  //    doc0->indexed.begin(), doc0->indexed.end(),
-  //    doc0->stored.begin(), doc0->stored.end(),
-  //    doc0->sorted.get());
-  //  expected_index.back().insert(
-  //    doc1->indexed.begin(), doc1->indexed.end(),
-  //    doc1->stored.begin(), doc1->stored.end(),
-  //    doc1->sorted.get());
-  //  expected_index.back().insert(
-  //    doc3->indexed.begin(), doc3->indexed.end(),
-  //    doc3->stored.begin(), doc3->stored.end(),
-  //    &empty);
-  //  for (auto& column : expected_index.back().columns()) {
-  //    column.rewrite();
-  //  }
-  //  expected_index.back().sort(*writer->comparator());
-  //
-  //  assert_index();
+  // Create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->feature_info());
+  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end(),
+                               doc2->stored.begin(), doc2->stored.end(),
+                               &kEmpty);
+  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
+                               doc0->stored.begin(), doc0->stored.end(),
+                               doc0->sorted.get());
+  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
+                               doc1->stored.begin(), doc1->stored.end(),
+                               doc1->sorted.get());
+  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
+                               doc3->stored.begin(), doc3->stored.end(),
+                               &kEmpty);
+  for (auto& column : expected_index.back().columns()) {
+    column.rewrite();
+  }
+  expected_index.back().sort(*writer->comparator());
+
+  assert_index();
 }
 
 TEST_P(sorted_index_test_case,
@@ -2137,64 +2128,36 @@ TEST_P(sorted_index_test_case,
     }
   }
 
-  // FIXME(gnusi)
-  // We can't use assert_index() to check the
-  // whole index because sort is not stable
-  //
-  //  struct empty_field : tests::ifield {
-  //    std::string_view name() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //    irs::token_stream& get_tokens() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //    irs::features_t features() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //
-  //    irs::IndexFeatures index_features() const override {
-  //      EXPECT_FALSE(true);
-  //      throw irs::not_impl_error{};
-  //    }
-  //
-  //    bool write(irs::data_output&) const override {
-  //      return true;
-  //    }
-  //
-  //    mutable irs::null_token_stream stream_;
-  //  } empty;
-  //
-  //  // Create expected index
-  //  auto& expected_index = index();
-  //  expected_index.emplace_back(writer->feature_info());
-  //  expected_index.back().insert(
-  //    doc2->indexed.begin(), doc2->indexed.end(),
-  //    doc2->stored.begin(), doc2->stored.end(),
-  //    &empty);
-  //  expected_index.back().insert(
-  //    doc0->indexed.begin(), doc0->indexed.end(),
-  //    doc0->stored.begin(), doc0->stored.end(),
-  //    doc0->sorted.get());
-  //  expected_index.back().insert(
-  //    doc1->indexed.begin(), doc1->indexed.end(),
-  //    doc1->stored.begin(), doc1->stored.end(),
-  //    doc1->sorted.get());
-  //  expected_index.back().insert(
-  //    doc3->indexed.begin(), doc3->indexed.end(),
-  //    doc3->stored.begin(), doc3->stored.end(),
-  //    &empty);
-  //  for (auto& column : expected_index.back().columns()) {
-  //    column.rewrite();
-  //  }
-  //  expected_index.back().sort(*writer->comparator());
-  //
-  //  assert_index();
+  // Create expected index
+  auto& expected_index = index();
+  expected_index.emplace_back(writer->feature_info());
+  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end(),
+                               doc2->stored.begin(), doc2->stored.end(),
+                               &kEmpty);
+  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
+                               doc0->stored.begin(), doc0->stored.end(),
+                               doc0->sorted.get());
+  expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end(),
+                               doc4->stored.begin(), doc4->stored.end(),
+                               doc4->sorted.get());
+  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
+                               doc1->stored.begin(), doc1->stored.end(),
+                               doc1->sorted.get());
+  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
+                               doc3->stored.begin(), doc3->stored.end(),
+                               &kEmpty);
+  expected_index.back().insert(doc5->indexed.begin(), doc5->indexed.end(),
+                               doc5->stored.begin(), doc5->stored.end(),
+                               doc5->sorted.get());
+  expected_index.back().insert(doc6->indexed.begin(), doc6->indexed.end(),
+                               doc6->stored.begin(), doc6->stored.end(),
+                               &kEmpty);
+  for (auto& column : expected_index.back().columns()) {
+    column.rewrite();
+  }
+  expected_index.back().sort(*writer->comparator());
+
+  assert_index();
 }
 
 // Separate definition as MSVC parser fails to do conditional defines in macro

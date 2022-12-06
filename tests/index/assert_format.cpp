@@ -265,7 +265,10 @@ void index_segment::insert_sorted(const ifield& f) {
   buf_.clear();
   irs::bytes_output out{buf_};
   if (f.write(out)) {
-    sort_.emplace_back(std::move(buf_), doc());
+    sort_.emplace_back(std::move(buf_), doc(), empty_count_);
+    empty_count_ = 0;
+  } else {
+    ++empty_count_;
   }
 }
 
@@ -387,23 +390,30 @@ void index_segment::sort(const irs::comparer& comparator) {
   }
 
   std::sort(sort_.begin(), sort_.end(),
-            [&comparator](const std::pair<irs::bstring, irs::doc_id_t>& lhs,
-                          const std::pair<irs::bstring, irs::doc_id_t>& rhs) {
-              return comparator(lhs.first, rhs.first);
+            [&comparator](const auto& lhs, const auto& rhs) {
+              return comparator(std::get<0>(lhs), std::get<0>(rhs));
             });
 
   irs::doc_id_t new_doc_id = irs::doc_limits::min();
   std::map<irs::doc_id_t, irs::doc_id_t> order;
-  for (auto& entry : sort_) {
-    order[entry.second] = new_doc_id++;
-  }
 
+  for (auto& [_, doc, prev] : sort_) {
+    for (auto i = prev; i; --i) {
+      order[doc - i] = new_doc_id++;
+    }
+    order[doc] = new_doc_id++;
+  }
+  while (order.size() < this->doc_count()) {
+    order[static_cast<irs::doc_id_t>(order.size() + 1)] = new_doc_id++;
+  }
   for (auto& field : fields_) {
     field.second.sort(order);
   }
-
   for (auto& column : columns_) {
     column.sort(order);
+  }
+  for (auto& [_, doc, __] : sort_) {
+    doc = order.at(doc);
   }
 }
 
@@ -911,9 +921,8 @@ void assert_terms_seek(const field& expected_field,
   }
 }
 
-void assert_pk(
-  const irs::column_reader& actual_reader,
-  const std::vector<std::pair<irs::bstring, irs::doc_id_t>>& expected_values) {
+void assert_pk(const irs::column_reader& actual_reader,
+               const auto& expected_values) {
   ASSERT_EQ(expected_values.size(), actual_reader.size());
 
   // check iterators & values
@@ -929,9 +938,7 @@ void assert_pk(
     auto* actual_value = irs::get<irs::payload>(*actual_it);
     ASSERT_NE(nullptr, actual_value);
 
-    irs::doc_id_t expected_key = irs::doc_limits::min();
-    for (auto& expected : expected_values) {
-      auto& expected_value = expected.first;
+    for (auto& [expected_value, expected_key, _] : expected_values) {
       ASSERT_TRUE(actual_it->next());
 
       auto actual_stateless_seek_it =
@@ -943,8 +950,6 @@ void assert_pk(
       ASSERT_EQ(expected_value, actual_value->value);
       ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
       ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
-
-      ++expected_key;
     }
     ASSERT_FALSE(actual_it->next());
     ASSERT_FALSE(actual_it->next());
@@ -953,16 +958,15 @@ void assert_pk(
   // check visit
   {
     auto begin = expected_values.begin();
-    irs::doc_id_t expected_key = irs::doc_limits::min();
 
-    visit(actual_reader, [&begin, &expected_key](
-                           auto actual_key, const auto& actual_value) mutable {
-      EXPECT_EQ(expected_key, actual_key);
-      EXPECT_EQ(begin->first, actual_value);
-      ++begin;
-      ++expected_key;
-      return true;
-    });
+    visit(actual_reader,
+          [&begin](auto actual_key, const auto& actual_value) mutable {
+            auto& [expected_value, expected_key, _] = *begin;
+            EXPECT_EQ(expected_key, actual_key);
+            EXPECT_EQ(expected_value, actual_value);
+            ++begin;
+            return true;
+          });
     ASSERT_EQ(begin, expected_values.end());
   }
 }

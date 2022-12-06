@@ -204,7 +204,7 @@ class index_segment : irs::util::noncopyable {
 
   irs::feature_info_provider_t field_features_;
   named_columns_t named_columns_;
-  std::vector<std::pair<irs::bstring, irs::doc_id_t>> sort_;
+  std::vector<std::tuple<irs::bstring, irs::doc_id_t, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;
   std::set<field*> doc_fields_;
   field_map_t fields_;
@@ -212,6 +212,7 @@ class index_segment : irs::util::noncopyable {
   irs::document_mask doc_mask_;
   irs::bstring buf_;
   irs::doc_id_t count_{};
+  irs::doc_id_t empty_count_{};
 };
 
 template<typename IndexedFieldIterator, typename StoredFieldIterator>
