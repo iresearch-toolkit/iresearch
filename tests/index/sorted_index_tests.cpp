@@ -1343,21 +1343,17 @@ TEST_P(sorted_index_test_case, check_document_order_after_consolidation_dense) {
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
-  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
-                               doc0->stored.begin(), doc0->stored.end(),
-                               doc0->sorted.get());
-  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end(),
-                               doc2->stored.begin(), doc2->stored.end(),
-                               doc2->sorted.get());
-  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
-                               doc1->stored.begin(), doc1->stored.end(),
-                               doc1->sorted.get());
-  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
-                               doc3->stored.begin(), doc3->stored.end(),
-                               doc3->sorted.get());
-  expected_index.back().sort(*writer->comparator());
-  for (auto& column : expected_index.back().columns()) {
+  auto& segment = expected_index.emplace_back(writer->feature_info());
+  segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
+                 doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
+  segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
+                 doc2->stored.begin(), doc2->stored.end(), doc2->sorted.get());
+  segment.insert(doc1->indexed.begin(), doc1->indexed.end(),
+                 doc1->stored.begin(), doc1->stored.end(), doc1->sorted.get());
+  segment.insert(doc3->indexed.begin(), doc3->indexed.end(),
+                 doc3->stored.begin(), doc3->stored.end(), doc3->sorted.get());
+  segment.sort(*writer->comparator());
+  for (auto& column : segment.columns()) {
     column.rewrite();
   }
   assert_index();
@@ -1628,21 +1624,17 @@ TEST_P(sorted_index_test_case,
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
-  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
-                               doc0->stored.begin(), doc0->stored.end(),
-                               doc0->sorted.get());
-  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
-                               doc1->stored.begin(), doc1->stored.end(),
-                               doc1->sorted.get());
-  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
-                               doc3->stored.begin(), doc3->stored.end(),
-                               doc3->sorted.get());
-  for (auto& column : expected_index.back().columns()) {
+  auto& segment = expected_index.emplace_back(writer->feature_info());
+  segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
+                 doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
+  segment.insert(doc1->indexed.begin(), doc1->indexed.end(),
+                 doc1->stored.begin(), doc1->stored.end(), doc1->sorted.get());
+  segment.insert(doc3->indexed.begin(), doc3->indexed.end(),
+                 doc3->stored.begin(), doc3->stored.end(), doc3->sorted.get());
+  for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  expected_index.back().sort(*writer->comparator());
-
+  segment.sort(*writer->comparator());
   assert_index();
 }
 
@@ -1897,24 +1889,19 @@ TEST_P(sorted_index_test_case,
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
-  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end(),
-                               doc2->stored.begin(), doc2->stored.end(),
-                               &kEmpty);
-  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
-                               doc0->stored.begin(), doc0->stored.end(),
-                               doc0->sorted.get());
-  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
-                               doc1->stored.begin(), doc1->stored.end(),
-                               doc1->sorted.get());
-  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
-                               doc3->stored.begin(), doc3->stored.end(),
-                               &kEmpty);
-  for (auto& column : expected_index.back().columns()) {
+  auto& segment = expected_index.emplace_back(writer->feature_info());
+  segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
+                 doc2->stored.begin(), doc2->stored.end(), &kEmpty);
+  segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
+                 doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
+  segment.insert(doc1->indexed.begin(), doc1->indexed.end(),
+                 doc1->stored.begin(), doc1->stored.end(), doc1->sorted.get());
+  segment.insert(doc3->indexed.begin(), doc3->indexed.end(),
+                 doc3->stored.begin(), doc3->stored.end(), &kEmpty);
+  for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  expected_index.back().sort(*writer->comparator());
-
+  segment.sort(*writer->comparator());
   assert_index();
 }
 
@@ -2130,33 +2117,257 @@ TEST_P(sorted_index_test_case,
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
-  expected_index.back().insert(doc2->indexed.begin(), doc2->indexed.end(),
-                               doc2->stored.begin(), doc2->stored.end(),
-                               &kEmpty);
-  expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
-                               doc0->stored.begin(), doc0->stored.end(),
-                               doc0->sorted.get());
-  expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end(),
-                               doc4->stored.begin(), doc4->stored.end(),
-                               doc4->sorted.get());
-  expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
-                               doc1->stored.begin(), doc1->stored.end(),
-                               doc1->sorted.get());
-  expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
-                               doc3->stored.begin(), doc3->stored.end(),
-                               &kEmpty);
-  expected_index.back().insert(doc5->indexed.begin(), doc5->indexed.end(),
-                               doc5->stored.begin(), doc5->stored.end(),
-                               doc5->sorted.get());
-  expected_index.back().insert(doc6->indexed.begin(), doc6->indexed.end(),
-                               doc6->stored.begin(), doc6->stored.end(),
-                               &kEmpty);
-  for (auto& column : expected_index.back().columns()) {
+  auto& segment = expected_index.emplace_back(writer->feature_info());
+  segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
+                 doc2->stored.begin(), doc2->stored.end(), &kEmpty);
+  segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
+                 doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
+  segment.insert(doc4->indexed.begin(), doc4->indexed.end(),
+                 doc4->stored.begin(), doc4->stored.end(), doc4->sorted.get());
+  segment.insert(doc1->indexed.begin(), doc1->indexed.end(),
+                 doc1->stored.begin(), doc1->stored.end(), doc1->sorted.get());
+  segment.insert(doc3->indexed.begin(), doc3->indexed.end(),
+                 doc3->stored.begin(), doc3->stored.end(), &kEmpty);
+  segment.insert(doc5->indexed.begin(), doc5->indexed.end(),
+                 doc5->stored.begin(), doc5->stored.end(), doc5->sorted.get());
+  segment.insert(doc6->indexed.begin(), doc6->indexed.end(),
+                 doc6->stored.begin(), doc6->stored.end(), &kEmpty);
+  for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  expected_index.back().sort(*writer->comparator());
+  segment.sort(*writer->comparator());
+  assert_index();
+}
 
+TEST_P(sorted_index_test_case,
+       check_document_order_after_consolidation_sparse_with_removals) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [this](tests::document& doc, const std::string& name,
+           const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(
+          name, data.str, irs::IndexFeatures::ALL, field_features());
+
+        doc.insert(field);
+
+        if (name == "name") {
+          doc.sorted = field;
+        }
+      }
+    });
+
+  auto* doc0 = gen.next();  // name == 'A'
+  auto* doc1 = gen.next();  // name == 'B'
+  auto* doc2 = gen.next();  // name == 'C'
+  auto* doc3 = gen.next();  // name == 'D'
+  auto* doc4 = gen.next();  // name == 'E'
+  auto* doc5 = gen.next();  // name == 'F'
+  auto* doc6 = gen.next();  // name == 'G'
+
+  string_comparer less;
+  irs::index_writer::init_options opts;
+  opts.comparator = &less;
+  opts.features = features();
+
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  ASSERT_NE(nullptr, writer);
+  ASSERT_NE(nullptr, writer->comparator());
+
+  // Create segment 0
+  ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                     doc2->stored.begin(), doc2->stored.end()));
+  ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
+                     doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
+  ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
+                     doc4->stored.begin(), doc4->stored.end(), doc4->sorted));
+  ASSERT_TRUE(writer->commit());
+
+  // Create segment 1
+  ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                     doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
+  ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
+                     doc3->stored.begin(), doc3->stored.end()));
+  ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
+                     doc5->stored.begin(), doc5->stored.end(), doc5->sorted));
+  ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
+                     doc6->stored.begin(), doc6->stored.end()));
+  ASSERT_TRUE(writer->commit());
+
+  // Remove docs from segment 1
+  writer->documents().remove(
+    irs::filter::ptr{MakeByTerm("name", "B")});  // doc1
+  writer->documents().remove(
+    irs::filter::ptr{MakeByTerm("name", "D")});  // doc3
+  // Remove docs from segment 0
+  writer->documents().remove(
+    irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
+  ASSERT_TRUE(writer->commit());
+
+  // Read documents
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(2, reader.size());
+
+    // Check segment 0: E - <empty> - A
+    {
+      auto& segment = reader[0];
+      ASSERT_EQ(3, segment.docs_count());
+      ASSERT_EQ(2, segment.live_docs_count());
+      const auto* column = segment.sort();
+      ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(irs::IsNull(column->name()));
+      ASSERT_EQ(0, column->payload().size());
+      ASSERT_EQ(2, column->size());
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto term_itr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(term_itr->next());
+      auto docs_itr = term_itr->postings(irs::IndexFeatures::NONE);
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value(), values->seek(docs_itr->value()));
+      ASSERT_EQ("E",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value() + 1, values->seek(docs_itr->value()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value(), values->seek(docs_itr->value()));
+      ASSERT_EQ("A",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_FALSE(docs_itr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 3, false);
+        check_features(segment, "same", 3, false);
+        check_features(segment, "duplicated", 3, false);
+        check_features(segment, "prefix", 1, false);
+      }
+    }
+
+    // Check segment 1:
+    // <empty> - F - B - <empty>
+    {
+      auto& segment = reader[1];
+      ASSERT_EQ(4, segment.docs_count());
+      ASSERT_EQ(2, segment.live_docs_count());
+      const auto* column = segment.sort();
+      ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(irs::IsNull(column->name()));
+      ASSERT_EQ(0, column->payload().size());
+      ASSERT_EQ(2, column->size());
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto term_itr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(term_itr->next());
+      auto docs_itr = term_itr->postings(irs::IndexFeatures::NONE);
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value() + 1, values->seek(docs_itr->value()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value(), values->seek(docs_itr->value()));
+      ASSERT_EQ("F",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value(), values->seek(docs_itr->value()));
+      ASSERT_EQ("B",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_FALSE(values->next());
+      ASSERT_FALSE(docs_itr->next());
+
+      // Check pluggable features
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 4, false);
+        check_features(segment, "same", 4, false);
+        check_features(segment, "duplicated", 1, false);
+        check_features(segment, "prefix", 1, false);
+      }
+    }
+  }
+
+  // Consolidate segments
+  {
+    irs::index_utils::consolidate_count consolidate_all;
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(writer->commit());
+  }
+
+  // Check consolidated segment:
+  // F - <empty> - A - <empty>
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_TRUE(reader);
+    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
+
+    // Check segment 0
+    {
+      auto& segment = reader[0];
+      ASSERT_EQ(4, segment.docs_count());
+      ASSERT_EQ(4, segment.live_docs_count());
+      const auto* column = segment.sort();
+      ASSERT_EQ(2, column->size());
+      ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(irs::IsNull(column->name()));
+      ASSERT_EQ(0, column->payload().size());
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto term_itr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(term_itr->next());
+      auto docs_itr = term_itr->postings(irs::IndexFeatures::NONE);
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value(), values->seek(docs_itr->value()));
+      ASSERT_EQ("F",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value() + 1, values->seek(docs_itr->value()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_EQ(docs_itr->value(), values->seek(docs_itr->value()));
+      ASSERT_EQ("A",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+      ASSERT_TRUE(docs_itr->next());
+      ASSERT_FALSE(values->next());
+      ASSERT_FALSE(docs_itr->next());
+
+      // Check pluggable features in consolidated segment
+      if (supports_pluggable_features()) {
+        check_features(segment, "name", 4, true);
+        check_features(segment, "same", 4, true);
+        check_features(segment, "duplicated", 2, true);
+        check_features(segment, "prefix", 1, true);
+      }
+    }
+  }
+
+  // Create expected index
+  auto& expected_index = index();
+  auto& segment = expected_index.emplace_back(writer->feature_info());
+  segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
+                 doc2->stored.begin(), doc2->stored.end(), &kEmpty);
+  segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
+                 doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
+  segment.insert(doc5->indexed.begin(), doc5->indexed.end(),
+                 doc5->stored.begin(), doc5->stored.end(), doc5->sorted.get());
+  segment.insert(doc6->indexed.begin(), doc6->indexed.end(),
+                 doc6->stored.begin(), doc6->stored.end(), &kEmpty);
+  for (auto& column : segment.columns()) {
+    column.rewrite();
+  }
+  segment.sort(*writer->comparator());
   assert_index();
 }
 

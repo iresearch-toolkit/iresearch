@@ -1041,7 +1041,8 @@ struct PrimarySortIteratorAdapter {
       doc{irs::get<document>(*this->it)},
       payload{irs::get<irs::payload>(*this->it)},
       live_docs{std::move(live_docs)},
-      live_doc{live_docs ? irs::get<document>(*live_docs) : nullptr} {
+      live_doc{this->live_docs ? irs::get<document>(*this->live_docs)
+                               : nullptr} {
     assert(valid());
   }
 
