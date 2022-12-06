@@ -100,7 +100,7 @@ class sorted_column final : public column_output, private util::noncopyable {
   bytes_view get_value(
     const std::pair<doc_id_t, size_t>* value) const noexcept {
     assert(index_.data() <= value);
-    assert(value < index_.data() + index_.size());
+    assert(value < index_.data() + index_.size() - 1);
     assert(!doc_limits::eof(value->first));
 
     const auto begin = value->second;

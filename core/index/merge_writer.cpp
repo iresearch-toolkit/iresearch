@@ -1040,16 +1040,20 @@ struct PrimarySortIteratorAdapter {
     : it{std::move(it)},
       doc{irs::get<document>(*this->it)},
       payload{irs::get<irs::payload>(*this->it)},
-      live_docs{std::move(live_docs)} {
+      live_docs{std::move(live_docs)},
+      live_doc{live_docs ? irs::get<document>(live_docs) : nullptr} {
     assert(valid());
   }
 
-  [[nodiscard]] bool valid() const noexcept { return it && doc && payload; }
+  [[nodiscard]] bool valid() const noexcept {
+    return it && doc && payload && (!live_docs || live_doc);
+  }
 
   doc_iterator::ptr it;
   const document* doc;
   const irs::payload* payload;
   doc_iterator::ptr live_docs;
+  const document* live_doc;
   doc_id_t min{};
 };
 
@@ -1579,8 +1583,9 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     if (auto min = it.min; min < max) {
       if (it.live_docs) {
         auto& live_docs = *it.live_docs;
-        for (live_docs.seek(min); live_docs.value() < max; live_docs.next()) {
-          doc_id_map[min] = next_id++;
+        const auto* live_doc = it.live_doc;
+        for (live_docs.seek(min); live_doc->value < max; live_docs.next()) {
+          doc_id_map[live_doc->value] = next_id++;
           if (!progress()) {
             return false;
           }

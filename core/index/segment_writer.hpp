@@ -301,7 +301,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const hashed_string_view field_name{
-      hashed_string_view{static_cast<std::string_view>(field.name())}};
+      static_cast<std::string_view>(field.name())};
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
@@ -320,7 +320,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     const hashed_string_view field_name{
-      {static_cast<std::string_view>(field.name())}};
+      static_cast<std::string_view>(field.name())};
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
