@@ -23,6 +23,7 @@
 #include "utils/assert.hpp"
 
 #include <cstddef>
+#include <utility>
 
 namespace iresearch {
 namespace detail {
@@ -39,8 +40,8 @@ void AssertMessage(std::string_view file, std::size_t line,
 
 }  // namespace detail
 
-void SetAssertCallback(LogCallback callback) noexcept {
-  detail::kAssertCallback = callback;
+LogCallback SetAssertCallback(LogCallback callback) noexcept {
+  return std::exchange(detail::kAssertCallback, callback);
 }
 
 }  // namespace iresearch

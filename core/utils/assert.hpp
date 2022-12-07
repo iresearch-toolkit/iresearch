@@ -44,7 +44,7 @@ using LogCallback = void (*)(std::string_view file, std::size_t line,
                              std::string_view condition,
                              std::string_view message) noexcept;
 
-void SetAssertCallback(LogCallback callback) noexcept;
+LogCallback SetAssertCallback(LogCallback callback) noexcept;
 
 }  // namespace iresearch
 
