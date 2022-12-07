@@ -24,10 +24,9 @@
 #include "merge_writer.hpp"
 
 #include <absl/container/flat_hash_map.h>
-
-#include <array>
-#include <boost/iterator/filter_iterator.hpp>
-#include <deque>
+#ifdef IRESEARCH_DEBUG
+#include <ranges>
+#endif
 
 #include "analysis/token_attributes.hpp"
 #include "index/comparer.hpp"
@@ -39,15 +38,13 @@
 #include "store/store_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
-#include "utils/lz4compression.hpp"
 #include "utils/memory.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
+namespace iresearch {
 namespace {
-
-using namespace irs;
 
 bool is_subset_of(const feature_map_t& lhs, const feature_map_t& rhs) noexcept {
   for (auto& entry : lhs) {
@@ -1037,76 +1034,70 @@ std::optional<field_id> columnstore::insert(
   }
 }
 
-struct SortingIteratorAdapter {
-  explicit SortingIteratorAdapter(doc_iterator::ptr it) noexcept
+struct PrimarySortIteratorAdapter {
+  explicit PrimarySortIteratorAdapter(doc_iterator::ptr it,
+                                      doc_iterator::ptr live_docs) noexcept
     : it{std::move(it)},
-      doc{irs::get<irs::document>(*this->it)},
-      payload{irs::get<irs::payload>(*this->it)} {}
-
-  [[nodiscard]] bool valid() const noexcept { return doc && payload; }
-
-  doc_iterator::ptr it;
-  const irs::document* doc;
-  const irs::payload* payload;
-};
-
-class SortingCompoundDocIterator : util::noncopyable {
- public:
-  explicit SortingCompoundDocIterator(
-    const comparer& comparator, std::vector<SortingIteratorAdapter>&& itrs)
-    : itrs_{std::move(itrs)}, heap_it_{MinHeapContext{itrs_, comparator}} {
-    heap_it_.reset(itrs_.size());
+      doc{irs::get<document>(*this->it)},
+      payload{irs::get<irs::payload>(*this->it)},
+      live_docs{std::move(live_docs)},
+      live_doc{this->live_docs ? irs::get<document>(*this->live_docs)
+                               : nullptr} {
+    assert(valid());
   }
 
-  bool next() { return heap_it_.next(); }
+  [[nodiscard]] bool valid() const noexcept {
+    return it && doc && payload && (!live_docs || live_doc);
+  }
 
-  std::pair<size_t, const SortingIteratorAdapter*> value() const noexcept {
-    const auto idx = heap_it_.value();
-    return {idx, &itrs_[idx]};
+  doc_iterator::ptr it;
+  const document* doc;
+  const irs::payload* payload;
+  doc_iterator::ptr live_docs;
+  const document* live_doc;
+  doc_id_t min{};
+};
+
+class MinHeapContext {
+ public:
+  MinHeapContext(std::span<PrimarySortIteratorAdapter> itrs,
+                 const comparer& less) noexcept
+    : itrs_{itrs}, less_{&less} {}
+
+  // advance
+  bool operator()(const size_t i) const {
+    assert(i < itrs_.size());
+    auto& it = itrs_[i];
+    it.min = it.doc->value + 1;
+    return it.it->next();
+  }
+
+  // compare
+  bool operator()(const size_t lhs_idx, const size_t rhs_idx) const {
+    assert(lhs_idx != rhs_idx);
+    assert(lhs_idx < itrs_.size());
+    assert(rhs_idx < itrs_.size());
+
+    const auto& lhs = itrs_[lhs_idx];
+    const auto& rhs = itrs_[rhs_idx];
+
+    // FIXME(gnusi): Consider changing comparator to 3-way comparison
+    if (const bytes_view lhs_value = lhs.payload->value,
+        rhs_value = rhs.payload->value;
+        (*less_)(rhs_value, lhs_value)) {
+      return true;
+    } else if ((*less_)(lhs_value, rhs_value)) {
+      return false;
+    }
+
+    // tie braker to avoid splitting document blocks, can use index as we always
+    // merge different segments
+    return rhs_idx > lhs_idx;
   }
 
  private:
-  class MinHeapContext {
-   public:
-    explicit MinHeapContext(std::span<SortingIteratorAdapter> itrs,
-                            const comparer& less) noexcept
-      : itrs_{itrs}, less_{&less} {}
-
-    // advance
-    bool operator()(const size_t i) const {
-      assert(i < itrs_.size());
-      return itrs_[i].it->next();
-    }
-
-    // compare
-    bool operator()(const size_t lhs, const size_t rhs) const {
-      assert(lhs < itrs_.size());
-      assert(rhs < itrs_.size());
-
-      const auto& [lhs_it, lhs_doc, lhs_pay] = itrs_[lhs];
-      const auto& [rhs_it, rhs_doc, rhs_pay] = itrs_[rhs];
-
-      // FIXME(gnusi): Consider changing comparator to 3-way comparison
-      if (const bytes_view lhs_value = lhs_pay->value,
-          rhs_value = rhs_pay->value;
-          (*less_)(rhs_value, lhs_value)) {
-        return true;
-      } else if ((*less_)(lhs_value, rhs_value)) {
-        return false;
-      }
-
-      // tie braker to avoid splitting document blocks
-      return lhs_it < rhs_it ||
-             (lhs_it < rhs_it && lhs_doc->value < rhs_doc->value);
-    }
-
-   private:
-    std::span<SortingIteratorAdapter> itrs_;
-    const comparer* less_;
-  };
-
-  std::vector<SortingIteratorAdapter> itrs_;
-  ExternalHeapIterator<MinHeapContext> heap_it_;
+  std::span<PrimarySortIteratorAdapter> itrs_;
+  const comparer* less_;
 };
 
 template<typename Iterator>
@@ -1320,15 +1311,29 @@ doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const sub_reader& reader,
   return next_id;
 }
 
+#ifdef IRESEARCH_DEBUG
+void EnsureSorted(const auto& readers) {
+  for (const auto& reader : readers) {
+    const auto& doc_map = reader.doc_id_map;
+    assert(doc_map.size() >= doc_limits::min());
+
+    auto view = doc_map | std::views::filter([](doc_id_t doc) noexcept {
+                  return !doc_limits::eof(doc);
+                });
+
+    assert(std::ranges::is_sorted(view));
+  }
+}
+#endif
+
 const merge_writer::flush_progress_t kProgressNoop = []() { return true; };
 
 }  // namespace
 
-namespace iresearch {
-
 merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
-  : reader{std::move(reader)},
-    doc_map([](doc_id_t) noexcept { return doc_limits::eof(); }) {
+  : reader{std::move(reader)}, doc_map{[](doc_id_t) noexcept {
+      return doc_limits::eof();
+    }} {
   assert(this->reader);
 }
 
@@ -1469,23 +1474,34 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   feature_set_t fields_features;
   IndexFeatures index_features{IndexFeatures::NONE};
 
-  std::vector<SortingIteratorAdapter> itrs;
+  std::vector<PrimarySortIteratorAdapter> itrs;
   itrs.reserve(size);
 
-  auto emplace_iterator = [&itrs](const auto& segment) {
+  auto emplace_iterator = [&itrs](const sub_reader& segment) {
     if (!segment.sort()) {
       // sort column is not present, give up
       return false;
     }
 
-    auto it =
+    auto sort =
       segment.mask(segment.sort()->iterator(irs::ColumnHint::kConsolidation));
 
-    if (!it) {
+    if (IRS_UNLIKELY(!sort)) {
       return false;
     }
 
-    return itrs.emplace_back(std::move(it)).valid();
+    doc_iterator::ptr live_docs;
+    if (segment.docs_count() != segment.live_docs_count()) {
+      live_docs = segment.docs_iterator();
+    }
+
+    auto& it = itrs.emplace_back(std::move(sort), std::move(live_docs));
+
+    if (IRS_UNLIKELY(!it.valid())) {
+      return false;
+    }
+
+    return true;
   };
 
   segment.meta.docs_count = 0;
@@ -1526,7 +1542,6 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     auto& doc_id_map = reader_ctx.doc_id_map;
 
     try {
-      // assume not a lot of space wasted if doc_limits::min() > 0
       doc_id_map.resize(reader.docs_count() + doc_limits::min(),
                         doc_limits::eof());
     } catch (...) {
@@ -1538,8 +1553,10 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
       return false;
     }
 
-    reader_ctx.doc_map = [&doc_id_map](doc_id_t doc) noexcept {
-      return doc >= doc_id_map.size() ? doc_limits::eof() : doc_id_map[doc];
+    reader_ctx.doc_map = [doc_id_map =
+                            std::span{doc_id_map}](size_t doc) noexcept {
+      // doc_id_map[0] == doc_limits::eof() always
+      return doc_id_map[doc * static_cast<size_t>(doc < doc_id_map.size())];
     };
   }
 
@@ -1553,34 +1570,59 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   }
 
   // Write new sorted column and fill doc maps for each reader
-  SortingCompoundDocIterator columns_it{*comparator_, std::move(itrs)};
-
   auto writer = segment.meta.codec->get_columnstore_writer(true);
   writer->prepare(dir, segment.meta);
 
   // get column info for sorted column
   const auto info = (*column_info_)({});
-  auto column = writer->push_column(info, {});
+  auto [column_id, column_writer] = writer->push_column(info, {});
 
-  for (doc_id_t next_id = doc_limits::min(); columns_it.next();) {
-    const auto [index, it] = columns_it.value();
-    assert(it);
+  doc_id_t next_id = doc_limits::min();
 
-    if (IRS_UNLIKELY(!it->valid())) {
-      assert(false);
-      IR_FRMT_ERROR(
-        "Got an invalid iterator during consolidationg of sorted index, "
-        "skipping it");
-      continue;
+  auto fill_doc_map = [&](doc_id_map_t& doc_id_map,
+                          PrimarySortIteratorAdapter& it, doc_id_t max) {
+    if (auto min = it.min; min < max) {
+      if (it.live_docs) {
+        auto& live_docs = *it.live_docs;
+        const auto* live_doc = it.live_doc;
+        for (live_docs.seek(min); live_doc->value < max; live_docs.next()) {
+          doc_id_map[live_doc->value] = next_id++;
+          if (!progress()) {
+            return false;
+          }
+        }
+      } else {
+        do {
+          doc_id_map[min] = next_id++;
+          ++min;
+          if (!progress()) {
+            return false;
+          }
+        } while (min < max);
+      }
     }
+    return true;
+  };
 
-    auto& payload = it->payload->value;
+  ExternalHeapIterator columns_it{MinHeapContext{itrs, *comparator_}};
+
+  for (columns_it.reset(itrs.size()); columns_it.next();) {
+    const auto index = columns_it.value();
+    auto& it = itrs[index];
+    assert(it.valid());
+
+    const auto max = it.doc->value;
+    auto& doc_id_map = readers_[index].doc_id_map;
 
     // fill doc id map
-    readers_[index].doc_id_map[it->it->value()] = next_id;
+    if (!fill_doc_map(doc_id_map, it, max)) {
+      return false;  // progress callback requested termination
+    }
+    doc_id_map[max] = next_id;
 
-    // write value into new column
-    auto& stream = column.second(next_id);
+    // write value into new column if present
+    auto& stream = column_writer(next_id);
+    const auto payload = it.payload->value;
     stream.write_bytes(payload.data(), payload.size());
 
     ++next_id;
@@ -1590,22 +1632,17 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     }
   }
 
-#ifdef IRESEARCH_DEBUG
-  struct ne_eof {
-    bool operator()(doc_id_t doc) const noexcept {
-      return !doc_limits::eof(doc);
+  // Handle empty values greater than the last document in sort column
+  for (auto it = itrs.begin(); auto& reader : readers_) {
+    if (!fill_doc_map(reader.doc_id_map, *it,
+                      doc_limits::min() + reader.reader->docs_count())) {
+      return false;  // progress callback requested termination
     }
-  };
-
-  // ensure doc ids for each segment are sorted
-  for (auto& reader : readers_) {
-    auto& doc_map = reader.doc_id_map;
-    assert(doc_map.size() >= doc_limits::min());
-    assert(std::is_sorted(
-      boost::make_filter_iterator(ne_eof(), doc_map.begin(), doc_map.end()),
-      boost::make_filter_iterator(ne_eof(), doc_map.end(), doc_map.end())));
-    UNUSED(doc_map);
+    ++it;
   }
+
+#ifdef IRESEARCH_DEBUG
+  EnsureSorted(readers_);
 #endif
 
   columnstore cs(std::move(writer), progress);
@@ -1647,7 +1684,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   }
 
   segment.meta.column_store = cs.flush(state);  // flush columnstore
-  segment.meta.sort = column.first;             // set sort column identifier
+  segment.meta.sort = column_id;                // set sort column identifier
   // all merged documents are live
   segment.meta.live_docs_count = segment.meta.docs_count;
 

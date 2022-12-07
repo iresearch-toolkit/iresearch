@@ -1360,7 +1360,7 @@ void index_writer::clear(uint64_t tick) {
   std::lock_guard commit_lock{commit_lock_};
 
   if (!pending_state_ && meta_.empty() &&
-      type_limits<type_t::index_gen_t>::valid(meta_.last_gen_)) {
+      index_gen_limits::valid(meta_.last_gen_)) {
     return;  // already empty
   }
 
@@ -1461,7 +1461,7 @@ index_writer::ptr index_writer::make(
           reader->read(dir, meta, segments_file);
           meta.clear();
           // this meta is for a totally new index
-          meta.last_gen_ = type_limits<type_t::index_gen_t>::invalid();
+          meta.last_gen_ = index_gen_limits::invalid();
         }
       } catch (const error_base&) {
         meta = index_meta();
@@ -2119,7 +2119,7 @@ index_writer::pending_context_t index_writer::flush_all(
   auto const& progress =
     (progress_callback != nullptr ? progress_callback : kNoProgress);
 
-  bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
+  bool modified = !index_gen_limits::valid(meta_.last_gen_);
   sync_context to_sync;
   document_mask docs_mask;
 

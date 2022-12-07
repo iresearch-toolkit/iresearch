@@ -395,7 +395,7 @@ void Norm2TestCase::AssertNormColumn(
 }
 
 TEST_P(Norm2TestCase, CheckNorms) {
-  const ::frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
+  constexpr frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
     {"name", uint32_t{1}},
     {"same", uint32_t{1} << 8},
     {"duplicated", uint32_t{1} << 15},
@@ -504,7 +504,7 @@ TEST_P(Norm2TestCase, CheckNorms) {
 }
 
 TEST_P(Norm2TestCase, CheckNormsConsolidation) {
-  const ::frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
+  constexpr frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
     {"name", uint32_t{1}},
     {"same", uint32_t{1} << 5},
     {"duplicated", uint32_t{1} << 12},
@@ -764,7 +764,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
 }
 
 TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
-  const ::frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
+  constexpr frozen::map<frozen::string, uint32_t, 4> kSeedMapping{
     {"name", uint32_t{1}},
     {"same", uint32_t{1} << 5},
     {"duplicated", uint32_t{1} << 12},

@@ -306,7 +306,7 @@ analysis::analyzer::ptr construct(
     value.key_ = key;
 
     // reuse hash but point ref at value
-    return hashed_string_view(key.hash(), value.key_);
+    return hashed_string_view{value.key_, key.hash()};
   };
 
   cached_options_t* options_ptr;
@@ -316,7 +316,7 @@ analysis::analyzer::ptr construct(
 
     options_ptr =
       &(map_utils::try_emplace_update_key(
-          cached_state_by_key, generator, make_hashed_ref(cache_key),
+          cached_state_by_key, generator, hashed_string_view{cache_key},
           std::move(options), std::move(stopwords))
           .first->second);
   }
@@ -336,8 +336,7 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
   {
     std::lock_guard lock{mutex};
 
-    auto itr = cached_state_by_key.find(
-      make_hashed_ref(std::string_view(locale.getName())));
+    auto itr = cached_state_by_key.find(hashed_string_view{locale.getName()});
 
     if (itr != cached_state_by_key.end()) {
       return std::make_unique<analysis::text_token_stream>(
@@ -447,8 +446,8 @@ constexpr std::string_view MIN_PARAM_NAME{"min"};
 constexpr std::string_view MAX_PARAM_NAME{"max"};
 constexpr std::string_view PRESERVE_ORIGINAL_PARAM_NAME{"preserveOriginal"};
 
-const frozen::unordered_map<std::string_view,
-                            analysis::text_token_stream::case_convert_t, 3>
+constexpr frozen::unordered_map<std::string_view,
+                                analysis::text_token_stream::case_convert_t, 3>
   CASE_CONVERT_MAP = {
     {"lower", analysis::text_token_stream::case_convert_t::LOWER},
     {"none", analysis::text_token_stream::case_convert_t::NONE},
@@ -855,7 +854,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
     const std::string_view slice_ref(slice.startAs<char>(), slice.byteSize());
     {
       std::lock_guard lock{mutex};
-      auto itr = cached_state_by_key.find(make_hashed_ref(slice_ref));
+      auto itr = cached_state_by_key.find(hashed_string_view{slice_ref});
 
       if (itr != cached_state_by_key.end()) {
         return std::make_unique<analysis::text_token_stream>(

@@ -179,9 +179,12 @@ class index_segment : irs::util::noncopyable {
               StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
               const ifield* sorted = nullptr);
 
-  void insert(const document& doc) {
-    insert(std::begin(doc.indexed), std::end(doc.indexed),
-           std::begin(doc.stored), std::end(doc.stored), doc.sorted.get());
+  void insert(const document& doc, size_t count = 1, bool has_sorted = true) {
+    for (; count; --count) {
+      insert(std::begin(doc.indexed), std::end(doc.indexed),
+             std::begin(doc.stored), std::end(doc.stored),
+             has_sorted ? doc.sorted.get() : nullptr);
+    }
   }
 
   void sort(const irs::comparer& comparator);
@@ -199,12 +202,12 @@ class index_segment : irs::util::noncopyable {
 
   void insert_indexed(const ifield& field);
   void insert_stored(const ifield& field);
-  void insert_sorted(const ifield& field);
+  void insert_sorted(const ifield* field);
   void compute_features();
 
   irs::feature_info_provider_t field_features_;
   named_columns_t named_columns_;
-  std::vector<std::pair<irs::bstring, irs::doc_id_t>> sort_;
+  std::vector<std::tuple<irs::bstring, irs::doc_id_t, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;
   std::set<field*> doc_fields_;
   field_map_t fields_;
@@ -212,6 +215,7 @@ class index_segment : irs::util::noncopyable {
   irs::document_mask doc_mask_;
   irs::bstring buf_;
   irs::doc_id_t count_{};
+  irs::doc_id_t empty_count_{};
 };
 
 template<typename IndexedFieldIterator, typename StoredFieldIterator>
@@ -238,9 +242,7 @@ void index_segment::insert(IndexedFieldIterator indexed_begin,
     insert_stored(*stored_begin);
   }
 
-  if (sorted) {
-    insert_sorted(*sorted);
-  }
+  insert_sorted(sorted);
 
   compute_features();
 

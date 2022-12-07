@@ -55,7 +55,7 @@
 #pragma GCC diagnostic pop
 #endif
 
-#include <boost/functional/hash.hpp>
+#include <boost/container_hash/hash.hpp>
 
 #include "shared.hpp"
 #include "utils/fstext/fst_states_map.hpp"

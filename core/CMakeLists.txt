@@ -79,7 +79,6 @@ source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
 set(IResearch_core_sources
-  ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
   ./analysis/token_attributes.cpp

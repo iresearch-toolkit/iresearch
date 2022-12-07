@@ -34,8 +34,7 @@ class crc32c {
   static constexpr uint32_t kCrc32Xor = 0;
 
  public:
-  explicit crc32c(uint32_t seed = 0) noexcept
-    : value_{absl::ToCrc32c(seed ^ kCrc32Xor)} {}
+  explicit crc32c(uint32_t seed = 0) noexcept : value_{seed ^ kCrc32Xor} {}
 
   FORCE_INLINE void process_bytes(const void* data, size_t size) noexcept {
     value_ = absl::ExtendCrc32c(

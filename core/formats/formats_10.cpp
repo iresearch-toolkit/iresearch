@@ -135,8 +135,8 @@ template<typename T, typename M>
 std::string file_name(const M& meta);
 
 void prepare_output(std::string& str, index_output::ptr& out,
-                    const flush_state& state, std::string_view ext, std::string_view format,
-                    const int32_t version) {
+                    const flush_state& state, std::string_view ext,
+                    std::string_view format, const int32_t version) {
   assert(!out);
   irs::file_name(str, state.name, ext);
   out = state.dir->create(str);
@@ -150,8 +150,9 @@ void prepare_output(std::string& str, index_output::ptr& out,
 }
 
 void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
-                   const reader_state& state, std::string_view ext, std::string_view format,
-                   const int32_t min_ver, const int32_t max_ver) {
+                   const reader_state& state, std::string_view ext,
+                   std::string_view format, const int32_t min_ver,
+                   const int32_t max_ver) {
   assert(!in);
   irs::file_name(str, state.meta->name, ext);
   in = state.dir->open(str, advice);
@@ -348,9 +349,11 @@ class postings_writer_base : public irs::postings_writer {
   static constexpr std::string_view kPosFormatName =
     "iresearch_10_postings_positions";
   static constexpr std::string_view kPosExt = "pos";
-  static constexpr std::string_view kPayFormatName = "iresearch_10_postings_payloads";
+  static constexpr std::string_view kPayFormatName =
+    "iresearch_10_postings_payloads";
   static constexpr std::string_view kPayExt = "pay";
-  static constexpr std::string_view kTermsFormatName = "iresearch_10_postings_terms";
+  static constexpr std::string_view kTermsFormatName =
+    "iresearch_10_postings_terms";
 
  protected:
   postings_writer_base(doc_id_t block_size, std::span<doc_id_t> docs,
@@ -538,7 +541,7 @@ void postings_writer_base::encode(data_output& out,
   out.write_vlong(meta.doc_start - last_state_.doc_start);
   if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     out.write_vlong(meta.pos_start - last_state_.pos_start);
-    if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
+    if (address_limits::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
     if (IndexFeatures::NONE !=
@@ -650,7 +653,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
     }
   }
 
-  meta.pos_end = type_limits<type_t::address_t>::invalid();
+  meta.pos_end = address_limits::invalid();
 
   // write remaining position using
   // variable length encoding
@@ -1092,7 +1095,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
     offs_.end = offs_.start + offs_lengts_[this->buf_pos_];
 
     pay_.value = bytes_view(pay_data_.c_str() + pay_data_pos_,
-                           pay_lengths_[this->buf_pos_]);
+                            pay_lengths_[this->buf_pos_]);
     pay_data_pos_ += pay_lengths_[this->buf_pos_];
   }
 
@@ -1229,7 +1232,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
 
   void read_attributes() noexcept {
     pay_.value = bytes_view(pay_data_.c_str() + pay_data_pos_,
-                           pay_lengths_[this->buf_pos_]);
+                            pay_lengths_[this->buf_pos_]);
     pay_data_pos_ += pay_lengths_[this->buf_pos_];
   }
 
@@ -1849,7 +1852,7 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
       if (term_freq < IteratorTraits::block_size()) {
         state.tail_start = term_state.pos_start;
       } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = type_limits<type_t::address_t>::invalid();
+        state.tail_start = address_limits::invalid();
       } else {
         state.tail_start = term_state.pos_start + term_state.pos_end;
       }
@@ -2096,7 +2099,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
       if (term_freq < IteratorTraits::block_size()) {
         state.tail_start = term_state.pos_start;
       } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = type_limits<type_t::address_t>::invalid();
+        state.tail_start = address_limits::invalid();
       } else {
         state.tail_start = term_state.pos_start + term_state.pos_end;
       }
@@ -2472,7 +2475,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
       if (term_freq < IteratorTraits::block_size()) {
         state.tail_start = term_state.pos_start;
       } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = type_limits<type_t::address_t>::invalid();
+        state.tail_start = address_limits::invalid();
       } else {
         state.tail_start = term_state.pos_start + term_state.pos_end;
       }
@@ -2629,9 +2632,10 @@ struct index_meta_reader final : public irs::index_meta_reader {
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const override;
 
-  virtual void read(const directory& dir, index_meta& meta,
-                    std::string_view filename = {}) override;  // null == use meta
-};                                                       // index_meta_reader
+  virtual void read(
+    const directory& dir, index_meta& meta,
+    std::string_view filename = {}) override;  // null == use meta
+};                                             // index_meta_reader
 
 template<>
 std::string file_name<irs::index_meta_reader, index_meta>(
@@ -2759,7 +2763,7 @@ uint64_t parse_generation(std::string_view segments_file) {
   char* suffix;
   auto gen = std::strtoull(gen_str, &suffix, 10);  // 10 for base-10
 
-  return suffix[0] ? type_limits<type_t::index_gen_t>::invalid() : gen;
+  return suffix[0] ? index_gen_limits::invalid() : gen;
 }
 
 bool index_meta_reader::last_segments_file(const directory& dir,
@@ -2769,7 +2773,7 @@ bool index_meta_reader::last_segments_file(const directory& dir,
     if (name.starts_with(index_meta_writer::FORMAT_PREFIX)) {
       const uint64_t gen = parse_generation(name);
 
-      if (type_limits<type_t::index_gen_t>::valid(gen) && gen > max_gen) {
+      if (index_gen_limits::valid(gen) && gen > max_gen) {
         out = std::move(name);
         max_gen = gen;
       }
@@ -2904,8 +2908,9 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
 }
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
-  virtual void read(const directory& dir, segment_meta& meta,
-                    std::string_view filename = {}) override;  // null == use meta
+  virtual void read(
+    const directory& dir, segment_meta& meta,
+    std::string_view filename = {}) override;  // null == use meta
 };
 
 void segment_meta_reader::read(const directory& dir, segment_meta& meta,
@@ -3193,7 +3198,7 @@ size_t postings_reader_base::decode(const byte_type* in, IndexFeatures features,
 
     term_meta.pos_end = term_meta.freq > block_size_
                           ? vread<uint64_t>(p)
-                          : type_limits<type_t::address_t>::invalid();
+                          : address_limits::invalid();
 
     if (IndexFeatures::NONE !=
         (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
@@ -3240,7 +3245,7 @@ class postings_reader final : public postings_reader_base {
 
           return it;
         });
-    } else {
+    } else if (meta.docs_count == 1) {
       return iterator_impl(
         field_features, required_features,
         [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
@@ -3251,6 +3256,8 @@ class postings_reader final : public postings_reader_base {
 
           return it;
         });
+    } else {
+      return irs::doc_iterator::empty();
     }
   }
 
