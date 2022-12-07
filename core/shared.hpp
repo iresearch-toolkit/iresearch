@@ -26,7 +26,7 @@
 #include <bit>
 #include <cfloat>  // for FLT_EVAL_METHOD
 
-#include "types.hpp"  // iresearch types
+#include "types.hpp"
 
 #ifndef __cplusplus
 #error C++ is required
@@ -63,8 +63,7 @@
 // check if sizeof(float_t) == sizeof(double_t)
 #if defined(FLT_EVAL_METHOD) && \
   ((FLT_EVAL_METHOD == 1) || (FLT_EVAL_METHOD == 2))
-static_assert(sizeof(float_t) == sizeof(double_t),
-              "sizeof(float_t) != sizeof(double_t)");
+static_assert(sizeof(float_t) == sizeof(double_t));
 #define FLOAT_T_IS_DOUBLE_T
 #else
 static_assert(sizeof(float_t) != sizeof(double_t));
@@ -78,12 +77,6 @@ static_assert(sizeof(float_t) != sizeof(double_t));
 #define IR_NATIVE_STRING(s) s
 #endif
 
-// MSVC 2015 does not define __cpp_lib_generic_associative_lookup macro
-#if (defined(__cpp_lib_generic_associative_lookup) || \
-     (defined(_MSC_VER) && _MSC_VER >= 1900))
-#define IRESEARCH_GENERIC_ASSOCIATIVE_LOOKUP
-#endif
-
 #ifndef IRS_FUNC_NAME
 #if defined(__clang__) || defined(__GNUC__)
 #define IRS_FUNC_NAME __PRETTY_FUNCTION__
@@ -94,24 +87,30 @@ static_assert(sizeof(float_t) != sizeof(double_t));
 #endif
 #endif
 
-#if __has_attribute(nonnull)
+#ifndef __has_feature
+#define IRESEARCH_HAS_FEATURE(x) 0
+#else
+#define IRESEARCH_HAS_FEATURE(x) __has_feature(x)
+#endif
+
+#ifndef __has_attribute
+#define IRESEARCH_HAS_ATTRIBUTE(x) 0
+#else
+#define IRESEARCH_HAS_ATTRIBUTE(x) __has_attribute(x)
+#endif
+
+#if IRESEARCH_HAS_ATTRIBUTE(nonnull)
 #define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) \
   __attribute__((nonnull(arg_index)))
 #else
-#define IRESEARCH_ATTRIBUTE_NONNULL(...)
+#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index)
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// SSE compatibility
-////////////////////////////////////////////////////////////////////////////////
 
 // for MSVC on x64 architecture SSE2 is always enabled
 #if defined(__SSE2__) || defined(__ARM_NEON) || defined(__ARM_NEON__) || \
   (defined(_MSC_VER) && (defined(_M_AMD64) || defined(_M_X64)))
 #define IRESEARCH_SSE2
 #endif
-
-////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
 // macro definitions similar to the ones at
@@ -139,6 +138,5 @@ namespace irs = ::iresearch;
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
 
-// CMPXCHG16B requires that the destination
-// (memory) operand be 16-byte aligned
+// CMPXCHG16B requires that the destination (memory) operand be 16-byte aligned
 #define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
