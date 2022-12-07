@@ -55,7 +55,7 @@ class bytes_input final : public data_input, public bytes_view {
   }
 
   void seek(size_t pos) {
-    IRS_ASSERT(this->begin() + pos <= this->data() + this->size());
+    IRS_ASSERT(this->begin() + pos <= this->end());
     pos_ = this->data() + pos;
   }
 
@@ -72,7 +72,7 @@ class bytes_input final : public data_input, public bytes_view {
   }
 
   byte_type read_byte() final {
-    IRS_ASSERT(pos_ < this->end());
+    IRS_ASSERT(pos_ < this->data() + this->size());
     return *pos_++;
   }
 
@@ -142,7 +142,7 @@ void bytes_input::read_bytes(bstring& buf, size_t size) {
 }
 
 size_t bytes_input::read_bytes(byte_type* b, size_t size) {
-  IRS_ASSERT(pos_ + size <= this->end());
+  IRS_ASSERT(pos_ + size <= this->data() + this->size());
   size =
     std::min(size, size_t(std::distance(pos_, this->data() + this->size())));
   std::memcpy(b, pos_, sizeof(byte_type) * size);
