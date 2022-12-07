@@ -23,9 +23,8 @@
 #ifndef IRESEARCH_COLUMNSTORE_H
 #define IRESEARCH_COLUMNSTORE_H
 
-#include "shared.hpp"
-
 #include "formats/formats.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace columnstore {

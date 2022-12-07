@@ -148,13 +148,13 @@ inline int64_t read_zvlong(data_input& in) {
 }
 
 inline void write_string(data_output& out, const char* s, size_t len) {
-  assert(len < std::numeric_limits<uint32_t>::max());
+  IRS_ASSERT(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(reinterpret_cast<const byte_type*>(s), len);
 }
 
 inline void write_string(data_output& out, const byte_type* s, size_t len) {
-  assert(len < std::numeric_limits<uint32_t>::max());
+  IRS_ASSERT(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(s, len);
 }
@@ -179,14 +179,9 @@ inline StringType read_string(data_input& in) {
   const size_t len = in.read_vint();
 
   StringType str(len, 0);
-#ifdef IRESEARCH_DEBUG
-  const size_t read =
+  [[maybe_unused]] const auto read =
     in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
-  assert(read == str.size());
-  UNUSED(read);
-#else
-  in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
-#endif  // IRESEARCH_DEBUG
+  IRS_ASSERT(read == str.size());
   return str;
 }
 
@@ -287,12 +282,12 @@ StringType vread_string(const byte_type*& in) {
 }
 
 FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
-  assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
+  IRS_ASSERT(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
   return (val << 1) | uint64_t(b);
 }
 
 FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
-  assert(val <= UINT32_C(0x7FFFFFFF));
+  IRS_ASSERT(val <= UINT32_C(0x7FFFFFFF));
   return (val << 1) | uint32_t(b);
 }
 
@@ -315,9 +310,9 @@ class bytes_output : public data_output {
  public:
   explicit bytes_output(bstring& buf) noexcept : buf_(&buf) {}
 
-  virtual void write_byte(byte_type b) override final { (*buf_) += b; }
+  void write_byte(byte_type b) final { (*buf_) += b; }
 
-  virtual void write_bytes(const byte_type* b, size_t size) override final {
+  void write_bytes(const byte_type* b, size_t size) final {
     buf_->append(b, size);
   }
 
@@ -335,12 +330,12 @@ class bytes_view_input : public index_input {
     : data_(data), pos_(data_.data()) {}
 
   void skip(size_t size) noexcept {
-    assert(pos_ + size <= data_.data() + data_.size());
+    IRS_ASSERT(pos_ + size <= data_.data() + data_.size());
     pos_ += size;
   }
 
   void seek(size_t pos) noexcept override {
-    assert(data_.data() + pos <= data_.data() + data_.size());
+    IRS_ASSERT(data_.data() + pos <= data_.data() + data_.size());
     pos_ = data_.data() + pos;
   }
 
@@ -348,14 +343,14 @@ class bytes_view_input : public index_input {
     return std::distance(data_.data(), pos_);
   }
 
-  size_t length() const noexcept override final { return data_.size(); }
+  size_t length() const noexcept final { return data_.size(); }
 
-  bool eof() const noexcept override final {
+  bool eof() const noexcept final {
     return pos_ >= data_.data() + data_.size();
   }
 
-  byte_type read_byte() noexcept override final {
-    assert(pos_ < data_.data() + data_.size());
+  byte_type read_byte() noexcept final {
+    IRS_ASSERT(pos_ < data_.data() + data_.size());
     return *pos_++;
   }
 
@@ -373,7 +368,7 @@ class bytes_view_input : public index_input {
   }
 
   const byte_type* read_buffer(size_t size,
-                               BufferHint /*hint*/) noexcept override final {
+                               BufferHint /*hint*/) noexcept final {
     const auto* pos = pos_ + size;
 
     if (pos <= data_.data() + data_.size()) {
@@ -384,7 +379,7 @@ class bytes_view_input : public index_input {
     return nullptr;
   }
 
-  size_t read_bytes(byte_type* b, size_t size) noexcept override final;
+  size_t read_bytes(byte_type* b, size_t size) noexcept final;
 
   size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept override;
 
@@ -398,31 +393,19 @@ class bytes_view_input : public index_input {
 
   void reset(bytes_view ref) noexcept { reset(ref.data(), ref.size()); }
 
-  ptr dup() const override {
-    return std::make_unique<bytes_view_input>(*this);
-  }
+  ptr dup() const override { return std::make_unique<bytes_view_input>(*this); }
 
   ptr reopen() const override { return dup(); }
 
-  int16_t read_short() noexcept override final {
-    return irs::read<uint16_t>(pos_);
-  }
+  int16_t read_short() noexcept final { return irs::read<uint16_t>(pos_); }
 
-  int32_t read_int() noexcept override final {
-    return irs::read<uint32_t>(pos_);
-  }
+  int32_t read_int() noexcept final { return irs::read<uint32_t>(pos_); }
 
-  int64_t read_long() noexcept override final {
-    return irs::read<uint64_t>(pos_);
-  }
+  int64_t read_long() noexcept final { return irs::read<uint64_t>(pos_); }
 
-  uint64_t read_vlong() noexcept override final {
-    return irs::vread<uint64_t>(pos_);
-  }
+  uint64_t read_vlong() noexcept final { return irs::vread<uint64_t>(pos_); }
 
-  uint32_t read_vint() noexcept override final {
-    return irs::vread<uint32_t>(pos_);
-  }
+  uint32_t read_vint() noexcept final { return irs::vread<uint32_t>(pos_); }
 
   int64_t checksum(size_t offset) const override;
 
@@ -434,7 +417,7 @@ class bytes_view_input : public index_input {
 // same as bytes_view_input but with support of adress remapping
 // usable when original data offses needs to be persistent
 // NOTE: remapped data blocks may have gaps but should not overlap!
-class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
+class remapped_bytes_view_input : public bytes_view_input {
  public:
   using mapping_value = std::pair<size_t, size_t>;
   using mapping = std::vector<mapping_value>;
@@ -449,7 +432,7 @@ class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
   remapped_bytes_view_input(const remapped_bytes_view_input& other)
     : bytes_view_input(other), mapping_{other.mapping_} {}
 
-  virtual int64_t checksum(size_t offset) const override final {
+  int64_t checksum(size_t offset) const final {
     return bytes_view_input::checksum(src_to_internal(offset));
   }
 
@@ -457,9 +440,9 @@ class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
     bytes_view_input::seek(src_to_internal(pos));
   }
 
-  virtual size_t file_pointer() const noexcept override final;
+  size_t file_pointer() const noexcept final;
 
-  virtual ptr dup() const override {
+  ptr dup() const override {
     return std::make_unique<remapped_bytes_view_input>(*this);
   }
 
@@ -471,8 +454,7 @@ class IRESEARCH_API remapped_bytes_view_input : public bytes_view_input {
   using bytes_view_input::read_buffer;
   using bytes_view_input::read_bytes;
 
-  virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept override final {
+  size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept final {
     return bytes_view_input::read_bytes(src_to_internal(offset), b, size);
   }
 
@@ -488,7 +470,7 @@ namespace delta {
 
 template<typename Iterator>
 inline void decode(Iterator begin, Iterator end) {
-  assert(std::distance(begin, end) > 0);
+  IRS_ASSERT(std::distance(begin, end) > 0);
 
   typedef typename std::iterator_traits<Iterator>::value_type value_type;
   const auto second = begin + 1;
@@ -498,7 +480,7 @@ inline void decode(Iterator begin, Iterator end) {
 
 template<typename Iterator>
 inline void encode(Iterator begin, Iterator end) {
-  assert(std::distance(begin, end) > 0);
+  IRS_ASSERT(std::distance(begin, end) > 0);
 
   typedef typename std::iterator_traits<Iterator>::value_type value_type;
   const auto rend = irstd::make_reverse_iterator(begin);
@@ -517,7 +499,7 @@ namespace avg {
 // Returns block std::pair{ base, average }
 inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin,
                                                    uint64_t* end) noexcept {
-  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+  IRS_ASSERT(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint64_t base = *begin;
@@ -540,7 +522,7 @@ inline std::tuple<uint64_t, uint64_t, bool> encode(uint64_t* begin,
 // Returns block std::pair{ base, average }
 inline std::pair<uint32_t, uint32_t> encode(uint32_t* begin,
                                             uint32_t* end) noexcept {
-  assert(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
+  IRS_ASSERT(std::distance(begin, end) > 0 && std::is_sorted(begin, end));
   --end;
 
   const uint32_t base = *begin;

@@ -21,27 +21,22 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MEMORY_H
-#define IRESEARCH_MEMORY_H
+#pragma once
 
 #include <memory>
 
-#include "log.hpp"
-#include "math_utils.hpp"
-#include "noncopyable.hpp"
 #include "shared.hpp"
-#include "type_utils.hpp"
+#include "utils/assert.hpp"
+#include "utils/log.hpp"
+#include "utils/math_utils.hpp"
+#include "utils/noncopyable.hpp"
+#include "utils/type_utils.hpp"
 
 namespace iresearch::memory {
 
-inline constexpr size_t align_up(size_t size, size_t alignment) noexcept {
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  assert(math::is_power2(alignment));
+constexpr size_t align_up(size_t size, size_t alignment) noexcept {
+  IRS_ASSERT(math::is_power2(alignment));
   return (size + alignment - 1) & (0 - alignment);
-#else
-  return IRS_ASSERT(math::is_power2(alignment)),
-         (size + alignment - 1) & (0 - alignment);
-#endif
 }
 
 // Dump memory statistics and stack trace to stderr
@@ -131,7 +126,7 @@ struct aligned_type {
   T* as() noexcept {
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
     const bool result = irs::is_convertible<T, Types...>();
-    assert(result);
+    IRS_ASSERT(result);
 #else
     static_assert(irs::is_convertible<T, Types...>(),
                   "T must be convertible to the specified Types");
@@ -149,7 +144,7 @@ struct aligned_type {
   void construct(Args&&... args) {
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
     const bool result = irs::in_list<T, Types...>();
-    assert(result);
+    IRS_ASSERT(result);
 #else
     static_assert(irs::in_list<T, Types...>(),
                   "T must be in the specified list of Types");
@@ -162,7 +157,7 @@ struct aligned_type {
   void destroy() noexcept {
 #if defined(_MSC_VER) && (_MSC_VER < 1900)
     const bool result = irs::is_convertible<T, Types...>();
-    assert(result);
+    IRS_ASSERT(result);
 #else
     static_assert(irs::is_convertible<T, Types...>(),
                   "T must be convertible to the specified Types");
@@ -262,7 +257,7 @@ class allocator_array_deleter {
 
 struct noop_deleter {
   template<typename T>
-  void operator()(T*) {}
+  void operator()(T* /*unused*/) {}
 };
 
 template<typename T>
@@ -301,7 +296,7 @@ struct managed_deleter : util::noncopyable {
   }
 
   void operator()(const pointer p) noexcept {
-    assert(!ptr_ || p == ptr_);
+    IRS_ASSERT(!ptr_ || p == ptr_);
     delete ptr_;
   }
 
@@ -404,7 +399,7 @@ template<typename T, typename Alloc>
 typename std::enable_if_t<
   std::is_array<T>::value && std::extent<T>::value == 0,
   std::unique_ptr<T, allocator_array_deallocator<Alloc>>>
-allocate_unique(Alloc& alloc, size_t size, allocate_only_tag) {
+allocate_unique(Alloc& alloc, size_t size, allocate_only_tag /*tag*/) {
   typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
   typedef typename traits_t::pointer pointer;
   typedef allocator_array_deallocator<Alloc> deleter_t;
@@ -450,8 +445,7 @@ struct maker<Class, false> {
 
 }  // namespace iresearch::memory
 
-// Default inline implementation of a factory method, instantiation on
-// heap
+// Default inline implementation of a factory method, instantiation on heap
 #define DEFINE_FACTORY_INLINE(class_name)                                   \
   template<typename Class, bool>                                            \
   friend struct irs::memory::maker;                                         \
@@ -462,5 +456,3 @@ struct maker<Class, false> {
     typedef irs::memory::maker<type> maker_t;                               \
     return maker_t::template make(std::forward<Args>(args)...);             \
   }
-
-#endif

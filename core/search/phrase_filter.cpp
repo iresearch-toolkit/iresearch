@@ -40,16 +40,16 @@ struct get_visitor {
 
   result_type operator()(const by_term_options& part) const {
     return [term = bytes_view(part.term)](const sub_reader& segment,
-                                         const term_reader& field,
-                                         filter_visitor& visitor) {
+                                          const term_reader& field,
+                                          filter_visitor& visitor) {
       return by_term::visit(segment, field, term, visitor);
     };
   }
 
   result_type operator()(const by_prefix_options& part) const {
     return [term = bytes_view(part.term)](const sub_reader& segment,
-                                         const term_reader& field,
-                                         filter_visitor& visitor) {
+                                          const term_reader& field,
+                                          filter_visitor& visitor) {
       return by_prefix::visit(segment, field, term, visitor);
     };
   }
@@ -80,7 +80,7 @@ struct get_visitor {
 
   template<typename T>
   result_type operator()(const T&) const {
-    assert(false);
+    IRS_ASSERT(false);
     return [](const sub_reader&, const term_reader&, filter_visitor&) {};
   }
 };
@@ -120,7 +120,7 @@ struct prepare : util::noncopyable {
 
   template<typename T>
   result_type operator()(const T&) const {
-    assert(false);
+    IRS_ASSERT(false);
     return filter::prepared::empty();
   }
 
@@ -146,16 +146,16 @@ class phrase_term_visitor final : public filter_visitor,
   explicit phrase_term_visitor(PhraseStates& phrase_states) noexcept
     : phrase_states_(phrase_states) {}
 
-  virtual void prepare(const sub_reader& segment, const term_reader& field,
-                       const seek_term_iterator& terms) noexcept override {
+  void prepare(const sub_reader& segment, const term_reader& field,
+               const seek_term_iterator& terms) noexcept override {
     segment_ = &segment;
     reader_ = &field;
     terms_ = &terms;
     found_ = true;
   }
 
-  virtual void visit(score_t boost) override {
-    assert(terms_ && collectors_ && segment_ && reader_);
+  void visit(score_t boost) override {
+    IRS_ASSERT(terms_ && collectors_ && segment_ && reader_);
 
     // disallow negative boost
     boost = std::max(0.f, boost);
@@ -163,7 +163,7 @@ class phrase_term_visitor final : public filter_visitor,
     if (stats_size_ <= term_offset_) {
       // variadic phrase case
       collectors_->push_back();
-      assert(stats_size_ == term_offset_);
+      IRS_ASSERT(stats_size_ == term_offset_);
       ++stats_size_;
       volatile_boost_ |= (boost != kNoBoost);
     }
@@ -268,7 +268,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     ptv.reset(term_stats);
 
     for (const auto& word : options()) {
-      assert(std::get_if<by_term_options>(&word.second));
+      IRS_ASSERT(std::get_if<by_term_options>(&word.second));
       by_term::visit(segment, *reader,
                      std::get<by_term_options>(word.second).term, ptv);
       if (!ptv.found()) {
@@ -294,7 +294,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   }
 
   // offset of the first term in a phrase
-  assert(!options().empty());
+  IRS_ASSERT(!options().empty());
   const size_t base_offset = options().begin()->first;
 
   // finish stats
@@ -400,7 +400,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     state.num_terms = std::move(num_terms);
     state.reader = reader;
     state.volatile_boost = !is_ord_empty && ptv.volatile_boost();
-    assert(phrase_size == state.num_terms.size());
+    IRS_ASSERT(phrase_size == state.num_terms.size());
 
     phrase_terms.reserve(phrase_size);
     num_terms.resize(
@@ -408,11 +408,11 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   }
 
   // offset of the first term in a phrase
-  assert(!options().empty());
+  IRS_ASSERT(!options().empty());
   const size_t base_offset = options().begin()->first;
 
   // finish stats
-  assert(phrase_size == phrase_part_stats.size());
+  IRS_ASSERT(phrase_size == phrase_part_stats.size());
   bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
   auto* stats_buf = const_cast<byte_type*>(stats.data());
   auto collector = phrase_part_stats.begin();

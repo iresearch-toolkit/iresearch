@@ -49,7 +49,7 @@ class rot13_encryption final : public irs::ctr_encryption {
       cipher_(block_size),
       header_length_(header_length) {}
 
-  virtual size_t header_length() noexcept override { return header_length_; }
+  size_t header_length() noexcept override { return header_length_; }
 
  private:
   class rot13_cipher final : public irs::cipher {
@@ -57,16 +57,16 @@ class rot13_encryption final : public irs::ctr_encryption {
     explicit rot13_cipher(size_t block_size) noexcept
       : block_size_(block_size) {}
 
-    virtual size_t block_size() const noexcept override { return block_size_; }
+    size_t block_size() const noexcept override { return block_size_; }
 
-    virtual bool decrypt(irs::byte_type* data) const override {
+    bool decrypt(irs::byte_type* data) const override {
       for (size_t i = 0; i < block_size_; ++i) {
         data[i] -= 13;
       }
       return true;
     }
 
-    virtual bool encrypt(irs::byte_type* data) const override {
+    bool encrypt(irs::byte_type* data) const override {
       for (size_t i = 0; i < block_size_; ++i) {
         data[i] += 13;
       }
@@ -149,7 +149,7 @@ class directory_test_case_base
     return (*std::get<0>(p))(nullptr).second;
   }
 
-  virtual void SetUp() override {
+  void SetUp() override {
     test_base::SetUp();
 
     auto& p =
@@ -162,7 +162,7 @@ class directory_test_case_base
     ASSERT_NE(nullptr, dir_);
   }
 
-  virtual void TearDown() override {
+  void TearDown() override {
     dir_ = nullptr;
     test_base::TearDown();
   }

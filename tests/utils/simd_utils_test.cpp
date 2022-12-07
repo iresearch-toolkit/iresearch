@@ -20,13 +20,13 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "utils/simd_utils.hpp"
 
 #include <cstring>
 
+#include "tests_shared.hpp"
 #include "utils/misc.hpp"
 #include "utils/std.hpp"
-#include "utils/simd_utils.hpp"
 
 TEST(simd_utils_test, delta32) {
   {

@@ -7,13 +7,13 @@
 #ifndef FST_SCRIPT_DRAW_IMPL_H_
 #define FST_SCRIPT_DRAW_IMPL_H_
 
-#include <ostream>
-#include <sstream>
-#include <string>
-
 #include <fst/fst.h>
 #include <fst/symbol-table.h>
 #include <fst/util.h>
+
+#include <ostream>
+#include <sstream>
+#include <string>
 
 namespace fst {
 

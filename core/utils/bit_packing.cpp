@@ -23,8 +23,9 @@
 
 #include "bit_packing.hpp"
 
-#include <cassert>
 #include <cstring>
+
+#include "utils/assert.hpp"
 
 namespace {
 
@@ -1273,7 +1274,7 @@ MSVC_ONLY(
 
 template<int N>
 uint32_t fastpack_at(const uint32_t* in, const size_t i) noexcept {
-  assert(i < irs::packed::BLOCK_SIZE_32);
+  IRS_ASSERT(i < irs::packed::BLOCK_SIZE_32);
 
   switch (i) {
     case 0:
@@ -1341,7 +1342,7 @@ uint32_t fastpack_at(const uint32_t* in, const size_t i) noexcept {
     case 31:
       return fastpack_at<N, 31>(in);
     default:
-      assert(false);
+      IRS_ASSERT(false);
       return 0;  // this should never be hit, or algorithm error
   }
 }
@@ -1349,13 +1350,13 @@ uint32_t fastpack_at(const uint32_t* in, const size_t i) noexcept {
 template<>
 uint32_t fastpack_at<32>(const uint32_t* in, const size_t i) noexcept {
   // 32 == sizeof(uint32_t) * 8
-  assert(i < 32);
+  IRS_ASSERT(i < 32);
   return in[i];
 }
 
 template<int N>
 uint64_t fastpack_at(const uint64_t* in, const size_t i) noexcept {
-  assert(i < irs::packed::BLOCK_SIZE_64);
+  IRS_ASSERT(i < irs::packed::BLOCK_SIZE_64);
 
   switch (i) {
     case 0:
@@ -1487,7 +1488,7 @@ uint64_t fastpack_at(const uint64_t* in, const size_t i) noexcept {
     case 63:
       return fastpack_at<N, 63>(in);
     default:
-      assert(false);
+      IRS_ASSERT(false);
       return 0;  // this should never be hit, or algorithm error
   }
 }
@@ -1495,7 +1496,7 @@ uint64_t fastpack_at(const uint64_t* in, const size_t i) noexcept {
 template<>
 uint64_t fastpack_at<64>(const uint64_t* in, const size_t i) noexcept {
   // 64 == sizeof(uint64_t) * 8
-  assert(i < 64);
+  IRS_ASSERT(i < 64);
   return in[i];
 }
 
@@ -1610,7 +1611,7 @@ void pack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
       fastpack<32>(in, out);
       break;
     default:
-      assert(false);
+      IRS_ASSERT(false);
       break;
   }
 }
@@ -1811,7 +1812,7 @@ void pack_block(const uint64_t* RESTRICT in, uint64_t* RESTRICT out,
       fastpack<64>(in, out);
       break;
     default:
-      assert(false);
+      IRS_ASSERT(false);
       break;
   }
 }
@@ -1916,7 +1917,7 @@ void unpack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
       fastunpack<32>(in, out);
       break;
     default:
-      assert(false);
+      IRS_ASSERT(false);
       break;
   }
 }
@@ -2117,14 +2118,14 @@ void unpack_block(const uint64_t* RESTRICT in, uint64_t* RESTRICT out,
       fastunpack<64>(in, out);
       break;
     default:
-      assert(false);
+      IRS_ASSERT(false);
       break;
   }
 }
 
 uint32_t fastpack_at(const uint32_t* in, const size_t i,
                      const uint32_t bits) noexcept {
-  assert(i < BLOCK_SIZE_32);
+  IRS_ASSERT(i < BLOCK_SIZE_32);
 
   switch (bits) {
     case 1:
@@ -2192,14 +2193,14 @@ uint32_t fastpack_at(const uint32_t* in, const size_t i,
     case 32:
       return ::fastpack_at<32>(in, i);
     default:
-      assert(false);
+      IRS_ASSERT(false);
       return 0;  // this should never be hit, or algorithm error
   }
 }
 
 uint64_t fastpack_at(const uint64_t* in, const size_t i,
                      const uint32_t bits) noexcept {
-  assert(i < BLOCK_SIZE_64);
+  IRS_ASSERT(i < BLOCK_SIZE_64);
 
   switch (bits) {
     case 1:
@@ -2331,7 +2332,7 @@ uint64_t fastpack_at(const uint64_t* in, const size_t i,
     case 64:
       return ::fastpack_at<64>(in, i);
     default:
-      assert(false);
+      IRS_ASSERT(false);
       return 0;  // this should never be hit, or algorithm error
   }
 }

@@ -23,12 +23,12 @@
 #ifndef IRESEARCH_DATAOUTPUT_H
 #define IRESEARCH_DATAOUTPUT_H
 
-#include "utils/string.hpp"
-#include "utils/io_utils.hpp"
-#include "utils/bytes_utils.hpp"
-#include "utils/noncopyable.hpp"
-
 #include <streambuf>
+
+#include "utils/bytes_utils.hpp"
+#include "utils/io_utils.hpp"
+#include "utils/noncopyable.hpp"
+#include "utils/string.hpp"
 
 namespace iresearch {
 
@@ -95,10 +95,9 @@ class output_buf final : public std::streambuf, util::noncopyable {
 
   explicit output_buf(index_output* out);
 
-  virtual std::streamsize xsputn(const char_type* c,
-                                 std::streamsize size) override;
+  std::streamsize xsputn(const char_type* c, std::streamsize size) override;
 
-  virtual int_type overflow(int_type c) override;
+  int_type overflow(int_type c) override;
 
   index_output* internal() const { return out_; }
 
@@ -111,23 +110,23 @@ class output_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class buffered_index_output : public index_output, util::noncopyable {
  public:
-  virtual void flush() override;
+  void flush() override;
 
-  virtual void close() override;
+  void close() override;
 
-  virtual size_t file_pointer() const override;
+  size_t file_pointer() const override;
 
-  virtual void write_byte(byte_type b) override final;
+  void write_byte(byte_type b) final;
 
-  virtual void write_bytes(const byte_type* b, size_t length) override final;
+  void write_bytes(const byte_type* b, size_t length) final;
 
-  virtual void write_vint(uint32_t v) override final;
+  void write_vint(uint32_t v) final;
 
-  virtual void write_vlong(uint64_t v) override final;
+  void write_vlong(uint64_t v) final;
 
-  virtual void write_int(int32_t v) override final;
+  void write_int(int32_t v) final;
 
-  virtual void write_long(int64_t v) override final;
+  void write_long(int64_t v) final;
 
   buffered_index_output& operator=(byte_type b) {
     write_byte(b);

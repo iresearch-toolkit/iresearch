@@ -24,8 +24,8 @@
 
 #include "common.hpp"
 
-#include <frozen/unordered_map.h>
 #include <frozen/string.h>
+#include <frozen/unordered_map.h>
 
 #include "shared.hpp"
 #ifdef IRESEARCH_URING
@@ -43,7 +43,7 @@ constexpr auto kFactories =
 #ifdef IRESEARCH_URING
     {"async",
      [](std::string_view path) -> irs::directory::ptr {
-       return std::make_unique<irs::async_directory>(path);
+       return std::make_unique<irs::AsyncDirectory>(path);
      }},
 #endif
     {"mmap",

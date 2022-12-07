@@ -48,7 +48,7 @@ class tfidf_sort : public sort {
   bool use_boost_as_score() const noexcept { return boost_as_score_; }
   void use_boost_as_score(bool use) noexcept { boost_as_score_ = use; }
 
-  virtual sort::prepared::ptr prepare() const override;
+  sort::prepared::ptr prepare() const override;
 
  private:
   bool normalize_;

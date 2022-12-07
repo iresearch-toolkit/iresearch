@@ -85,7 +85,7 @@ class CachingHelper {
       auto tmp = std::move(src_it->second);
       cache_.erase(src_it);
       try {
-        assert(!cache_.contains(dst));
+        IRS_ASSERT(!cache_.contains(dst));
         cache_[dst] = std::move(tmp);
       } catch (...) {
       }

@@ -50,7 +50,7 @@ namespace {
 
 // Return the granularity portion of the term
 irs::bytes_view mask_granularity(irs::bytes_view term,
-                                size_t prefix_size) noexcept {
+                                 size_t prefix_size) noexcept {
   return term.size() > prefix_size ? irs::bytes_view{term.data(), prefix_size}
                                    : term;
 }
@@ -62,7 +62,7 @@ irs::bytes_view mask_value(irs::bytes_view term, size_t prefix_size) noexcept {
   }
 
   return term.size() > prefix_size ? irs::bytes_view{term.data() + prefix_size,
-                                                    term.size() - prefix_size}
+                                                     term.size() - prefix_size}
                                    : irs::bytes_view{};
 }
 
@@ -92,11 +92,12 @@ void collect_terms(const irs::sub_reader& segment,
 template<typename Visitor>
 void collect_terms_between(
   const irs::sub_reader& segment, const irs::term_reader& field,
-  irs::seek_term_iterator& terms, size_t prefix_size, irs::bytes_view begin_term,
+  irs::seek_term_iterator& terms, size_t prefix_size,
+  irs::bytes_view begin_term,
   irs::bytes_view end_term,  // granularity level for end_term is ingored
-                            // during comparison
-  bool include_begin_term,  // should begin_term also be included
-  bool include_end_term,    /* should end_term also be included*/
+                             // during comparison
+  bool include_begin_term,   // should begin_term also be included
+  bool include_end_term,     /* should end_term also be included*/
   Visitor& visitor) {
   irs::bstring tmp;
   irs::bytes_view masked_begin_level;
@@ -191,7 +192,7 @@ void collect_terms_from(
   // masked next term is < masked current term)
   collect_terms_between(
     segment, field, terms, prefix_size,
-    *min_term_itr,     // the min term for the current granularity level
+    *min_term_itr,      // the min term for the current granularity level
     irs::bytes_view{},  // collect full granularity range
     min_term_inclusive && exact_min_term == &(*min_term_itr),
     true,  // add min_term if requested
@@ -289,7 +290,7 @@ void collect_terms_until(
   collect_terms_between(
     segment, field, terms, prefix_size,
     irs::bytes_view{},  // collect full granularity range
-    *max_term_itr,     // the max term for the current granularity level
+    *max_term_itr,      // the max term for the current granularity level
     true,
     max_term_inclusive &&
       exact_max_term == &(*max_term_itr),  // add max_term if requested
@@ -421,7 +422,7 @@ void collect_terms_within(
     max_term.empty()
       ? irs::bytes_view{}
       : irs::bytes_view(*max_term_itr),  // collect up to max term at same
-                                        // granularity range
+                                         // granularity range
     min_term_inclusive && exact_min_term == &(*min_term_itr),
     false,  // add min_term if requested, end_term already covered by a
             // less-granular range
@@ -496,8 +497,8 @@ void visit(const irs::sub_reader& segment, const irs::term_reader& reader,
   const size_t prefix_size =
     reader.meta().features.count(irs::type<irs::granularity_prefix>::id());
 
-  assert(!rng.min.empty() || irs::BoundType::UNBOUNDED == rng.min_type);
-  assert(!rng.max.empty() || irs::BoundType::UNBOUNDED == rng.max_type);
+  IRS_ASSERT(!rng.min.empty() || irs::BoundType::UNBOUNDED == rng.min_type);
+  IRS_ASSERT(!rng.max.empty() || irs::BoundType::UNBOUNDED == rng.max_type);
 
   if (rng.min.empty()) {    // open min range
     if (rng.max.empty()) {  // open max range
@@ -512,7 +513,7 @@ void visit(const irs::sub_reader& segment, const irs::term_reader& reader,
 
     // smallest least granular term
     const irs::bytes_view smallest_term{max_term.c_str(),
-                                       std::min(max_term.size(), prefix_size)};
+                                        std::min(max_term.size(), prefix_size)};
 
     // collect terms ending with max granularity range, include/exclude max term
     if (irs::SeekResult::END != terms->seek_ge(smallest_term)) {
@@ -549,14 +550,15 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   boundary.clear();
 
   for (auto* term_attr = get<term_attribute>(term); term.next();) {
-    assert(term_attr);
+    IRS_ASSERT(term_attr);
     boundary.emplace_back(term_attr->value);
   }
 }
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
-  const index_reader& index, const Order& ord, score_t boost, std::string_view field,
-  const options_type::range_type& rng, size_t scored_terms_limit) {
+  const index_reader& index, const Order& ord, score_t boost,
+  std::string_view field, const options_type::range_type& rng,
+  size_t scored_terms_limit) {
   if (!rng.min.empty() && !rng.max.empty()) {
     const auto& min = rng.min.front();
     const auto& max = rng.max.front();

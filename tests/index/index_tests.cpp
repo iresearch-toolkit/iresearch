@@ -2052,7 +2052,7 @@ class index_test_case : public tests::index_test_base {
       override_sync_directory(irs::directory& impl, sync_f&& sync)
         : directory_mock(impl), sync_(std::move(sync)) {}
 
-      virtual bool sync(std::string_view name) noexcept override {
+      bool sync(std::string_view name) noexcept override {
         try {
           if (sync_(name)) {
             return true;
@@ -5385,11 +5385,11 @@ TEST_P(index_test_case, doc_update) {
      public:
       irs::string_token_stream tokens_;
       bool write_result_;
-      virtual bool write(irs::data_output& out) const override {
+      bool write(irs::data_output& out) const override {
         out.write_byte(1);
         return write_result_;
       }
-      virtual irs::token_stream& get_tokens() const override {
+      irs::token_stream& get_tokens() const override {
         return const_cast<test_field*>(this)->tokens_;
       }
     };
@@ -14401,7 +14401,7 @@ class index_test_case_14 : public index_test_case {
                    irs::doc_id_t min_doc) noexcept
       : call_stats_{&call_stats}, filter_doc_{filter_doc}, min_doc_{min_doc} {}
 
-    virtual void write(
+    void write(
       const irs::field_stats& stats, irs::doc_id_t doc,
       std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
       ++call_stats_->num_write_calls;
@@ -14420,7 +14420,7 @@ class index_test_case_14 : public index_test_case {
       min_doc_ = std::min(doc, min_doc_);
     }
 
-    virtual void write(irs::data_output& out, irs::bytes_view payload) final {
+    void write(irs::data_output& out, irs::bytes_view payload) final {
       ++call_stats_->num_write_consolidation_calls;
 
       if (!payload.empty()) {
@@ -14431,7 +14431,7 @@ class index_test_case_14 : public index_test_case {
       }
     }
 
-    virtual void finish(irs::bstring& out) final {
+    void finish(irs::bstring& out) final {
       ++call_stats_->num_finish_calls;
 
       EXPECT_TRUE(out.empty());

@@ -21,9 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
 #include "index/index_writer.hpp"
+#include "tests_shared.hpp"
 #include "utils/index_utils.hpp"
 
 namespace {

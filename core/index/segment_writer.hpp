@@ -108,7 +108,7 @@ class segment_writer : util::noncopyable {
         return index_and_store<true>(std::forward<Field>(field));
       }
 
-      assert(false);  // unsupported action
+      IRS_ASSERT(false);  // unsupported action
       valid_ = false;
     }
 
@@ -140,7 +140,7 @@ class segment_writer : util::noncopyable {
     // mark as removed since not fully inserted
 
     // user should check return of begin() != eof()
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
     // -1 for 0-based offset
     remove(doc_id_t(docs_cached() + doc_limits::min() - 1));
     valid_ = false;
@@ -231,7 +231,7 @@ class segment_writer : util::noncopyable {
 
   template<typename Writer>
   bool store_sorted(const doc_id_t doc, Writer& writer) {
-    assert(doc < doc_limits::eof());
+    IRS_ASSERT(doc < doc_limits::eof());
 
     if (IRS_UNLIKELY(!fields_.comparator())) {
       // can't store sorted field without a comparator
@@ -254,7 +254,7 @@ class segment_writer : util::noncopyable {
   template<typename Writer>
   bool store(const hashed_string_view& name, const doc_id_t doc,
              Writer& writer) {
-    assert(doc < doc_limits::eof());
+    IRS_ASSERT(doc < doc_limits::eof());
 
     auto& out = stream(name, doc);
 
@@ -276,7 +276,7 @@ class segment_writer : util::noncopyable {
       static_cast<std::string_view>(field.name())};
 
     // user should check return of begin() != eof()
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
     // -1 for 0-based offset
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 
@@ -288,7 +288,7 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     // user should check return of begin() != eof()
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
     // -1 for 0-based offset
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 
@@ -307,7 +307,7 @@ class segment_writer : util::noncopyable {
     const IndexFeatures index_features = field.index_features();
 
     // user should check return of begin() != eof()
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
     // -1 for 0-based offset
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 
@@ -326,7 +326,7 @@ class segment_writer : util::noncopyable {
     const IndexFeatures index_features = field.index_features();
 
     // user should check return of begin() != eof()
-    assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
     // -1 for 0-based offset
     const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
 

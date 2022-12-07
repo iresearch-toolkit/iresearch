@@ -280,7 +280,7 @@ bool stemming_token_stream::reset(std::string_view data) {
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));
       term.value = bytes_view(reinterpret_cast<const byte_type*>(value),
-                             sb_stemmer_length(stemmer_.get()));
+                              sb_stemmer_length(stemmer_.get()));
 
       return true;
     }

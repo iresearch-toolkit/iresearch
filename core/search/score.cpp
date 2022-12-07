@@ -75,7 +75,7 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
       };
 
       return {std::make_unique<ctx>(std::move(scorers.front()),
-                                       std::move(scorers.back())),
+                                    std::move(scorers.back())),
               [](score_ctx* ctx, score_t* res) noexcept {
                 auto* scorers = static_cast<struct ctx*>(ctx);
                 scorers->func0(res);

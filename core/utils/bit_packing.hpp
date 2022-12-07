@@ -24,12 +24,12 @@
 #ifndef IRESEARCH_BIT_PACKING_H
 #define IRESEARCH_BIT_PACKING_H
 
-#include "shared.hpp"
-#include "math_utils.hpp"
-
 #include <cmath>
-#include <limits>
 #include <iterator>
+#include <limits>
+
+#include "math_utils.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 namespace packed {
@@ -100,7 +100,7 @@ FORCE_INLINE constexpr uint64_t iterations_required(uint32_t count) noexcept {
 
 template<typename T>
 inline T max_value(uint32_t bits) noexcept {
-  assert(bits >= 0U && bits <= sizeof(T) * 8U);
+  IRS_ASSERT(bits >= 0U && bits <= sizeof(T) * 8U);
 
   return bits == sizeof(T) * 8U ? (std::numeric_limits<T>::max)()
                                 : ~(~T(0) << bits);
@@ -138,7 +138,7 @@ inline uint64_t at(const uint64_t* encoded, const size_t i,
 
 inline void pack(const uint32_t* first, const uint32_t* last, uint32_t* out,
                  const uint32_t bit) noexcept {
-  assert(0 == (last - first) % BLOCK_SIZE_32);
+  IRS_ASSERT(0 == (last - first) % BLOCK_SIZE_32);
 
   for (; first < last; first += BLOCK_SIZE_32, out += bit) {
     pack_block(first, out, bit);
@@ -147,7 +147,7 @@ inline void pack(const uint32_t* first, const uint32_t* last, uint32_t* out,
 
 inline void pack(const uint64_t* first, const uint64_t* last, uint64_t* out,
                  const uint32_t bit) noexcept {
-  assert(0 == (last - first) % BLOCK_SIZE_64);
+  IRS_ASSERT(0 == (last - first) % BLOCK_SIZE_64);
 
   for (; first < last; first += BLOCK_SIZE_64, out += bit) {
     pack_block(first, out, bit);
@@ -180,8 +180,8 @@ class iterator {
 
   iterator(const_pointer packed, uint32_t bits, size_t i = 0) noexcept
     : packed_(packed), i_(i), bits_(bits) {
-    assert(packed_);
-    assert(bits_ > 0 && bits <= sizeof(value_type) * 8);
+    IRS_ASSERT(packed_);
+    IRS_ASSERT(bits_ > 0 && bits <= sizeof(value_type) * 8);
   }
 
   iterator(const iterator&) = default;
@@ -228,14 +228,14 @@ class iterator {
   }
 
   difference_type operator-(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_);  // compatibility
+    IRS_ASSERT(packed_ == rhs.packed_);  // compatibility
     return i_ - rhs.i_;
   }
 
   value_type operator*() const noexcept { return at(packed_, i_, bits_); }
 
   bool operator==(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_);  // compatibility
+    IRS_ASSERT(packed_ == rhs.packed_);  // compatibility
     return i_ == rhs.i_;
   }
 
@@ -244,14 +244,14 @@ class iterator {
   }
 
   bool operator<(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_);  // compatibility
+    IRS_ASSERT(packed_ == rhs.packed_);  // compatibility
     return i_ < rhs.i_;
   }
 
   bool operator>=(const iterator& rhs) const noexcept { return !(*this < rhs); }
 
   bool operator>(const iterator& rhs) const noexcept {
-    assert(packed_ == rhs.packed_);  // compatibility
+    IRS_ASSERT(packed_ == rhs.packed_);  // compatibility
     return i_ > rhs.i_;
   }
 

@@ -35,7 +35,7 @@ namespace iresearch {
 
 inline bool memcmp_less(const byte_type* lhs, size_t lhs_size,
                         const byte_type* rhs, size_t rhs_size) noexcept {
-  assert(lhs && rhs);
+  IRS_ASSERT(lhs && rhs);
 
   const size_t size = std::min(lhs_size, rhs_size);
   const auto res = ::memcmp(lhs, rhs, size);
@@ -105,7 +105,7 @@ class postings : util::noncopyable {
 
     bool operator()(const ref_t& lhs,
                     const hashed_bytes_view& rhs) const noexcept {
-      assert(lhs.second < data_->size());
+      IRS_ASSERT(lhs.second < data_->size());
       return (*data_)[lhs.second].term == rhs;
     }
 

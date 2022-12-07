@@ -1033,8 +1033,7 @@ TEST(unbounded_object_pool_volatile_tests, test_uobject_pool_1) {
 
 TEST(unbounded_object_pool_volatile_tests, return_object_after_pool_destroyed) {
   auto pool =
-    std::make_unique<irs::unbounded_object_pool_volatile<test_uobject>>(
-      1);
+    std::make_unique<irs::unbounded_object_pool_volatile<test_uobject>>(1);
   ASSERT_EQ(0, pool->generation_size());
   ASSERT_NE(nullptr, pool);
 

@@ -75,9 +75,8 @@ class ngram_token_stream_base : public analyzer, private util::noncopyable {
 
   explicit ngram_token_stream_base(const Options& options);
 
-  virtual bool reset(std::string_view data) noexcept override;
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  bool reset(std::string_view data) noexcept override;
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -127,7 +126,7 @@ class ngram_token_stream : public ngram_token_stream_base {
 
   explicit ngram_token_stream(const ngram_token_stream_base::Options& options);
 
-  virtual bool next() noexcept override;
+  bool next() noexcept override;
 
  private:
   inline bool next_symbol(const byte_type*& it) const noexcept;

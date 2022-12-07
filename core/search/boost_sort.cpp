@@ -34,7 +34,7 @@ struct volatile_boost_score_ctx : score_ctx {
   volatile_boost_score_ctx(const filter_boost* volatile_boost,
                            score_t boost) noexcept
     : boost{boost}, volatile_boost{volatile_boost} {
-    assert(volatile_boost);
+    IRS_ASSERT(volatile_boost);
   }
 
   score_t boost;
@@ -56,12 +56,11 @@ struct prepared final : PreparedSortBase<void> {
       return ScoreFunction::Constant(boost);
     }
 
-    return {
-      std::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
-      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-        auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
-        *res = state.volatile_boost->value * state.boost;
-      }};
+    return {std::make_unique<volatile_boost_score_ctx>(volatile_boost, boost),
+            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+              auto& state = *reinterpret_cast<volatile_boost_score_ctx*>(ctx);
+              *res = state.volatile_boost->value * state.boost;
+            }};
   }
 };
 

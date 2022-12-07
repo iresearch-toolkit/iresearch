@@ -54,8 +54,8 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
     // cppcheck-suppress shadowFunction
     const auto [bucket_stats_size, bucket_stats_align] = prepared->stats_size();
-    assert(bucket_stats_align <= alignof(std::max_align_t));
-    assert(
+    IRS_ASSERT(bucket_stats_align <= alignof(std::max_align_t));
+    IRS_ASSERT(
       math::is_power2(bucket_stats_align));  // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, bucket_stats_align);
@@ -74,7 +74,7 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 }
 
 void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
-  assert(res);
+  IRS_ASSERT(res);
   std::memset(res, 0, reinterpret_cast<size_t>(ctx));
 }
 
@@ -92,8 +92,8 @@ REGISTER_ATTRIBUTE(filter_boost);
 
   return {reinterpret_cast<score_ctx*>(ctx),
           [](score_ctx* ctx, score_t* res) noexcept {
-            assert(res);
-            assert(ctx);
+            IRS_ASSERT(res);
+            IRS_ASSERT(ctx);
 
             const auto boost = reinterpret_cast<uintptr_t>(ctx);
             std::memcpy(res, &boost, sizeof(score_t));
@@ -115,8 +115,8 @@ REGISTER_ATTRIBUTE(filter_boost);
 
     return {absl::bit_cast<score_ctx*>(ScoreCtx{value, size}),
             [](score_ctx* ctx, score_t* res) noexcept {
-              assert(res);
-              assert(ctx);
+              IRS_ASSERT(res);
+              IRS_ASSERT(ctx);
 
               const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
               std::fill_n(res, score_ctx.size, score_ctx.value);

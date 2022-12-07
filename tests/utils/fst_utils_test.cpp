@@ -22,8 +22,8 @@
 
 #include "tests_shared.hpp"
 #include "utils/automaton.hpp"
-#include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/fstext/fst_sorted_range_matcher.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 TEST(fst_table_matcher_test, static_const) {
   static_assert(fst::MATCH_INPUT ==

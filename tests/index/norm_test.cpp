@@ -47,18 +47,17 @@ class Analyzer : public irs::analysis::analyzer {
   explicit Analyzer(size_t count)
     : irs::analysis::analyzer{irs::type<Analyzer>::get()}, count_{count} {}
 
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id id) noexcept override final {
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
-  virtual bool reset(std::string_view value) noexcept override {
+  bool reset(std::string_view value) noexcept override {
     value_ = value;
     i_ = 0;
     return true;
   }
 
-  virtual bool next() override {
+  bool next() override {
     if (i_ < count_) {
       std::get<irs::term_attribute>(attrs_).value =
         irs::ViewCast<irs::byte_type>(value_);

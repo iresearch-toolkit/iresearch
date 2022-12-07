@@ -65,7 +65,7 @@ class ExternalHeapIterator {
 
       if (!ctx_(*it)) {  // advance iterator
         if (!remove_lead(it)) {
-          assert(heap_.empty());
+          IRS_ASSERT(heap_.empty());
           return false;
         }
 
@@ -75,7 +75,7 @@ class ExternalHeapIterator {
       std::push_heap(begin, ++it, ctx_);
     }
 
-    assert(!heap_.empty());
+    IRS_ASSERT(!heap_.empty());
     std::pop_heap(begin, std::end(heap_), ctx_);
     lead_ = 1;
 
@@ -83,7 +83,7 @@ class ExternalHeapIterator {
   }
 
   size_t value() const noexcept {
-    assert(!heap_.empty());
+    IRS_ASSERT(!heap_.empty());
     return heap_.back();
   }
 

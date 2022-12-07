@@ -90,7 +90,7 @@ segment_writer::stored_column::stored_column(
 
 doc_id_t segment_writer::begin(const update_context& ctx,
                                size_t reserve_rollback_extra /*= 0*/) {
-  assert(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+  IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
   valid_ = true;
   doc_.clear();  // clear norm fields
 
@@ -191,12 +191,12 @@ bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
                            const features_t& features, token_stream& tokens) {
   REGISTER_TIMER_DETAILED();
-  assert(col_writer_);
+  IRS_ASSERT(col_writer_);
 
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
   // invert only if new field index features are a subset of slot index features
-  assert(is_subset_of(features, slot->meta().features));
+  IRS_ASSERT(is_subset_of(features, slot->meta().features));
   if (is_subset_of(index_features, slot->requested_features()) &&
       slot->invert(tokens, doc)) {
     if (!slot->seen() && slot->has_features()) {
@@ -214,7 +214,7 @@ bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
 column_output& segment_writer::stream(const hashed_string_view& name,
                                       const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
-  assert(column_info_);
+  IRS_ASSERT(column_info_);
 
   return columns_
     .lazy_emplace(name,
@@ -250,10 +250,10 @@ size_t segment_writer::flush_doc_mask(const segment_meta& meta,
        ++doc_id) {
     if (docs_mask_.test(doc_id)) {
       auto idx = doc_id + doc_limits::min();
-      assert(idx < doc_limits::eof());
+      IRS_ASSERT(idx < doc_limits::eof());
       if (!docmap.empty()) {
         idx = docmap[idx];
-        assert(idx < doc_limits::eof());
+        IRS_ASSERT(idx < doc_limits::eof());
       }
       docs_mask.emplace(static_cast<doc_id_t>(idx));
     }
@@ -314,7 +314,7 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   }
 
   // update segment metadata
-  assert(docs_cached() >= docs_mask_count);
+  IRS_ASSERT(docs_cached() >= docs_mask_count);
   meta.docs_count = docs_cached();
   meta.live_docs_count = meta.docs_count - docs_mask_count;
   meta.files.clear();  // prepare empy set to be swaped into dir_
@@ -347,12 +347,12 @@ void segment_writer::reset(const segment_meta& meta) {
 
   if (!field_writer_) {
     field_writer_ = meta.codec->get_field_writer(false);
-    assert(field_writer_);
+    IRS_ASSERT(field_writer_);
   }
 
   if (!col_writer_) {
     col_writer_ = meta.codec->get_columnstore_writer(false);
-    assert(col_writer_);
+    IRS_ASSERT(col_writer_);
   }
 
   col_writer_->prepare(dir_, meta);

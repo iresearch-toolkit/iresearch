@@ -49,14 +49,14 @@ enum class ErrorCode : uint32_t {
 
 #define DECLARE_ERROR_CODE(class_name)                 \
   static const ErrorCode CODE = ErrorCode::class_name; \
-  virtual ::iresearch::ErrorCode code() const noexcept override { return CODE; }
+  ::iresearch::ErrorCode code() const noexcept override { return CODE; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base
 //////////////////////////////////////////////////////////////////////////////
 struct error_base : std::exception {
   virtual ErrorCode code() const noexcept { return ErrorCode::undefined_error; }
-  virtual const char* what() const noexcept override;
+  const char* what() const noexcept override;
 };  // error_base
 
 //////////////////////////////////////////////////////////////////////////////
@@ -71,7 +71,7 @@ class detailed_error_base : public error_base {
   explicit detailed_error_base(std::string&& error) noexcept
     : error_(std::move(error)) {}
 
-  virtual const char* what() const noexcept override { return error_.c_str(); }
+  const char* what() const noexcept override { return error_.c_str(); }
 
  private:
   std::string error_;
@@ -83,7 +83,7 @@ class detailed_error_base : public error_base {
 struct not_supported : error_base {
   DECLARE_ERROR_CODE(not_supported);
 
-  virtual const char* what() const noexcept override;
+  const char* what() const noexcept override;
 };  // not_supported
 
 //////////////////////////////////////////////////////////////////////////////
@@ -106,7 +106,7 @@ class lock_obtain_failed : public error_base {
   DECLARE_ERROR_CODE(lock_obtain_failed);
 
   explicit lock_obtain_failed(std::string_view filename = "");
-  virtual const char* what() const noexcept override;
+  const char* what() const noexcept override;
 
  private:
   std::string error_;
@@ -120,7 +120,7 @@ class file_not_found : public error_base {
   DECLARE_ERROR_CODE(file_not_found);
 
   explicit file_not_found(std::string_view filename = "");
-  virtual const char* what() const noexcept override;
+  const char* what() const noexcept override;
 
  private:
   std::string error_;
@@ -132,7 +132,7 @@ class file_not_found : public error_base {
 struct index_not_found : error_base {
   DECLARE_ERROR_CODE(index_not_found);
 
-  virtual const char* what() const noexcept override;
+  const char* what() const noexcept override;
 };  // index_not_found
 
 //////////////////////////////////////////////////////////////////////////////
@@ -152,7 +152,7 @@ struct index_error : detailed_error_base {
 struct not_impl_error : error_base {
   DECLARE_ERROR_CODE(not_impl_error);
 
-  virtual const char* what() const noexcept override;
+  const char* what() const noexcept override;
 };  // not_impl_error
 
 //////////////////////////////////////////////////////////////////////////////

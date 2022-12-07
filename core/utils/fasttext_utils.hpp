@@ -40,7 +40,7 @@ class ImmutableFastText : public FastText {
 
     getWordVector(query, word);
 
-    assert(wordVectors_);
+    IRS_ASSERT(wordVectors_);
     return getNN(*wordVectors_, query, k, {word});
   }
 

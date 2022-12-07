@@ -247,7 +247,7 @@ class index_writer : private util::noncopyable {
 
       // updates 'segment_' and 'ctx_'
       auto ctx = UpdateSegment(disable_flush);
-      assert(segment_.ctx());
+      IRS_ASSERT(segment_.ctx());
 
       return {*ctx, segment_.ctx(), segment_.ctx()->make_update_context()};
     }
@@ -261,7 +261,7 @@ class index_writer : private util::noncopyable {
       // thread-safe to use ctx_/segment_ while have lock since active
       // flush_context will not change cppcheck-suppress unreadVariable
       auto ctx = UpdateSegment(false);  // updates 'segment_' and 'ctx_'
-      assert(segment_.ctx());
+      IRS_ASSERT(segment_.ctx());
 
       // guarded by flush_context::flush_mutex_
       segment_.ctx()->remove(std::forward<Filter>(filter));
@@ -279,7 +279,7 @@ class index_writer : private util::noncopyable {
       // thread-safe to use ctx_/segment_ while have lock since active
       // flush_context will not change
       auto ctx = UpdateSegment(false);  // updates 'segment_' and 'ctx_'
-      assert(segment_.ctx());
+      IRS_ASSERT(segment_.ctx());
 
       return {
         *ctx, segment_.ctx(),
@@ -876,7 +876,7 @@ class index_writer : private util::noncopyable {
           modification_offset_begin_(segment->uncomitted_modification_queries_),
           modification_offset_end_(std::numeric_limits<size_t>::max()),
           segment_(std::move(segment)) {
-        assert(segment_);
+        IRS_ASSERT(segment_);
       }
     };
 
@@ -960,7 +960,7 @@ class index_writer : private util::noncopyable {
 
         if (entry.second) {
           // partial update
-          assert(begin <= files.end());
+          IRS_ASSERT(begin <= files.end());
 
           if (std::numeric_limits<size_t>::max() == entry.second) {
             // skip invalid segments

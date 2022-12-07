@@ -38,7 +38,7 @@ struct doc_iterator_adapter {
   doc_iterator_adapter() = default;
   doc_iterator_adapter(doc_iterator_t&& it) noexcept
     : it(std::move(it)), doc(irs::get<irs::document>(*this->it)) {
-    assert(doc);
+    IRS_ASSERT(doc);
   }
 
   doc_iterator_adapter(doc_iterator_adapter&&) = default;
@@ -76,7 +76,7 @@ struct score_iterator_adapter : public doc_iterator_adapter<DocIterator> {
   score_iterator_adapter(doc_iterator_t&& it) noexcept
     : doc_iterator_adapter<DocIterator>(std::move(it)),
       score{&irs::score::get(*this->it)} {
-    assert(this->doc);
+    IRS_ASSERT(this->doc);
   }
 
   score_iterator_adapter(score_iterator_adapter&&) = default;
@@ -106,7 +106,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   explicit conjunction(doc_iterators_t&& itrs, Merger&& merger = Merger{})
     : Merger{std::move(merger)},
       itrs_{[](doc_iterators_t&& itrs) {
-        assert(!itrs.empty());
+        IRS_ASSERT(!itrs.empty());
 
         // sort subnodes in ascending order by their cost
         std::sort(std::begin(itrs), std::end(itrs),
@@ -123,9 +123,9 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
       }(std::move(itrs))},
       front_{itrs_.front().it.get()},
       front_doc_{irs::get_mutable<document>(front_)} {
-    assert(!itrs_.empty());
-    assert(front_);
-    assert(front_doc_);
+    IRS_ASSERT(!itrs_.empty());
+    IRS_ASSERT(front_);
+    IRS_ASSERT(front_doc_);
     std::get<attribute_ptr<document>>(attrs_) =
       const_cast<document*>(front_doc_);
     std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(front_);
@@ -141,14 +141,13 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   // size of conjunction
   size_t size() const noexcept { return itrs_.size(); }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const override final { return front_doc_->value; }
+  doc_id_t value() const final { return front_doc_->value; }
 
-  virtual bool next() override {
+  bool next() override {
     if (!front_->next()) {
       return false;
     }
@@ -156,7 +155,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     return !doc_limits::eof(converge(front_doc_->value));
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     if (doc_limits::eof(target = front_->seek(target))) {
       return doc_limits::eof();
     }
@@ -169,7 +168,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
   void prepare_score() {
-    assert(Merger::size());
+    IRS_ASSERT(Merger::size());
 
     auto& score = std::get<irs::score>(attrs_);
 
@@ -179,7 +178,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     for (auto& it : itrs_) {
       // FIXME(gnus): remove const cast
       auto* score = const_cast<irs::score*>(it.score);
-      assert(score);  // ensured by score_iterator_adapter
+      IRS_ASSERT(score);  // ensured by score_iterator_adapter
       if (*score != ScoreFunction::kDefault) {
         scores_.emplace_back(score);
       }
@@ -188,7 +187,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     // prepare score
     switch (scores_.size()) {
       case 0:
-        assert(score == ScoreFunction::kDefault);
+        IRS_ASSERT(score == ScoreFunction::kDefault);
         score = ScoreFunction::Default(Merger::size());
         break;
       case 1:
@@ -238,7 +237,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   // tries to converge front_ and other iterators to the specified target.
   // if it impossible tries to find first convergence place
   doc_id_t converge(doc_id_t target) {
-    assert(!doc_limits::eof(target));
+    IRS_ASSERT(!doc_limits::eof(target));
 
     for (auto rest = seek_rest(target); target != rest;
          rest = seek_rest(target)) {
@@ -254,7 +253,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
   // seeks all iterators except the
   // first to the specified target
   doc_id_t seek_rest(doc_id_t target) {
-    assert(!doc_limits::eof(target));
+    IRS_ASSERT(!doc_limits::eof(target));
 
     for (auto it = itrs_.begin() + 1, end = itrs_.end(); it != end; ++it) {
       const auto doc = (*it)->seek(target);

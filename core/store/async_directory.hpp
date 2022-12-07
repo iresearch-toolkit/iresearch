@@ -20,11 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ASYNC_DIRECTORY_H
-#define IRESEARCH_ASYNC_DIRECTORY_H
+#pragma once
+
+#include <memory>
 
 #include "liburing.h"
-
 #include "store/mmap_directory.hpp"
 #include "utils/object_pool.hpp"
 
@@ -45,27 +45,23 @@ struct async_file_builder {
 using async_file_pool = unbounded_object_pool<async_file_builder>;
 using async_file_ptr = async_file_pool::ptr;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class mmap_directory
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API async_directory : public mmap_directory {
+class AsyncDirectory : public MMapDirectory {
  public:
-  explicit async_directory(std::string dir,
-                           directory_attributes attrs = directory_attributes{},
-                           size_t pool_size = 16, size_t queue_size = 1024,
-                           unsigned flags = 0);
+  explicit AsyncDirectory(std::filesystem::path dir,
+                          directory_attributes attrs = directory_attributes{},
+                          size_t pool_size = 16, size_t queue_size = 1024,
+                          unsigned flags = 0);
 
-  virtual index_output::ptr create(std::string_view name) noexcept override;
-  virtual bool sync(std::span<std::string_view> names) noexcept override;
+  index_output::ptr create(std::string_view name) noexcept override;
+  bool sync(std::span<std::string_view> names) noexcept override;
 
-  using mmap_directory::sync;
+  // bool sync(std::string_view name) noexcept;
+  using MMapDirectory::sync;
 
  private:
   async_file_pool async_pool_;
   size_t queue_size_;
   unsigned flags_;
-};  // async_directory
+};
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_ASYNC_DIRECTORY_H

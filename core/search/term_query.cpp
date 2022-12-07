@@ -45,14 +45,14 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   }
 
   auto* reader = state->reader;
-  assert(reader);
+  IRS_ASSERT(reader);
 
   auto docs = (ctx.mode == ExecutionMode::kTop)
                 ? reader->wanderator(*state->cookie, ord.features())
                 : reader->postings(*state->cookie, ord.features());
 
   if (IRS_UNLIKELY(!docs)) {
-    assert(false);
+    IRS_ASSERT(false);
     return doc_iterator::empty();
   }
 

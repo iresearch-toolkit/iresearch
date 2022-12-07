@@ -45,7 +45,8 @@ inline bool get_uint64(GenericObject const& json, std::string_view name,
 }
 
 template<typename GenericObject>
-inline bool get_bool(GenericObject const& json, std::string_view name, bool& value) {
+inline bool get_bool(GenericObject const& json, std::string_view name,
+                     bool& value) {
   if (!json.HasMember(name.c_str())) {
     return false;
   }

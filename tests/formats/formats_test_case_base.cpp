@@ -1029,57 +1029,53 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
       using directory::attributes;
 
-      virtual irs::directory_attributes& attributes() noexcept override {
+      irs::directory_attributes& attributes() noexcept override {
         return dir_.attributes();
       }
 
-      virtual irs::index_output::ptr create(
-        std::string_view name) noexcept override {
+      irs::index_output::ptr create(std::string_view name) noexcept override {
         // corrupt meta before writing it
         meta_.docs_count = meta_.live_docs_count - 1;
         return dir_.create(name);
       }
 
-      virtual bool exists(bool& result,
-                          std::string_view name) const noexcept override {
+      bool exists(bool& result, std::string_view name) const noexcept override {
         return dir_.exists(result, name);
       }
 
-      virtual bool length(uint64_t& result,
-                          std::string_view name) const noexcept override {
+      bool length(uint64_t& result,
+                  std::string_view name) const noexcept override {
         return dir_.length(result, name);
       }
 
-      virtual irs::index_lock::ptr make_lock(
-        std::string_view name) noexcept override {
+      irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
         return dir_.make_lock(name);
       }
 
-      virtual bool mtime(std::time_t& result,
-                         std::string_view name) const noexcept override {
+      bool mtime(std::time_t& result,
+                 std::string_view name) const noexcept override {
         return dir_.mtime(result, name);
       }
 
-      virtual irs::index_input::ptr open(
-        std::string_view name, irs::IOAdvice advice) const noexcept override {
+      irs::index_input::ptr open(std::string_view name,
+                                 irs::IOAdvice advice) const noexcept override {
         return dir_.open(name, advice);
       }
 
-      virtual bool remove(std::string_view name) noexcept override {
+      bool remove(std::string_view name) noexcept override {
         return dir_.remove(name);
       }
 
-      virtual bool rename(std::string_view src,
-                          std::string_view dst) noexcept override {
+      bool rename(std::string_view src,
+                  std::string_view dst) noexcept override {
         return dir_.rename(src, dst);
       }
 
-      virtual bool sync(std::string_view name) noexcept override {
+      bool sync(std::string_view name) noexcept override {
         return dir_.sync(name);
       }
 
-      virtual bool visit(
-        const irs::directory::visitor_f& visitor) const override {
+      bool visit(const irs::directory::visitor_f& visitor) const override {
         return dir_.visit(visitor);
       }
 

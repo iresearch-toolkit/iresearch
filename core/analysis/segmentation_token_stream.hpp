@@ -23,10 +23,10 @@
 #ifndef IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
 #define IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
 
-#include "shared.hpp"
 #include "analyzers.hpp"
-#include "token_stream.hpp"
+#include "shared.hpp"
 #include "token_attributes.hpp"
+#include "token_stream.hpp"
 #include "utils/attribute_helper.hpp"
 
 namespace iresearch {
@@ -34,7 +34,9 @@ namespace analysis {
 class segmentation_token_stream final : public analyzer,
                                         private util::noncopyable {
  public:
-  static constexpr std::string_view type_name() noexcept { return "segmentation"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "segmentation";
+  }
   static void init();  // for triggering registration in a static build
 
   struct options_t {
@@ -50,13 +52,12 @@ class segmentation_token_stream final : public analyzer,
     word_break_t word_break{word_break_t::ALPHA};
   };
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
   explicit segmentation_token_stream(options_t&& opts);
-  virtual bool next() override;
-  virtual bool reset(std::string_view data) override;
+  bool next() override;
+  bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

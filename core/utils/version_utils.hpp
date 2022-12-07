@@ -26,7 +26,6 @@
 
 #include "shared.hpp"
 #include "utils/string.hpp"
-
 #include "utils/version_defines.hpp"
 
 #ifdef IResearch_int_version

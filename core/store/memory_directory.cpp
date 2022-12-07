@@ -24,11 +24,11 @@
 #include "memory_directory.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <cstring>
 
 #include "error/error.hpp"
 #include "shared.hpp"
+#include "utils/assert.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/crc.hpp"
 #include "utils/directory_utils.hpp"
@@ -47,16 +47,16 @@ class single_instance_lock : public index_lock {
  public:
   single_instance_lock(std::string_view name, memory_directory* parent)
     : name{name}, parent(parent) {
-    assert(parent);
+    IRS_ASSERT(parent);
   }
 
-  virtual bool lock() override {
+  bool lock() override {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{parent->llock_};
     return parent->locks_.insert(name).second;
   }
 
-  virtual bool is_locked(bool& result) const noexcept override {
+  bool is_locked(bool& result) const noexcept override {
     try {
       std::lock_guard lock{parent->llock_};
 
@@ -69,7 +69,7 @@ class single_instance_lock : public index_lock {
     return false;
   }
 
-  virtual bool unlock() noexcept override {
+  bool unlock() noexcept override {
     try {
       std::lock_guard lock{parent->llock_};
 
@@ -149,7 +149,7 @@ index_input::ptr memory_index_input::reopen() const {
 
 void memory_index_input::switch_buffer(size_t pos) {
   auto idx = file_->buffer_offset(pos);
-  assert(idx < file_->buffer_count());
+  IRS_ASSERT(idx < file_->buffer_count());
   auto& buf = file_->get_buffer(idx);
 
   if (buf.data != buf_) {
@@ -158,7 +158,7 @@ void memory_index_input::switch_buffer(size_t pos) {
     end_ = buf_ + std::min(buf.size, file_->length() - start_);
   }
 
-  assert(start_ <= pos && pos < start_ + std::distance(buf_, end_));
+  IRS_ASSERT(start_ <= pos && pos < start_ + std::distance(buf_, end_));
   begin_ = buf_ + (pos - start_);
 }
 
@@ -183,7 +183,7 @@ void memory_index_input::seek(size_t pos) {
 const byte_type* memory_index_input::read_buffer(size_t offset, size_t size,
                                                  BufferHint /*hint*/) noexcept {
   const auto idx = file_->buffer_offset(offset);
-  assert(idx < file_->buffer_count());
+  IRS_ASSERT(idx < file_->buffer_count());
   const auto& buf = file_->get_buffer(idx);
   const auto begin = buf.data + offset - buf.offset;
   const auto end = begin + size;
@@ -282,13 +282,13 @@ class checksum_memory_index_output final : public memory_index_output {
     crc_begin_ = pos_;
   }
 
-  virtual void flush() override {
+  void flush() override {
     crc_.process_block(crc_begin_, pos_);
     crc_begin_ = pos_;
     memory_index_output::flush();
   }
 
-  virtual int64_t checksum() const noexcept override {
+  int64_t checksum() const noexcept override {
     crc_.process_block(crc_begin_, pos_);
     crc_begin_ = pos_;
     return crc_.checksum();
@@ -378,7 +378,7 @@ void memory_index_output::write_byte(byte_type byte) {
 }
 
 void memory_index_output::write_bytes(const byte_type* b, size_t len) {
-  assert(b || !len);
+  IRS_ASSERT(b || !len);
 
   for (size_t to_copy = 0; len; len -= to_copy) {
     if (pos_ >= end_) {
@@ -475,7 +475,7 @@ index_lock::ptr memory_directory::make_lock(std::string_view name) noexcept {
   } catch (...) {
   }
 
-  assert(false);
+  IRS_ASSERT(false);
   return nullptr;
 }
 

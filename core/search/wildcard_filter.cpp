@@ -71,14 +71,14 @@ auto executeWildcard(bstring& buf, bytes_view term, Invalid&& inv, Term&& t,
       term = unescape(term, buf);
       [[fallthrough]];
     case WildcardType::PREFIX: {
-      assert(!term.empty());
+      IRS_ASSERT(!term.empty());
       const auto* begin = term.data();
       const auto* end = begin + term.size();
 
       // term is already checked to be a valid UTF-8 sequence
       const auto* pos =
         utf8_utils::find<false>(begin, end, WildcardMatch::ANY_STRING);
-      assert(pos != end);
+      IRS_ASSERT(pos != end);
 
       term = bytes_view(begin, size_t(pos - begin));  // remove trailing '%'
       return p(term);
@@ -86,7 +86,7 @@ auto executeWildcard(bstring& buf, bytes_view term, Invalid&& inv, Term&& t,
     case WildcardType::WILDCARD:
       return w(term);
     default:
-      assert(false);
+      IRS_ASSERT(false);
       return inv();
   }
 }

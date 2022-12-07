@@ -20,15 +20,16 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "token_attributes.hpp"
+
+#include "shared.hpp"
 
 namespace {
 
 struct empty_position final : irs::position {
-  virtual void reset() override {}
-  virtual bool next() override { return false; }
-  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  void reset() override {}
+  bool next() override { return false; }
+  attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 };

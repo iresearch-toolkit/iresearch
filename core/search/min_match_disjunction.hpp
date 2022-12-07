@@ -70,8 +70,8 @@ class min_match_disjunction : public doc_iterator,
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
       lead_(itrs_.size()) {
-    assert(!itrs_.empty());
-    assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
+    IRS_ASSERT(!itrs_.empty());
+    IRS_ASSERT(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
     // sort subnodes in ascending order by their cost
     std::sort(itrs_.begin(), itrs_.end(),
@@ -95,15 +95,13 @@ class min_match_disjunction : public doc_iterator,
     }
   }
 
-  virtual attribute* get_mutable(type_info::type_id id) noexcept override {
+  attribute* get_mutable(type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);
   }
 
-  virtual doc_id_t value() const override {
-    return std::get<document>(attrs_).value;
-  }
+  doc_id_t value() const override { return std::get<document>(attrs_).value; }
 
-  virtual bool next() override {
+  bool next() override {
     auto& doc_ = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc_.value)) {
@@ -147,7 +145,7 @@ class min_match_disjunction : public doc_iterator,
     return false;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     auto& doc_ = std::get<document>(attrs_);
 
     if (target <= doc_.value) {
@@ -161,7 +159,7 @@ class min_match_disjunction : public doc_iterator,
     // execute seek for all lead iterators and
     // move one to head if it doesn't hit the target
     for (auto it = lead(), end = heap_.end(); it != end;) {
-      assert(*it < itrs_.size());
+      IRS_ASSERT(*it < itrs_.size());
       const auto doc = itrs_[*it]->seek(target);
 
       if (doc_limits::eof(doc)) {
@@ -233,20 +231,20 @@ class min_match_disjunction : public doc_iterator,
   using attributes = std::tuple<document, cost, score>;
 
   void prepare_score() {
-    assert(Merger::size());
+    IRS_ASSERT(Merger::size());
 
     auto& score = std::get<irs::score>(attrs_);
 
     score.Reset(this, [](score_ctx* ctx, score_t* res) {
       auto& self = *static_cast<min_match_disjunction*>(ctx);
-      assert(!self.heap_.empty());
+      IRS_ASSERT(!self.heap_.empty());
 
       self.push_valid_to_lead();
 
       // score lead iterators
       std::memset(res, 0, static_cast<Merger&>(self).byte_size());
       std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
-        assert(it < self.itrs_.size());
+        IRS_ASSERT(it < self.itrs_.size());
         if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
           auto& merger = static_cast<Merger&>(self);
           score(merger.temp());
@@ -284,8 +282,8 @@ class min_match_disjunction : public doc_iterator,
     // lambda here gives ~20% speedup on GCC
     std::push_heap(begin, end,
                    [this](const size_t lhs, const size_t rhs) noexcept {
-                     assert(lhs < itrs_.size());
-                     assert(rhs < itrs_.size());
+                     IRS_ASSERT(lhs < itrs_.size());
+                     IRS_ASSERT(rhs < itrs_.size());
                      const auto& lhs_it = itrs_[lhs];
                      const auto& rhs_it = itrs_[rhs];
                      const auto lhs_doc = lhs_it.value();
@@ -300,8 +298,8 @@ class min_match_disjunction : public doc_iterator,
     // lambda here gives ~20% speedup on GCC
     detail::pop_heap(begin, end,
                      [this](const size_t lhs, const size_t rhs) noexcept {
-                       assert(lhs < itrs_.size());
-                       assert(rhs < itrs_.size());
+                       IRS_ASSERT(lhs < itrs_.size());
+                       IRS_ASSERT(rhs < itrs_.size());
                        const auto& lhs_it = itrs_[lhs];
                        const auto& rhs_it = itrs_[rhs];
                        const auto lhs_doc = lhs_it.value();
@@ -316,7 +314,7 @@ class min_match_disjunction : public doc_iterator,
   // false - otherwise
   bool pop_lead() {
     for (auto it = lead(), end = heap_.end(); it != end;) {
-      assert(*it < itrs_.size());
+      IRS_ASSERT(*it < itrs_.size());
       if (!itrs_[*it]->next()) {
         --lead_;
 
@@ -385,14 +383,14 @@ class min_match_disjunction : public doc_iterator,
 
   // Returns reference to the top of the head
   doc_iterator_t& top() noexcept {
-    assert(!heap_.empty());
-    assert(heap_.front() < itrs_.size());
+    IRS_ASSERT(!heap_.empty());
+    IRS_ASSERT(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
   }
 
   // Returns the first iterator in the lead group
   auto lead() noexcept {
-    assert(lead_ <= heap_.size());
+    IRS_ASSERT(lead_ <= heap_.size());
     return heap_.end() - lead_;
   }
 

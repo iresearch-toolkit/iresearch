@@ -87,7 +87,7 @@ class fs_lock : public index_lock {
   fs_lock(const std::filesystem::path& dir, std::string_view file)
     : dir_{dir}, file_{file} {}
 
-  virtual bool lock() override {
+  bool lock() override {
     if (handle_) {
       // don't allow self obtaining
       return false;
@@ -122,7 +122,7 @@ class fs_lock : public index_lock {
     return handle_ != nullptr;
   }
 
-  virtual bool is_locked(bool& result) const noexcept override {
+  bool is_locked(bool& result) const noexcept override {
     if (handle_ != nullptr) {
       result = true;
       return true;
@@ -139,7 +139,7 @@ class fs_lock : public index_lock {
     return false;
   }
 
-  virtual bool unlock() noexcept override {
+  bool unlock() noexcept override {
     if (handle_ != nullptr) {
       handle_ = nullptr;
 #ifdef _WIN32
@@ -169,7 +169,7 @@ class fs_index_output : public buffered_index_output {
   DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
 
   static index_output::ptr open(const file_path_t name) noexcept {
-    assert(name);
+    IRS_ASSERT(name);
 
     file_utils::handle_t handle(
       file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
@@ -194,19 +194,19 @@ class fs_index_output : public buffered_index_output {
     return nullptr;
   }
 
-  virtual void close() override {
+  void close() override {
     buffered_index_output::close();
     handle.reset(nullptr);
   }
 
-  virtual int64_t checksum() const override {
+  int64_t checksum() const override {
     const_cast<fs_index_output*>(this)->flush();
     return crc.checksum();
   }
 
  protected:
-  virtual void flush_buffer(const byte_type* b, size_t len) override {
-    assert(handle);
+  void flush_buffer(const byte_type* b, size_t len) override {
+    IRS_ASSERT(handle);
 
     const auto len_written =
       irs::file_utils::fwrite(handle.get(), b, sizeof(byte_type) * len);
@@ -239,7 +239,7 @@ class fs_index_input : public buffered_index_input {
  public:
   using buffered_index_input::read_internal;
 
-  virtual int64_t checksum(size_t offset) const override final {
+  int64_t checksum(size_t offset) const final {
     // "read_internal" modifies pos_
     Finally restore_position = [pos = this->pos_, this]() noexcept {
       const_cast<fs_index_input*>(this)->pos_ = pos;
@@ -260,11 +260,11 @@ class fs_index_input : public buffered_index_input {
     return crc.checksum();
   }
 
-  virtual ptr dup() const override { return ptr(new fs_index_input(*this)); }
+  ptr dup() const override { return ptr(new fs_index_input(*this)); }
 
   static index_input::ptr open(const file_path_t name, size_t pool_size,
                                IOAdvice advice) noexcept {
-    assert(name);
+    IRS_ASSERT(name);
 
     auto handle = file_handle::make();
     handle->io_advice = advice;
@@ -308,12 +308,12 @@ class fs_index_input : public buffered_index_input {
     return nullptr;
   }
 
-  virtual size_t length() const override { return handle_->size; }
+  size_t length() const override { return handle_->size; }
 
-  virtual ptr reopen() const override;
+  ptr reopen() const override;
 
  protected:
-  virtual void seek_internal(size_t pos) override final {
+  void seek_internal(size_t pos) final {
     if (pos > handle_->size) {
       throw io_error(string_utils::to_string(
         "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER
@@ -324,9 +324,9 @@ class fs_index_input : public buffered_index_input {
     pos_ = pos;
   }
 
-  virtual size_t read_internal(byte_type* b, size_t len) override final {
-    assert(b);
-    assert(handle_->handle);
+  size_t read_internal(byte_type* b, size_t len) final {
+    IRS_ASSERT(b);
+    IRS_ASSERT(handle_->handle);
 
     void* fd = *handle_;
 
@@ -343,7 +343,7 @@ class fs_index_input : public buffered_index_input {
     const size_t read = irs::file_utils::fread(fd, b, sizeof(byte_type) * len);
     pos_ = handle_->pos += read;
 
-    assert(handle_->pos == pos_);
+    IRS_ASSERT(handle_->pos == pos_);
     return read;
   }
 
@@ -368,7 +368,7 @@ class fs_index_input : public buffered_index_input {
 
   fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
     : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
-    assert(handle_);
+    IRS_ASSERT(handle_);
     buffered_index_input::reset(buf_, sizeof buf_, 0);
   }
 
@@ -391,10 +391,10 @@ class pooled_fs_index_input final : public fs_index_input {
  public:
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input() noexcept;
-  virtual index_input::ptr dup() const override {
+  index_input::ptr dup() const override {
     return ptr(new pooled_fs_index_input(*this));
   }
-  virtual index_input::ptr reopen() const override;
+  index_input::ptr reopen() const override;
 
  private:
   struct builder {
@@ -427,11 +427,11 @@ pooled_fs_index_input::~pooled_fs_index_input() noexcept {
 
 index_input::ptr pooled_fs_index_input::reopen() const {
   auto ptr = dup();
-  assert(ptr);
+  IRS_ASSERT(ptr);
 
   auto& in = static_cast<pooled_fs_index_input&>(*ptr);
   in.handle_ = reopen(*handle_);  // reserve a new handle from pool
-  assert(in.handle_ && in.handle_->handle);
+  IRS_ASSERT(in.handle_ && in.handle_->handle);
 
   return ptr;
 }

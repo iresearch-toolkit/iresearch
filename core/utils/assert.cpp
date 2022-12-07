@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,35 +17,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COMPARER_H
-#define IRESEARCH_COMPARER_H
+#include "utils/assert.hpp"
 
-#include "shared.hpp"
-#include "utils/string.hpp"
+#include <cstddef>
+#include <utility>
 
 namespace iresearch {
+namespace detail {
 
-class comparer {
- public:
-  virtual ~comparer() = default;
+LogCallback kAssertCallback = nullptr;
 
-  bool operator()(bytes_view lhs, bytes_view rhs) const {
-    return less(lhs, rhs);
+void AssertMessage(std::string_view file, std::size_t line,
+                   std::string_view func, std::string_view condition,
+                   std::string_view message) noexcept {
+  if (IRS_LIKELY(kAssertCallback != nullptr)) {
+    kAssertCallback(file, line, func, condition, message);
   }
+}
 
- protected:
-  virtual bool less(bytes_view lhs, bytes_view rhs) const = 0;
-};  // comparer
+}  // namespace detail
 
-inline bool use_dense_sort(size_t size, size_t total) noexcept {
-  // check: N*logN > K
-  return std::isgreaterequal(static_cast<double_t>(size) * std::log(size),
-                             static_cast<double_t>(total));
+LogCallback SetAssertCallback(LogCallback callback) noexcept {
+  return std::exchange(detail::kAssertCallback, callback);
 }
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_COMPARER_H

@@ -70,8 +70,8 @@ size_t header_length(std::string_view format) noexcept {
          format.size();
 }
 
-int32_t check_header(index_input& in, std::string_view req_format, int32_t min_ver,
-                     int32_t max_ver) {
+int32_t check_header(index_input& in, std::string_view req_format,
+                     int32_t min_ver, int32_t max_ver) {
   const ptrdiff_t left = in.length() - in.file_pointer();
 
   if (left < 0) {
@@ -137,7 +137,7 @@ int64_t checksum(const index_input& in) {
     stream = dup.get();
   }
 
-  assert(0 == stream->file_pointer());
+  IRS_ASSERT(0 == stream->file_pointer());
   return stream->checksum(length - sizeof(uint64_t));
 }
 

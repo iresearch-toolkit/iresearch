@@ -43,7 +43,7 @@ struct memory_arena : private aligned_storage<Size, Alignment>,
   ~memory_arena() noexcept { p_ = nullptr; }
 
   char* allocate(size_t size) {
-    assert(within_arena(p_));
+    IRS_ASSERT(within_arena(p_));
     auto* p = p_ + align_up(size, Alignment);
 
     if (within_arena(p)) {
@@ -65,7 +65,7 @@ struct memory_arena : private aligned_storage<Size, Alignment>,
   }
 
   void deallocate(char* p, size_t size) noexcept {
-    assert(within_arena(p_));
+    IRS_ASSERT(within_arena(p_));
 
     if (within_arena(p)) {
       size = align_up(size, Alignment);

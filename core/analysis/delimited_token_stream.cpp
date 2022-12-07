@@ -241,7 +241,8 @@ irs::analysis::analyzer::ptr make_text(std::string_view args) {
   return std::make_unique<irs::analysis::delimited_token_stream>(args);
 }
 
-bool normalize_text_config(std::string_view delimiter, std::string& definition) {
+bool normalize_text_config(std::string_view delimiter,
+                           std::string& definition) {
   definition = delimiter;
   return true;
 }
@@ -267,7 +268,8 @@ delimited_token_stream::delimited_token_stream(std::string_view delimiter)
   }
 }
 
-/*static*/ analyzer::ptr delimited_token_stream::make(std::string_view delimiter) {
+/*static*/ analyzer::ptr delimited_token_stream::make(
+  std::string_view delimiter) {
   return make_text(delimiter);
 }
 

@@ -57,7 +57,7 @@ class freelist : private util::noncopyable {
 
   // push the specified element 'p' to the stack denoted by 'head'
   FORCE_INLINE void push(void* p) noexcept {
-    assert(p);
+    IRS_ASSERT(p);
     auto* free = static_cast<slot*>(p);
     free->next = head_;
     head_ = free;
@@ -71,7 +71,7 @@ class freelist : private util::noncopyable {
 
   FORCE_INLINE void push_n(void* p, const size_t slot_size,
                            const size_t count) noexcept {
-    assert(p);
+    IRS_ASSERT(p);
 
     auto* end = segregate(p, slot_size, count);
     end->next = head_;
@@ -82,7 +82,7 @@ class freelist : private util::noncopyable {
 
   // pops an element from the stack denoted by 'head'
   FORCE_INLINE void* pop() noexcept {
-    assert(head_);
+    IRS_ASSERT(head_);
     void* p = head_;
     head_ = head_->next;
     return p;
@@ -105,7 +105,7 @@ class freelist : private util::noncopyable {
  private:
   static slot* segregate(void* p, const size_t slot_size,
                          const size_t count) noexcept {
-    assert(p);
+    IRS_ASSERT(p);
 
     auto* head = static_cast<slot*>(p);
     auto* begin = static_cast<char*>(p);
@@ -113,7 +113,7 @@ class freelist : private util::noncopyable {
     while ((begin += slot_size) < end) {
       head = head->next = reinterpret_cast<slot*>(begin);
     }
-    assert(begin == end);
+    IRS_ASSERT(begin == end);
 
     head->next = nullptr;  // mark last element
     return head;           // return last element
@@ -374,14 +374,14 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
     slot_size = align_up((std::max)(slot_size, size_t(freelist::MIN_SIZE)),
                          freelist::MIN_ALIGN);
 
-    assert(slot_size >= freelist::MIN_SIZE);
-    assert(!(slot_size % freelist::MIN_ALIGN));
+    IRS_ASSERT(slot_size >= freelist::MIN_SIZE);
+    IRS_ASSERT(!(slot_size % freelist::MIN_ALIGN));
 
     return slot_size;
   }
 
   void* allocate_block(size_t block_size) {
-    assert(block_size && slot_size_);
+    IRS_ASSERT(block_size && slot_size_);
 
     // allocate memory block
     const auto size_in_bytes =
@@ -407,7 +407,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
   }
 
   void allocate_block() {
-    assert(free_.empty());
+    IRS_ASSERT(free_.empty());
 
     const auto block_size = next_size_;
 
@@ -421,7 +421,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
   // to rebind it from one type to another
   void rebind(size_t slot_size) {
     // can rebind empty allocator only
-    assert(slot_size_ == slot_size || this->empty());
+    IRS_ASSERT(slot_size_ == slot_size || this->empty());
     slot_size_ = slot_size;
   }
 
@@ -506,7 +506,7 @@ class memory_pool_allocator : public allocator_base<T> {
     UNUSED(hint);
 
     if (std::is_same<Tag, single_allocator_tag>::value) {
-      assert(1 == n);
+      IRS_ASSERT(1 == n);
       return static_cast<pointer>(pool_->allocate());
     }
 
@@ -519,7 +519,7 @@ class memory_pool_allocator : public allocator_base<T> {
 
   void deallocate(pointer p, size_type n = 1) noexcept {
     if (std::is_same<Tag, single_allocator_tag>::value) {
-      assert(1 == n);
+      IRS_ASSERT(1 == n);
       pool_->deallocate(p);
       return;
     }
@@ -626,7 +626,7 @@ class memory_pool_multi_size_allocator : public allocator_base<T> {
     UNUSED(hint);
 
     if (std::is_same<Tag, single_allocator_tag>::value) {
-      assert(1 == n);
+      IRS_ASSERT(1 == n);
       return static_cast<pointer>(pool_->allocate());
     }
 
@@ -639,7 +639,7 @@ class memory_pool_multi_size_allocator : public allocator_base<T> {
 
   void deallocate(pointer p, size_type n = 1) noexcept {
     if (std::is_same<Tag, single_allocator_tag>::value) {
-      assert(1 == n);
+      IRS_ASSERT(1 == n);
       pool_->deallocate(p);
       return;
     }

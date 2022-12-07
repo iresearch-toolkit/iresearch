@@ -218,12 +218,8 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
   // for OpenFST API compliance
   static ImmutableFst<A>* Read(std::istream& strm,
                                const FstReadOptions& /*opts*/) {
-#ifdef IRESEARCH_DEBUG
-    auto* rdbuf = dynamic_cast<irs::input_buf*>(strm.rdbuf());
-#else
-    auto* rdbuf = static_cast<irs::input_buf*>(strm.rdbuf());
-#endif
-    assert(rdbuf && rdbuf->internal());
+    auto* rdbuf = down_cast<irs::input_buf*>(strm.rdbuf());
+    IRS_ASSERT(rdbuf && rdbuf->internal());
 
     return Read(*rdbuf->internal());
   }
@@ -258,7 +254,7 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
   static_assert(sizeof(StateId) == sizeof(uint32_t));
 
   auto* impl = fst.GetImpl();
-  assert(impl);
+  IRS_ASSERT(impl);
 
   const auto properties =
     fst.Properties(kCopyProperties, true) | Impl::kStaticProperties;
@@ -268,7 +264,7 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
   stream.write_long(properties);
   stream.write_long(stats.total_weight_size);
   stream.write_int(static_cast<StateId>(stats.num_states));
-  assert(stats.num_states >= static_cast<size_t>(fst.Start()));
+  IRS_ASSERT(stats.num_states >= static_cast<size_t>(fst.Start()));
   stream.write_vint(stats.num_states - fst.Start());
   irs::write_zvlong(stream, stats.num_arcs - stats.num_states);
 
@@ -285,7 +281,7 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
 
     if (IRS_LIKELY(weight_size <= Impl::kMaxStateWeight)) {
       const size_t narcs = impl->NumArcs(s);
-      assert(narcs <= Impl::kMaxArcs);
+      IRS_ASSERT(narcs <= Impl::kMaxArcs);
 
       stream.write_vlong(irs::shift_pack_64(weight_size, !narcs));
       if (narcs) {
@@ -295,14 +291,14 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
         for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {
           const auto& arc = aiter.Value();
 
-          assert(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
+          IRS_ASSERT(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
           stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF));
           stream.write_vint(arc.nextstate);
           stream.write_vlong(arc.weight.Size());
         }
       }
     } else {
-      assert(false);
+      IRS_ASSERT(false);
       return false;
     }
   }

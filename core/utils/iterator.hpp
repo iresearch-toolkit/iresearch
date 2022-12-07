@@ -24,12 +24,12 @@
 #define IRESEARCH_ITERATOR_H
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <cassert>
 #include <memory>
 
 #include "misc.hpp"
 #include "noncopyable.hpp"
 #include "std.hpp"
+#include "utils/assert.hpp"
 
 namespace iresearch {
 
@@ -169,7 +169,7 @@ class ptr_iterator
   friend class ::boost::iterator_core_access;
 
   reference dereference() const {
-    assert(*it_);
+    IRS_ASSERT(*it_);
     return **it_;
   }
   void advance(difference_type n) { it_ += n; }

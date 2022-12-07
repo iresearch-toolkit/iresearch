@@ -20,16 +20,16 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_LEVENSHTEIN_UTILS_H
-#define IRESEARCH_LEVENSHTEIN_UTILS_H
+#pragma once
 
 #include <algorithm>
 #include <numeric>
 #include <span>
 #include <vector>
 
-#include "automaton_decl.hpp"
-#include "string.hpp"
+#include "utils/assert.hpp"
+#include "utils/automaton_decl.hpp"
+#include "utils/string.hpp"
 
 namespace iresearch {
 
@@ -39,8 +39,8 @@ struct data_input;
 template<typename T, size_t SubstCost = 1>
 inline size_t edit_distance(const T* lhs, size_t lhs_size, const T* rhs,
                             size_t rhs_size) {
-  assert(lhs || !lhs_size);
-  assert(rhs || !rhs_size);
+  IRS_ASSERT(lhs || !lhs_size);
+  IRS_ASSERT(rhs || !rhs_size);
 
   if (lhs_size > rhs_size) {
     std::swap(lhs, rhs);
@@ -128,7 +128,7 @@ class parametric_description {
   ///         characteristic vector
   //////////////////////////////////////////////////////////////////////////////
   const transition_t& transition(size_t from, uint64_t chi) const noexcept {
-    assert(from * chi_max_ + chi < transitions_.size());
+    IRS_ASSERT(from * chi_max_ + chi < transitions_.size());
     return transitions_[from * chi_max_ + chi];
   }
 
@@ -147,7 +147,7 @@ class parametric_description {
       return max_distance_ + 1;
     }
 
-    assert(state * chi_size_ + offset < distance_.size());
+    IRS_ASSERT(state * chi_size_ + offset < distance_.size());
     return distance_[state * chi_size_ + offset];
   }
 
@@ -310,5 +310,3 @@ inline bool edit_distance(size_t& distance,
 }
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_LEVENSHTEIN_UTILS_H

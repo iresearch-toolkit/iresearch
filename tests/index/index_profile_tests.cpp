@@ -81,7 +81,7 @@ class index_profile_test_case : public tests::index_test_base {
       }
 
       virtual void value(size_t idx, const std::string_view& value) {
-        assert(idx < fields.size());
+        IRS_ASSERT(idx < fields.size());
         fields[idx]->value(value);
       }
     };
