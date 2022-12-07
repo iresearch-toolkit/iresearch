@@ -571,7 +571,7 @@ bool block_size(file_blksize_t& result, const file_path_t file) noexcept {
   IRS_ASSERT(file != nullptr);
 #ifdef _WIN32
   // TODO FIXME find a workaround
-  UNUSED(file);
+  IRS_IGNORE(file);
   result = 512;
 
   return true;
@@ -591,7 +591,7 @@ bool block_size(file_blksize_t& result, const file_path_t file) noexcept {
 #ifdef _WIN32
 bool block_size(file_blksize_t& result, void* fd) noexcept {
   // TODO FIXME find a workaround
-  UNUSED(fd);
+  IRS_IGNORE(fd);
   result = 512;
   return true;
 }

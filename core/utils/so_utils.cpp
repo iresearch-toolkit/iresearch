@@ -90,7 +90,7 @@ void* load_library(const char* soname, int mode /* = 2 */) {
   name += FILENAME_EXTENSION;
 
 #if defined(_MSC_VER)  // Microsoft compiler
-  UNUSED(mode);
+  IRS_IGNORE(mode);
   auto handle = static_cast<void*>(::LoadLibraryW(name.c_str()));
 #elif defined(__GNUC__)  // GNU compiler
   auto handle = dlopen(name.c_str(), mode);

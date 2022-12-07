@@ -503,7 +503,7 @@ class memory_pool_allocator : public allocator_base<T> {
   }
 
   pointer allocate(size_type n, const_pointer hint = 0) {
-    UNUSED(hint);
+    IRS_IGNORE(hint);
 
     if (std::is_same<Tag, single_allocator_tag>::value) {
       IRS_ASSERT(1 == n);
@@ -623,7 +623,7 @@ class memory_pool_multi_size_allocator : public allocator_base<T> {
     : allocators_(&pool), pool_(&allocators_->pool(sizeof(T))) {}
 
   pointer allocate(size_type n, const_pointer hint = 0) {
-    UNUSED(hint);
+    IRS_IGNORE(hint);
 
     if (std::is_same<Tag, single_allocator_tag>::value) {
       IRS_ASSERT(1 == n);

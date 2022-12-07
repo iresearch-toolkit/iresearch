@@ -198,7 +198,7 @@ class segment_reader_impl : public sub_reader {
 
   const sub_reader& operator[](size_t i) const noexcept override {
     IRS_ASSERT(!i);
-    UNUSED(i);
+    IRS_IGNORE(i);
     return *this;
   }
 
@@ -375,7 +375,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
       if (!IsNull(name)) {
         const auto [it, is_new] =
           named_columns.emplace(hashed_string_view{name}, &column);
-        UNUSED(it);
+        IRS_IGNORE(it);
 
         if (IRS_UNLIKELY(!is_new)) {
           throw index_error(string_utils::to_string(

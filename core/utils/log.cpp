@@ -518,7 +518,7 @@ void stack_trace_posix(irs::logger::level_t level, int out_pipe) {
         fn_start ? fn_start - 1 : (addr_start ? addr_start - 1 : nullptr);
       bfd_callback_type_t callback = [out](const char* file, size_t line,
                                            const char* fn) -> void {
-        UNUSED(fn);
+        IRS_IGNORE(fn);
 
         if (file) {
           std::fprintf(out, "%s:%lu\n", file, line);
@@ -599,7 +599,7 @@ bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj,
     bfd_init_t() { bfd_init(); }
   };
   static bfd_init_t static_bfd_init;  // one-time init of BFD
-  UNUSED(static_bfd_init);
+  IRS_IGNORE(static_bfd_init);
 
   auto* file_bfd = bfd_openr(obj, nullptr);
 
@@ -618,8 +618,8 @@ bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj,
   char symbols[symbols_size];
   asymbol** symbols_ptr = (asymbol**)&symbols;
   auto symbols_len = bfd_canonicalize_symtab(file_bfd, symbols_ptr);
-  UNUSED(
-    symbols_len);  // actual number of symbol pointers, not including the NULL
+  // actual number of symbol pointers, not including the NULL
+  IRS_IGNORE(symbols_len);
   auto* section = bfd_get_section_by_name(
     file_bfd, ".text");  // '.text' is a hardcoded section name
   auto bfd_addr = bfd_vma(addr);
@@ -904,8 +904,8 @@ void stack_trace(level_t level) {
 }
 
 void stack_trace(level_t level, const std::exception_ptr& eptr) {
-  UNUSED(eptr);  // no known way to get original instruction pointer from
-                 // exception_ptr
+  // no known way to get original instruction pointer from exception_ptr
+  IRS_IGNORE(eptr);
   stack_trace(level);
 }
 

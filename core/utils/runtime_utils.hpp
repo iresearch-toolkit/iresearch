@@ -50,7 +50,7 @@ inline bool localtime(struct tm& buf, const time_t& time) noexcept {
 inline int setenv(const char* name, const char* value,
                   bool overwrite) noexcept {
 #ifdef _MSC_VER
-  UNUSED(overwrite);
+  IRS_IGNORE(overwrite);
   return _putenv_s(name, value);  // OVERWRITE is always true for MSVC
 #else
   return ::setenv(name, value, overwrite);

@@ -61,7 +61,7 @@ class segment_reader final : public sub_reader {
 
   const sub_reader& operator[](size_t i) const noexcept override {
     IRS_ASSERT(!i);
-    UNUSED(i);
+    IRS_IGNORE(i);
     return *this;
   }
 

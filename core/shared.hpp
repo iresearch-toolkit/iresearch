@@ -122,7 +122,7 @@ static_assert(sizeof(float_t) != sizeof(double_t));
 #define IRS_UNLIKELY(v) v
 #endif
 
-#define UNUSED(par) (void)(par)
+#define IRS_IGNORE(value) (void)(value)
 
 namespace iresearch {
 

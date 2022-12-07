@@ -102,7 +102,7 @@ inline std::string to_string(const char* format, Args&&... args) {
 
   IRS_ASSERT(result >= 0);
   IRS_ASSERT(size_t(result) == buf.size());
-  UNUSED(result);
+  IRS_IGNORE(result);
 
   return buf;
 }

@@ -846,7 +846,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
     const auto encrypt =
       irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
     IRS_ASSERT(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
-    UNUSED(encrypt);
+    IRS_IGNORE(encrypt);
   }
 
   // noexcept block
@@ -1985,7 +1985,7 @@ class sparse_column final : public column {
 
   const block_ref* find_block(const block_ref* begin, const block_ref* end,
                               doc_id_t key) const noexcept {
-    UNUSED(end);
+    IRS_IGNORE(end);
 
     if (key <= begin->key) {
       return begin;

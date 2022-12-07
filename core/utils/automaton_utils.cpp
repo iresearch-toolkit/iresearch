@@ -163,7 +163,7 @@ automaton::StateId utf8_expand_labels(automaton& a) {
     fst::kIDeterministic | fst::kILabelSorted;
 
   IRS_ASSERT(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
-  UNUSED(EXPECTED_PROPERTIES);
+  IRS_IGNORE(EXPECTED_PROPERTIES);
 #endif
 
   using Label = automaton::Arc::Label;

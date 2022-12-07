@@ -592,7 +592,7 @@ automaton make_levenshtein_automaton(const parametric_description& description,
   // terminal state without outbound transitions
   const auto invalid_state = a.AddState();
   IRS_ASSERT(INVALID_STATE == invalid_state);
-  UNUSED(invalid_state);
+  IRS_IGNORE(invalid_state);
 
   // initial state
   auto start_state = a.AddState();

@@ -645,7 +645,7 @@ void read_field_features(data_input& in, const feature_map_t& feature_map,
       const field_id id = in.read_vlong() - 1;
 
       const auto [it, is_new] = features.emplace(feature, id);
-      UNUSED(it);
+      IRS_IGNORE(it);
 
       if (!is_new) {
         throw irs::index_error(
@@ -1177,7 +1177,7 @@ void field_writer::prepare(const irs::flush_state& state) {
       irs::encrypt(filename, *terms_out_, enc, enc_header, terms_out_cipher_);
     IRS_ASSERT(!encrypt ||
                (terms_out_cipher_ && terms_out_cipher_->block_size()));
-    UNUSED(encrypt);
+    IRS_IGNORE(encrypt);
   }
 
   // prepare term index
@@ -2457,7 +2457,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
   if (seek_to_block(term, prefix)) {
     return SeekResult::FOUND;
   }
-  UNUSED(prefix);
+  IRS_IGNORE(prefix);
 
   IRS_ASSERT(cur_block_);
 
@@ -2830,7 +2830,7 @@ bool automaton_term_iterator<FST>::next() {
       // term_iterator::seek(bytes_view, const attribute&),
       const SeekResult res = seek_ge(value());
       IRS_ASSERT(SeekResult::FOUND == res);
-      UNUSED(res);
+      IRS_IGNORE(res);
     }
   }
 

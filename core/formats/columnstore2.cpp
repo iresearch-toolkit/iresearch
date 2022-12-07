@@ -1487,7 +1487,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   const auto encrypt =
     irs::encrypt(filename, *data_out, enc, enc_header, data_cipher);
   IRS_ASSERT(!encrypt || (data_cipher && data_cipher->block_size()));
-  UNUSED(encrypt);
+  IRS_IGNORE(encrypt);
 
   // noexcept block
   dir_ = &dir;
