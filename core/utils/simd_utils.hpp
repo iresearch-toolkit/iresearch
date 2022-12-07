@@ -47,7 +47,7 @@ struct simd_helper {
   }
 
   template<typename Simd, typename Ptr>
-  static decltype(Load(Simd{}, Ptr{})) load(const Simd simd_tag, Ptr p) {
+  static decltype(auto) load(const Simd simd_tag, Ptr p) {
     if constexpr (Aligned) {
       return Load(simd_tag, p);
     } else {
