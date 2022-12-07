@@ -80,13 +80,13 @@ class column_prefix_existence_query final : public column_existence_query {
                                 const ColumnAcceptor& acceptor, score_t boost)
     : column_existence_query{prefix, std::move(stats), boost},
       acceptor_{acceptor} {
-    assert(acceptor_);
+    IRS_ASSERT(acceptor_);
   }
 
   irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
 
-    assert(acceptor_);
+    IRS_ASSERT(acceptor_);
 
     auto& segment = ctx.segment;
     auto& ord = ctx.scorers;

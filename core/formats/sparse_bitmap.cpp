@@ -104,9 +104,9 @@ void sparse_bitmap_writer::finish() {
 }
 
 void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
-  assert(popcnt);
-  assert(block_ < kBlockSize);
-  assert(popcnt <= kBlockSize);
+  IRS_ASSERT(popcnt);
+  IRS_ASSERT(block_ < kBlockSize);
+  IRS_ASSERT(popcnt <= kBlockSize);
 
   out_->write_short(static_cast<uint16_t>(block_));
   out_->write_short(static_cast<uint16_t>(popcnt - 1));  // -1 to fit uint16_t
@@ -219,7 +219,7 @@ struct container_iterator<BT_DENSE, false> {
 
     const doc_id_t target_block{target & 0x0000FFFF};
     const int32_t target_word_idx = target_block / bits_required<size_t>();
-    assert(target_word_idx >= ctx.word_idx);
+    IRS_ASSERT(target_word_idx >= ctx.word_idx);
 
     if (ctx.index.u16data && uint32_t(target_word_idx - ctx.word_idx) >=
                                kDenseBlockIndexWordsPerBlock) {
@@ -233,7 +233,7 @@ struct container_iterator<BT_DENSE, false> {
 
       const auto word_idx = index_block * kDenseBlockIndexWordsPerBlock;
       const auto delta = word_idx - ctx.word_idx;
-      assert(delta > 0);
+      IRS_ASSERT(delta > 0);
 
       if constexpr (AT_STREAM == Access) {
         self->in_->seek(self->in_->file_pointer() +
@@ -372,7 +372,7 @@ struct container_iterator<BT_DENSE, true> {
         do {
           in.seek(prev);
           word = in.read_long();
-          assert(word_idx);
+          IRS_ASSERT(word_idx);
           --word_idx;
           prev -= sizeof(size_t);
         } while (!word);
@@ -380,7 +380,7 @@ struct container_iterator<BT_DENSE, true> {
       } else {
         for (auto* prev_word = ctx.u64data - 1; !word; --word_idx) {
           word = *--prev_word;
-          assert(word_idx);
+          IRS_ASSERT(word_idx);
         }
         if constexpr (!is_big_endian()) {
           word = numeric_utils::numeric_traits<size_t>::ntoh(word);
@@ -413,8 +413,8 @@ constexpr auto GetSeekFunc(bool direct, bool track_prev) noexcept {
 
 /*static*/ bool sparse_bitmap_iterator::initial_seek(
   sparse_bitmap_iterator* self, doc_id_t target) {
-  assert(!doc_limits::valid(self->value()));
-  assert(0 == (target & 0xFFFF0000));
+  IRS_ASSERT(!doc_limits::valid(self->value()));
+  IRS_ASSERT(0 == (target & 0xFFFF0000));
 
   // we can get there iff the very
   // first block is not yet read
@@ -434,7 +434,7 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(
     use_block_index_{opts.use_block_index},
     prev_doc_written_{opts.version >= SparseBitmapVersion::kPrevDoc},
     track_prev_doc_{prev_doc_written_ && opts.track_prev_doc} {
-  assert(in_);
+  IRS_ASSERT(in_);
 
   if (track_prev_doc_) {
     std::get<prev_doc>(attrs_).reset(
@@ -516,7 +516,7 @@ void sparse_bitmap_iterator::read_block_header() {
 }
 
 void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
-  assert(target / sparse_bitmap_writer::kBlockSize);
+  IRS_ASSERT(target / sparse_bitmap_writer::kBlockSize);
 
   if (!block_index_.empty()) {
     const doc_id_t target_block = target / sparse_bitmap_writer::kBlockSize;
@@ -551,14 +551,14 @@ doc_id_t sparse_bitmap_iterator::seek(doc_id_t target) {
   }
 
   if (block_ == target_block) {
-    assert(seek_func_);
+    IRS_ASSERT(seek_func_);
     if (seek_func_(this, target)) {
       return value();
     }
     read_block_header();
   }
 
-  assert(seek_func_);
+  IRS_ASSERT(seek_func_);
   seek_func_(this, block_);
 
   return value();

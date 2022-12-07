@@ -54,8 +54,8 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
     // cppcheck-suppress shadowFunction
     const auto [bucket_stats_size, bucket_stats_align] = prepared->stats_size();
-    assert(bucket_stats_align <= alignof(std::max_align_t));
-    assert(
+    IRS_ASSERT(bucket_stats_align <= alignof(std::max_align_t));
+    IRS_ASSERT(
       math::is_power2(bucket_stats_align));  // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, bucket_stats_align);

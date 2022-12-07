@@ -59,7 +59,7 @@ class merge_writer : public util::noncopyable {
       column_info_(&column_info),
       feature_info_(&feature_info),
       comparator_(comparator) {
-    assert(column_info);
+    IRS_ASSERT(column_info);
   }
   merge_writer(merge_writer&&) = default;
   merge_writer& operator=(merge_writer&&) = delete;
@@ -73,7 +73,7 @@ class merge_writer : public util::noncopyable {
 
   void add(sub_reader::ptr reader) {
     // add shared pointer
-    assert(reader);
+    IRS_ASSERT(reader);
     if (reader) {
       readers_.emplace_back(std::move(reader));
     }
@@ -87,7 +87,7 @@ class merge_writer : public util::noncopyable {
              const flush_progress_t& progress = {});
 
   const reader_ctx& operator[](size_t i) const noexcept {
-    assert(i < readers_.size());
+    IRS_ASSERT(i < readers_.size());
     return readers_[i];
   }
 

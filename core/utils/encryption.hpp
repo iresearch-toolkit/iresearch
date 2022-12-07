@@ -23,9 +23,9 @@
 #ifndef IRESEARCH_ENCRYPTION_H
 #define IRESEARCH_ENCRYPTION_H
 
-#include "store/directory_attributes.hpp"
-#include "store/data_output.hpp"
 #include "store/data_input.hpp"
+#include "store/data_output.hpp"
+#include "store/directory_attributes.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
@@ -62,25 +62,25 @@ class encrypted_output : public irs::index_output, util::noncopyable {
   encrypted_output(index_output::ptr&& out, encryption::stream& cipher,
                    size_t num_buffers);
 
-  virtual void flush() override final;
+  void flush() final;
 
-  virtual void close() override final;
+  void close() final;
 
-  virtual size_t file_pointer() const noexcept override final;
+  size_t file_pointer() const noexcept final;
 
-  virtual void write_byte(byte_type b) override final;
+  void write_byte(byte_type b) final;
 
-  virtual void write_bytes(const byte_type* b, size_t length) override final;
+  void write_bytes(const byte_type* b, size_t length) final;
 
-  virtual void write_vint(uint32_t v) override final;
+  void write_vint(uint32_t v) final;
 
-  virtual void write_vlong(uint64_t v) override final;
+  void write_vlong(uint64_t v) final;
 
-  virtual void write_int(int32_t v) override final;
+  void write_int(int32_t v) final;
 
-  virtual void write_long(int64_t v) override final;
+  void write_long(int64_t v) final;
 
-  virtual int64_t checksum() const override final {
+  int64_t checksum() const final {
     // FIXME do we need to calculate checksum over
     // unencrypted data here? That will slow down writes.
     return out_->checksum();
@@ -122,13 +122,13 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
   encrypted_input(index_input::ptr&& in, encryption::stream& cipher,
                   size_t buf_size, size_t padding = 0);
 
-  virtual index_input::ptr dup() const override final;
+  index_input::ptr dup() const final;
 
-  virtual index_input::ptr reopen() const override final;
+  index_input::ptr reopen() const final;
 
-  virtual size_t length() const noexcept override final { return length_; }
+  size_t length() const noexcept final { return length_; }
 
-  virtual int64_t checksum(size_t offset) const override final;
+  int64_t checksum(size_t offset) const final;
 
   size_t buffer_size() const noexcept { return buf_size_; }
 
@@ -137,9 +137,9 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
   index_input::ptr release() noexcept { return std::move(managed_in_); }
 
  protected:
-  virtual void seek_internal(size_t pos) override final;
+  void seek_internal(size_t pos) final;
 
-  virtual size_t read_internal(byte_type* b, size_t count) override final;
+  size_t read_internal(byte_type* b, size_t count) final;
 
  private:
   encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept;

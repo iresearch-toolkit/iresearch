@@ -63,7 +63,7 @@ class fst_states_map : private util::noncopyable {
 
       if (NoStateId == bucket) {
         const state_id id = bucket = push_state_(s, fst);
-        assert(hasher_(s, fst) == hasher_(id, fst));
+        IRS_ASSERT(hasher_(s, fst) == hasher_(id, fst));
         ++count_;
 
         if (count_ > 2 * states_.size() / 3) {

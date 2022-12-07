@@ -58,7 +58,7 @@ inline int GetPosixMadvice(IOAdvice advice) {
 
 std::shared_ptr<mmap_handle> OpenHandle(const file_path_t file,
                                         IOAdvice advice) noexcept {
-  assert(file);
+  IRS_ASSERT(file);
 
   std::shared_ptr<mmap_handle> handle;
 
@@ -110,7 +110,7 @@ class MMapIndexInput final : public bytes_view_input {
   explicit MMapIndexInput(std::shared_ptr<mmap_handle>&& handle) noexcept
     : handle_{std::move(handle)} {
     if (IRS_LIKELY(handle_ && handle_->size())) {
-      assert(handle_->addr() != MAP_FAILED);
+      IRS_ASSERT(handle_->addr() != MAP_FAILED);
       const auto* begin = reinterpret_cast<byte_type*>(handle_->addr());
       bytes_view_input::reset(begin, handle_->size());
     } else {
@@ -176,7 +176,7 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
   }
 
   auto make_stream = [](auto&& handle) noexcept -> index_input::ptr {
-    assert(handle);
+    IRS_ASSERT(handle);
 
     try {
       return std::make_unique<MMapIndexInput>(std::move(handle));

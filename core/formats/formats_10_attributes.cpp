@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "formats_10_attributes.hpp"
+
+#include "shared.hpp"
 
 namespace iresearch {
 namespace version10 {

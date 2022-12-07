@@ -162,7 +162,7 @@ automaton::StateId utf8_expand_labels(automaton& a) {
   static constexpr auto EXPECTED_PROPERTIES =
     fst::kIDeterministic | fst::kILabelSorted;
 
-  assert(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
+  IRS_ASSERT(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
   UNUSED(EXPECTED_PROPERTIES);
 #endif
 
@@ -249,7 +249,7 @@ utf8_arc.second); } break; default: {
     auto* begin = arcs.arcs;
     auto* end = begin + arcs.narcs;
     for (; begin != end; ++begin) {
-      assert((begin->ilabel >=
+      IRS_ASSERT((begin->ilabel >=
 range_label(std::numeric_limits<byte_type>::min()) && begin->ilabel <=
 range_label(std::numeric_limits<byte_type>::max())));
     }
@@ -261,18 +261,18 @@ range_label(std::numeric_limits<byte_type>::max())));
 */
 
 void utf8_transitions_builder::minimize(automaton& a, size_t prefix) {
-  assert(prefix > 0);
+  IRS_ASSERT(prefix > 0);
 
   for (size_t i = last_.size(); i >= prefix; --i) {
     state& s = states_[i];
     state& p = states_[i - 1];
-    assert(!p.arcs.empty());
+    IRS_ASSERT(!p.arcs.empty());
 
     if (s.id == fst::kNoStateId) {
       // here we deal with rho transition only for
       // intermediate states, i.e. char range is [128;191]
       const size_t rho_idx = last_.size() - i - 1;
-      assert(rho_idx < std::size(rho_states_));
+      IRS_ASSERT(rho_idx < std::size(rho_states_));
       s.add_rho_arc(128, 192, rho_states_[rho_idx]);
     }
 
@@ -285,7 +285,7 @@ void utf8_transitions_builder::minimize(automaton& a, size_t prefix) {
 void utf8_transitions_builder::insert(automaton& a, const byte_type* label,
                                       const size_t size,
                                       const automaton::StateId to) {
-  assert(label && size < 5);
+  IRS_ASSERT(label && size < 5);
 
   const size_t prefix =
     1 + CommonPrefixLength(last_.data(), last_.size(), label, size);
@@ -295,9 +295,9 @@ void utf8_transitions_builder::insert(automaton& a, const byte_type* label,
   for (size_t i = prefix; i <= size; ++i) {
     const auto ch = label[i - 1];
     auto& p = states_[i - 1];
-    assert(i == 1 ||
-           p.id ==
-             fst::kNoStateId);  // root state is already a part of automaton
+    IRS_ASSERT(i == 1 ||
+               p.id ==
+                 fst::kNoStateId);  // root state is already a part of automaton
 
     if (p.id == fst::kNoStateId) {
       // here we deal with rho transition only for
@@ -319,10 +319,10 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 #ifdef IRESEARCH_DEBUG
   Finally ensure_empty = [&]() noexcept {
     // ensure everything is cleaned up
-    assert(std::all_of(std::begin(states_), std::end(states_),
-                       [](const state& s) noexcept {
-                         return s.arcs.empty() && s.id == fst::kNoStateId;
-                       }));
+    IRS_ASSERT(std::all_of(std::begin(states_), std::end(states_),
+                           [](const state& s) noexcept {
+                             return s.arcs.empty() && s.id == fst::kNoStateId;
+                           }));
   };
 #endif
 
@@ -351,15 +351,15 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   auto add_arcs = [&a, from, arc = root.arcs.begin(), end = root.arcs.end()](
                     uint32_t min, uint32_t max,
                     automaton::StateId rho_state) mutable {
-    assert(min < max);
+    IRS_ASSERT(min < max);
 
     for (; arc != end && arc->max <= max; ++arc) {
       // ensure arcs are sorted
-      assert(min <= arc->min);
+      IRS_ASSERT(min <= arc->min);
       // ensure every arc denotes a single char, otherwise
       // we have to use "arc->min" below which is a bit more
       // expensive to access
-      assert(arc->min == arc->max);
+      IRS_ASSERT(arc->min == arc->max);
 
       if (min < arc->max) {
         a.EmplaceArc(from, range_label{min, arc->max - 1}, rho_state);

@@ -55,13 +55,13 @@ class collector_wrapper {
 
   explicit collector_wrapper(pointer collector) noexcept
     : collector_(!collector ? &Wrapper::noop() : collector) {
-    assert(collector_);
+    IRS_ASSERT(collector_);
   }
 
   collector_wrapper(collector_wrapper&& rhs) noexcept
     : collector_(std::move(rhs.collector_)) {
     rhs.collector_.reset(&Wrapper::noop());
-    assert(collector_);
+    IRS_ASSERT(collector_);
   }
 
   collector_wrapper& operator=(pointer collector) noexcept {
@@ -73,7 +73,7 @@ class collector_wrapper {
       reset(collector);
     }
 
-    assert(collector_);
+    IRS_ASSERT(collector_);
     return *this;
   }
 
@@ -82,7 +82,7 @@ class collector_wrapper {
       reset(rhs.collector_.release());
       rhs.collector_.reset(&Wrapper::noop());
     }
-    assert(collector_);
+    IRS_ASSERT(collector_);
     return *this;
   }
 
@@ -125,17 +125,17 @@ class collectors_base {
   }
 
   typename Collector::pointer front() const noexcept {
-    assert(!collectors_.empty());
+    IRS_ASSERT(!collectors_.empty());
     return collectors_.front().get();
   }
 
   typename Collector::pointer back() const noexcept {
-    assert(!collectors_.empty());
+    IRS_ASSERT(!collectors_.empty());
     return collectors_.back().get();
   }
 
   typename Collector::pointer operator[](size_t i) const noexcept {
-    assert(i < collectors_.size());
+    IRS_ASSERT(i < collectors_.size());
     return collectors_[i].get();
   }
 

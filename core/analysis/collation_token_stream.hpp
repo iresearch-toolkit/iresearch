@@ -53,16 +53,15 @@ class collation_token_stream final : public analyzer,
 
   explicit collation_token_stream(const options_t& options);
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
-  virtual bool next() noexcept override {
+  bool next() noexcept override {
     const auto eof = !term_eof_;
     term_eof_ = true;
     return eof;
   }
-  virtual bool reset(std::string_view data) override;
+  bool reset(std::string_view data) override;
 
  private:
   struct state_t;

@@ -59,55 +59,47 @@ class segment_reader final : public sub_reader {
   segment_reader* operator->() noexcept { return this; }
   const segment_reader* operator->() const noexcept { return this; }
 
-  virtual const sub_reader& operator[](size_t i) const noexcept override {
-    assert(!i);
+  const sub_reader& operator[](size_t i) const noexcept override {
+    IRS_ASSERT(!i);
     UNUSED(i);
     return *this;
   }
 
-  virtual column_iterator::ptr columns() const override {
-    return impl_->columns();
-  }
+  column_iterator::ptr columns() const override { return impl_->columns(); }
 
   using sub_reader::docs_count;
-  virtual uint64_t docs_count() const override { return impl_->docs_count(); }
+  uint64_t docs_count() const override { return impl_->docs_count(); }
 
-  virtual doc_iterator::ptr docs_iterator() const override {
+  doc_iterator::ptr docs_iterator() const override {
     return impl_->docs_iterator();
   }
 
   // FIXME find a better way to mask documents
-  virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
+  doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
     return impl_->mask(std::move(it));
   }
 
-  virtual const term_reader* field(std::string_view name) const override {
+  const term_reader* field(std::string_view name) const override {
     return impl_->field(name);
   }
 
-  virtual field_iterator::ptr fields() const override {
-    return impl_->fields();
-  }
+  field_iterator::ptr fields() const override { return impl_->fields(); }
 
-  virtual uint64_t live_docs_count() const override {
-    return impl_->live_docs_count();
-  }
+  uint64_t live_docs_count() const override { return impl_->live_docs_count(); }
 
   segment_reader reopen(const segment_meta& meta) const;
 
   void reset() noexcept { impl_.reset(); }
 
-  virtual size_t size() const override { return impl_->size(); }
+  size_t size() const override { return impl_->size(); }
 
-  virtual const irs::column_reader* sort() const override {
-    return impl_->sort();
-  }
+  const irs::column_reader* sort() const override { return impl_->sort(); }
 
   const irs::column_reader* column(std::string_view name) const final {
     return impl_->column(name);
   }
 
-  virtual const irs::column_reader* column(field_id field) const override {
+  const irs::column_reader* column(field_id field) const override {
     return impl_->column(field);
   }
 

@@ -102,7 +102,7 @@ class field_data : util::noncopyable {
 
   void compute_features() const {
     for (auto& entry : features_) {
-      assert(entry.handler);
+      IRS_ASSERT(entry.handler);
       entry.handler->write(stats_, doc(), entry.writer);
     }
   }

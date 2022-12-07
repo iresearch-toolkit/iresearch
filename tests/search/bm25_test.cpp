@@ -41,8 +41,8 @@ namespace {
 
 struct bstring_data_output : public irs::data_output {
   irs::bstring out_;
-  virtual void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
-  virtual void write_bytes(const irs::byte_type* b, size_t size) override {
+  void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
+  void write_bytes(const irs::byte_type* b, size_t size) override {
     out_.append(b, size);
   }
 };
@@ -1345,7 +1345,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     auto collector = prepared_sort->prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     ASSERT_THROW(collector->collect(irs::bytes_view(&fcollector_out[0],
-                                                   fcollector_out.size() - 1)),
+                                                    fcollector_out.size() - 1)),
                  irs::io_error);
   }
 
@@ -1357,7 +1357,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     auto collector = prepared_sort->prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     ASSERT_THROW(collector->collect(irs::bytes_view(&tcollector_out[0],
-                                                   tcollector_out.size() - 1)),
+                                                    tcollector_out.size() - 1)),
                  irs::io_error);
   }
 

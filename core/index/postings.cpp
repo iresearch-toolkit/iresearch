@@ -74,8 +74,8 @@ std::pair<posting*, bool> postings::emplace(bytes_view term) {
     writer_.seek(next_block_start);
   }
 
-  assert(size() < doc_limits::eof());  // not larger then the static flag
-  assert(map_.size() == postings_.size());
+  IRS_ASSERT(size() < doc_limits::eof());  // not larger then the static flag
+  IRS_ASSERT(map_.size() == postings_.size());
 
   const hashed_bytes_view hashed_term{term};
 

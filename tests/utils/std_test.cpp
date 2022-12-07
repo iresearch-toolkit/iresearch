@@ -21,9 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "utils/std.hpp"
+
 #include "store/memory_directory.hpp"
+#include "tests_shared.hpp"
 
 using namespace iresearch;
 

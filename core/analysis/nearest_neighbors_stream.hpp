@@ -63,13 +63,12 @@ class nearest_neighbors_stream final : public analyzer,
   explicit nearest_neighbors_stream(const options& options,
                                     model_ptr model_provider) noexcept;
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual bool next() override;
-  virtual bool reset(std::string_view data) override;
+  bool next() override;
+  bool reset(std::string_view data) override;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

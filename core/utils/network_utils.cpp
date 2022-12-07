@@ -20,9 +20,10 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "network_utils.hpp"
+
 #include "log.hpp"
+#include "shared.hpp"
 
 #ifdef _WIN32
 #include <WinSock2.h>

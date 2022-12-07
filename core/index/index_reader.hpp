@@ -62,7 +62,7 @@ struct index_reader {
 
     reference operator*() const {
       // can't mark noexcept because of virtual operator[]
-      assert(i_ < reader_->size());
+      IRS_ASSERT(i_ < reader_->size());
       return (*reader_)[i_];
     }
 
@@ -80,7 +80,7 @@ struct index_reader {
     }
 
     bool operator==(const reader_iterator& rhs) const noexcept {
-      assert(reader_ == rhs.reader_);
+      IRS_ASSERT(reader_ == rhs.reader_);
       return i_ == rhs.i_;
     }
 

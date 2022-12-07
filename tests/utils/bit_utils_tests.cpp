@@ -21,11 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-
-#include "utils/bit_utils.hpp"
-
 #include <climits>
+
+#include "tests_shared.hpp"
+#include "utils/bit_utils.hpp"
 
 TEST(bit_utils_test, zig_zag_32) {
   using namespace iresearch;

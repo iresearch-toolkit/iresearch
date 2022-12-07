@@ -46,7 +46,7 @@ using namespace irs;
 /// @returns levenshtein similarity
 ////////////////////////////////////////////////////////////////////////////////
 FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
-  assert(size);
+  IRS_ASSERT(size);
 
   static_assert(sizeof(score_t) == sizeof(uint32_t),
                 "sizeof(score_t) != sizeof(uint32_t)");
@@ -57,9 +57,9 @@ FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
 template<typename Invalid, typename Term, typename Levenshtein>
 inline auto executeLevenshtein(byte_type max_distance,
                                by_edit_distance_options::pdp_f provider,
-                               bool with_transpositions, const bytes_view prefix,
-                               const bytes_view target, Invalid&& inv, Term&& t,
-                               Levenshtein&& lev) {
+                               bool with_transpositions,
+                               const bytes_view prefix, const bytes_view target,
+                               Invalid&& inv, Term&& t, Levenshtein&& lev) {
   if (!provider) {
     provider = &default_pdp;
   }
@@ -68,7 +68,7 @@ inline auto executeLevenshtein(byte_type max_distance,
     return t();
   }
 
-  assert(provider);
+  IRS_ASSERT(provider);
   const auto& d = (*provider)(max_distance, with_transpositions);
 
   if (!d) {
@@ -94,8 +94,8 @@ struct aggregated_stats_visitor : util::noncopyable {
   }
 
   void operator()(seek_cookie::ptr& cookie) const {
-    assert(segment);
-    assert(field);
+    IRS_ASSERT(segment);
+    IRS_ASSERT(field);
     term_stats.collect(*segment, *field, 0, *cookie);
     state->scored_states.emplace_back(std::move(cookie), 0, boost);
   }
@@ -137,7 +137,7 @@ template<typename Visitor>
 void visit(const sub_reader& segment, const term_reader& reader,
            const byte_type no_distance, const uint32_t utf8_target_size,
            automaton_table_matcher& matcher, Visitor&& visitor) {
-  assert(fst::kError != matcher.Properties(0));
+  IRS_ASSERT(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
 
   if (IRS_UNLIKELY(!terms)) {
@@ -198,8 +198,8 @@ bool collect_terms(const index_reader& index, std::string_view field,
 
 filter::prepared::ptr prepare_levenshtein_filter(
   const index_reader& index, const Order& order, score_t boost,
-  std::string_view field, bytes_view prefix, bytes_view term, size_t terms_limit,
-  const parametric_description& d) {
+  std::string_view field, bytes_view prefix, bytes_view term,
+  size_t terms_limit, const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
   MultiTermQuery::States states{index};

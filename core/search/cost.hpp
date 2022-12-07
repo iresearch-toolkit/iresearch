@@ -20,11 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COST_H
-#define IRESEARCH_COST_H
+#pragma once
 
 #include <functional>
 
+#include "utils/assert.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
@@ -36,7 +36,9 @@ class cost final : public attribute {
   using cost_t = uint64_t;
   using cost_f = std::function<cost_t()>;
 
-  static constexpr std::string_view type_name() noexcept { return "iresearch::cost"; }
+  static constexpr std::string_view type_name() noexcept {
+    return "iresearch::cost";
+  }
 
   static constexpr cost_t kMax = std::numeric_limits<cost_t>::max();
 
@@ -68,7 +70,7 @@ class cost final : public attribute {
   // Sets the estimation rule.
   void reset(cost_f&& eval) noexcept(
     std::is_nothrow_move_assignable_v<cost_f>) {
-    assert(eval);
+    IRS_ASSERT(eval);
     func_ = std::move(eval);
     init_ = false;
   }
@@ -77,7 +79,7 @@ class cost final : public attribute {
   // Return estimated cost.
   cost_t estimate() const {
     if (!init_) {
-      assert(func_);
+      IRS_ASSERT(func_);
       value_ = func_();
       init_ = true;
     }
@@ -91,5 +93,3 @@ class cost final : public attribute {
 };
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_COST_H

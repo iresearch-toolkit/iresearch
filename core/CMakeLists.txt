@@ -79,6 +79,7 @@ source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
 set(IResearch_core_sources
+  ./utils/assert.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
   ./analysis/token_attributes.cpp
@@ -175,6 +176,7 @@ set(IResearch_core_sources
   )
 
 set(IResearch_core_headers
+  ./utils/assert.hpp
   ./analysis/analyzer.hpp
   ./analysis/analyzer.hpp
   ./analysis/token_attributes.hpp
@@ -387,7 +389,6 @@ set_target_properties(iresearch-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME iresearch-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 if (USE_IWYU)
@@ -455,9 +456,7 @@ set_target_properties(iresearch-analyzer-delimiter-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-delimiter-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
-
 
 target_link_libraries(iresearch-analyzer-delimiter-static
   iresearch-static
@@ -486,7 +485,6 @@ set_target_properties(iresearch-analyzer-text-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-text-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-text-static
@@ -515,7 +513,6 @@ set_target_properties(iresearch-analyzer-collation-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-collation-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-collation-static
@@ -538,7 +535,6 @@ set_target_properties(iresearch-analyzer-minhash-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-minhash-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-minhash-static
@@ -566,7 +562,6 @@ set_target_properties(iresearch-analyzer-norm-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-norm-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-norm-static
@@ -596,7 +591,6 @@ set_target_properties(iresearch-analyzer-stem-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-stem-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-stem-static
@@ -620,7 +614,6 @@ set_target_properties(iresearch-analyzer-stopwords-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-stopwords-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-stopwords-static
@@ -643,7 +636,6 @@ set_target_properties(iresearch-analyzer-ngram-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-ngram-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-ngram-static
@@ -667,7 +659,6 @@ set_target_properties(iresearch-analyzer-pipeline-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-pipeline-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-pipeline-static
@@ -695,7 +686,6 @@ set_target_properties(iresearch-analyzer-segmentation-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-segmentation-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_include_directories(iresearch-analyzer-segmentation-static
@@ -722,7 +712,6 @@ set_target_properties(iresearch-analyzer-classification-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-classification-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-classification-static
@@ -751,7 +740,6 @@ set_target_properties(iresearch-analyzer-nearest-neighbors-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-nearest-neighbors-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-analyzer-nearest-neighbors-static
@@ -825,7 +813,6 @@ set_target_properties(iresearch-scorer-tfidf-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-tfidf-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-scorer-tfidf-static
@@ -852,7 +839,6 @@ set_target_properties(iresearch-scorer-bm25-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-bm25-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-scorer-bm25-static

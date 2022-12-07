@@ -568,7 +568,7 @@ bool absolute(bool& result, const file_path_t path) noexcept {
 }
 
 bool block_size(file_blksize_t& result, const file_path_t file) noexcept {
-  assert(file != nullptr);
+  IRS_ASSERT(file != nullptr);
 #ifdef _WIN32
   // TODO FIXME find a workaround
   UNUSED(file);
@@ -607,7 +607,7 @@ bool block_size(file_blksize_t& result, int fd) noexcept {
 #endif  // _WIN32
 
 bool byte_size(uint64_t& result, const file_path_t file) noexcept {
-  assert(file != nullptr);
+  IRS_ASSERT(file != nullptr);
   file_stat_t info;
 
   if (0 != path_stats(info, file)) {
@@ -646,7 +646,7 @@ bool byte_size(uint64_t& result, int fd) noexcept {
 }
 
 bool exists(bool& result, const file_path_t file) noexcept {
-  assert(file != nullptr);
+  IRS_ASSERT(file != nullptr);
   file_stat_t info;
 
   result = 0 == path_stats(info, file);
@@ -660,7 +660,7 @@ bool exists(bool& result, const file_path_t file) noexcept {
 }
 
 bool exists_directory(bool& result, const file_path_t name) noexcept {
-  assert(name != nullptr);
+  IRS_ASSERT(name != nullptr);
   file_stat_t info;
 
   result = 0 == path_stats(info, name);
@@ -680,7 +680,7 @@ bool exists_directory(bool& result, const file_path_t name) noexcept {
 }
 
 bool exists_file(bool& result, const file_path_t name) noexcept {
-  assert(name != nullptr);
+  IRS_ASSERT(name != nullptr);
   file_stat_t info;
 
   result = 0 == path_stats(info, name);
@@ -700,7 +700,7 @@ bool exists_file(bool& result, const file_path_t name) noexcept {
 }
 
 bool mtime(time_t& result, const file_path_t file) noexcept {
-  assert(file != nullptr);
+  IRS_ASSERT(file != nullptr);
   file_stat_t info;
 
   if (0 != path_stats(info, file)) {
@@ -718,8 +718,8 @@ bool mtime(time_t& result, const file_path_t file) noexcept {
 
 handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
   // Should be Read or Write but not both or none of them
-  assert(((mode & OpenMode::Read) == OpenMode::Invalid) !=
-         ((mode & OpenMode::Write) == OpenMode::Invalid));
+  IRS_ASSERT(((mode & OpenMode::Read) == OpenMode::Invalid) !=
+             ((mode & OpenMode::Write) == OpenMode::Invalid));
 #ifdef _WIN32
   if (!path) {
     return handle_t(nullptr);
@@ -803,8 +803,8 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
 
 handle_t open(void* file, OpenMode mode, int advice) noexcept {
   // Should be Read or Write but not both or none of them
-  assert(((mode & OpenMode::Read) == OpenMode::Invalid) !=
-         ((mode & OpenMode::Write) == OpenMode::Invalid));
+  IRS_ASSERT(((mode & OpenMode::Read) == OpenMode::Invalid) !=
+             ((mode & OpenMode::Write) == OpenMode::Invalid));
 #ifdef _WIN32
   // win32 approach is to get the original filename of the handle and open it
   // again due to a bug from the 1980's the file name is garanteed to not change

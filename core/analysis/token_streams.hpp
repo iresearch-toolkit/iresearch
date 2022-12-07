@@ -40,8 +40,7 @@ class basic_token_stream : public analysis::analyzer {
   explicit basic_token_stream(const type_info& type)
     : analysis::analyzer(type) {}
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -58,9 +57,13 @@ class basic_token_stream : public analysis::analyzer {
 class boolean_token_stream final : public basic_token_stream,
                                    private util::noncopyable {
  public:
-  static constexpr std::string_view value_true() noexcept { return {"\xFF", 1}; }
+  static constexpr std::string_view value_true() noexcept {
+    return {"\xFF", 1};
+  }
 
-  static constexpr std::string_view value_false() noexcept { return {"\x00", 1}; }
+  static constexpr std::string_view value_false() noexcept {
+    return {"\x00", 1};
+  }
 
   static constexpr std::string_view value(bool val) noexcept {
     return val ? value_true() : value_false();
@@ -68,7 +71,7 @@ class boolean_token_stream final : public basic_token_stream,
 
   explicit boolean_token_stream(bool value = false) noexcept;
 
-  virtual bool next() noexcept override;
+  bool next() noexcept override;
 
   void reset(bool value) noexcept {
     value_ = value;
@@ -99,9 +102,9 @@ class string_token_stream : public analysis::analyzer,
 
   string_token_stream() noexcept;
 
-  virtual bool next() noexcept final;
+  bool next() noexcept final;
 
-  virtual attribute* get_mutable(type_info::type_id id) noexcept final {
+  attribute* get_mutable(type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
@@ -137,7 +140,7 @@ class numeric_token_stream final : public basic_token_stream,
   static constexpr uint32_t PRECISION_STEP_DEF = 16;
   static constexpr uint32_t PRECISION_STEP_32 = 8;
 
-  virtual bool next() override;
+  bool next() override;
 
   void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
   void reset(int64_t value, uint32_t step = PRECISION_STEP_DEF);
@@ -248,7 +251,7 @@ class numeric_token_stream final : public basic_token_stream,
     };
 
     static irs::bytes_view value(byte_type* buf, NumericType type, value_t val,
-                                uint32_t shift);
+                                 uint32_t shift);
 
     byte_type data_[numeric_utils::numeric_traits<double_t>::size()];
     value_t val_;
@@ -271,11 +274,11 @@ class null_token_stream final : public basic_token_stream,
     : basic_token_stream(irs::type<null_token_stream>::get()) {}
 
   static constexpr std::string_view value_null() noexcept {
-    // data pointer != nullptr or assert failure in bytes_hash::insert(...)
+    // data pointer != nullptr or IRS_ASSERT failure in bytes_hash::insert(...)
     return {"\x00", 0};
   }
 
-  virtual bool next() noexcept override;
+  bool next() noexcept override;
 
   void reset() noexcept { in_use_ = false; }
 

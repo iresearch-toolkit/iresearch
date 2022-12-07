@@ -56,8 +56,9 @@ bool exists(std::string_view name, const type_info& args_format,
 // Normalize arguments for an analyzer specified by name and store them
 // in 'out' argument.
 // Returns true on success, false - otherwise
-bool normalize(std::string& out, std::string_view name, const type_info& args_format,
-               std::string_view args, bool load_library = true) noexcept;
+bool normalize(std::string& out, std::string_view name,
+               const type_info& args_format, std::string_view args,
+               bool load_library = true) noexcept;
 
 // Find an analyzer by name, or nullptr if not found
 // indirect call to <class>::make(...).
@@ -76,7 +77,8 @@ analyzer::ptr get(std::string_view name, const type_info& args_format,
 void load_all(std::string_view path);
 
 // Visit all loaded analyzers, terminate early if visitor returns false.
-bool visit(const std::function<bool(std::string_view, const type_info&)>& visitor);
+bool visit(
+  const std::function<bool(std::string_view, const type_info&)>& visitor);
 
 }  // namespace analyzers
 }  // namespace iresearch::analysis

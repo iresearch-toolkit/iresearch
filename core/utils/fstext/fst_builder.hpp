@@ -99,7 +99,7 @@ class fst_builder : util::noncopyable {
 
   void add(const key_t& in, const weight_t& out) {
     // inputs should be sorted
-    assert(last_.empty() || last_ < in);
+    IRS_ASSERT(last_.empty() || last_ < in);
 
     if (in.empty()) {
       start_out_ = fst::Times(start_out_, out);
@@ -130,7 +130,7 @@ class fst_builder : util::noncopyable {
       state& s = states_[i];
       state& p = states_[i - 1];
 
-      assert(!p.arcs.empty() && p.arcs.back().label == in[i - 1]);
+      IRS_ASSERT(!p.arcs.empty() && p.arcs.back().label == in[i - 1]);
 
       auto& last_out = p.arcs.back().out;
 
@@ -161,13 +161,13 @@ class fst_builder : util::noncopyable {
       // set output
       {
         state& s = states_[pref - 1];
-        assert(!s.arcs.empty() && s.arcs.back().label == in[pref - 1]);
+        IRS_ASSERT(!s.arcs.empty() && s.arcs.back().label == in[pref - 1]);
         s.arcs.back().out = std::move(output);
       }
     } else {
       state& s = states_[size];
-      assert(s.arcs.size());
-      assert(s.arcs.back().label == in[pref - 1]);
+      IRS_ASSERT(s.arcs.size());
+      IRS_ASSERT(s.arcs.back().label == in[pref - 1]);
       s.arcs.back().out = fst::Times(s.arcs.back().out, output);
     }
 
@@ -277,7 +277,7 @@ class fst_builder : util::noncopyable {
         rhs_arc.Next();
       }
 
-      assert(rhs_arc.Done());
+      IRS_ASSERT(rhs_arc.Done());
       return true;
     }
   };
@@ -347,13 +347,13 @@ class fst_builder : util::noncopyable {
   }
 
   void minimize(size_t pref) {
-    assert(pref > 0);
+    IRS_ASSERT(pref > 0);
 
     for (size_t i = last_.size(); i >= pref; --i) {
       state& s = states_[i];
       state& p = states_[i - 1];
 
-      assert(!p.arcs.empty());
+      IRS_ASSERT(!p.arcs.empty());
       p.arcs.back().id = s.arcs.empty() && s.final
                            ? fst_builder::final
                            : states_map_.insert(s, fst_);

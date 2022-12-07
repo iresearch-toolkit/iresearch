@@ -22,13 +22,14 @@
 
 #if defined(_MSC_VER)
 
-#include "shared.hpp"
 #include "mman_win32.hpp"
-#include "log.hpp"
 
-#include <windows.h>
 #include <errno.h>
 #include <io.h>
+#include <windows.h>
+
+#include "log.hpp"
+#include "shared.hpp"
 
 namespace {
 

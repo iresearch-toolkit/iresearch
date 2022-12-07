@@ -73,15 +73,15 @@ class field_base : public ifield {
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
 
-  virtual irs::features_t features() const noexcept override {
+  irs::features_t features() const noexcept override {
     return {features_.data(), features_.size()};
   }
 
-  virtual irs::IndexFeatures index_features() const noexcept override {
+  irs::IndexFeatures index_features() const noexcept override {
     return index_features_;
   }
 
-  virtual std::string_view name() const noexcept override { return name_; }
+  std::string_view name() const noexcept override { return name_; }
 
   void name(std::string name) noexcept { name_ = std::move(name); }
 
@@ -308,7 +308,7 @@ class limiting_doc_generator : public doc_generator_base {
   limiting_doc_generator(doc_generator_base& gen, size_t offset, size_t limit)
     : gen_(&gen), begin_(offset), end_(offset + limit) {}
 
-  virtual const tests::document* next() override {
+  const tests::document* next() override {
     while (pos_ < begin_) {
       if (!gen_->next()) {
         // exhausted
@@ -333,7 +333,7 @@ class limiting_doc_generator : public doc_generator_base {
     return nullptr;
   }
 
-  virtual void reset() override {
+  void reset() override {
     pos_ = 0;
     gen_->reset();
   }
@@ -360,8 +360,8 @@ class delim_doc_generator : public doc_generator_base {
   delim_doc_generator(const std::filesystem::path& file, doc_template& doc,
                       uint32_t delim = 0x0009);
 
-  virtual const tests::document* next() override;
-  virtual void reset() override;
+  const tests::document* next() override;
+  void reset() override;
 
  private:
   std::string str_;
@@ -381,8 +381,8 @@ class csv_doc_generator : public doc_generator_base {
   };  // doc_template
 
   csv_doc_generator(const std::filesystem::path& file, doc_template& doc);
-  virtual const tests::document* next() override;
-  virtual void reset() override;
+  const tests::document* next() override;
+  void reset() override;
   bool skip();  // skip a single document, return if anything was skiped, false
                 // == EOF
 
@@ -453,7 +453,7 @@ class json_doc_generator : public doc_generator_base {
 
     template<typename T>
     T as_number() const noexcept {
-      assert(is_number());
+      IRS_ASSERT(is_number());
 
       switch (vt) {
         case ValueType::NIL:
@@ -476,7 +476,7 @@ class json_doc_generator : public doc_generator_base {
           break;
       }
 
-      assert(false);
+      IRS_ASSERT(false);
       return T(0.);
     }
   };  // json_value
@@ -492,8 +492,8 @@ class json_doc_generator : public doc_generator_base {
 
   json_doc_generator(json_doc_generator&& rhs) noexcept;
 
-  virtual const tests::document* next() override;
-  virtual void reset() override;
+  const tests::document* next() override;
+  void reset() override;
 
  private:
   json_doc_generator(const json_doc_generator&) = delete;
@@ -592,8 +592,8 @@ class string_field : public tests::field_base {
   void value(std::string_view str);
   std::string_view value() const { return value_; }
 
-  virtual irs::token_stream& get_tokens() const override;
-  virtual bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
   mutable irs::string_token_stream stream_;
@@ -615,8 +615,8 @@ class string_view_field : public tests::field_base {
   void value(std::string_view str);
   std::string_view value() const { return value_; }
 
-  virtual irs::token_stream& get_tokens() const override;
-  virtual bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
   mutable irs::string_token_stream stream_;

@@ -24,9 +24,8 @@
 #define IRESEARCH_BITPACK_H
 
 #include "shared.hpp"
-#include "store/data_output.hpp"
 #include "store/data_input.hpp"
-
+#include "store/data_output.hpp"
 #include "utils/simd_utils.hpp"
 
 namespace iresearch {
@@ -60,7 +59,7 @@ constexpr bool rl(const uint32_t bits) noexcept { return ALL_EQUAL == bits; }
 // skip block of the specified size that was previously
 // written with the corresponding 'write_block' function
 inline void skip_block32(index_input& in, uint32_t size) {
-  assert(size);
+  IRS_ASSERT(size);
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
@@ -73,7 +72,7 @@ inline void skip_block32(index_input& in, uint32_t size) {
 // skip block of the specified size that was previously
 // written with the corresponding 'write_block' function
 inline void skip_block64(index_input& in, uint64_t size) {
-  assert(size);
+  IRS_ASSERT(size);
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
@@ -91,9 +90,9 @@ template<typename PackFunc>
 uint32_t write_block32(PackFunc&& pack, data_output& out,
                        const uint32_t* RESTRICT decoded, uint32_t size,
                        uint32_t* RESTRICT encoded) {
-  assert(size);
-  assert(encoded);
-  assert(decoded);
+  IRS_ASSERT(size);
+  IRS_ASSERT(encoded);
+  IRS_ASSERT(decoded);
 
   if (simd::all_equal<false>(decoded, size)) {
     out.write_byte(ALL_EQUAL);
@@ -107,7 +106,7 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
 #else
   const uint32_t bits = packed::maxbits32(decoded, decoded + size);
 #endif
-  assert(bits);
+  IRS_ASSERT(bits);
 
   const size_t buf_size = packed::bytes_required_32(size, bits);
   std::memset(encoded, 0, buf_size);
@@ -128,8 +127,8 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
                        const uint32_t* RESTRICT decoded,
                        uint32_t* RESTRICT encoded) {
   static_assert(Size);
-  assert(encoded);
-  assert(decoded);
+  IRS_ASSERT(encoded);
+  IRS_ASSERT(decoded);
 
   if (simd::all_equal<false>(decoded, Size)) {
     out.write_byte(ALL_EQUAL);
@@ -143,7 +142,7 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
 #else
   const uint32_t bits = packed::maxbits32(decoded, decoded + Size);
 #endif
-  assert(bits);
+  IRS_ASSERT(bits);
 
   const size_t buf_size = packed::bytes_required_32(Size, bits);
   std::memset(encoded, 0, buf_size);
@@ -163,9 +162,9 @@ template<typename PackFunc>
 uint32_t write_block64(PackFunc&& pack, data_output& out,
                        const uint64_t* RESTRICT decoded, uint64_t size,
                        uint64_t* RESTRICT encoded) {
-  assert(size);
-  assert(encoded);
-  assert(decoded);
+  IRS_ASSERT(size);
+  IRS_ASSERT(encoded);
+  IRS_ASSERT(decoded);
 
   if (simd::all_equal<false>(decoded, size)) {
     out.write_byte(ALL_EQUAL);
@@ -206,8 +205,8 @@ template<size_t Size, typename UnpackFunc>
 void read_block32(UnpackFunc&& unpack, data_input& in,
                   uint32_t* RESTRICT encoded, uint32_t* RESTRICT decoded) {
   static_assert(Size);
-  assert(encoded);
-  assert(decoded);
+  IRS_ASSERT(encoded);
+  IRS_ASSERT(decoded);
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
@@ -222,14 +221,9 @@ void read_block32(UnpackFunc&& unpack, data_input& in,
       return;
     }
 
-#ifdef IRESEARCH_DEBUG
-    const auto read =
+    [[maybe_unused]] const auto read =
       in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-    assert(read == required);
-    UNUSED(read);
-#else
-    in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-#endif  // IRESEARCH_DEBUG
+    IRS_ASSERT(read == required);
 
     unpack(decoded, encoded, bits);
   }
@@ -242,9 +236,9 @@ template<typename UnpackFunc>
 void read_block32(UnpackFunc&& unpack, data_input& in,
                   uint32_t* RESTRICT encoded, uint32_t size,
                   uint32_t* RESTRICT decoded) {
-  assert(size);
-  assert(encoded);
-  assert(decoded);
+  IRS_ASSERT(size);
+  IRS_ASSERT(encoded);
+  IRS_ASSERT(decoded);
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
@@ -259,14 +253,9 @@ void read_block32(UnpackFunc&& unpack, data_input& in,
       return;
     }
 
-#ifdef IRESEARCH_DEBUG
-    const auto read =
+    [[maybe_unused]] const auto read =
       in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-    assert(read == required);
-    UNUSED(read);
-#else
-    in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-#endif  // IRESEARCH_DEBUG
+    IRS_ASSERT(read == required);
 
     unpack(decoded, encoded, size, bits);
   }
@@ -279,8 +268,8 @@ template<size_t Size, typename UnpackFunc>
 void read_block64(UnpackFunc&& unpack, data_input& in,
                   uint64_t* RESTRICT encoded, uint64_t* RESTRICT decoded) {
   static_assert(Size);
-  assert(encoded);
-  assert(decoded);
+  IRS_ASSERT(encoded);
+  IRS_ASSERT(decoded);
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
@@ -295,14 +284,9 @@ void read_block64(UnpackFunc&& unpack, data_input& in,
       return;
     }
 
-#ifdef IRESEARCH_DEBUG
-    const auto read =
+    [[maybe_unused]] const auto read =
       in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-    assert(read == required);
-    UNUSED(read);
-#else
-    in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-#endif  // IRESEARCH_DEBUG
+    IRS_ASSERT(read == required);
 
     unpack(decoded, encoded, bits);
   }

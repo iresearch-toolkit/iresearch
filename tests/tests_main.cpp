@@ -74,6 +74,14 @@
 #endif
 
 namespace {
+
+void AssertCallback(std::string_view file, std::size_t line,
+                    std::string_view function, std::string_view condition,
+                    std::string_view message) noexcept {
+  FAIL() << file << ":" << line << ": " << function << ": Condition '"
+         << condition << "' is false. With message '" << message << "'\n";
+}
+
 /// @brief custom ICU data
 irs::mmap_utils::mmap_handle icu_data;
 }  // namespace
@@ -362,11 +370,8 @@ void test_base::SetUp() {
   irs::file_utils::mkdir(test_dir_.c_str(), false);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                              main
-// -----------------------------------------------------------------------------
-
 int main(int argc, char* argv[]) {
+  irs::SetAssertCallback(AssertCallback);
   install_stack_trace_handler();
 
   const int code = test_env::initialize(argc, argv);

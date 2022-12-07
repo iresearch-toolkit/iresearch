@@ -112,8 +112,7 @@ analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
     return nullptr;
   }
 
-  return std::make_unique<nearest_neighbors_stream>(options,
-                                                            std::move(model));
+  return std::make_unique<nearest_neighbors_stream>(options, std::move(model));
 }
 
 analyzer::ptr make_vpack(const VPackSlice slice) {
@@ -232,10 +231,10 @@ nearest_neighbors_stream::nearest_neighbors_stream(const options& options,
     n_tokens_{0},
     current_token_ind_{0},
     top_k_{options.top_k} {
-  assert(model_);
+  IRS_ASSERT(model_);
 
   model_dict_ = model_->getDictionary();
-  assert(model_dict_);
+  IRS_ASSERT(model_dict_);
 }
 
 bool nearest_neighbors_stream::next() {

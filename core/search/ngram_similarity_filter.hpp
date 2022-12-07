@@ -54,9 +54,9 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
  public:
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 };
 
 }  // namespace iresearch

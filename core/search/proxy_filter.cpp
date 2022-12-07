@@ -57,7 +57,7 @@ class lazy_filter_bitset : private util::noncopyable {
 
   bool get(size_t word_idx, word_t* data) {
     constexpr auto kBits{bits_required<word_t>()};
-    assert(set_);
+    IRS_ASSERT(set_);
     if (word_idx >= words_) {
       return false;
     }
@@ -111,7 +111,7 @@ class lazy_filter_bitset_iterator final : public doc_iterator,
       return false;
     }
     const doc_id_t delta = doc_id_t(std::countr_zero(word_));
-    assert(delta < bits_required<lazy_filter_bitset::word_t>());
+    IRS_ASSERT(delta < bits_required<lazy_filter_bitset::word_t>());
     word_ = (word_ >> delta) >> 1;
     doc_.value += 1 + delta;
     return true;
@@ -176,7 +176,7 @@ struct proxy_query_cache {
 class proxy_query final : public filter::prepared {
  public:
   explicit proxy_query(proxy_filter::cache_ptr cache) : cache_(cache) {
-    assert(cache_->prepared_real_filter_);
+    IRS_ASSERT(cache_->prepared_real_filter_);
   }
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
@@ -189,7 +189,7 @@ class proxy_query final : public filter::prepared {
         ctx, *cache_->prepared_real_filter_);
     }
 
-    assert(cached);
+    IRS_ASSERT(cached);
     return memory::make_managed<lazy_filter_bitset_iterator>(*cached);
   }
 
@@ -208,13 +208,13 @@ filter::prepared::ptr proxy_filter::prepare(
   const index_reader& rdr, const Order& ord, score_t boost,
   const attribute_provider* ctx) const {
   if (!cache_ || !cache_->real_filter_) {
-    assert(false);
+    IRS_ASSERT(false);
     return filter::prepared::empty();
   }
   if (!ord.empty()) {
     // Currently we do not support caching scores.
     // Proxy filter should not be used with scorers!
-    assert(false);
+    IRS_ASSERT(false);
     return filter::prepared::empty();
   }
   if (!cache_->prepared_real_filter_) {
@@ -226,7 +226,7 @@ filter::prepared::ptr proxy_filter::prepare(
 
 filter& proxy_filter::cache_filter(filter::ptr&& ptr) {
   cache_ = std::make_shared<proxy_query_cache>(std::move(ptr));
-  assert(cache_->real_filter_);
+  IRS_ASSERT(cache_->real_filter_);
   return *cache_->real_filter_;
 }
 

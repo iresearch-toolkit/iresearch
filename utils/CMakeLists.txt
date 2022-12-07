@@ -36,12 +36,6 @@ add_executable(iresearch-index-util
 add_sanitizers(iresearch-index-util)
 set_ipo(iresearch-index-util)
 
-set_target_properties(iresearch-index-util
-  PROPERTIES
-  OUTPUT_NAME iresearch-index-util
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
 target_link_libraries(iresearch-index-util
   iresearch-static
   ${PTHREAD_LIBRARY}
@@ -74,12 +68,6 @@ add_dependencies(iresearch-benchmarks
   iresearch-static
   )
 
-set_target_properties(iresearch-benchmarks
-  PROPERTIES
-  OUTPUT_NAME iresearch-benchmarks
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
-
 target_link_libraries(iresearch-benchmarks
   iresearch-static
   ${PTHREAD_LIBRARY}
@@ -105,12 +93,6 @@ add_executable(iresearch-pdd
 
 add_sanitizers(iresearch-pdd)
 set_ipo(iresearch-pdd)
-
-set_target_properties(iresearch-pdd
-  PROPERTIES
-  OUTPUT_NAME iresearch-pdd
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
-  )
 
 target_link_libraries(iresearch-pdd
   iresearch-static

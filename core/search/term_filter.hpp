@@ -48,16 +48,17 @@ struct by_term_options {
 class by_term : public filter_base<by_term_options> {
  public:
   static prepared::ptr prepare(const index_reader& rdr, const Order& ord,
-                               score_t boost, std::string_view field, bytes_view term);
+                               score_t boost, std::string_view field,
+                               bytes_view term);
 
   static void visit(const sub_reader& segment, const term_reader& field,
                     bytes_view term, filter_visitor& visitor);
 
   using filter::prepare;
 
-  virtual prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* /*ctx*/) const override {
+  prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                        score_t boost,
+                        const attribute_provider* /*ctx*/) const override {
     return prepare(rdr, ord, boost * this->boost(), field(), options().term);
   }
 };

@@ -43,8 +43,8 @@ namespace iresearch {
 
   return {reinterpret_cast<score_ctx*>(ctx),
           [](score_ctx* ctx, score_t* res) noexcept {
-            assert(res);
-            assert(ctx);
+            IRS_ASSERT(res);
+            IRS_ASSERT(ctx);
 
             const auto boost = reinterpret_cast<uintptr_t>(ctx);
             std::memcpy(res, &boost, sizeof(score_t));
@@ -66,8 +66,8 @@ namespace iresearch {
 
     return {irs::bit_cast<score_ctx*>(ScoreCtx{value, size}),
             [](score_ctx* ctx, score_t* res) noexcept {
-              assert(res);
-              assert(ctx);
+              IRS_ASSERT(res);
+              IRS_ASSERT(ctx);
 
               const auto score_ctx = irs::bit_cast<ScoreCtx>(ctx);
               std::fill_n(res, score_ctx.size, score_ctx.value);

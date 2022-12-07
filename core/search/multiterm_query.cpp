@@ -43,16 +43,16 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
       field_(&field),
       segment_(&segment),
       states_(states) {
-    assert(!states_.empty());
+    IRS_ASSERT(!states_.empty());
   }
 
-  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::type<score>::id() == id ? &score_
                                         : bitset_doc_iterator::get_mutable(id);
   }
 
  protected:
-  virtual bool refill(const word_t** begin, const word_t** end) override;
+  bool refill(const word_t** begin, const word_t** end) override;
 
  private:
   score score_;
@@ -90,7 +90,7 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
   if (count) {
     // we don't want to emit doc_limits::invalid()
     // ensure first bit isn't set,
-    assert(!irs::check_bit(set_[0], 0));
+    IRS_ASSERT(!irs::check_bit(set_[0], 0));
 
     *begin = set_.get();
     *end = set_.get() + words;
@@ -124,7 +124,7 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
   }
 
   auto* reader = state->reader;
-  assert(reader);
+  IRS_ASSERT(reader);
 
   // Get required features
   const IndexFeatures features = ord.features();
@@ -139,7 +139,7 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
   // add an iterator for each of the scored states
   const bool no_score = ord.empty();
   for (auto& entry : state->scored_states) {
-    assert(entry.cookie);
+    IRS_ASSERT(entry.cookie);
     auto docs = reader->postings(*entry.cookie, features);
 
     if (IRS_UNLIKELY(!docs)) {
@@ -150,7 +150,7 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
       auto* score = irs::get_mutable<irs::score>(docs.get());
 
       if (score) {
-        assert(entry.stat_offset < stats.size());
+        IRS_ASSERT(entry.stat_offset < stats.size());
         auto* stat = stats[entry.stat_offset].c_str();
 
         *score = CompileScore(ord.buckets(), segment, *state->reader, stat,
@@ -158,13 +158,13 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
       }
     }
 
-    assert(it != std::end(itrs));
+    IRS_ASSERT(it != std::end(itrs));
     *it = std::move(docs);
     ++it;
   }
 
   if (has_unscored_terms) {
-    assert(it != std::end(itrs));
+    IRS_ASSERT(it != std::end(itrs));
     *it = {memory::make_managed<::lazy_bitset_iterator>(
       segment, *state->reader, state->unscored_terms,
       state->unscored_states_estimation)};

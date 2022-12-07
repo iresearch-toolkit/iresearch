@@ -87,8 +87,8 @@ class FixedPhraseFrequency {
 
   explicit FixedPhraseFrequency(std::vector<TermPosition>&& pos) noexcept
     : pos_{std::move(pos)} {
-    assert(!pos_.empty());             // must not be empty
-    assert(0 == pos_.front().second);  // lead offset is always 0
+    IRS_ASSERT(!pos_.empty());             // must not be empty
+    IRS_ASSERT(0 == pos_.front().second);  // lead offset is always 0
   }
 
   attribute* GetMutable(irs::type_info::type_id id) noexcept {
@@ -109,9 +109,9 @@ class FixedPhraseFrequency {
 
   std::pair<const uint32_t*, const uint32_t*> GetOffsets() const noexcept {
     auto start = irs::get<irs::offset>(pos_.front().first.get());
-    assert(start);
+    IRS_ASSERT(start);
     auto end = irs::get<irs::offset>(pos_.back().first.get());
-    assert(end);
+    IRS_ASSERT(end);
     return {&start->start, &end->end};
   }
 
@@ -209,8 +209,8 @@ class VariadicPhraseFrequency {
 
   explicit VariadicPhraseFrequency(std::vector<TermPosition>&& pos) noexcept
     : pos_{std::move(pos)}, phrase_size_{pos_.size()} {
-    assert(!pos_.empty() && phrase_size_);  // must not be empty
-    assert(0 == pos_.front().second);       // lead offset is always 0
+    IRS_ASSERT(!pos_.empty() && phrase_size_);  // must not be empty
+    IRS_ASSERT(0 == pos_.front().second);       // lead offset is always 0
   }
 
   attribute* GetMutable(irs::type_info::type_id id) noexcept {
@@ -270,7 +270,7 @@ class VariadicPhraseFrequency {
   }
 
   static bool VisitFollower(void* ctx, Adapter& it_adapter) {
-    assert(ctx);
+    IRS_ASSERT(ctx);
     auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
@@ -299,7 +299,7 @@ class VariadicPhraseFrequency {
   }
 
   static bool VisitLead(void* ctx, Adapter& lead_adapter) {
-    assert(ctx);
+    IRS_ASSERT(ctx);
     auto& self = *reinterpret_cast<VariadicPhraseFrequency*>(ctx);
     const auto end = std::end(self.pos_);
     auto* lead = lead_adapter.position;
@@ -338,9 +338,9 @@ class VariadicPhraseFrequency {
       if (match.match) {
         ++self.phrase_freq_.value;
         if constexpr (std::is_same_v<Adapter, VariadicPhraseOffsetAdapter>) {
-          assert(lead_adapter.offset);
+          IRS_ASSERT(lead_adapter.offset);
           self.start = lead_adapter.offset->start;
-          assert(match.end);
+          IRS_ASSERT(match.end);
           self.end = *match.end;
         }
         if constexpr (OneShot) {
@@ -379,8 +379,8 @@ class VariadicPhraseFrequencyOverlapped {
   explicit VariadicPhraseFrequencyOverlapped(
     std::vector<TermPosition>&& pos) noexcept
     : pos_(std::move(pos)), phrase_size_(pos_.size()) {
-    assert(!pos_.empty() && phrase_size_);  // must not be empty
-    assert(0 == pos_.front().second);       // lead offset is always 0
+    IRS_ASSERT(!pos_.empty() && phrase_size_);  // must not be empty
+    IRS_ASSERT(0 == pos_.front().second);       // lead offset is always 0
   }
 
   attribute* GetMutable(irs::type_info::type_id id) noexcept {
@@ -429,7 +429,7 @@ class VariadicPhraseFrequencyOverlapped {
   };
 
   static bool VisitFollower(void* ctx, Adapter& it_adapter) {
-    assert(ctx);
+    IRS_ASSERT(ctx);
     auto& match = *reinterpret_cast<SubMatchContext*>(ctx);
     auto* p = it_adapter.position;
     p->reset();
@@ -452,7 +452,7 @@ class VariadicPhraseFrequencyOverlapped {
   }
 
   static bool VisitLead(void* ctx, Adapter& lead_adapter) {
-    assert(ctx);
+    IRS_ASSERT(ctx);
     auto& self = *reinterpret_cast<VariadicPhraseFrequencyOverlapped*>(ctx);
     const auto end = std::end(self.pos_);
     auto* lead = lead_adapter.position;
@@ -585,7 +585,7 @@ class PhraseIterator : public doc_iterator {
     return attr ? attr : irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const override final {
+  doc_id_t value() const final {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 

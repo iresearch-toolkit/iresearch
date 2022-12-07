@@ -41,7 +41,7 @@ class prev_doc : public attribute {
   }
 
   doc_id_t operator()() const {
-    assert(static_cast<bool>(*this));
+    IRS_ASSERT(static_cast<bool>(*this));
     return func_(ctx_);
   }
 

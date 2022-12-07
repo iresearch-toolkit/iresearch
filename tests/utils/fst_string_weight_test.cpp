@@ -21,8 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "utils/fstext/fst_string_weight.h"
+
+#include "tests_shared.hpp"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           fst_string_weight_tests

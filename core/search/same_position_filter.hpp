@@ -61,9 +61,9 @@ class by_same_position : public filter_with_options<by_same_position_options> {
 
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 };
 
 }  // namespace iresearch
