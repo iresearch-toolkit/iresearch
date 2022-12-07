@@ -868,7 +868,7 @@ class block_pool_sliced_inserter {
   // MSVC starting 2017.3  incorectly count offsets if this function is
   // inlined during optimization MSVC 2017.2 and below work correctly for both
   // debug and release
-  MSVC_ONLY(NO_INLINE)
+  MSVC_ONLY(IRS_NO_INLINE)
   void write(typename container::const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {
@@ -922,7 +922,7 @@ class block_pool_sliced_greedy_inserter {
   // MSVC starting 2017.3  incorectly count offsets if this function is
   // inlined during optimization MSVC 2017.2 and below work correctly for both
   // debug and release
-  MSVC_ONLY(NO_INLINE)
+  MSVC_ONLY(IRS_NO_INLINE)
   block_pool_sliced_greedy_inserter& operator=(
     typename container::const_reference value) {
     IRS_ASSERT(!*where_);  // we're not at the address part
@@ -947,7 +947,7 @@ class block_pool_sliced_greedy_inserter {
   // MSVC starting 2017.3  incorectly count offsets if this function is
   // inlined during optimization MSVC 2017.2 and below work correctly for both
   // debug and release
-  MSVC_ONLY(NO_INLINE)
+  MSVC_ONLY(IRS_NO_INLINE)
   void write(typename container::const_pointer b, size_t len) {
     IRS_ASSERT(!*where_);  // we're not at the address part
 

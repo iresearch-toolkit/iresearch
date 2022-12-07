@@ -38,7 +38,7 @@
 #endif
 
 #define IRS_FORCE_INLINE inline __forceinline
-#define NO_INLINE __declspec(noinline)
+#define IRS_NO_INLINE __declspec(noinline)
 #define RESTRICT __restrict
 #define IRS_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
@@ -48,7 +48,7 @@
 #endif
 
 #define IRS_FORCE_INLINE inline __attribute__((always_inline))
-#define NO_INLINE __attribute__((noinline))
+#define IRS_NO_INLINE __attribute__((noinline))
 #define RESTRICT __restrict__
 #define IRS_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
