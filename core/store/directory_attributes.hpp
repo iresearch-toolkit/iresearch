@@ -28,7 +28,7 @@
 #include "utils/container_utils.hpp"
 #include "utils/ref_counter.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // A reusable thread-safe allocator for memory files
 class memory_allocator final {
@@ -61,7 +61,7 @@ class memory_allocator final {
 
 // Directory encryption provider
 struct encryption {
-  // FIXME check if it's possible to rename to iresearch::encryption?
+  // FIXME check if it's possible to rename to irs::encryption?
   static constexpr std::string_view type_name() noexcept {
     return "encryption";
   }
@@ -134,6 +134,6 @@ class directory_attributes {
   std::unique_ptr<index_file_refs> refs_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

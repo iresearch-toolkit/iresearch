@@ -24,7 +24,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 const char* error_base::what() const noexcept {
   return "An unspecified error has occured.";
@@ -66,4 +66,4 @@ const char* index_not_found::what() const noexcept {
 
 const char* not_impl_error::what() const noexcept { return "Not implemented."; }
 
-}  // namespace iresearch
+}  // namespace irs

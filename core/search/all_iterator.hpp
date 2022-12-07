@@ -31,7 +31,7 @@
 #include "search/sort.hpp"
 #include "utils/attribute_helper.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class all_iterator final : public doc_iterator {
  public:
@@ -73,6 +73,6 @@ class all_iterator final : public doc_iterator {
   attributes attrs_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_ALL_ITERATOR_H

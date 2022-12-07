@@ -35,7 +35,7 @@
 #include "misc.hpp"
 #include "utils/assert.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename ContType>
 class block_pool_const_iterator {
@@ -1194,4 +1194,4 @@ class block_pool {
   blocks_t blocks_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

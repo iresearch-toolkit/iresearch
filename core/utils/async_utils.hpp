@@ -35,7 +35,7 @@
 #include "string.hpp"
 #include "thread_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace async_utils {
 
 //////////////////////////////////////////////////////////////////////////////
@@ -115,6 +115,6 @@ class thread_pool {
 };  // thread_pool
 
 }  // namespace async_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

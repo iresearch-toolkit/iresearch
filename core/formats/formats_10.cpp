@@ -3965,7 +3965,7 @@ REGISTER_FORMAT_MODULE(::format15simd, MODULE_NAME);
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace version10 {
 
 void init() {
@@ -3994,4 +3994,4 @@ template<typename IteratorTraits, typename FieldTraits, bool Position>
 struct type<::position<IteratorTraits, FieldTraits, Position>>
   : type<irs::position> {};
 
-}  // namespace iresearch
+}  // namespace irs

@@ -1243,7 +1243,7 @@ bool less(std::string_view lhs, std::string_view rhs) noexcept {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace columnstore2 {
 
 void column::prepare(doc_id_t key) {
@@ -1861,4 +1861,4 @@ irs::columnstore_reader::ptr make_reader() {
 }
 
 }  // namespace columnstore2
-}  // namespace iresearch
+}  // namespace irs

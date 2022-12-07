@@ -27,7 +27,7 @@
 
 struct sb_stemmer;
 
-namespace iresearch {
+namespace irs {
 
 struct stemmer_deleter {
   void operator()(sb_stemmer* p) const noexcept;
@@ -37,6 +37,6 @@ using stemmer_ptr = std::unique_ptr<sb_stemmer, stemmer_deleter>;
 
 stemmer_ptr make_stemmer_ptr(const char* algorithm, const char* charenc);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // SNOWBALL_STEMMER_H

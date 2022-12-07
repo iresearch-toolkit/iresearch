@@ -28,7 +28,7 @@
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Represents an estimated cost of the query execution.
 class cost final : public attribute {
@@ -36,9 +36,7 @@ class cost final : public attribute {
   using cost_t = uint64_t;
   using cost_f = std::function<cost_t()>;
 
-  static constexpr std::string_view type_name() noexcept {
-    return "iresearch::cost";
-  }
+  static constexpr std::string_view type_name() noexcept { return "irs::cost"; }
 
   static constexpr cost_t kMax = std::numeric_limits<cost_t>::max();
 
@@ -92,4 +90,4 @@ class cost final : public attribute {
   mutable bool init_{true};
 };
 
-}  // namespace iresearch
+}  // namespace irs

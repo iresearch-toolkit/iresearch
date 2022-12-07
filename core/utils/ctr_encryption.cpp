@@ -40,7 +40,7 @@ void decode_ctr_header(irs::bytes_view header, size_t block_size,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_cipher_stream
@@ -296,4 +296,4 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
     *cipher_, bytes_view(iv.data(), block_size), base_counter);
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -34,7 +34,7 @@
 #include "search/wildcard_filter.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_phrase;
 
@@ -163,6 +163,6 @@ class by_phrase : public filter_base<by_phrase_options> {
                                                  score_t boost) const;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

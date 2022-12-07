@@ -24,7 +24,7 @@
 
 #include "formats/empty_term_reader.hpp"
 
-namespace iresearch {
+namespace irs {
 
 all_iterator::all_iterator(const sub_reader& reader,
                            const byte_type* query_stats, const Order& order,
@@ -40,4 +40,4 @@ all_iterator::all_iterator(const sub_reader& reader,
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

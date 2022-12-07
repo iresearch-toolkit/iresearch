@@ -1512,7 +1512,7 @@ __pragma(warning(pop))
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace packed {
 
 void pack_block(const uint32_t* IRS_RESTRICT in, uint32_t* IRS_RESTRICT out,
@@ -2342,4 +2342,4 @@ uint64_t fastpack_at(const uint64_t* in, const size_t i,
 }
 
 }  // namespace packed
-}  // namespace iresearch
+}  // namespace irs

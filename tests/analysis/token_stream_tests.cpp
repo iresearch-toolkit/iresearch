@@ -25,7 +25,7 @@
 #include "analysis/token_streams.hpp"
 #include "tests_shared.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(token_streams_tests, boolean_stream) {
   ASSERT_EQ(1, boolean_token_stream::value_false().size());

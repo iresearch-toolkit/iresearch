@@ -30,7 +30,7 @@
 #include "shared.hpp"
 #include "store/directory.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename Value>
 class CachingHelper {
@@ -162,4 +162,4 @@ class CachingDirectoryBase : public Impl {
   mutable CachingHelper<Value> cache_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

@@ -277,7 +277,7 @@ struct term_collector final : public irs::sort::term_collector {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 // BM25 similarity
 // bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1 - b + b *
@@ -625,4 +625,4 @@ sort::prepared::ptr bm25_sort::prepare() const {
   return std::make_unique<bm25::sort>(k_, b_, boost_as_score_);
 }
 
-}  // namespace iresearch
+}  // namespace irs

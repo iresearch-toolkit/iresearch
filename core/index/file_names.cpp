@@ -31,7 +31,7 @@
 #pragma warning(disable : 4996)
 #endif
 
-namespace iresearch {
+namespace irs {
 
 std::string file_name(uint64_t gen) {
   char buf[22] = "_";  // can hold : -2^63 .. 2^64-1, plus '_' prefix, plus 0
@@ -84,7 +84,7 @@ std::string file_name(std::string_view name, uint64_t gen,
   return out;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #if defined(_MSC_VER)
 #pragma warning(default : 4996)

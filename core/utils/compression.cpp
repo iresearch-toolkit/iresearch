@@ -88,7 +88,7 @@ identity_compressor kIdentityCompressor;
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace compression {
 
 compression_registrar::compression_registrar(
@@ -200,4 +200,4 @@ compressor::ptr compressor::identity() noexcept {
 }
 
 }  // namespace compression
-}  // namespace iresearch
+}  // namespace irs

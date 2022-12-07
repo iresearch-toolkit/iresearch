@@ -37,7 +37,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 [[maybe_unused]] inline bool is_subset_of(const features_t& lhs,
@@ -360,4 +360,4 @@ void segment_writer::reset(const segment_meta& meta) {
   initialized_ = true;
 }
 
-}  // namespace iresearch
+}  // namespace irs

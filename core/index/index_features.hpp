@@ -30,7 +30,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/type_info.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct field_stats;
 struct column_output;
@@ -101,6 +101,6 @@ using feature_info_provider_t =
   std::function<std::pair<column_info, feature_writer_factory_t>(
     type_info::type_id)>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_INDEX_FEATURES_H

@@ -26,14 +26,14 @@
 #include "sort.hpp"
 #include "utils/attributes.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Represents a score related for the particular document
 struct score : attribute, ScoreFunction {
   static const score kNoScore;
 
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::score";
+    return "irs::score";
   }
 
   template<typename Provider>
@@ -67,6 +67,6 @@ ScoreFunction CompileScore(Args&&... args) {
 void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
                        const index_reader& index);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SCORE_H

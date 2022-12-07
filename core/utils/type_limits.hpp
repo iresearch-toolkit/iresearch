@@ -25,7 +25,7 @@
 
 #include "types.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct address_limits {
   constexpr static uint64_t invalid() noexcept {
@@ -74,4 +74,4 @@ struct pos_limits {
   constexpr static uint32_t(min)() noexcept { return 1; }
 };
 
-}  // namespace iresearch
+}  // namespace irs

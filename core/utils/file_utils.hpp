@@ -92,7 +92,7 @@
 using path_char_t = std::filesystem::path::value_type;
 #define file_path_t path_char_t*
 
-namespace iresearch::file_utils {
+namespace irs::file_utils {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         lock file
@@ -179,4 +179,4 @@ bool visit_directory(const file_path_t name,
 bool file_sync(const file_path_t name) noexcept;
 bool file_sync(int fd) noexcept;
 
-}  // namespace iresearch::file_utils
+}  // namespace irs::file_utils

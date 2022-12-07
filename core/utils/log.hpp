@@ -54,7 +54,7 @@
 static_assert(false, "Unknown size_t, ssize_t, ptrdiff_t specifiers");
 #endif
 
-namespace iresearch::logger {
+namespace irs::logger {
 
 // Use a prefix that doesn't clash with any predefined macros e.g. Win32 'ERROR'
 enum level_t {
@@ -126,51 +126,49 @@ namespace detail {
 }
 
 }  // namespace detail
-}  // namespace iresearch::logger
+}  // namespace irs::logger
 
 #if defined(_MSC_VER)
-#define IR_LOG_FORMATED(level, format, ...)   \
-  if (::iresearch::logger::enabled(level))    \
-  ::iresearch::logger::detail::log_formatted( \
-    IRS_FUNC_NAME, __FILE__, __LINE__, level, format, __VA_ARGS__)
+#define IR_LOG_FORMATED(level, format, ...)                               \
+  if (::irs::logger::enabled(level))                                      \
+  ::irs::logger::detail::log_formatted(IRS_FUNC_NAME, __FILE__, __LINE__, \
+                                       level, format, __VA_ARGS__)
 
 #define IR_FRMT_FATAL(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, __VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_FATAL, format, __VA_ARGS__)
 #define IR_FRMT_ERROR(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, __VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_ERROR, format, __VA_ARGS__)
 #define IR_FRMT_WARN(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, format, __VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_WARN, format, __VA_ARGS__)
 #define IR_FRMT_INFO(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, format, __VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_INFO, format, __VA_ARGS__)
 #define IR_FRMT_DEBUG(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, format, __VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_DEBUG, format, __VA_ARGS__)
 #define IR_FRMT_TRACE(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, format, __VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_TRACE, format, __VA_ARGS__)
 #else  // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
-#define IR_LOG_FORMATED(level, format, ...)   \
-  if (::iresearch::logger::enabled(level))    \
-  ::iresearch::logger::detail::log_formatted( \
-    IRS_FUNC_NAME, __FILE__, __LINE__, level, format, ##__VA_ARGS__)
+#define IR_LOG_FORMATED(level, format, ...)                               \
+  if (::irs::logger::enabled(level))                                      \
+  ::irs::logger::detail::log_formatted(IRS_FUNC_NAME, __FILE__, __LINE__, \
+                                       level, format, ##__VA_ARGS__)
 
 #define IR_FRMT_FATAL(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, format, ##__VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_FATAL, format, ##__VA_ARGS__)
 #define IR_FRMT_ERROR(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, format, ##__VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_ERROR, format, ##__VA_ARGS__)
 #define IR_FRMT_WARN(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, format, ##__VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_WARN, format, ##__VA_ARGS__)
 #define IR_FRMT_INFO(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, format, ##__VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_INFO, format, ##__VA_ARGS__)
 #define IR_FRMT_DEBUG(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, format, ##__VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_DEBUG, format, ##__VA_ARGS__)
 #define IR_FRMT_TRACE(format, ...) \
-  IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, format, ##__VA_ARGS__)
+  IR_LOG_FORMATED(::irs::logger::IRL_TRACE, format, ##__VA_ARGS__)
 #endif
 
-#define IR_LOG_STACK_TRACE()                                  \
-  if (::iresearch::logger::enabled(                           \
-        ::iresearch::logger::stack_trace_level())) {          \
-    IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), \
-                    "@%s\nstack trace:", IRS_FUNC_NAME);      \
-    ::iresearch::logger::stack_trace(                         \
-      ::iresearch::logger::stack_trace_level());              \
+#define IR_LOG_STACK_TRACE()                                        \
+  if (::irs::logger::enabled(::irs::logger::stack_trace_level())) { \
+    IR_LOG_FORMATED(::irs::logger::stack_trace_level(),             \
+                    "@%s\nstack trace:", IRS_FUNC_NAME);            \
+    ::irs::logger::stack_trace(::irs::logger::stack_trace_level()); \
   }

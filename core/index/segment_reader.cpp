@@ -151,7 +151,7 @@ class masked_docs_iterator final : public doc_iterator,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 class segment_reader_impl : public sub_reader {
  public:
@@ -404,4 +404,4 @@ const irs::column_reader* segment_reader_impl::column(field_id field) const {
   return columnstore_reader_ ? columnstore_reader_->column(field) : nullptr;
 }
 
-}  // namespace iresearch
+}  // namespace irs

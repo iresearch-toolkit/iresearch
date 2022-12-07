@@ -224,7 +224,7 @@ class pos_iterator final : public irs::position {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace detail {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1199,4 +1199,4 @@ size_t fields_data::memory_reserved() const noexcept {
 template<typename Reader>
 struct type<::pos_iterator<Reader>> : type<irs::position> {};
 
-}  // namespace iresearch
+}  // namespace irs

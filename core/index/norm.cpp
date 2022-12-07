@@ -56,7 +56,7 @@ NormWriter kNormWriter;
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 bool NormReaderContext::Reset(const sub_reader& reader, field_id column_id,
                               const document& doc) {
@@ -179,4 +179,4 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
 REGISTER_ATTRIBUTE(Norm);
 REGISTER_ATTRIBUTE(Norm2);
 
-}  // namespace iresearch
+}  // namespace irs

@@ -25,7 +25,7 @@
 
 #include "scorers.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct boost_sort final : public sort {
   static constexpr std::string_view type_name() noexcept {
@@ -39,6 +39,6 @@ struct boost_sort final : public sort {
   sort::prepared::ptr prepare() const override;
 };  // boost_sort
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_BOOST_H

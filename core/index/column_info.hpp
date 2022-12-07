@@ -28,7 +28,7 @@
 #include "utils/compression.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct column_info {
   // Column compression
@@ -45,6 +45,6 @@ struct column_info {
 using column_info_provider_t =
   std::function<column_info(const std::string_view)>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_COLUMN_INFO_H

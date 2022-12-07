@@ -32,7 +32,7 @@ irs::compression::delta_decompressor DECOMPRESSOR;
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace compression {
 
 bytes_view delta_compressor::compress(byte_type* src, size_t size,
@@ -84,4 +84,4 @@ void delta::init() {
 REGISTER_COMPRESSION(delta, &delta::compressor, &delta::decompressor);
 
 }  // namespace compression
-}  // namespace iresearch
+}  // namespace irs

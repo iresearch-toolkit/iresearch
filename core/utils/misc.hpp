@@ -29,7 +29,7 @@
 #include "shared.hpp"
 #include "utils/assert.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Convenient helper for simulating 'try/catch/finally' semantic
 template<typename Func>
@@ -116,4 +116,4 @@ struct Visitor : Visitors... {
 template<typename... T>
 Visitor(T...) -> Visitor<std::decay_t<T>...>;
 
-}  // namespace iresearch
+}  // namespace irs

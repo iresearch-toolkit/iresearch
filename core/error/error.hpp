@@ -27,7 +27,7 @@
 
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @enum ErrorCode
@@ -49,7 +49,7 @@ enum class ErrorCode : uint32_t {
 
 #define DECLARE_ERROR_CODE(class_name)                 \
   static const ErrorCode CODE = ErrorCode::class_name; \
-  ::iresearch::ErrorCode code() const noexcept override { return CODE; }
+  ::irs::ErrorCode code() const noexcept override { return CODE; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base
@@ -177,6 +177,6 @@ struct illegal_state : detailed_error_base {
     : detailed_error_base(std::forward<T>(error)) {}
 };  // illegal_state
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

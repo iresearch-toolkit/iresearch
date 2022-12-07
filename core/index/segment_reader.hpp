@@ -27,7 +27,7 @@
 #include "index_reader.hpp"
 #include "utils/object_pool.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief interface for a segment reader
@@ -116,6 +116,6 @@ class segment_reader final : public sub_reader {
   segment_reader(impl_ptr&& impl) noexcept;
 };  // segment_reade
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

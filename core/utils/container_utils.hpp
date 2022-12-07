@@ -33,7 +33,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/object_pool.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace container_utils {
 
 // Ssame as 'std::array' but this implementation capable of storing
@@ -363,4 +363,4 @@ template<size_t NumBuckets, size_t SkipBits, typename Allocator>
     bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
 
 }  // namespace container_utils
-}  // namespace iresearch
+}  // namespace irs

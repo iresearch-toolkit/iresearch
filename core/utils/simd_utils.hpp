@@ -30,7 +30,7 @@
 #include "shared.hpp"
 #include "utils/bit_packing.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace simd {
 
 using namespace hwy::HWY_NAMESPACE;
@@ -328,6 +328,6 @@ void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
 }
 
 }  // namespace simd
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SIMD_UTILS_H

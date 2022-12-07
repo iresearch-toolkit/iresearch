@@ -32,7 +32,7 @@
 #include "utils/misc.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch::memory {
+namespace irs::memory {
 
 class freelist : private util::noncopyable {
  private:
@@ -367,7 +367,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
   }
 
   static size_t adjust_slot_size(size_t slot_size) noexcept {
-    using namespace iresearch::math;
+    using namespace irs::math;
     static_assert(is_power2(freelist::MIN_ALIGN),
                   "MIN_ALIGN must be a power of 2");
 
@@ -673,4 +673,4 @@ constexpr inline bool operator!=(
   return !(lhs == rhs);
 }
 
-}  // namespace iresearch::memory
+}  // namespace irs::memory

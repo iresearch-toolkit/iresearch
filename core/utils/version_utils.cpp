@@ -23,7 +23,7 @@
 
 #include "version_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace version_utils {
 
 const std::string_view build_date() {
@@ -55,4 +55,4 @@ const std::string_view build_version() {
 }
 
 }  // namespace version_utils
-}  // namespace iresearch
+}  // namespace irs

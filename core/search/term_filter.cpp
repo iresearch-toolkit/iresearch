@@ -85,7 +85,7 @@ void visit(const sub_reader& segment, const term_reader& field, bytes_view term,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 void by_term::visit(const sub_reader& segment, const term_reader& field,
                     bytes_view term, filter_visitor& visitor) {
@@ -126,4 +126,4 @@ filter::prepared::ptr by_term::prepare(const index_reader& index,
                                          boost);
 }
 
-}  // namespace iresearch
+}  // namespace irs

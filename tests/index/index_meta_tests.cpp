@@ -27,7 +27,7 @@
 #include "tests_shared.hpp"
 #include "utils/type_limits.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(index_meta_tests, memory_directory_read_write_10) {
   auto codec = irs::formats::get("1_0");

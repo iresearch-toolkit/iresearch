@@ -35,18 +35,18 @@
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class format;
 typedef std::shared_ptr<const format> format_ptr;
 
-}  // namespace iresearch
+}  // namespace irs
 
 // format_ptr
 MSVC_ONLY(                                             // cppcheck-suppress
   template class std::shared_ptr<const irs::format>;)  // unknownMacro
 
-namespace iresearch {
+namespace irs {
 
 struct directory;
 class index_writer;
@@ -243,6 +243,6 @@ class index_meta {
   }
 };  // index_meta
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

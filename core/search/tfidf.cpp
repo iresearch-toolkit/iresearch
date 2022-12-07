@@ -251,7 +251,7 @@ IRS_FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace tfidf {
 
 // empty frequency
@@ -481,4 +481,4 @@ sort::prepared::ptr tfidf_sort::prepare() const {
   return std::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
 
-}  // namespace iresearch
+}  // namespace irs

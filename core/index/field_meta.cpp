@@ -26,7 +26,7 @@
 #include "analysis/token_attributes.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ const field_meta field_meta::kEmpty;
 
@@ -56,4 +56,4 @@ bool field_meta::operator==(const field_meta& rhs) const {
          features == rhs.features;
 }
 
-}  // namespace iresearch
+}  // namespace irs

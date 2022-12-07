@@ -27,7 +27,7 @@
 #include "search/states/phrase_state.hpp"
 #include "search/states_cache.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class FixedPhraseQuery;
 class VariadicPhraseQuery;
@@ -100,4 +100,4 @@ class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
   doc_iterator::ptr ExecuteWithOffsets(const irs::sub_reader& segment) const;
 };
 
-}  // namespace iresearch
+}  // namespace irs

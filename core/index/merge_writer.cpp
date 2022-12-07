@@ -44,7 +44,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 bool is_subset_of(const feature_map_t& lhs, const feature_map_t& rhs) noexcept {
@@ -1720,4 +1720,4 @@ bool merge_writer::flush(index_meta::index_segment_t& segment,
   return result;
 }
 
-}  // namespace iresearch
+}  // namespace irs

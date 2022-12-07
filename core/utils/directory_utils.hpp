@@ -30,7 +30,7 @@
 #include "store/directory.hpp"
 #include "store/directory_cleaner.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class index_meta;
 struct segment_meta;
@@ -199,6 +199,6 @@ struct ref_tracking_directory : public directory {
   bool track_open_;
 };  // ref_tracking_directory
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

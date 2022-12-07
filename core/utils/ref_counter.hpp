@@ -33,7 +33,7 @@
 #include "utils/assert.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename Key,
          typename Hash = typename absl::flat_hash_set<Key>::hasher,
@@ -147,4 +147,4 @@ class ref_counter : public util::noncopyable {
   absl::flat_hash_set<ref_t, hash, equal_to> refs_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

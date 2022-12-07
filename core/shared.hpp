@@ -124,7 +124,7 @@ static_assert(sizeof(float_t) != sizeof(double_t));
 
 #define IRS_IGNORE(value) (void)(value)
 
-namespace iresearch {
+namespace irs {
 
 consteval bool is_big_endian() noexcept {
   return std::endian::native == std::endian::big;
@@ -132,9 +132,7 @@ consteval bool is_big_endian() noexcept {
 
 inline constexpr size_t kCmpXChg16Align = 16;
 
-}  // namespace iresearch
-
-namespace irs = ::iresearch;
+}  // namespace irs
 
 #define IRS_STRINGIFY(x) #x
 #define IRS_TO_STRING(x) IRS_STRINGIFY(x)

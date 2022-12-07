@@ -30,7 +30,7 @@
 #include "store/directory_attributes.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct directory;
 
@@ -52,6 +52,6 @@ class directory_cleaner {
     });
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

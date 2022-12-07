@@ -30,7 +30,7 @@
 #include "token_stream.hpp"
 #include "utils/attribute_helper.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +155,6 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
 };
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_PIPELINE_TOKEN_STREAM_H

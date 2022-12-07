@@ -31,7 +31,7 @@
 #include "math_utils.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace packed {
 
 constexpr uint32_t BLOCK_SIZE_32 =
@@ -268,6 +268,6 @@ typedef iterator<uint32_t> iterator32;
 typedef iterator<uint64_t> iterator64;
 
 }  // namespace packed
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

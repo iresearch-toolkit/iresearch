@@ -31,7 +31,7 @@
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class directory_attributes;
 
@@ -174,4 +174,4 @@ struct directory : private util::noncopyable {
   }
 };
 
-}  // namespace iresearch
+}  // namespace irs

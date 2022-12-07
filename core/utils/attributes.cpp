@@ -34,7 +34,7 @@ class attribute_register
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ bool attributes::exists(std::string_view name,
                                    bool load_library /*= true*/) {
@@ -93,4 +93,4 @@ attribute_registrar::attribute_registrar(const type_info& type,
 
 attribute_registrar::operator bool() const noexcept { return registered_; }
 
-}  // namespace iresearch
+}  // namespace irs

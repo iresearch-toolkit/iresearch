@@ -66,7 +66,7 @@
 
 namespace {
 
-using namespace iresearch;
+using namespace irs;
 using columnstore::ColumnMetaVersion;
 
 irs::bytes_view kDummy;  // placeholder for visiting logic in columnstore
@@ -463,7 +463,7 @@ bool meta_reader::read(column_meta& column) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace columnstore {
 
 template<size_t Size>
@@ -2558,4 +2558,4 @@ irs::columnstore_reader::ptr make_reader() {
 }
 
 }  // namespace columnstore
-}  // namespace iresearch
+}  // namespace irs

@@ -28,7 +28,7 @@
 #include "iterators.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // External heap iterator
 // ----------------------------------------------------------------------------
@@ -103,4 +103,4 @@ class ExternalHeapIterator {
   size_t lead_{};
 };
 
-}  // namespace iresearch
+}  // namespace irs

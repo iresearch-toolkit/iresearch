@@ -28,7 +28,7 @@
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
-namespace iresearch {
+namespace irs {
 
 // return slice as string
 inline std::string slice_to_string(
@@ -57,6 +57,6 @@ T get_string(VPackSlice slice) {
   return {ptr, length};
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_VPACK_UTILS_H

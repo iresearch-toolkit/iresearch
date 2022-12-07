@@ -41,7 +41,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
@@ -2743,4 +2743,4 @@ void index_writer::abort() {
   meta_.reset(*(committed_state_->first));
 }
 
-}  // namespace iresearch
+}  // namespace irs

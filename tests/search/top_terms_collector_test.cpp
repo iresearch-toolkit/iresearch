@@ -43,13 +43,13 @@ struct term_meta : irs::term_meta {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 // use base irs::term_meta type for ancestors
 template<>
 struct type<::term_meta> : type<irs::term_meta> {};
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 

@@ -31,7 +31,7 @@
 #include "utils/automaton_decl.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct data_output;
 struct data_input;
@@ -309,4 +309,4 @@ inline bool edit_distance(size_t& distance,
                        rhs.data(), rhs.size());
 }
 
-}  // namespace iresearch
+}  // namespace irs

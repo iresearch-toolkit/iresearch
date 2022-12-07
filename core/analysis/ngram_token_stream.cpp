@@ -331,7 +331,7 @@ REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream_base, make_json,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
@@ -571,7 +571,7 @@ bool ngram_token_stream<StreamType>::next() noexcept {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 // Making library export see template instantinations
 template class irs::analysis::ngram_token_stream<

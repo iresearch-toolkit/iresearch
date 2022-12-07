@@ -541,9 +541,9 @@ void visit(const irs::sub_reader& segment, const irs::term_reader& reader,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
-// Sequential 'granularity_level' value, cannot use 'iresearch::increment' since
+// Sequential 'granularity_level' value, cannot use 'irs::increment' since
 // it can be 0
 void set_granular_term(by_granular_range_options::terms& boundary,
                        numeric_token_stream& term) {
@@ -611,4 +611,4 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   ::visit(segment, reader, rng, visitor);
 }
 
-}  // namespace iresearch
+}  // namespace irs

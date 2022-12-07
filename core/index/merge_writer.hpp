@@ -32,7 +32,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct tracking_directory;
 class comparer;
@@ -111,4 +111,4 @@ class merge_writer : public util::noncopyable {
 
 static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
 
-}  // namespace iresearch
+}  // namespace irs

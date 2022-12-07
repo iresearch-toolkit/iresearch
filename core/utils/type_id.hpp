@@ -26,7 +26,7 @@
 #include "type_info.hpp"
 #include "type_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 namespace detail {
 DEFINE_HAS_MEMBER(type_name);
@@ -64,6 +64,6 @@ struct type {
   static constexpr type_info::type_id id() noexcept { return &get; }
 };  // type
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

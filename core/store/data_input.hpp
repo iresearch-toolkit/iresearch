@@ -33,7 +33,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum BufferHint
@@ -265,4 +265,4 @@ class buffered_index_input : public index_input {
   size_t buf_size_{};       // size of the buffer in bytes
 };                          // buffered_index_input
 
-}  // namespace iresearch
+}  // namespace irs

@@ -300,7 +300,7 @@ bool all_have_offset(std::span<const irs::analysis::analyzer::ptr> pipeline) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 pipeline_token_stream::pipeline_token_stream(
@@ -432,4 +432,4 @@ pipeline_token_stream::sub_analyzer_t::sub_analyzer_t()
     analyzer(std::make_unique<empty_analyzer>()) {}
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

@@ -28,7 +28,7 @@
 #include "score.hpp"
 #include "utils/bitset.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Bitset expecting doc iterator to be able only to move forward.
 // So in case of "seek" to the still unfilled word
@@ -230,4 +230,4 @@ filter& proxy_filter::cache_filter(filter::ptr&& ptr) {
   return *cache_->real_filter_;
 }
 
-}  // namespace iresearch
+}  // namespace irs

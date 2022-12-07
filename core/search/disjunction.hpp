@@ -30,7 +30,7 @@
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace detail {
 
 // Need this proxy since Microsoft has heap validity check in std::pop_heap.
@@ -1416,6 +1416,6 @@ doc_iterator::ptr MakeWeakDisjunction(
                                                std::forward<Args>(args)...);
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_DISJUNCTION_H

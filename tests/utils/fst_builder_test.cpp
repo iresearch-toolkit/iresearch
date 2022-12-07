@@ -48,7 +48,7 @@
 
 namespace {
 
-struct fst_stats : iresearch::fst_stats {
+struct fst_stats : irs::fst_stats {
   size_t total_weight_size{};
 
   void operator()(const irs::vector_byte_fst::Weight& w) noexcept {

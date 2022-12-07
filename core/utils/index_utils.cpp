@@ -180,7 +180,7 @@ double_t consolidation_score(const consolidation_candidate& consolidation,
 }  // namespace tier
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace index_utils {
 
 index_writer::consolidation_policy_t consolidation_policy(
@@ -547,4 +547,4 @@ void flush_index_segment(directory& dir, index_meta::index_segment_t& segment) {
 }
 
 }  // namespace index_utils
-}  // namespace iresearch
+}  // namespace irs

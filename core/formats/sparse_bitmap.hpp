@@ -35,7 +35,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 enum class SparseBitmapVersion {
   kMin = 0,
@@ -285,6 +285,6 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   const bool track_prev_doc_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SPARSE_BITMAP_H

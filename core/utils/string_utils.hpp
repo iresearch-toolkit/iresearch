@@ -32,7 +32,7 @@
 
 #include "utils/math_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace string_utils {
 
 inline size_t oversize(size_t chunk_size, size_t size,
@@ -108,6 +108,6 @@ inline std::string to_string(const char* format, Args&&... args) {
 }
 
 }  // namespace string_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

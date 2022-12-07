@@ -31,7 +31,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/small_vector.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct collector;
 struct data_output;
@@ -47,7 +47,7 @@ constexpr score_t kNoBoost{1.f};
 // document. May vary from document to document.
 struct filter_boost final : attribute {
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::filter_boost";
+    return "irs::filter_boost";
   }
 
   score_t value{kNoBoost};
@@ -525,6 +525,6 @@ class PreparedSortBase<void> : public sort::prepared {
   }
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

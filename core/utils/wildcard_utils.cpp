@@ -42,7 +42,7 @@
 
 #include "automaton_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 WildcardType wildcard_type(bytes_view expr) noexcept {
   if (expr.empty()) {
@@ -219,4 +219,4 @@ automaton from_wildcard(bytes_view expr) {
   return dfa;
 }
 
-}  // namespace iresearch
+}  // namespace irs

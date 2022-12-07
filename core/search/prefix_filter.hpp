@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_prefix;
 struct filter_visitor;
@@ -90,13 +90,13 @@ class by_prefix : public filter_base<by_prefix_options> {
   }
 };  // by_prefix
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<::iresearch::by_prefix_options> {
-  size_t operator()(const ::iresearch::by_prefix_options& v) const noexcept {
+struct hash<::irs::by_prefix_options> {
+  size_t operator()(const ::irs::by_prefix_options& v) const noexcept {
     return v.hash();
   }
 };

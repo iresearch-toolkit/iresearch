@@ -32,7 +32,7 @@
 #include "noncopyable.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename Alloc>
 class dynamic_bitset {
@@ -206,6 +206,6 @@ class dynamic_bitset {
 
 using bitset = dynamic_bitset<std::allocator<size_t>>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

@@ -277,7 +277,7 @@ REGISTER_ANALYZER_JSON(irs::analysis::token_stopwords_stream, make_json,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 token_stopwords_stream::token_stopwords_stream(
@@ -314,4 +314,4 @@ bool token_stopwords_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

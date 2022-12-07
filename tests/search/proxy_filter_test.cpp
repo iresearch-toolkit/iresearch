@@ -32,7 +32,7 @@
 namespace {
 
 using namespace tests;
-using namespace iresearch;
+using namespace irs;
 
 class doclist_test_iterator final : public doc_iterator,
                                     private util::noncopyable {
@@ -68,7 +68,7 @@ class doclist_test_iterator final : public doc_iterator,
 
   doc_id_t value() const noexcept final { return doc_.value; }
 
-  attribute* get_mutable(iresearch::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     if (irs::type<irs::document>::id() == id) {
       return &doc_;
     }
@@ -88,7 +88,7 @@ class doclist_test_iterator final : public doc_iterator,
   std::vector<doc_id_t>::const_iterator begin_;
   std::vector<doc_id_t>::const_iterator current_;
   std::vector<doc_id_t>::const_iterator end_;
-  iresearch::document doc_;
+  irs::document doc_;
   cost cost_;
   bool resetted_;
 };

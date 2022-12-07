@@ -137,7 +137,7 @@ empty_column_iterator kEmptyColumnIterator;
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 term_iterator::ptr term_iterator::empty() {
   return memory::to_managed<irs::term_iterator, false>(&kEmptyTermIterator);
@@ -160,4 +160,4 @@ column_iterator::ptr column_iterator::empty() {
   return memory::to_managed<irs::column_iterator, false>(&kEmptyColumnIterator);
 }
 
-}  // namespace iresearch
+}  // namespace irs

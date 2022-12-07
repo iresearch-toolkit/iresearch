@@ -32,7 +32,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/type_utils.hpp"
 
-namespace iresearch::memory {
+namespace irs::memory {
 
 constexpr size_t align_up(size_t size, size_t alignment) noexcept {
   IRS_ASSERT(math::is_power2(alignment));
@@ -443,7 +443,7 @@ struct maker<Class, false> {
   }
 };
 
-}  // namespace iresearch::memory
+}  // namespace irs::memory
 
 // Default inline implementation of a factory method, instantiation on heap
 #define DEFINE_FACTORY_INLINE(class_name)                                   \

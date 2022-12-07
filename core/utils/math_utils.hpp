@@ -36,7 +36,7 @@
 #include "shared.hpp"
 #include "utils/assert.hpp"
 
-namespace iresearch::math {
+namespace irs::math {
 
 // Sum two unsigned integral values with overflow check
 // Returns false if sum is overflowed, true - otherwise
@@ -187,4 +187,4 @@ struct math_traits<T, sizeof(uint64_t)> {
   }
 };
 
-}  // namespace iresearch::math
+}  // namespace irs::math

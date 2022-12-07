@@ -447,7 +447,7 @@ uint64_t chi(const bitset& bs, size_t offset, uint64_t mask) noexcept {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 parametric_description::parametric_description(
   std::vector<transition_t>&& transitions, std::vector<byte_type>&& distance,
@@ -772,4 +772,4 @@ bool edit_distance(size_t& distance, const parametric_description& description,
   return true;
 }
 
-}  // namespace iresearch
+}  // namespace irs

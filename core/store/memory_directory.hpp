@@ -35,7 +35,7 @@
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class memory_file
   : public container_utils::raw_block_vector<16, 8,
@@ -328,6 +328,6 @@ struct memory_output {
   memory_index_output stream{file};
 };  // memory_output
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

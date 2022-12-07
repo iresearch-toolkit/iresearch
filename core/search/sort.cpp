@@ -80,7 +80,7 @@ void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 REGISTER_ATTRIBUTE(filter_boost);
 
@@ -155,4 +155,4 @@ Order Order::Prepare(std::span<const sort*> order) {
 
 const Order Order::kUnordered;
 
-}  // namespace iresearch
+}  // namespace irs

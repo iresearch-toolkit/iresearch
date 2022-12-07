@@ -97,7 +97,7 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace file_utils {
 
 void file_deleter::operator()(void* f) const noexcept {
@@ -1330,4 +1330,4 @@ bool visit_directory(const file_path_t name,
 }
 
 }  // namespace file_utils
-}  // namespace iresearch
+}  // namespace irs

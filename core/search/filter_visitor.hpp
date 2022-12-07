@@ -25,7 +25,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct sub_reader;
 struct term_reader;
@@ -50,6 +50,6 @@ struct filter_visitor {
   virtual void visit(score_t boost) = 0;
 };  // filter_visitor
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_FILTER_VISITOR_H

@@ -27,7 +27,7 @@
 #include "noncopyable.hpp"
 #include "string.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace compression {
 
 class delta_compressor : public compressor, private util::noncopyable {
@@ -44,7 +44,7 @@ class delta_decompressor : public decompressor, private util::noncopyable {
 
 struct delta {
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::compression::delta";
+    return "irs::compression::delta";
   }
 
   static void init();
@@ -53,6 +53,6 @@ struct delta {
 };  // delta
 
 }  // namespace compression
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

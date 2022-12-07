@@ -34,10 +34,10 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 template<template<typename> typename M>
 struct HasScoreHelper<M<NoopAggregator>> : std::false_type {};
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
@@ -578,7 +578,7 @@ auto ResolveMatchType(const sub_reader& segment,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 class ByNestedQuery final : public filter::prepared {
  public:
@@ -707,4 +707,4 @@ filter::prepared::ptr ByNestedFilter::prepare(
                                              /*none_boost*/ boost);
 }
 
-}  // namespace iresearch
+}  // namespace irs

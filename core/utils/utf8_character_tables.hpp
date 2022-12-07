@@ -26,7 +26,7 @@
 #include <frozen/map.h>
 #include <frozen/set.h>
 
-namespace iresearch {
+namespace irs {
 namespace utf8_utils {
 
 constexpr frozen::set<uint32_t, 10> WHITE_SPACE_TABLE = {
@@ -928,6 +928,6 @@ constexpr frozen::map<uint32_t, uint16_t, 3566> GENERAL_CATEGORY_TABLE = {
 };
 
 }  // namespace utf8_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_UTF8_CHARACTER_TABLES_H

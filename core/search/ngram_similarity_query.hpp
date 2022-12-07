@@ -28,7 +28,7 @@
 #include "search/states/ngram_state.hpp"
 #include "search/states_cache.hpp"
 
-namespace iresearch {
+namespace irs {
 
 using NGramStates = states_cache<NGramState>;
 
@@ -65,4 +65,4 @@ class NGramSimilarityQuery final : public filter::prepared {
   bstring stats_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

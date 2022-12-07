@@ -29,7 +29,7 @@
 #include "shared.hpp"
 #include "string.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace utf8_utils {
 
 // max number of bytes to represent single UTF8 code point
@@ -250,6 +250,6 @@ IRS_FORCE_INLINE size_t utf8_length(bytes_view in) noexcept {
 }
 
 }  // namespace utf8_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_UTF8_UTILS_H

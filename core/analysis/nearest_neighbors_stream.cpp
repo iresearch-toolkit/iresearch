@@ -207,7 +207,7 @@ REGISTER_ANALYZER_JSON(irs::analysis::nearest_neighbors_stream, make_json,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 /*static*/ void nearest_neighbors_stream::init() {
@@ -281,4 +281,4 @@ bool nearest_neighbors_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

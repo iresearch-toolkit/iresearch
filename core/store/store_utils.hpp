@@ -35,7 +35,7 @@
 #include "utils/std.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace detail {
 
 template<typename T, size_t N = sizeof(T)>
@@ -768,6 +768,6 @@ inline void visit_block_packed(data_input& in, uint32_t size, uint32_t* packed,
 
 }  // namespace avg
 }  // namespace encode
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

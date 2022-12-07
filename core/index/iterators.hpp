@@ -31,7 +31,7 @@
 #include "utils/iterator.hpp"
 #include "utils/memory.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // An iterator providing sequential and random access to a posting list
 //
@@ -177,6 +177,6 @@ bool skip(Iterator& itr, size_t count) {
   return true;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

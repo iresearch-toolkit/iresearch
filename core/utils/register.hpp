@@ -50,7 +50,7 @@ typedef std::mutex mutex_t;
 }
 #endif
 
-namespace iresearch {
+namespace irs {
 
 // Generic class representing globally-stored correspondence
 // between object of KeyType and EntryType
@@ -128,7 +128,7 @@ class generic_register : public singleton<RegisterType> {
       std::lock_guard<mutex_t> lock(mutex_);
 
       this_ptr->so_handles_.emplace_back(
-        handle, [](void* handle) -> void { iresearch::free_library(handle); });
+        handle, [](void* handle) -> void { irs::free_library(handle); });
     }
 
     if (!this_ptr->add_so_handle(handle)) {
@@ -225,6 +225,6 @@ class tagged_generic_register
   tag_map_t tag_map_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

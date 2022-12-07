@@ -28,7 +28,7 @@
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fst_states_map
@@ -114,6 +114,6 @@ class fst_states_map : private util::noncopyable {
   size_t count_{};
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

@@ -28,7 +28,7 @@
 #include "store/data_output.hpp"
 #include "utils/simd_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                bit packing encode/decode helpers
@@ -295,6 +295,6 @@ void read_block64(UnpackFunc&& unpack, data_input& in,
 }
 
 }  // namespace bitpack
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_BITPACK_H

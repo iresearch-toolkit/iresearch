@@ -26,7 +26,7 @@
 
 #include <shared.hpp>
 
-namespace iresearch {
+namespace irs {
 
 class crc32c {
   // TODO(MBkkt) kCrc32Xor == 0 is incorrect, we ignore all first zero bytes,
@@ -54,4 +54,4 @@ class crc32c {
   absl::crc32c_t value_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

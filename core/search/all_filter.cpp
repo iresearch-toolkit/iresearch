@@ -24,7 +24,7 @@
 
 #include "all_iterator.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Compiled all_filter that returns all documents
 class all_query final : public filter::prepared {
@@ -64,4 +64,4 @@ filter::prepared::ptr all::prepare(const index_reader& reader,
                                          this->boost() * filter_boost);
 }
 
-}  // namespace iresearch
+}  // namespace irs

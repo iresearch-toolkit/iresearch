@@ -236,7 +236,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ field_visitor by_edit_distance::visitor(
   const options_type::filter_options& opts) {
@@ -314,4 +314,4 @@ namespace iresearch {
     });
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -33,7 +33,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/simd_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace columnstore2 {
 
 enum class Version : int32_t { kMin = 0, kMax = kMin };
@@ -298,6 +298,6 @@ irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
 irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore2
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_COLUMNSTORE2_H

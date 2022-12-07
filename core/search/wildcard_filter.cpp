@@ -93,7 +93,7 @@ auto executeWildcard(bstring& buf, bytes_view term, Invalid&& inv, Term&& t,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 field_visitor by_wildcard::visitor(bytes_view term) {
   bstring buf;
@@ -163,4 +163,4 @@ field_visitor by_wildcard::visitor(bytes_view term) {
     });
 }
 
-}  // namespace iresearch
+}  // namespace irs

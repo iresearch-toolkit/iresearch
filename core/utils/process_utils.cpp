@@ -35,7 +35,7 @@
 #include <cstdlib>
 #include <numeric>
 
-namespace iresearch {
+namespace irs {
 
 bool is_running(pid_t pid) {
 #ifdef _WIN32
@@ -74,4 +74,4 @@ bool is_valid_pid(const char* buf) {
          is_running(static_cast<pid_t>(pid));
 }
 
-}  // namespace iresearch
+}  // namespace irs

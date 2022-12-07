@@ -26,7 +26,7 @@
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(std_test, input_output_iterator) {
   irs::memory_directory dir;

@@ -25,7 +25,7 @@
 
 #include "scorers.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class tfidf_sort : public sort {
  public:
@@ -55,6 +55,6 @@ class tfidf_sort : public sort {
   bool boost_as_score_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

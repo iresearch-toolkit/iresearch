@@ -29,7 +29,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 /// @brief initialize an encryption header and create corresponding cipher
 /// stream
@@ -153,6 +153,6 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
   const size_t length_;
 };  // encrypted_input
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_ENCRYPTION_H

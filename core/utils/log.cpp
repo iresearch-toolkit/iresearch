@@ -242,8 +242,7 @@ DWORD stack_trace_win32(irs::logger::level_t level,
 
   while (StackWalk64(image_type, process, thread, &frame, &ctx, NULL, NULL,
                      NULL, NULL)) {
-    static const std::string stack_trace_fn_symbol(
-      "iresearch::logger::stack_trace");
+    static const std::string stack_trace_fn_symbol("irs::logger::stack_trace");
     auto has_module = SymGetModuleInfo(process, frame.AddrPC.Offset, &module);
     auto has_symbol = SymGetSymFromAddr(process, frame.AddrPC.Offset,
                                         &offset_from_symbol, &symbol);
@@ -788,7 +787,7 @@ bool stack_trace_libunwind(irs::logger::level_t, int) { return false; }
 
 }  // namespace
 
-namespace iresearch::logger {
+namespace irs::logger {
 
 void log(const char* function, const char* file, int line, level_t level,
          const char* message, size_t len) {
@@ -936,4 +935,4 @@ void stack_trace_level(level_t level) {
   logger_ctx::instance().stack_trace_level(level);
 }
 
-}  // namespace iresearch::logger
+}  // namespace irs::logger

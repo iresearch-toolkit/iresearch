@@ -34,7 +34,7 @@
 
 #include <cstring>
 
-namespace iresearch {
+namespace irs {
 
 #ifdef _WIN32
 #pragma warning(disable : 4706)
@@ -79,4 +79,4 @@ bool is_same_hostname(const char* rhs, size_t size) {
   return std::equal(name, name + size, rhs);
 }
 
-}  // namespace iresearch
+}  // namespace irs

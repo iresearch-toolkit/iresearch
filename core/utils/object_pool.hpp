@@ -36,7 +36,7 @@
 #include "shared.hpp"
 #include "thread_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Lock-free stack.
 // Move construction/assignment is not thread-safe.
@@ -633,6 +633,6 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
   generation_ptr_t gen_;  // current generation
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

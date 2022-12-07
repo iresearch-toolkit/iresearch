@@ -37,7 +37,7 @@
 #include <Windows.h>  // for GetLastError()
 #endif
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 // Converts the specified IOAdvice to corresponding posix fadvice
@@ -647,4 +647,4 @@ index_input::ptr CachingFSDirectory::open(std::string_view name,
   return stream;
 }
 
-}  // namespace iresearch
+}  // namespace irs

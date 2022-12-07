@@ -88,7 +88,7 @@ void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 void sparse_bitmap_writer::finish() {
   flush(block_);
@@ -564,4 +564,4 @@ doc_id_t sparse_bitmap_iterator::seek(doc_id_t target) {
   return value();
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -28,7 +28,7 @@
 #include "shared.hpp"
 #include "sort.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////
 /// @class collector_wrapper
@@ -291,6 +291,6 @@ class term_collectors : public collectors_base<term_collector_wrapper> {
 static_assert(std::is_nothrow_move_constructible_v<term_collectors>);
 static_assert(std::is_nothrow_move_assignable_v<term_collectors>);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_COLLECTORS_H

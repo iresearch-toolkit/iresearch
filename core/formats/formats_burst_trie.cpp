@@ -3537,7 +3537,7 @@ class dumper : util::noncopyable {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace burst_trie {
 
 irs::field_writer::ptr make_writer(Version version,
@@ -3552,4 +3552,4 @@ irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {
 }
 
 }  // namespace burst_trie
-}  // namespace iresearch
+}  // namespace irs

@@ -22,11 +22,11 @@
 
 #include "analyzer.hpp"
 
-namespace iresearch::analysis {
+namespace irs::analysis {
 
 analyzer::analyzer(const type_info& type) noexcept : type_(type.id()) {}
 
 empty_analyzer::empty_analyzer() noexcept
   : analyzer(irs::type<empty_analyzer>::get()) {}
 
-}  // namespace iresearch::analysis
+}  // namespace irs::analysis

@@ -38,7 +38,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class comparer;
 struct segment_meta;
@@ -384,6 +384,6 @@ class segment_writer : util::noncopyable {
   bool valid_{true};  // current state
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SEGMENT_WRITER_H

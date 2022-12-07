@@ -46,7 +46,7 @@ using VariadicPhraseIterator = PhraseIterator<
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   auto& rdr = ctx.segment;
@@ -401,4 +401,4 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
                                                    std::move(positions));
 }
 
-}  // namespace iresearch
+}  // namespace irs

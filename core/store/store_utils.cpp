@@ -28,7 +28,7 @@
 #include "utils/std.hpp"
 #include "utils/string_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
@@ -189,4 +189,4 @@ size_t remapped_bytes_view_input::file_pointer() const noexcept {
   return src.first + (addr - src.second);
 }
 
-}  // namespace iresearch
+}  // namespace irs

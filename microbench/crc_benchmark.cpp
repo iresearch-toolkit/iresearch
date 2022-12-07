@@ -33,7 +33,7 @@ void BM_Calculate2(benchmark::State& state) {
   std::string data = TestString(len);
   for (auto s : state) {
     benchmark::DoNotOptimize(data);
-    iresearch::crc32c crc;
+    irs::crc32c crc;
     crc.process_bytes(data.data(), data.size());
     benchmark::DoNotOptimize(crc.checksum());
   }
@@ -56,7 +56,7 @@ void BM_Extend(benchmark::State& state) {
 void BM_Extend2(benchmark::State& state) {
   int len = state.range(0);
   std::string extension = TestString(len);
-  iresearch::crc32c base{0xC99465AA};  // CRC32C of "Hello World"
+  irs::crc32c base{0xC99465AA};  // CRC32C of "Hello World"
   for (auto s : state) {
     benchmark::DoNotOptimize(base);
     benchmark::DoNotOptimize(extension);
