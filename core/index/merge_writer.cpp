@@ -24,7 +24,8 @@
 #include "merge_writer.hpp"
 
 #include <absl/container/flat_hash_map.h>
-#ifdef IRESEARCH_DEBUG
+
+#if defined(IRESEARCH_DEBUG) && !(defined(__clang__) && defined(__GLIBCXX__))
 #include <ranges>
 #endif
 
@@ -1302,7 +1303,7 @@ doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const sub_reader& reader,
   return next_id;
 }
 
-#ifdef IRESEARCH_DEBUG
+#if defined(IRESEARCH_DEBUG) && !(defined(__clang__) && defined(__GLIBCXX__))
 void EnsureSorted(const auto& readers) {
   for (const auto& reader : readers) {
     const auto& doc_map = reader.doc_id_map;
@@ -1632,7 +1633,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
     ++it;
   }
 
-#ifdef IRESEARCH_DEBUG
+#if defined(IRESEARCH_DEBUG) && !(defined(__clang__) && defined(__GLIBCXX__))
   EnsureSorted(readers_);
 #endif
 

@@ -29,49 +29,71 @@
 
 namespace iresearch {
 
-enum class LogLevel : unsigned char {
-  Assert = 0,
-  Count = 1,
-};
-
 #ifdef IRESEARCH_DEBUG
 namespace detail {
 
-void LogMessage(LogLevel level, std::string_view file, std::size_t line,
-                std::string_view func, std::string_view condition) noexcept;
+void AssertMessage(std::string_view file, std::size_t line,
+                   std::string_view func, std::string_view condition,
+                   std::string_view message) noexcept;
 
 }  // namespace detail
 #endif
 
 using LogCallback = void (*)(std::string_view file, std::size_t line,
                              std::string_view function,
-                             std::string_view condition) noexcept;
+                             std::string_view condition,
+                             std::string_view message) noexcept;
 
-void SetCallback(LogLevel level, LogCallback callback) noexcept;
+void SetAssertCallback(LogCallback callback) noexcept;
 
 }  // namespace iresearch
 
-#define IRS_LOG_MESSAGE(level, cond)                             \
-  do {                                                           \
-    if (!!(cond)) {                                              \
-      ::iresearch::detail::LogMessage(level, __FILE__, __LINE__, \
-                                      IRS_FUNC_NAME, #cond);     \
-    }                                                            \
+#define IRS_ASSERT_MESSAGE(cond, message)                                   \
+  do {                                                                      \
+    if (!(cond)) {                                                          \
+      ::iresearch::detail::AssertMessage(__FILE__, __LINE__, IRS_FUNC_NAME, \
+                                         #cond, message);                   \
+    }                                                                       \
   } while (false)
 
+#define IRS_GET_MACRO(arg1, arg2, MACRO, ...) MACRO
+
 #ifdef NDEBUG
-#define IRS_STUB1(first) ((void)1)
+
+#define IRS_STUB(...) ((void)1)
+
 #else
+
 #define IRS_STUB1(first) \
   do {                   \
     if (false) {         \
       (void)(first);     \
     }                    \
   } while (false)
+
+#define IRS_STUB2(first, second) \
+  do {                           \
+    if (false) {                 \
+      (void)(first);             \
+      (void)(second);            \
+    }                            \
+  } while (false)
+
+#define IRS_STUB(...) \
+  IRS_GET_MACRO(__VA_ARGS__, IRS_STUB2, IRS_STUB1)(__VA_ARGS__)
+
 #endif
 
 #ifdef IRESEARCH_DEBUG
-#define IRS_ASSERT(cond) IRS_LOG_MESSAGE(::iresearch::LogLevel::Assert, !(cond))
+
+#define IRS_ASSERT_CONDITION(cond) IRS_ASSERT_MESSAGE(cond, {})
+
+#define IRS_ASSERT(...)                                                \
+  IRS_GET_MACRO(__VA_ARGS__, IRS_ASSERT_MESSAGE, IRS_ASSERT_CONDITION) \
+  (__VA_ARGS__)
+
 #else
-#define IRS_ASSERT(cond) IRS_STUB1(!(cond))
+
+#define IRS_ASSERT(...) IRS_STUB(__VA_ARGS__)
+
 #endif

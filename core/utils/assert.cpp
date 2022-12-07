@@ -22,27 +22,25 @@
 
 #include "utils/assert.hpp"
 
-#include <array>
 #include <cstddef>
 
 namespace iresearch {
 namespace detail {
 
-static std::array<LogCallback, static_cast<std::size_t>(LogLevel::Count)>
-  sCallbacks = {};
+LogCallback kAssertCallback = nullptr;
 
-void LogMessage(LogLevel level, std::string_view file, std::size_t line,
-                std::string_view func, std::string_view condition) noexcept {
-  if (const auto callback = sCallbacks[static_cast<std::size_t>(level)];
-      IRS_LIKELY(callback != nullptr)) {
-    callback(file, line, func, condition);
+void AssertMessage(std::string_view file, std::size_t line,
+                   std::string_view func, std::string_view condition,
+                   std::string_view message) noexcept {
+  if (IRS_LIKELY(kAssertCallback != nullptr)) {
+    kAssertCallback(file, line, func, condition, message);
   }
 }
 
 }  // namespace detail
 
-void SetCallback(LogLevel level, LogCallback callback) noexcept {
-  detail::sCallbacks[static_cast<std::size_t>(level)] = callback;
+void SetAssertCallback(LogCallback callback) noexcept {
+  detail::kAssertCallback = callback;
 }
 
 }  // namespace iresearch

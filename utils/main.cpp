@@ -63,10 +63,10 @@ bool init_handlers(handlers_t&);
 namespace {
 
 void AssertCallback(std::string_view file, std::size_t line,
-                    std::string_view function,
-                    std::string_view condition) noexcept {
+                    std::string_view function, std::string_view condition,
+                    std::string_view message) noexcept {
   std::cerr << file << ":" << line << ": " << function << ": Condition '"
-            << condition << "' is true.\n";
+            << condition << "' is false. With message '" << message << "'\n";
   assert(false);
 }
 
@@ -85,7 +85,7 @@ std::string get_modes_description(const handlers_t& handlers) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  irs::SetCallback(irs::LogLevel::Assert, AssertCallback);
+  irs::SetAssertCallback(AssertCallback);
   handlers_t handlers;
 
   // initialize supported modes
