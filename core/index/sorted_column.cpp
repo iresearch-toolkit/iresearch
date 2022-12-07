@@ -81,8 +81,8 @@ bool sorted_column::flush_sprase_primary(
 std::pair<doc_map, field_id> sorted_column::flush(
   columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
   doc_id_t docs_count, const comparer& less) {
-  assert(index_.size() <= docs_count);
-  assert(index_.empty() || index_.back().first <= docs_count);
+  IRS_ASSERT(index_.size() <= docs_count);
+  IRS_ASSERT(index_.empty() || index_.back().first <= docs_count);
 
   if (IRS_UNLIKELY(index_.empty())) {
     return {{}, field_limits::invalid()};

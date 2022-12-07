@@ -3132,14 +3132,14 @@ class field_reader final : public irs::field_reader {
       auto docs_it = it.postings(IndexFeatures::NONE);
 
       if (IRS_UNLIKELY(!docs_it)) {
-        assert(false);
+        IRS_ASSERT(false);
         return 0;
       }
 
       const auto* doc = irs::get<document>(*docs_it);
 
       if (IRS_UNLIKELY(!doc)) {
-        assert(false);
+        IRS_ASSERT(false);
         return 0;
       }
 

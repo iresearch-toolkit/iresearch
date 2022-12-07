@@ -1034,7 +1034,7 @@ struct PrimarySortIteratorAdapter {
       live_docs{std::move(live_docs)},
       live_doc{this->live_docs ? irs::get<document>(*this->live_docs)
                                : nullptr} {
-    assert(valid());
+    IRS_ASSERT(valid());
   }
 
   [[nodiscard]] bool valid() const noexcept {
@@ -1306,13 +1306,13 @@ doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const sub_reader& reader,
 void EnsureSorted(const auto& readers) {
   for (const auto& reader : readers) {
     const auto& doc_map = reader.doc_id_map;
-    assert(doc_map.size() >= doc_limits::min());
+    IRS_ASSERT(doc_map.size() >= doc_limits::min());
 
     auto view = doc_map | std::views::filter([](doc_id_t doc) noexcept {
                   return !doc_limits::eof(doc);
                 });
 
-    assert(std::ranges::is_sorted(view));
+    IRS_ASSERT(std::ranges::is_sorted(view));
   }
 }
 #endif
@@ -1600,7 +1600,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   for (columns_it.reset(itrs.size()); columns_it.next();) {
     const auto index = columns_it.value();
     auto& it = itrs[index];
-    assert(it.valid());
+    IRS_ASSERT(it.valid());
 
     const auto max = it.doc->value;
     auto& doc_id_map = readers_[index].doc_id_map;
