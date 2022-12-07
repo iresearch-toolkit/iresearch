@@ -27,7 +27,7 @@
 #include "shared.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 /* -------------------------------------------------------------------
  * segment_meta
@@ -190,4 +190,4 @@ bool index_meta::index_segment_t::operator!=(
   return filename != other.filename || meta != other.meta;
 }
 
-}  // namespace iresearch
+}  // namespace irs

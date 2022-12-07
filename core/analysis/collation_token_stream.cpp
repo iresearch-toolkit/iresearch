@@ -218,7 +218,7 @@ REGISTER_ANALYZER_VPACK(irs::analysis::collation_token_stream, make_vpack,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 constexpr size_t MAX_TOKEN_SIZE = 1 << 15;
@@ -322,4 +322,4 @@ bool collation_token_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

@@ -30,7 +30,7 @@
 #include "index/index_reader.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class states_cache
@@ -71,6 +71,6 @@ class states_cache : private util::noncopyable {
   states_map states_;
 };  // states_cache
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_STATES_CACHE_H

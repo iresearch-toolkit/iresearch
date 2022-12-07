@@ -117,15 +117,15 @@ TEST(compression_test, registration) {
 }
 
 TEST(compression_test, none) {
-  static_assert("iresearch::compression::none" ==
+  static_assert("irs::compression::none" ==
                 irs::type<irs::compression::none>::name());
   ASSERT_EQ(nullptr, irs::compression::none().compressor({}));
   ASSERT_EQ(nullptr, irs::compression::none().decompressor());
 }
 
 TEST(compression_test, lz4) {
-  using namespace iresearch;
-  static_assert("iresearch::compression::lz4" ==
+  using namespace irs;
+  static_assert("irs::compression::lz4" ==
                 irs::type<irs::compression::lz4>::name());
 
   std::vector<size_t> data(2047, 0);
@@ -173,8 +173,8 @@ TEST(compression_test, lz4) {
 }
 
 TEST(compression_test, delta) {
-  using namespace iresearch;
-  static_assert("iresearch::compression::delta" ==
+  using namespace irs;
+  static_assert("irs::compression::delta" ==
                 irs::type<irs::compression::delta>::name());
 
   std::vector<uint64_t> data(2047, 0);

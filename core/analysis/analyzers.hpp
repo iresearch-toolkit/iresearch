@@ -31,7 +31,7 @@
 #include "utils/result.hpp"
 #include "utils/text_format.hpp"
 
-namespace iresearch::analysis {
+namespace irs::analysis {
 
 using factory_f = analysis::analyzer::ptr (*)(std::string_view args);
 using normalizer_f = bool (*)(std::string_view args, std::string& config);
@@ -81,31 +81,30 @@ bool visit(
   const std::function<bool(std::string_view, const type_info&)>& visitor);
 
 }  // namespace analyzers
-}  // namespace iresearch::analysis
+}  // namespace irs::analysis
 
 #define REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, \
                             line, source)                                    \
-  static ::iresearch::analysis::analyzer_registrar                           \
-    analyzer_registrar##_##line(::iresearch::type<analyzer_name>::get(),     \
-                                ::iresearch::type<args_format>::get(),       \
-                                &factory, &normalizer, source)
+  static ::irs::analysis::analyzer_registrar analyzer_registrar##_##line(    \
+    ::irs::type<analyzer_name>::get(), ::irs::type<args_format>::get(),      \
+    &factory, &normalizer, source)
 #define REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory,    \
                                      normalizer, file, line)                 \
   REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, line, \
-                      file ":" TOSTRING(line))
+                      file ":" IRS_TO_STRING(line))
 #define REGISTER_ANALYZER(analyzer_name, args_format, factory, normalizer) \
   REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory,        \
                                normalizer, __FILE__, __LINE__)
-#define REGISTER_ANALYZER_JSON(analyzer_name, factory, normalizer)          \
-  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::json, factory, \
+#define REGISTER_ANALYZER_JSON(analyzer_name, factory, normalizer)    \
+  REGISTER_ANALYZER(analyzer_name, ::irs::text_format::json, factory, \
                     normalizer)
-#define REGISTER_ANALYZER_TEXT(analyzer_name, factory, normalizer)          \
-  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::text, factory, \
+#define REGISTER_ANALYZER_TEXT(analyzer_name, factory, normalizer)    \
+  REGISTER_ANALYZER(analyzer_name, ::irs::text_format::text, factory, \
                     normalizer)
 #define REGISTER_ANALYZER_TYPED(analyzer_name, args_format) \
   REGISTER_ANALYZER(analyzer_name, args_format, analyzer_name::make)
-#define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer)          \
-  REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, \
+#define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer)    \
+  REGISTER_ANALYZER(analyzer_name, ::irs::text_format::vpack, factory, \
                     normalizer)
 
 #endif

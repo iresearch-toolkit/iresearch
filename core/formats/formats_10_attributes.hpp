@@ -27,7 +27,7 @@
 #include "utils/attributes.hpp"
 #include "utils/bitset.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace version10 {
 
 //////////////////////////////////////////////////////////////////////////////
@@ -70,6 +70,6 @@ struct term_meta : irs::term_meta {
 template<>
 struct type<version10::term_meta> : type<irs::term_meta> {};
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_FORMAT_10_ATTRIBUTES

@@ -98,7 +98,7 @@ class timer_states : public irs::singleton<timer_states> {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace timer_utils {
 
 scoped_timer::scoped_timer(timer_stat_t& stat)
@@ -138,9 +138,8 @@ bool visit(const std::function<bool(const std::string& key, size_t count,
 void flush_stats(std::ostream& out) {
   std::map<std::string, std::pair<size_t, size_t>> ordered_stats;
 
-  iresearch::timer_utils::visit([&ordered_stats](const std::string& key,
-                                                 size_t count,
-                                                 size_t time) -> bool {
+  irs::timer_utils::visit([&ordered_stats](const std::string& key, size_t count,
+                                           size_t time) -> bool {
     std::string key_str = key;
 
 #if defined(__GNUC__)
@@ -176,4 +175,4 @@ void flush_stats(std::ostream& out) {
 }
 
 }  // namespace timer_utils
-}  // namespace iresearch
+}  // namespace irs

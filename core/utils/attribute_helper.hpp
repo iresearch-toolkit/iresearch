@@ -25,7 +25,7 @@
 
 #include "attribute_provider.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename T>
 struct attribute_ptr {
@@ -72,6 +72,6 @@ constexpr attribute* get_mutable(std::tuple<T...>& t,
   return detail::get_mutable_helper<0>(t, id).ptr;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_ATTRIBUTE_HELPER_H

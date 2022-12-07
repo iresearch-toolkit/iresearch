@@ -26,7 +26,7 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_edit_distance;
 class parametric_description;
@@ -132,14 +132,14 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
   }
 };  // by_edit_distance
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<::iresearch::by_edit_distance_filter_options> {
+struct hash<::irs::by_edit_distance_filter_options> {
   size_t operator()(
-    const ::iresearch::by_edit_distance_filter_options& v) const noexcept {
+    const ::irs::by_edit_distance_filter_options& v) const noexcept {
     return v.hash();
   }
 };

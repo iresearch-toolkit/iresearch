@@ -30,7 +30,7 @@
 #include "utils/numeric_utils.hpp"
 #include "utils/std.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          input_buf implementation
@@ -199,4 +199,4 @@ void buffered_index_input::seek(size_t p) {
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

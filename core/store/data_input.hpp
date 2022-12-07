@@ -33,7 +33,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @enum BufferHint
@@ -230,7 +230,7 @@ class buffered_index_input : public index_input {
   virtual size_t read_internal(byte_type* b, size_t count) = 0;
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const noexcept {
+  IRS_FORCE_INLINE size_t remain() const noexcept {
     return std::distance(begin_, end_);
   }
 
@@ -247,14 +247,14 @@ class buffered_index_input : public index_input {
   /// @return number of elements between current position and beginning of the
   ///         buffer
   //////////////////////////////////////////////////////////////////////////////
-  FORCE_INLINE size_t offset() const noexcept {
+  IRS_FORCE_INLINE size_t offset() const noexcept {
     return std::distance(buf_, begin_);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return number of valid bytes in the buffer
   //////////////////////////////////////////////////////////////////////////////
-  FORCE_INLINE size_t size() const noexcept {
+  IRS_FORCE_INLINE size_t size() const noexcept {
     return std::distance(buf_, end_);
   }
 
@@ -265,4 +265,4 @@ class buffered_index_input : public index_input {
   size_t buf_size_{};       // size of the buffer in bytes
 };                          // buffered_index_input
 
-}  // namespace iresearch
+}  // namespace irs

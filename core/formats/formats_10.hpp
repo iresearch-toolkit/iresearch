@@ -25,7 +25,7 @@
 
 #include "formats.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace version10 {
 
 void init();
@@ -41,6 +41,6 @@ class format : public irs::format {
 };
 
 }  // namespace version10
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

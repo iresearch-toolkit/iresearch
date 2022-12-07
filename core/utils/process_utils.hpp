@@ -28,10 +28,10 @@ typedef int pid_t;
 #include <sys/types.h>
 #endif
 
-namespace iresearch {
+namespace irs {
 
 pid_t get_pid();
 bool is_running(pid_t pid);
 bool is_valid_pid(const char* buf);
 
-}  // namespace iresearch
+}  // namespace irs

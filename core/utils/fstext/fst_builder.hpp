@@ -62,7 +62,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct fst_stats {
   size_t num_states{};  // total number of states
@@ -370,6 +370,6 @@ class fst_builder : util::noncopyable {
   fst_t& fst_;
 };  // fst_builder
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

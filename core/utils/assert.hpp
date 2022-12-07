@@ -27,7 +27,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 #ifdef IRESEARCH_DEBUG
 namespace detail {
@@ -46,18 +46,18 @@ using LogCallback = void (*)(std::string_view file, std::size_t line,
 
 LogCallback SetAssertCallback(LogCallback callback) noexcept;
 
-}  // namespace iresearch
+}  // namespace irs
 
 #define IRS_GET_MACRO(arg1, arg2, MACRO, ...) MACRO
 
 #ifdef IRESEARCH_DEBUG
 
-#define IRS_ASSERT_MESSAGE(cond, message)                                   \
-  do {                                                                      \
-    if (!(cond)) {                                                          \
-      ::iresearch::detail::AssertMessage(__FILE__, __LINE__, IRS_FUNC_NAME, \
-                                         #cond, message);                   \
-    }                                                                       \
+#define IRS_ASSERT_MESSAGE(cond, message)                                    \
+  do {                                                                       \
+    if (!(cond)) {                                                           \
+      ::irs::detail::AssertMessage(__FILE__, __LINE__, IRS_FUNC_NAME, #cond, \
+                                   message);                                 \
+    }                                                                        \
   } while (false)
 
 #define IRS_ASSERT_CONDITION(cond) IRS_ASSERT_MESSAGE(cond, {})

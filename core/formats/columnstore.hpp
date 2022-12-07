@@ -26,7 +26,7 @@
 #include "formats/formats.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace columnstore {
 
 enum class ColumnMetaVersion : int32_t {
@@ -60,6 +60,6 @@ irs::columnstore_writer::ptr make_writer(Version version,
 irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_COLUMNSTORE_H

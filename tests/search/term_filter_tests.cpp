@@ -500,7 +500,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       while (docs->next()) {
         irs::score_t score_value;
         (*scr)(&score_value);
-        UNUSED(score_value);
+        IRS_IGNORE(score_value);
         ASSERT_EQ(1, expected.erase(docs->value()));
       }
 

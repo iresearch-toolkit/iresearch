@@ -164,7 +164,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
 
   // with boost
   {
-    iresearch::score_t boost = 1.5f;
+    irs::score_t boost = 1.5f;
 
     // no terms, return empty query
     {

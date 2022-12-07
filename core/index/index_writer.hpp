@@ -46,7 +46,7 @@
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class comparer;
 class bitvector;
@@ -1088,6 +1088,6 @@ class index_writer : private util::noncopyable {
   index_file_refs::ref_t write_lock_file_ref_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_INDEX_WRITER_H

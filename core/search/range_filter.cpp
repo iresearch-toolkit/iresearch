@@ -110,7 +110,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 filter::prepared::ptr by_range::prepare(const index_reader& index,
                                         const Order& ord, score_t boost,
@@ -166,4 +166,4 @@ void by_range::visit(const sub_reader& segment, const term_reader& reader,
   ::visit(segment, reader, rng, visitor);
 }
 
-}  // namespace iresearch
+}  // namespace irs

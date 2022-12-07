@@ -35,12 +35,12 @@
 #include "store/store_utils.hpp"
 #include "utils/iterator.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct data_output;
 class token_stream;
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace tests {
 

@@ -190,47 +190,47 @@ TEST(container_utils_tests, test_compute_bucket_meta) {
 TEST(container_utils_tests, compute_bucket_offset) {
   // test boundaries for skip bits == 0
   {
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<0>(0)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<0>(1)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<0>(2)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(3)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(4)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(5)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<0>(6)));
-    ASSERT_EQ(3, (iresearch::container_utils::compute_bucket_offset<0>(7)));
+    ASSERT_EQ(0, (irs::container_utils::compute_bucket_offset<0>(0)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<0>(1)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<0>(2)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<0>(3)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<0>(4)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<0>(5)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<0>(6)));
+    ASSERT_EQ(3, (irs::container_utils::compute_bucket_offset<0>(7)));
   }
 
   // test boundaries for skip bits == 2
   {
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(0)));
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(1)));
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(2)));
-    ASSERT_EQ(0, (iresearch::container_utils::compute_bucket_offset<2>(3)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(4)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(5)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(6)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(7)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(8)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(9)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(10)));
-    ASSERT_EQ(1, (iresearch::container_utils::compute_bucket_offset<2>(11)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(12)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(13)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(14)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(15)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(16)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(17)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(18)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(19)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(20)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(21)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(22)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(23)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(24)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(25)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(26)));
-    ASSERT_EQ(2, (iresearch::container_utils::compute_bucket_offset<2>(27)));
-    ASSERT_EQ(3, (iresearch::container_utils::compute_bucket_offset<2>(28)));
+    ASSERT_EQ(0, (irs::container_utils::compute_bucket_offset<2>(0)));
+    ASSERT_EQ(0, (irs::container_utils::compute_bucket_offset<2>(1)));
+    ASSERT_EQ(0, (irs::container_utils::compute_bucket_offset<2>(2)));
+    ASSERT_EQ(0, (irs::container_utils::compute_bucket_offset<2>(3)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(4)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(5)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(6)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(7)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(8)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(9)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(10)));
+    ASSERT_EQ(1, (irs::container_utils::compute_bucket_offset<2>(11)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(12)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(13)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(14)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(15)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(16)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(17)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(18)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(19)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(20)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(21)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(22)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(23)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(24)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(25)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(26)));
+    ASSERT_EQ(2, (irs::container_utils::compute_bucket_offset<2>(27)));
+    ASSERT_EQ(3, (irs::container_utils::compute_bucket_offset<2>(28)));
   }
 }
 

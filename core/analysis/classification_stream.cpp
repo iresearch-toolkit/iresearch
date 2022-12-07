@@ -228,7 +228,7 @@ REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 /*static*/ void classification_stream::init() {
@@ -287,4 +287,4 @@ bool classification_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

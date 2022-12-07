@@ -26,7 +26,7 @@
 #include "analysis/token_attributes.hpp"
 #include "disjunction.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename Frequency>
 class PhrasePosition final : public position, public Frequency {
@@ -623,6 +623,6 @@ class PhraseIterator : public doc_iterator {
   attributes attrs_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

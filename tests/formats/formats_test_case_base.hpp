@@ -235,7 +235,7 @@ class format_test_case : public index_test_base {
                                       irs::doc_iterator& actual);
 
   void assert_no_directory_artifacts(
-    const iresearch::directory& dir, const iresearch::format& codec,
+    const irs::directory& dir, const irs::format& codec,
     const std::unordered_set<std::string>& expect_additional = {});
 };
 
@@ -243,10 +243,10 @@ class format_test_case_with_encryption : public format_test_case {};
 
 }  // namespace tests
 
-namespace iresearch {
+namespace irs {
 
 // use base irs::position type for ancestors
 template<>
 struct type<tests::format_test_case::position> : type<irs::position> {};
 
-}  // namespace iresearch
+}  // namespace irs

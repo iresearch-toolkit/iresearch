@@ -31,7 +31,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 inline bool memcmp_less(const byte_type* lhs, size_t lhs_size,
                         const byte_type* rhs, size_t rhs_size) noexcept {
@@ -125,6 +125,6 @@ class postings : util::noncopyable {
   writer_t& writer_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

@@ -35,7 +35,7 @@
 #include "utils/std.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace detail {
 
 template<typename T, size_t N = sizeof(T)>
@@ -281,24 +281,24 @@ StringType vread_string(const byte_type*& in) {
   return StringType(read_ref<const char_type>(in, size), size);
 }
 
-FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
+IRS_FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
   IRS_ASSERT(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
   return (val << 1) | uint64_t(b);
 }
 
-FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
+IRS_FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
   IRS_ASSERT(val <= UINT32_C(0x7FFFFFFF));
   return (val << 1) | uint32_t(b);
 }
 
 template<typename T = bool, typename U = uint64_t>
-FORCE_INLINE T shift_unpack_64(uint64_t in, U& out) noexcept {
+IRS_FORCE_INLINE T shift_unpack_64(uint64_t in, U& out) noexcept {
   out = static_cast<U>(in >> 1);
   return static_cast<T>(in & 1);
 }
 
 template<typename T = bool, typename U = uint32_t>
-FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
+IRS_FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
   out = static_cast<U>(in >> 1);
   return static_cast<T>(in & 1);
 }
@@ -597,9 +597,9 @@ inline void decode(const uint32_t base, const uint32_t avg, uint32_t* begin,
 template<typename PackFunc>
 inline uint32_t write_block(
   PackFunc&& pack, data_output& out, const uint64_t base, const uint64_t avg,
-  const uint64_t* RESTRICT decoded,
+  const uint64_t* IRS_RESTRICT decoded,
   const uint64_t size,  // same type as 'read_block'/'write_block'
-  uint64_t* RESTRICT encoded) {
+  uint64_t* IRS_RESTRICT encoded) {
   out.write_vlong(base);
   out.write_vlong(avg);
   return bitpack::write_block64(std::forward<PackFunc>(pack), out, decoded,
@@ -609,9 +609,9 @@ inline uint32_t write_block(
 template<typename PackFunc>
 inline uint32_t write_block(
   PackFunc&& pack, data_output& out, const uint32_t base, const uint32_t avg,
-  const uint32_t* RESTRICT decoded,
+  const uint32_t* IRS_RESTRICT decoded,
   const uint32_t size,  // same type as 'read_block'/'write_block'
-  uint32_t* RESTRICT encoded) {
+  uint32_t* IRS_RESTRICT encoded) {
   out.write_vint(base);
   out.write_vint(avg);
   return bitpack::write_block32(std::forward<PackFunc>(pack), out, decoded,
@@ -768,6 +768,6 @@ inline void visit_block_packed(data_input& in, uint32_t size, uint32_t* packed,
 
 }  // namespace avg
 }  // namespace encode
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

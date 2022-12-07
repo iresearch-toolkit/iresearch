@@ -435,7 +435,7 @@ auto sRegisterTypes = []() {
 
 }  // namespace
 
-namespace iresearch::analysis {
+namespace irs::analysis {
 
 /*static*/ void MinHashTokenStream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::MinHashTokenStream, MakeVPack,
@@ -524,4 +524,4 @@ void MinHashTokenStream::ComputeSignature() {
   }
 }
 
-}  // namespace iresearch::analysis
+}  // namespace irs::analysis

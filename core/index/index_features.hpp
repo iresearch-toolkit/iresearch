@@ -30,7 +30,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/type_info.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct field_stats;
 struct column_output;
@@ -76,7 +76,8 @@ ENABLE_BITMASK_ENUM(IndexFeatures);
 //////////////////////////////////////////////////////////////////////////////
 /// @return true if 'lhs' is a subset of 'rhs'
 //////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE bool is_subset_of(IndexFeatures lhs, IndexFeatures rhs) noexcept {
+IRS_FORCE_INLINE bool is_subset_of(IndexFeatures lhs,
+                                   IndexFeatures rhs) noexcept {
   return lhs == (lhs & rhs);
 }
 
@@ -100,6 +101,6 @@ using feature_info_provider_t =
   std::function<std::pair<column_info, feature_writer_factory_t>(
     type_info::type_id)>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_INDEX_FEATURES_H

@@ -27,7 +27,7 @@
 #include "sort.hpp"
 #include "utils/text_format.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               scorer registration
@@ -45,26 +45,26 @@ class scorer_registrar {
 };
 
 #define REGISTER_SCORER__(scorer_name, args_format, factory, line, source) \
-  static ::iresearch::scorer_registrar scorer_registrar##_##line(          \
-    ::iresearch::type<scorer_name>::get(),                                 \
-    ::iresearch::type<args_format>::get(), &factory, source)
+  static ::irs::scorer_registrar scorer_registrar##_##line(                \
+    ::irs::type<scorer_name>::get(), ::irs::type<args_format>::get(),      \
+    &factory, source)
 #define REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, file, \
                                    line)                                    \
   REGISTER_SCORER__(scorer_name, args_format, factory, line,                \
-                    file ":" TOSTRING(line))
+                    file ":" IRS_TO_STRING(line))
 #define REGISTER_SCORER(scorer_name, args_format, factory)                \
   REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, __FILE__, \
                              __LINE__)
 #define REGISTER_SCORER_CSV(scorer_name, factory) \
-  REGISTER_SCORER(scorer_name, ::iresearch::text_format::csv, factory)
+  REGISTER_SCORER(scorer_name, ::irs::text_format::csv, factory)
 #define REGISTER_SCORER_JSON(scorer_name, factory) \
-  REGISTER_SCORER(scorer_name, ::iresearch::text_format::json, factory)
+  REGISTER_SCORER(scorer_name, ::irs::text_format::json, factory)
 #define REGISTER_SCORER_VPACK(scorer_name, factory) \
-  REGISTER_SCORER(scorer_name, ::iresearch::text_format::vpack, factory)
+  REGISTER_SCORER(scorer_name, ::irs::text_format::vpack, factory)
 #define REGISTER_SCORER_TEXT(scorer_name, factory) \
-  REGISTER_SCORER(scorer_name, ::iresearch::text_format::text, factory)
+  REGISTER_SCORER(scorer_name, ::irs::text_format::text, factory)
 #define REGISTER_SCORER_XML(scorer_name, factory) \
-  REGISTER_SCORER(scorer_name, ::iresearch::text_format::xml, factory)
+  REGISTER_SCORER(scorer_name, ::irs::text_format::xml, factory)
 #define REGISTER_SCORER_TYPED(scorer_name, args_format) \
   REGISTER_SCORER(scorer_name, args_format, scorer_name::make)
 
@@ -111,6 +111,6 @@ class scorers {
   scorers() = delete;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

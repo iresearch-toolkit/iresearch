@@ -29,7 +29,7 @@
 
 #include "utils/math_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Implementation of MinHash variant with a single hash function.
 class MinHash {
@@ -124,4 +124,4 @@ class MinHash {
   size_t left_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

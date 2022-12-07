@@ -24,7 +24,7 @@
 
 #include "memory.hpp"
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ std::unique_ptr<char[]> result::copyState(const char* src) {
   const size_t len = std::strlen(src);
@@ -55,4 +55,4 @@ result::result(Code code, std::string_view msg1, std::string_view msg2)
   state_ = std::move(state);
 }
 
-}  // namespace iresearch
+}  // namespace irs

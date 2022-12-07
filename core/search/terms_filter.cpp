@@ -99,7 +99,7 @@ void collect_terms(const index_reader& index, std::string_view field,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ void by_terms::visit(const sub_reader& segment,
                                 const term_reader& field,
@@ -167,4 +167,4 @@ filter::prepared::ptr by_terms::prepare(const index_reader& index,
     std::move(states), std::move(stats), boost, merge_type, min_match);
 }
 
-}  // namespace iresearch
+}  // namespace irs

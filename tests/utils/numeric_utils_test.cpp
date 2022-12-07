@@ -32,9 +32,9 @@
 namespace {
 
 template<typename T>
-iresearch::bstring encode(T value, size_t offset = 0) {
-  typedef iresearch::numeric_utils::numeric_traits<T> traits_t;
-  iresearch::bstring data;
+irs::bstring encode(T value, size_t offset = 0) {
+  typedef irs::numeric_utils::numeric_traits<T> traits_t;
+  irs::bstring data;
   data.resize(traits_t::size());
   traits_t::encode(traits_t::integral(value), &(data[0]), offset);
   return data;
@@ -511,15 +511,15 @@ TEST(numeric_utils_test, i32_lexicographical_sort) {
   // sort values as a strings
   {
     irs::bstring lhsb, rhsb;
-    lhsb.resize(iresearch::numeric_utils::numeric_traits<int32_t>::size());
-    rhsb.resize(iresearch::numeric_utils::numeric_traits<int32_t>::size());
+    lhsb.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+    rhsb.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
 
-    std::sort(
-      data.begin(), data.end(), [&lhsb, &rhsb](int32_t lhs, int32_t rhs) {
-        lhsb.resize(iresearch::numeric_utils::encode32(lhs, &(lhsb[0])));
-        rhsb.resize(iresearch::numeric_utils::encode32(rhs, &(rhsb[0])));
-        return lhsb < rhsb;
-      });
+    std::sort(data.begin(), data.end(),
+              [&lhsb, &rhsb](int32_t lhs, int32_t rhs) {
+                lhsb.resize(irs::numeric_utils::encode32(lhs, &(lhsb[0])));
+                rhsb.resize(irs::numeric_utils::encode32(rhs, &(rhsb[0])));
+                return lhsb < rhsb;
+              });
   }
 
   ASSERT_TRUE(std::is_sorted(data.begin(), data.end()));
@@ -637,16 +637,16 @@ TEST(numeric_utils_test, float_lexicographical_sort) {
 
   // sort values as a strings
   {
-    iresearch::bstring lhsb, rhsb;
-    lhsb.resize(iresearch::numeric_utils::numeric_traits<int32_t>::size());
-    rhsb.resize(iresearch::numeric_utils::numeric_traits<int32_t>::size());
+    irs::bstring lhsb, rhsb;
+    lhsb.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+    rhsb.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
 
     std::sort(data.begin(), data.end(),
               [&lhsb, &rhsb](float_t lhs, float_t rhs) {
-                lhsb.resize(iresearch::numeric_utils::encode32(
-                  iresearch::numeric_utils::ftoi32(lhs), &(lhsb[0])));
-                rhsb.resize(iresearch::numeric_utils::encode32(
-                  iresearch::numeric_utils::ftoi32(rhs), &(rhsb[0])));
+                lhsb.resize(irs::numeric_utils::encode32(
+                  irs::numeric_utils::ftoi32(lhs), &(lhsb[0])));
+                rhsb.resize(irs::numeric_utils::encode32(
+                  irs::numeric_utils::ftoi32(rhs), &(rhsb[0])));
                 return lhsb < rhsb;
               });
   }
@@ -682,15 +682,15 @@ TEST(numeric_utils_test, i64_lexicographical_sort) {
   // sort values as a strings
   {
     irs::bstring lhsb, rhsb;
-    lhsb.resize(iresearch::numeric_utils::numeric_traits<int64_t>::size());
-    rhsb.resize(iresearch::numeric_utils::numeric_traits<int64_t>::size());
+    lhsb.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+    rhsb.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
 
-    std::sort(
-      data.begin(), data.end(), [&lhsb, &rhsb](int64_t lhs, int64_t rhs) {
-        lhsb.resize(iresearch::numeric_utils::encode64(lhs, &(lhsb[0])));
-        rhsb.resize(iresearch::numeric_utils::encode64(rhs, &(rhsb[0])));
-        return lhsb < rhsb;
-      });
+    std::sort(data.begin(), data.end(),
+              [&lhsb, &rhsb](int64_t lhs, int64_t rhs) {
+                lhsb.resize(irs::numeric_utils::encode64(lhs, &(lhsb[0])));
+                rhsb.resize(irs::numeric_utils::encode64(rhs, &(rhsb[0])));
+                return lhsb < rhsb;
+              });
   }
 
   ASSERT_TRUE(std::is_sorted(data.begin(), data.end()));
@@ -808,7 +808,7 @@ TEST(numeric_utils_test, double_lexicographical_sort) {
 
   // sort values as a strings
   {
-    typedef iresearch::numeric_utils::numeric_traits<double_t> traits_t;
+    typedef irs::numeric_utils::numeric_traits<double_t> traits_t;
 
     irs::bstring lhsb, rhsb;
     lhsb.resize(traits_t::size());

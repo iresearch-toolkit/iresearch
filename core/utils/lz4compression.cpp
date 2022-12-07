@@ -46,7 +46,7 @@ inline int acceleration(const irs::compression::options::Hint hint) noexcept {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 static_assert(sizeof(char) == sizeof(byte_type),
               "sizeof(char) != sizeof(byte_type)");
@@ -141,4 +141,4 @@ void lz4::init() {
 REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 
 }  // namespace compression
-}  // namespace iresearch
+}  // namespace irs

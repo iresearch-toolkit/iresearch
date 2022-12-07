@@ -34,7 +34,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/utf8_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 #ifdef IRESEARCH_DEBUG
 constexpr bool TEST_AUTOMATON_PROPS = true;
@@ -483,6 +483,6 @@ filter::prepared::ptr prepare_automaton_filter(
   std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
   const index_reader& index, const Order& order, score_t boost);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

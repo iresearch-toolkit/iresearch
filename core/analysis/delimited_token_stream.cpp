@@ -256,7 +256,7 @@ REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 delimited_token_stream::delimited_token_stream(std::string_view delimiter)
@@ -326,4 +326,4 @@ bool delimited_token_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

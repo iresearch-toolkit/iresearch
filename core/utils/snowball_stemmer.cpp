@@ -24,7 +24,7 @@
 
 #include "libstemmer.h"
 
-namespace iresearch {
+namespace irs {
 
 void stemmer_deleter::operator()(sb_stemmer* p) const noexcept {
   sb_stemmer_delete(p);
@@ -35,4 +35,4 @@ stemmer_ptr make_stemmer_ptr(const char* algorithm, const char* charenc) {
     sb_stemmer_new(algorithm, charenc)};
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -26,7 +26,7 @@
 #include "shared.hpp"
 #include "utf8_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Evaluates ngram similarity between the specified strings based on
@@ -129,4 +129,4 @@ float_t ngram_similarity(const T* target, size_t target_size, const T* src,
          float_t((!search_semantics) ? s_ngram_count : t_ngram_count);
 }
 
-}  // namespace iresearch
+}  // namespace irs

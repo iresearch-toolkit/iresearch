@@ -26,7 +26,7 @@
 #include "utils/memory.hpp"
 #include "utils/mmap_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 using mmap_utils::mmap_handle;
@@ -204,4 +204,4 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
   return nullptr;
 }
 
-}  // namespace iresearch
+}  // namespace irs

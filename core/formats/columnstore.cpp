@@ -66,7 +66,7 @@
 
 namespace {
 
-using namespace iresearch;
+using namespace irs;
 using columnstore::ColumnMetaVersion;
 
 irs::bytes_view kDummy;  // placeholder for visiting logic in columnstore
@@ -102,18 +102,20 @@ static_assert(std::is_nothrow_move_constructible_v<column_meta>,
               "default move constructor expected");
 
 struct format_traits {
-  FORCE_INLINE static void pack32(const uint32_t* RESTRICT decoded,
-                                  uint32_t* RESTRICT encoded, size_t size,
-                                  const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
+                                      uint32_t* IRS_RESTRICT encoded,
+                                      size_t size,
+                                      const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   }
 
-  FORCE_INLINE static void pack64(const uint64_t* RESTRICT decoded,
-                                  uint64_t* RESTRICT encoded, size_t size,
-                                  const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack64(const uint64_t* IRS_RESTRICT decoded,
+                                      uint64_t* IRS_RESTRICT encoded,
+                                      size_t size,
+                                      const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);
@@ -461,7 +463,7 @@ bool meta_reader::read(column_meta& column) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace columnstore {
 
 template<size_t Size>
@@ -844,7 +846,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
     const auto encrypt =
       irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
     IRS_ASSERT(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
-    UNUSED(encrypt);
+    IRS_IGNORE(encrypt);
   }
 
   // noexcept block
@@ -1983,7 +1985,7 @@ class sparse_column final : public column {
 
   const block_ref* find_block(const block_ref* begin, const block_ref* end,
                               doc_id_t key) const noexcept {
-    UNUSED(end);
+    IRS_IGNORE(end);
 
     if (key <= begin->key) {
       return begin;
@@ -2556,4 +2558,4 @@ irs::columnstore_reader::ptr make_reader() {
 }
 
 }  // namespace columnstore
-}  // namespace iresearch
+}  // namespace irs

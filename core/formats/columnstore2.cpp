@@ -1243,7 +1243,7 @@ bool less(std::string_view lhs, std::string_view rhs) noexcept {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace columnstore2 {
 
 void column::prepare(doc_id_t key) {
@@ -1487,7 +1487,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   const auto encrypt =
     irs::encrypt(filename, *data_out, enc, enc_header, data_cipher);
   IRS_ASSERT(!encrypt || (data_cipher && data_cipher->block_size()));
-  UNUSED(encrypt);
+  IRS_IGNORE(encrypt);
 
   // noexcept block
   dir_ = &dir;
@@ -1861,4 +1861,4 @@ irs::columnstore_reader::ptr make_reader() {
 }
 
 }  // namespace columnstore2
-}  // namespace iresearch
+}  // namespace irs

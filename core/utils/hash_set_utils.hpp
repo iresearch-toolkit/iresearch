@@ -27,7 +27,7 @@
 
 #include "hash_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief first - hash value, second - reference
@@ -78,6 +78,6 @@ template<typename Eq>
 using flat_hash_set =
   absl::flat_hash_set<typename Eq::ref_t, value_ref_hash, Eq>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_HASH_CONTAINER_UTILS

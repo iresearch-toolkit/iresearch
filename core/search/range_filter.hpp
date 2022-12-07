@@ -27,7 +27,7 @@
 #include "search/search_range.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_range;
 struct filter_visitor;
@@ -97,13 +97,13 @@ class by_range : public filter_base<by_range_options> {
   }
 };  // by_range
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<::iresearch::by_range_options> {
-  size_t operator()(const ::iresearch::by_range_options& v) const noexcept {
+struct hash<::irs::by_range_options> {
+  size_t operator()(const ::irs::by_range_options& v) const noexcept {
     return v.hash();
   }
 };

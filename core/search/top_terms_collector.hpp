@@ -33,7 +33,7 @@
 #include "utils/map_utils.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename T>
 struct top_term {
@@ -274,4 +274,4 @@ class top_terms_collector : private util::noncopyable {
   size_t left_{size_};
 };
 
-}  // namespace iresearch
+}  // namespace irs

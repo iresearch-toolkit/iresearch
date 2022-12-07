@@ -27,7 +27,7 @@
 #include "analysis/token_attributes.hpp"
 #include "utils/attribute_helper.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,6 +139,6 @@ template<analysis::ngram_token_stream_base::InputType StreamType>
 struct type<analysis::ngram_token_stream<StreamType>>
   : type<analysis::ngram_token_stream_base> {};
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_NGRAM_TOKEN_STREAM_H

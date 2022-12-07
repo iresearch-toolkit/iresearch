@@ -24,7 +24,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace version10 {
 
 // -----------------------------------------------------------------------------
@@ -38,4 +38,4 @@ REGISTER_ATTRIBUTE(documents);
 // -----------------------------------------------------------------------------
 
 }  // namespace version10
-}  // namespace iresearch
+}  // namespace irs

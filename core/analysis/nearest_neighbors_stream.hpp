@@ -33,7 +33,7 @@ class ImmutableFastText;
 class Dictionary;
 }  // namespace fasttext
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 class nearest_neighbors_stream final : public analyzer,
@@ -86,6 +86,6 @@ class nearest_neighbors_stream final : public analyzer,
 };
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_NEAREST_NEIGHBORS_STREAM_H

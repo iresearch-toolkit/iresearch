@@ -79,7 +79,7 @@
 
 #endif  // _MSC_VER
 
-namespace iresearch {
+namespace irs {
 namespace mmap_utils {
 
 //////////////////////////////////////////////////////////////////////////////
@@ -125,6 +125,6 @@ class mmap_handle : private util::noncopyable {
 };                 // mmap_handle
 
 }  // namespace mmap_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_MMAP_UTILS_H

@@ -30,7 +30,7 @@
 #include "store/store_utils.hpp"
 #include "tests_shared.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 namespace tests {
 namespace detail {

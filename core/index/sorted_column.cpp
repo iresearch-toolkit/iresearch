@@ -26,7 +26,7 @@
 #include "shared.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 bool sorted_column::flush_sprase_primary(
   doc_map& docmap, const columnstore_writer::values_writer_f& writer,
@@ -195,4 +195,4 @@ field_id sorted_column::flush(columnstore_writer& writer,
   return column_id;
 }
 
-}  // namespace iresearch
+}  // namespace irs

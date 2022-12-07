@@ -129,7 +129,7 @@ class column_prefix_existence_query final : public column_existence_query {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 filter::prepared::ptr by_column_existence::prepare(
   const index_reader& reader, const Order& order, score_t filter_boost,
@@ -152,4 +152,4 @@ filter::prepared::ptr by_column_existence::prepare(
                       field(), std::move(stats), filter_boost);
 }
 
-}  // namespace iresearch
+}  // namespace irs

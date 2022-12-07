@@ -220,7 +220,7 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
   };
 
   const size_t size = 10000;
-  iresearch::timer_utils::init_stats(true);
+  irs::timer_utils::init_stats(true);
 
   // default allocator
   {
@@ -378,7 +378,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
   };
 
   const size_t size = 10000;
-  iresearch::timer_utils::init_stats(true);
+  irs::timer_utils::init_stats(true);
 
   // default allocator
   {
@@ -561,7 +561,7 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
   };
 
   const size_t size = 10000;
-  iresearch::timer_utils::init_stats(true);
+  irs::timer_utils::init_stats(true);
 
   // default allocator
   {
@@ -701,7 +701,7 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
   };
 
   const size_t size = 10000;
-  iresearch::timer_utils::init_stats(true);
+  irs::timer_utils::init_stats(true);
 
   // default allocator
   {

@@ -28,7 +28,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/numeric_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename T, size_t N = sizeof(T)>
 struct bytes_io;
@@ -235,7 +235,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
   ////////////////////////////////////////////////////////////////////////////////
   /// @returns number of bytes required to store value in variable length format
   ////////////////////////////////////////////////////////////////////////////////
-  FORCE_INLINE static uint32_t vsize(uint32_t value) {
+  IRS_FORCE_INLINE static uint32_t vsize(uint32_t value) {
     // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
 
     // OR 0x1 since log2_floor_32 does not accept 0
@@ -407,7 +407,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
   ////////////////////////////////////////////////////////////////////////////////
   /// @returns number of bytes required to store value in variable length format
   ////////////////////////////////////////////////////////////////////////////////
-  FORCE_INLINE static uint64_t vsize(uint64_t value) {
+  IRS_FORCE_INLINE static uint64_t vsize(uint64_t value) {
     // compute 0 == value ? 1 : 1 + floor(log2(value)) / 7
 
     // OR 0x1 since log2_floor_64 does not accept 0
@@ -508,6 +508,6 @@ inline void zvwrite(Iterator& out, T value) {
   bytes_io<T, sizeof(T)>::zvwrite(out, value);
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_BYTES_UTILS_H

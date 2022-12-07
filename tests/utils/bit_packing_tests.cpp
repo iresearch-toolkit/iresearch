@@ -27,7 +27,7 @@
 #include "tests_shared.hpp"
 #include "utils/bit_packing.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(bit_packing_tests, const_check) {
   // check constants

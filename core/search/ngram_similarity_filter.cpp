@@ -27,7 +27,7 @@
 #include "search/terms_filter.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::prepare(
   const index_reader& rdr, const Order& ord, score_t boost,
@@ -129,4 +129,4 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     this->boost() * boost);
 }
 
-}  // namespace iresearch
+}  // namespace irs

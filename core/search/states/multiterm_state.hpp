@@ -26,7 +26,7 @@
 #include "search/cost.hpp"
 #include "search/sort.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct term_reader;
 
@@ -71,4 +71,4 @@ struct MultiTermState {
   cost::cost_t unscored_states_estimation{};
 };
 
-}  // namespace iresearch
+}  // namespace irs

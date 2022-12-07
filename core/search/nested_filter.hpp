@@ -28,7 +28,7 @@
 #include "search/filter.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class ByNestedFilter;
 
@@ -116,6 +116,6 @@ class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
                         const attribute_provider* /*ctx*/) const override;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_NESTED_FILTER_H

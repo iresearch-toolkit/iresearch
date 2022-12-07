@@ -27,7 +27,7 @@
 #include "store/store_utils.hpp"
 #include "utils/string_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 void validate_footer(index_input& in);
 
@@ -70,6 +70,6 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
 int64_t checksum(const index_input& in);
 
 }  // namespace format_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

@@ -29,7 +29,7 @@
 #include "utils/minhash_utils.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch::analysis {
+namespace irs::analysis {
 
 class MinHashTokenStream final : public analyzer, private util::noncopyable {
  public:
@@ -82,6 +82,6 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
   std::array<char, 11> buf_{};
 };
 
-}  // namespace iresearch::analysis
+}  // namespace irs::analysis
 
 #endif

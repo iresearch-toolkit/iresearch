@@ -27,7 +27,7 @@
 #include "search/states/term_state.hpp"
 #include "search/states_cache.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Compiled query suitable for filters with a single term like "by_term"
 class TermQuery final : public filter::prepared {
@@ -46,6 +46,6 @@ class TermQuery final : public filter::prepared {
   bstring stats_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

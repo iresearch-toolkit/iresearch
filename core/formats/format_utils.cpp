@@ -26,7 +26,7 @@
 #include "index/index_meta.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 void validate_footer(index_input& in) {
   const int64_t remain = in.length() - in.file_pointer();
@@ -143,4 +143,4 @@ int64_t checksum(const index_input& in) {
 
 }  // namespace format_utils
 
-}  // namespace iresearch
+}  // namespace irs

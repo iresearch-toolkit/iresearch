@@ -24,4 +24,4 @@
 
 #include "shared.hpp"
 
-namespace iresearch {}  // namespace iresearch
+namespace irs {}  // namespace irs

@@ -25,7 +25,7 @@
 
 #include "filter.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Filter returning all documents
 class all : public filter {
@@ -39,6 +39,6 @@ class all : public filter {
                                 const attribute_provider* ctx) const override;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

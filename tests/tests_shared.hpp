@@ -32,7 +32,7 @@
 
 #include "shared.hpp"
 
-#define SOURCE_LOCATION (__FILE__ ":" TOSTRING(__LINE__))
+#define SOURCE_LOCATION (__FILE__ ":" IRS_TO_STRING(__LINE__))
 
 namespace cmdline {
 class parser;

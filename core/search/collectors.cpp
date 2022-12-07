@@ -46,7 +46,7 @@ static noop_term_collector NOOP_TERM_STATS;
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           field_collector_wrapper
@@ -260,4 +260,4 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

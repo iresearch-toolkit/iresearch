@@ -26,7 +26,7 @@
 #include "analysis/token_attributes.hpp"
 #include "tests_shared.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(field_meta_test, ctor) {
   {

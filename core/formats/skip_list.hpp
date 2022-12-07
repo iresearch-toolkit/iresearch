@@ -26,7 +26,7 @@
 #include "store/memory_directory.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Writer for storing skip-list in a directory
 // Example (skip_0 = skip_n = 3):
@@ -255,6 +255,6 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   return level_0.left + step_0;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

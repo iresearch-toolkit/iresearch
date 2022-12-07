@@ -25,7 +25,7 @@
 
 #include "disjunction.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Heapsort-based "weak and" iterator
 // -----------------------------------------------------------------------------
@@ -416,6 +416,6 @@ struct RebindIterator<min_match_disjunction<DocIterator, Merger>> {
   using Conjunction = conjunction<DocIterator, Merger>;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_MIN_MATCH_DISJUNCTION_H

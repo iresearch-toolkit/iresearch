@@ -34,7 +34,7 @@
 #include "utils/memory.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct sub_reader;
 
@@ -169,4 +169,4 @@ void visit(const index_reader& index, std::string_view field,
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

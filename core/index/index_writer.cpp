@@ -41,7 +41,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
@@ -1061,7 +1061,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
       // must be < modification_count since inserts come after
       // modification
       IRS_ASSERT(v.generation < modification_count);
-      UNUSED(modification_count);
+      IRS_IGNORE(modification_count);
 
       // update to flush_context generation
       const_cast<size_t&>(v.generation) += generation_base;
@@ -1076,7 +1076,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
       // can == modification_count if inserts come  after
       // modification
       IRS_ASSERT(ctxs[i].generation <= modification_count);
-      UNUSED(modification_count);
+      IRS_IGNORE(modification_count);
       // update to flush_context generation
       ctxs[i].generation += generation_base;
     }
@@ -2743,4 +2743,4 @@ void index_writer::abort() {
   meta_.reset(*(committed_state_->first));
 }
 
-}  // namespace iresearch
+}  // namespace irs

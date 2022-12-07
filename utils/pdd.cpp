@@ -151,7 +151,7 @@ int dump(int argc, char* argv[]) {
   cmd.add<size_t>(LINE_LENGTH, 0, "Items per line", false, size_t(16));
   cmd.add<bool>(TRANSPOSITIONS, 't', "Count transpositions", false, false);
   cmd.add<std::string>(COMPRESSION, 0, "compression", false,
-                       "iresearch::compression::lz4");
+                       "irs::compression::lz4");
   cmd.add<std::string>(NAMEPSACE, 'n', "namespace", false, "");
 
   cmd.parse(argc, argv);
