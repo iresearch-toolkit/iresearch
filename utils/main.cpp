@@ -85,7 +85,7 @@ int main(int argc, char* argv[]) {
 
   // init timers
   irs::timer_utils::init_stats(true);
-  auto output_stats = irs::make_finally([]() noexcept {
+  irs::Finally output_stats = []() noexcept {
     irs::timer_utils::visit(
       [](const std::string& key, size_t count, size_t time_us) -> bool {
         std::cout << key << " calls:" << count << ", time: " << time_us
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
                   << std::endl;
         return true;
       });
-  });
+  };
 
   // set error level
   irs::logger::output_le(iresearch::logger::IRL_ERROR, stderr);

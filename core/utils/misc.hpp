@@ -25,6 +25,7 @@
 #include <array>
 #include <cassert>
 #include <memory>
+#include <type_traits>
 
 #include "shared.hpp"
 
@@ -36,23 +37,19 @@ class [[nodiscard]] Finally {
  public:
   static_assert(std::is_nothrow_invocable_v<Func>);
 
-  // If you need some of it, please use absl::MakeCleanup
+  // If you need some of it, please use absl::Cleanup
   Finally(Finally&&) = delete;
   Finally(Finally const&) = delete;
   Finally& operator=(Finally&&) = delete;
   Finally& operator=(Finally const&) = delete;
 
-  explicit Finally(Func&& func) : func_{std::forward<Func>(func)} {}
+  Finally(Func&& func) : func_{std::move(func)} {}
+
   ~Finally() noexcept { func_(); }
 
  private:
-  Func func_;
+  IRS_NO_UNIQUE_ADDRESS Func func_;
 };
-
-template<typename Func>
-Finally<Func> make_finally(Func&& func) {
-  return Finally<Func>{std::forward<Func>(func)};
-}
 
 // Convenient helper for caching function results
 template<typename Input, Input Size, typename Func,
@@ -83,7 +80,7 @@ class CachedFunc {
   constexpr size_t size() const noexcept { return cache_.size(); }
 
  private:
-  Func func_;
+  IRS_NO_UNIQUE_ADDRESS Func func_;
   std::array<output_type, Size> cache_{};
 };
 

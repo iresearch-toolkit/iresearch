@@ -20,24 +20,20 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MEMORY_POOL_H
-#define IRESEARCH_MEMORY_POOL_H
+#pragma once
 
 #include <map>
 #include <memory>
 
 #include "shared.hpp"
-#include "ebo.hpp"
-#include "map_utils.hpp"
-#include "noncopyable.hpp"
-#include "memory.hpp"
+#include "utils/ebo_ref.hpp"
+#include "utils/map_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/misc.hpp"
+#include "utils/noncopyable.hpp"
 
-namespace iresearch {
-namespace memory {
+namespace iresearch::memory {
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class freelist
-///////////////////////////////////////////////////////////////////////////////
 class freelist : private util::noncopyable {
  private:
   union slot {
@@ -233,43 +229,29 @@ struct identity_grow {
 ///        BlockAllocator and GrowPolicy for all derivatives
 ///////////////////////////////////////////////////////////////////////////////
 template<typename GrowPolicy, typename BlockAllocator>
-class pool_base : private compact_ref<0, BlockAllocator>,
-                  private compact<0, GrowPolicy>,
-                  private util::noncopyable {
+class pool_base : private util::noncopyable {
  public:
-  typedef GrowPolicy grow_policy_t;
-  typedef compact<0, GrowPolicy> grow_policy_store_t;
-
-  typedef BlockAllocator block_allocator_t;
-  typedef compact_ref<0, BlockAllocator> block_allocator_store_t;
+  using grow_policy_t = GrowPolicy;
+  using block_allocator_t = BlockAllocator;
 
   pool_base(const grow_policy_t& policy, const block_allocator_t& allocator)
-    : block_allocator_store_t(allocator), grow_policy_store_t(policy) {}
+    : alloc_{allocator}, grow_policy_{policy} {}
 
-  pool_base(pool_base&& rhs)
-    : block_allocator_store_t(std::move(rhs)),
-      grow_policy_store_t(std::move(rhs)) {}
+  pool_base(pool_base&& rhs) noexcept
+    : alloc_{std::move(rhs.alloc)}, grow_policy_(std::move(rhs.grow_policy_)) {}
 
-  pool_base& operator=(pool_base&& rhs) {
+  pool_base& operator=(pool_base&& rhs) noexcept {
     if (this != &rhs) {
-      block_allocator_store_t::operator=(std::move(rhs));
-      grow_policy_store_t::operator=(std::move(rhs));
+      alloc_ = std::move(rhs.alloc_);
+      grow_policy_ = std::move(rhs.grow_policy_);
     }
     return *this;
   }
 
-  const grow_policy_t& grow_policy() const {
-    return grow_policy_store_t::get();
-  }
-
-  grow_policy_t& grow_policy() { return grow_policy_store_t::get(); }
-
-  const block_allocator_t& allocator() const {
-    return block_allocator_store_t::get();
-  }
-
-  block_allocator_t& allocator() { return block_allocator_store_t::get(); }
-};  // pool_base
+ protected:
+  IRS_NO_UNIQUE_ADDRESS EboRef<block_allocator_t> alloc_;
+  IRS_NO_UNIQUE_ADDRESS grow_policy_t grow_policy_;
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class memory_pool
@@ -324,7 +306,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
     while (!blocks_.empty()) {
       auto* block = blocks_.pop();
 
-      this->allocator().deallocate(
+      this->alloc_.get().deallocate(
         reinterpret_cast<char*>(block),    // begin of the allocated block
         *reinterpret_cast<size_t*>(block)  // size of the block
       );
@@ -404,7 +386,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
     // allocate memory block
     const auto size_in_bytes =
       block_size * slot_size_ + sizeof(size_t) + freelist::MIN_SIZE;
-    char* begin = this->allocator().allocate(size_in_bytes);
+    char* begin = this->alloc_.get().allocate(size_in_bytes);
 
     if (!begin) {
       throw std::bad_alloc();
@@ -415,7 +397,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
 
     // noexcept
     capacity_ += block_size;
-    next_size_ = this->grow_policy()(next_size_);
+    next_size_ = this->grow_policy_(next_size_);
 
     // use 1st slot in a block to store pointer
     // to the prevoiusly allocated block
@@ -451,7 +433,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
 
   template<typename, typename, typename>
   friend class memory_pool_allocator;
-};  // memory_pool
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class template<typename T> allocator_base
@@ -594,7 +576,7 @@ class memory_multi_size_pool : public pool_base<GrowPolicy, BlockAllocator> {
 
   memory_pool_t& pool(const size_t size) const {
     const auto res = pools_.try_emplace(size, size, initial_size_,
-                                        this->allocator(), this->grow_policy());
+                                        this->alloc_.get(), this->grow_policy_);
 
     return res.first->second;
   }
@@ -602,7 +584,7 @@ class memory_multi_size_pool : public pool_base<GrowPolicy, BlockAllocator> {
  private:
   mutable std::map<size_t, memory_pool_t> pools_;
   const size_t initial_size_;  // initial size for all sub-allocators
-};                             // memory_multi_size_pool
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class template<typename T> memory_pool_multi_size_allocator
@@ -675,7 +657,7 @@ class memory_pool_multi_size_allocator : public allocator_base<T> {
 
   template<typename U, typename, typename>
   friend class memory_pool_multi_size_allocator;
-};  // memory_pool_multi_size_allocator
+};
 
 template<typename T, typename U, typename AllocatorsPool, typename Tag>
 constexpr inline bool operator==(
@@ -691,7 +673,4 @@ constexpr inline bool operator!=(
   return !(lhs == rhs);
 }
 
-}  // namespace memory
-}  // namespace iresearch
-
-#endif  // IRESEARCH_MEMORY_POOL_H
+}  // namespace iresearch::memory

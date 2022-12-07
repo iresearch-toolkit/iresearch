@@ -23,15 +23,12 @@
 #ifndef IRESEARCH_COMPRESSION_H
 #define IRESEARCH_COMPRESSION_H
 
+#include <functional>
 #include <map>
 
 #include "memory.hpp"
 #include "noncopyable.hpp"
 #include "type_id.hpp"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          compression registration
-// -----------------------------------------------------------------------------
 
 #define REGISTER_COMPRESSION__(compression_name, compressor_factory,           \
                                decompressor_factory, line, source)             \
@@ -121,10 +118,6 @@ struct decompressor {
 typedef irs::compression::compressor::ptr (*compressor_factory_f)(
   const options&);
 typedef irs::compression::decompressor::ptr (*decompressor_factory_f)();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          compression registration
-// -----------------------------------------------------------------------------
 
 class compression_registrar {
  public:

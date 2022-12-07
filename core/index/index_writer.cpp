@@ -1110,8 +1110,9 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
     // 'pending_segment_context::segment_'
     auto& segments_active = *(segment.segments_active_);
     // release hold (delcare before aquisition since operator++() is noexcept)
-    auto segments_active_decrement =
-      make_finally([&segments_active]() noexcept { --segments_active; });
+    Finally segments_active_decrement = [&segments_active]() noexcept {
+      --segments_active;
+    };
     // increment counter to hold reservation while segment_context is being
     // released and added to the freelist
     ++segments_active;
@@ -1353,7 +1354,7 @@ void index_writer::clear(uint64_t tick) {
   std::lock_guard commit_lock{commit_lock_};
 
   if (!pending_state_ && meta_.empty() &&
-      type_limits<type_t::index_gen_t>::valid(meta_.last_gen_)) {
+      index_gen_limits::valid(meta_.last_gen_)) {
     return;  // already empty
   }
 
@@ -1454,7 +1455,7 @@ index_writer::ptr index_writer::make(
           reader->read(dir, meta, segments_file);
           meta.clear();
           // this meta is for a totaly new index
-          meta.last_gen_ = type_limits<type_t::index_gen_t>::invalid();
+          meta.last_gen_ = index_gen_limits::invalid();
         }
       } catch (const error_base&) {
         meta = index_meta();
@@ -1593,7 +1594,7 @@ index_writer::consolidation_result index_writer::consolidate(
   }
 
   // unregisterer for all registered candidates
-  auto unregister_segments = make_finally([&candidates, this]() noexcept {
+  Finally unregister_segments = [&candidates, this]() noexcept {
     // FIXME make me noexcept as I'm begin called from within ~finally()
     if (candidates.empty()) {
       return;
@@ -1602,7 +1603,7 @@ index_writer::consolidation_result index_writer::consolidate(
     for (const auto* candidate : candidates) {
       consolidating_segments_.erase(candidate);
     }
-  });
+  };
 
   // sort candidates
   std::sort(candidates.begin(), candidates.end());
@@ -1706,8 +1707,8 @@ index_writer::consolidation_result index_writer::consolidate(
 
     if (pending_state_) {
       // we could possibly need cleanup
-      auto unregister_missing_cached_readers =
-        make_finally(std::move(cleanup_cached_readers));
+      Finally unregister_missing_cached_readers =
+        std::move(cleanup_cached_readers);
 
       // check we didn`t added to reader cache already absent readers
       // only if we have different index meta
@@ -1803,8 +1804,8 @@ index_writer::consolidation_result index_writer::consolidate(
       // there was a commit(s) since consolidation was started,
 
       // we could possibly need cleanup
-      auto unregister_missing_cached_readers =
-        make_finally(std::move(cleanup_cached_readers));
+      Finally unregister_missing_cached_readers =
+        std::move(cleanup_cached_readers);
 
       auto ctx = get_flush_context();
       // lock due to context modification
@@ -2006,8 +2007,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   flush_context& ctx) {
   // release reservation (delcare before aquisition since operator++() is
   // noexcept)
-  auto segments_active_decrement =
-    make_finally([this]() noexcept { --segments_active_; });
+  Finally segments_active_decrement = [this]() noexcept { --segments_active_; };
   // increment counter to aquire reservation, if another thread
   // tries to reserve last context then it'll be over limit
   auto segments_active = ++segments_active_;
@@ -2113,7 +2113,7 @@ index_writer::pending_context_t index_writer::flush_all(
   auto const& progress =
     (progress_callback != nullptr ? progress_callback : kNoProgress);
 
-  bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
+  bool modified = !index_gen_limits::valid(meta_.last_gen_);
   sync_context to_sync;
   document_mask docs_mask;
 
@@ -2127,22 +2127,21 @@ index_writer::pending_context_t index_writer::flush_all(
 
   // register consolidating segments cleanup.
   // we need raw ptr as ctx may be moved
-  auto unregister_segments =
-    make_finally([ctx_raw = ctx.get(), this]() noexcept {
-      // FIXME make me noexcept as I'm begin called from within ~finally()
-      assert(ctx_raw);
-      if (ctx_raw->pending_segments_.empty()) {
-        return;
-      }
-      std::lock_guard lock{consolidation_lock_};
+  Finally unregister_segments = [ctx_raw = ctx.get(), this]() noexcept {
+    // FIXME make me noexcept as I'm begin called from within ~finally()
+    assert(ctx_raw);
+    if (ctx_raw->pending_segments_.empty()) {
+      return;
+    }
+    std::lock_guard lock{consolidation_lock_};
 
-      for (auto& pending_segment : ctx_raw->pending_segments_) {
-        auto& candidates = pending_segment.consolidation_ctx.candidates;
-        for (const auto* candidate : candidates) {
-          consolidating_segments_.erase(candidate);
-        }
+    for (auto& pending_segment : ctx_raw->pending_segments_) {
+      auto& candidates = pending_segment.consolidation_ctx.candidates;
+      for (const auto* candidate : candidates) {
+        consolidating_segments_.erase(candidate);
       }
-    });
+    }
+  };
 
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
@@ -2630,9 +2629,9 @@ bool index_writer::start(progress_report_callback const& progress) {
     throw illegal_state{"Failed to write index metadata."};
   }
 
-  auto update_generation = make_finally([this, &pending_meta]() noexcept {
+  Finally update_generation = [this, &pending_meta]() noexcept {
     meta_.update_generation(pending_meta);
-  });
+  };
 
   files_to_sync_.clear();
   auto sync = [this](std::string_view file) {
@@ -2689,10 +2688,10 @@ void index_writer::finish() {
     return;
   }
 
-  auto reset_state = make_finally([this]() noexcept {
+  Finally reset_state = [this]() noexcept {
     // release reference to flush_context
     pending_state_.reset();
-  });
+  };
 
   // lightweight 2nd phase of the transaction
 

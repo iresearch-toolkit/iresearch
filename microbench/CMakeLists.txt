@@ -23,6 +23,7 @@ add_executable(iresearch-microbench
   ./segmentation_stream_benchmark.cpp
   ./simd_utils_benchmark.cpp
   ./lower_bound_benchmark.cpp
+  ./crc_benchmark.cpp
   ./microbench_main.cpp
   )
 
@@ -48,6 +49,7 @@ target_link_libraries(iresearch-microbench
   iresearch-static
   ${PTHREAD_LIBRARY}
   benchmark::benchmark
+  absl::crc32c
   )
 
 include_directories(iresearch-microbench

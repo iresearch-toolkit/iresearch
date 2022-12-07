@@ -44,7 +44,7 @@ using namespace irs;
 constexpr std::string_view CASE_CONVERT_PARAM_NAME{"case"};
 constexpr std::string_view BREAK_PARAM_NAME{"break"};
 
-const frozen::unordered_map<
+constexpr frozen::unordered_map<
   std::string_view,
   analysis::segmentation_token_stream::options_t::case_convert_t, 3>
   CASE_CONVERT_MAP = {
@@ -56,7 +56,7 @@ const frozen::unordered_map<
      analysis::segmentation_token_stream::options_t::case_convert_t::UPPER},
 };
 
-const frozen::unordered_map<
+constexpr frozen::unordered_map<
   std::string_view,
   analysis::segmentation_token_stream::options_t::word_break_t, 3>
   BREAK_CONVERT_MAP = {

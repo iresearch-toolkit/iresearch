@@ -410,7 +410,7 @@ std::vector<character> make_alphabet(bytes_view word, size_t& utf8_size) {
     for (size_t i = 0; i < utf8_size; ++i) {
       chi.reset(i, c == utf8_utils::next(utf8_begin));
     }
-    IRS_ASSERT(utf8_begin == word.end());
+    IRS_ASSERT(utf8_begin == word.data() + word.size());
   }
 
   return alphabet;

@@ -42,12 +42,8 @@ TEST(container_utils_tests, test_bucket_allocator) {
   // how many buckets to cache for each level
   irs::container_utils::memory::bucket_allocator<bucket_builder, 16> alloc(1);
 
-  typedef irs::container_utils::raw_block_vector<16,  // total number of levels
-                                                 8,   // size of the first block
-                                                      // 2^8
-                                                 decltype(alloc)  // allocator
-                                                 >
-    raw_block_vector_t;
+  using raw_block_vector_t =
+    irs::container_utils::raw_block_vector<16, 8, decltype(alloc)>;
 
   static_assert(16 == raw_block_vector_t::NUM_BUCKETS,
                 "invalid number of buckets");

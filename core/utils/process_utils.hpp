@@ -20,11 +20,12 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_PROCESS_UTILS_H
-#define IRESEARCH_PROCESS_UTILS_H
+#pragma once
 
 #ifdef _WIN32
 typedef int pid_t;
+#else
+#include <sys/types.h>
 #endif
 
 namespace iresearch {
@@ -34,5 +35,3 @@ bool is_running(pid_t pid);
 bool is_valid_pid(const char* buf);
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_PROCESS_UTILS_H

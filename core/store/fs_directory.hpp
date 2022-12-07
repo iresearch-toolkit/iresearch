@@ -20,56 +20,50 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FILE_SYSTEM_DIRECTORY_H
-#define IRESEARCH_FILE_SYSTEM_DIRECTORY_H
+#pragma once
 
 #include <filesystem>
 
+#include "store/caching_directory.hpp"
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
-#include "utils/string.hpp"
 
 namespace iresearch {
 
-class fs_directory : public directory {
+class FSDirectory : public directory {
  public:
   static constexpr size_t kDefaultPoolSize = 8;
 
-  explicit fs_directory(std::filesystem::path dir,
-                        directory_attributes attrs = directory_attributes{},
-                        size_t fd_pool_size = kDefaultPoolSize);
-
-  using directory::attributes;
-  virtual directory_attributes& attributes() noexcept override {
-    return attrs_;
-  }
-
-  virtual index_output::ptr create(std::string_view name) noexcept override;
+  explicit FSDirectory(std::filesystem::path dir,
+                       directory_attributes attrs = directory_attributes{},
+                       size_t fd_pool_size = kDefaultPoolSize);
 
   const std::filesystem::path& directory() const noexcept;
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override;
+  using directory::attributes;
+  directory_attributes& attributes() noexcept override { return attrs_; }
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override;
+  index_output::ptr create(std::string_view name) noexcept override;
 
-  virtual index_lock::ptr make_lock(std::string_view name) noexcept override;
+  bool exists(bool& result, std::string_view name) const noexcept override;
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override;
+  bool length(uint64_t& result, std::string_view name) const noexcept override;
 
-  virtual index_input::ptr open(std::string_view name,
-                                IOAdvice advice) const noexcept override;
+  index_lock::ptr make_lock(std::string_view name) noexcept override;
 
-  virtual bool remove(std::string_view name) noexcept override;
+  bool mtime(std::time_t& result,
+             std::string_view name) const noexcept override;
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override;
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
 
-  virtual bool sync(std::string_view name) noexcept override;
+  bool remove(std::string_view name) noexcept override;
 
-  virtual bool visit(const visitor_f& visitor) const override;
+  bool rename(std::string_view src, std::string_view dst) noexcept override;
+
+  bool sync(std::string_view name) noexcept override;
+
+  bool visit(const visitor_f& visitor) const override;
 
  private:
   directory_attributes attrs_;
@@ -77,6 +71,14 @@ class fs_directory : public directory {
   size_t fd_pool_size_;
 };
 
-}  // namespace iresearch
+class CachingFSDirectory : public CachingDirectoryBase<FSDirectory, uint64_t> {
+ public:
+  using CachingDirectoryBase::CachingDirectoryBase;
 
-#endif
+  bool length(uint64_t& result, std::string_view name) const noexcept override;
+
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
+};
+
+}  // namespace iresearch

@@ -26,44 +26,24 @@
 #include <cstring>
 #include <memory>
 
-#include "shared.hpp"
 #include "bit_utils.hpp"
 #include "math_utils.hpp"
-#include "noncopyable.hpp"
 #include "memory.hpp"
+#include "noncopyable.hpp"
+#include "shared.hpp"
 
 namespace iresearch {
 
 template<typename Alloc>
-class dynamic_bitset_base : irs::compact<0, Alloc> {
+class dynamic_bitset {
  public:
-  typedef size_t word_t;
-  typedef typename std::allocator_traits<Alloc>::template rebind_alloc<word_t>
-    allocator_type;
-
- protected:
-  typedef memory::allocator_array_deallocator<allocator_type>
-    word_ptr_deleter_t;
-  typedef std::unique_ptr<word_t[], word_ptr_deleter_t> word_ptr_t;
-
-  dynamic_bitset_base(const Alloc& alloc = Alloc())
-    : compact<0, allocator_type>(alloc) {}
-
-  allocator_type& allocator() noexcept {
-    return compact<0, allocator_type>::get();
-  }
-};  // bitset_base
-
-template<typename Alloc>
-class dynamic_bitset : public dynamic_bitset_base<Alloc> {
- public:
-  typedef dynamic_bitset_base<Alloc> base_t;
-
-  using typename base_t::word_ptr_deleter_t;
-  using typename base_t::word_ptr_t;
-  using typename base_t::word_t;
-
-  typedef size_t index_t;
+  using index_t = size_t;
+  using word_t = size_t;
+  using allocator_type =
+    typename std::allocator_traits<Alloc>::template rebind_alloc<word_t>;
+  using word_ptr_deleter_t =
+    memory::allocator_array_deallocator<allocator_type>;
+  using word_ptr_t = std::unique_ptr<word_t[], word_ptr_deleter_t>;
 
   constexpr FORCE_INLINE static size_t bits_to_words(size_t bits) noexcept {
     return bits / bits_required<word_t>() +
@@ -87,30 +67,30 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
   }
 
   dynamic_bitset(const Alloc& alloc = Alloc())
-    : base_t(alloc),
-      data_(static_cast<typename word_ptr_t::pointer>(
+    : alloc_{alloc},
+      data_{static_cast<typename word_ptr_t::pointer>(
               nullptr),  // workaround for broken check in MSVC2015
-            word_ptr_deleter_t(this->allocator(), 0)) {}
+            word_ptr_deleter_t{alloc_, 0}} {}
 
   explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc())
-    : dynamic_bitset(alloc) {
+    : dynamic_bitset{alloc} {
     reset(bits);
   }
 
   dynamic_bitset(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_constructible<base_t>::value)
-    : base_t(std::move(rhs)),
-      bits_(rhs.bits_),
-      words_(rhs.words_),
-      data_(std::move(rhs.data_)) {
+    std::is_nothrow_move_constructible_v<allocator_type>)
+    : alloc_{std::move(alloc_)},
+      bits_{rhs.bits_},
+      words_{rhs.words_},
+      data_{std::move(rhs.data_)} {
     rhs.bits_ = 0;
     rhs.words_ = 0;
   }
 
   dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_assignable<base_t>::value) {
+    std::is_nothrow_move_assignable_v<allocator_type>) {
     if (this != &rhs) {
-      base_t::operator=(std::move(rhs));
+      alloc_ = std::move(rhs.alloc_);
       bits_ = rhs.bits_;
       words_ = rhs.words_;
       data_ = std::move(rhs.data_);
@@ -125,7 +105,7 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     const auto num_words = bits_to_words(bits);
 
     if (num_words > words_) {
-      data_ = memory::allocate_unique<word_t[]>(this->allocator(), num_words,
+      data_ = memory::allocate_unique<word_t[]>(alloc_, num_words,
                                                 memory::allocate_only);
     }
 
@@ -218,12 +198,13 @@ class dynamic_bitset : public dynamic_bitset_base<Alloc> {
     data_[words_ - 1] &= mask;
   }
 
+  IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
   size_t bits_{};    // number of bits in a bitset
   size_t words_{};   // number of words used for storing data
   word_ptr_t data_;  // words array
-};                   // dynamic_bitset
+};
 
-typedef dynamic_bitset<std::allocator<size_t>> bitset;
+using bitset = dynamic_bitset<std::allocator<size_t>>;
 
 }  // namespace iresearch
 

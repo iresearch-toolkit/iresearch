@@ -21,36 +21,33 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MERGE_WRITER_H
-#define IRESEARCH_MERGE_WRITER_H
+#pragma once
 
 #include <vector>
 
-#include "index_features.hpp"
-#include "index_meta.hpp"
+#include "index/index_features.hpp"
+#include "index/index_meta.hpp"
+#include "index/index_reader.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
 namespace iresearch {
 
-struct directory;
 struct tracking_directory;
-struct sub_reader;
 class comparer;
 
 class merge_writer : public util::noncopyable {
  public:
-  typedef std::shared_ptr<const irs::sub_reader> sub_reader_ptr;
-  typedef std::function<bool()> flush_progress_t;
+  using flush_progress_t = std::function<bool()>;
 
   struct reader_ctx {
-    explicit reader_ctx(sub_reader_ptr reader) noexcept;
+    explicit reader_ctx(sub_reader::ptr reader) noexcept;
 
-    sub_reader_ptr reader;                      // segment reader
+    sub_reader::ptr reader;                     // segment reader
     std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
-  };                                            // reader_ctx
+  };
 
   merge_writer() noexcept;
 
@@ -71,14 +68,14 @@ class merge_writer : public util::noncopyable {
 
   void add(const sub_reader& reader) {
     // add reference, noexcept aliasing ctor
-    readers_.emplace_back(sub_reader_ptr(sub_reader_ptr(), &reader));
+    readers_.emplace_back(sub_reader::ptr{sub_reader::ptr{}, &reader});
   }
 
-  void add(const sub_reader_ptr& reader) {
+  void add(sub_reader::ptr reader) {
     // add shared pointer
     assert(reader);
     if (reader) {
-      readers_.emplace_back(reader);
+      readers_.emplace_back(std::move(reader));
     }
   }
 
@@ -115,5 +112,3 @@ class merge_writer : public util::noncopyable {
 static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
 
 }  // namespace iresearch
-
-#endif

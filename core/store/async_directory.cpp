@@ -273,10 +273,10 @@ class async_index_output final : public index_output {
   virtual void flush() override;
 
   virtual void close() override {
-    auto reset = irs::make_finally([this]() noexcept {
+    Finally reset = [this]() noexcept {
       async_->release_buffer(*buf_);
       handle_.reset(nullptr);
-    });
+    };
 
     flush();
 

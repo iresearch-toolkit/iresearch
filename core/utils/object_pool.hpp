@@ -256,11 +256,11 @@ class bounded_object_pool {
   bool visit(const Visitor& visitor) const {
     stack list;
 
-    auto release_all = make_finally([this, &list]() noexcept {
+    Finally release_all = [this, &list]() noexcept {
       while (auto* head = list.pop()) {
         free_list_.push(*head);
       }
-    });
+    };
 
     auto size = pool_.size();
 
@@ -517,7 +517,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
       assert(p);     // Ensured by std::unique_ptr<...>
       assert(gen_);  // Ensured by emplace(...)
 
-      auto release_gen = make_finally([this]() noexcept { gen_ = nullptr; });
+      Finally release_gen = [this]() noexcept { gen_ = nullptr; };
 
       // do not remove scope!!!
       // variable 'lock' below must be destroyed before 'gen_'

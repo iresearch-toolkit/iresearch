@@ -21,11 +21,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "encryption.hpp"
-#include "string_utils.hpp"
+
 #include "error/error.hpp"
 #include "store/data_output.hpp"
-#include "store/store_utils.hpp"
 #include "store/directory_attributes.hpp"
+#include "store/store_utils.hpp"
+#include "string_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/crc.hpp"
 
@@ -299,10 +300,10 @@ int64_t encrypted_input::checksum(size_t offset) const {
   const auto begin = file_pointer();
   const auto end = (std::min)(begin + offset, this->length());
 
-  auto restore_position = make_finally([begin, this]() noexcept {
+  Finally restore_position = [begin, this]() noexcept {
     // FIXME make me noexcept as I'm begin called from within ~finally()
     const_cast<encrypted_input*>(this)->seek_internal(begin);
-  });
+  };
 
   const_cast<encrypted_input*>(this)->seek_internal(begin);
 

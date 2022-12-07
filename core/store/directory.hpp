@@ -23,13 +23,13 @@
 #pragma once
 
 #include <ctime>
+#include <functional>
 #include <span>
 
 #include "store/data_input.hpp"
 #include "store/data_output.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
-#include "utils/string.hpp"
 
 namespace iresearch {
 

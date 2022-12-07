@@ -24,24 +24,19 @@
 #ifndef IRESEARCH_MEMORYDIRECTORY_H
 #define IRESEARCH_MEMORYDIRECTORY_H
 
-#include "directory.hpp"
+#include <absl/container/flat_hash_map.h>
 
 #include <mutex>
 #include <shared_mutex>
 
-#include <absl/container/flat_hash_map.h>
-
+#include "directory.hpp"
 #include "store/directory_attributes.hpp"
+#include "utils/async_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
-#include "utils/async_utils.hpp"
 
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class memory_file
-/// @brief in memory file
-////////////////////////////////////////////////////////////////////////////////
 class memory_file
   : public container_utils::raw_block_vector<16, 8,
                                              memory_allocator::allocator_type> {
@@ -54,7 +49,7 @@ class memory_file
 
  public:
   explicit memory_file(const memory_allocator& alloc) noexcept
-    : raw_block_vector_t(alloc) {
+    : raw_block_vector_t{alloc} {
     touch(meta_.mtime);
   }
 
@@ -108,7 +103,7 @@ class memory_file
   void reset(const memory_allocator& alloc) noexcept {
     reset();
     // change internal allocator
-    static_cast<allocator_ref_t&>(*this) = static_cast<allocator_type&>(alloc);
+    alloc_ = static_cast<allocator_type&>(alloc);
   }
 
   void clear() noexcept {

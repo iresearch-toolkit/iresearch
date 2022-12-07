@@ -59,8 +59,8 @@ if (MSVC)
 else ()
   add_definitions(-Wall)
 
-  if (NOT APPLE)
-    set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
+  if (NOT APPLE AND NOT (CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" OR CMAKE_BUILD_TYPE STREQUAL "Debug"))
+    add_link_options(-s)
   endif ()
 
   # set OS specific headers
@@ -79,7 +79,6 @@ source_group("store" ./store/*)
 source_group("utils" ./utils/*)
 
 set(IResearch_core_sources
-  ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
   ./analysis/token_attributes.cpp
@@ -421,6 +420,7 @@ target_link_libraries(iresearch-static
   ${URING_LIBRARIES}
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
+  absl::crc32c
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
@@ -699,7 +699,6 @@ set_target_properties(iresearch-analyzer-segmentation-static
   )
 
 target_include_directories(iresearch-analyzer-segmentation-static
-  SYSTEM
   PRIVATE $<TARGET_PROPERTY:text,INTERFACE_INCLUDE_DIRECTORIES>
   )
 

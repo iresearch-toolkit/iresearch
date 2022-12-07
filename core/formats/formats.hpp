@@ -32,6 +32,7 @@
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
 #include "index/iterators.hpp"
+#include "shared.hpp"
 #include "search/score_function.hpp"
 #include "store/data_output.hpp"
 #include "store/directory.hpp"
@@ -204,6 +205,18 @@ struct term_reader : public attribute_provider {
   virtual seek_term_iterator::ptr iterator(SeekMode mode) const = 0;
 
   // Returns an intersection of a specified automaton and term reader.
+  /// @brief read 'count' number of documents containing 'term' to 'docs'
+  /// @returns number of read documents
+  //////////////////////////////////////////////////////////////////////////////
+  virtual size_t read_documents(bytes_view term,
+                                std::span<doc_id_t> docs) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns term metadata for a given 'term'
+  //////////////////////////////////////////////////////////////////////////////
+  virtual term_meta term(bytes_view term) const = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
   virtual seek_term_iterator::ptr iterator(
     automaton_table_matcher& matcher) const = 0;
 

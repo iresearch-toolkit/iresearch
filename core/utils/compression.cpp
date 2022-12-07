@@ -186,10 +186,6 @@ bool visit(const std::function<bool(std::string_view)>& visitor) {
   return compression_register::instance().visit(wrapper);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                raw implementation
-// -----------------------------------------------------------------------------
-
 /*static*/ void none::init() {
 #ifndef IRESEARCH_DLL
   // match registration below

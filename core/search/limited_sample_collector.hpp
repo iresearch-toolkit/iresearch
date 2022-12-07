@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
-#define IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -46,19 +45,14 @@ struct index_reader;
 ///        terms with longer postings are treated as more important
 //////////////////////////////////////////////////////////////////////////////
 template<typename Key, typename Comparer = std::less<Key>>
-class limited_sample_collector : private irs::compact<0, Comparer>,
-                                 private util::noncopyable {
+class limited_sample_collector : private util::noncopyable {
  public:
   using key_type = Key;
   using comparer_type = Comparer;
 
- private:
-  using comparer_rep = irs::compact<0, comparer_type>;
-
- public:
   explicit limited_sample_collector(size_t scored_terms_limit,
                                     const comparer_type& comparer = {})
-    : comparer_rep(comparer), scored_terms_limit_(scored_terms_limit) {
+    : comparer_{comparer}, scored_terms_limit_{scored_terms_limit} {
     scored_states_.reserve(scored_terms_limit);
     scored_states_heap_.reserve(scored_terms_limit);
   }
@@ -151,8 +145,8 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
 
       // find the stats for the current term
       const auto res =
-        term_stats.try_emplace(make_hashed_ref(bytes_view(scored_state.term)),
-                               index, field, order, stats_offset);
+        term_stats.try_emplace(hashed_bytes_view{scored_state.term}, index,
+                               field, order, stats_offset);
 
       auto& stats_entry = res.first->second;
 
@@ -242,26 +236,25 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
   void push() noexcept {
     std::push_heap(scored_states_heap_.begin(), scored_states_heap_.end(),
                    [this](const size_t lhs, const size_t rhs) noexcept {
-                     return comparer()(scored_states_[rhs].key,
-                                       scored_states_[lhs].key);
+                     return comparer_(scored_states_[rhs].key,
+                                      scored_states_[lhs].key);
                    });
   }
 
   void pop() noexcept {
     std::pop_heap(scored_states_heap_.begin(), scored_states_heap_.end(),
                   [this](const size_t lhs, const size_t rhs) noexcept {
-                    return comparer()(scored_states_[rhs].key,
-                                      scored_states_[lhs].key);
+                    return comparer_(scored_states_[rhs].key,
+                                     scored_states_[lhs].key);
                   });
   }
 
-  const comparer_type& comparer() const noexcept { return comparer_rep::get(); }
-
+  IRS_NO_UNIQUE_ADDRESS comparer_type comparer_;
   const decltype(term_meta::docs_count) no_docs_ = 0;
   collector_state state_;
   std::vector<scored_term_state> scored_states_;
-  std::vector<size_t>
-    scored_states_heap_;  // use external heap as states are big
+  // use external heap as states are big
+  std::vector<size_t> scored_states_heap_;
   size_t scored_terms_limit_;
 };
 
@@ -327,5 +320,3 @@ class multiterm_visitor {
 };
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H

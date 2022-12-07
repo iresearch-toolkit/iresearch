@@ -21,18 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_HASH_UTILS_H
-#define IRESEARCH_HASH_UTILS_H
+#pragma once
 
 #include <absl/hash/hash.h>
 #include <frozen/string.h>
 
-#include "shared.hpp"
 #include "string.hpp"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        hash utils
-// -----------------------------------------------------------------------------
 
 namespace iresearch {
 
@@ -51,39 +45,18 @@ class hashed_basic_string_view : public std::basic_string_view<Elem> {
  public:
   using base_t = std::basic_string_view<Elem>;
 
-  hashed_basic_string_view(size_t hash, base_t ref) noexcept
+  template<typename Hasher = hash_utils::Hasher<base_t>>
+  explicit hashed_basic_string_view(base_t ref, const Hasher& hasher = Hasher{})
+    : hashed_basic_string_view{ref, hasher(ref)} {}
+
+  hashed_basic_string_view(base_t ref, size_t hash) noexcept
     : base_t(ref), hash_(hash) {}
-
-  hashed_basic_string_view(size_t hash, base_t ref, size_t size) noexcept
-    : base_t(ref, size), hash_(hash) {}
-
-  hashed_basic_string_view(size_t hash, typename base_t::pointer ptr) noexcept
-    : base_t(ptr), hash_(hash) {}
-
-  hashed_basic_string_view(size_t hash, typename base_t::pointer ptr,
-                           size_t size) noexcept
-    : base_t(ptr, size), hash_(hash) {}
 
   size_t hash() const noexcept { return hash_; }
 
  private:
   size_t hash_;
 };
-
-template<typename Elem,
-         typename Hasher = std::hash<std::basic_string_view<Elem>>>
-hashed_basic_string_view<Elem> make_hashed_ref(
-  std::basic_string_view<Elem> ref, const Hasher& hasher = Hasher()) {
-  return {hasher(ref), ref};
-}
-
-template<typename Elem,
-         typename Hasher = std::hash<std::basic_string_view<Elem>>>
-hashed_basic_string_view<Elem> make_hashed_ref(
-  std::basic_string_view<Elem> ref, size_t size,
-  const Hasher& hasher = Hasher()) {
-  return {hasher(ref), ref, size};
-}
 
 template<typename T>
 inline size_t hash(const T* begin, size_t size) noexcept {
@@ -102,10 +75,6 @@ using hashed_bytes_view = hashed_basic_string_view<byte_type>;
 
 }  // namespace iresearch
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 frozen extensions
-// -----------------------------------------------------------------------------
-
 namespace frozen {
 
 template<>
@@ -121,10 +90,6 @@ struct elsa<std::string_view> {
 
 }  // namespace frozen
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   absl extensions
-// -----------------------------------------------------------------------------
-
 namespace absl {
 namespace hash_internal {
 
@@ -139,10 +104,6 @@ struct HashImpl<::iresearch::hashed_basic_string_view<Char>> {
 }  // namespace hash_internal
 }  // namespace absl
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    std extensions
-// -----------------------------------------------------------------------------
-
 namespace std {
 
 template<typename Char>
@@ -154,5 +115,3 @@ struct hash<::iresearch::hashed_basic_string_view<Char>> {
 };
 
 }  // namespace std
-
-#endif

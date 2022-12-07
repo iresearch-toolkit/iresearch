@@ -437,8 +437,7 @@ class index_profile_test_case : public tests::index_test_base {
     });
 
     {
-      auto finalizer =
-        irs::make_finally([&working]() noexcept { working = false; });
+      irs::Finally finalizer = [&working]() noexcept { working = false; };
       profile_bulk_index(num_threads, 0, 0, batch_size);
     }
 
@@ -475,8 +474,7 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     {
-      auto finalizer =
-        irs::make_finally([&working]() noexcept { working = false; });
+      irs::Finally finalizer = [&working]() noexcept { working = false; };
       profile_bulk_index(insert_threads, 0, 0, 0, writer, &writer_commit_count);
     }
 
@@ -507,8 +505,7 @@ class index_profile_test_case : public tests::index_test_base {
       });
 
     {
-      auto finalizer =
-        irs::make_finally([&working]() noexcept { working = false; });
+      irs::Finally finalizer = [&working]() noexcept { working = false; };
       profile_bulk_index(num_threads, 0, 0, batch_size, writer);
     }
 

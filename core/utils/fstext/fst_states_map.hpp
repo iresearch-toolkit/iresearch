@@ -26,7 +26,6 @@
 #include <vector>
 
 #include "shared.hpp"
-#include "utils/ebo.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {
@@ -38,10 +37,7 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 template<typename Fst, typename State, typename PushState, typename Hash,
          typename StateEq, typename Fst::StateId NoStateId>
-class fst_states_map : private compact<0, Hash>,
-                       private compact<1, StateEq>,
-                       private compact<2, PushState>,
-                       private util::noncopyable {
+class fst_states_map : private util::noncopyable {
  public:
   using fst_type = Fst;
   using state_type = State;
@@ -54,24 +50,20 @@ class fst_states_map : private compact<0, Hash>,
                           const push_state state_emplace = {},
                           const hasher& hash_function = {},
                           const state_equal& state_eq = {})
-    : compact<0, hasher>{hash_function},
-      compact<1, state_equal>{state_eq},
-      compact<2, push_state>{state_emplace},
+    : hasher_{hash_function},
+      state_eq_{state_eq},
+      push_state_{state_emplace},
       states_(capacity, NoStateId) {}
 
   state_id insert(const state_type& s, fst_type& fst) {
-    const auto state_equal = state_eq();
-    const auto hasher = hash_function();
-
     const size_t mask = states_.size() - 1;
-    size_t pos = hasher(s, fst) % mask;
+    size_t pos = hasher_(s, fst) % mask;
     for (;; ++pos, pos %= mask) {
       auto& bucket = states_[pos];
 
       if (NoStateId == bucket) {
-        const auto push_state = state_emplace();
-        const state_id id = bucket = push_state(s, fst);
-        assert(hasher(s, fst) == hasher(id, fst));
+        const state_id id = bucket = push_state_(s, fst);
+        assert(hasher_(s, fst) == hasher_(id, fst));
         ++count_;
 
         if (count_ > 2 * states_.size() / 3) {
@@ -81,7 +73,7 @@ class fst_states_map : private compact<0, Hash>,
         return id;
       }
 
-      if (state_equal(s, bucket, fst)) {
+      if (state_eq_(s, bucket, fst)) {
         return bucket;
       }
     }
@@ -92,20 +84,8 @@ class fst_states_map : private compact<0, Hash>,
     std::fill(states_.begin(), states_.end(), NoStateId);
   }
 
-  hasher hash_function() const noexcept { return compact<0, hasher>::get(); }
-
-  state_equal state_eq() const noexcept {
-    return compact<1, state_equal>::get();
-  }
-
-  push_state state_emplace() const noexcept {
-    return compact<2, push_state>::get();
-  }
-
  private:
   void rehash(const fst_type& fst) {
-    const auto hasher = hash_function();
-
     std::vector<state_id> states(states_.size() * 2, NoStateId);
     const size_t mask = states.size() - 1;
     for (const auto id : states_) {
@@ -113,7 +93,7 @@ class fst_states_map : private compact<0, Hash>,
         continue;
       }
 
-      size_t pos = hasher(id, fst) % mask;
+      size_t pos = hasher_(id, fst) % mask;
       for (;; ++pos, pos %= mask) {
         auto& bucket = states[pos];
 
@@ -127,9 +107,12 @@ class fst_states_map : private compact<0, Hash>,
     states_ = std::move(states);
   }
 
+  IRS_NO_UNIQUE_ADDRESS hasher hasher_;
+  IRS_NO_UNIQUE_ADDRESS state_equal state_eq_;
+  IRS_NO_UNIQUE_ADDRESS push_state push_state_;
   std::vector<state_id> states_;
   size_t count_{};
-};  // fst_states_map
+};
 
 }  // namespace iresearch
 

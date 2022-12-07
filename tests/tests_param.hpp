@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TESTS_PARAM_H
-#define IRESEARCH_TESTS_PARAM_H
+#pragma once
 
 #include <memory>
 
+#include "store/caching_directory.hpp"
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 #include "tests_shared.hpp"
@@ -35,10 +35,6 @@
 class test_base;
 
 namespace tests {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  rot13_encryption
-// -----------------------------------------------------------------------------
 
 class rot13_encryption final : public irs::ctr_encryption {
  public:
@@ -79,11 +75,30 @@ class rot13_encryption final : public irs::ctr_encryption {
 
    private:
     size_t block_size_;
-  };  // rot13_cipher
+  };
 
   rot13_cipher cipher_;
   size_t header_length_;
-};  // rot13_encryption
+};
+
+template<typename Impl, typename... Args>
+std::shared_ptr<irs::directory> MakePhysicalDirectory(
+  const test_base* test, irs::directory_attributes attrs, Args&&... args) {
+  if (test) {
+    const auto dir_path = test->test_dir() / "index";
+    std::filesystem::create_directories(dir_path);
+
+    auto dir = std::make_unique<Impl>(std::forward<Args>(args)..., dir_path,
+                                      std::move(attrs));
+
+    return {dir.release(), [dir_path = std::move(dir_path)](irs::directory* p) {
+              std::filesystem::remove_all(dir_path);
+              delete p;
+            }};
+  }
+
+  return nullptr;
+}
 
 std::shared_ptr<irs::directory> memory_directory(
   const test_base*, irs::directory_attributes attrs);
@@ -99,37 +114,14 @@ std::shared_ptr<irs::directory> async_directory(
 using dir_generator_f = std::shared_ptr<irs::directory> (*)(
   const test_base*, irs::directory_attributes);
 
-template<dir_generator_f DirectoryGenerator>
-struct stringify;
-
-#ifdef IRESEARCH_URING
-template<>
-struct stringify<&async_directory> {
-  static std::string type() { return "async"; }
-};
-#endif
-
-template<>
-struct stringify<&memory_directory> {
-  static std::string type() { return "memory"; }
-};
-
-template<>
-struct stringify<&fs_directory> {
-  static std::string type() { return "fs"; }
-};
-
-template<>
-struct stringify<&mmap_directory> {
-  static std::string type() { return "mmap"; }
-};
+std::string to_string(dir_generator_f generator);
 
 template<dir_generator_f DirectoryGenerator>
 std::pair<std::shared_ptr<irs::directory>, std::string> directory(
   const test_base* ctx) {
   auto dir = DirectoryGenerator(ctx, irs::directory_attributes{});
 
-  return std::make_pair(dir, stringify<DirectoryGenerator>::type());
+  return std::make_pair(dir, to_string(DirectoryGenerator));
 }
 
 template<dir_generator_f DirectoryGenerator, size_t BlockSize>
@@ -139,8 +131,8 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_directory(
     ctx, irs::directory_attributes{
            0, std::make_unique<rot13_encryption>(BlockSize)});
 
-  return std::make_pair(dir, stringify<DirectoryGenerator>::type() +
-                               "_cipher_rot13_" + std::to_string(BlockSize));
+  return std::make_pair(dir, to_string(DirectoryGenerator) + "_cipher_rot13_" +
+                               std::to_string(BlockSize));
 }
 
 using dir_param_f =
@@ -179,7 +171,7 @@ class directory_test_case_base
 
  protected:
   std::shared_ptr<irs::directory> dir_;
-};  // directory_test_case_base
+};
 
 }  // namespace tests
 
@@ -189,5 +181,3 @@ template<>
 struct type<tests::rot13_encryption> : type<encryption> {};
 
 }  // namespace iresearch
-
-#endif

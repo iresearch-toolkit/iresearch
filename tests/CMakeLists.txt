@@ -40,6 +40,7 @@ set(IReSearch_tests_sources
   ./formats/formats_test_case_base.cpp
   ./formats/skip_list_test.cpp
   ./store/directory_test_case.cpp
+  ./store/caching_directory_test.cpp
   ./store/directory_cleaner_tests.cpp
   ./store/memory_index_output_tests.cpp
   ./store/store_utils_tests.cpp
@@ -109,7 +110,6 @@ set(IReSearch_tests_sources
   ./utils/string_tests.cpp
   ./utils/simd_utils_test.cpp
   ./utils/bitset_tests.cpp
-  ./utils/ebo_tests.cpp
   ./utils/math_utils_test.cpp
   ./utils/misc_test.cpp
   ./utils/std_test.cpp

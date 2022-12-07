@@ -317,13 +317,13 @@ void utf8_transitions_builder::insert(automaton& a, const byte_type* label,
 
 void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 #ifdef IRESEARCH_DEBUG
-  auto ensure_empty = make_finally([this]() noexcept {
+  Finally ensure_empty = [&]() noexcept {
     // ensure everything is cleaned up
     assert(std::all_of(std::begin(states_), std::end(states_),
                        [](const state& s) noexcept {
                          return s.arcs.empty() && s.id == fst::kNoStateId;
                        }));
-  });
+  };
 #endif
 
   auto& root = states_[0];

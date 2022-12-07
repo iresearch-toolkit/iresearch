@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,33 +22,42 @@
 
 #pragma once
 
-#include "store/caching_directory.hpp"
-#include "store/fs_directory.hpp"
+#include <type_traits>
+
+#include "shared.hpp"
 
 namespace iresearch {
-namespace mmap_utils {
-class mmap_handle;
-}
 
-class MMapDirectory : public FSDirectory {
+// Temporary workaround to avoid making huge changes
+template<typename T>
+class EboRef {
+ private:
+  template<typename U>
+  class Pointer {
+   public:
+    Pointer(const U& value) noexcept : value_{const_cast<T*>(&value)} {}
+
+    explicit operator U&() const noexcept { return *value_; }
+
+   private:
+    U* value_;
+  };
+
+  using EboType = std::conditional_t<std::is_empty_v<T>, T, Pointer<T>>;
+
  public:
-  explicit MMapDirectory(std::filesystem::path dir,
-                         directory_attributes attrs = directory_attributes{});
+  explicit EboRef(const T& value) noexcept : value_{value} {}
 
-  index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
-};
+  EboRef& operator=(T& value) noexcept {
+    value_ = EboType{value};
+    return *this;
+  }
 
-class CachingMMapDirectory
-  : public CachingDirectoryBase<MMapDirectory,
-                                std::shared_ptr<mmap_utils::mmap_handle>> {
- public:
-  using CachingDirectoryBase::CachingDirectoryBase;
+  T& get() noexcept { return static_cast<T&>(value_); }
+  const T& get() const noexcept { return static_cast<const T&>(value_); }
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override;
-
-  index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+ private:
+  IRS_NO_UNIQUE_ADDRESS EboType value_;
 };
 
 }  // namespace iresearch

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TOP_TERMS_COLLECTOR_H
-#define IRESEARCH_TOP_TERMS_COLLECTOR_H
+#pragma once
 
 #include <unordered_map>
 #include <vector>
@@ -122,11 +121,7 @@ struct top_term_state : top_term<T> {
 
 template<typename State,
          typename Comparer = top_term_comparer<typename State::key_type>>
-class top_terms_collector : private compact<0, Comparer>,
-                            private util::noncopyable {
- private:
-  using comparer_rep = compact<0, Comparer>;
-
+class top_terms_collector : private util::noncopyable {
  public:
   using state_type = State;
   using key_type = typename state_type::key_type;
@@ -135,7 +130,7 @@ class top_terms_collector : private compact<0, Comparer>,
   // We disallow 0 size collectors for consistency since we're not
   // interested in this use case and don't want to burden "collect(...)"
   explicit top_terms_collector(size_t size, const Comparer& comp = {})
-    : comparer_rep(comp), size_(std::max(size_t(1), size)) {
+    : comparer_{comp}, size_{std::max(size_t(1), size)} {
     heap_.reserve(size);
     terms_.reserve(size);  // ensure all iterators remain valid
   }
@@ -171,7 +166,7 @@ class top_terms_collector : private compact<0, Comparer>,
     const auto term = *state_.term;
 
     if (left_) {
-      const auto res = emplace(make_hashed_ref(term), key);
+      const auto res = emplace(hashed_bytes_view{term}, key);
 
       if (res.second) {
         heap_.emplace_back(res.first);
@@ -189,12 +184,12 @@ class top_terms_collector : private compact<0, Comparer>,
     const auto min = heap_.front();
     const auto& min_state = min->second;
 
-    if (!comparer()(min_state, key, term)) {
+    if (!comparer_(min_state, key, term)) {
       // nothing to do
       return;
     }
 
-    const auto hashed_term = make_hashed_ref(term);
+    const auto hashed_term = hashed_bytes_view{term};
     const auto it = terms_.find(hashed_term);
 
     if (it == terms_.end()) {
@@ -240,21 +235,21 @@ class top_terms_collector : private compact<0, Comparer>,
   void make_heap() noexcept {
     std::make_heap(heap_.begin(), heap_.end(),
                    [this](const auto lhs, const auto rhs) noexcept {
-                     return comparer()(rhs->second, lhs->second);
+                     return comparer_(rhs->second, lhs->second);
                    });
   }
 
   void push() noexcept {
     std::push_heap(heap_.begin(), heap_.end(),
                    [this](const auto lhs, const auto rhs) noexcept {
-                     return comparer()(rhs->second, lhs->second);
+                     return comparer_(rhs->second, lhs->second);
                    });
   }
 
   void pop() noexcept {
     std::pop_heap(heap_.begin(), heap_.end(),
                   [this](const auto lhs, const auto rhs) noexcept {
-                    return comparer()(rhs->second, lhs->second);
+                    return comparer_(rhs->second, lhs->second);
                   });
   }
 
@@ -266,13 +261,12 @@ class top_terms_collector : private compact<0, Comparer>,
       terms_,
       [](const hashed_bytes_view& key, const state_type& value) noexcept {
         // reuse hash but point ref at value
-        return hashed_bytes_view(key.hash(), value.term);
+        return hashed_bytes_view{value.term, key.hash()};
       },
       term, term, key);
   }
 
-  const comparer_type& comparer() const noexcept { return comparer_rep::get(); }
-
+  IRS_NO_UNIQUE_ADDRESS comparer_type comparer_;
   collector_state state_;
   std::vector<typename states_map_t::iterator> heap_;
   states_map_t terms_;
@@ -281,5 +275,3 @@ class top_terms_collector : private compact<0, Comparer>,
 };
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_TOP_TERMS_COLLECTOR_H
