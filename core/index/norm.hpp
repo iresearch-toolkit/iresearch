@@ -201,7 +201,7 @@ class Norm2 : public attribute {
 
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "irs::norm2";
+    return "iresearch::norm2";
   }
 
   static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
