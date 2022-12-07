@@ -26,7 +26,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Temporary workaround to avoid making huge changes
 template<typename T>
@@ -60,4 +60,4 @@ class EboRef {
   IRS_NO_UNIQUE_ADDRESS EboType value_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

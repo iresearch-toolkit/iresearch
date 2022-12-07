@@ -24,7 +24,7 @@
 #include "tests_shared.hpp"
 #include "utils/bitset.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(bitset_tests, static_functions) {
   // word index for the specified bit

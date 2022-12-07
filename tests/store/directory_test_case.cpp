@@ -45,7 +45,7 @@
 
 namespace {
 
-using namespace iresearch;
+using namespace irs;
 
 class directory_test_case : public tests::directory_test_case_base<> {};
 
@@ -411,7 +411,7 @@ TEST_P(directory_test_case, read_multiple_streams) {
 }
 
 TEST_P(directory_test_case, string_read_write) {
-  using namespace iresearch;
+  using namespace irs;
 
   auto u32crc = [](irs::crc32c& crc, uint32_t v) {
     irs::bstring tmp;
@@ -3727,7 +3727,7 @@ TEST_P(directory_test_case, string_read_write) {
 }
 
 TEST_P(directory_test_case, visit) {
-  using namespace iresearch;
+  using namespace irs;
 
   std::set<std::string_view> names{
     "spM42fEO88eDt2", "jNIvCMksYwpoxN", "Re5eZWCkQexrZn", "jjj003oxVAIycv",
@@ -3799,7 +3799,7 @@ TEST_P(directory_test_case, visit) {
 }
 
 TEST_P(directory_test_case, list) {
-  using namespace iresearch;
+  using namespace irs;
 
   std::vector<std::string> files;
   auto list_files = [&files](std::string_view name) {
@@ -3864,11 +3864,11 @@ TEST_P(directory_test_case, list) {
 }
 
 TEST_P(directory_test_case, smoke_index_io) {
-  using namespace iresearch;
+  using namespace irs;
 
   const std::string name = "test";
   const std::string str = "quick brown fowx jumps over the lazy dog";
-  const bstring payload(iresearch::ViewCast<byte_type>(std::string_view(name)));
+  const bstring payload(irs::ViewCast<byte_type>(std::string_view(name)));
 
   // write to file
   {
@@ -4575,7 +4575,7 @@ TEST_F(fs_directory_test, orphaned_lock) {
     {
       char hostname[256] = {};
       ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
-      const std::string pid = std::to_string(iresearch::get_pid());
+      const std::string pid = std::to_string(irs::get_pid());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
@@ -4600,7 +4600,7 @@ TEST_F(fs_directory_test, orphaned_lock) {
     {
       char hostname[] = "not_a_valid_hostname_//+&*(%$#@! }";
 
-      const std::string pid = std::to_string(iresearch::get_pid());
+      const std::string pid = std::to_string(irs::get_pid());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname),

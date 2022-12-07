@@ -28,14 +28,14 @@
 
 #include "string.hpp"
 
-namespace iresearch {
+namespace irs {
 
-FORCE_INLINE size_t hash_combine(size_t seed, size_t v) noexcept {
+IRS_FORCE_INLINE size_t hash_combine(size_t seed, size_t v) noexcept {
   return seed ^ (v + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 }
 
 template<typename T>
-FORCE_INLINE size_t
+IRS_FORCE_INLINE size_t
 hash_combine(size_t seed, T const& v) noexcept(noexcept(std::hash<T>()(v))) {
   return hash_combine(seed, std::hash<T>()(v));
 }
@@ -73,7 +73,7 @@ inline size_t hash(const T* begin, size_t size) noexcept {
 using hashed_string_view = hashed_basic_string_view<char>;
 using hashed_bytes_view = hashed_basic_string_view<byte_type>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace frozen {
 
@@ -94,9 +94,8 @@ namespace absl {
 namespace hash_internal {
 
 template<typename Char>
-struct HashImpl<::iresearch::hashed_basic_string_view<Char>> {
-  size_t operator()(
-    const ::iresearch::hashed_basic_string_view<Char>& value) const {
+struct HashImpl<::irs::hashed_basic_string_view<Char>> {
+  size_t operator()(const ::irs::hashed_basic_string_view<Char>& value) const {
     return value.hash();
   }
 };
@@ -107,9 +106,9 @@ struct HashImpl<::iresearch::hashed_basic_string_view<Char>> {
 namespace std {
 
 template<typename Char>
-struct hash<::iresearch::hashed_basic_string_view<Char>> {
+struct hash<::irs::hashed_basic_string_view<Char>> {
   size_t operator()(
-    const ::iresearch::hashed_basic_string_view<Char>& value) const noexcept {
+    const ::irs::hashed_basic_string_view<Char>& value) const noexcept {
     return value.hash();
   }
 };

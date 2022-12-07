@@ -102,7 +102,7 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 void MultiTermQuery::visit(const sub_reader& segment,
                            PreparedStateVisitor& visitor, score_t boost) const {
@@ -184,4 +184,4 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
     });
 }
 
-}  // namespace iresearch
+}  // namespace irs

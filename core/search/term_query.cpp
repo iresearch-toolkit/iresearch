@@ -26,7 +26,7 @@
 #include "search/prepared_state_visitor.hpp"
 #include "search/score.hpp"
 
-namespace iresearch {
+namespace irs {
 
 TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
   : filter::prepared(boost),
@@ -83,4 +83,4 @@ void TermQuery::visit(const sub_reader& segment, PreparedStateVisitor& visitor,
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

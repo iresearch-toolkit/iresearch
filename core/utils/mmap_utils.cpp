@@ -26,7 +26,7 @@
 #include "utils/assert.hpp"
 #include "utils/log.hpp"
 
-namespace iresearch::mmap_utils {
+namespace irs::mmap_utils {
 
 int flush(int fd, void* addr, size_t size, int flags) noexcept {
   if (fd < 0) {  // an invalid file descriptor of course means an invalid handle
@@ -125,4 +125,4 @@ bool mmap_handle::open(const file_path_t path) noexcept {
   return true;
 }
 
-}  // namespace iresearch::mmap_utils
+}  // namespace irs::mmap_utils

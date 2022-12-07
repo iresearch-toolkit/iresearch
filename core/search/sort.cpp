@@ -75,7 +75,7 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 REGISTER_ATTRIBUTE(filter_boost);
 
@@ -97,4 +97,4 @@ Order Order::Prepare(std::span<const sort*> order) {
 
 const Order Order::kUnordered;
 
-}  // namespace iresearch
+}  // namespace irs

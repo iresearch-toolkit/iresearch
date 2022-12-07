@@ -152,7 +152,7 @@ bool uring::deque(bool wait, uint64_t* data) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 class async_file {
  public:
@@ -302,7 +302,7 @@ class async_index_output final : public index_output {
   }
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
   void reset(byte_type* buf) {
     pos_ = buf;
@@ -474,9 +474,9 @@ void async_index_output::write_bytes(const byte_type* b, size_t length) {
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
-namespace iresearch {
+namespace irs {
 
 AsyncDirectory::AsyncDirectory(std::filesystem::path path,
                                directory_attributes attrs, size_t pool_size,
@@ -572,4 +572,4 @@ bool AsyncDirectory::sync(std::string_view name) noexcept {
 }
 */
 
-}  // namespace iresearch
+}  // namespace irs

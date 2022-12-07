@@ -39,8 +39,8 @@ namespace std {
 // We define this specialization because default implementation
 // for unsigned char doesn't implement it effective
 template<>
-struct char_traits<::iresearch::byte_type> {
-  using char_type = ::iresearch::byte_type;
+struct char_traits<::irs::byte_type> {
+  using char_type = ::irs::byte_type;
   using int_type = int;
   using pos_type = std::streampos;
   using off_type = std::streamoff;
@@ -123,7 +123,7 @@ struct char_traits<::iresearch::byte_type> {
 }  // namespace std
 #endif
 
-namespace iresearch {
+namespace irs {
 
 using bstring = std::basic_string<byte_type>;
 using bytes_view = std::basic_string_view<byte_type>;
@@ -199,21 +199,21 @@ struct Hasher {
 };
 
 }  // namespace hash_utils
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<::iresearch::bstring> {
-  size_t operator()(const ::iresearch::bstring& value) const noexcept {
-    return ::iresearch::hash_utils::Hash(value);
+struct hash<::irs::bstring> {
+  size_t operator()(const ::irs::bstring& value) const noexcept {
+    return ::irs::hash_utils::Hash(value);
   }
 };
 
 template<>
-struct hash<::iresearch::bytes_view> {
-  size_t operator()(::iresearch::bytes_view value) const noexcept {
-    return ::iresearch::hash_utils::Hash(value);
+struct hash<::irs::bytes_view> {
+  size_t operator()(::irs::bytes_view value) const noexcept {
+    return ::irs::hash_utils::Hash(value);
   }
 };
 

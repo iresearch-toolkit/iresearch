@@ -24,7 +24,7 @@
 
 #include "formats/seek_cookie.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct term_reader;
 
@@ -33,4 +33,4 @@ struct NGramState {
   std::vector<seek_cookie::ptr> terms;
 };
 
-}  // namespace iresearch
+}  // namespace irs

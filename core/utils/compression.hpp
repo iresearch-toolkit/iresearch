@@ -30,22 +30,23 @@
 #include "noncopyable.hpp"
 #include "type_id.hpp"
 
-#define REGISTER_COMPRESSION__(compression_name, compressor_factory,           \
-                               decompressor_factory, line, source)             \
-  static iresearch::compression::compression_registrar                         \
-    compression_registrar##_##line(::iresearch::type<compression_name>::get(), \
-                                   compressor_factory, decompressor_factory,   \
+#define REGISTER_COMPRESSION__(compression_name, compressor_factory,         \
+                               decompressor_factory, line, source)           \
+  static irs::compression::compression_registrar                             \
+    compression_registrar##_##line(::irs::type<compression_name>::get(),     \
+                                   compressor_factory, decompressor_factory, \
                                    source)
 #define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, \
                                         decompressor_factory, file, line)     \
   REGISTER_COMPRESSION__(compression_name, compressor_factory,                \
-                         decompressor_factory, line, file ":" TOSTRING(line))
+                         decompressor_factory, line,                          \
+                         file ":" IRS_TO_STRING(line))
 #define REGISTER_COMPRESSION(compression_name, compressor_factory,      \
                              decompressor_factory)                      \
   REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, \
                                   decompressor_factory, __FILE__, __LINE__)
 
-namespace iresearch {
+namespace irs {
 
 struct data_output;
 struct data_input;
@@ -190,7 +191,7 @@ bool visit(const std::function<bool(std::string_view)>& visitor);
 ////////////////////////////////////////////////////////////////////////////////
 struct none {
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::compression::none";
+    return "irs::compression::none";
   }
 
   static void init();
@@ -203,6 +204,6 @@ struct none {
 };  // raw
 
 }  // namespace compression
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_COMPRESSION_H

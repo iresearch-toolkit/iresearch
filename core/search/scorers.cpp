@@ -87,7 +87,7 @@ class scorer_register
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ bool scorers::exists(std::string_view name,
                                 const type_info& args_format,
@@ -180,4 +180,4 @@ scorer_registrar::scorer_registrar(const type_info& type,
 
 scorer_registrar::operator bool() const noexcept { return registered_; }
 
-}  // namespace iresearch
+}  // namespace irs

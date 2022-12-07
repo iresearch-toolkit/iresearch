@@ -29,7 +29,7 @@
 #include "shared.hpp"
 #include "string.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace utf8_utils {
 
 // max number of bytes to represent single UTF8 code point
@@ -41,8 +41,8 @@ constexpr uint32_t MIN_4BYTES_CODE_POINT = 0x10000;
 constexpr uint32_t MAX_CODE_POINT = 0x10FFFF;
 constexpr uint32_t INVALID_CODE_POINT = std::numeric_limits<uint32_t>::max();
 
-FORCE_INLINE const byte_type* next(const byte_type* begin,
-                                   const byte_type* end) noexcept {
+IRS_FORCE_INLINE const byte_type* next(const byte_type* begin,
+                                       const byte_type* end) noexcept {
   IRS_ASSERT(begin);
   IRS_ASSERT(end);
 
@@ -64,7 +64,7 @@ FORCE_INLINE const byte_type* next(const byte_type* begin,
 
 // Return Unicode code point length in bytes given the most significant code
 // point byte
-FORCE_INLINE constexpr uint32_t cp_length_msb(
+IRS_FORCE_INLINE constexpr uint32_t cp_length_msb(
   const uint32_t cp_start) noexcept {
   if (cp_start < 0x80) {
     return 1;
@@ -81,7 +81,7 @@ FORCE_INLINE constexpr uint32_t cp_length_msb(
 
 // Return Unicode code point length in bytes given the most significant code
 // point byte
-FORCE_INLINE constexpr uint32_t cp_length(const uint32_t cp) noexcept {
+IRS_FORCE_INLINE constexpr uint32_t cp_length(const uint32_t cp) noexcept {
   if (cp < 0x80) {
     return 1;
   }
@@ -156,8 +156,8 @@ inline uint32_t next(const byte_type*& it) noexcept {
   return cp;
 }
 
-FORCE_INLINE constexpr uint32_t utf32_to_utf8(uint32_t cp,
-                                              byte_type* begin) noexcept {
+IRS_FORCE_INLINE constexpr uint32_t utf32_to_utf8(uint32_t cp,
+                                                  byte_type* begin) noexcept {
   if (cp < 0x80) {
     begin[0] = static_cast<byte_type>(cp);
     return 1;
@@ -231,7 +231,7 @@ inline bool utf8_to_utf32(const byte_type* begin, size_t size,
 }
 
 template<bool Checked = true, typename OutputIterator>
-FORCE_INLINE bool utf8_to_utf32(bytes_view in, OutputIterator out) {
+IRS_FORCE_INLINE bool utf8_to_utf32(bytes_view in, OutputIterator out) {
   return utf8_to_utf32<Checked>(in.data(), in.size(), out);
 }
 
@@ -245,11 +245,11 @@ inline size_t utf8_length(const byte_type* begin, size_t size) noexcept {
   return length;
 }
 
-FORCE_INLINE size_t utf8_length(bytes_view in) noexcept {
+IRS_FORCE_INLINE size_t utf8_length(bytes_view in) noexcept {
   return utf8_length(in.data(), in.size());
 }
 
 }  // namespace utf8_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_UTF8_UTILS_H

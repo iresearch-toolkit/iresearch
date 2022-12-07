@@ -115,17 +115,19 @@ TEST(simd_utils_test, avg) {
 }
 
 TEST(simd_utils_test, zigzag32) {
-  auto expected = Iota(HWY_FULL(int32_t){}, 0);
+  const auto tag = HWY_FULL(int32_t){};
+  auto expected = Iota(tag, 0);
   auto encoded = irs::simd::zig_zag_encode(expected);
   auto decoded = irs::simd::zig_zag_decode(encoded);
-  ASSERT_TRUE(AllTrue(expected == decoded));
+  ASSERT_TRUE(AllTrue(tag, expected == decoded));
 }
 
 TEST(simd_utils_test, zigzag64) {
-  auto expected = Iota(HWY_FULL(int64_t){}, 0);
+  const auto tag = HWY_FULL(int64_t){};
+  auto expected = Iota(tag, 0);
   auto encoded = irs::simd::zig_zag_encode(expected);
   auto decoded = irs::simd::zig_zag_decode(encoded);
-  ASSERT_TRUE(AllTrue(expected == decoded));
+  ASSERT_TRUE(AllTrue(tag, expected == decoded));
 }
 
 TEST(simd_utils_test, all_equal) {

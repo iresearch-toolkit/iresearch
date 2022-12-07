@@ -95,41 +95,41 @@ void write_prox(Stream& out, uint32_t prox, const irs::payload* pay,
 }
 
 template<typename Inserter>
-FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
+IRS_FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
   *out = static_cast<byte_type>(cookie & 0xFF);  // offset
   irs::vwrite<uint32_t>(
     out, static_cast<uint32_t>((cookie >> 8) & 0xFFFFFFFF));  // slice offset
 }
 
-FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) noexcept {
+IRS_FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) noexcept {
   IRS_ASSERT(offset <= std::numeric_limits<byte_type>::max());
   return static_cast<uint64_t>(slice_offset) << 8 |
          static_cast<byte_type>(offset);
 }
 
 template<typename Reader>
-FORCE_INLINE uint64_t read_cookie(Reader& in) {
+IRS_FORCE_INLINE uint64_t read_cookie(Reader& in) {
   const size_t offset = *in;
   ++in;
   const size_t slice_offset = irs::vread<uint32_t>(in);
   return cookie(slice_offset, offset);
 }
 
-FORCE_INLINE uint64_t
+IRS_FORCE_INLINE uint64_t
 cookie(const byte_block_pool::sliced_greedy_inserter& stream) noexcept {
   // we don't span slices over the buffers
   const auto slice_offset = stream.slice_offset();
   return cookie(slice_offset, stream.pool_offset() - slice_offset);
 }
 
-FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
+IRS_FORCE_INLINE byte_block_pool::sliced_greedy_reader greedy_reader(
   const byte_block_pool& pool, uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_reader(
     pool, static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
     static_cast<size_t>(cookie & 0xFF));
 }
 
-FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
+IRS_FORCE_INLINE byte_block_pool::sliced_greedy_inserter greedy_writer(
   byte_block_pool::inserter& writer, uint64_t cookie) noexcept {
   return byte_block_pool::sliced_greedy_inserter(
     writer, static_cast<size_t>((cookie >> 8) & 0xFFFFFFFF),
@@ -224,7 +224,7 @@ class pos_iterator final : public irs::position {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace detail {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1199,4 +1199,4 @@ size_t fields_data::memory_reserved() const noexcept {
 template<typename Reader>
 struct type<::pos_iterator<Reader>> : type<irs::position> {};
 
-}  // namespace iresearch
+}  // namespace irs

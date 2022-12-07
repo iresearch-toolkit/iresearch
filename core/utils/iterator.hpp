@@ -31,7 +31,7 @@
 #include "std.hpp"
 #include "utils/assert.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename T>
 struct iterator {
@@ -183,6 +183,6 @@ class ptr_iterator
   IteratorImpl it_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

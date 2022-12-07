@@ -26,7 +26,7 @@
 #include "search/states/multiterm_state.hpp"
 #include "search/states_cache.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Compiled query suitable for filters with non adjacent set of terms.
 class MultiTermQuery final : public filter::prepared {
@@ -54,4 +54,4 @@ class MultiTermQuery final : public filter::prepared {
   size_t min_match_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

@@ -29,7 +29,7 @@
 #include "token_stream.hpp"
 #include "utils/attribute_helper.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 class segmentation_token_stream final : public analyzer,
                                         private util::noncopyable {
@@ -74,6 +74,6 @@ class segmentation_token_stream final : public analyzer,
   attributes attrs_;
 };
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SEGMENTATION_TOKEN_STREAM_H

@@ -119,8 +119,7 @@ struct dummy_scorer0 : public irs::sort {
 }  // namespace
 
 TEST(sort_tests, static_const) {
-  static_assert("iresearch::filter_boost" ==
-                irs::type<irs::filter_boost>::name());
+  static_assert("irs::filter_boost" == irs::type<irs::filter_boost>::name());
   static_assert(irs::kNoBoost == irs::filter_boost().value);
 
   ASSERT_TRUE(irs::Order::kUnordered.buckets().empty());

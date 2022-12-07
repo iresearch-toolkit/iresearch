@@ -47,7 +47,8 @@ __pragma(warning(push)) __pragma(warning(
 #endif
 
   template<int N>
-  void fastpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
+  void fastpack(const uint32_t* IRS_RESTRICT in,
+                uint32_t* IRS_RESTRICT out) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
   // ensure all computations are constexr, i.e. no conditional jumps, no loops,
@@ -242,13 +243,14 @@ __pragma(warning(push)) __pragma(warning(
 }
 
 template<>
-void fastpack<32>(const uint32_t* RESTRICT in,
-                  uint32_t* RESTRICT out) noexcept {
+void fastpack<32>(const uint32_t* IRS_RESTRICT in,
+                  uint32_t* IRS_RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint32_t) * irs::packed::BLOCK_SIZE_32);
 }
 
 template<int N>
-void fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
+void fastpack(const uint64_t* IRS_RESTRICT in,
+              uint64_t* IRS_RESTRICT out) noexcept {
   // 64 == sizeof(uint64_t) * 8
   static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
   // ensure all computations are constexr, i.e. no conditional jumps, no loops,
@@ -635,13 +637,14 @@ void fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
 }
 
 template<>
-FORCE_INLINE void fastpack<64>(const uint64_t* RESTRICT in,
-                               uint64_t* RESTRICT out) noexcept {
+IRS_FORCE_INLINE void fastpack<64>(const uint64_t* IRS_RESTRICT in,
+                                   uint64_t* IRS_RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint64_t) * irs::packed::BLOCK_SIZE_64);
 }
 
 template<int N>
-void fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
+void fastunpack(const uint32_t* IRS_RESTRICT in,
+                uint32_t* IRS_RESTRICT out) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
   *out = ((*in) >> (N * 0) % 32) % (1U << N);
@@ -834,13 +837,14 @@ void fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
 }
 
 template<>
-FORCE_INLINE void fastunpack<32>(const uint32_t* RESTRICT in,
-                                 uint32_t* RESTRICT out) noexcept {
+IRS_FORCE_INLINE void fastunpack<32>(const uint32_t* IRS_RESTRICT in,
+                                     uint32_t* IRS_RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint32_t) * irs::packed::BLOCK_SIZE_32);
 }
 
 template<int N>
-void fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
+void fastunpack(const uint64_t* IRS_RESTRICT in,
+                uint64_t* IRS_RESTRICT out) noexcept {
   // 64 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
   *out = ((*in) >> (N * 0) % 64) % (1ULL << N);
@@ -1225,8 +1229,8 @@ void fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
 }
 
 template<>
-FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in,
-                                 uint64_t* RESTRICT out) noexcept {
+IRS_FORCE_INLINE void fastunpack<64>(const uint64_t* IRS_RESTRICT in,
+                                     uint64_t* IRS_RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint64_t) * irs::packed::BLOCK_SIZE_64);
 }
 
@@ -1234,7 +1238,7 @@ FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in,
 MSVC_ONLY(__pragma(warning(disable : 4702)))  // unreachable code
 
 template<int N, int I>
-FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
+IRS_FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N < 32, "N <= 0 || N > 32");
   static_assert(I >= 0 && I < 32, "I < 0 || I >= 32");
@@ -1252,7 +1256,7 @@ FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
 }
 
 template<int N, int I>
-FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
+IRS_FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
   // 64 == sizeof(uint64_t) * 8
   static_assert(N > 0 && N < 64, "N <= 0 || N > 64");
   static_assert(I >= 0 && I < 64, "I < 0 || I >= 64");
@@ -1508,10 +1512,10 @@ __pragma(warning(pop))
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace packed {
 
-void pack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
+void pack_block(const uint32_t* IRS_RESTRICT in, uint32_t* IRS_RESTRICT out,
                 const uint32_t bit) noexcept {
   switch (bit) {
     case 1:
@@ -1616,7 +1620,7 @@ void pack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
   }
 }
 
-void pack_block(const uint64_t* RESTRICT in, uint64_t* RESTRICT out,
+void pack_block(const uint64_t* IRS_RESTRICT in, uint64_t* IRS_RESTRICT out,
                 const uint32_t bit) noexcept {
   switch (bit) {
     case 1:
@@ -1817,7 +1821,7 @@ void pack_block(const uint64_t* RESTRICT in, uint64_t* RESTRICT out,
   }
 }
 
-void unpack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
+void unpack_block(const uint32_t* IRS_RESTRICT in, uint32_t* IRS_RESTRICT out,
                   const uint32_t bit) noexcept {
   switch (bit) {
     case 1:
@@ -1922,7 +1926,7 @@ void unpack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
   }
 }
 
-void unpack_block(const uint64_t* RESTRICT in, uint64_t* RESTRICT out,
+void unpack_block(const uint64_t* IRS_RESTRICT in, uint64_t* IRS_RESTRICT out,
                   const uint32_t bit) noexcept {
   switch (bit) {
     case 1:
@@ -2338,4 +2342,4 @@ uint64_t fastpack_at(const uint64_t* in, const size_t i,
 }
 
 }  // namespace packed
-}  // namespace iresearch
+}  // namespace irs

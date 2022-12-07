@@ -29,7 +29,7 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
  public:
@@ -71,6 +71,6 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
   doc_id_t base_;
 };  // bitset_doc_iterator
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_BITSET_DOC_ITERATOR_H

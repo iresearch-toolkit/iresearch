@@ -42,7 +42,7 @@
 #include "utils/string.hpp"
 #include "utils/type_info.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct segment_meta;
 struct field_meta;
@@ -67,7 +67,7 @@ using ScoreFunctionFactory =
 // Represents metadata associated with the term
 struct term_meta : attribute {
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::term_meta";
+    return "irs::term_meta";
   }
 
   void clear() noexcept {
@@ -506,17 +506,17 @@ class format_registrar {
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, mudule_name, line, source)           \
-  static ::iresearch::format_registrar format_registrar##_##line(           \
-    ::iresearch::type<format_name>::get(), mudule_name, &format_name::make, \
-    source)
+#define REGISTER_FORMAT__(format_name, mudule_name, line, source) \
+  static ::irs::format_registrar format_registrar##_##line(       \
+    ::irs::type<format_name>::get(), mudule_name, &format_name::make, source)
 #define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) \
-  REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
+  REGISTER_FORMAT__(format_name, mudule_name, line,                      \
+                    file ":" IRS_TO_STRING(line))
 #define REGISTER_FORMAT_MODULE(format_name, module_name) \
   REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) \
   REGISTER_FORMAT_MODULE(format_name, std::string_view{})
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

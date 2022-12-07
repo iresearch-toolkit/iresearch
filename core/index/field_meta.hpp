@@ -30,7 +30,7 @@
 #include "utils/attributes.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct field_stats {
   // Total number of terms
@@ -71,6 +71,6 @@ struct field_meta {
 static_assert(std::is_move_constructible<field_meta>::value,
               "default move constructor expected");
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

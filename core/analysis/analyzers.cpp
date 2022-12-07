@@ -101,7 +101,7 @@ class analyzer_register final
 
 }  // namespace
 
-namespace iresearch::analysis {
+namespace irs::analysis {
 
 analyzer_registrar::analyzer_registrar(
   const type_info& type, const type_info& args_format,
@@ -225,4 +225,4 @@ bool visit(
 }
 
 }  // namespace analyzers
-}  // namespace iresearch::analysis
+}  // namespace irs::analysis

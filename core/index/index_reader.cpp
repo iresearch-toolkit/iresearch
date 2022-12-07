@@ -62,7 +62,7 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         sub_reader implementation
@@ -72,4 +72,4 @@ namespace iresearch {
   return empty_sub_reader::instance();
 }
 
-}  // namespace iresearch
+}  // namespace irs

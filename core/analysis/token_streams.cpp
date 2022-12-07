@@ -26,7 +26,7 @@
 #include "utils/bit_utils.hpp"
 #include "utils/string_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               boolean_token_stream implementation
@@ -185,4 +185,4 @@ bool null_token_stream::next() noexcept {
   return !in_use;
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -25,7 +25,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace util {
 
 struct noncopyable {
@@ -39,6 +39,6 @@ struct noncopyable {
 };
 
 }  // namespace util
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

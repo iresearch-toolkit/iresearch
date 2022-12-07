@@ -29,7 +29,7 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename DocIterator>
 struct doc_iterator_adapter {
@@ -290,6 +290,6 @@ doc_iterator::ptr MakeConjunction(typename Conjunction::doc_iterators_t&& itrs,
     std::move(itrs), std::forward<Merger>(merger), std::forward<Args>(args)...);
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_CONJUNCTION_H

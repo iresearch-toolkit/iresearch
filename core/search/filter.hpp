@@ -32,7 +32,7 @@
 #include "shared.hpp"
 #include "utils/hash_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct index_reader;
 struct PreparedStateVisitor;
@@ -206,13 +206,13 @@ struct filter_visitor;
 using field_visitor =
   std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<iresearch::filter> {
-  typedef iresearch::filter argument_type;
+struct hash<irs::filter> {
+  typedef irs::filter argument_type;
   typedef size_t result_type;
 
   result_type operator()(const argument_type& key) const { return key.hash(); }

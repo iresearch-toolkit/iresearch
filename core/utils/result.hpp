@@ -27,7 +27,7 @@
 
 #include "string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class result {
  public:
@@ -99,6 +99,6 @@ class result {
   std::unique_ptr<char[]> state_;
 };  // result
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_STATUS_H

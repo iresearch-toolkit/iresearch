@@ -26,7 +26,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace math {
 
 uint32_t log2_64(uint64_t value) noexcept {
@@ -77,4 +77,4 @@ uint32_t log(uint64_t x, uint64_t base) noexcept {
 }
 
 }  // namespace math
-}  // namespace iresearch
+}  // namespace irs

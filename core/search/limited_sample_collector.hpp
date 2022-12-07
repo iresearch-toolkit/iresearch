@@ -34,7 +34,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct sub_reader;
 struct index_reader;
@@ -319,4 +319,4 @@ class multiterm_visitor {
   const decltype(term_meta::docs_count)* docs_count_ = nullptr;
 };
 
-}  // namespace iresearch
+}  // namespace irs

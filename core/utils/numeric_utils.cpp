@@ -50,14 +50,14 @@ namespace {
 enum class buf_id_t { NINF, MIN, MAX, INF };
 
 template<typename T, buf_id_t ID>
-iresearch::bstring& static_buf() {
-  static iresearch::bstring buf;
+irs::bstring& static_buf() {
+  static irs::bstring buf;
   return buf;
 }
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace numeric_utils {
 
 template<typename T>
@@ -347,4 +347,4 @@ bytes_view maxd64() {
 }
 
 }  // namespace numeric_utils
-}  // namespace iresearch
+}  // namespace irs

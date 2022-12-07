@@ -30,7 +30,7 @@
 #include "utils/bytes_utils.hpp"
 #include "utils/crc.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
@@ -364,4 +364,4 @@ size_t encrypted_input::read_internal(byte_type* b, size_t count) {
   return read;
 }
 
-}  // namespace iresearch
+}  // namespace irs

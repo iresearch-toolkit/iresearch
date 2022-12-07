@@ -29,7 +29,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 /// @brief initialize an encryption header and create corresponding cipher
 /// stream
@@ -102,7 +102,7 @@ class encrypted_output : public irs::index_output, util::noncopyable {
 
  private:
   /// @returns number of remaining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
   index_output::ptr managed_out_;
   index_output* out_;
@@ -153,6 +153,6 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
   const size_t length_;
 };  // encrypted_input
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_ENCRYPTION_H

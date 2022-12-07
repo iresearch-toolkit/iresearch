@@ -30,7 +30,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct data_output
@@ -151,7 +151,7 @@ class buffered_index_output : public index_output, util::noncopyable {
   size_t buffer_offset() const noexcept { return start_; }
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
  private:
   byte_type* buf_{};
@@ -161,6 +161,6 @@ class buffered_index_output : public index_output, util::noncopyable {
   size_t buf_size_{};
 };  // buffered_index_output
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_DATAOUTPUT_H

@@ -48,7 +48,7 @@ using namespace tests;
 
 TEST_F(ref_counter_tests, test_ref_counter_add) {
   {
-    iresearch::ref_counter<int> refs;
+    irs::ref_counter<int> refs;
 
     ASSERT_EQ(0, refs.find(1));
     ASSERT_EQ(0, refs.find(2));
@@ -90,7 +90,7 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
   }
 
   {
-    iresearch::ref_counter<std::string> refs;
+    irs::ref_counter<std::string> refs;
 
     ASSERT_EQ(0, refs.find("abc"));
     ASSERT_EQ(0, refs.find("def"));
@@ -133,7 +133,7 @@ TEST_F(ref_counter_tests, test_ref_counter_add) {
 }
 
 TEST_F(ref_counter_tests, test_ref_counter_contains) {
-  iresearch::ref_counter<int> refs;
+  irs::ref_counter<int> refs;
 
   ASSERT_FALSE(refs.contains(1));
   ASSERT_FALSE(refs.contains(2));
@@ -146,7 +146,7 @@ TEST_F(ref_counter_tests, test_ref_counter_contains) {
 }
 
 TEST_F(ref_counter_tests, test_ref_counter_visit) {
-  iresearch::ref_counter<int> refs;
+  irs::ref_counter<int> refs;
 
   auto ref1a = refs.add(1);
   auto ref1b = refs.add(1);

@@ -29,7 +29,7 @@
 #include "search/filter.hpp"
 #include "utils/iterator.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Represents user-side boolean filter as the container for other
 // filters.
@@ -175,6 +175,6 @@ class Not : public filter, public AllDocsProvider {
   filter::ptr filter_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

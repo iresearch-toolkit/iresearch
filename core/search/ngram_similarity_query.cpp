@@ -26,7 +26,7 @@
 #include "search/min_match_disjunction.hpp"
 #include "search/ngram_similarity_filter.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 struct Position {
@@ -581,4 +581,4 @@ doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
     std::move(itrs), query_state->terms.size(), min_match_count_, true);
 }
 
-}  // namespace iresearch
+}  // namespace irs

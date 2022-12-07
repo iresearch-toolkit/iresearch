@@ -66,7 +66,7 @@ struct prepared final : PreparedSortBase<void> {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ void boost_sort::init() {
   REGISTER_SCORER_JSON(boost_sort, make_json);
@@ -79,4 +79,4 @@ sort::prepared::ptr boost_sort::prepare() const {
   return std::make_unique<::prepared>();
 }
 
-}  // namespace iresearch
+}  // namespace irs

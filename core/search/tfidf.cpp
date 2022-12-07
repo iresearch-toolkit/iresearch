@@ -245,13 +245,13 @@ struct term_collector final : public irs::sort::term_collector {
   }
 };
 
-FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
+IRS_FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
   return idf * kSQRT.get<true>(freq);
 }
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace tfidf {
 
 // empty frequency
@@ -293,7 +293,7 @@ struct NormAdapter {
 
   explicit NormAdapter(Reader&& reader) : reader{std::move(reader)} {}
 
-  FORCE_INLINE float_t operator()() {
+  IRS_FORCE_INLINE float_t operator()() {
     if constexpr (kType < NormType::kNorm) {
       return kRSQRT.get<kType != NormType::kNorm2Tiny>(reader());
     } else {
@@ -481,4 +481,4 @@ sort::prepared::ptr tfidf_sort::prepare() const {
   return std::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
 
-}  // namespace iresearch
+}  // namespace irs

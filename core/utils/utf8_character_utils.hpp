@@ -25,7 +25,7 @@
 
 #include "utils/utf8_character_tables.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace utf8_utils {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +110,6 @@ constexpr bool char_is_alphanumeric(uint32_t c) noexcept {
 }
 
 }  // namespace utf8_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_UTF8_CHARACTER_UTILS_H

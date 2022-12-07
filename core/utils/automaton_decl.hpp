@@ -55,13 +55,13 @@ using Automaton = VectorFst<Transition<W>, AutomatonState<W>>;
 }  // namespace fsa
 }  // namespace fst
 
-namespace iresearch {
+namespace irs {
 
 using automaton = fst::fsa::Automaton<fst::fsa::BooleanWeight>;
 using range_label = fst::fsa::RangeLabel;
 
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_AUTOMATON_DECL_H

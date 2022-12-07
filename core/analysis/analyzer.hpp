@@ -25,7 +25,7 @@
 #include "analysis/token_stream.hpp"
 #include "utils/type_info.hpp"
 
-namespace iresearch::analysis {
+namespace irs::analysis {
 
 class analyzer : public token_stream {
  public:
@@ -56,4 +56,4 @@ class empty_analyzer final : public analyzer {
   bool reset(std::string_view) override { return false; }
 };
 
-}  // namespace iresearch::analysis
+}  // namespace irs::analysis

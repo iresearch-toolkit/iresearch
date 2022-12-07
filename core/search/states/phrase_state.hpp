@@ -24,7 +24,7 @@
 
 #include "formats/seek_cookie.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct term_reader;
 
@@ -61,4 +61,4 @@ struct VariadicPhraseState : FixedPhraseState {
 static_assert(std::is_nothrow_move_constructible_v<VariadicPhraseState>);
 static_assert(std::is_nothrow_move_assignable_v<VariadicPhraseState>);
 
-}  // namespace iresearch
+}  // namespace irs

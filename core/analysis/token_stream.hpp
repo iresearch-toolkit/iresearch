@@ -27,7 +27,7 @@
 
 #include "utils/attribute_provider.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class token_stream : public attribute_provider {
  public:
@@ -37,4 +37,4 @@ class token_stream : public attribute_provider {
   virtual bool next() = 0;
 };
 
-}  // namespace iresearch
+}  // namespace irs

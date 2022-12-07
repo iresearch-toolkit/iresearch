@@ -28,7 +28,7 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/numeric_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_token_stream
@@ -292,6 +292,6 @@ class null_token_stream final : public basic_token_stream,
   bool in_use_{false};
 };  // null_token_stream
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

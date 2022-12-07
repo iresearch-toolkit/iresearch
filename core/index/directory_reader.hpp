@@ -28,7 +28,7 @@
 #include "shared.hpp"
 #include "utils/object_pool.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief representation of the metadata of a directory_reader
@@ -123,6 +123,6 @@ inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
   return rhs != nullptr;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

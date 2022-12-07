@@ -76,9 +76,9 @@ struct format_traits {
   static constexpr uint32_t pos_min() noexcept { return PosMin; }
   static constexpr bool wand() noexcept { return Wand; }
 
-  FORCE_INLINE static void pack_block32(const uint32_t* RESTRICT decoded,
-                                        uint32_t* RESTRICT encoded,
-                                        const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack_block32(
+    const uint32_t* IRS_RESTRICT decoded, uint32_t* IRS_RESTRICT encoded,
+    const uint32_t bits) noexcept {
     packed::pack_block(decoded, encoded, bits);
     packed::pack_block(decoded + packed::BLOCK_SIZE_32, encoded + bits, bits);
     packed::pack_block(decoded + 2 * packed::BLOCK_SIZE_32, encoded + 2 * bits,
@@ -87,9 +87,9 @@ struct format_traits {
                        bits);
   }
 
-  FORCE_INLINE static void unpack_block32(uint32_t* RESTRICT decoded,
-                                          const uint32_t* RESTRICT encoded,
-                                          const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void unpack_block32(
+    uint32_t* IRS_RESTRICT decoded, const uint32_t* IRS_RESTRICT encoded,
+    const uint32_t bits) noexcept {
     packed::unpack_block(encoded, decoded, bits);
     packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_32, bits);
     packed::unpack_block(encoded + 2 * bits,
@@ -98,35 +98,37 @@ struct format_traits {
                          decoded + 3 * packed::BLOCK_SIZE_32, bits);
   }
 
-  FORCE_INLINE static void pack32(const uint32_t* RESTRICT decoded,
-                                  uint32_t* RESTRICT encoded, size_t size,
-                                  const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
+                                      uint32_t* IRS_RESTRICT encoded,
+                                      size_t size,
+                                      const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);
     packed::pack(decoded, decoded + size, encoded, bits);
   }
 
-  FORCE_INLINE static void pack64(const uint64_t* RESTRICT decoded,
-                                  uint64_t* RESTRICT encoded, size_t size,
-                                  const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack64(const uint64_t* IRS_RESTRICT decoded,
+                                      uint64_t* IRS_RESTRICT encoded,
+                                      size_t size,
+                                      const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);
     packed::pack(decoded, decoded + size, encoded, bits);
   }
 
-  FORCE_INLINE static void write_block(index_output& out, const uint32_t* in,
-                                       uint32_t* buf) {
+  IRS_FORCE_INLINE static void write_block(index_output& out,
+                                           const uint32_t* in, uint32_t* buf) {
     bitpack::write_block32<block_size()>(&pack_block32, out, in, buf);
   }
 
-  FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
-                                      uint32_t* out) {
+  IRS_FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
+                                          uint32_t* out) {
     bitpack::read_block32<block_size()>(&unpack_block32, in, buf, out);
   }
 
-  FORCE_INLINE static void skip_block(index_input& in) {
+  IRS_FORCE_INLINE static void skip_block(index_input& in) {
     bitpack::skip_block32(in, block_size());
   }
 };
@@ -992,7 +994,7 @@ struct SkipState {
 };
 
 template<typename IteratorTraits>
-FORCE_INLINE void CopyState(SkipState& to, const SkipState& from) noexcept {
+IRS_FORCE_INLINE void CopyState(SkipState& to, const SkipState& from) noexcept {
   if constexpr (IteratorTraits::position() &&
                 (IteratorTraits::payload() || IteratorTraits::offset())) {
     to = from;
@@ -1007,7 +1009,7 @@ FORCE_INLINE void CopyState(SkipState& to, const SkipState& from) noexcept {
 }
 
 template<typename FieldTraits>
-FORCE_INLINE void ReadState(SkipState& state, index_input& in) {
+IRS_FORCE_INLINE void ReadState(SkipState& state, index_input& in) {
   state.doc = in.read_vint();
   state.doc_ptr += in.read_vlong();
 
@@ -1036,8 +1038,8 @@ struct DocState {
 };
 
 template<typename IteratorTraits>
-FORCE_INLINE void CopyState(SkipState& to,
-                            const version10::term_meta& from) noexcept {
+IRS_FORCE_INLINE void CopyState(SkipState& to,
+                                const version10::term_meta& from) noexcept {
   to.doc_ptr = from.doc_start;
   if constexpr (IteratorTraits::position()) {
     to.pos_ptr = from.pos_start;
@@ -3783,30 +3785,30 @@ struct format_traits_sse4 {
   static constexpr uint32_t pos_min() noexcept { return PosMin; }
   static constexpr uint32_t block_size() noexcept { return SIMDBlockSize; }
 
-  FORCE_INLINE static void pack_block(const uint32_t* RESTRICT decoded,
-                                      uint32_t* RESTRICT encoded,
-                                      const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack_block(const uint32_t* IRS_RESTRICT decoded,
+                                          uint32_t* IRS_RESTRICT encoded,
+                                          const uint32_t bits) noexcept {
     ::simdpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded),
                           bits);
   }
 
-  FORCE_INLINE static void unpack_block(uint32_t* decoded,
-                                        const uint32_t* encoded,
-                                        const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void unpack_block(uint32_t* decoded,
+                                            const uint32_t* encoded,
+                                            const uint32_t bits) noexcept {
     ::simdunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
   }
 
-  FORCE_INLINE static void write_block(index_output& out, const uint32_t* in,
-                                       uint32_t* buf) {
+  IRS_FORCE_INLINE static void write_block(index_output& out,
+                                           const uint32_t* in, uint32_t* buf) {
     bitpack::write_block32<block_size()>(&pack_block, out, in, buf);
   }
 
-  FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
-                                      uint32_t* out) {
+  IRS_FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
+                                          uint32_t* out) {
     bitpack::read_block32<block_size()>(&unpack_block, in, buf, out);
   }
 
-  FORCE_INLINE static void skip_block(index_input& in) {
+  IRS_FORCE_INLINE static void skip_block(index_input& in) {
     bitpack::skip_block32(in, block_size());
   }
 };  // format_traits_sse
@@ -3966,7 +3968,7 @@ REGISTER_FORMAT_MODULE(::format15simd, MODULE_NAME);
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace version10 {
 
 void init() {
@@ -3995,4 +3997,4 @@ template<typename IteratorTraits, typename FieldTraits, bool Position>
 struct type<::position<IteratorTraits, FieldTraits, Position>>
   : type<irs::position> {};
 
-}  // namespace iresearch
+}  // namespace irs

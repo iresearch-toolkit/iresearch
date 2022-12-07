@@ -26,7 +26,7 @@
 #include "tests_shared.hpp"
 #include "utils/string.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(memory_index_output_tests, reset) {
   memory_file file{irs::memory_allocator::global()};

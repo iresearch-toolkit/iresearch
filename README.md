@@ -79,10 +79,10 @@ For type `T` to be `IndexedField`, the following conditions have to be satisfied
 
 |Expression|Requires|Effects|
 |----|----|----|
-|`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
-|`m.get_tokens()`|The output type must be convertible to `iresearch::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
-|`m.index_features()`|The output type must be implicitly convertible to `iresearch::IndexFeatures`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying and scoring.|
-|`m.features()`|The output type must be convertible to `const iresearch::flags&`|A set of user supplied features to be associated with a field. E.g. it may contain request of storing field norms. Later the stored information can be used during querying and scoring.|
+|`m.name()`|The output type must be convertible to `irs::string_ref`|A value uses as a key name.|
+|`m.get_tokens()`|The output type must be convertible to `irs::token_stream*`|A token stream uses for populating in invert procedure. If value is `nullptr` field is treated as non-indexed.|
+|`m.index_features()`|The output type must be implicitly convertible to `irs::IndexFeatures`|A set of features requested for evaluation during indexing. E.g. it may contain request of processing positions and frequencies. Later the evaluated information can be used during querying and scoring.|
+|`m.features()`|The output type must be convertible to `const irs::flags&`|A set of user supplied features to be associated with a field. E.g. it may contain request of storing field norms. Later the stored information can be used during querying and scoring.|
 
 #### StoredField concept
 
@@ -90,8 +90,8 @@ For type `T` to be `StoredField`, the following conditions have to be satisfied 
 
 |Expression|Requires|Effects|
 |----|----|----|
-|`m.name()`|The output type must be convertible to `iresearch::string_ref`|A value uses as a key name.|
-|`m.write(iresearch::data_output& out)`|The output type must be convertible to bool.|One may write arbitrary data to stream denoted by `out` in order to retrieve written value using index_reader API later. If nothing has written but returned value is `true` then stored value is treated as flag. If returned value is `false` then nothing is stored even if something has been written to `out` stream.|
+|`m.name()`|The output type must be convertible to `irs::string_ref`|A value uses as a key name.|
+|`m.write(irs::data_output& out)`|The output type must be convertible to bool.|One may write arbitrary data to stream denoted by `out` in order to retrieve written value using index_reader API later. If nothing has written but returned value is `true` then stored value is treated as flag. If returned value is `false` then nothing is stored even if something has been written to `out` stream.|
 
 ### Directory
 
@@ -502,20 +502,20 @@ the first whitespace is ignored), in the directory corresponding to its language
 
 | Filter    |       Description    |
 |-----------|----------------------|
-|iresearch::by_edit_distance|for filtering of values based on Levenshtein distance
-|iresearch::by_granular_range|for faster filtering of numeric values within a given range, with the possibility of specifying open/closed ranges
-|iresearch::by_ngram_similarity|for filtering of values based on NGram model
-|iresearch::by_phrase|for word-position-sensitive filtering of values, with the possibility of skipping selected positions
-|iresearch::by_prefix|for filtering of exact value prefixes
-|iresearch::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
-|iresearch::by_same_position|for term-insertion-order sensitive filtering of exact values
-|iresearch::by_term|for filtering of exact values
-|iresearch::by_terms|for filtering of exact values by a set of specified terms
-|iresearch::by_wildcard|for filtering of values based on matching pattern
-|iresearch::ByNestedFilter|for filtering of documents based on matching pattern on its sub-documents
-|iresearch::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
-|iresearch::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
-|iresearch::Not|boolean negation of multiple filters
+|irs::by_edit_distance|for filtering of values based on Levenshtein distance
+|irs::by_granular_range|for faster filtering of numeric values within a given range, with the possibility of specifying open/closed ranges
+|irs::by_ngram_similarity|for filtering of values based on NGram model
+|irs::by_phrase|for word-position-sensitive filtering of values, with the possibility of skipping selected positions
+|irs::by_prefix|for filtering of exact value prefixes
+|irs::by_range|for filtering of values within a given range, with the possibility of specifying open/closed ranges
+|irs::by_same_position|for term-insertion-order sensitive filtering of exact values
+|irs::by_term|for filtering of exact values
+|irs::by_terms|for filtering of exact values by a set of specified terms
+|irs::by_wildcard|for filtering of values based on matching pattern
+|irs::ByNestedFilter|for filtering of documents based on matching pattern on its sub-documents
+|irs::And|boolean conjunction of multiple filters, influencing document ranks/scores as appropriate
+|irs::Or|boolean disjunction of multiple filters, influencing document ranks/scores as appropriate (including "minimum match" functionality)
+|irs::Not|boolean negation of multiple filters
 
 ## Supported compilers
 

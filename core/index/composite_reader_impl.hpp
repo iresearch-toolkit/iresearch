@@ -26,7 +26,7 @@
 #include "index_reader.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common implementation for readers composied of multiple other readers
@@ -68,6 +68,6 @@ class composite_reader : public index_reader {
   uint64_t docs_max_;
 };  // composite_reader
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

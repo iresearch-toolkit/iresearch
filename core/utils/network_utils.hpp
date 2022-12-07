@@ -24,9 +24,9 @@
 
 #include <cstddef>
 
-namespace iresearch {
+namespace irs {
 
 int get_host_name(char* name, size_t size);
 bool is_same_hostname(const char* rhs, size_t size);
 
-}  // namespace iresearch
+}  // namespace irs

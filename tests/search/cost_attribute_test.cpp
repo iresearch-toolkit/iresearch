@@ -28,7 +28,7 @@
 #include "tests_shared.hpp"
 
 TEST(cost_attribute_test, consts) {
-  static_assert("iresearch::cost" == irs::type<irs::cost>::name());
+  static_assert("irs::cost" == irs::type<irs::cost>::name());
   static_assert((std::numeric_limits<irs::cost::cost_t>::max)() ==
                 irs::cost::kMax);
 }

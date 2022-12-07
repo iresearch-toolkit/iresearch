@@ -48,16 +48,16 @@
     }                                                                      \
   }
 
-namespace iresearch {
+namespace irs {
 namespace io_utils {
 
 MAKE_DELETER(close);
 MAKE_DELETER(unlock);
 
 }  // namespace io_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #define DECLARE_IO_PTR(class_name, method) \
-  typedef ::iresearch::io_utils::auto_##method<class_name>::ptr ptr
+  typedef ::irs::io_utils::auto_##method<class_name>::ptr ptr
 
 #endif

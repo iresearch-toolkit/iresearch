@@ -32,7 +32,7 @@
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Represents token offset in a stream
 struct offset final : attribute {
@@ -98,7 +98,7 @@ struct frequency final : attribute {
 struct granularity_prefix final {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::granularity_prefix";
+    return "irs::granularity_prefix";
   }
 };
 
@@ -167,13 +167,13 @@ class attribute_provider_change final : public attribute {
 struct score_threshold final : public attribute {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::score_threshold";
+    return "irs::score_threshold";
   }
 
   score_t value;
   std::span<const score_t> skip_scores;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

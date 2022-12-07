@@ -60,7 +60,7 @@ irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
     return irs::doc_iterator::empty();
   }
 
-  std::vector<iresearch::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
+  std::vector<irs::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
   itrs.reserve(size);
 
   for (; begin != end; ++begin) {
@@ -127,7 +127,7 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 // Base class for boolean queries
 class BooleanQuery : public filter::prepared {
@@ -637,4 +637,4 @@ bool Not::equals(const irs::filter& rhs) const noexcept {
           (empty() && typed_rhs.empty()));
 }
 
-}  // namespace iresearch
+}  // namespace irs

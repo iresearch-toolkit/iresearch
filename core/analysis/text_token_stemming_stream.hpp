@@ -31,7 +31,7 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/snowball_stemmer.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +71,6 @@ class stemming_token_stream final : public analyzer, private util::noncopyable {
 };
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

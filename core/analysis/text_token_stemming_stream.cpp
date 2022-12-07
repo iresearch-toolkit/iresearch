@@ -221,7 +221,7 @@ REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 stemming_token_stream::stemming_token_stream(const options_t& options)
@@ -294,4 +294,4 @@ bool stemming_token_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

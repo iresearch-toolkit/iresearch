@@ -27,7 +27,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           postings implementation
@@ -105,4 +105,4 @@ std::pair<posting*, bool> postings::emplace(bytes_view term) {
   return {&postings_[it->second], is_new};
 }
 
-}  // namespace iresearch
+}  // namespace irs

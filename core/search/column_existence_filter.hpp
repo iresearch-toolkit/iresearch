@@ -26,7 +26,7 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_column_existence;
 
@@ -57,6 +57,6 @@ class by_column_existence final
                                 const attribute_provider* ctx) const override;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_COLUMN_EXISTENCE_FILTER_H

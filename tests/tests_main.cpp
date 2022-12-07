@@ -218,7 +218,7 @@ void test_env::make_directories() {
   {
     std::tm tinfo;
 
-    if (iresearch::localtime(tinfo, std::time(nullptr))) {
+    if (irs::localtime(tinfo, std::time(nullptr))) {
       char buf[21]{};
 
       strftime(buf, sizeof buf, "_%Y_%m_%d_%H_%M_%S", &tinfo);
@@ -303,8 +303,8 @@ void stack_trace_handler(int sig) {
   // reset to default handler
   signal(sig, SIG_DFL);
   // print stack trace
-  iresearch::logger::stack_trace(
-    iresearch::logger::IRL_FATAL);  // IRL_FATAL is logged to stderr above
+  irs::logger::stack_trace(
+    irs::logger::IRL_FATAL);  // IRL_FATAL is logged to stderr above
   // re-signal to default handler (so we still get core dump if needed...)
   raise(sig);
 }

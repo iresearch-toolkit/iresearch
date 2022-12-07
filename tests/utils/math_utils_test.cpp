@@ -25,10 +25,10 @@
 
 #include "tests_shared.hpp"
 
-namespace math = iresearch::math;
+namespace math = irs::math;
 
 TEST(math_utils_test, is_power2) {
-  using namespace iresearch::math;
+  using namespace irs::math;
 
   // static_assert(!is_power2(0), "Invalid answer"); // 0 gives false negative
   static_assert(is_power2(1), "Invalid answer");

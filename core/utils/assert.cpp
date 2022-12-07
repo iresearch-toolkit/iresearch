@@ -25,7 +25,7 @@
 #include <cstddef>
 #include <utility>
 
-namespace iresearch {
+namespace irs {
 namespace detail {
 
 LogCallback kAssertCallback = nullptr;
@@ -44,4 +44,4 @@ LogCallback SetAssertCallback(LogCallback callback) noexcept {
   return std::exchange(detail::kAssertCallback, callback);
 }
 
-}  // namespace iresearch
+}  // namespace irs

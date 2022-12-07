@@ -24,7 +24,7 @@
 
 #include "types.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct term_reader;
 
@@ -58,4 +58,4 @@ struct PreparedStateVisitor {
                      score_t boost) = 0;
 };
 
-}  // namespace iresearch
+}  // namespace irs

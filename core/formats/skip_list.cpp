@@ -40,7 +40,7 @@ constexpr size_t max_levels(size_t skip_0, size_t skip_n,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 void SkipWriter::Prepare(
   size_t max_levels, size_t count,
@@ -150,4 +150,4 @@ void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

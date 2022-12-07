@@ -29,7 +29,7 @@
 #include "token_attributes.hpp"
 #include "utils/attribute_helper.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,6 +79,6 @@ class collation_token_stream final : public analyzer,
 };  // collation_token_stream
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_COLLATION_TOKEN_STREAM_H

@@ -28,7 +28,7 @@
 #include "index/column_info.hpp"
 #include "store/store_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 using doc_map = std::vector<doc_id_t>;
 
@@ -133,4 +133,4 @@ class sorted_column final : public column_output, private util::noncopyable {
   column_info info_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

@@ -26,7 +26,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class type_info
@@ -85,13 +85,13 @@ class type_info {
   std::string_view name_;
 };  // type_info
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<::iresearch::type_info> {
-  size_t operator()(const ::iresearch::type_info& key) const {
+struct hash<::irs::type_info> {
+  size_t operator()(const ::irs::type_info& key) const {
     return std::hash<decltype(key.id())>()(key.id());
   }
 };

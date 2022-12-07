@@ -28,7 +28,7 @@
 #include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct NormReaderContext {
   bool Reset(const sub_reader& segment, field_id column, const document& doc);
@@ -50,7 +50,7 @@ class Norm : public attribute {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept { return "norm"; }
 
-  FORCE_INLINE static constexpr float_t DEFAULT() noexcept { return 1.f; }
+  IRS_FORCE_INLINE static constexpr float_t DEFAULT() noexcept { return 1.f; }
 
   static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
 
@@ -201,7 +201,7 @@ class Norm2 : public attribute {
 
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::norm2";
+    return "irs::norm2";
   }
 
   static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
@@ -253,6 +253,6 @@ class Norm2 : public attribute {
 static_assert(std::is_nothrow_move_constructible_v<Norm2>);
 static_assert(std::is_nothrow_move_assignable_v<Norm2>);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_NORM_H

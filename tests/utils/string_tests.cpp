@@ -31,7 +31,7 @@ void expect_sign_eq(long double lhs, long double rhs) {
 }
 
 TEST(string_tests, common_prefix) {
-  using namespace iresearch;
+  using namespace irs;
 
   {
     const std::string_view lhs = "20-MAR-2012 19:56:11.00";

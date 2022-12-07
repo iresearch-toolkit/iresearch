@@ -83,12 +83,13 @@ endif ()
 option(USE_PVS_STUDIO "Generate target for PVS-Studio check" OFF)
 option(USE_CLANG_TIDY "Include clang-tidy checks" OFF)
 option(USE_IWYU "Include IWYU checks" OFF)
+option(USE_UTILS "Build utils" ON)
 option(USE_TESTS "Build tests" OFF)
+option(USE_MICROBENCH "Build micro-benchmark project" OFF)
 option(USE_PYRESEARCH "Build iresearch python bridge" OFF)
 option(USE_VALGRIND "Use workarounds to avoid false positives in valgrind" OFF)
 option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
-option(USE_MICROBENCH "Build micro-benchmark project" OFF)
 option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
 option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
@@ -314,7 +315,10 @@ endforeach ()
 
 add_subdirectory(external)
 add_subdirectory(core)
-add_subdirectory(utils)
+
+if (USE_UTILS)
+  add_subdirectory(utils)
+endif ()
 
 if (USE_PYRESEARCH)
   add_subdirectory(python)
@@ -464,4 +468,4 @@ if (USE_TESTS)
     DEPENDS iresearch-tests-static
     )
 
-endif () # USE_TESTS
+endif ()

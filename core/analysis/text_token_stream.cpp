@@ -74,7 +74,7 @@
 #pragma warning(default : 4229)
 #endif
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 // -----------------------------------------------------------------------------
@@ -132,7 +132,7 @@ struct text_token_stream::state_t : icu_objects {
 };
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
@@ -988,7 +988,7 @@ REGISTER_ANALYZER_TEXT(analysis::text_token_stream, make_text,
                        normalize_text_config);
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 void text_token_stream::state_deleter_t::operator()(state_t* p) const noexcept {
@@ -1204,4 +1204,4 @@ bool text_token_stream::next_ngram() {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

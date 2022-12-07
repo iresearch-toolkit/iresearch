@@ -192,7 +192,7 @@ class same_position_query final : public filter::prepared {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 filter::prepared::ptr by_same_position::prepare(
   const index_reader& index, const Order& ord, score_t boost,
@@ -289,4 +289,4 @@ filter::prepared::ptr by_same_position::prepare(
     std::move(query_states), std::move(stats), this->boost() * boost);
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -136,7 +136,7 @@ struct prepare : util::noncopyable {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 // Filter visitor for phrase queries
 template<typename PhraseStates>
@@ -198,9 +198,9 @@ class phrase_term_visitor final : public filter_visitor,
   bool volatile_boost_ = false;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
-namespace iresearch {
+namespace irs {
 
 filter::prepared::ptr by_phrase::prepare(
   const index_reader& index, const Order& ord, score_t boost,
@@ -435,4 +435,4 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     this->boost() * boost);
 }
 
-}  // namespace iresearch
+}  // namespace irs
