@@ -864,7 +864,7 @@ class field_writer final : public irs::field_writer {
                uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
                uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
 
-  virtual ~field_writer();
+  ~field_writer() override;
 
   void prepare(const irs::flush_state& state) override;
 
@@ -1378,21 +1378,18 @@ void field_writer::end() {
   index_out_.reset();  // ensure stream is closed
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class term_reader
-///////////////////////////////////////////////////////////////////////////////
 class term_reader_base : public irs::term_reader, private util::noncopyable {
  public:
   term_reader_base() = default;
   term_reader_base(term_reader_base&& rhs) = default;
   term_reader_base& operator=(term_reader_base&&) = delete;
 
-  const field_meta& meta() const noexcept override { return field_; }
-  size_t size() const noexcept override { return terms_count_; }
-  uint64_t docs_count() const noexcept override { return doc_count_; }
-  bytes_view min() const noexcept override { return min_term_ref_; }
-  bytes_view max() const noexcept override { return max_term_ref_; }
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override;
+  const field_meta& meta() const noexcept final { return field_; }
+  size_t size() const noexcept final { return terms_count_; }
+  uint64_t docs_count() const noexcept final { return doc_count_; }
+  bytes_view min() const noexcept final { return min_term_; }
+  bytes_view max() const noexcept final { return max_term_; }
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final;
 
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
@@ -1400,15 +1397,13 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
  private:
   bstring min_term_;
   bstring max_term_;
-  bytes_view min_term_ref_;
-  bytes_view max_term_ref_;
   uint64_t terms_count_;
   uint64_t doc_count_;
   uint64_t doc_freq_;
   frequency freq_;  // total term freq
   frequency* pfreq_{};
   field_meta field_;
-};  // term_reader_base
+};
 
 void term_reader_base::prepare(burst_trie::Version version, index_input& in,
                                const feature_map_t& feature_map) {
@@ -1425,9 +1420,7 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
   doc_count_ = in.read_vlong();
   doc_freq_ = in.read_vlong();
   min_term_ = read_string<bstring>(in);
-  min_term_ref_ = min_term_;
   max_term_ = read_string<bstring>(in);
-  max_term_ref_ = max_term_;
 
   if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ)) {
     freq_.value = in.read_vlong();
@@ -2558,6 +2551,8 @@ class single_term_iterator final : public seek_term_iterator {
     return postings_->iterator(field_->index_features, features, meta_);
   }
 
+  const version10::term_meta& meta() const noexcept { return meta_; }
+
  private:
   friend class block_iterator;
 
@@ -3109,6 +3104,54 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_);
     }
 
+    term_meta term(bytes_view term) const override {
+      single_term_iterator it{meta(), *owner_->pr_, owner_->terms_in_->reopen(),
+                              owner_->terms_in_cipher_.get(), *fst_};
+
+      it.seek(term);
+      return it.meta();
+    }
+
+    size_t read_documents(bytes_view term,
+                          std::span<doc_id_t> docs) const override {
+      if (IRS_UNLIKELY(docs.empty())) {
+        return 0;
+      }
+
+      single_term_iterator it{meta(), *owner_->pr_, owner_->terms_in_->reopen(),
+                              owner_->terms_in_cipher_.get(), *fst_};
+      if (!it.seek(term)) {
+        return 0;
+      }
+
+      if (const auto& meta = it.meta(); meta.docs_count == 1) {
+        docs.front() = doc_limits::min() + meta.e_single_doc;
+        return 1;
+      }
+
+      auto docs_it = it.postings(IndexFeatures::NONE);
+
+      if (IRS_UNLIKELY(!docs_it)) {
+        assert(false);
+        return 0;
+      }
+
+      const auto* doc = irs::get<document>(*docs_it);
+
+      if (IRS_UNLIKELY(!doc)) {
+        assert(false);
+        return 0;
+      }
+
+      auto begin = docs.begin();
+
+      for (auto end = docs.end(); begin != end && docs_it->next(); ++begin) {
+        *begin = doc->value;
+      }
+
+      return std::distance(docs.begin(), begin);
+    }
+
     size_t bit_union(const cookie_provider& provider,
                      size_t* set) const override {
       auto term_provider = [&provider]() mutable -> const term_meta* {
@@ -3170,7 +3213,7 @@ class field_reader final : public irs::field_reader {
    private:
     field_reader* owner_;
     std::unique_ptr<FST> fst_;
-  };  // term_reader
+  };
 
   using vector_fst_reader = term_reader<vector_byte_fst>;
   using immutable_fst_reader = term_reader<immutable_byte_fst>;
@@ -3183,7 +3226,7 @@ class field_reader final : public irs::field_reader {
   irs::postings_reader::ptr pr_;
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;
-};  // field_reader
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        term_reader implementation
@@ -3282,8 +3325,8 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
             "invalid field order in segment '%s'", meta.name.c_str()));
         }
 
-        const auto res = name_to_field_.emplace(
-          make_hashed_ref(std::string_view(name)), &field);
+        const auto res =
+          name_to_field_.emplace(hashed_string_view{name}, &field);
 
         if (!res.second) {
           throw irs::index_error(string_utils::to_string(
@@ -3331,7 +3374,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
 }
 
 const irs::term_reader* field_reader::field(std::string_view field) const {
-  auto it = name_to_field_.find(make_hashed_ref(field));
+  auto it = name_to_field_.find(hashed_string_view{field});
   return it == name_to_field_.end() ? nullptr : it->second;
 }
 

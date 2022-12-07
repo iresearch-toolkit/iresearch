@@ -522,7 +522,7 @@ TEST_F(segment_writer_tests, index_field) {
   }
 }
 
-struct string_comparer final : irs::comparer {
+struct StringComparer final : irs::comparer {
   bool less(irs::bytes_view lhs, irs::bytes_view rhs) const final {
     if (lhs.empty() && rhs.empty()) {
       return true;
@@ -584,7 +584,7 @@ TEST_F(segment_writer_tests, reorder) {
 
     auto column_info = default_column_info();
     auto feature_info = default_feature_info();
-    string_comparer less;
+    StringComparer less;
 
     irs::memory_directory dir;
     auto writer =

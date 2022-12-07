@@ -1941,7 +1941,7 @@ class sparse_column final : public column {
     } else {
       begin->key = doc_limits::eof();
     }
-    begin->offset = type_limits<type_t::address_t>::invalid();
+    begin->offset = address_limits::invalid();
 
     refs_ = std::move(refs);
   }

@@ -273,8 +273,8 @@ class segment_writer : util::noncopyable {
   bool store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto field_name =
-      make_hashed_ref(static_cast<std::string_view>(field.name()));
+    const hashed_string_view field_name{
+      static_cast<std::string_view>(field.name())};
 
     // user should check return of begin() != eof()
     IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
@@ -300,8 +300,8 @@ class segment_writer : util::noncopyable {
   bool index(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto field_name =
-      make_hashed_ref(static_cast<std::string_view>(field.name()));
+    const hashed_string_view field_name{
+      static_cast<std::string_view>(field.name())};
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());
@@ -319,8 +319,8 @@ class segment_writer : util::noncopyable {
   bool index_and_store(Field&& field) {
     REGISTER_TIMER_DETAILED();
 
-    const auto field_name =
-      make_hashed_ref(static_cast<std::string_view>(field.name()));
+    const hashed_string_view field_name{
+      static_cast<std::string_view>(field.name())};
 
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const features_t&>(field.features());

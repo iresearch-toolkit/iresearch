@@ -1159,7 +1159,7 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
     ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
 
-    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 
@@ -1188,7 +1188,7 @@ TEST_P(tfidf_test_case, test_query) {
     ASSERT_TRUE(bool(score));
     ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
 
-    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
 

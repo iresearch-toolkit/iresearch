@@ -41,11 +41,11 @@ using namespace irs;
 class all_iterator final : public doc_iterator {
  public:
   explicit all_iterator(doc_id_t docs_count) noexcept
-    : max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {}
+    : max_doc_{doc_limits::min() + docs_count - 1} {}
 
   bool next() noexcept override {
     if (doc_.value < max_doc_) {
-      doc_.value++;
+      ++doc_.value;
       return true;
     } else {
       doc_.value = doc_limits::eof();
@@ -68,13 +68,12 @@ class all_iterator final : public doc_iterator {
  private:
   document doc_;
   doc_id_t max_doc_;  // largest valid doc_id
-};                    // all_iterator
+};
 
 class mask_doc_iterator final : public doc_iterator {
  public:
-  explicit mask_doc_iterator(doc_iterator::ptr&& it,
-                             const document_mask& mask) noexcept
-    : mask_(mask), it_(std::move(it)) {}
+  mask_doc_iterator(doc_iterator::ptr&& it, const document_mask& mask) noexcept
+    : mask_{mask}, it_{std::move(it)} {}
 
   bool next() override {
     while (it_->next()) {
@@ -107,13 +106,14 @@ class mask_doc_iterator final : public doc_iterator {
  private:
   const document_mask& mask_;  // excluded document ids
   doc_iterator::ptr it_;
-};  // mask_doc_iterator
+};
 
-class masked_docs_iterator : public doc_iterator, private util::noncopyable {
+class masked_docs_iterator final : public doc_iterator,
+                                   private util::noncopyable {
  public:
   masked_docs_iterator(doc_id_t begin, doc_id_t end,
-                       const document_mask& docs_mask)
-    : docs_mask_(docs_mask), end_(end), next_(begin) {}
+                       const document_mask& docs_mask) noexcept
+    : docs_mask_{docs_mask}, end_{end}, next_{begin} {}
 
   bool next() override {
     while (next_ < end_) {
@@ -143,8 +143,8 @@ class masked_docs_iterator : public doc_iterator, private util::noncopyable {
   doc_id_t value() const override { return current_.value; }
 
  private:
-  document current_;
   const document_mask& docs_mask_;
+  document current_;
   const doc_id_t end_;  // past last valid doc_id
   doc_id_t next_;
 };
@@ -281,7 +281,7 @@ segment_reader_impl::segment_reader_impl(const directory& dir,
 
 const irs::column_reader* segment_reader_impl::column(
   std::string_view name) const {
-  auto it = named_columns_.find(make_hashed_ref(name));
+  auto it = named_columns_.find(hashed_string_view{name});
   return it == named_columns_.end() ? nullptr : it->second;
 }
 
@@ -309,7 +309,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
 
   // the implementation generates doc_ids sequentially
   return memory::make_managed<masked_docs_iterator>(
-    doc_limits::min(), doc_id_t(doc_limits::min() + docs_count_), docs_mask_);
+    doc_limits::min(), doc_limits::min() + docs_count_, docs_mask_);
 }
 
 /*static*/ sub_reader::ptr segment_reader_impl::open(
@@ -374,7 +374,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
 
       if (!IsNull(name)) {
         const auto [it, is_new] =
-          named_columns.emplace(make_hashed_ref(name), &column);
+          named_columns.emplace(hashed_string_view{name}, &column);
         UNUSED(it);
 
         if (IRS_UNLIKELY(!is_new)) {

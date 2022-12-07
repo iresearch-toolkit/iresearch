@@ -63,7 +63,7 @@ class format_test_case : public index_test_base {
 
     bool next() override {
       if (value_ == end_) {
-        value_ = irs::type_limits<irs::type_t::pos_t>::eof();
+        value_ = irs::pos_limits::eof();
 
         return false;
       }
@@ -193,7 +193,7 @@ class format_test_case : public index_test_base {
 
     terms(const Iterator& begin, const Iterator& end)
       : next_(begin), end_(end) {
-      docs_.emplace_back((irs::type_limits<irs::type_t::doc_id_t>::min)(), 0);
+      docs_.emplace_back((irs::doc_limits::min)(), 0);
     }
 
     terms(const Iterator& begin, const Iterator& end,

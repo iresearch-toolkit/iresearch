@@ -80,7 +80,6 @@ source_group("utils" ./utils/*)
 
 set(IResearch_core_sources
   ./utils/assert.cpp
-  ./utils/string.cpp
   ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
   ./analysis/token_attributes.cpp

@@ -166,7 +166,7 @@ class top_terms_collector : private util::noncopyable {
     const auto term = *state_.term;
 
     if (left_) {
-      const auto res = emplace(make_hashed_ref(term), key);
+      const auto res = emplace(hashed_bytes_view{term}, key);
 
       if (res.second) {
         heap_.emplace_back(res.first);
@@ -189,7 +189,7 @@ class top_terms_collector : private util::noncopyable {
       return;
     }
 
-    const auto hashed_term = make_hashed_ref(term);
+    const auto hashed_term = hashed_bytes_view{term};
     const auto it = terms_.find(hashed_term);
 
     if (it == terms_.end()) {
@@ -261,7 +261,7 @@ class top_terms_collector : private util::noncopyable {
       terms_,
       [](const hashed_bytes_view& key, const state_type& value) noexcept {
         // reuse hash but point ref at value
-        return hashed_bytes_view(key.hash(), value.term);
+        return hashed_bytes_view{value.term, key.hash()};
       },
       term, term, key);
   }

@@ -1128,7 +1128,7 @@ TEST_P(bm25_test_case, test_query) {
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
-    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
       ASSERT_EQ(doc, docs->value());
       irs::score_t score_value;

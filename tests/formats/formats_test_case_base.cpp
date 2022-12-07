@@ -2605,8 +2605,7 @@ TEST_P(format_test_case, columns_rw) {
     ASSERT_FALSE(reader->prepare(dir(), meta1));  // no attributes found
 
     // try to get invalild column
-    ASSERT_EQ(nullptr, reader->column(
-                         irs::type_limits<irs::type_t::field_id_t>::invalid()));
+    ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid()));
   }
 
   // write columns values
@@ -2785,8 +2784,7 @@ ASSERT_TRUE(writer->commit(state));
   ASSERT_TRUE(reader->prepare(dir(), meta0));
 
   // try to get invalild column
-  ASSERT_EQ(nullptr, reader->column(
-                       irs::type_limits<irs::type_t::field_id_t>::invalid()));
+  ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid()));
 
   // check field4
   {
@@ -3241,10 +3239,7 @@ ASSERT_TRUE(writer->commit(state));
   ASSERT_TRUE(reader->prepare(dir(), meta1));
 
   // try to read invalild column
-  {
-    ASSERT_EQ(nullptr, reader->column(
-                         irs::type_limits<irs::type_t::field_id_t>::invalid()));
-  }
+  { ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid())); }
 
   // iterate over field0 values (not cached)
   {

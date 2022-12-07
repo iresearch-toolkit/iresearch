@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <absl/hash/hash.h>
+
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -183,22 +185,18 @@ constexpr inline std::basic_string_view<ElemDst> ViewCast(
 
 namespace hash_utils {
 
-size_t Hash(const char* value, size_t size) noexcept;
-size_t Hash(const byte_type* value, size_t size) noexcept;
-
-inline size_t Hash(bytes_view value) noexcept {
-  return Hash(value.data(), value.size());
-}
 inline size_t Hash(std::string_view value) noexcept {
-  return Hash(value.data(), value.size());
+  return absl::Hash<std::string_view>{}(value);
 }
-inline size_t Hash(const char* value) noexcept {
-  return Hash(value, std::char_traits<char>::length(value));
+inline size_t Hash(bytes_view value) noexcept {
+  static_assert(sizeof(byte_type) == sizeof(char));
+  return Hash(ViewCast<char>(value));
 }
-inline size_t Hash(const wchar_t* value) noexcept {
-  return Hash(reinterpret_cast<const char*>(value),
-              std::char_traits<wchar_t>::length(value) * sizeof(wchar_t));
-}
+
+template<typename T>
+struct Hasher {
+  size_t operator()(const T& value) const { return Hash(value); }
+};
 
 }  // namespace hash_utils
 }  // namespace iresearch

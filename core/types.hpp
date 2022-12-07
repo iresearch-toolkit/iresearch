@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TYPES_H
-#define IRESEARCH_TYPES_H
+#pragma once
 
 #include <cmath>
 #include <cstdint>
@@ -35,5 +34,3 @@ using doc_id_t = uint32_t;
 using score_t = float_t;
 
 }  // namespace iresearch
-
-#endif

@@ -38,7 +38,10 @@
 #include "utils/lz4compression.hpp"
 #include "utils/wildcard_utils.hpp"
 
+using namespace std::literals;
+
 namespace {
+
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
@@ -987,7 +990,7 @@ class index_test_case : public tests::index_test_base {
           auto* actual_value = irs::get<irs::payload>(*values);
           EXPECT_NE(nullptr, actual_value);
           for (irs::doc_id_t
-                 doc = (irs::type_limits<irs::type_t::doc_id_t>::min)(),
+                 doc = (irs::doc_limits::min)(),
                  max = segment.docs_count();
                doc <= max; ++doc) {
             if (doc != values->seek(doc)) {
@@ -4137,6 +4140,147 @@ TEST_P(index_test_case, document_context) {
         }));
       ASSERT_TRUE(expected.empty());
     }
+  }
+}
+
+TEST_P(index_test_case, get_term) {
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
+
+    add_segment(gen);
+  }
+
+  auto reader = open_reader();
+  ASSERT_EQ(1, reader.size());
+  auto& segment = (*reader)[0];
+  auto* field = segment.field("name");
+  ASSERT_NE(nullptr, field);
+
+  {
+    const auto meta = field->term(irs::ViewCast<irs::byte_type>("invalid"sv));
+    ASSERT_EQ(0, meta.docs_count);
+    ASSERT_EQ(0, meta.freq);
+  }
+
+  {
+    const auto meta = field->term(irs::ViewCast<irs::byte_type>("A"sv));
+    ASSERT_EQ(1, meta.docs_count);
+    ASSERT_EQ(1, meta.freq);
+  }
+}
+
+TEST_P(index_test_case, read_documents) {
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      [](tests::document& doc, const std::string& name,
+         const tests::json_doc_generator::json_value& data) {
+        if (data.is_string()) {
+          doc.insert(std::make_shared<tests::string_field>(name, data.str));
+        }
+      });
+
+    add_segment(gen);
+  }
+
+  auto reader = open_reader();
+  ASSERT_EQ(1, reader.size());
+  auto& segment = (*reader)[0];
+
+  // no term
+  {
+    std::array<irs::doc_id_t, 10> docs{};
+    auto* field = segment.field("name");
+    ASSERT_NE(nullptr, field);
+    const auto term = irs::ViewCast<irs::byte_type>("invalid"sv);
+    const auto size = field->read_documents(term, docs);
+    ASSERT_EQ(0, size);
+    ASSERT_TRUE(
+      std::all_of(docs.begin(), docs.end(), [](auto v) { return v == 0; }));
+  }
+
+  // singleton term
+  {
+    std::array<irs::doc_id_t, 10> docs{};
+    auto* field = segment.field("name");
+    ASSERT_NE(nullptr, field);
+    const auto term = irs::ViewCast<irs::byte_type>("A"sv);
+    const auto size = field->read_documents(term, docs);
+    ASSERT_EQ(1, size);
+    ASSERT_EQ(1, docs.front());
+    ASSERT_TRUE(std::all_of(std::next(docs.begin(), size), docs.end(),
+                            [](auto v) { return v == 0; }));
+  }
+
+  // singleton term
+  {
+    std::array<irs::doc_id_t, 10> docs{};
+    auto* field = segment.field("name");
+    ASSERT_NE(nullptr, field);
+    const auto term = irs::ViewCast<irs::byte_type>("C"sv);
+    const auto size = field->read_documents(term, docs);
+    ASSERT_EQ(1, size);
+    ASSERT_EQ(3, docs.front());
+    ASSERT_TRUE(std::all_of(std::next(docs.begin(), size), docs.end(),
+                            [](auto v) { return v == 0; }));
+  }
+
+  // regular term
+  {
+    std::array<irs::doc_id_t, 10> docs{};
+    auto* field = segment.field("duplicated");
+    ASSERT_NE(nullptr, field);
+    const auto term = irs::ViewCast<irs::byte_type>("abcd"sv);
+    const auto size = field->read_documents(term, docs);
+    ASSERT_EQ(6, size);
+    ASSERT_EQ(1, docs[0]);
+    ASSERT_EQ(5, docs[1]);
+    ASSERT_EQ(11, docs[2]);
+    ASSERT_EQ(21, docs[3]);
+    ASSERT_EQ(27, docs[4]);
+    ASSERT_EQ(31, docs[5]);
+    ASSERT_TRUE(std::all_of(std::next(docs.begin(), size), docs.end(),
+                            [](auto v) { return v == 0; }));
+  }
+
+  // regular term, less requested
+  {
+    std::array<irs::doc_id_t, 3> docs{};
+    auto* field = segment.field("duplicated");
+    ASSERT_NE(nullptr, field);
+    const auto term = irs::ViewCast<irs::byte_type>("abcd"sv);
+    const auto size = field->read_documents(term, docs);
+    ASSERT_EQ(3, size);
+    ASSERT_EQ(1, docs[0]);
+    ASSERT_EQ(5, docs[1]);
+    ASSERT_EQ(11, docs[2]);
+  }
+
+  // regular term, nothing requested
+  {
+    std::array<irs::doc_id_t, 10> docs{};
+    auto* field = segment.field("duplicated");
+    ASSERT_NE(nullptr, field);
+    const auto term = irs::ViewCast<irs::byte_type>("abcd"sv);
+    const auto size = field->read_documents(term, std::span{docs.data(), 0});
+    ASSERT_EQ(0, size);
+    ASSERT_TRUE(
+      std::all_of(docs.begin(), docs.end(), [](auto v) { return v == 0; }));
+  }
+
+  {
+    auto* field = segment.field("duplicated");
+    ASSERT_NE(nullptr, field);
+    const auto term = irs::ViewCast<irs::byte_type>("abcd"sv);
+    const auto size = field->read_documents(term, {});
+    ASSERT_EQ(0, size);
   }
 }
 

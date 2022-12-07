@@ -147,7 +147,7 @@ class NGramPosition : public position {
     return {{}, cur->offs, state.offs};
   }
 
-  using Offsets = boost::container::small_vector<offset, 16>;
+  using Offsets = SmallVector<offset, 16>;
 
   offset offset_;
   Offsets offsets_;

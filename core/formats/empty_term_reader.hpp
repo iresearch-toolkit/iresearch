@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_EMPTY_TERM_READER_H
-#define IRESEARCH_EMPTY_TERM_READER_H
+#pragma once
 
 #include "formats.hpp"
 #include "index/field_meta.hpp"
@@ -48,6 +47,13 @@ class empty_term_reader final : public irs::term_reader {
   size_t bit_union(const cookie_provider&, size_t*) const noexcept override {
     return 0;
   }
+
+  size_t read_documents(bytes_view,
+                        std::span<doc_id_t>) const noexcept override {
+    return 0;
+  }
+
+  term_meta term(bytes_view) const noexcept override { return {}; }
 
   doc_iterator::ptr postings(const seek_cookie&,
                              IndexFeatures) const noexcept override {
@@ -86,5 +92,3 @@ class empty_term_reader final : public irs::term_reader {
 };
 
 }  // namespace iresearch
-
-#endif

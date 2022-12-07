@@ -681,6 +681,19 @@ bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
          doc.insert<irs::Action::STORE>(sbegin, send);
 }
 
+template<typename Doc>
+bool insert(irs::index_writer& writer, const Doc& doc, size_t count = 1,
+            bool has_sort = false) {
+  for (; count; --count) {
+    if (!insert(writer, std::begin(doc.indexed), std::end(doc.indexed),
+                std::begin(doc.stored), std::end(doc.stored),
+                has_sort ? doc.sorted.get() : nullptr)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 template<typename Indexed>
 bool update(irs::index_writer& writer, const irs::filter& filter,
             Indexed ibegin, Indexed iend) {
