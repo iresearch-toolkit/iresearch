@@ -47,6 +47,7 @@
 #include <absl/container/flat_hash_map.h>
 
 #include <functional>
+#include <iostream>
 
 #include "index-put.hpp"
 #include "index-search.hpp"
@@ -60,6 +61,14 @@ using handlers_t =
 bool init_handlers(handlers_t&);
 
 namespace {
+
+void AssertCallback(std::string_view file, std::size_t line,
+                    std::string_view function,
+                    std::string_view condition) noexcept {
+  std::cerr << file << ":" << line << ": " << function << ": Condition '"
+            << condition << "' is true.\n";
+  assert(false);
+}
 
 const std::string HELP = "help";
 const std::string MODE = "mode";
@@ -76,6 +85,7 @@ std::string get_modes_description(const handlers_t& handlers) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
+  irs::SetCallback(irs::LogLevel::Assert, AssertCallback);
   handlers_t handlers;
 
   // initialize supported modes

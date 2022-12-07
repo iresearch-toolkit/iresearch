@@ -74,6 +74,14 @@
 #endif
 
 namespace {
+
+void AssertCallback(std::string_view file, std::size_t line,
+                    std::string_view function,
+                    std::string_view condition) noexcept {
+  FAIL() << file << ":" << line << ": " << function << ": Condition '"
+         << condition << "' is true.\n";
+}
+
 /// @brief custom ICU data
 irs::mmap_utils::mmap_handle icu_data;
 }  // namespace
@@ -360,13 +368,6 @@ void test_base::SetUp() {
   test_case_dir_ /= ti->test_case_name();
   (test_dir_ = test_case_dir_) /= ti->name();
   irs::file_utils::mkdir(test_dir_.c_str(), false);
-}
-
-static void AssertCallback(std::string_view file, std::size_t line,
-                           std::string_view function,
-                           std::string_view condition) noexcept {
-  FAIL() << file << ":" << line << ": " << function << ": Condition '"
-         << condition << "' is true.";
 }
 
 int main(int argc, char* argv[]) {
