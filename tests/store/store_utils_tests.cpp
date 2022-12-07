@@ -402,8 +402,8 @@ void read_write_block_optimized(const std::array<uint32_t, N>& source) {
   std::array<uint32_t, N> enc_dec_buf;
   std::fill_n(enc_dec_buf.data(), N, std::numeric_limits<uint32_t>::max());
 
-  auto pack_block = [](const uint32_t* RESTRICT decoded,
-                       uint32_t* RESTRICT encoded,
+  auto pack_block = [](const uint32_t* IRS_RESTRICT decoded,
+                       uint32_t* IRS_RESTRICT encoded,
                        const uint32_t bits) noexcept {
     ::simdpackwithoutmask(decoded, reinterpret_cast<__m128i*>(encoded), bits);
     return bits;
