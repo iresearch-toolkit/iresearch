@@ -260,8 +260,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(docs->value(), doc->value);
       auto expected_docs = prepared->execute(segment);
 
-      ASSERT_EQ(irs::doc_limits::invalid(),
-                docs->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
       while (expected_docs->next()) {
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(expected_docs->value(), docs->value());
@@ -285,8 +284,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       auto docs = prepared->execute(segment);
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_EQ(docs->value(), doc->value);
-      ASSERT_EQ(irs::doc_limits::invalid(),
-                docs->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
       ASSERT_TRUE(docs->next());
       ASSERT_EQ(1, docs->value());
     }
@@ -314,8 +312,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::doc_limits::invalid(),
-                  docs->value());
+        ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
@@ -339,15 +336,13 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::doc_limits::invalid(),
-                  docs->value());
+        ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
         ASSERT_EQ((irs::doc_limits::min)() + 6,
                   docs->seek((irs::doc_limits::min)()));
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
         ASSERT_EQ(6, irs::read_zvlong(in));
-        ASSERT_EQ((irs::doc_limits::min)() + 27,
-                  docs->seek(27));
+        ASSERT_EQ((irs::doc_limits::min)() + 27, docs->seek(27));
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
         ASSERT_EQ(27, irs::read_zvlong(in));
@@ -383,8 +378,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::doc_limits::invalid(),
-                  docs->value());
+        ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
@@ -408,10 +402,8 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::doc_limits::invalid(),
-                  docs->value());
-        ASSERT_EQ((irs::doc_limits::min)() + 91,
-                  docs->seek(27));
+        ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
+        ASSERT_EQ((irs::doc_limits::min)() + 91, docs->seek(27));
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
         ASSERT_EQ(91, irs::read_zvlong(in));
@@ -445,8 +437,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
-        ASSERT_EQ(irs::doc_limits::invalid(),
-                  docs->value());
+        ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(docs->value(), values->seek(docs->value()));
         in.reset(actual_value->value);
