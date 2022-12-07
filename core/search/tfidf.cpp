@@ -245,7 +245,7 @@ struct term_collector final : public irs::sort::term_collector {
   }
 };
 
-FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
+IRS_FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
   return idf * kSQRT.get<true>(freq);
 }
 
@@ -293,7 +293,7 @@ struct NormAdapter {
 
   explicit NormAdapter(Reader&& reader) : reader{std::move(reader)} {}
 
-  FORCE_INLINE float_t operator()() {
+  IRS_FORCE_INLINE float_t operator()() {
     if constexpr (kType < NormType::kNorm) {
       return kRSQRT.get<kType != NormType::kNorm2Tiny>(reader());
     } else {

@@ -102,18 +102,18 @@ static_assert(std::is_nothrow_move_constructible_v<column_meta>,
               "default move constructor expected");
 
 struct format_traits {
-  FORCE_INLINE static void pack32(const uint32_t* RESTRICT decoded,
-                                  uint32_t* RESTRICT encoded, size_t size,
-                                  const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack32(const uint32_t* RESTRICT decoded,
+                                      uint32_t* RESTRICT encoded, size_t size,
+                                      const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   }
 
-  FORCE_INLINE static void pack64(const uint64_t* RESTRICT decoded,
-                                  uint64_t* RESTRICT encoded, size_t size,
-                                  const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack64(const uint64_t* RESTRICT decoded,
+                                      uint64_t* RESTRICT encoded, size_t size,
+                                      const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);

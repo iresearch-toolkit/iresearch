@@ -467,10 +467,12 @@ class block_pool_sliced_reader_base {
     : where_(pool, offset) {}
 
  private:
-  FORCE_INLINE const reader& impl() const noexcept {
+  IRS_FORCE_INLINE const reader& impl() const noexcept {
     return static_cast<const reader&>(*this);
   }
-  FORCE_INLINE reader& impl() noexcept { return static_cast<reader&>(*this); }
+  IRS_FORCE_INLINE reader& impl() noexcept {
+    return static_cast<reader&>(*this);
+  }
 
   void next() noexcept {
     IRS_ASSERT(!impl().eof());

@@ -302,7 +302,7 @@ class async_index_output final : public index_output {
   }
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
   void reset(byte_type* buf) {
     pos_ = buf;

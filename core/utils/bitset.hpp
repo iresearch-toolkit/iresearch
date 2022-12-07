@@ -45,24 +45,24 @@ class dynamic_bitset {
     memory::allocator_array_deallocator<allocator_type>;
   using word_ptr_t = std::unique_ptr<word_t[], word_ptr_deleter_t>;
 
-  constexpr FORCE_INLINE static size_t bits_to_words(size_t bits) noexcept {
+  constexpr IRS_FORCE_INLINE static size_t bits_to_words(size_t bits) noexcept {
     return bits / bits_required<word_t>() +
            size_t(0 != (bits % bits_required<word_t>()));
   }
 
   // returns corresponding bit index within a word for the
   // specified offset in bits
-  constexpr FORCE_INLINE static size_t bit(size_t i) noexcept {
+  constexpr IRS_FORCE_INLINE static size_t bit(size_t i) noexcept {
     return i % bits_required<word_t>();
   }
 
   // returns corresponding word index specified offset in bits
-  constexpr FORCE_INLINE static size_t word(size_t i) noexcept {
+  constexpr IRS_FORCE_INLINE static size_t word(size_t i) noexcept {
     return i / bits_required<word_t>();
   }
 
   // returns corresponding offset in bits for the specified word index
-  constexpr FORCE_INLINE static size_t bit_offset(size_t i) noexcept {
+  constexpr IRS_FORCE_INLINE static size_t bit_offset(size_t i) noexcept {
     return i * bits_required<word_t>();
   }
 

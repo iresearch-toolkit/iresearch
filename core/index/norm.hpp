@@ -50,7 +50,7 @@ class Norm : public attribute {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept { return "norm"; }
 
-  FORCE_INLINE static constexpr float_t DEFAULT() noexcept { return 1.f; }
+  IRS_FORCE_INLINE static constexpr float_t DEFAULT() noexcept { return 1.f; }
 
   static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
 

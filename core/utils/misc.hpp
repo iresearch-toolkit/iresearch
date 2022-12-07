@@ -67,7 +67,7 @@ class CachedFunc {
   }
 
   template<bool Checked>
-  constexpr FORCE_INLINE output_type get(input_type value) const
+  constexpr IRS_FORCE_INLINE output_type get(input_type value) const
     noexcept(std::is_nothrow_invocable_v<Func, Input>) {
     if constexpr (Checked) {
       return value < size() ? cache_[value] : func_(value);

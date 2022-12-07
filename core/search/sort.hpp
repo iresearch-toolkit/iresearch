@@ -118,7 +118,7 @@ class ScoreFunction : util::noncopyable {
 
   bool IsNoop() const noexcept { return nullptr == ctx_ && kDefault == func_; }
 
-  FORCE_INLINE void operator()(score_t* res) const noexcept {
+  IRS_FORCE_INLINE void operator()(score_t* res) const noexcept {
     IRS_ASSERT(func_);
     return func_(ctx_.get(), res);
   }
@@ -482,12 +482,13 @@ class PreparedSortBase : public sort::prepared {
 
   using stats_t = StatsType;
 
-  FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) noexcept {
+  IRS_FORCE_INLINE static const stats_t& stats_cast(
+    const byte_type* buf) noexcept {
     IRS_ASSERT(buf);
     return *reinterpret_cast<const stats_t*>(buf);
   }
 
-  FORCE_INLINE static stats_t& stats_cast(byte_type* buf) noexcept {
+  IRS_FORCE_INLINE static stats_t& stats_cast(byte_type* buf) noexcept {
     return const_cast<stats_t&>(stats_cast(const_cast<const byte_type*>(buf)));
   }
 

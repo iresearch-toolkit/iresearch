@@ -120,7 +120,7 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
 }
 
 template<size_t Length, bool Aligned, typename T>
-FORCE_INLINE uint32_t maxbits(const T* begin) noexcept {
+IRS_FORCE_INLINE uint32_t maxbits(const T* begin) noexcept {
   return maxbits<Aligned>(begin, Length);
 }
 
@@ -155,28 +155,28 @@ bool all_equal(const T* begin, size_t size) noexcept {
   return true;
 }
 
-FORCE_INLINE Vec<HWY_FULL(uint32_t)> zig_zag_encode(
+IRS_FORCE_INLINE Vec<HWY_FULL(uint32_t)> zig_zag_encode(
   Vec<HWY_FULL(int32_t)> v) noexcept {
   constexpr HWY_FULL(uint32_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 31)) ^ (uv << Set(simd_tag, 1)));
 }
 
-FORCE_INLINE Vec<HWY_FULL(int32_t)> zig_zag_decode(
+IRS_FORCE_INLINE Vec<HWY_FULL(int32_t)> zig_zag_decode(
   Vec<HWY_FULL(uint32_t)> uv) noexcept {
   constexpr HWY_FULL(int32_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
   return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag) - (v & Set(simd_tag, 1))));
 }
 
-FORCE_INLINE Vec<HWY_FULL(uint64_t)> zig_zag_encode(
+IRS_FORCE_INLINE Vec<HWY_FULL(uint64_t)> zig_zag_encode(
   Vec<HWY_FULL(int64_t)> v) noexcept {
   constexpr HWY_FULL(uint64_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 63)) ^ (uv << Set(simd_tag, 1)));
 }
 
-FORCE_INLINE Vec<HWY_FULL(int64_t)> zig_zag_decode(
+IRS_FORCE_INLINE Vec<HWY_FULL(int64_t)> zig_zag_decode(
   Vec<HWY_FULL(uint64_t)> uv) noexcept {
   constexpr HWY_FULL(int64_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);

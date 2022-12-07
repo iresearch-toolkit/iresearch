@@ -635,8 +635,8 @@ void fastpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
 }
 
 template<>
-FORCE_INLINE void fastpack<64>(const uint64_t* RESTRICT in,
-                               uint64_t* RESTRICT out) noexcept {
+IRS_FORCE_INLINE void fastpack<64>(const uint64_t* RESTRICT in,
+                                   uint64_t* RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint64_t) * irs::packed::BLOCK_SIZE_64);
 }
 
@@ -834,8 +834,8 @@ void fastunpack(const uint32_t* RESTRICT in, uint32_t* RESTRICT out) noexcept {
 }
 
 template<>
-FORCE_INLINE void fastunpack<32>(const uint32_t* RESTRICT in,
-                                 uint32_t* RESTRICT out) noexcept {
+IRS_FORCE_INLINE void fastunpack<32>(const uint32_t* RESTRICT in,
+                                     uint32_t* RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint32_t) * irs::packed::BLOCK_SIZE_32);
 }
 
@@ -1225,8 +1225,8 @@ void fastunpack(const uint64_t* RESTRICT in, uint64_t* RESTRICT out) noexcept {
 }
 
 template<>
-FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in,
-                                 uint64_t* RESTRICT out) noexcept {
+IRS_FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in,
+                                     uint64_t* RESTRICT out) noexcept {
   std::memcpy(out, in, sizeof(uint64_t) * irs::packed::BLOCK_SIZE_64);
 }
 
@@ -1234,7 +1234,7 @@ FORCE_INLINE void fastunpack<64>(const uint64_t* RESTRICT in,
 MSVC_ONLY(__pragma(warning(disable : 4702)))  // unreachable code
 
 template<int N, int I>
-FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
+IRS_FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(N > 0 && N < 32, "N <= 0 || N > 32");
   static_assert(I >= 0 && I < 32, "I < 0 || I >= 32");
@@ -1252,7 +1252,7 @@ FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
 }
 
 template<int N, int I>
-FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
+IRS_FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
   // 64 == sizeof(uint64_t) * 8
   static_assert(N > 0 && N < 64, "N <= 0 || N > 64");
   static_assert(I >= 0 && I < 64, "I < 0 || I >= 64");

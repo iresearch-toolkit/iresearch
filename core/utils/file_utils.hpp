@@ -145,7 +145,7 @@ bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
 
 size_t fread(void* fd, void* buf, size_t size);
 size_t fwrite(void* fd, const void* buf, size_t size);
-FORCE_INLINE bool write(void* fd, const void* buf, size_t size) {
+IRS_FORCE_INLINE bool write(void* fd, const void* buf, size_t size) {
   return fwrite(fd, buf, size) == size;
 }
 int fseek(void* fd, long pos, int origin);

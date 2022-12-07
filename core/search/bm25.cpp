@@ -363,7 +363,7 @@ struct NormAdapter : Reader {
 
   explicit NormAdapter(Reader&& reader) : Reader{std::move(reader)} {}
 
-  FORCE_INLINE auto operator()() -> std::invoke_result_t<Reader> {
+  IRS_FORCE_INLINE auto operator()() -> std::invoke_result_t<Reader> {
     if constexpr (kType < NormType::kNorm) {
       // norms are stored |doc| as uint32_t
       return Reader::operator()();

@@ -102,7 +102,7 @@ class encrypted_output : public irs::index_output, util::noncopyable {
 
  private:
   /// @returns number of remaining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
   index_output::ptr managed_out_;
   index_output* out_;

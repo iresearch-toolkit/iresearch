@@ -250,19 +250,23 @@ class raw_block_vector_base : private util::noncopyable {
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept
     : alloc_{std::move(rhs.alloc_)}, buffers_(std::move(rhs.buffers_)) {}
 
-  FORCE_INLINE size_t buffer_count() const noexcept { return buffers_.size(); }
+  IRS_FORCE_INLINE size_t buffer_count() const noexcept {
+    return buffers_.size();
+  }
 
-  FORCE_INLINE bool empty() const noexcept { return buffers_.empty(); }
+  IRS_FORCE_INLINE bool empty() const noexcept { return buffers_.empty(); }
 
-  FORCE_INLINE void clear() noexcept { buffers_.clear(); }
+  IRS_FORCE_INLINE void clear() noexcept { buffers_.clear(); }
 
-  FORCE_INLINE const buffer_t& get_buffer(size_t i) const noexcept {
+  IRS_FORCE_INLINE const buffer_t& get_buffer(size_t i) const noexcept {
     return buffers_[i];
   }
 
-  FORCE_INLINE buffer_t& get_buffer(size_t i) noexcept { return buffers_[i]; }
+  IRS_FORCE_INLINE buffer_t& get_buffer(size_t i) noexcept {
+    return buffers_[i];
+  }
 
-  FORCE_INLINE void pop_buffer() { buffers_.pop_back(); }
+  IRS_FORCE_INLINE void pop_buffer() { buffers_.pop_back(); }
 
  protected:
   struct buffer_entry_t : buffer_t, util::noncopyable {
@@ -312,7 +316,7 @@ class raw_block_vector : public raw_block_vector_base<Allocator> {
   raw_block_vector(raw_block_vector&& other) noexcept
     : base_t{std::move(other)} {}
 
-  FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
+  IRS_FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
     // non-precomputed bucket size is the same as the last precomputed bucket
     // size
     return position < LAST_BUFFER.offset

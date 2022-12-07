@@ -281,24 +281,24 @@ StringType vread_string(const byte_type*& in) {
   return StringType(read_ref<const char_type>(in, size), size);
 }
 
-FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
+IRS_FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
   IRS_ASSERT(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
   return (val << 1) | uint64_t(b);
 }
 
-FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
+IRS_FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
   IRS_ASSERT(val <= UINT32_C(0x7FFFFFFF));
   return (val << 1) | uint32_t(b);
 }
 
 template<typename T = bool, typename U = uint64_t>
-FORCE_INLINE T shift_unpack_64(uint64_t in, U& out) noexcept {
+IRS_FORCE_INLINE T shift_unpack_64(uint64_t in, U& out) noexcept {
   out = static_cast<U>(in >> 1);
   return static_cast<T>(in & 1);
 }
 
 template<typename T = bool, typename U = uint32_t>
-FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
+IRS_FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
   out = static_cast<U>(in >> 1);
   return static_cast<T>(in & 1);
 }

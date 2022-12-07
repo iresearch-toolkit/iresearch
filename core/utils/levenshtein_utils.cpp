@@ -88,7 +88,7 @@ struct position {
   bool transpose{false};  // position is introduced by transposition
 };                        // position
 
-FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
+IRS_FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
   return lhs < rhs ? rhs - lhs : lhs - rhs;
 }
 
@@ -96,7 +96,8 @@ FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
 /// @returns true if position 'lhs' subsumes 'rhs',
 ///          i.e. |rhs.offset-lhs.offset| < rhs.distance - lhs.distance
 ////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE bool subsumes(const position& lhs, const position& rhs) noexcept {
+IRS_FORCE_INLINE bool subsumes(const position& lhs,
+                               const position& rhs) noexcept {
   return (lhs.transpose | (!rhs.transpose))
            ? abs_diff(lhs.offset, rhs.offset) + lhs.distance <= rhs.distance
            : abs_diff(lhs.offset, rhs.offset) + lhs.distance < rhs.distance;
@@ -292,14 +293,14 @@ void add_transition(parametric_state& to, const parametric_state& from,
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns size of characteristic vector
 ////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE uint32_t chi_size(uint32_t max_distance) noexcept {
+IRS_FORCE_INLINE uint32_t chi_size(uint32_t max_distance) noexcept {
   return 2 * max_distance + 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns max value of characteristic vector
 ////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE uint64_t chi_max(uint32_t chi_size) noexcept {
+IRS_FORCE_INLINE uint64_t chi_max(uint32_t chi_size) noexcept {
   return UINT64_C(1) << chi_size;
 }
 

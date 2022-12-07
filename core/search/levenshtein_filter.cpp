@@ -45,7 +45,7 @@ using namespace irs;
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns levenshtein similarity
 ////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
+IRS_FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
   IRS_ASSERT(size);
 
   static_assert(sizeof(score_t) == sizeof(uint32_t),

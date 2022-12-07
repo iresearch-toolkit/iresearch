@@ -147,7 +147,7 @@ class volatile_ref : util::noncopyable {
     }
   }
 
-  FORCE_INLINE void assign(const ref_t& str, bool Volatile) {
+  IRS_FORCE_INLINE void assign(const ref_t& str, bool Volatile) {
     (Volatile ? volatile_ref<Char>::assign<true>(str)
               : volatile_ref<Char>::assign<false>(str));
   }

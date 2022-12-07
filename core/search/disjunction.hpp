@@ -40,7 +40,7 @@ namespace detail {
 // _ITERATOR_DEBUG_LEVEL macros which affects ABI (it must be the same for all
 // libs and objs).
 template<typename Iterator, typename Pred>
-FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
+IRS_FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
   IRS_ASSERT(first != last);  // pop requires non-empty range
 
 #ifndef _MSC_VER

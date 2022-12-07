@@ -36,17 +36,18 @@ class crc32c {
  public:
   explicit crc32c(uint32_t seed = 0) noexcept : value_{seed ^ kCrc32Xor} {}
 
-  FORCE_INLINE void process_bytes(const void* data, size_t size) noexcept {
+  IRS_FORCE_INLINE void process_bytes(const void* data, size_t size) noexcept {
     value_ = absl::ExtendCrc32c(
       value_, std::string_view{static_cast<const char*>(data), size}, 0);
   }
 
-  FORCE_INLINE void process_block(const void* begin, const void* end) noexcept {
+  IRS_FORCE_INLINE void process_block(const void* begin,
+                                      const void* end) noexcept {
     process_bytes(begin, std::distance(static_cast<const char*>(begin),
                                        static_cast<const char*>(end)));
   }
 
-  FORCE_INLINE uint32_t checksum() const noexcept {
+  IRS_FORCE_INLINE uint32_t checksum() const noexcept {
     return static_cast<uint32_t>(value_) ^ kCrc32Xor;
   }
 

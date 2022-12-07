@@ -122,21 +122,21 @@ class sparse_bitmap_writer {
     }
   }
 
-  FORCE_INLINE void set(doc_id_t value) noexcept {
+  IRS_FORCE_INLINE void set(doc_id_t value) noexcept {
     IRS_ASSERT(value < kBlockSize);
 
     irs::set_bit(bits_[value / bits_required<size_t>()],
                  value % bits_required<size_t>());
   }
 
-  FORCE_INLINE void reset(doc_id_t value) noexcept {
+  IRS_FORCE_INLINE void reset(doc_id_t value) noexcept {
     IRS_ASSERT(value < kBlockSize);
 
     irs::unset_bit(bits_[value / bits_required<size_t>()],
                    value % bits_required<size_t>());
   }
 
-  FORCE_INLINE void add_block(uint32_t block_id) {
+  IRS_FORCE_INLINE void add_block(uint32_t block_id) {
     const uint64_t offset = out_->file_pointer() - origin_;
     IRS_ASSERT(offset <= std::numeric_limits<uint32_t>::max());
 

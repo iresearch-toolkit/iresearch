@@ -56,21 +56,21 @@ class freelist : private util::noncopyable {
   }
 
   // push the specified element 'p' to the stack denoted by 'head'
-  FORCE_INLINE void push(void* p) noexcept {
+  IRS_FORCE_INLINE void push(void* p) noexcept {
     IRS_ASSERT(p);
     auto* free = static_cast<slot*>(p);
     free->next = head_;
     head_ = free;
   }
 
-  FORCE_INLINE void assign(void* p, const size_t slot_size,
-                           const size_t count) noexcept {
+  IRS_FORCE_INLINE void assign(void* p, const size_t slot_size,
+                               const size_t count) noexcept {
     segregate(p, slot_size, count);
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE void push_n(void* p, const size_t slot_size,
-                           const size_t count) noexcept {
+  IRS_FORCE_INLINE void push_n(void* p, const size_t slot_size,
+                               const size_t count) noexcept {
     IRS_ASSERT(p);
 
     auto* end = segregate(p, slot_size, count);
@@ -78,10 +78,10 @@ class freelist : private util::noncopyable {
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE bool empty() const noexcept { return !head_; }
+  IRS_FORCE_INLINE bool empty() const noexcept { return !head_; }
 
   // pops an element from the stack denoted by 'head'
-  FORCE_INLINE void* pop() noexcept {
+  IRS_FORCE_INLINE void* pop() noexcept {
     IRS_ASSERT(head_);
     void* p = head_;
     head_ = head_->next;

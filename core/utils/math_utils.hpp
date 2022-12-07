@@ -112,7 +112,7 @@ uint32_t log2_32(uint32_t value) noexcept;
 
 uint32_t log(uint64_t x, uint64_t base) noexcept;
 
-FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
+IRS_FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
 #if __GNUC__ >= 4
   return UINT32_C(31) ^ __builtin_clz(v);
 #elif defined(_MSC_VER)
@@ -124,11 +124,11 @@ FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
 #endif
 }
 
-FORCE_INLINE uint32_t log2_ceil_32(uint32_t v) {
+IRS_FORCE_INLINE uint32_t log2_ceil_32(uint32_t v) {
   return log2_floor_32(v) + static_cast<uint32_t>(!is_power2(v));
 }
 
-FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
+IRS_FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
 #if __GNUC__ >= 4
   return UINT64_C(63) ^ __builtin_clzll(v);
 #elif defined(_MSC_VER)
@@ -140,7 +140,7 @@ FORCE_INLINE uint64_t log2_floor_64(uint64_t v) {
 #endif
 }
 
-FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
+IRS_FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
   return log2_floor_64(v) + static_cast<uint64_t>(!is_power2(v));
 }
 
