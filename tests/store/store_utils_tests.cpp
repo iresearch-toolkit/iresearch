@@ -50,12 +50,12 @@ class bytes_input final : public data_input, public bytes_view {
   bytes_input& operator=(bytes_view data);
 
   void skip(size_t size) {
-    IRS_ASSERT(pos_ + size <= this->end());
+    IRS_ASSERT(pos_ + size <= this->data() + this->size());
     pos_ += size;
   }
 
   void seek(size_t pos) {
-    IRS_ASSERT(this->begin() + pos <= this->end());
+    IRS_ASSERT(this->begin() + pos <= this->data() + this->size());
     pos_ = this->data() + pos;
   }
 
