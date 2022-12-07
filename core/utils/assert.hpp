@@ -48,6 +48,10 @@ LogCallback SetAssertCallback(LogCallback callback) noexcept;
 
 }  // namespace iresearch
 
+#define IRS_GET_MACRO(arg1, arg2, MACRO, ...) MACRO
+
+#ifdef IRESEARCH_DEBUG
+
 #define IRS_ASSERT_MESSAGE(cond, message)                                   \
   do {                                                                      \
     if (!(cond)) {                                                          \
@@ -56,11 +60,15 @@ LogCallback SetAssertCallback(LogCallback callback) noexcept;
     }                                                                       \
   } while (false)
 
-#define IRS_GET_MACRO(arg1, arg2, MACRO, ...) MACRO
+#define IRS_ASSERT_CONDITION(cond) IRS_ASSERT_MESSAGE(cond, {})
 
-#ifdef NDEBUG
+#define IRS_ASSERT(...)                                                \
+  IRS_GET_MACRO(__VA_ARGS__, IRS_ASSERT_MESSAGE, IRS_ASSERT_CONDITION) \
+  (__VA_ARGS__)
 
-#define IRS_STUB(...) ((void)1)
+#elif defined(NDEBUG)
+
+#define IRS_ASSERT(...) ((void)1)
 
 #else
 
@@ -79,21 +87,7 @@ LogCallback SetAssertCallback(LogCallback callback) noexcept;
     }                            \
   } while (false)
 
-#define IRS_STUB(...) \
+#define IRS_ASSERT(...) \
   IRS_GET_MACRO(__VA_ARGS__, IRS_STUB2, IRS_STUB1)(__VA_ARGS__)
-
-#endif
-
-#ifdef IRESEARCH_DEBUG
-
-#define IRS_ASSERT_CONDITION(cond) IRS_ASSERT_MESSAGE(cond, {})
-
-#define IRS_ASSERT(...)                                                \
-  IRS_GET_MACRO(__VA_ARGS__, IRS_ASSERT_MESSAGE, IRS_ASSERT_CONDITION) \
-  (__VA_ARGS__)
-
-#else
-
-#define IRS_ASSERT(...) IRS_STUB(__VA_ARGS__)
 
 #endif
