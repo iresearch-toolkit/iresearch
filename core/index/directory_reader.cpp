@@ -269,7 +269,7 @@ directory_reader_impl::directory_reader_impl(
   reuse_candidates.reserve(count);
 
   for (size_t i = 0; i < count; ++i) {
-    assert(cached_impl);  // ensured by loop condition above
+    IRS_ASSERT(cached_impl);  // ensured by loop condition above
     auto itr =
       reuse_candidates.emplace(cached_impl->meta_.meta.segment(i).meta.name, i);
 

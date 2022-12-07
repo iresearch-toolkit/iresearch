@@ -112,8 +112,9 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
   static ptr make();
 
   static prepared::ptr prepare(const index_reader& index, const Order& order,
-                               score_t boost, std::string_view field, bytes_view term,
-                               size_t terms_limit, byte_type max_distance,
+                               score_t boost, std::string_view field,
+                               bytes_view term, size_t terms_limit,
+                               byte_type max_distance,
                                options_type::pdp_f provider,
                                bool with_transpositions, bytes_view prefix);
 
@@ -121,7 +122,7 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
 
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
+  filter::prepared::ptr prepare(
     const index_reader& index, const Order& order, score_t boost,
     const attribute_provider* /*ctx*/) const override {
     return prepare(index, order, this->boost() * boost, field(), options().term,

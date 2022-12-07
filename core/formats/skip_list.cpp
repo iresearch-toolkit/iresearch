@@ -20,13 +20,11 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "skip_list.hpp"
 
-#include "store/store_utils.hpp"
-
 #include "index/iterators.hpp"
-
+#include "shared.hpp"
+#include "store/store_utils.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/std.hpp"
 
@@ -82,7 +80,7 @@ void SkipWriter::Flush(index_output& out) {
     stream.flush();  // update length of each buffer
 
     const uint64_t length = stream.file_pointer();
-    assert(length);
+    IRS_ASSERT(length);
     out.write_vlong(length);
     stream >> out;
   }
@@ -106,14 +104,14 @@ void SkipReaderBase::Reset() {
 }
 
 void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
-  assert(in);
+  IRS_ASSERT(in);
 
   if (uint32_t max_levels = in->read_vint(); max_levels) {
     decltype(levels_) levels;
     levels.reserve(max_levels);
 
     auto load_level = [&levels, left](index_input::ptr stream, doc_id_t step) {
-      assert(stream);
+      IRS_ASSERT(stream);
 
       // read level length
       const auto length = stream->read_vlong();

@@ -65,7 +65,7 @@ uint32_t log2_32(uint32_t value) noexcept {
 }
 
 uint32_t log(uint64_t x, uint64_t base) noexcept {
-  assert(base > 1);
+  IRS_ASSERT(base > 1);
 
   uint32_t res = 0;
   while (x >= base) {

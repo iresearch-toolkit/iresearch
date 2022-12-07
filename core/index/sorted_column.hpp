@@ -41,7 +41,7 @@ class sorted_column final : public column_output, private util::noncopyable {
   explicit sorted_column(const column_info& info) : info_{info} {}
 
   void prepare(doc_id_t key) {
-    assert(index_.empty() || key >= index_.back().first);
+    IRS_ASSERT(index_.empty() || key >= index_.back().first);
 
     if (index_.empty() || index_.back().first != key) {
       index_.emplace_back(key, data_buf_.size());
@@ -99,13 +99,12 @@ class sorted_column final : public column_output, private util::noncopyable {
  private:
   bytes_view get_value(
     const std::pair<doc_id_t, size_t>* value) const noexcept {
-    assert(index_.data() <= value);
-    assert(value < index_.data() + index_.size() - 1);
-    assert(!doc_limits::eof(value->first));
+    IRS_ASSERT(index_.data() <= value);
+    IRS_ASSERT(value < index_.data() + index_.size() - 1);
+    IRS_ASSERT(!doc_limits::eof(value->first));
 
     const auto begin = value->second;
     const auto end = (value + 1)->second;
-    assert(begin <= end);
 
     return {data_buf_.c_str() + begin, end - begin};
   };

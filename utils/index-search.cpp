@@ -676,7 +676,7 @@ int search(std::string_view path, std::string_view dir_type,
           irs::score_threshold tmp;
           for (auto left = limit; auto& segment : reader) {
             auto docs = filter->execute(segment, order, mode);
-            assert(docs);
+            IRS_ASSERT(docs);
 
             const irs::document* doc = irs::get<irs::document>(*docs);
             const irs::score* score = irs::get<irs::score>(*docs);
@@ -688,8 +688,8 @@ int search(std::string_view path, std::string_view dir_type,
             }
 
             if (!left) {
-              assert(!sorted.empty());
-              assert(std::is_heap(
+              IRS_ASSERT(!sorted.empty());
+              IRS_ASSERT(std::is_heap(
                 std::begin(sorted), std::end(sorted),
                 [](const std::pair<float_t, irs::doc_id_t>& lhs,
                    const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {

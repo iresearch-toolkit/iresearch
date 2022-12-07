@@ -197,7 +197,7 @@ class segment_reader_impl : public sub_reader {
   uint64_t meta_version() const noexcept { return meta_version_; }
 
   const sub_reader& operator[](size_t i) const noexcept override {
-    assert(!i);
+    IRS_ASSERT(!i);
     UNUSED(i);
     return *this;
   }

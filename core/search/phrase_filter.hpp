@@ -149,9 +149,9 @@ class by_phrase : public filter_base<by_phrase_options> {
  public:
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
-    const index_reader& index, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(const index_reader& index, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 
  private:
   filter::prepared::ptr fixed_prepare_collect(const index_reader& index,

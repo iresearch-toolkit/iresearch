@@ -23,15 +23,15 @@
 #ifndef IRESEARCH_REGISTER_H
 #define IRESEARCH_REGISTER_H
 
-#include <memory>
-#include <vector>
-#include <string>
-
 #include <absl/container/flat_hash_map.h>
 
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "log.hpp"
 #include "singleton.hpp"
 #include "so_utils.hpp"
-#include "log.hpp"
 #include "string.hpp"
 
 // use busywait implementation for Win32 since std::mutex cannot be used in

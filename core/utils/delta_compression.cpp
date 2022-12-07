@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "delta_compression.hpp"
+
+#include "shared.hpp"
 #include "store/store_utils.hpp"
 
 namespace {
@@ -35,13 +36,13 @@ namespace iresearch {
 namespace compression {
 
 bytes_view delta_compressor::compress(byte_type* src, size_t size,
-                                     bstring& buf) {
+                                      bstring& buf) {
   auto* begin = reinterpret_cast<uint64_t*>(src);
   auto* end = reinterpret_cast<uint64_t*>(src + size);
   encode::delta::encode(begin, end);
 
   // ensure we have enough space in the worst case
-  assert(end >= begin);
+  IRS_ASSERT(end >= begin);
   buf.resize(size_t(std::distance(begin, end)) *
              bytes_io<uint64_t>::const_max_vsize);
 
@@ -50,12 +51,12 @@ bytes_view delta_compressor::compress(byte_type* src, size_t size,
     vwrite(out, zig_zag_encode64(int64_t(*begin)));
   }
 
-  assert(out >= buf.data());
+  IRS_ASSERT(out >= buf.data());
   return {buf.c_str(), size_t(out - buf.data())};
 }
 
 bytes_view delta_decompressor::decompress(const byte_type* src, size_t src_size,
-                                         byte_type* dst, size_t dst_size) {
+                                          byte_type* dst, size_t dst_size) {
   auto* dst_end = reinterpret_cast<uint64_t*>(dst);
 
   for (const auto* src_end = src + src_size; src != src_end; ++dst_end) {

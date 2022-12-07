@@ -21,13 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
-#include "tests_param.hpp"
+#include "utils/encryption.hpp"
 
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+#include "tests_param.hpp"
+#include "tests_shared.hpp"
 #include "utils/crc.hpp"
-#include "utils/encryption.hpp"
 
 namespace {
 
@@ -54,9 +54,9 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
   ASSERT_TRUE(
     encrypted_header.size() == 2 * cipher->block_size() ||
     (irs::bytes_view(encrypted_header.c_str() + 2 * cipher->block_size(),
-                    encrypted_header.size() - 2 * cipher->block_size()) !=
+                     encrypted_header.size() - 2 * cipher->block_size()) !=
      irs::bytes_view(header.c_str() + 2 * cipher->block_size(),
-                    header.size() - 2 * cipher->block_size())));
+                     header.size() - 2 * cipher->block_size())));
 
   const bstring data(
     reinterpret_cast<const irs::byte_type*>(
@@ -460,7 +460,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
       buffered_index_output::reset(buf_, sizeof buf_);
     }
 
-    virtual int64_t checksum() const override { return out_->checksum(); }
+    int64_t checksum() const override { return out_->checksum(); }
 
     const index_output& stream() const { return *out_; }
 
@@ -469,7 +469,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     size_t last_written_size() const noexcept { return last_written_size_; }
 
    protected:
-    virtual void flush_buffer(const irs::byte_type* b, size_t size) override {
+    void flush_buffer(const irs::byte_type* b, size_t size) override {
       last_written_size_ = size;
       out_->write_bytes(b, size);
     }
@@ -487,17 +487,13 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
     const index_input& stream() { return *in_; }
 
-    virtual size_t length() const override { return in_->length(); }
+    size_t length() const override { return in_->length(); }
 
-    virtual index_input::ptr dup() const override {
-      throw irs::not_impl_error();
-    }
+    index_input::ptr dup() const override { throw irs::not_impl_error(); }
 
-    virtual index_input::ptr reopen() const override {
-      throw irs::not_impl_error();
-    }
+    index_input::ptr reopen() const override { throw irs::not_impl_error(); }
 
-    virtual int64_t checksum(size_t offset) const override {
+    int64_t checksum(size_t offset) const override {
       return in_->checksum(offset);
     }
 
@@ -506,9 +502,9 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     size_t last_read_size() const noexcept { return last_read_size_; }
 
    protected:
-    virtual void seek_internal(size_t pos) override { in_->seek(pos); }
+    void seek_internal(size_t pos) override { in_->seek(pos); }
 
-    virtual size_t read_internal(irs::byte_type* b, size_t size) override {
+    size_t read_internal(irs::byte_type* b, size_t size) override {
       last_read_size_ = size;
       return in_->read_bytes(b, size);
     }

@@ -109,13 +109,15 @@ struct DocIdScorer : irs::sort {
   DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
 
   struct Prepared final : irs::PreparedSortBase<void> {
-    virtual irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::ScoreFunction prepare_scorer(
-      const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
-      const irs::attribute_provider& attrs, irs::score_t) const override {
+    irs::ScoreFunction prepare_scorer(const irs::sub_reader&,
+                                      const irs::term_reader&,
+                                      const irs::byte_type*,
+                                      const irs::attribute_provider& attrs,
+                                      irs::score_t) const override {
       struct ScorerContext final : irs::score_ctx {
         explicit ScorerContext(const irs::document* doc) noexcept : doc{doc} {}
 

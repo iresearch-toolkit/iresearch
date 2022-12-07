@@ -119,7 +119,7 @@ class ScoreFunction : util::noncopyable {
   bool IsNoop() const noexcept { return nullptr == ctx_ && kDefault == func_; }
 
   FORCE_INLINE void operator()(score_t* res) const noexcept {
-    assert(func_);
+    IRS_ASSERT(func_);
     return func_(ctx_.get(), res);
   }
 
@@ -297,7 +297,7 @@ class sort {
 struct OrderBucket : util::noncopyable {
   OrderBucket(sort::prepared::ptr&& bucket, size_t stats_offset) noexcept
     : bucket(std::move(bucket)), stats_offset{stats_offset} {
-    assert(this->bucket);
+    IRS_ASSERT(this->bucket);
   }
 
   OrderBucket(OrderBucket&&) = default;
@@ -376,7 +376,7 @@ struct Aggregator : Merger {
 template<typename Merger>
 struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
   explicit Aggregator(size_t size) noexcept : count{size} {
-    assert(size);
+    IRS_ASSERT(size);
     buf.resize(byte_size());
   }
 
@@ -468,7 +468,7 @@ auto ResoveMergeType(sort::MergeType type, size_t num_buckets,
     case sort::MergeType::kMin:
       return impl.template operator()<MinMerger>();
     default:
-      assert(false);
+      IRS_ASSERT(false);
       return visitor(NoopAggregator{});
   }
 }
@@ -483,7 +483,7 @@ class PreparedSortBase : public sort::prepared {
   using stats_t = StatsType;
 
   FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) noexcept {
-    assert(buf);
+    IRS_ASSERT(buf);
     return *reinterpret_cast<const stats_t*>(buf);
   }
 
@@ -506,22 +506,20 @@ class PreparedSortBase : public sort::prepared {
 template<>
 class PreparedSortBase<void> : public sort::prepared {
  public:
-  virtual sort::field_collector::ptr prepare_field_collector() const override {
+  sort::field_collector::ptr prepare_field_collector() const override {
     return nullptr;
   }
 
-  virtual sort::term_collector::ptr prepare_term_collector() const override {
+  sort::term_collector::ptr prepare_term_collector() const override {
     return nullptr;
   }
 
-  virtual void collect(byte_type*, const index_reader&,
-                       const sort::field_collector*,
-                       const sort::term_collector*) const override {
+  void collect(byte_type*, const index_reader&, const sort::field_collector*,
+               const sort::term_collector*) const override {
     // NOOP
   }
 
-  virtual inline std::pair<size_t, size_t> stats_size()
-    const noexcept override final {
+  inline std::pair<size_t, size_t> stats_size() const noexcept final {
     return std::make_pair(size_t(0), size_t(0));
   }
 };

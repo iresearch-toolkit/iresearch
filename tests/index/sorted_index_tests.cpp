@@ -71,7 +71,7 @@ class SortedEuroparlDocTemplate : public tests::europarl_doc_template {
     std::string field, std::vector<irs::type_info::type_id> field_features)
     : field_{std::move(field)}, field_features_{std::move(field_features)} {}
 
-  virtual void init() override {
+  void init() override {
     indexed.push_back(std::make_shared<tests::string_field>(
       "title", irs::IndexFeatures::ALL, field_features_));
     indexed.push_back(
@@ -179,9 +179,9 @@ struct CustomFeature {
       }
     }
 
-    virtual void write(const irs::field_stats& stats, irs::doc_id_t doc,
-                       // cppcheck-suppress constParameter
-                       irs::columnstore_writer::values_writer_f& writer) final {
+    void write(const irs::field_stats& stats, irs::doc_id_t doc,
+               // cppcheck-suppress constParameter
+               irs::columnstore_writer::values_writer_f& writer) final {
       ++hdr.count;
 
       // We intentionally call `writer(doc)` multiple
@@ -199,7 +199,7 @@ struct CustomFeature {
       }
     }
 
-    virtual void finish(irs::bstring& out) final {
+    void finish(irs::bstring& out) final {
       if (init_header.has_value()) {
         // <= due to removals
         EXPECT_LE(hdr.count, init_header.value().count);

@@ -24,10 +24,10 @@
 #ifndef IRESEARCH_MAP_UTILS_H
 #define IRESEARCH_MAP_UTILS_H
 
-#include <cassert>
 #include <tuple>
 
 #include "shared.hpp"
+#include "utils/assert.hpp"
 
 namespace iresearch {
 namespace map_utils {
@@ -53,11 +53,11 @@ inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
 
 #ifdef IRESEARCH_DEBUG
     auto generated = generator(res.first->first, res.first->second);
-    assert(existing == generated);
+    IRS_ASSERT(existing == generated);
     existing = generated;
 #else
     existing = generator(res.first->first, res.first->second);
-#endif  // IRESEARCH_DEBUG
+#endif
   }
 
   return res;

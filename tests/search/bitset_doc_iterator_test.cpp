@@ -21,11 +21,12 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
+#include "search/bitset_doc_iterator.hpp"
+
 #include "filter_test_case_base.hpp"
+#include "tests_shared.hpp"
 #include "utils/bitset.hpp"
 #include "utils/singleton.hpp"
-#include "search/bitset_doc_iterator.hpp"
 
 #ifndef IRESEARCH_DLL
 

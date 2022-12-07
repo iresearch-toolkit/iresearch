@@ -20,20 +20,18 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DATAINPUT_H
-#define IRESEARCH_DATAINPUT_H
+#pragma once
 
+#include <iterator>
 #include <memory>
+#include <streambuf>
 
 #include "error/error.hpp"
-
 #include "utils/bit_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
-#include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
-
-#include <iterator>
+#include "utils/string.hpp"
 
 namespace iresearch {
 
@@ -161,13 +159,13 @@ class input_buf final : public std::streambuf, util::noncopyable {
 
   explicit input_buf(index_input* in);
 
-  virtual std::streamsize showmanyc() override;
+  std::streamsize showmanyc() override;
 
-  virtual std::streamsize xsgetn(char_type* s, std::streamsize size) override;
+  std::streamsize xsgetn(char_type* s, std::streamsize size) override;
 
-  virtual int_type uflow() override;
+  int_type uflow() override;
 
-  virtual int_type underflow() override;
+  int_type underflow() override;
 
   operator index_input&() { return *in_; }  // cppcheck-suppress syntaxError
 
@@ -182,39 +180,35 @@ class input_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class buffered_index_input : public index_input {
  public:
-  virtual byte_type read_byte() override final;
+  byte_type read_byte() final;
 
-  virtual size_t read_bytes(byte_type* b, size_t count) override final;
+  size_t read_bytes(byte_type* b, size_t count) final;
 
-  virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t count) override final {
+  size_t read_bytes(size_t offset, byte_type* b, size_t count) final {
     seek(offset);
     return read_bytes(b, count);
   }
 
-  virtual const byte_type* read_buffer(size_t size,
-                                       BufferHint hint) noexcept override final;
+  const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
 
-  virtual const byte_type* read_buffer(size_t offset, size_t size,
-                                       BufferHint hint) noexcept override final;
+  const byte_type* read_buffer(size_t offset, size_t size,
+                               BufferHint hint) noexcept final;
 
-  virtual size_t file_pointer() const noexcept override final {
-    return start_ + offset();
-  }
+  size_t file_pointer() const noexcept final { return start_ + offset(); }
 
-  virtual bool eof() const override final { return file_pointer() >= length(); }
+  bool eof() const final { return file_pointer() >= length(); }
 
-  virtual void seek(size_t pos) override final;
+  void seek(size_t pos) final;
 
-  virtual int16_t read_short() override final;
+  int16_t read_short() final;
 
-  virtual int32_t read_int() override final;
+  int32_t read_int() final;
 
-  virtual int64_t read_long() override final;
+  int64_t read_long() final;
 
-  virtual uint32_t read_vint() override final;
+  uint32_t read_vint() final;
 
-  virtual uint64_t read_vlong() override final;
+  uint64_t read_vlong() final;
 
   byte_type operator*() { return read_byte(); }
   buffered_index_input& operator++() noexcept { return *this; }
@@ -272,5 +266,3 @@ class buffered_index_input : public index_input {
 };                          // buffered_index_input
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_DATAINPUT_H

@@ -23,7 +23,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <cmath>
 #include <cstring>
 #include <functional>
@@ -34,6 +33,7 @@
 #include "bytes_utils.hpp"
 #include "memory.hpp"
 #include "misc.hpp"
+#include "utils/assert.hpp"
 
 namespace iresearch {
 
@@ -86,7 +86,7 @@ class block_pool_const_iterator {
   const_reference operator*() const noexcept { return *pos_; }
 
   const_reference operator[](difference_type offset) const noexcept {
-    assert(block_);
+    IRS_ASSERT(block_);
 
     const auto pos = pos_ + offset;
     if (pos < block_->data || pos >= std::end(block_->data)) {
@@ -116,12 +116,12 @@ class block_pool_const_iterator {
 
   difference_type operator-(
     const block_pool_const_iterator& rhs) const noexcept {
-    assert(pool_ == rhs.pool_);
+    IRS_ASSERT(pool_ == rhs.pool_);
     return pool_offset() - rhs.pool_offset();
   }
 
   bool operator==(const block_pool_const_iterator& rhs) const noexcept {
-    assert(pool_ == rhs.pool_);
+    IRS_ASSERT(pool_ == rhs.pool_);
     return pool_offset() == rhs.pool_offset();
   }
 
@@ -130,12 +130,12 @@ class block_pool_const_iterator {
   }
 
   bool operator>(const block_pool_const_iterator& rhs) const noexcept {
-    assert(pool_ == rhs.pool_);
+    IRS_ASSERT(pool_ == rhs.pool_);
     return pool_offset() > rhs.pool_offset();
   }
 
   bool operator<(const block_pool_const_iterator& rhs) const noexcept {
-    assert(pool_ == rhs.pool_);
+    IRS_ASSERT(pool_ == rhs.pool_);
     return pool_offset() < rhs.pool_offset();
   }
 
@@ -154,7 +154,7 @@ class block_pool_const_iterator {
   size_t remain() const noexcept { return parent().block_size() - offset(); }
 
   size_t offset() const noexcept {
-    assert(block_);
+    IRS_ASSERT(block_);
     return std::distance(block_->data, pos_);
   }
 
@@ -178,10 +178,10 @@ class block_pool_const_iterator {
 
     auto& blocks = parent().blocks_;
     const size_t idx = offset / block_type::SIZE;
-    assert(idx < blocks.size());
+    IRS_ASSERT(idx < blocks.size());
 
     const size_t pos = offset % block_type::SIZE;
-    assert(pos < block_type::SIZE);
+    IRS_ASSERT(pos < block_type::SIZE);
 
     block_ = blocks[idx];
     block_start_ = block_->start;
@@ -189,13 +189,13 @@ class block_pool_const_iterator {
   }
 
   const container& parent() const noexcept {
-    assert(pool_);
+    IRS_ASSERT(pool_);
     return *pool_;
   }
 
  protected:
   void seek_relative(difference_type offset) noexcept {
-    assert(block_);
+    IRS_ASSERT(block_);
 
     pos_ += offset;
     if (pos_ < block_->data || pos_ >= std::end(block_->data)) {
@@ -322,21 +322,21 @@ class block_pool_reader {
     : where_(where) {}
 
   const_reference operator*() const noexcept {
-    assert(!where_.eof());
+    IRS_ASSERT(!where_.eof());
     return *where_;
   }
 
   const_pointer operator->() const noexcept { return &(operator*()); }
 
   block_pool_reader& operator++() noexcept {
-    assert(!eof());
+    IRS_ASSERT(!eof());
 
     ++where_;
     return *this;
   }
 
   block_pool_reader operator++(int) noexcept {
-    assert(!eof());
+    IRS_ASSERT(!eof());
 
     block_pool_reader tmp = *this;
     ++where_;
@@ -348,8 +348,8 @@ class block_pool_reader {
   }
 
   size_t read(pointer b, size_t len) noexcept {
-    assert(!eof());
-    assert(b != nullptr);
+    IRS_ASSERT(!eof());
+    IRS_ASSERT(b != nullptr);
 
     size_t items_read = 0;
     size_t to_copy = 0;
@@ -409,7 +409,7 @@ class block_pool_sliced_reader_base {
   using const_reference = const value_type&;
 
   const_reference operator*() const noexcept {
-    assert(!impl().eof());
+    IRS_ASSERT(!impl().eof());
     return *where_;
   }
 
@@ -435,8 +435,8 @@ class block_pool_sliced_reader_base {
   const container& parent() const noexcept { return where_.parent(); }
 
   size_t read(pointer b, size_t len) noexcept {
-    assert(!impl().eof());
-    assert(b != nullptr);
+    IRS_ASSERT(!impl().eof());
+    IRS_ASSERT(b != nullptr);
 
     size_t to_copy = 0;
     size_t items_read = 0;
@@ -473,7 +473,7 @@ class block_pool_sliced_reader_base {
   FORCE_INLINE reader& impl() noexcept { return static_cast<reader&>(*this); }
 
   void next() noexcept {
-    assert(!impl().eof());
+    IRS_ASSERT(!impl().eof());
     ++where_;
     --left_;
 
@@ -531,7 +531,7 @@ class block_pool_sliced_reader
   }
 
   void init() noexcept {
-    assert(end_ >= 0 && this->where_.pool_offset() <= end_);
+    IRS_ASSERT(end_ >= 0 && this->where_.pool_offset() <= end_);
 
     this->left_ = std::min(end_ - this->where_.pool_offset(),
                            detail::LEVELS[level_].size - sizeof(uint32_t));
@@ -556,7 +556,7 @@ block_pool_sliced_reader<ContType>::block_pool_sliced_reader(
 
 template<typename ContType>
 bool block_pool_sliced_reader<ContType>::eof() const noexcept {
-  assert(this->where_.pool_offset() <= end_);
+  IRS_ASSERT(this->where_.pool_offset() <= end_);
   return this->where_.pool_offset() == end_;
 }
 
@@ -600,9 +600,9 @@ class block_pool_sliced_greedy_reader
 
   void init(size_t offset) noexcept {
     level_ = *this->where_;
-    assert(level_ < detail::LEVEL_MAX);
+    IRS_ASSERT(level_ < detail::LEVEL_MAX);
     this->where_ += offset;
-    assert(detail::LEVELS[level_].size > offset);
+    IRS_ASSERT(detail::LEVELS[level_].size > offset);
     this->left_ = detail::LEVELS[level_].size - offset - sizeof(uint32_t);
   }
 
@@ -666,7 +666,7 @@ class block_pool_inserter {
   block_pool_inserter& operator++() noexcept { return *this; }
 
   void write(typename container::const_pointer b, size_t len) {
-    assert(b || !len);
+    IRS_ASSERT(b || !len);
 
     size_t to_copy = 0;
 
@@ -700,7 +700,7 @@ class block_pool_inserter {
 
   // returns offset of the beginning of the allocated slice in the pool
   size_t alloc_greedy_slice(size_t level = 1) {
-    assert(level >= 1);
+    IRS_ASSERT(level >= 1);
     return alloc_first_slice<true>(level);
   }
 
@@ -746,7 +746,7 @@ class block_pool_inserter {
 
   template<bool Greedy>
   size_t alloc_first_slice(size_t level) {
-    assert(level < detail::LEVEL_MAX);
+    IRS_ASSERT(level < detail::LEVEL_MAX);
     auto& level_info = detail::LEVELS[level];
     const size_t size = level_info.size;
 
@@ -756,8 +756,8 @@ class block_pool_inserter {
       *where_ = static_cast<byte_type>(level);
     }
     where_ += size;
-    assert(level_info.next);
-    assert(level_info.next < detail::LEVEL_MAX);
+    IRS_ASSERT(level_info.next);
+    IRS_ASSERT(level_info.next < detail::LEVEL_MAX);
     if constexpr (Greedy) {
       where_[-sizeof(uint32_t)] = static_cast<byte_type>(level_info.next);
     } else {
@@ -768,7 +768,7 @@ class block_pool_inserter {
 
   size_t alloc_greedy_slice(typename container::iterator& pos) {
     const byte_type next_level = *pos;
-    assert(next_level < detail::LEVEL_MAX);
+    IRS_ASSERT(next_level < detail::LEVEL_MAX);
     const auto& next_level_info = detail::LEVELS[next_level];
     const size_t size = next_level_info.size;
 
@@ -779,8 +779,8 @@ class block_pool_inserter {
 
     pos = where_;
     ++pos;  // move to the next byte after the header
-    assert(next_level_info.next);
-    assert(next_level_info.next < detail::LEVEL_MAX);
+    IRS_ASSERT(next_level_info.next);
+    IRS_ASSERT(next_level_info.next < detail::LEVEL_MAX);
     *where_ = next_level;  // write slice header
     where_ += size;
     where_[-sizeof(uint32_t)] = static_cast<byte_type>(next_level_info.next);
@@ -792,7 +792,7 @@ class block_pool_inserter {
     constexpr const size_t ADDR_OFFSET = sizeof(uint32_t) - 1;
 
     const size_t next_level = *pos;
-    assert(next_level < detail::LEVEL_MAX);
+    IRS_ASSERT(next_level < detail::LEVEL_MAX);
     const auto& next_level_info = detail::LEVELS[next_level];
     const size_t size = next_level_info.size;
 
@@ -810,8 +810,8 @@ class block_pool_inserter {
 
     pos.reset(where_.pool_offset() + ADDR_OFFSET);
     where_ += size;
-    assert(next_level_info.next);
-    assert(next_level_info.next < detail::LEVEL_MAX);
+    IRS_ASSERT(next_level_info.next);
+    IRS_ASSERT(next_level_info.next < detail::LEVEL_MAX);
     where_[-1] = static_cast<byte_type>(next_level_info.next);
 
     return size - sizeof(uint32_t);
@@ -866,7 +866,7 @@ class block_pool_sliced_inserter {
   // MSVC starting 2017.3  incorectly count offsets if this function is
   // inlined during optimization MSVC 2017.2 and below work correctly for both
   // debug and release
-  MSVC_ONLY(__declspec(noinline))
+  MSVC_ONLY(NO_INLINE)
   void write(typename container::const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {
@@ -906,7 +906,7 @@ class block_pool_sliced_greedy_inserter {
     : slice_offset_(slice_offset),
       where_(writer.parent(), offset + slice_offset),
       writer_(&writer) {
-    assert(!*where_);  // we're not at the address part
+    IRS_ASSERT(!*where_);  // we're not at the address part
   }
 
   size_t pool_offset() const noexcept { return where_.pool_offset(); }
@@ -920,10 +920,10 @@ class block_pool_sliced_greedy_inserter {
   // MSVC starting 2017.3  incorectly count offsets if this function is
   // inlined during optimization MSVC 2017.2 and below work correctly for both
   // debug and release
-  MSVC_ONLY(__declspec(noinline))
+  MSVC_ONLY(NO_INLINE)
   block_pool_sliced_greedy_inserter& operator=(
     typename container::const_reference value) {
-    assert(!*where_);  // we're not at the address part
+    IRS_ASSERT(!*where_);  // we're not at the address part
 
     *where_ = value;
     ++where_;
@@ -932,7 +932,7 @@ class block_pool_sliced_greedy_inserter {
       alloc_slice();
     }
 
-    assert(!*where_);  // we're not at the address part
+    IRS_ASSERT(!*where_);  // we're not at the address part
     return *this;
   }
 
@@ -945,9 +945,9 @@ class block_pool_sliced_greedy_inserter {
   // MSVC starting 2017.3  incorectly count offsets if this function is
   // inlined during optimization MSVC 2017.2 and below work correctly for both
   // debug and release
-  MSVC_ONLY(__declspec(noinline))
+  MSVC_ONLY(NO_INLINE)
   void write(typename container::const_pointer b, size_t len) {
-    assert(!*where_);  // we're not at the address part
+    IRS_ASSERT(!*where_);  // we're not at the address part
 
     // FIXME optimize loop since we're aware of current slice
     //  find end of the slice
@@ -970,12 +970,12 @@ class block_pool_sliced_greedy_inserter {
       alloc_slice();
     }
 
-    assert(!*where_);  // we're not at the address part
+    IRS_ASSERT(!*where_);  // we're not at the address part
   }
 
  private:
   size_t alloc_slice() {
-    assert(*where_);
+    IRS_ASSERT(*where_);
     const size_t size = writer_->alloc_greedy_slice(where_);
     slice_offset_ = where_.pool_offset() - 1;  // -1 for header
     return size;
@@ -1029,7 +1029,7 @@ class block_pool {
 
     while (count--) {
       auto* p = proxy_alloc.allocate(1);
-      assert(p);
+      IRS_ASSERT(p);
 
       p->start = blocks_.size() * block_type::SIZE;
 
@@ -1061,7 +1061,7 @@ class block_pool {
   }
 
   iterator write(iterator where, const_pointer b, size_t len) {
-    assert(b);
+    IRS_ASSERT(b);
 
     size_t to_copy = 0;
     while (len) {
@@ -1091,7 +1091,7 @@ class block_pool {
   }
 
   iterator read(iterator where, pointer b, size_t len) const noexcept {
-    assert(b);
+    IRS_ASSERT(b);
 
     size_t to_copy = 0;
 
@@ -1121,7 +1121,7 @@ class block_pool {
   }
 
   reference at(size_t offset) noexcept {
-    assert(offset < this->value_count());
+    IRS_ASSERT(offset < this->value_count());
 
     const size_t idx = offset / block_type::SIZE;
     const size_t pos = offset % block_type::SIZE;
@@ -1154,17 +1154,17 @@ class block_pool {
   iterator end() noexcept { return iterator(*this); }
 
   pointer buffer(size_t i) noexcept {
-    assert(i < block_count());
+    IRS_ASSERT(i < block_count());
     return blocks_[i];
   }
 
   const_pointer buffer(size_t i) const noexcept {
-    assert(i < block_count());
+    IRS_ASSERT(i < block_count());
     return blocks_[i];
   }
 
   size_t block_offset(size_t i) const noexcept {
-    assert(i < block_count());
+    IRS_ASSERT(i < block_count());
     return block_type::SIZE * i;
   }
 

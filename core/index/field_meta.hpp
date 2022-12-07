@@ -27,8 +27,8 @@
 #include <set>
 
 #include "index/index_features.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
+#include "utils/type_limits.hpp"
 
 namespace iresearch {
 

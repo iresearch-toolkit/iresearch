@@ -134,8 +134,7 @@ analyzer::ptr construct(const classification_stream::Options& options) {
     return nullptr;
   }
 
-  return std::make_unique<classification_stream>(options,
-                                                         std::move(model));
+  return std::make_unique<classification_stream>(options, std::move(model));
 }
 
 analyzer::ptr make_vpack(const VPackSlice slice) {
@@ -251,7 +250,7 @@ classification_stream::classification_stream(const Options& options,
     predictions_it_{predictions_.end()},
     threshold_{options.threshold},
     top_k_{options.top_k} {
-  assert(model_);
+  IRS_ASSERT(model_);
 }
 
 bool classification_stream::next() {

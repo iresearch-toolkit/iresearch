@@ -24,7 +24,6 @@
 #include "assert_format.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <iostream>
 #include <unordered_set>
 
@@ -226,13 +225,13 @@ void index_segment::compute_features() {
     column_output(column_output&&) = default;
     column_output& operator=(column_output&&) = default;
 
-    virtual void write_byte(irs::byte_type b) override { (*buf_) += b; }
+    void write_byte(irs::byte_type b) override { (*buf_) += b; }
 
-    virtual void write_bytes(const irs::byte_type* b, size_t size) override {
+    void write_bytes(const irs::byte_type* b, size_t size) override {
       buf_->append(b, size);
     }
 
-    virtual void reset() override { buf_->clear(); }
+    void reset() override { buf_->clear(); }
 
     irs::bstring* buf_;
   } out{buf_};
@@ -336,9 +335,9 @@ void index_segment::insert_indexed(const ifield& f) {
   auto& stream = f.get_tokens();
 
   auto* term = irs::get<irs::term_attribute>(stream);
-  assert(term);
+  IRS_ASSERT(term);
   auto* inc = irs::get<irs::increment>(stream);
-  assert(inc);
+  IRS_ASSERT(inc);
   auto* offs = irs::get<irs::offset>(stream);
   if (irs::IndexFeatures::OFFS ==
         (requested_features & irs::IndexFeatures::OFFS) &&
@@ -428,7 +427,7 @@ class doc_iterator : public irs::doc_iterator {
     return it == attrs_.end() ? nullptr : it->second;
   }
 
-  virtual bool next() override {
+  bool next() override {
     if (next_ == data_.postings.end()) {
       doc_.value = irs::doc_limits::eof();
       return false;
@@ -442,7 +441,7 @@ class doc_iterator : public irs::doc_iterator {
     return true;
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t id) override {
+  irs::doc_id_t seek(irs::doc_id_t id) override {
     auto it = data_.postings.find(posting{id});
 
     if (it == data_.postings.end()) {
@@ -506,7 +505,7 @@ class doc_iterator : public irs::doc_iterator {
       return true;
     }
 
-    virtual void reset() override {
+    void reset() override {
       ASSERT_TRUE(false);  // unsupported
     }
 
@@ -591,9 +590,9 @@ class term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  virtual void read() override {}
+  void read() override {}
 
-  virtual bool seek(irs::bytes_view value) override {
+  bool seek(irs::bytes_view value) override {
     auto it = data_.terms.find(term{value});
 
     if (it == data_.terms.end()) {
@@ -608,7 +607,7 @@ class term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  virtual irs::SeekResult seek_ge(irs::bytes_view value) override {
+  irs::SeekResult seek_ge(irs::bytes_view value) override {
     auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
@@ -629,13 +628,12 @@ class term_iterator final : public irs::seek_term_iterator {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual doc_iterator::ptr postings(
-    irs::IndexFeatures features) const override {
+  doc_iterator::ptr postings(irs::IndexFeatures features) const override {
     return irs::memory::make_managed<doc_iterator>(
       data_.index_features & features, *prev_);
   }
 
-  virtual irs::seek_cookie::ptr cookie() const override {
+  irs::seek_cookie::ptr cookie() const override {
     return std::make_unique<term_cookie>(value_.value);
   }
 

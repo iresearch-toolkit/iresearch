@@ -41,7 +41,7 @@ namespace detail {
 // libs and objs).
 template<typename Iterator, typename Pred>
 FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
-  assert(first != last);  // pop requires non-empty range
+  IRS_ASSERT(first != last);  // pop requires non-empty range
 
 #ifndef _MSC_VER
   std::pop_heap(first, last, comp);
@@ -61,7 +61,7 @@ class min_match_buffer {
     : min_match_count_(std::max(size_t(1), min_match_count)) {}
 
   uint32_t match_count(size_t i) const noexcept {
-    assert(i < Size);
+    IRS_ASSERT(i < Size);
     return match_count_[i];
   }
 
@@ -81,12 +81,12 @@ class min_match_buffer<0> {
  public:
   explicit min_match_buffer(size_t) noexcept {}
   bool inc(size_t) noexcept {
-    assert(false);
+    IRS_ASSERT(false);
     return true;
   }
-  void clear() noexcept { assert(false); }
+  void clear() noexcept { IRS_ASSERT(false); }
   uint32_t match_count(size_t) const noexcept {
-    assert(false);
+    IRS_ASSERT(false);
     return 1;
   }
   uint32_t min_match_count() const noexcept { return 1; }
@@ -104,7 +104,7 @@ class score_buffer {
   }
 
   score_t* get(size_t i) noexcept {
-    assert(!buf_ || bucket_size_ * i < buf_size_);
+    IRS_ASSERT(!buf_ || bucket_size_ * i < buf_size_);
     return reinterpret_cast<score_t*>(buf_.get() + bucket_size_ * i);
   }
 
@@ -124,7 +124,7 @@ struct empty_score_buffer {
   explicit empty_score_buffer(size_t, size_t) noexcept {}
 
   score_t* get(size_t) noexcept {
-    assert(false);
+    IRS_ASSERT(false);
     return nullptr;
   }
 
@@ -154,19 +154,19 @@ class unary_disjunction final : public compound_doc_iterator<Adapter> {
 
   unary_disjunction(doc_iterator_t&& it) : it_(std::move(it)) {}
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept override {
     return it_->get_mutable(type);
   }
 
-  virtual doc_id_t value() const noexcept override { return it_.doc->value; }
+  doc_id_t value() const noexcept override { return it_.doc->value; }
 
-  virtual bool next() override { return it_->next(); }
+  bool next() override { return it_->next(); }
 
-  virtual doc_id_t seek(doc_id_t target) override { return it_->seek(target); }
+  doc_id_t seek(doc_id_t target) override { return it_->seek(target); }
 
-  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
-    assert(ctx);
-    assert(visitor);
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+    IRS_ASSERT(ctx);
+    IRS_ASSERT(visitor);
     visitor(ctx, it_);
   }
 
@@ -195,16 +195,15 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
     : basic_disjunction{std::move(lhs), std::move(rhs), std::move(merger), est,
                         resolve_overload_tag{}} {}
 
-  virtual attribute* get_mutable(
-    type_info::type_id type) noexcept override final {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() override {
+  bool next() override {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
 
@@ -212,7 +211,7 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
     return !doc_limits::eof(doc.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     auto& doc = std::get<document>(attrs_);
 
     if (target <= doc.value) {
@@ -226,13 +225,13 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
     return (doc.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
-    assert(ctx);
-    assert(visitor);
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+    IRS_ASSERT(ctx);
+    IRS_ASSERT(visitor);
 
     auto& doc = std::get<document>(attrs_);
     // assume that seek or next has been called
-    assert(lhs_.doc->value >= doc.value);
+    IRS_ASSERT(lhs_.doc->value >= doc.value);
 
     if (lhs_.value() == doc.value && !visitor(ctx, lhs_)) {
       return;
@@ -259,8 +258,8 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
   }
 
   void prepare_score() {
-    assert(Merger::size());
-    assert(lhs_.score && rhs_.score);  // must be ensure by the adapter
+    IRS_ASSERT(Merger::size());
+    IRS_ASSERT(lhs_.score && rhs_.score);  // must be ensure by the adapter
 
     auto& score = std::get<irs::score>(attrs_);
 
@@ -290,7 +289,7 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
         return self.score_iterator_impl(self.rhs_, res);
       });
     } else {
-      assert(score == ScoreFunction::kDefault);
+      IRS_ASSERT(score == ScoreFunction::kDefault);
       score = ScoreFunction::Default(Merger::size());
     }
   }
@@ -366,12 +365,11 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
                         },
                         resolve_overload_tag()} {}
 
-  virtual attribute* get_mutable(
-    type_info::type_id type) noexcept override final {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
@@ -388,7 +386,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return true;
   }
 
-  virtual bool next() override {
+  bool next() override {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -418,7 +416,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return true;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -455,9 +453,9 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return (doc.value = min);
   }
 
-  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
-    assert(ctx);
-    assert(visitor);
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+    IRS_ASSERT(ctx);
+    IRS_ASSERT(visitor);
     auto& doc = std::get<document>(attrs_);
     hitch_all_iterators();
     for (auto begin = begin_; begin != end_; ++begin) {
@@ -502,7 +500,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
   }
 
   void prepare_score() {
-    assert(Merger::size());
+    IRS_ASSERT(Merger::size());
 
     auto& score = std::get<irs::score>(attrs_);
 
@@ -529,7 +527,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
         }
       });
     } else {
-      assert(score == ScoreFunction::kDefault);
+      IRS_ASSERT(score == ScoreFunction::kDefault);
       score = ScoreFunction::Default(Merger::size());
     }
   }
@@ -554,11 +552,8 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     for (auto begin = begin_; begin != end_; ++begin) {
       auto& it = *begin;
       if (it.value() < doc.value && doc_limits::eof(it->seek(doc.value))) {
-#ifdef IRESEARCH_DEBUG
-        assert(remove_iterator(begin));
-#else
-        remove_iterator(begin);
-#endif
+        [[maybe_unused]] auto r = remove_iterator(begin);
+        IRS_ASSERT(r);
       }
     }
     last_hitched_doc_ = doc.value;
@@ -615,16 +610,15 @@ class disjunction final : public compound_doc_iterator<Adapter>,
                   },
                   resolve_overload_tag{}} {}
 
-  virtual attribute* get_mutable(
-    type_info::type_id type) noexcept override final {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() override {
+  bool next() override {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -649,7 +643,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     return true;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -669,9 +663,9 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     return doc.value = lead().value();
   }
 
-  virtual void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
-    assert(ctx);
-    assert(visitor);
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+    IRS_ASSERT(ctx);
+    IRS_ASSERT(visitor);
     if (heap_.empty()) {
       return;
     }
@@ -683,11 +677,11 @@ class disjunction final : public compound_doc_iterator<Adapter>,
       irstd::heap::for_each_if(
         heap_.cbegin(), heap_.cend() - 1,
         [this, value, &cont](const size_t it) {
-          assert(it < itrs_.size());
+          IRS_ASSERT(it < itrs_.size());
           return cont && itrs_[it].value() == value;
         },
         [this, ctx, visitor, &cont](const size_t it) {
-          assert(it < itrs_.size());
+          IRS_ASSERT(it < itrs_.size());
           cont = visitor(ctx, itrs_[it]);
         });
     }
@@ -705,7 +699,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
-    // assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
+    // IRS_ASSERT(irstd::all_equal(itrs_.begin(), itrs_.end()));
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
     if (itrs_.empty()) {
@@ -722,13 +716,13 @@ class disjunction final : public compound_doc_iterator<Adapter>,
   }
 
   void prepare_score() {
-    assert(Merger::size());
+    IRS_ASSERT(Merger::size());
 
     auto& score = std::get<irs::score>(attrs_);
 
     score.Reset(this, [](score_ctx* ctx, score_t* res) {
       auto& self = *static_cast<disjunction*>(ctx);
-      assert(!self.heap_.empty());
+      IRS_ASSERT(!self.heap_.empty());
 
       const auto its = self.hitch_all_iterators();
 
@@ -742,11 +736,11 @@ class disjunction final : public compound_doc_iterator<Adapter>,
         irstd::heap::for_each_if(
           its.first, its.second,
           [&self, doc](const size_t it) noexcept {
-            assert(it < self.itrs_.size());
+            IRS_ASSERT(it < self.itrs_.size());
             return self.itrs_[it].value() == doc;
           },
           [&self, res](size_t it) {
-            assert(it < self.itrs_.size());
+            IRS_ASSERT(it < self.itrs_.size());
             if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
               auto& merger = static_cast<Merger&>(self);
               score(merger.temp());
@@ -762,8 +756,8 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     // lambda here gives ~20% speedup on GCC
     std::push_heap(begin, end,
                    [this](const size_t lhs, const size_t rhs) noexcept {
-                     assert(lhs < itrs_.size());
-                     assert(rhs < itrs_.size());
+                     IRS_ASSERT(lhs < itrs_.size());
+                     IRS_ASSERT(rhs < itrs_.size());
                      return itrs_[lhs].value() > itrs_[rhs].value();
                    });
   }
@@ -773,8 +767,8 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     // lambda here gives ~20% speedup on GCC
     detail::pop_heap(begin, end,
                      [this](const size_t lhs, const size_t rhs) noexcept {
-                       assert(lhs < itrs_.size());
-                       assert(rhs < itrs_.size());
+                       IRS_ASSERT(lhs < itrs_.size());
+                       IRS_ASSERT(rhs < itrs_.size());
                        return itrs_[lhs].value() > itrs_[rhs].value();
                      });
   }
@@ -800,20 +794,20 @@ class disjunction final : public compound_doc_iterator<Adapter>,
   }
 
   inline adapter& lead() noexcept {
-    assert(!heap_.empty());
-    assert(heap_.back() < itrs_.size());
+    IRS_ASSERT(!heap_.empty());
+    IRS_ASSERT(heap_.back() < itrs_.size());
     return itrs_[heap_.back()];
   }
 
   inline adapter& top() noexcept {
-    assert(!heap_.empty());
-    assert(heap_.front() < itrs_.size());
+    IRS_ASSERT(!heap_.empty());
+    IRS_ASSERT(heap_.front() < itrs_.size());
     return itrs_[heap_.front()];
   }
 
   std::pair<heap_iterator, heap_iterator> hitch_all_iterators() {
     // hitch all iterators in head to the lead (current doc_)
-    assert(!heap_.empty());
+    IRS_ASSERT(!heap_.empty());
     auto begin = heap_.begin(), end = heap_.end() - 1;
 
     auto& doc = std::get<document>(attrs_);
@@ -905,23 +899,22 @@ class block_disjunction final : public doc_iterator,
 
   size_t match_count() const noexcept { return match_count_; }
 
-  virtual attribute* get_mutable(
-    type_info::type_id type) noexcept override final {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
-  virtual bool next() override {
+  bool next() override {
     auto& doc = std::get<document>(attrs_);
 
     do {
       while (!cur_) {
         if (begin_ >= std::end(mask_)) {
           if (refill()) {
-            assert(cur_);
+            IRS_ASSERT(cur_);
             break;
           }
 
@@ -959,11 +952,11 @@ class block_disjunction final : public doc_iterator,
       return true;
     } while (traits_type::kMinMatch);
 
-    assert(false);
+    IRS_ASSERT(false);
     return true;
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     auto& doc = std::get<document>(attrs_);
 
     if (target <= doc.value) {
@@ -977,7 +970,7 @@ class block_disjunction final : public doc_iterator,
       doc_base_ = block_base + block_offset * kBlockSize;
       begin_ = mask_ + block_offset + 1;
 
-      assert(begin_ > std::begin(mask_) && begin_ <= std::end(mask_));
+      IRS_ASSERT(begin_ > std::begin(mask_) && begin_ <= std::end(mask_));
       cur_ = begin_[-1] & ((~UINT64_C(0)) << target % kBlockSize);
 
       next();
@@ -1022,7 +1015,7 @@ class block_disjunction final : public doc_iterator,
         return doc_limits::eof();
       }
 
-      assert(!doc_limits::eof(doc.value));
+      IRS_ASSERT(!doc_limits::eof(doc.value));
       cur_ = 0;
       begin_ = std::end(mask_);  // enforce "refill()" for upcoming "next()"
       max_ = doc.value;
@@ -1044,7 +1037,7 @@ class block_disjunction final : public doc_iterator,
         if constexpr (HasScore_v<Merger>) {
           std::memset(score_buf_.data(), 0, score_buf_.bucket_size());
           for (auto& it : itrs_) {
-            assert(it.score);
+            IRS_ASSERT(it.score);
             if (*it.score != ScoreFunction::kDefault &&
                 doc.value == it->value()) {
               auto& merger = static_cast<Merger&>(*this);
@@ -1102,7 +1095,7 @@ class block_disjunction final : public doc_iterator,
     }
 
     if constexpr (HasScore_v<Merger>) {
-      assert(Merger::size());
+      IRS_ASSERT(Merger::size());
       auto& score = std::get<irs::score>(attrs_);
 
       score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
@@ -1206,7 +1199,7 @@ class block_disjunction final : public doc_iterator,
         //}
 
         if constexpr (HasScore_v<Merger>) {
-          assert(Merger::size());
+          IRS_ASSERT(Merger::size());
           if (it.score->Func() != irs::ScoreFunction::kDefault) {
             return this->refill<true>(it, empty);
           }
@@ -1218,7 +1211,7 @@ class block_disjunction final : public doc_iterator,
 
     if (empty) {
       // exhausted
-      assert(itrs_.empty());
+      IRS_ASSERT(itrs_.empty());
       return false;
     }
 
@@ -1234,16 +1227,16 @@ class block_disjunction final : public doc_iterator,
         buf_offset_ += bits_required<uint64_t>();
       }
     }
-    assert(cur_);
+    IRS_ASSERT(cur_);
 
     return true;
   }
 
   template<bool Score>
   bool refill(adapter& it, bool& empty) {
-    assert(it.doc);
+    IRS_ASSERT(it.doc);
     const auto* doc = &it.doc->value;
-    assert(!doc_limits::eof(*doc));
+    IRS_ASSERT(!doc_limits::eof(*doc));
 
     // disjunction is 1 step next behind, that may happen:
     // - before the very first next()
@@ -1264,7 +1257,7 @@ class block_disjunction final : public doc_iterator,
       irs::set_bit(mask_[offset / kBlockSize], offset % kBlockSize);
 
       if constexpr (Score) {
-        assert(it.score);
+        IRS_ASSERT(it.score);
         auto& merger = static_cast<Merger&>(*this);
         (*it.score)(merger.temp());
         merger(score_buf_.get(offset), merger.temp());
@@ -1387,7 +1380,7 @@ doc_iterator::ptr MakeWeakDisjunction(
   typename WeakConjunction::doc_iterators_t&& itrs, size_t min_match,
   Merger&& merger, Args&&... args) {
   // This case must be handled by a caller, we're unable to process it here
-  assert(min_match > 0);
+  IRS_ASSERT(min_match > 0);
 
   const auto size = itrs.size();
 
@@ -1398,7 +1391,7 @@ doc_iterator::ptr MakeWeakDisjunction(
 
   if (1 == min_match) {
     // Pure disjunction
-    assert(size >= min_match);
+    IRS_ASSERT(size >= min_match);
     using Disjunction = typename RebindIterator<WeakConjunction>::Disjunction;
 
     return MakeDisjunction<Disjunction>(std::move(itrs),
@@ -1408,7 +1401,7 @@ doc_iterator::ptr MakeWeakDisjunction(
 
   if (min_match == size) {
     // Pure conjunction
-    assert(min_match == size);
+    IRS_ASSERT(min_match == size);
     using Conjunction = typename RebindIterator<WeakConjunction>::Conjunction;
 
     return memory::make_managed<Conjunction>(

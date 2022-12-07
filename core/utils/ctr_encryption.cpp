@@ -30,8 +30,8 @@ namespace {
 
 void decode_ctr_header(irs::bytes_view header, size_t block_size,
                        uint64_t& base_counter, irs::bytes_view& iv) {
-  assert(header.size() >= irs::ctr_encryption::MIN_HEADER_LENGTH &&
-         header.size() >= 2 * block_size);
+  IRS_ASSERT(header.size() >= irs::ctr_encryption::MIN_HEADER_LENGTH &&
+             header.size() >= 2 * block_size);
 
   const auto* begin = header.data();
   base_counter = irs::read<uint64_t>(begin);
@@ -51,13 +51,11 @@ class ctr_cipher_stream : public encryption::stream {
                              uint64_t counter_base) noexcept
     : cipher_(&cipher), iv_(iv), counter_base_(counter_base) {}
 
-  virtual size_t block_size() const noexcept override {
-    return cipher_->block_size();
-  }
+  size_t block_size() const noexcept override { return cipher_->block_size(); }
 
-  virtual bool encrypt(uint64_t offset, byte_type* data, size_t size) override;
+  bool encrypt(uint64_t offset, byte_type* data, size_t size) override;
 
-  virtual bool decrypt(uint64_t offset, byte_type* data, size_t size) override;
+  bool decrypt(uint64_t offset, byte_type* data, size_t size) override;
 
  private:
   bool encrypt_block(uint64_t block_index, byte_type* data, byte_type* scratch);
@@ -71,7 +69,7 @@ class ctr_cipher_stream : public encryption::stream {
 
 bool ctr_cipher_stream::encrypt(uint64_t offset, byte_type* data, size_t size) {
   const auto block_size = this->block_size();
-  assert(block_size);
+  IRS_ASSERT(block_size);
   uint64_t block_index = offset / block_size;
   size_t block_offset = offset % block_size;
 
@@ -111,7 +109,7 @@ bool ctr_cipher_stream::encrypt(uint64_t offset, byte_type* data, size_t size) {
 
 bool ctr_cipher_stream::decrypt(uint64_t offset, byte_type* data, size_t size) {
   const auto block_size = this->block_size();
-  assert(block_size);
+  IRS_ASSERT(block_size);
   uint64_t block_index = offset / block_size;
   size_t block_offset = offset % block_size;
 
@@ -182,7 +180,7 @@ bool ctr_cipher_stream::decrypt_block(uint64_t block_index, byte_type* data,
 
 bool ctr_encryption::create_header(std::string_view filename,
                                    byte_type* header) {
-  assert(header);
+  IRS_ASSERT(header);
 
   const auto block_size = cipher_->block_size();
 
@@ -243,7 +241,7 @@ bool ctr_encryption::create_header(std::string_view filename,
 
 encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
                                                       byte_type* header) {
-  assert(header);
+  IRS_ASSERT(header);
 
   const auto block_size = cipher_->block_size();
 

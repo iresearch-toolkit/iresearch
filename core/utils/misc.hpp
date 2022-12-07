@@ -23,11 +23,11 @@
 #pragma once
 
 #include <array>
-#include <cassert>
 #include <memory>
 #include <type_traits>
 
 #include "shared.hpp"
+#include "utils/assert.hpp"
 
 namespace iresearch {
 
@@ -72,7 +72,7 @@ class CachedFunc {
     if constexpr (Checked) {
       return value < size() ? cache_[value] : func_(value);
     } else {
-      assert(value < cache_.size());
+      IRS_ASSERT(value < cache_.size());
       return cache_[value];
     }
   }
@@ -95,7 +95,7 @@ constexpr auto* down_cast(From* from) noexcept {
   static_assert(!std::is_reference_v<To>);
   using CastTo =
     std::conditional_t<std::is_const_v<From>, std::add_const_t<To>, To>;
-  assert(from == nullptr || dynamic_cast<CastTo*>(from) != nullptr);
+  IRS_ASSERT(from == nullptr || dynamic_cast<CastTo*>(from) != nullptr);
   return static_cast<CastTo*>(from);
 }
 

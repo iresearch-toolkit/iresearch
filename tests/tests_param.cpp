@@ -48,7 +48,7 @@ std::string to_string(dir_generator_f generator) {
   }
 
 #ifdef IRESEARCH_URING
-  if (generator == &asyc_directory) {
+  if (generator == &async_directory) {
     return "async";
   }
 #endif
@@ -73,8 +73,8 @@ std::shared_ptr<irs::directory> mmap_directory(
 
 #ifdef IRESEARCH_URING
 std::shared_ptr<irs::directory> async_directory(
-  const test_base& test, irs::directory_attributes attrs) {
-  return MakePhysicalDirectory<irs::async_directory>(test, std::move(attrs));
+  const test_base* test, irs::directory_attributes attrs) {
+  return MakePhysicalDirectory<irs::AsyncDirectory>(test, std::move(attrs));
 }
 #endif
 

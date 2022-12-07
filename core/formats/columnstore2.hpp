@@ -75,16 +75,16 @@ class column final : public irs::column_output {
       deflater_{std::move(deflater)},
       finalizer_{std::move(finalizer)},
       id_{id} {
-    assert(field_limits::valid(id_));
+    IRS_ASSERT(field_limits::valid(id_));
   }
 
-  virtual void write_byte(byte_type b) override { data_.stream.write_byte(b); }
+  void write_byte(byte_type b) override { data_.stream.write_byte(b); }
 
-  virtual void write_bytes(const byte_type* b, size_t size) override {
+  void write_bytes(const byte_type* b, size_t size) override {
     data_.stream.write_bytes(b, size);
   }
 
-  virtual void reset() override;
+  void reset() override;
 
  private:
   friend class writer;
@@ -92,25 +92,25 @@ class column final : public irs::column_output {
   class address_table {
    public:
     uint64_t back() const noexcept {
-      assert(offset_ > offsets_);
+      IRS_ASSERT(offset_ > offsets_);
       return *(offset_ - 1);
     }
 
     void push_back(uint64_t offset) noexcept {
-      assert(offset_ >= offsets_);
-      assert(offset_ < offsets_ + kBlockSize);
+      IRS_ASSERT(offset_ >= offsets_);
+      IRS_ASSERT(offset_ < offsets_ + kBlockSize);
       *offset_++ = offset;
-      assert(offset >= offset_[-1]);
+      IRS_ASSERT(offset >= offset_[-1]);
     }
 
     void pop_back() noexcept {
-      assert(offset_ > offsets_);
+      IRS_ASSERT(offset_ > offsets_);
       *--offset_ = 0;
     }
 
     // returns number of items to be flushed
     uint32_t size() const noexcept {
-      assert(offset_ >= offsets_);
+      IRS_ASSERT(offset_ >= offsets_);
       return uint32_t(offset_ - offsets_);
     }
 
@@ -192,11 +192,11 @@ class writer final : public columnstore_writer {
 
   writer(Version version, bool consolidation);
 
-  virtual void prepare(directory& dir, const segment_meta& meta) override;
-  virtual column_t push_column(const column_info& info,
-                               column_finalizer_f finalizer) override;
-  virtual bool commit(const flush_state& state) override;
-  virtual void rollback() noexcept override;
+  void prepare(directory& dir, const segment_meta& meta) override;
+  column_t push_column(const column_info& info,
+                       column_finalizer_f finalizer) override;
+  bool commit(const flush_state& state) override;
+  void rollback() noexcept override;
 
  private:
   directory* dir_;
@@ -269,15 +269,15 @@ class reader final : public columnstore_reader {
 
   const column_header* header(field_id field) const;
 
-  virtual const column_reader* column(field_id field) const override {
+  const column_reader* column(field_id field) const override {
     return field >= columns_.size()
              ? nullptr  // can't find column with the specified identifier
              : columns_[field];
   }
 
-  virtual bool visit(const column_visitor_f& visitor) const override;
+  bool visit(const column_visitor_f& visitor) const override;
 
-  virtual size_t size() const override { return columns_.size(); }
+  size_t size() const override { return columns_.size(); }
 
  private:
   using column_ptr = std::unique_ptr<column_reader>;

@@ -49,13 +49,11 @@ class empty_analyzer final : public analyzer {
 
   empty_analyzer() noexcept;
 
-  virtual attribute* get_mutable(irs::type_info::type_id) override {
-    return nullptr;
-  }
+  attribute* get_mutable(irs::type_info::type_id) override { return nullptr; }
 
-  virtual bool next() override { return false; }
+  bool next() override { return false; }
 
-  virtual bool reset(std::string_view) override { return false; }
+  bool reset(std::string_view) override { return false; }
 };
 
 }  // namespace iresearch::analysis

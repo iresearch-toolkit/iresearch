@@ -44,7 +44,7 @@ class same_position_iterator final : public Conjunction {
                          typename Conjunction::merger_type&& merger,
                          positions_t&& pos)
     : Conjunction(std::move(itrs), std::move(merger)), pos_(std::move(pos)) {
-    assert(!pos_.empty());
+    IRS_ASSERT(!pos_.empty());
   }
 
 #if defined(_MSC_VER)
@@ -54,7 +54,7 @@ class same_position_iterator final : public Conjunction {
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-  virtual bool next() override {
+  bool next() override {
     bool next = false;
     while (true == (next = Conjunction::next()) && !find_same_position()) {
     }
@@ -67,7 +67,7 @@ class same_position_iterator final : public Conjunction {
 #pragma GCC diagnostic pop
 #endif
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     const auto doc = Conjunction::seek(target);
 
     if (doc_limits::eof(doc) || find_same_position()) {
@@ -143,11 +143,11 @@ class same_position_query final : public filter::prepared {
     auto term_stats = stats_.begin();
     for (auto& term_state : *query_state) {
       auto* reader = term_state.reader;
-      assert(reader);
+      IRS_ASSERT(reader);
 
       // get postings
       auto docs = reader->postings(*term_state.cookie, features);
-      assert(docs);
+      IRS_ASSERT(docs);
 
       // get needed postings attributes
       auto* pos = irs::get_mutable<position>(docs.get());

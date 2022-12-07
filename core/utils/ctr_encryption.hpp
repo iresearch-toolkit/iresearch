@@ -50,15 +50,12 @@ class ctr_encryption : public encryption {
 
   explicit ctr_encryption(const cipher& cipher) noexcept : cipher_(&cipher) {}
 
-  virtual size_t header_length() noexcept override {
-    return DEFAULT_HEADER_LENGTH;
-  }
+  size_t header_length() noexcept override { return DEFAULT_HEADER_LENGTH; }
 
-  virtual bool create_header(std::string_view filename,
-                             byte_type* header) override;
+  bool create_header(std::string_view filename, byte_type* header) override;
 
-  virtual stream::ptr create_stream(std::string_view filename,
-                                    byte_type* header) override;
+  stream::ptr create_stream(std::string_view filename,
+                            byte_type* header) override;
 
  private:
   const cipher* cipher_;

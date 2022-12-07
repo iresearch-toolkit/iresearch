@@ -20,43 +20,44 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "index_reader.hpp"
-#include "segment_reader.hpp"
+
 #include "index_meta.hpp"
+#include "segment_reader.hpp"
+#include "shared.hpp"
 #include "utils/directory_utils.hpp"
-#include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
+#include "utils/type_limits.hpp"
 
 namespace {
 
 struct empty_sub_reader final : irs::singleton<empty_sub_reader>,
                                 irs::sub_reader {
-  virtual irs::column_iterator::ptr columns() const override {
+  irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
-  virtual const irs::column_reader* column(irs::field_id) const override {
+  const irs::column_reader* column(irs::field_id) const override {
     return nullptr;
   }
-  virtual const irs::column_reader* column(std::string_view) const override {
+  const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  virtual uint64_t docs_count() const override { return 0; }
-  virtual irs::doc_iterator::ptr docs_iterator() const override {
+  uint64_t docs_count() const override { return 0; }
+  irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
-  virtual const irs::term_reader* field(std::string_view) const override {
+  const irs::term_reader* field(std::string_view) const override {
     return nullptr;
   }
-  virtual irs::field_iterator::ptr fields() const override {
+  irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  virtual uint64_t live_docs_count() const override { return 0; }
-  virtual const irs::sub_reader& operator[](size_t) const override {
+  uint64_t live_docs_count() const override { return 0; }
+  const irs::sub_reader& operator[](size_t) const override {
     throw std::out_of_range("index out of range");
   }
-  virtual size_t size() const override { return 0; }
-  virtual const irs::column_reader* sort() const override { return nullptr; }
+  size_t size() const override { return 0; }
+  const irs::column_reader* sort() const override { return nullptr; }
 };  // index_reader
 
 }  // namespace

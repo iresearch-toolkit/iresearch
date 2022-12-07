@@ -80,7 +80,7 @@ struct basic_sort : irs::sort {
   struct prepared_sort final : irs::PreparedSortBase<void> {
     explicit prepared_sort(size_t idx) : idx(idx) {}
 
-    virtual irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 
@@ -133,7 +133,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
     attrs_[irs::type<irs::document>::id()] = &doc_;
 
     if (!ord.empty()) {
-      assert(stats_);
+      IRS_ASSERT(stats_);
 
       scorers_ =
         irs::PrepareScorers(ord.buckets(), irs::sub_reader::empty(),
@@ -156,9 +156,9 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
 #pragma GCC diagnostic pop
 #endif
 
-  virtual irs::doc_id_t value() const override { return doc_.value; }
+  irs::doc_id_t value() const override { return doc_.value; }
 
-  virtual bool next() override {
+  bool next() override {
     if (first_ == last_) {
       doc_.value = irs::doc_limits::eof();
       return false;
@@ -174,7 +174,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
     return it == attrs_.end() ? nullptr : it->second;
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t doc) override {
+  irs::doc_id_t seek(irs::doc_id_t doc) override {
     if (irs::doc_limits::eof(doc_.value) || doc <= doc_.value) {
       return doc_.value;
     }
@@ -1129,16 +1129,16 @@ namespace detail {
 
 struct unestimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
-    virtual irs::doc_id_t value() const override {
+    irs::doc_id_t value() const override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual bool next() override { return false; }
-    virtual irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() override { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual irs::attribute* get_mutable(
+    irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
       return type == irs::type<irs::document>::id() ? &doc : nullptr;
     }
@@ -1147,7 +1147,7 @@ struct unestimated : public irs::filter {
   };  // doc_iterator
 
   struct prepared : public irs::filter::prepared {
-    virtual irs::doc_iterator::ptr execute(
+    irs::doc_iterator::ptr execute(
       const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
@@ -1157,9 +1157,9 @@ struct unestimated : public irs::filter {
     }
   };  // prepared
 
-  virtual filter::prepared::ptr prepare(
-    const irs::index_reader&, const irs::Order&, irs::score_t,
-    const irs::attribute_provider*) const override {
+  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+                                irs::score_t,
+                                const irs::attribute_provider*) const override {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
@@ -1174,16 +1174,16 @@ struct estimated : public irs::filter {
         return est;
       });
     }
-    virtual irs::doc_id_t value() const override {
+    irs::doc_id_t value() const override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual bool next() override { return false; }
-    virtual irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() override { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual irs::attribute* get_mutable(
+    irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
       if (type == irs::type<irs::cost>::id()) {
         return &cost;
@@ -1200,7 +1200,7 @@ struct estimated : public irs::filter {
     explicit prepared(irs::cost::cost_t est, bool* evaluated)
       : evaluated(evaluated), est(est) {}
 
-    virtual irs::doc_iterator::ptr execute(
+    irs::doc_iterator::ptr execute(
       const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
@@ -1214,9 +1214,9 @@ struct estimated : public irs::filter {
     irs::cost::cost_t est;
   };  // prepared
 
-  virtual filter::prepared::ptr prepare(
-    const irs::index_reader&, const irs::Order&, irs::score_t,
-    const irs::attribute_provider*) const override {
+  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+                                irs::score_t,
+                                const irs::attribute_provider*) const override {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
   }
 

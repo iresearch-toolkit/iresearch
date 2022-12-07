@@ -20,15 +20,15 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "data_input.hpp"
 
+#include <memory>
+
 #include "error/error.hpp"
+#include "shared.hpp"
 #include "utils/memory.hpp"
 #include "utils/numeric_utils.hpp"
 #include "utils/std.hpp"
-
-#include <memory>
 
 namespace iresearch {
 
@@ -36,17 +36,13 @@ namespace iresearch {
 // --SECTION--                                          input_buf implementation
 // -----------------------------------------------------------------------------
 
-input_buf::input_buf(index_input* in) : in_(in) { assert(in_); }
+input_buf::input_buf(index_input* in) : in_(in) { IRS_ASSERT(in_); }
 
 std::streamsize input_buf::xsgetn(input_buf::char_type* c,
                                   std::streamsize size) {
-#ifdef IRESEARCH_DEBUG
-  const auto read = in_->read_bytes(reinterpret_cast<byte_type*>(c), size);
-  assert(read == size_t(size));
-  UNUSED(read);
-#else
-  in_->read_bytes(reinterpret_cast<byte_type*>(c), size);
-#endif  // IRESEARCH_DEBUG
+  [[maybe_unused]] const auto read =
+    in_->read_bytes(reinterpret_cast<byte_type*>(c), size);
+  IRS_ASSERT(read == size_t(size));
   return size;
 }
 
@@ -148,7 +144,7 @@ const byte_type* buffered_index_input::read_buffer(size_t offset, size_t size,
 }
 
 size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
-  assert(begin_ <= end_);
+  IRS_ASSERT(begin_ <= end_);
 
   // read remaining data from buffer
   size_t read = std::min(count, remain());
@@ -185,7 +181,7 @@ size_t buffered_index_input::refill() {
     return 0;  // read past eof
   }
 
-  assert(buf_);
+  IRS_ASSERT(buf_);
   begin_ = buf_;
   end_ = begin_ + read_internal(buf_, data_size);
   start_ = data_start;

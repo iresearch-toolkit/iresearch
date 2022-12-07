@@ -194,9 +194,8 @@ automaton from_wildcard(bytes_view expr) {
   static constexpr auto EXPECTED_NFA_PROPERTIES =
     fst::kILabelSorted | fst::kOLabelSorted | fst::kAcceptor | fst::kUnweighted;
 
-  assert(EXPECTED_NFA_PROPERTIES ==
-         nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
-  UNUSED(EXPECTED_NFA_PROPERTIES);
+  IRS_ASSERT(EXPECTED_NFA_PROPERTIES ==
+             nfa.Properties(EXPECTED_NFA_PROPERTIES, true));
 #endif
 
   // nfa is sorted
@@ -213,9 +212,8 @@ automaton from_wildcard(bytes_view expr) {
   static constexpr auto EXPECTED_DFA_PROPERTIES =
     fst::kIDeterministic | EXPECTED_NFA_PROPERTIES;
 
-  assert(EXPECTED_DFA_PROPERTIES ==
-         dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
-  UNUSED(EXPECTED_DFA_PROPERTIES);
+  IRS_ASSERT(EXPECTED_DFA_PROPERTIES ==
+             dfa.Properties(EXPECTED_DFA_PROPERTIES, true));
 #endif
 
   return dfa;

@@ -105,18 +105,18 @@ struct format_traits {
   FORCE_INLINE static void pack32(const uint32_t* RESTRICT decoded,
                                   uint32_t* RESTRICT encoded, size_t size,
                                   const uint32_t bits) noexcept {
-    assert(encoded);
-    assert(decoded);
-    assert(size);
+    IRS_ASSERT(encoded);
+    IRS_ASSERT(decoded);
+    IRS_ASSERT(size);
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   }
 
   FORCE_INLINE static void pack64(const uint64_t* RESTRICT decoded,
                                   uint64_t* RESTRICT encoded, size_t size,
                                   const uint32_t bits) noexcept {
-    assert(encoded);
-    assert(decoded);
-    assert(size);
+    IRS_ASSERT(encoded);
+    IRS_ASSERT(decoded);
+    IRS_ASSERT(size);
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   }
 };  // format_traits
@@ -162,8 +162,8 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     compressor.compress(&data[0], data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
-    assert(compressed.size() <=
-           static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
+    IRS_ASSERT(compressed.size() <=
+               static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(out, int32_t(compressed.size()));  // compressed size
     if (cipher) {
       cipher->encrypt(out.file_pointer(),
@@ -173,8 +173,8 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     out.write_bytes(compressed.data(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE);  // original size
   } else {
-    assert(data.size() <=
-           static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
+    IRS_ASSERT(data.size() <=
+               static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(
       out, int32_t(0) - int32_t(data.size()));  // -ve to mark uncompressed
     if (cipher) {
@@ -203,14 +203,9 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     decode_buf.resize(
       buf_size);  // Ensure that we have enough space to store decompressed data
 
-#ifdef IRESEARCH_DEBUG
-    const auto read =
+    [[maybe_unused]] const auto read =
       in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
-    assert(read == buf_size);
-    UNUSED(read);
-#else
-    in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
-#endif  // IRESEARCH_DEBUG
+    IRS_ASSERT(read == buf_size);
 
     if (cipher) {
       cipher->decrypt(in.file_pointer() - buf_size,
@@ -240,14 +235,9 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
   } else {
     irs::string_utils::oversize(encode_buf, buf_size);
 
-#ifdef IRESEARCH_DEBUG
-    const auto read =
+    [[maybe_unused]] const auto read =
       in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
-    assert(read == buf_size);
-    UNUSED(read);
-#else
-    in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
-#endif  // IRESEARCH_DEBUG
+    IRS_ASSERT(read == buf_size);
 
     if (cipher) {
       cipher->decrypt(in.file_pointer() - buf_size,
@@ -291,8 +281,8 @@ class meta_writer final {
   static constexpr std::string_view FORMAT_EXT = "cm";
 
   explicit meta_writer(ColumnMetaVersion version) noexcept : version_(version) {
-    assert(version >= ColumnMetaVersion::MIN &&
-           version <= ColumnMetaVersion::MAX);
+    IRS_ASSERT(version >= ColumnMetaVersion::MIN &&
+               version <= ColumnMetaVersion::MAX);
   }
 
   void prepare(directory& dir, std::string_view meta);
@@ -310,7 +300,8 @@ class meta_writer final {
 
 void meta_writer::prepare(directory& dir, std::string_view segment) {
   auto filename = irs::file_name(segment, meta_writer::FORMAT_EXT);
-  assert(0 == count_);  // Make sure there were no writes or flush was called
+  IRS_ASSERT(0 ==
+             count_);  // Make sure there were no writes or flush was called
 
   out_ = dir.create(filename);
 
@@ -327,7 +318,7 @@ void meta_writer::prepare(directory& dir, std::string_view segment) {
     auto* enc = dir.attributes().encryption();
 
     if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
-      assert(out_cipher_ && out_cipher_->block_size());
+      IRS_ASSERT(out_cipher_ && out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
         DEFAULT_ENCRYPTION_BUFFER_SIZE, out_cipher_->block_size());
@@ -339,7 +330,7 @@ void meta_writer::prepare(directory& dir, std::string_view segment) {
 }
 
 void meta_writer::write(std::string_view name, field_id id) {
-  assert(out_);
+  IRS_ASSERT(out_);
   out_->write_vlong(id);
   write_string(*out_, name);
   ++count_;
@@ -347,7 +338,7 @@ void meta_writer::write(std::string_view name, field_id id) {
 }
 
 void meta_writer::flush() {
-  assert(out_);
+  IRS_ASSERT(out_);
 
   if (out_cipher_) {
     auto& out = static_cast<encrypted_output&>(*out_);
@@ -438,13 +429,13 @@ bool meta_reader::prepare(const directory& dir, const segment_meta& meta,
     encryption* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
-      assert(in_cipher_ && in_cipher_->block_size());
+      IRS_ASSERT(in_cipher_ && in_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
         DEFAULT_ENCRYPTION_BUFFER_SIZE, in_cipher_->block_size());
 
-      in_ = std::make_unique<encrypted_input>(
-        std::move(in_), *in_cipher_, blocks_in_buffer, kFooterLength);
+      in_ = std::make_unique<encrypted_input>(std::move(in_), *in_cipher_,
+                                              blocks_in_buffer, kFooterLength);
     }
   }
 
@@ -460,7 +451,7 @@ bool meta_reader::read(column_meta& column) {
 
   const auto id = in_->read_vlong();
 
-  assert(id <= max_id_);
+  IRS_ASSERT(id <= max_id_);
   column.name = read_string<std::string>(*in_);
   column.id = id;
   --count_;
@@ -479,20 +470,20 @@ class index_block {
   static const size_t SIZE = Size;
 
   void push_back(doc_id_t key, uint64_t offset) noexcept {
-    assert(key_ >= keys_);
-    assert(key_ < keys_ + Size);
+    IRS_ASSERT(key_ >= keys_);
+    IRS_ASSERT(key_ < keys_ + Size);
     *key_++ = key;
-    assert(key >= key_[-1]);
-    assert(offset_ >= offsets_);
-    assert(offset_ < offsets_ + Size);
+    IRS_ASSERT(key >= key_[-1]);
+    IRS_ASSERT(offset_ >= offsets_);
+    IRS_ASSERT(offset_ < offsets_ + Size);
     *offset_++ = offset;
-    assert(offset >= offset_[-1]);
+    IRS_ASSERT(offset >= offset_[-1]);
   }
 
   void pop_back() noexcept {
-    assert(key_ > keys_);
+    IRS_ASSERT(key_ > keys_);
     *key_-- = 0;
-    assert(offset_ > offsets_);
+    IRS_ASSERT(offset_ > offsets_);
     *offset_-- = 0;
   }
 
@@ -504,7 +495,7 @@ class index_block {
 
   // returns number of items to be flushed
   uint32_t size() const noexcept {
-    assert(key_ >= keys_);
+    IRS_ASSERT(key_ >= keys_);
     return uint32_t(key_ - keys_);
   }
 
@@ -521,7 +512,7 @@ class index_block {
   }
 
   uint64_t max_offset() const noexcept {
-    assert(offset_ > offsets_);
+    IRS_ASSERT(offset_ > offsets_);
     return *(offset_ - 1);
   }
 
@@ -539,9 +530,9 @@ class index_block {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
       const auto block_size = math::ceil32(num_elements, packed::BLOCK_SIZE_32);
-      assert(block_size >= num_elements);
+      IRS_ASSERT(block_size >= num_elements);
 
-      assert(std::is_sorted(keys_, key_));
+      IRS_ASSERT(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
         &format_traits::pack32, out, stats.first, stats.second, keys_,
@@ -557,9 +548,9 @@ class index_block {
       // adjust number of elements to pack to the nearest value
       // that is multiple of the block size
       const auto block_size = math::ceil64(num_elements, packed::BLOCK_SIZE_64);
-      assert(block_size >= num_elements);
+      IRS_ASSERT(block_size >= num_elements);
 
-      assert(std::is_sorted(offsets_, offset_));
+      IRS_ASSERT(std::is_sorted(offsets_, offset_));
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
         &format_traits::pack64, out, std::get<0>(stats), std::get<1>(stats),
@@ -610,15 +601,15 @@ class writer final : public irs::columnstore_writer {
       2 * MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE * sizeof(uint64_t),
       "buffer is not big enough");
 
-    assert(version >= Version::MIN && version <= Version::MAX);
+    IRS_ASSERT(version >= Version::MIN && version <= Version::MAX);
   }
 
-  virtual void prepare(directory& dir, const segment_meta& meta) override;
+  void prepare(directory& dir, const segment_meta& meta) override;
   // Current implmentation doesn't support column headers
-  virtual column_t push_column(const column_info& info,
-                               column_finalizer_f /*writer*/) override;
-  virtual bool commit(const flush_state& state) override;
-  virtual void rollback() noexcept override;
+  column_t push_column(const column_info& info,
+                       column_finalizer_f /*writer*/) override;
+  bool commit(const flush_state& state) override;
+  void rollback() noexcept override;
 
  private:
   class column final : public irs::column_output {
@@ -635,12 +626,12 @@ class writer final : public irs::columnstore_writer {
         id_(id),
         blocks_index_(*ctx.alloc_),
         block_buf_(2 * MAX_DATA_BLOCK_SIZE, 0) {
-      assert(comp_);       // ensured by `push_column'
+      IRS_ASSERT(comp_);   // ensured by `push_column'
       block_buf_.clear();  // reset size to '0'
     }
 
     void prepare(doc_id_t key) {
-      assert(key >= block_index_.max_key());
+      IRS_ASSERT(key >= block_index_.max_key());
 
       if (key <= block_index_.max_key()) {
         // less or equal to previous key
@@ -704,19 +695,19 @@ class writer final : public irs::columnstore_writer {
       flush_block();
 
       // finish column blocks index
-      assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
+      IRS_ASSERT(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
       auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
       column_index_.flush(blocks_index_.stream, buf);
       blocks_index_.stream.flush();
     }
 
-    virtual void write_byte(byte_type b) override { block_buf_ += b; }
+    void write_byte(byte_type b) override { block_buf_ += b; }
 
-    virtual void write_bytes(const byte_type* b, size_t size) override {
+    void write_bytes(const byte_type* b, size_t size) override {
       block_buf_.append(b, size);
     }
 
-    virtual void reset() override {
+    void reset() override {
       if (block_index_.empty()) {
         // nothing to reset
         return;
@@ -751,7 +742,7 @@ class writer final : public irs::columnstore_writer {
       // write first block key & where block starts
       column_index_.push_back(block_index_.min_key(), out.file_pointer());
 
-      assert(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
+      IRS_ASSERT(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
       auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
 
       if (column_index_.full()) {
@@ -852,7 +843,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
 
     const auto encrypt =
       irs::encrypt(filename, *data_out, enc, enc_header, data_out_cipher);
-    assert(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
+    IRS_ASSERT(!encrypt || (data_out_cipher && data_out_cipher->block_size()));
     UNUSED(encrypt);
   }
 
@@ -894,7 +885,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
     // to avoid extra (and useless in our case) check for block index
     // emptiness in 'writer::column::prepare', we disallow passing
     // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
-    assert(doc > doc_limits::invalid() && doc < doc_limits::eof());
+    IRS_ASSERT(doc > doc_limits::invalid() && doc < doc_limits::eof());
 
     column.prepare(doc);
     return column;
@@ -902,7 +893,7 @@ columnstore_writer::column_t writer::push_column(const column_info& info,
 }
 
 bool writer::commit(const flush_state& state) {
-  assert(dir_);
+  IRS_ASSERT(dir_);
 
   // Remove all empty columns from tail.
   while (!columns_.empty() && columns_.back().empty()) {
@@ -960,21 +951,21 @@ void writer::rollback() noexcept {
 
 void writer::flush_meta(const flush_state& meta) {
   // ensure columns are sorted
-  assert(sorted_columns_.empty());
+  IRS_ASSERT(sorted_columns_.empty());
   sorted_columns_.reserve(columns_.size());
   std::copy_if(std::begin(columns_), std::end(columns_),
                std::back_inserter(sorted_columns_),
                [](auto& column) noexcept { return !IsNull(column.name()); });
   std::sort(std::begin(sorted_columns_), std::end(sorted_columns_),
             [](const writer::column& lhs, const writer::column& rhs) noexcept {
-              assert(!IsNull(rhs.name()));
+              IRS_ASSERT(!IsNull(rhs.name()));
               return lhs.name() < rhs.name();
             });
 
   // flush columns meta
   meta_writer_.prepare(*dir_, meta.name);
   for (const writer::column& column : sorted_columns_) {
-    assert(!IsNull(column.name()));
+    IRS_ASSERT(!IsNull(column.name()));
     meta_writer_.write(column.name(), column.id());
   }
   meta_writer_.flush();
@@ -1042,8 +1033,8 @@ class sparse_block : util::noncopyable {
       begin_ = next_;
       const auto vend = (++next_ == end_ ? data_->size() : next_->offset);
 
-      assert(vend >= vbegin);
-      assert(payload_ != &kDummy);
+      IRS_ASSERT(vend >= vbegin);
+      IRS_ASSERT(payload_ != &kDummy);
       *payload_ = bytes_view(data_->c_str() + vbegin,  // start
                              vend - vbegin);           // length
       return true;
@@ -1063,7 +1054,7 @@ class sparse_block : util::noncopyable {
       end_ = block.end_;
       data_ = &block.data_;
 
-      assert(std::is_sorted(
+      IRS_ASSERT(std::is_sorted(
         begin_, end_,
         [](const sparse_block::ref& lhs, const sparse_block::ref& rhs) {
           return lhs.key < rhs.key;
@@ -1191,8 +1182,8 @@ class dense_block : util::noncopyable {
       const auto vbegin = *it_;
       const auto vend = (++it_ == end_ ? data_->size() : *it_);
 
-      assert(vend >= vbegin);
-      assert(payload_ != &kDummy);
+      IRS_ASSERT(vend >= vbegin);
+      IRS_ASSERT(payload_ != &kDummy);
       *payload_ = bytes_view(data_->c_str() + vbegin,  // start
                              vend - vbegin);           // length
     }
@@ -1279,7 +1270,7 @@ class dense_fixed_offset_block : util::noncopyable {
       value_ = value_next_++;
       const auto offset = (value_ - value_min_) * avg_length_;
 
-      assert(payload_ != &kDummy);
+      IRS_ASSERT(payload_ != &kDummy);
       *payload_ =
         bytes_view(data_.data() + offset,
                    value_ == value_back_ ? data_.size() - offset : avg_length_);
@@ -1398,7 +1389,7 @@ class sparse_mask_block : util::noncopyable {
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
-      assert(std::is_sorted(begin_, end_));
+      IRS_ASSERT(std::is_sorted(begin_, end_));
     }
 
     bool operator==(const sparse_mask_block& rhs) const noexcept {
@@ -1634,7 +1625,7 @@ class context_provider : private util::noncopyable {
 
   void prepare(index_input::ptr&& stream,
                encryption::stream::ptr&& cipher) noexcept {
-    assert(stream);
+    IRS_ASSERT(stream);
 
     stream_ = std::move(stream);
     cipher_ = std::move(cipher);
@@ -1662,7 +1653,7 @@ const typename BlockRef::block_t& load_block(const context_provider& ctxs,
 
   if (!cached) {
     auto ctx = ctxs.get_context();
-    assert(ctx);
+    IRS_ASSERT(ctx);
 
     // load block
     const auto& block =
@@ -1693,7 +1684,7 @@ const typename BlockRef::block_t& load_block(
 
   if (!cached) {
     auto ctx = ctxs.get_context();
-    assert(ctx);
+    IRS_ASSERT(ctx);
 
     ctx->load(block, decomp, decrypt, ref.offset);
 
@@ -1715,13 +1706,13 @@ class column : public irs::column_reader, private util::noncopyable {
 
   virtual ~column() = default;
 
-  virtual field_id id() const final { return id_; }
+  field_id id() const final { return id_; }
 
-  virtual std::string_view name() const final {
+  std::string_view name() const final {
     return name_.has_value() ? name_.value() : std::string_view{};
   }
 
-  virtual bytes_view payload() const final {
+  bytes_view payload() const final {
     // Implementation doesn't support column headers.
     return {};
   }
@@ -1742,7 +1733,7 @@ class column : public irs::column_reader, private util::noncopyable {
 
   bool encrypted() const noexcept { return encrypted_; }
   doc_id_t max() const noexcept { return max_; }
-  virtual doc_id_t size() const noexcept override { return count_; }
+  doc_id_t size() const noexcept override { return count_; }
   bool empty() const noexcept { return 0 == size(); }
   uint32_t avg_block_size() const noexcept { return avg_block_size_; }
   uint32_t avg_block_count() const noexcept { return avg_block_count_; }
@@ -1788,16 +1779,15 @@ class column_iterator final : public irs::doc_iterator {
     std::get<cost>(attrs_).reset(column.size());
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
-  virtual doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 
-  virtual doc_id_t seek(irs::doc_id_t doc) override {
+  doc_id_t seek(irs::doc_id_t doc) override {
     begin_ = column_->find_block(seek_origin_, end_, doc);
 
     if (!next_block()) {
@@ -1815,7 +1805,7 @@ class column_iterator final : public irs::doc_iterator {
     return value();
   }
 
-  virtual bool next() override {
+  bool next() override {
     while (!block_.next()) {
       if (!next_block()) {
         return false;
@@ -1899,8 +1889,8 @@ class sparse_column final : public column {
   sparse_column(const context_provider& ctxs, field_id id, ColumnProperty props)
     : column(id, props), ctxs_(&ctxs) {}
 
-  virtual void read(data_input& in, uint64_t* buf,
-                    compression::decompressor::ptr decomp) override {
+  void read(data_input& in, uint64_t* buf,
+            compression::decompressor::ptr decomp) override {
     column::read(in, buf, std::move(decomp));  // read common header
 
     uint32_t blocks_count =
@@ -1956,7 +1946,7 @@ class sparse_column final : public column {
     refs_ = std::move(refs);
   }
 
-  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
+  irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2053,8 +2043,8 @@ class dense_fixed_offset_column final : public column {
                             ColumnProperty prop)
     : column(id, prop), ctxs_(&ctxs) {}
 
-  virtual void read(data_input& in, uint64_t* buf,
-                    compression::decompressor::ptr decomp) override {
+  void read(data_input& in, uint64_t* buf,
+            compression::decompressor::ptr decomp) override {
     column::read(in, buf, std::move(decomp));  // read common header
 
     size_t blocks_count =
@@ -2103,7 +2093,7 @@ class dense_fixed_offset_column final : public column {
     min_ = this->max() - this->count() + 1;
   }
 
-  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
+  irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2150,7 +2140,7 @@ class dense_fixed_offset_column final : public column {
     }
 
     const auto block_idx = key / this->avg_block_count();
-    assert(block_idx < refs_.size());
+    IRS_ASSERT(block_idx < refs_.size());
 
     return refs_.data() + block_idx;
   }
@@ -2165,7 +2155,7 @@ class dense_fixed_offset_column final : public column {
     }
 
     const auto block_idx = key / this->avg_block_count();
-    assert(block_idx < refs_.size());
+    IRS_ASSERT(block_idx < refs_.size());
 
     return std::begin(refs_) + block_idx;
   }
@@ -2188,8 +2178,8 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   explicit dense_fixed_offset_column(field_id id, ColumnProperty prop) noexcept
     : column(id, prop) {}
 
-  virtual void read(data_input& in, uint64_t* buf,
-                    compression::decompressor::ptr decomp) override {
+  void read(data_input& in, uint64_t* buf,
+            compression::decompressor::ptr decomp) override {
     // we treat data in blocks as "garbage" which could be
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
@@ -2233,7 +2223,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     min_ = this->max() - this->count();
   }
 
-  virtual irs::doc_iterator::ptr iterator(ColumnHint hint) const override;
+  irs::doc_iterator::ptr iterator(ColumnHint hint) const override;
 
  private:
   class column_iterator final : public irs::doc_iterator {
@@ -2246,16 +2236,15 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       std::get<cost>(attrs_).reset(column.size());
     }
 
-    virtual attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override final {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       return irs::get_mutable(attrs_, type);
     }
 
-    virtual irs::doc_id_t value() const noexcept override {
+    irs::doc_id_t value() const noexcept override {
       return std::get<document>(attrs_).value;
     }
 
-    virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
+    irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
       // cppcheck-suppress shadowFunction
       auto& value = std::get<document>(attrs_);
 
@@ -2273,7 +2262,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       return value.value;
     }
 
-    virtual bool next() noexcept override {
+    bool next() noexcept override {
       // cppcheck-suppress shadowFunction
       auto& value = std::get<document>(attrs_);
 
@@ -2383,7 +2372,7 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
                                      col_meta.name.c_str(), meta.name.c_str()));
     }
 
-    assert(col_meta.id == columns[col_meta.id]->id());
+    IRS_ASSERT(col_meta.id == columns[col_meta.id]->id());
     auto& column = columns[col_meta.id];
     column->set_name(std::move(col_meta.name));
     sorted_columns.emplace_back(column.get());
@@ -2434,7 +2423,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
     auto* enc = dir.attributes().encryption();
 
     if (irs::decrypt(filename, *stream, enc, cipher)) {
-      assert(cipher && cipher->block_size());
+      IRS_ASSERT(cipher && cipher->block_size());
     }
   }
 
@@ -2515,7 +2504,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
       // compression for 'FORMAT_MIN' version
       decomp =
         compression::get_decompressor(irs::type<compression::lz4>::get());
-      assert(decomp);
+      IRS_ASSERT(decomp);
     }
 
     try {
@@ -2543,7 +2532,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
 
 bool reader::visit(const column_visitor_f& visitor) const {
   for (auto* column : sorted_columns_) {
-    assert(column);
+    IRS_ASSERT(column);
     if (!visitor(*column)) {
       return false;
     }

@@ -30,6 +30,7 @@
 #include <mutex>
 
 #include "shared.hpp"
+#include "utils/assert.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace iresearch {
@@ -48,19 +49,19 @@ class ref_counter : public util::noncopyable {
 
     template<typename T>
     bool operator()(const T& lhs, const ref_t& rhs) const noexcept {
-      assert(rhs);
+      IRS_ASSERT(rhs);
       return Equal::operator()(lhs, *rhs);
     }
 
     template<typename T>
     bool operator()(const ref_t& lhs, const T& rhs) const noexcept {
-      assert(lhs);
+      IRS_ASSERT(lhs);
       return Equal::operator()(*lhs, rhs);
     }
 
     bool operator()(const ref_t& lhs, const ref_t& rhs) const noexcept {
-      assert(lhs);
-      assert(rhs);
+      IRS_ASSERT(lhs);
+      IRS_ASSERT(rhs);
       return Equal::operator()(*lhs, *rhs);
     }
   };
@@ -71,7 +72,7 @@ class ref_counter : public util::noncopyable {
     using Hash::operator();
 
     size_t operator()(const ref_t& value) const noexcept {
-      assert(value);
+      IRS_ASSERT(value);
       return Hash::operator()(*value);
     }
   };
@@ -120,7 +121,7 @@ class ref_counter : public util::noncopyable {
 
     for (auto itr = refs_.begin(), end = refs_.end(); itr != end;) {
       auto& ref = *itr;
-      assert(*itr);
+      IRS_ASSERT(*itr);
 
       // -1 for usage by refs_ itself
       auto visit_next = visitor(*ref, ref.use_count() - 1);

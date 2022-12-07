@@ -38,11 +38,11 @@ class all_iterator final : public doc_iterator {
   all_iterator(const irs::sub_reader& reader, const byte_type* query_stats,
                const irs::Order& order, uint64_t docs_count, score_t boost);
 
-  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);
   }
 
-  virtual bool next() noexcept override {
+  bool next() noexcept override {
     auto& doc = std::get<document>(attrs_);
 
     if (doc.value >= max_doc_) {
@@ -54,7 +54,7 @@ class all_iterator final : public doc_iterator {
     }
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
+  irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
     auto& doc = std::get<document>(attrs_);
 
     doc.value = target <= max_doc_ ? target : doc_limits::eof();
@@ -62,7 +62,7 @@ class all_iterator final : public doc_iterator {
     return doc.value;
   }
 
-  virtual irs::doc_id_t value() const noexcept override {
+  irs::doc_id_t value() const noexcept override {
     return std::get<document>(attrs_).value;
   }
 

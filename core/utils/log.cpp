@@ -788,8 +788,7 @@ bool stack_trace_libunwind(irs::logger::level_t, int) { return false; }
 
 }  // namespace
 
-namespace iresearch {
-namespace logger {
+namespace iresearch::logger {
 
 void log(const char* function, const char* file, int line, level_t level,
          const char* message, size_t len) {
@@ -937,5 +936,4 @@ void stack_trace_level(level_t level) {
   logger_ctx::instance().stack_trace_level(level);
 }
 
-}  // namespace logger
-}  // namespace iresearch
+}  // namespace iresearch::logger

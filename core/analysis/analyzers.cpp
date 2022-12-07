@@ -85,7 +85,7 @@ class analyzer_register final
   : public irs::tagged_generic_register<::key, ::value, std::string_view,
                                         analyzer_register> {
  protected:
-  virtual std::string key_to_filename(const key_type& key) const override {
+  std::string key_to_filename(const key_type& key) const override {
     const auto& name = key.type;
     std::string filename(kFileNamePrefix.size() + name.size(), 0);
 

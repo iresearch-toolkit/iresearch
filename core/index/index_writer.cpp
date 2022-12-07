@@ -90,9 +90,9 @@ struct flush_segment_context {
       segment_(segment),
       modification_contexts_{modification_contexts},
       update_contexts_{update_contexts} {
-    assert(doc_id_begin_ <= doc_id_end_);
-    assert(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
-    assert(update_contexts.size() == segment_.meta.docs_count);
+    IRS_ASSERT(doc_id_begin_ <= doc_id_end_);
+    IRS_ASSERT(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
+    IRS_ASSERT(update_contexts.size() == segment_.meta.docs_count);
   }
 };
 
@@ -163,7 +163,7 @@ bool add_document_mask_modified_records(
         continue;  // the current modification query does not match any records
       }
 
-      assert(meta.live_docs_count);
+      IRS_ASSERT(meta.live_docs_count);
       --meta.live_docs_count;  // decrement count of live docs
       modification.seen = true;
       modified = true;
@@ -196,9 +196,10 @@ bool add_document_mask_modified_records(
       segment.meta.name.c_str()));
   }
 
-  assert(doc_limits::valid(ctx.doc_id_begin_));
-  assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
+  IRS_ASSERT(doc_limits::valid(ctx.doc_id_begin_));
+  IRS_ASSERT(ctx.doc_id_begin_ <= ctx.doc_id_end_);
+  IRS_ASSERT(ctx.doc_id_end_ <=
+             ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
   for (auto& modification : modifications) {
@@ -245,7 +246,7 @@ bool add_document_mask_modified_records(
                    // which in turn did not match any records
       }
 
-      assert(segment.meta.live_docs_count);
+      IRS_ASSERT(segment.meta.live_docs_count);
       --segment.meta.live_docs_count;  // decrement count of live docs
       modification.seen = true;
       modified = true;
@@ -261,9 +262,10 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
   if (ctx.modification_contexts_.empty()) {
     return false;  // nothing new to add
   }
-  assert(doc_limits::valid(ctx.doc_id_begin_));
-  assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
+  IRS_ASSERT(doc_limits::valid(ctx.doc_id_begin_));
+  IRS_ASSERT(ctx.doc_id_begin_ <= ctx.doc_id_end_);
+  IRS_ASSERT(ctx.doc_id_end_ <=
+             ctx.update_contexts_.size() + doc_limits::min());
   bool modified = false;
 
   for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
@@ -274,7 +276,7 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
       continue;  // not an update operation
     }
 
-    assert(ctx.modification_contexts_.size() > doc_ctx.update_id);
+    IRS_ASSERT(ctx.modification_contexts_.size() > doc_ctx.update_id);
 
     // if it's an update record placeholder who's query already match some
     // record
@@ -283,7 +285,7 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
       continue;  // the current placeholder record is in-use and valid
     }
 
-    assert(ctx.segment_.meta.live_docs_count);
+    IRS_ASSERT(ctx.segment_.meta.live_docs_count);
     --ctx.segment_.meta.live_docs_count;  // decrement count of live docs
     modified = true;
   }
@@ -306,7 +308,7 @@ void append_segments_refs(T& buf, directory& dir, const M& meta) {
 std::string_view write_document_mask(directory& dir, segment_meta& meta,
                                      const document_mask& docs_mask,
                                      bool increment_version = true) {
-  assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
+  IRS_ASSERT(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
 
@@ -381,7 +383,7 @@ std::pair<bool, size_t> map_candidates(
 
     ++found;
 
-    assert(mapping.second.first);
+    IRS_ASSERT(mapping.second.first);
     mapping.first = &meta;
 
     has_removals |= (meta.version != it->second.second.first->version);
@@ -393,7 +395,7 @@ std::pair<bool, size_t> map_candidates(
 bool map_removals(const candidates_mapping_t& candidates_mapping,
                   const merge_writer& merger, readers_cache& readers,
                   document_mask& docs_mask) {
-  assert(merger);
+  IRS_ASSERT(merger);
 
   for (auto& mapping : candidates_mapping) {
     const auto& segment_mapping = mapping.second;
@@ -434,7 +436,7 @@ bool map_removals(const candidates_mapping_t& candidates_mapping,
       // mask all remaining doc_ids
       if (!current_itr->next()) {
         do {
-          assert(doc_limits::valid(merge_ctx.doc_map(
+          IRS_ASSERT(doc_limits::valid(merge_ctx.doc_map(
             merged_itr->value())));  // doc_id must have a valid mapping
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
         } while (merged_itr->next());
@@ -447,7 +449,7 @@ bool map_removals(const candidates_mapping_t& candidates_mapping,
       for (;;) {
         while (merged_itr->value() < current_itr->value()) {
           // doc_id must have a valid mapping
-          assert(doc_limits::valid(merge_ctx.doc_map(merged_itr->value())));
+          IRS_ASSERT(doc_limits::valid(merge_ctx.doc_map(merged_itr->value())));
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
 
           if (!merged_itr->next()) {
@@ -505,7 +507,8 @@ bool map_removals(const candidates_mapping_t& candidates_mapping,
         if (!current_itr->next()) {
           do {
             // doc_id must have a valid mapping
-            assert(doc_limits::valid(merge_ctx.doc_map(merged_itr->value())));
+            IRS_ASSERT(
+              doc_limits::valid(merge_ctx.doc_map(merged_itr->value())));
             docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
           } while (merged_itr->next());
 
@@ -610,13 +613,14 @@ index_writer::active_segment_context::active_segment_context(
 #ifdef IRESEARCH_DEBUG
   if (flush_ctx) {
     // ensure there are no active struct update operations
-    // (only needed for assert)
+    // (only needed for IRS_ASSERT)
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{flush_ctx->mutex_};
 
-    // assert that flush_ctx and ctx are compatible
-    assert(flush_ctx->pending_segment_contexts_[pending_segment_context_offset_]
-             .segment_ == ctx_);
+    // IRS_ASSERT that flush_ctx and ctx are compatible
+    IRS_ASSERT(
+      flush_ctx->pending_segment_contexts_[pending_segment_context_offset_]
+        .segment_ == ctx_);
   }
 #endif
 
@@ -673,8 +677,8 @@ index_writer::document::document(flush_context& ctx,
     writer_{*segment_->writer_},
     ctx_{ctx},
     update_id_{update.update_id} {
-  assert(segment_);
-  assert(segment_->writer_);
+  IRS_ASSERT(segment_);
+  IRS_ASSERT(segment_->writer_);
   const auto uncomitted_doc_id_begin =
     segment_->uncomitted_doc_id_begin_ >
         segment_->flushed_update_contexts_.size()
@@ -683,7 +687,8 @@ index_writer::document::document(flush_context& ctx,
          segment_->flushed_update_contexts_.size())
       // uncommited start in 'flushed_'
       : doc_limits::min();
-  assert(uncomitted_doc_id_begin <= writer_.docs_cached() + doc_limits::min());
+  IRS_ASSERT(uncomitted_doc_id_begin <=
+             writer_.docs_cached() + doc_limits::min());
   // ensure reset() will be noexcept
   ++segment_->active_count_;
   const auto rollback_extra =
@@ -697,8 +702,8 @@ index_writer::document::~document() noexcept {
     return;  // another instance will call commit()
   }
 
-  assert(segment_->writer_);
-  assert(&writer_ == segment_->writer_.get());
+  IRS_ASSERT(segment_->writer_);
+  IRS_ASSERT(&writer_ == segment_->writer_.get());
 
   try {
     writer_.commit();
@@ -739,8 +744,8 @@ index_writer::documents_context::~documents_context() noexcept {
   auto& ctx = segment_.ctx();
 
   // failure may indicate a dangling 'document' instance
-  assert(ctx.use_count() >= 0 &&
-         static_cast<uint64_t>(ctx.use_count()) == segment_use_count_);
+  IRS_ASSERT(ctx.use_count() >= 0 &&
+             static_cast<uint64_t>(ctx.use_count()) == segment_use_count_);
 
   if (!ctx) {
     return;  // nothing to do
@@ -797,8 +802,8 @@ void index_writer::documents_context::reset() noexcept {
     auto docs_mask_tail_doc_id =
       ctx->uncomitted_doc_id_begin_ - flushed_docs_start;
 
-    assert(docs_mask_tail_doc_id <= segment.meta.live_docs_count);
-    assert(docs_mask_tail_doc_id <= std::numeric_limits<doc_id_t>::max());
+    IRS_ASSERT(docs_mask_tail_doc_id <= segment.meta.live_docs_count);
+    IRS_ASSERT(docs_mask_tail_doc_id <= std::numeric_limits<doc_id_t>::max());
     segment.docs_mask_tail_doc_id = doc_id_t(docs_mask_tail_doc_id);
 
     if (docs_mask_tail_doc_id - doc_limits::min() >= segment.meta.docs_count) {
@@ -807,7 +812,7 @@ void index_writer::documents_context::reset() noexcept {
       ctx->flushed_.resize(i + 1);  // truncate starting from subsequent meta
     }
 
-    assert(flushed_update_contexts.size() >= flushed_docs_count);
+    IRS_ASSERT(flushed_update_contexts.size() >= flushed_docs_count);
     // truncate 'flushed_update_contexts_'
     flushed_update_contexts.resize(flushed_docs_count);
     // reset to start of 'writer_'
@@ -818,8 +823,8 @@ void index_writer::documents_context::reset() noexcept {
   }
 
   if (!ctx->writer_) {
-    assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() ==
-           flushed_update_contexts.size());
+    IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() ==
+               flushed_update_contexts.size());
     ctx->buffered_docs_.store(flushed_update_contexts.size());
 
     return;  // nothing to reset
@@ -828,12 +833,12 @@ void index_writer::documents_context::reset() noexcept {
   auto& writer = *(ctx->writer_);
   auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
 
-  assert(std::numeric_limits<doc_id_t>::max() >= writer.docs_cached());
+  IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= writer.docs_cached());
   // update_contexts located inside th writer
-  assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() >=
-         flushed_update_contexts.size());
-  assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() <=
-         flushed_update_contexts.size() + writer_docs);
+  IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() >=
+             flushed_update_contexts.size());
+  IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() <=
+             flushed_update_contexts.size() + writer_docs);
   ctx->buffered_docs_.store(flushed_update_contexts.size() + writer_docs);
 
   // rollback document insertions
@@ -842,7 +847,7 @@ void index_writer::documents_context::reset() noexcept {
               ctx->uncomitted_doc_id_begin_ - flushed_update_contexts.size(),
             doc_id_end = writer_docs + doc_limits::min();
        doc_id < doc_id_end; ++doc_id) {
-    assert(doc_id <= std::numeric_limits<doc_id_t>::max());
+    IRS_ASSERT(doc_id <= std::numeric_limits<doc_id_t>::max());
     writer.remove(doc_id_t(doc_id));
   }
 }
@@ -867,8 +872,8 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
     }
   }
 
-  assert(segment_.ctx());
-  assert(segment_.ctx()->writer_);
+  IRS_ASSERT(segment_.ctx());
+  IRS_ASSERT(segment_.ctx()->writer_);
   auto& segment = *(segment_.ctx());
   auto& writer = *segment.writer_;
 
@@ -909,7 +914,7 @@ index_writer::flush_context_ptr index_writer::documents_context::update_segment(
   }
 
   segment.prepare();
-  assert(segment.writer_->initialized());
+  IRS_ASSERT(segment.writer_->initialized());
 
   return ctx;
 }
@@ -923,7 +928,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   auto& flush_ctx = segment.flush_ctx_;
 
   // failure may indicate a dangling 'document' instance
-  assert(
+  IRS_ASSERT(
     // +1 for 'active_segment_context::ctx_'
     (!flush_ctx && segment.ctx_.use_count() == 1) ||
     // +1 for 'active_segment_context::ctx_' (flush_context switching made a
@@ -970,7 +975,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
         // 'segment.flush_ctx_' may be asynchronously flushed
         flush_lock.lock();
         // thread-safe because pending_segment_contexts_ is a deque
-        assert(
+        IRS_ASSERT(
           flush_ctx
             ->pending_segment_contexts_[segment.pending_segment_context_offset_]
             .segment_ == segment.ctx_);
@@ -983,12 +988,12 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
         'uncomitted_modification_queries_'
         // in the previous flush_context because they will be modified lower
         down if (segment.ctx_.use_count() != 2) {
-          assert(segment.flush_ctx_->pending_segment_contexts_.size() >
+          IRS_ASSERT(segment.flush_ctx_->pending_segment_contexts_.size() >
         segment.pending_segment_context_offset_);
-          assert(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_
+          IRS_ASSERT(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_
         == segment.ctx_); // thread-safe because pending_segment_contexts_ is a
         deque
-          assert(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_.use_count()
+          IRS_ASSERT(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_.use_count()
         == 3); // +1 for the reference in 'pending_segment_contexts_', +1 for
         the reference in other flush_context 'pending_segment_contexts_', +1 for
         the reference in 'active_segment_context'
@@ -1008,14 +1013,16 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
     } else {
       // the segment is present in this flush_context
       // 'pending_segment_contexts_'
-      assert(pending_segment_contexts_.size() >
-             segment.pending_segment_context_offset_);
-      assert(pending_segment_contexts_[segment.pending_segment_context_offset_]
-               .segment_ == segment.ctx_);
+      IRS_ASSERT(pending_segment_contexts_.size() >
+                 segment.pending_segment_context_offset_);
+      IRS_ASSERT(
+        pending_segment_contexts_[segment.pending_segment_context_offset_]
+          .segment_ == segment.ctx_);
       // +1 for the reference in 'pending_segment_contexts_', +1 for
       // the reference in 'active_segment_context'
-      assert(pending_segment_contexts_[segment.pending_segment_context_offset_]
-               .segment_.use_count() == 2);
+      IRS_ASSERT(
+        pending_segment_contexts_[segment.pending_segment_context_offset_]
+          .segment_.use_count() == 2);
       freelist_node =
         &(pending_segment_contexts_[segment.pending_segment_context_offset_]);
     }
@@ -1024,8 +1031,8 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
     //       is fully valid for its 'committed' generation value to equal the
     //       generation of the last 'committed' insert operation since removals
     //       are applied to documents with generation <= removal
-    assert(ctx.uncomitted_modification_queries_ <=
-           ctx.modification_queries_.size());
+    IRS_ASSERT(ctx.uncomitted_modification_queries_ <=
+               ctx.modification_queries_.size());
     modification_count =
       ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_;
     if (!generation_base) {
@@ -1053,7 +1060,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
     [generation_base, modification_count](modification_context& v) noexcept {
       // must be < modification_count since inserts come after
       // modification
-      assert(v.generation < modification_count);
+      IRS_ASSERT(v.generation < modification_count);
       UNUSED(modification_count);
 
       // update to flush_context generation
@@ -1068,7 +1075,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
     for (size_t i = uncomitted_doc_id_begin, end = ctxs.size(); i < end; ++i) {
       // can == modification_count if inserts come  after
       // modification
-      assert(ctxs[i].generation <= modification_count);
+      IRS_ASSERT(ctxs[i].generation <= modification_count);
       UNUSED(modification_count);
       // update to flush_context generation
       ctxs[i].generation += generation_base;
@@ -1080,8 +1087,8 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   // update generations of segment_context::flushed_update_contexts_
   update_generation(flushed_update_contexts);
 
-  assert(ctx.writer_);
-  assert(ctx.writer_->docs_cached() <= doc_limits::eof());
+  IRS_ASSERT(ctx.writer_);
+  IRS_ASSERT(ctx.writer_->docs_cached() <= doc_limits::eof());
   auto& writer = *(ctx.writer_);
   const auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
 
@@ -1104,9 +1111,9 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
 
   // do not reuse segments that are present in another flush_context
   if (!ctx.dirty_) {
-    assert(freelist_node);
+    IRS_ASSERT(freelist_node);
     // +1 for 'active_segment_context::ctx_', +1 for
-    assert(segment.ctx_.use_count() == 2);
+    IRS_ASSERT(segment.ctx_.use_count() == 2);
     // 'pending_segment_context::segment_'
     auto& segments_active = *(segment.segments_active_);
     // release hold (delcare before aquisition since operator++() is noexcept)
@@ -1170,18 +1177,18 @@ index_writer::segment_context::segment_context(
     uncomitted_generation_offset_(0),
     uncomitted_modification_queries_(0),
     writer_(segment_writer::make(dir_, column_info, feature_info, comparator)) {
-  assert(meta_generator_);
+  IRS_ASSERT(meta_generator_);
 }
 
 uint64_t index_writer::segment_context::flush() {
   // must be already locked to prevent concurrent flush related modifications
-  assert(!flush_mutex_.try_lock());
+  IRS_ASSERT(!flush_mutex_.try_lock());
 
   if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
     return 0;  // skip flushing an empty writer
   }
 
-  assert(writer_->docs_cached() <= doc_limits::eof());
+  IRS_ASSERT(writer_->docs_cached() <= doc_limits::eof());
 
   auto& segment = flushed_.emplace_back(std::move(writer_meta_.meta));
 
@@ -1226,7 +1233,7 @@ index_writer::segment_context::make_update_context(const filter& filter) {
 segment_writer::update_context
 index_writer::segment_context::make_update_context(
   std::shared_ptr<const filter> filter) {
-  assert(filter);
+  IRS_ASSERT(filter);
   // increment generation due to removal
   auto generation = ++uncomitted_generation_offset_;
   auto update_id = modification_queries_.size();
@@ -1239,7 +1246,7 @@ index_writer::segment_context::make_update_context(
 
 segment_writer::update_context
 index_writer::segment_context::make_update_context(filter::ptr&& filter) {
-  assert(filter);
+  IRS_ASSERT(filter);
   // increment generation due to removal
   auto generation = ++uncomitted_generation_offset_;
   auto update_id = modification_queries_.size();
@@ -1251,7 +1258,7 @@ index_writer::segment_context::make_update_context(filter::ptr&& filter) {
 }
 
 void index_writer::segment_context::prepare() {
-  assert(writer_);
+  IRS_ASSERT(writer_);
 
   if (!writer_->initialized()) {
     writer_meta_ = meta_generator_();
@@ -1331,9 +1338,9 @@ index_writer::index_writer(
     writer_(codec->get_index_meta_writer()),
     write_lock_(std::move(lock)),
     write_lock_file_ref_(std::move(lock_file_ref)) {
-  assert(column_info);   // ensured by 'make'
-  assert(feature_info);  // ensured by 'make'
-  assert(codec);
+  IRS_ASSERT(column_info);   // ensured by 'make'
+  IRS_ASSERT(feature_info);  // ensured by 'make'
+  IRS_ASSERT(codec);
   flush_context_.store(&flush_context_pool_[0]);
 
   // setup round-robin chain
@@ -1490,7 +1497,7 @@ index_writer::ptr index_writer::make(
 
 index_writer::~index_writer() noexcept {
   // failure may indicate a dangling 'document' instance
-  assert(!segments_active_.load());
+  IRS_ASSERT(!segments_active_.load());
   cached_readers_.clear();
   write_lock_.reset();  // reset write lock if any
   // reset pending state (if any) before destroying flush contexts
@@ -1534,12 +1541,12 @@ index_writer::consolidation_result index_writer::consolidate(
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
   auto committed_state = std::atomic_load(&committed_state_);
-  assert(committed_state);
+  IRS_ASSERT(committed_state);
   if (IRS_UNLIKELY(!committed_state)) {
     return {0, ConsolidationError::FAIL};
   }
   auto committed_meta = committed_state->first;
-  assert(committed_meta);
+  IRS_ASSERT(committed_meta);
   if (IRS_UNLIKELY(!committed_meta)) {
     return {0, ConsolidationError::FAIL};
   }
@@ -1655,7 +1662,7 @@ index_writer::consolidation_result index_writer::consolidate(
   // add consolidated segments to the merge_writer
   for (const auto* segment : candidates) {
     // already checked validity
-    assert(segment);
+    IRS_ASSERT(segment);
 
     auto reader = cached_readers_.emplace(*segment);
 
@@ -1677,7 +1684,7 @@ index_writer::consolidation_result index_writer::consolidate(
     // consolidate()/commit()
     std::unique_lock lock{commit_lock_};
     const auto current_committed_meta = committed_state_->first;
-    assert(current_committed_meta);
+    IRS_ASSERT(current_committed_meta);
     if (IRS_UNLIKELY(!current_committed_meta)) {
       return {0, ConsolidationError::FAIL};
     }
@@ -2033,8 +2040,8 @@ index_writer::active_segment_context index_writer::get_segment_context(
     const auto& segment = freelist_node->segment_;
 
     // +1 for the reference in 'pending_segment_contexts_'
-    assert(segment.use_count() == 1);
-    assert(!segment->dirty_);
+    IRS_ASSERT(segment.use_count() == 1);
+    IRS_ASSERT(!segment->dirty_);
     return active_segment_context(segment, segments_active_, &ctx,
                                   freelist_node->value);
   }
@@ -2129,7 +2136,7 @@ index_writer::pending_context_t index_writer::flush_all(
   // we need raw ptr as ctx may be moved
   Finally unregister_segments = [ctx_raw = ctx.get(), this]() noexcept {
     // FIXME make me noexcept as I'm begin called from within ~finally()
-    assert(ctx_raw);
+    IRS_ASSERT(ctx_raw);
     if (ctx_raw->pending_segments_.empty()) {
       return;
     }
@@ -2186,9 +2193,9 @@ index_writer::pending_context_t index_writer::flush_all(
       auto modifications_begin = modifications.modification_offset_begin_;
       auto modifications_end = modifications.modification_offset_end_;
 
-      assert(modifications_begin <= modifications_end);
-      assert(modifications_end <=
-             modifications.segment_->modification_queries_.size());
+      IRS_ASSERT(modifications_begin <= modifications_end);
+      IRS_ASSERT(modifications_end <=
+                 modifications.segment_->modification_queries_.size());
       const std::span modification_queries{
         modifications.segment_->modification_queries_.data() +
           modifications_begin,
@@ -2315,9 +2322,9 @@ index_writer::pending_context_t index_writer::flush_all(
         auto modifications_begin = modifications.modification_offset_begin_;
         auto modifications_end = modifications.modification_offset_end_;
 
-        assert(modifications_begin <= modifications_end);
-        assert(modifications_end <=
-               modifications.segment_->modification_queries_.size());
+        IRS_ASSERT(modifications_begin <= modifications_end);
+        IRS_ASSERT(modifications_end <=
+                   modifications.segment_->modification_queries_.size());
         const std::span modification_queries{
           modifications.segment_->modification_queries_.data() +
             modifications_begin,
@@ -2345,7 +2352,7 @@ index_writer::pending_context_t index_writer::flush_all(
     if (!docs_mask.empty()) {
       if (!pending_consolidation) {
         // if this is pending consolidation,
-        // this segment is already in the mask (see assert below)
+        // this segment is already in the mask (see IRS_ASSERT below)
         // new version will be created. Remove old version from cache!
         ctx->segment_mask_.emplace(pending_segment.segment.meta);
       }
@@ -2424,9 +2431,9 @@ index_writer::pending_context_t index_writer::flush_all(
       size_t flushed_docs_count = 0;
       // was updated after flush
       auto flushed_doc_id_end = pending_segment_context.doc_id_end_;
-      assert(pending_segment_context.doc_id_begin_ <= flushed_doc_id_end);
-      assert(flushed_doc_id_end - doc_limits::min() <=
-             segment->flushed_update_contexts_.size());
+      IRS_ASSERT(pending_segment_context.doc_id_begin_ <= flushed_doc_id_end);
+      IRS_ASSERT(flushed_doc_id_end - doc_limits::min() <=
+                 segment->flushed_update_contexts_.size());
 
       // process individually each flushed segment_meta from the segment_context
       for (auto& flushed : segment->flushed_) {
@@ -2457,14 +2464,14 @@ index_writer::pending_context_t index_writer::flush_all(
         // 0-based
         auto update_contexts_end =
           std::min(flushed_doc_id_end - doc_limits::min(), flushed_docs_count);
-        assert(update_contexts_begin <= update_contexts_end);
+        IRS_ASSERT(update_contexts_begin <= update_contexts_end);
         // begining doc_id in this segment_meta
         auto valid_doc_id_begin =
           update_contexts_begin - flushed_docs_start + doc_limits::min();
         auto valid_doc_id_end =
           std::min(update_contexts_end - flushed_docs_start + doc_limits::min(),
                    size_t(flushed.docs_mask_tail_doc_id));
-        assert(valid_doc_id_begin <= valid_doc_id_end);
+        IRS_ASSERT(valid_doc_id_begin <= valid_doc_id_end);
 
         if (valid_doc_id_begin == valid_doc_id_end) {
           continue;  // empty segment since head+tail == 'docs_count'
@@ -2493,9 +2500,9 @@ index_writer::pending_context_t index_writer::flush_all(
         // add doc_ids before start of this flush_context to document_mask
         for (size_t doc_id = doc_limits::min(); doc_id < valid_doc_id_begin;
              ++doc_id) {
-          assert(std::numeric_limits<doc_id_t>::max() >= doc_id);
+          IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
           if (flush_segment_ctx.docs_mask_.emplace(doc_id_t(doc_id)).second) {
-            assert(flush_segment_ctx.segment_.meta.live_docs_count);
+            IRS_ASSERT(flush_segment_ctx.segment_.meta.live_docs_count);
             // decrement count of live docs
             --flush_segment_ctx.segment_.meta.live_docs_count;
           }
@@ -2506,9 +2513,9 @@ index_writer::pending_context_t index_writer::flush_all(
         for (size_t doc_id = valid_doc_id_end,
                     doc_id_end = flushed.meta.docs_count + doc_limits::min();
              doc_id < doc_id_end; ++doc_id) {
-          assert(std::numeric_limits<doc_id_t>::max() >= doc_id);
+          IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
           if (flush_segment_ctx.docs_mask_.emplace(doc_id_t(doc_id)).second) {
-            assert(flush_segment_ctx.segment_.meta.live_docs_count);
+            IRS_ASSERT(flush_segment_ctx.segment_.meta.live_docs_count);
             // decrement count of live docs
             --flush_segment_ctx.segment_.meta.live_docs_count;
           }
@@ -2521,9 +2528,9 @@ index_writer::pending_context_t index_writer::flush_all(
           auto modifications_begin = modifications.modification_offset_begin_;
           auto modifications_end = modifications.modification_offset_end_;
 
-          assert(modifications_begin <= modifications_end);
-          assert(modifications_end <=
-                 modifications.segment_->modification_queries_.size());
+          IRS_ASSERT(modifications_begin <= modifications_end);
+          IRS_ASSERT(modifications_end <=
+                     modifications.segment_->modification_queries_.size());
           const std::span modification_queries(
             modifications.segment_->modification_queries_.data() +
               modifications_begin,
@@ -2604,7 +2611,7 @@ index_writer::pending_context_t index_writer::flush_all(
 }
 
 bool index_writer::start(progress_report_callback const& progress) {
-  assert(!commit_lock_.try_lock());  // already locked
+  IRS_ASSERT(!commit_lock_.try_lock());  // already locked
 
   REGISTER_TIMER_DETAILED();
 
@@ -2680,7 +2687,7 @@ bool index_writer::start(progress_report_callback const& progress) {
 }
 
 void index_writer::finish() {
-  assert(!commit_lock_.try_lock());  // already locked
+  IRS_ASSERT(!commit_lock_.try_lock());  // already locked
 
   REGISTER_TIMER_DETAILED();
 
@@ -2718,7 +2725,7 @@ void index_writer::finish() {
 }
 
 void index_writer::abort() {
-  assert(!commit_lock_.try_lock());  // already locked
+  IRS_ASSERT(!commit_lock_.try_lock());  // already locked
 
   if (!pending_state_) {
     // there is no open transaction

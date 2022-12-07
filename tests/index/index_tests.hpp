@@ -51,54 +51,49 @@ class directory_mock : public irs::directory {
 
   using directory::attributes;
 
-  virtual irs::directory_attributes& attributes() noexcept override {
+  irs::directory_attributes& attributes() noexcept override {
     return impl_.attributes();
   }
 
-  virtual irs::index_output::ptr create(
-    std::string_view name) noexcept override {
+  irs::index_output::ptr create(std::string_view name) noexcept override {
     return impl_.create(name);
   }
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
-  virtual irs::index_lock::ptr make_lock(
-    std::string_view name) noexcept override {
+  irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
     return impl_.make_lock(name);
   }
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result,
+             std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
-  virtual irs::index_input::ptr open(
-    std::string_view name, irs::IOAdvice advice) const noexcept override {
+  irs::index_input::ptr open(std::string_view name,
+                             irs::IOAdvice advice) const noexcept override {
     return impl_.open(name, advice);
   }
 
-  virtual bool remove(std::string_view name) noexcept override {
+  bool remove(std::string_view name) noexcept override {
     return impl_.remove(name);
   }
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override {
+  bool rename(std::string_view src, std::string_view dst) noexcept override {
     return impl_.rename(src, dst);
   }
 
-  virtual bool sync(std::string_view name) noexcept override {
+  bool sync(std::string_view name) noexcept override {
     return impl_.sync(name);
   }
 
-  virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+  bool visit(const irs::directory::visitor_f& visitor) const override {
     return impl_.visit(visitor);
   }
 
@@ -218,7 +213,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
       static_cast<irs::index_reader::ptr>(open_reader()), index(), skip);
   }
 
-  virtual void SetUp() override {
+  void SetUp() override {
     test_base::SetUp();
 
     // set directory
@@ -230,7 +225,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     ASSERT_NE(nullptr, codec_);
   }
 
-  virtual void TearDown() override {
+  void TearDown() override {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();

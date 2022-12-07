@@ -21,9 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "tests_shared.hpp"
 #include "index/field_meta.hpp"
+
 #include "analysis/token_attributes.hpp"
+#include "tests_shared.hpp"
 
 using namespace iresearch;
 

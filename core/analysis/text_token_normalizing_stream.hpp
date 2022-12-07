@@ -57,12 +57,11 @@ class normalizing_token_stream final : public analyzer,
   static void init();  // for trigering registration in a static build
 
   explicit normalizing_token_stream(const options_t& options);
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override final {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
-  virtual bool next() override;
-  virtual bool reset(std::string_view data) override;
+  bool next() override;
+  bool reset(std::string_view data) override;
 
  private:
   using attributes =

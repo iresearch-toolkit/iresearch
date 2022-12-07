@@ -184,7 +184,7 @@ class bounded_object_pool {
     explicit releaser(node_type* slot) noexcept : slot_{slot} {}
 
     void operator()(element_type*) noexcept {
-      assert(slot_ && slot_->value.owner);  // Ensured by emplace(...)
+      IRS_ASSERT(slot_ && slot_->value.owner);  // Ensured by emplace(...)
       slot_->value.owner->unlock(*slot_);
     }
 
@@ -346,7 +346,7 @@ class unbounded_object_pool_base : private util::noncopyable {
 
     if (head) {
       auto value = std::exchange(head->value.value, nullptr);
-      assert(value);
+      IRS_ASSERT(value);
       free_slots_.push(*head);
       return value;
     }
@@ -373,7 +373,7 @@ class unbounded_object_pool_base : private util::noncopyable {
 
     [[maybe_unused]] const auto old_value =
       std::exchange(slot->value.value, value);
-    assert(!old_value);
+    IRS_ASSERT(!old_value);
     free_objects_.push(*slot);
   }
 
@@ -417,8 +417,8 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     releaser() noexcept : owner_{nullptr} {}
 
     void operator()(pointer p) const noexcept {
-      assert(p);  // Ensured by std::unique_ptr<...>
-      assert(owner_);
+      IRS_ASSERT(p);  // Ensured by std::unique_ptr<...>
+      IRS_ASSERT(owner_);
       owner_->release(p);
     }
 
@@ -454,7 +454,7 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
     // reset all cached instances
     while ((head = this->free_objects_.pop())) {
       auto p = std::exchange(head->value.value, nullptr);
-      assert(p);
+      IRS_ASSERT(p);
       typename base_t::deleter_type{}(p);
       this->free_slots_.push(*head);
     }
@@ -514,8 +514,8 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     explicit releaser(generation_ptr_t&& gen) noexcept : gen_{std::move(gen)} {}
 
     void operator()(pointer p) noexcept {
-      assert(p);     // Ensured by std::unique_ptr<...>
-      assert(gen_);  // Ensured by emplace(...)
+      IRS_ASSERT(p);     // Ensured by std::unique_ptr<...>
+      IRS_ASSERT(gen_);  // Ensured by emplace(...)
 
       Finally release_gen = [this]() noexcept { gen_ = nullptr; };
 
@@ -600,7 +600,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
     // reset all cached instances
     while ((head = this->free_objects_.pop())) {
       auto p = std::exchange(head->value.value, nullptr);
-      assert(p);
+      IRS_ASSERT(p);
       deleter_type{}(p);
       this->free_slots_.push(*head);
     }
@@ -621,7 +621,7 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
 
   size_t generation_size() const noexcept {
     const auto use_count = std::atomic_load(&gen_).use_count();
-    assert(use_count >= 2);
+    IRS_ASSERT(use_count >= 2);
     return use_count - 2;  // -1 for temporary object, -1 for this->_gen
   }
 

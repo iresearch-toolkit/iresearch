@@ -208,7 +208,7 @@ io_uring_sqe* async_file::get_sqe() {
     uint64_t data;
 
     if (!ring_.deque(false, &data)) {
-      assert(ring_.sq_ready());
+      IRS_ASSERT(ring_.sq_ready());
       ring_.submit();
       ring_.deque(true, &data);
     }
@@ -220,13 +220,13 @@ io_uring_sqe* async_file::get_sqe() {
     }
   }
 
-  assert(sqe);
+  IRS_ASSERT(sqe);
   return sqe;
 }
 
 void async_file::drain(bool wait) {
   io_uring_sqe* sqe = get_sqe();
-  assert(sqe);
+  IRS_ASSERT(sqe);
 
   io_uring_prep_nop(sqe);
   sqe->flags |= (IOSQE_IO_LINK | IOSQE_IO_DRAIN);
@@ -260,19 +260,19 @@ class async_index_output final : public index_output {
   static index_output::ptr open(const file_path_t name,
                                 async_file_ptr&& async) noexcept;
 
-  virtual void write_int(int32_t value) override;
-  virtual void write_long(int64_t value) override;
-  virtual void write_vint(uint32_t v) override;
-  virtual void write_vlong(uint64_t v) override;
-  virtual void write_byte(byte_type b) override;
-  virtual void write_bytes(const byte_type* b, size_t length) override;
-  virtual size_t file_pointer() const override {
-    assert(buf_->value <= pos_);
+  void write_int(int32_t value) override;
+  void write_long(int64_t value) override;
+  void write_vint(uint32_t v) override;
+  void write_vlong(uint64_t v) override;
+  void write_byte(byte_type b) override;
+  void write_bytes(const byte_type* b, size_t length) override;
+  size_t file_pointer() const override {
+    IRS_ASSERT(buf_->value <= pos_);
     return start_ + size_t(std::distance(buf_->value, pos_));
   }
-  virtual void flush() override;
+  void flush() override;
 
-  virtual void close() override {
+  void close() override {
     Finally reset = [this]() noexcept {
       async_->release_buffer(*buf_);
       handle_.reset(nullptr);
@@ -285,7 +285,7 @@ class async_index_output final : public index_output {
     async_->drain(true);
   }
 
-  virtual int64_t checksum() const override {
+  int64_t checksum() const override {
     const_cast<async_index_output*>(this)->flush();
     return crc_.checksum();
   }
@@ -317,11 +317,11 @@ class async_index_output final : public index_output {
   byte_type* pos_{};  // current position in the buffer
   byte_type* end_{};  // end of the valid bytes in the buffer
   size_t start_{};    // position of the buffer in file
-};                    // async_index_output
+};
 
 /*static*/ index_output::ptr async_index_output::open(
   const file_path_t name, async_file_ptr&& async) noexcept {
-  assert(name);
+  IRS_ASSERT(name);
 
   if (!async) {
     return nullptr;
@@ -392,7 +392,7 @@ void async_index_output::write_byte(byte_type b) {
 }
 
 void async_index_output::flush() {
-  assert(handle_);
+  IRS_ASSERT(handle_);
 
   auto* buf = buf_->value;
   const auto size = size_t(std::distance(buf, pos_));
@@ -414,12 +414,12 @@ void async_index_output::flush() {
 
   buf_ = async_->get_buffer();
 
-  assert(buf_);
+  IRS_ASSERT(buf_);
   reset(buf_->value);
 }
 
 void async_index_output::write_bytes(const byte_type* b, size_t length) {
-  assert(pos_ <= end_);
+  IRS_ASSERT(pos_ <= end_);
   auto left = size_t(std::distance(pos_, end_));
 
   if (left > length) {
@@ -445,7 +445,7 @@ void async_index_output::write_bytes(const byte_type* b, size_t length) {
     const size_t count = length / PAGE_SIZE;
     for (size_t i = count; i; --i) {
       buf_ = async_->get_buffer();
-      assert(buf_);
+      IRS_ASSERT(buf_);
       pos_ = buf_->value;
       std::memcpy(pos_, b, PAGE_SIZE);
       {
@@ -478,19 +478,15 @@ void async_index_output::write_bytes(const byte_type* b, size_t length) {
 
 namespace iresearch {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                     mmap_directory implementation
-// -----------------------------------------------------------------------------
-
-async_directory::async_directory(std::string path, directory_attributes attrs,
-                                 size_t pool_size, size_t queue_size,
-                                 unsigned flags)
-  : mmap_directory{std::move(path), std::move(attrs)},
+AsyncDirectory::AsyncDirectory(std::filesystem::path path,
+                               directory_attributes attrs, size_t pool_size,
+                               size_t queue_size, unsigned flags)
+  : MMapDirectory{std::move(path), std::move(attrs)},
     async_pool_{pool_size},
     queue_size_{queue_size},
     flags_{flags} {}
 
-index_output::ptr async_directory::create(std::string_view name) noexcept {
+index_output::ptr AsyncDirectory::create(std::string_view name) noexcept {
   std::filesystem::path path;
 
   try {
@@ -504,7 +500,7 @@ index_output::ptr async_directory::create(std::string_view name) noexcept {
   return nullptr;
 }
 
-bool async_directory::sync(std::span<std::string_view> names) noexcept {
+bool AsyncDirectory::sync(std::span<std::string_view> names) noexcept {
   std::filesystem::path path;
 
   try {
@@ -547,30 +543,33 @@ bool async_directory::sync(std::span<std::string_view> names) noexcept {
   return true;
 }
 
-// bool async_directory::sync(std::string_view name) noexcept {
-//   std::filesystem::path path;
-//
-//   try {
-//     (path/=directory())/=name;
-//   } catch (...) {
-//     return false;
-//   }
-//
-//   io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
-//
-//   if (!sqe) {
-//     IR_FRMT_ERROR("Failed to get sqe, path: %s", path.utf8().c_str());
-//   }
-//
-//   file_utils::handle_t handle(
-//     file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
-//
-//   io_uring_prep_fsync()
-//
-//   return false;
-//
-//   io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), b, len,
-//   buffer_offset(), 0); sqe->user_data = reinterpret_cast<uint64_t>(b);
-// }
+/*
+bool AsyncDirectory::sync(std::string_view name) noexcept {
+  std::filesystem::path path;
+
+  try {
+    (path /= directory()) /= name;
+  } catch (...) {
+    return false;
+  }
+
+  io_uring_sqe* sqe = io_uring_get_sqe(&ring_);
+
+  if (sqe == nullptr) {
+    IR_FRMT_ERROR("Failed to get sqe, path: %s", path.c_str());
+  }
+
+  file_utils::handle_t handle(
+    file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
+
+  io_uring_prep_fsync()
+
+    return false;
+
+  io_uring_prep_write_fixed(sqe, handle_cast(handle_.get()), b, len,
+                            buffer_offset(), 0);
+  sqe->user_data = reinterpret_cast<uint64_t>(b);
+}
+*/
 
 }  // namespace iresearch

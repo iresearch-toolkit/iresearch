@@ -27,6 +27,7 @@
 #if defined(__linux__)
 
 #include <sys/prctl.h>
+
 #include <memory>
 
 namespace iresearch {

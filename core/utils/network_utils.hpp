@@ -20,8 +20,9 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NETWORK_UTILS_H
-#define IRESEARCH_NETWORK_UTILS_H
+#pragma once
+
+#include <cstddef>
 
 namespace iresearch {
 
@@ -29,5 +30,3 @@ int get_host_name(char* name, size_t size);
 bool is_same_hostname(const char* rhs, size_t size);
 
 }  // namespace iresearch
-
-#endif  // IRESEARCH_NETWORK_UTILS_H

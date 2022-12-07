@@ -191,7 +191,6 @@ endif ()
 set_target_properties(iresearch-tests-static
   PROPERTIES
   OUTPUT_NAME iresearch-tests-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
   )
 
 target_link_libraries(iresearch-tests-static

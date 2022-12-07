@@ -35,17 +35,17 @@ class exclusion final : public doc_iterator {
  public:
   exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl) noexcept
     : incl_(std::move(incl)), excl_(std::move(excl)) {
-    assert(incl_);
-    assert(excl_);
+    IRS_ASSERT(incl_);
+    IRS_ASSERT(excl_);
     incl_doc_ = irs::get<document>(*incl_);
     excl_doc_ = irs::get<document>(*excl_);
-    assert(incl_doc_);
-    assert(excl_doc_);
+    IRS_ASSERT(incl_doc_);
+    IRS_ASSERT(excl_doc_);
   }
 
-  virtual doc_id_t value() const override { return incl_doc_->value; }
+  doc_id_t value() const override { return incl_doc_->value; }
 
-  virtual bool next() override {
+  bool next() override {
     if (!incl_->next()) {
       return false;
     }
@@ -53,7 +53,7 @@ class exclusion final : public doc_iterator {
     return !doc_limits::eof(next(incl_doc_->value));
   }
 
-  virtual doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) override {
     if (!doc_limits::valid(target)) {
       return incl_doc_->value;
     }
@@ -65,7 +65,7 @@ class exclusion final : public doc_iterator {
     return next(target);
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept override {
     return incl_->get_mutable(type);
   }
 

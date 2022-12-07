@@ -50,7 +50,7 @@ class SkipWriter : util::noncopyable {
   // skip_n: skip interval for levels 1..n
   SkipWriter(doc_id_t skip_0, doc_id_t skip_n) noexcept
     : max_levels_{0}, skip_0_{skip_0}, skip_n_{skip_n} {
-    assert(skip_0_);
+    IRS_ASSERT(skip_0_);
   }
 
   // Return number of elements to skip at the 0 level
@@ -93,7 +93,7 @@ class SkipWriter : util::noncopyable {
 template<typename Writer>
 void SkipWriter::Skip(doc_id_t count, Writer&& write) {
   if (0 == (count % skip_0_)) {
-    assert(!levels_.empty());
+    IRS_ASSERT(!levels_.empty());
 
     uint64_t child = 0;
 
@@ -161,7 +161,7 @@ class SkipReaderBase : util::noncopyable {
   static_assert(std::is_nothrow_move_constructible_v<Level>);
 
   static void SeekToChild(Level& lvl, uint64_t ptr, const Level& prev) {
-    assert(lvl.stream);
+    IRS_ASSERT(lvl.stream);
     auto& stream = *lvl.stream;
 
     if (const auto absolute_ptr = lvl.begin + ptr;
@@ -210,7 +210,7 @@ class SkipReader final : public SkipReaderBase {
 
 template<typename Read>
 doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
-  assert(!levels_.empty());
+  IRS_ASSERT(!levels_.empty());
   size_t size = std::size(levels_);
   size_t id = 0;
 
@@ -244,7 +244,7 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
       reader_.MoveDown(next_id);
     }
 
-    assert(&level_0 == &levels_[id]);
+    IRS_ASSERT(&level_0 == &levels_[id]);
     auto& stream{*level_0.stream};
 
     do {

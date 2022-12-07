@@ -36,9 +36,8 @@ irs::by_column_existence make_filter(const std::string_view& field,
   irs::by_column_existence filter;
   *filter.mutable_field() = field;
   if (prefix_match) {
-    filter.mutable_options()->acceptor = [](std::string_view, std::string_view) {
-      return true;
-    };
+    filter.mutable_options()->acceptor = [](std::string_view,
+                                            std::string_view) { return true; };
   }
   return filter;
 }

@@ -200,12 +200,12 @@ class index_meta {
   }
 
   const index_segment_t& segment(size_t i) const noexcept {
-    assert(i < segments_.size());
+    IRS_ASSERT(i < segments_.size());
     return segments_[i];
   }
 
   const index_segment_t& operator[](size_t i) const noexcept {
-    assert(i < segments_.size());
+    IRS_ASSERT(i < segments_.size());
     return segments_[i];
   }
 

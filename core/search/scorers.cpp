@@ -71,7 +71,7 @@ class scorer_register
       entry_key_t, irs::sort::ptr (*)(std::string_view args), std::string_view,
       scorer_register> {
  protected:
-  virtual std::string key_to_filename(const key_type& key) const override {
+  std::string key_to_filename(const key_type& key) const override {
     auto& name = key.name_;
     std::string filename(kFileNamePrefix.size() + name.size(), 0);
 
