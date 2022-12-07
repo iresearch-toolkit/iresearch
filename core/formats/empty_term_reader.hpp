@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_EMPTY_TERM_READER_H
-#define IRESEARCH_EMPTY_TERM_READER_H
+#pragma once
 
 #include "formats.hpp"
 #include "index/field_meta.hpp"
@@ -36,58 +35,60 @@ class empty_term_reader final : public irs::term_reader {
   explicit empty_term_reader(uint64_t docs_count) noexcept
     : docs_count_(docs_count) {}
 
-  virtual irs::seek_term_iterator::ptr iterator(
-    SeekMode) const noexcept override {
+  irs::seek_term_iterator::ptr iterator(SeekMode) const noexcept override {
     return irs::seek_term_iterator::empty();
   }
 
-  virtual irs::seek_term_iterator::ptr iterator(
+  irs::seek_term_iterator::ptr iterator(
     automaton_table_matcher&) const noexcept override {
     return irs::seek_term_iterator::empty();
   }
 
-  virtual size_t bit_union(const cookie_provider&,
-                           size_t*) const noexcept override {
+  size_t bit_union(const cookie_provider&, size_t*) const noexcept override {
     return 0;
   }
 
-  virtual doc_iterator::ptr postings(const seek_cookie&,
-                                     IndexFeatures) const noexcept override {
+  size_t read_documents(bytes_view,
+                        std::span<doc_id_t>) const noexcept override {
+    return 0;
+  }
+
+  term_meta term(bytes_view) const noexcept override { return {}; }
+
+  doc_iterator::ptr postings(const seek_cookie&,
+                             IndexFeatures) const noexcept override {
     return doc_iterator::empty();
   }
 
-  virtual doc_iterator::ptr wanderator(const seek_cookie&,
-                                       IndexFeatures) const noexcept override {
+  doc_iterator::ptr wanderator(const seek_cookie&,
+                               IndexFeatures) const noexcept override {
     return doc_iterator::empty();
   }
 
-  virtual const irs::field_meta& meta() const noexcept override {
+  const irs::field_meta& meta() const noexcept override {
     return irs::field_meta::kEmpty;
   }
 
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 
   // total number of terms
-  virtual size_t size() const noexcept override {
+  size_t size() const noexcept override {
     return 0;  // no terms in reader
   }
 
   // total number of documents
-  virtual uint64_t docs_count() const noexcept override { return docs_count_; }
+  uint64_t docs_count() const noexcept override { return docs_count_; }
 
   // least significant term
-  virtual irs::bytes_view(min)() const noexcept override { return {}; }
+  irs::bytes_view(min)() const noexcept override { return {}; }
 
   // most significant term
-  virtual irs::bytes_view(max)() const noexcept override { return {}; }
+  irs::bytes_view(max)() const noexcept override { return {}; }
 
  private:
   uint64_t docs_count_;
 };
 
 }  // namespace iresearch
-
-#endif
