@@ -366,8 +366,7 @@ TEST(bitset_iterator_test, seek) {
       ASSERT_EQ(it.value(), doc->value);
     }
     ASSERT_EQ(irs::doc_limits::invalid(), it.value());
-    ASSERT_EQ(irs::doc_limits::invalid(),
-              it.seek(irs::doc_limits::invalid()));
+    ASSERT_EQ(irs::doc_limits::invalid(), it.seek(irs::doc_limits::invalid()));
     ASSERT_EQ(it.value(), doc->value);
   }
 
@@ -450,8 +449,7 @@ TEST(bitset_iterator_test, seek) {
     ASSERT_TRUE(bool(doc));
 
     ASSERT_EQ(it.value(), doc->value);
-    ASSERT_EQ(irs::doc_limits::invalid(),
-              it.seek(irs::doc_limits::invalid()));
+    ASSERT_EQ(irs::doc_limits::invalid(), it.seek(irs::doc_limits::invalid()));
     ASSERT_EQ(it.value(), doc->value);
   }
 
@@ -763,8 +761,7 @@ TEST(bitset_iterator_test, seek_next) {
     ASSERT_EQ(it.value(), doc->value);
     ASSERT_EQ(steps, it.value());
     ASSERT_EQ(it.value(), doc->value);
-    ASSERT_EQ(irs::doc_limits::invalid(),
-              it.seek(irs::doc_limits::invalid()));
+    ASSERT_EQ(irs::doc_limits::invalid(), it.seek(irs::doc_limits::invalid()));
   }
 
   // sparse bitset, seek+next
@@ -789,8 +786,7 @@ TEST(bitset_iterator_test, seek_next) {
 
     size_t steps = 5;
     for (size_t i = 0; i < size; i += 2) {
-      const auto expected_doc =
-        irs::doc_limits::min() + i;
+      const auto expected_doc = irs::doc_limits::min() + i;
       ASSERT_EQ(expected_doc, it.seek(i));
       ASSERT_EQ(expected_doc, it.value());
       ASSERT_EQ(it.value(), doc->value);

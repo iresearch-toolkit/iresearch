@@ -989,9 +989,8 @@ class index_test_case : public tests::index_test_base {
           EXPECT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           EXPECT_NE(nullptr, actual_value);
-          for (irs::doc_id_t
-                 doc = (irs::doc_limits::min)(),
-                 max = segment.docs_count();
+          for (irs::doc_id_t doc = (irs::doc_limits::min)(),
+                             max = segment.docs_count();
                doc <= max; ++doc) {
             if (doc != values->seek(doc)) {
               return false;
