@@ -68,7 +68,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
   const index_reader& index, const Order& ord, score_t boost,
@@ -104,4 +104,4 @@ namespace iresearch {
   ::visit(segment, reader, prefix, visitor);
 }
 
-}  // namespace iresearch
+}  // namespace irs

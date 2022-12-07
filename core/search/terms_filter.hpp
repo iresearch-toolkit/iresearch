@@ -29,7 +29,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_terms;
 struct filter_visitor;
@@ -98,13 +98,13 @@ class by_terms final : public filter_base<by_terms_options>,
     const attribute_provider* /*ctx*/) const override;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<::iresearch::by_terms_options> {
-  size_t operator()(const ::iresearch::by_terms_options& v) const noexcept {
+struct hash<::irs::by_terms_options> {
+  size_t operator()(const ::irs::by_terms_options& v) const noexcept {
     return v.hash();
   }
 };

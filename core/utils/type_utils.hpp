@@ -30,7 +30,7 @@
 #include "std.hpp"
 #include "string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compile-time type identifier
@@ -218,4 +218,4 @@ struct is_vector<std::vector<T, A>> : std::true_type {};
 template<typename T>
 inline constexpr bool is_vector_v = is_vector<T>::value;
 
-}  // namespace iresearch
+}  // namespace irs

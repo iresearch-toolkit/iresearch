@@ -25,7 +25,7 @@
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 TEST(attributes_tests, duplicate_register) {
   struct dummy_attribute : public irs::attribute {};

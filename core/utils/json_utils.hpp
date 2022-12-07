@@ -25,7 +25,7 @@
 
 #include "string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename GenericObject>
 inline bool get_uint64(GenericObject const& json, std::string_view name,
@@ -61,6 +61,6 @@ inline bool get_bool(GenericObject const& json, std::string_view name,
   return true;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_JSON_UTILS_H

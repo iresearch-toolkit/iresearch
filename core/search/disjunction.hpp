@@ -30,7 +30,7 @@
 #include "utils/std.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace detail {
 
 // Need this proxy since Microsoft has heap validity check in std::pop_heap.
@@ -40,7 +40,7 @@ namespace detail {
 // _ITERATOR_DEBUG_LEVEL macros which affects ABI (it must be the same for all
 // libs and objs).
 template<typename Iterator, typename Pred>
-FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
+IRS_FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
   IRS_ASSERT(first != last);  // pop requires non-empty range
 
 #ifndef _MSC_VER
@@ -982,7 +982,7 @@ class block_disjunction final : public doc_iterator,
       }
 
       visit_and_purge([this, target, &doc](auto& it) mutable {
-        UNUSED(this);
+        IRS_IGNORE(this);
         const auto value = it->seek(target);
 
         if (doc_limits::eof(value)) {
@@ -1416,6 +1416,6 @@ doc_iterator::ptr MakeWeakDisjunction(
                                                std::forward<Args>(args)...);
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_DISJUNCTION_H

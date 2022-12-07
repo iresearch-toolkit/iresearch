@@ -43,7 +43,7 @@ struct empty_query final : public filter::prepared,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 filter::filter(const type_info& type) noexcept
   : boost_(irs::kNoBoost), type_(type.id()) {}
@@ -59,4 +59,4 @@ filter::prepared::ptr empty::prepare(const index_reader&, const Order&, score_t,
   return memory::to_managed<filter::prepared, false>(&empty_query::instance());
 }
 
-}  // namespace iresearch
+}  // namespace irs

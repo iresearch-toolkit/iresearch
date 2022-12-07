@@ -25,7 +25,7 @@
 
 #include "encryption.hpp"
 
-namespace iresearch {
+namespace irs {
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class cipher
@@ -61,6 +61,6 @@ class ctr_encryption : public encryption {
   const cipher* cipher_;
 };  // ctr_encryption
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_CTR_ENCRYPTION_H

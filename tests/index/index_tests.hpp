@@ -37,7 +37,7 @@
 
 using namespace std::chrono_literals;
 
-namespace iresearch {
+namespace irs {
 
 struct term_attribute;
 

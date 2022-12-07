@@ -28,7 +28,7 @@
 #include "utils/string.hpp"
 #include "utils/string_utils.hpp"
 
-using namespace iresearch;
+using namespace irs;
 
 template<typename T, size_t BlockSize>
 class block_pool_test : public test_base {

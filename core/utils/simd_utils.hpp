@@ -30,7 +30,7 @@
 #include "shared.hpp"
 #include "utils/bit_packing.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace simd {
 
 using namespace hwy::HWY_NAMESPACE;
@@ -47,7 +47,7 @@ struct simd_helper {
   }
 
   template<typename Simd, typename Ptr>
-  static decltype(Load(Simd{}, Ptr{})) load(const Simd simd_tag, Ptr p) {
+  static decltype(auto) load(const Simd simd_tag, Ptr p) {
     if constexpr (Aligned) {
       return Load(simd_tag, p);
     } else {
@@ -76,8 +76,8 @@ std::pair<T, T> maxmin(const T* begin, size_t size) noexcept {
     begin += Unroll * Step;
   }
 
-  std::pair<T, T> minmax = {GetLane(MinOfLanes(minacc)),
-                            GetLane(MaxOfLanes(maxacc))};
+  std::pair<T, T> minmax = {GetLane(MinOfLanes(simd_tag, minacc)),
+                            GetLane(MaxOfLanes(simd_tag, maxacc))};
 
   for (; begin != end; ++begin) {
     minmax.first = std::min(*begin, minmax.first);
@@ -110,7 +110,7 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
   }
 
   // FIXME use OrOfLanes instead
-  auto max = GetLane(MaxOfLanes(oracc));
+  auto max = GetLane(MaxOfLanes(simd_tag, oracc));
 
   for (; begin != end; ++begin) {
     max |= *begin;
@@ -120,7 +120,7 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
 }
 
 template<size_t Length, bool Aligned, typename T>
-FORCE_INLINE uint32_t maxbits(const T* begin) noexcept {
+IRS_FORCE_INLINE uint32_t maxbits(const T* begin) noexcept {
   return maxbits<Aligned>(begin, Length);
 }
 
@@ -138,7 +138,8 @@ bool all_equal(const T* begin, size_t size) noexcept {
 
   for (size_t steps = size / (Unroll * Step); steps; --steps) {
     for (size_t j = 0; j < Unroll; ++j) {
-      if (!AllTrue(vvalue == simd_helper::load(simd_tag, begin + j * Step))) {
+      if (!AllTrue(simd_tag,
+                   vvalue == simd_helper::load(simd_tag, begin + j * Step))) {
         return false;
       }
     }
@@ -154,28 +155,28 @@ bool all_equal(const T* begin, size_t size) noexcept {
   return true;
 }
 
-FORCE_INLINE Vec<HWY_FULL(uint32_t)> zig_zag_encode(
+IRS_FORCE_INLINE Vec<HWY_FULL(uint32_t)> zig_zag_encode(
   Vec<HWY_FULL(int32_t)> v) noexcept {
   constexpr HWY_FULL(uint32_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 31)) ^ (uv << Set(simd_tag, 1)));
 }
 
-FORCE_INLINE Vec<HWY_FULL(int32_t)> zig_zag_decode(
+IRS_FORCE_INLINE Vec<HWY_FULL(int32_t)> zig_zag_decode(
   Vec<HWY_FULL(uint32_t)> uv) noexcept {
   constexpr HWY_FULL(int32_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
   return ((v >> Set(simd_tag, 1)) ^ (Zero(simd_tag) - (v & Set(simd_tag, 1))));
 }
 
-FORCE_INLINE Vec<HWY_FULL(uint64_t)> zig_zag_encode(
+IRS_FORCE_INLINE Vec<HWY_FULL(uint64_t)> zig_zag_encode(
   Vec<HWY_FULL(int64_t)> v) noexcept {
   constexpr HWY_FULL(uint64_t) simd_tag;
   const auto uv = BitCast(simd_tag, v);
   return ((uv >> Set(simd_tag, 63)) ^ (uv << Set(simd_tag, 1)));
 }
 
-FORCE_INLINE Vec<HWY_FULL(int64_t)> zig_zag_decode(
+IRS_FORCE_INLINE Vec<HWY_FULL(int64_t)> zig_zag_decode(
   Vec<HWY_FULL(uint64_t)> uv) noexcept {
   constexpr HWY_FULL(int64_t) simd_tag;
   const auto v = BitCast(simd_tag, uv);
@@ -245,7 +246,7 @@ void delta_encode(T* begin, T init) noexcept {
 
     for (size_t i = 0; i < Length; i += Step) {
       const auto vec = simd_helper::load(simd_tag, begin + i);
-      const auto delta = vec - CombineShiftRightLanes<3>(vec, prev);
+      const auto delta = vec - CombineShiftRightLanes<3>(simd_tag, vec, prev);
       simd_helper::store(delta, simd_tag, begin + i);
       prev = vec;
     }
@@ -327,6 +328,6 @@ void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
 }
 
 }  // namespace simd
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SIMD_UTILS_H

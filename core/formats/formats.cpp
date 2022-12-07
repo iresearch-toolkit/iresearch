@@ -74,7 +74,7 @@ class format_register
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /* static */ void index_meta_writer::complete(index_meta& meta) noexcept {
   meta.last_gen_ = meta.gen_;
@@ -185,4 +185,4 @@ format_registrar::format_registrar(const type_info& type,
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

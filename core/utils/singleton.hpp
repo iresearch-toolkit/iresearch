@@ -32,7 +32,7 @@ static_assert(false, "Singleton should not be visible in plugins")
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 template<typename T>
 class singleton : util::noncopyable {
@@ -46,7 +46,7 @@ class singleton : util::noncopyable {
   singleton() = default;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // #ifdef IRESEARCH_DLL_PLUGIN
 #endif

@@ -28,7 +28,7 @@
 #include "shared.hpp"
 #include "utils/assert.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace irstd {
 
 template<typename In, typename Out>
@@ -299,4 +299,4 @@ class static_lazy_array {
 };
 
 }  // namespace irstd
-}  // namespace iresearch
+}  // namespace irs

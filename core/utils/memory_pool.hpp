@@ -32,7 +32,7 @@
 #include "utils/misc.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch::memory {
+namespace irs::memory {
 
 class freelist : private util::noncopyable {
  private:
@@ -56,21 +56,21 @@ class freelist : private util::noncopyable {
   }
 
   // push the specified element 'p' to the stack denoted by 'head'
-  FORCE_INLINE void push(void* p) noexcept {
+  IRS_FORCE_INLINE void push(void* p) noexcept {
     IRS_ASSERT(p);
     auto* free = static_cast<slot*>(p);
     free->next = head_;
     head_ = free;
   }
 
-  FORCE_INLINE void assign(void* p, const size_t slot_size,
-                           const size_t count) noexcept {
+  IRS_FORCE_INLINE void assign(void* p, const size_t slot_size,
+                               const size_t count) noexcept {
     segregate(p, slot_size, count);
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE void push_n(void* p, const size_t slot_size,
-                           const size_t count) noexcept {
+  IRS_FORCE_INLINE void push_n(void* p, const size_t slot_size,
+                               const size_t count) noexcept {
     IRS_ASSERT(p);
 
     auto* end = segregate(p, slot_size, count);
@@ -78,10 +78,10 @@ class freelist : private util::noncopyable {
     head_ = static_cast<slot*>(p);
   }
 
-  FORCE_INLINE bool empty() const noexcept { return !head_; }
+  IRS_FORCE_INLINE bool empty() const noexcept { return !head_; }
 
   // pops an element from the stack denoted by 'head'
-  FORCE_INLINE void* pop() noexcept {
+  IRS_FORCE_INLINE void* pop() noexcept {
     IRS_ASSERT(head_);
     void* p = head_;
     head_ = head_->next;
@@ -367,7 +367,7 @@ class memory_pool : public pool_base<GrowPolicy, BlockAllocator> {
   }
 
   static size_t adjust_slot_size(size_t slot_size) noexcept {
-    using namespace iresearch::math;
+    using namespace irs::math;
     static_assert(is_power2(freelist::MIN_ALIGN),
                   "MIN_ALIGN must be a power of 2");
 
@@ -503,7 +503,7 @@ class memory_pool_allocator : public allocator_base<T> {
   }
 
   pointer allocate(size_type n, const_pointer hint = 0) {
-    UNUSED(hint);
+    IRS_IGNORE(hint);
 
     if (std::is_same<Tag, single_allocator_tag>::value) {
       IRS_ASSERT(1 == n);
@@ -623,7 +623,7 @@ class memory_pool_multi_size_allocator : public allocator_base<T> {
     : allocators_(&pool), pool_(&allocators_->pool(sizeof(T))) {}
 
   pointer allocate(size_type n, const_pointer hint = 0) {
-    UNUSED(hint);
+    IRS_IGNORE(hint);
 
     if (std::is_same<Tag, single_allocator_tag>::value) {
       IRS_ASSERT(1 == n);
@@ -673,4 +673,4 @@ constexpr inline bool operator!=(
   return !(lhs == rhs);
 }
 
-}  // namespace iresearch::memory
+}  // namespace irs::memory

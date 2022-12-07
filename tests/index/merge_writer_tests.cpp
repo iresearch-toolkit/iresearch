@@ -2076,8 +2076,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     // can't have more docs then highest doc_id
     irs::bytes_view_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      const auto doc =
-        irs::doc_id_t((irs::doc_limits::min)() + i);
+      const auto doc = irs::doc_id_t((irs::doc_limits::min)() + i);
       if (!expected_bytes.empty()) {
         ASSERT_EQ(doc, bytes_values->seek(doc));
         in.reset(irs::get<irs::payload>(*bytes_values)->value);
@@ -2554,8 +2553,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   // can't have more docs then highest doc_id
   irs::bytes_view_input in;
   for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-    const auto doc =
-      irs::doc_id_t((irs::doc_limits::min)() + i);
+    const auto doc = irs::doc_id_t((irs::doc_limits::min)() + i);
 
     ASSERT_EQ(doc, bytes_values->seek(doc));
     in.reset(irs::get<irs::payload>(*bytes_values)->value);
@@ -4554,8 +4552,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   // can't have more docs then highest doc_id
   irs::bytes_view_input in;
   for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-    const auto doc =
-      irs::doc_id_t((irs::doc_limits::min)() + i);
+    const auto doc = irs::doc_id_t((irs::doc_limits::min)() + i);
 
     ASSERT_EQ(doc, bytes_values->seek(doc));
     in.reset(irs::get<irs::payload>(*bytes_values)->value);

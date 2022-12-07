@@ -37,21 +37,19 @@ class analyzer_test : public ::testing::Test {
     // analysis below
     {
       // same env variable name as
-      // iresearch::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE
+      // irs::analysis::text_token_stream::STOPWORD_PATH_ENV_VARIABLE
       const auto text_stopword_path_var = "IRESEARCH_TEXT_STOPWORD_PATH";
-      const char* czOldStopwordPath = iresearch::getenv(text_stopword_path_var);
+      const char* czOldStopwordPath = irs::getenv(text_stopword_path_var);
       std::string sOldStopwordPath =
         czOldStopwordPath == nullptr ? "" : czOldStopwordPath;
 
-      iresearch::setenv(text_stopword_path_var, IResearch_test_resource_dir,
-                        true);
+      irs::setenv(text_stopword_path_var, IResearch_test_resource_dir, true);
       irs::analysis::analyzers::get(
         "text", irs::type<irs::text_format::text>::get(),
         "en");  // stream needed only to load stopwords
 
       if (czOldStopwordPath) {
-        iresearch::setenv(text_stopword_path_var, sOldStopwordPath.c_str(),
-                          true);
+        irs::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
       }
     }
   }

@@ -3850,37 +3850,39 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   // regiseter reopen failure in postings
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.doc");
   // can't reopen document input
-  ASSERT_THROW(termItr->postings(irs::IndexFeatures::NONE), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(irs::IndexFeatures::NONE),
+               irs::io_error);
   // regiseter reopen failure in postings (nullptr)
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.doc");
   // can't reopen document input (nullptr)
-  ASSERT_THROW(termItr->postings(irs::IndexFeatures::NONE), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(irs::IndexFeatures::NONE),
+               irs::io_error);
   // regiseter reopen failure in positions
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.pos");
   // can't reopen position input
-  ASSERT_THROW(termItr->postings(positions), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(positions), irs::io_error);
   // regiseter reopen failure in positions (nullptr)
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pos");
   // can't reopen position (nullptr)
-  ASSERT_THROW(termItr->postings(positions), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(positions), irs::io_error);
   // regiseter reopen failure in payload
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.pay");
   // can't reopen offset input
-  ASSERT_THROW(termItr->postings(positions_offsets), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(positions_offsets), irs::io_error);
 
   // regiseter reopen failure in payload (nullptr)
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pay");
 
   // can't reopen position (nullptr)
-  ASSERT_THROW(termItr->postings(positions_offsets), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(positions_offsets), irs::io_error);
   // regiseter reopen failure in payload
   // can't reopen offset input
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.pay");
-  ASSERT_THROW(termItr->postings(positions_payload), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(positions_payload), irs::io_error);
   // regiseter reopen failure in payload (nullptr)
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pay");
   // can't reopen position (nullptr)
-  ASSERT_THROW(termItr->postings(positions_payload), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(positions_payload), irs::io_error);
 
   // regiseter reopen failure in postings
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.doc");
@@ -3894,12 +3896,12 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.pay");
   // regiseter reopen failure in payload
   dir.register_failure(failing_directory::Failure::REOPEN_NULL, "_1.pay");
-  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
-  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
-  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
-  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
-  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
-  ASSERT_THROW(termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(all_features), irs::io_error);
+  ASSERT_THROW((void)termItr->postings(all_features), irs::io_error);
 
   ASSERT_TRUE(dir.no_failures());
   // successful attempt

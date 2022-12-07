@@ -755,7 +755,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
-      std::multimap<irs::score_t, iresearch::doc_id_t> scored_result;
+      std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -846,7 +846,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       auto prepared_order = irs::Order::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
-      std::multimap<irs::score_t, iresearch::doc_id_t> scored_result;
+      std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];

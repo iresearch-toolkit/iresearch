@@ -37,9 +37,9 @@
 #error "compiler is not supported"
 #endif
 
-#define FORCE_INLINE inline __forceinline
-#define NO_INLINE __declspec(noinline)
-#define RESTRICT __restrict
+#define IRS_FORCE_INLINE inline __forceinline
+#define IRS_NO_INLINE __declspec(noinline)
+#define IRS_RESTRICT __restrict
 #define IRS_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
 #if !((defined(__GNUC__) && (__GNUC__ >= 10)) || \
@@ -47,9 +47,9 @@
 #error "compiler is not supported"
 #endif
 
-#define FORCE_INLINE inline __attribute__((always_inline))
-#define NO_INLINE __attribute__((noinline))
-#define RESTRICT __restrict__
+#define IRS_FORCE_INLINE inline __attribute__((always_inline))
+#define IRS_NO_INLINE __attribute__((noinline))
+#define IRS_RESTRICT __restrict__
 #define IRS_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
@@ -88,22 +88,21 @@ static_assert(sizeof(float_t) != sizeof(double_t));
 #endif
 
 #ifndef __has_feature
-#define IRESEARCH_HAS_FEATURE(x) 0
+#define IRS_HAS_FEATURE(x) 0
 #else
-#define IRESEARCH_HAS_FEATURE(x) __has_feature(x)
+#define IRS_HAS_FEATURE(x) __has_feature(x)
 #endif
 
 #ifndef __has_attribute
-#define IRESEARCH_HAS_ATTRIBUTE(x) 0
+#define IRS_HAS_ATTRIBUTE(x) 0
 #else
-#define IRESEARCH_HAS_ATTRIBUTE(x) __has_attribute(x)
+#define IRS_HAS_ATTRIBUTE(x) __has_attribute(x)
 #endif
 
-#if IRESEARCH_HAS_ATTRIBUTE(nonnull)
-#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) \
-  __attribute__((nonnull(arg_index)))
+#if IRS_HAS_ATTRIBUTE(nonnull)
+#define IRS_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
 #else
-#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index)
+#define IRS_ATTRIBUTE_NONNULL(arg_index)
 #endif
 
 // for MSVC on x64 architecture SSE2 is always enabled
@@ -123,20 +122,17 @@ static_assert(sizeof(float_t) != sizeof(double_t));
 #define IRS_UNLIKELY(v) v
 #endif
 
-#define UNUSED(par) (void)(par)
+#define IRS_IGNORE(value) (void)(value)
 
-namespace iresearch {
+namespace irs {
 
 consteval bool is_big_endian() noexcept {
   return std::endian::native == std::endian::big;
 }
 
-}  // namespace iresearch
+inline constexpr size_t kCmpXChg16Align = 16;
 
-namespace irs = ::iresearch;
+}  // namespace irs
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-
-// CMPXCHG16B requires that the destination (memory) operand be 16-byte aligned
-#define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
+#define IRS_STRINGIFY(x) #x
+#define IRS_TO_STRING(x) IRS_STRINGIFY(x)

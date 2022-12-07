@@ -242,8 +242,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // writer commit tracks files that are in active segments
   {
-    auto writer =
-      iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
+    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -264,7 +263,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
-    iresearch::directory_cleaner::clean(
+    irs::directory_cleaner::clean(
       dir, remove_except_current_segments(dir, *codec_ptr));
     files.clear();
     ASSERT_TRUE(dir.visit(list_files));
@@ -282,7 +281,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   {
     std::string segments_file;
 
-    iresearch::index_meta index_meta;
+    irs::index_meta index_meta;
     auto meta_reader = codec_ptr->get_index_meta_reader();
     const auto index_exists =
       meta_reader->last_segments_file(dir, segments_file);
@@ -306,7 +305,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       return true;
     };
     std::unordered_set<std::string> current_files(file_set);
-    iresearch::directory_cleaner::clean(
+    irs::directory_cleaner::clean(
       dir, remove_except_current_segments(dir, *codec_ptr));
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());

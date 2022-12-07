@@ -26,7 +26,7 @@
 #include "directory.hpp"
 #include "directory_attributes.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 directory_cleaner
@@ -55,4 +55,4 @@ namespace iresearch {
   return remove_count;
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -34,7 +34,7 @@
 #define thread_name_t char*
 #endif
 
-namespace iresearch {
+namespace irs {
 
 // Set name of a current thread
 // Returns true if a specified name if succesully set, false - otherwise
@@ -43,6 +43,6 @@ bool set_thread_name(const thread_name_t name) noexcept;
 bool get_thread_name(
   std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_THREAD_UTILS_H

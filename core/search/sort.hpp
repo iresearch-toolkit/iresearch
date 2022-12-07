@@ -31,7 +31,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/small_vector.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct collector;
 struct data_output;
@@ -47,7 +47,7 @@ constexpr score_t kNoBoost{1.f};
 // document. May vary from document to document.
 struct filter_boost final : attribute {
   static constexpr std::string_view type_name() noexcept {
-    return "iresearch::filter_boost";
+    return "irs::filter_boost";
   }
 
   score_t value{kNoBoost};
@@ -118,7 +118,7 @@ class ScoreFunction : util::noncopyable {
 
   bool IsNoop() const noexcept { return nullptr == ctx_ && kDefault == func_; }
 
-  FORCE_INLINE void operator()(score_t* res) const noexcept {
+  IRS_FORCE_INLINE void operator()(score_t* res) const noexcept {
     IRS_ASSERT(func_);
     return func_(ctx_.get(), res);
   }
@@ -406,15 +406,15 @@ template<typename Aggregator>
 inline constexpr bool HasScore_v = HasScoreHelper<Aggregator>::value;
 
 struct SumMerger {
-  void operator()(size_t idx, score_t* RESTRICT dst,
-                  const score_t* RESTRICT src) const noexcept {
+  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+                  const score_t* IRS_RESTRICT src) const noexcept {
     dst[idx] += src[idx];
   }
 };
 
 struct MaxMerger {
-  void operator()(size_t idx, score_t* RESTRICT dst,
-                  const score_t* RESTRICT src) const noexcept {
+  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+                  const score_t* IRS_RESTRICT src) const noexcept {
     auto& casted_dst = dst[idx];
     auto& casted_src = src[idx];
 
@@ -425,8 +425,8 @@ struct MaxMerger {
 };
 
 struct MinMerger {
-  void operator()(size_t idx, score_t* RESTRICT dst,
-                  const score_t* RESTRICT src) const noexcept {
+  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+                  const score_t* IRS_RESTRICT src) const noexcept {
     auto& casted_dst = dst[idx];
     auto& casted_src = src[idx];
 
@@ -482,12 +482,13 @@ class PreparedSortBase : public sort::prepared {
 
   using stats_t = StatsType;
 
-  FORCE_INLINE static const stats_t& stats_cast(const byte_type* buf) noexcept {
+  IRS_FORCE_INLINE static const stats_t& stats_cast(
+    const byte_type* buf) noexcept {
     IRS_ASSERT(buf);
     return *reinterpret_cast<const stats_t*>(buf);
   }
 
-  FORCE_INLINE static stats_t& stats_cast(byte_type* buf) noexcept {
+  IRS_FORCE_INLINE static stats_t& stats_cast(byte_type* buf) noexcept {
     return const_cast<stats_t&>(stats_cast(const_cast<const byte_type*>(buf)));
   }
 
@@ -524,6 +525,6 @@ class PreparedSortBase<void> : public sort::prepared {
   }
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

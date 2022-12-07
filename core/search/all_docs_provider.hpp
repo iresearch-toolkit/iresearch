@@ -24,7 +24,7 @@
 
 #include "search/filter.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class AllDocsProvider {
  public:
@@ -47,4 +47,4 @@ class AllDocsProvider {
   ProviderFunc all_docs_{&Default};
 };
 
-}  // namespace iresearch
+}  // namespace irs

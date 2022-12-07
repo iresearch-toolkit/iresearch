@@ -25,7 +25,7 @@
 
 #include "type_id.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Base struct for all attribute types that can be used with attribute_provider.
 struct attribute {};
@@ -59,6 +59,6 @@ inline T* get_mutable(Provider* attrs) {
   return static_cast<T*>(attrs->get_mutable(type<T>::id()));
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

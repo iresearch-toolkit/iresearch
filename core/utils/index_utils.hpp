@@ -26,7 +26,7 @@
 
 #include "index/index_writer.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace index_utils {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,6 +136,6 @@ void read_document_mask(document_mask& docs_mask, const directory& dir,
 void flush_index_segment(directory& dir, index_meta::index_segment_t& segment);
 
 }  // namespace index_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

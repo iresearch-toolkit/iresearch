@@ -989,9 +989,8 @@ class index_test_case : public tests::index_test_base {
           EXPECT_NE(nullptr, values);
           auto* actual_value = irs::get<irs::payload>(*values);
           EXPECT_NE(nullptr, actual_value);
-          for (irs::doc_id_t
-                 doc = (irs::doc_limits::min)(),
-                 max = segment.docs_count();
+          for (irs::doc_id_t doc = (irs::doc_limits::min)(),
+                             max = segment.docs_count();
                doc <= max; ++doc) {
             if (doc != values->seek(doc)) {
               return false;
@@ -4270,7 +4269,8 @@ TEST_P(index_test_case, read_documents) {
     auto* field = segment.field("duplicated");
     ASSERT_NE(nullptr, field);
     const auto term = irs::ViewCast<irs::byte_type>("abcd"sv);
-    const auto size = field->read_documents(term, std::span{docs.data(), 0});
+    const auto size =
+      field->read_documents(term, std::span{docs.data(), size_t{0}});
     ASSERT_EQ(0, size);
     ASSERT_TRUE(
       std::all_of(docs.begin(), docs.end(), [](auto v) { return v == 0; }));

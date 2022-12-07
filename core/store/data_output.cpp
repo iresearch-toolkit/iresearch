@@ -29,7 +29,7 @@
 #include "utils/bytes_utils.hpp"
 #include "utils/std.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         output_buf implementation
@@ -156,4 +156,4 @@ void buffered_index_output::close() {
   pos_ = buf_;
 }
 
-}  // namespace iresearch
+}  // namespace irs

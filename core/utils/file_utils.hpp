@@ -92,7 +92,7 @@
 using path_char_t = std::filesystem::path::value_type;
 #define file_path_t path_char_t*
 
-namespace iresearch::file_utils {
+namespace irs::file_utils {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         lock file
@@ -145,7 +145,7 @@ bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
 
 size_t fread(void* fd, void* buf, size_t size);
 size_t fwrite(void* fd, const void* buf, size_t size);
-FORCE_INLINE bool write(void* fd, const void* buf, size_t size) {
+IRS_FORCE_INLINE bool write(void* fd, const void* buf, size_t size) {
   return fwrite(fd, buf, size) == size;
 }
 int fseek(void* fd, long pos, int origin);
@@ -179,4 +179,4 @@ bool visit_directory(const file_path_t name,
 bool file_sync(const file_path_t name) noexcept;
 bool file_sync(int fd) noexcept;
 
-}  // namespace iresearch::file_utils
+}  // namespace irs::file_utils

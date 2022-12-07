@@ -28,7 +28,7 @@
 #include "search/search_range.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_granular_range;
 class numeric_token_stream;
@@ -118,6 +118,6 @@ class by_granular_range : public filter_base<by_granular_range_options> {
   }
 };  // by_granular_range
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

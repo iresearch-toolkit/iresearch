@@ -68,7 +68,7 @@ struct equal_size_type<unsigned long, 8> {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace numeric_utils {
 
 bytes_view mini64();
@@ -223,6 +223,6 @@ template<>
 struct numeric_traits<long double> {};  // numeric_traits
 
 }  // namespace numeric_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_NUMERIC_UTILS_H

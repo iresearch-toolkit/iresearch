@@ -27,7 +27,7 @@
 #include "utils/bit_utils.hpp"
 
 TEST(bit_utils_test, zig_zag_32) {
-  using namespace iresearch;
+  using namespace irs;
 
   const int32_t min = std::numeric_limits<int32_t>::min();
   const int32_t max = std::numeric_limits<int32_t>::max();
@@ -45,7 +45,7 @@ TEST(bit_utils_test, zig_zag_32) {
 }
 
 TEST(bit_utils_test, zig_zag_64) {
-  using namespace iresearch;
+  using namespace irs;
 
   const int64_t min = std::numeric_limits<int64_t>::min();
   const int64_t max = std::numeric_limits<int64_t>::max();
@@ -65,7 +65,7 @@ TEST(bit_utils_test, zig_zag_64) {
 }
 
 TEST(bit_utils_test, set_check_bit) {
-  using namespace iresearch;
+  using namespace irs;
 
   int v = 3422;
 
@@ -111,65 +111,65 @@ TEST(bit_utils_test, set_check_bit) {
 TEST(bit_utils_test, test_unset_bit) {
   // test compile time
   {
-    iresearch::byte_type b = 0x6c;
+    irs::byte_type b = 0x6c;
 
-    EXPECT_FALSE(iresearch::check_bit<0>(b));
-    EXPECT_FALSE(iresearch::check_bit<1>(b));
-    EXPECT_TRUE(iresearch::check_bit<2>(b));
-    EXPECT_TRUE(iresearch::check_bit<3>(b));
-    EXPECT_FALSE(iresearch::check_bit<4>(b));
-    EXPECT_TRUE(iresearch::check_bit<5>(b));
-    EXPECT_TRUE(iresearch::check_bit<6>(b));
-    EXPECT_FALSE(iresearch::check_bit<7>(b));
+    EXPECT_FALSE(irs::check_bit<0>(b));
+    EXPECT_FALSE(irs::check_bit<1>(b));
+    EXPECT_TRUE(irs::check_bit<2>(b));
+    EXPECT_TRUE(irs::check_bit<3>(b));
+    EXPECT_FALSE(irs::check_bit<4>(b));
+    EXPECT_TRUE(irs::check_bit<5>(b));
+    EXPECT_TRUE(irs::check_bit<6>(b));
+    EXPECT_FALSE(irs::check_bit<7>(b));
 
-    iresearch::unset_bit<0>(true, b);
-    iresearch::unset_bit<1>(false, b);
-    iresearch::unset_bit<2>(true, b);
-    iresearch::unset_bit<3>(false, b);
-    iresearch::unset_bit<4>(true, b);
-    iresearch::unset_bit<5>(false, b);
-    iresearch::unset_bit<6>(true, b);
-    iresearch::unset_bit<7>(false, b);
+    irs::unset_bit<0>(true, b);
+    irs::unset_bit<1>(false, b);
+    irs::unset_bit<2>(true, b);
+    irs::unset_bit<3>(false, b);
+    irs::unset_bit<4>(true, b);
+    irs::unset_bit<5>(false, b);
+    irs::unset_bit<6>(true, b);
+    irs::unset_bit<7>(false, b);
 
-    EXPECT_FALSE(iresearch::check_bit<0>(b));
-    EXPECT_FALSE(iresearch::check_bit<1>(b));
-    EXPECT_FALSE(iresearch::check_bit<2>(b));
-    EXPECT_TRUE(iresearch::check_bit<3>(b));
-    EXPECT_FALSE(iresearch::check_bit<4>(b));
-    EXPECT_TRUE(iresearch::check_bit<5>(b));
-    EXPECT_FALSE(iresearch::check_bit<6>(b));
-    EXPECT_FALSE(iresearch::check_bit<7>(b));
+    EXPECT_FALSE(irs::check_bit<0>(b));
+    EXPECT_FALSE(irs::check_bit<1>(b));
+    EXPECT_FALSE(irs::check_bit<2>(b));
+    EXPECT_TRUE(irs::check_bit<3>(b));
+    EXPECT_FALSE(irs::check_bit<4>(b));
+    EXPECT_TRUE(irs::check_bit<5>(b));
+    EXPECT_FALSE(irs::check_bit<6>(b));
+    EXPECT_FALSE(irs::check_bit<7>(b));
   }
 
   // test runtime
   {
-    iresearch::byte_type b = 0x6c;
+    irs::byte_type b = 0x6c;
 
-    EXPECT_FALSE(iresearch::check_bit(b, 0));
-    EXPECT_FALSE(iresearch::check_bit(b, 1));
-    EXPECT_TRUE(iresearch::check_bit(b, 2));
-    EXPECT_TRUE(iresearch::check_bit(b, 3));
-    EXPECT_FALSE(iresearch::check_bit(b, 4));
-    EXPECT_TRUE(iresearch::check_bit(b, 5));
-    EXPECT_TRUE(iresearch::check_bit(b, 6));
-    EXPECT_FALSE(iresearch::check_bit(b, 7));
+    EXPECT_FALSE(irs::check_bit(b, 0));
+    EXPECT_FALSE(irs::check_bit(b, 1));
+    EXPECT_TRUE(irs::check_bit(b, 2));
+    EXPECT_TRUE(irs::check_bit(b, 3));
+    EXPECT_FALSE(irs::check_bit(b, 4));
+    EXPECT_TRUE(irs::check_bit(b, 5));
+    EXPECT_TRUE(irs::check_bit(b, 6));
+    EXPECT_FALSE(irs::check_bit(b, 7));
 
-    iresearch::unset_bit(b, 0, true);
-    iresearch::unset_bit(b, 1, false);
-    iresearch::unset_bit(b, 2, true);
-    iresearch::unset_bit(b, 3, false);
-    iresearch::unset_bit(b, 4, true);
-    iresearch::unset_bit(b, 5, false);
-    iresearch::unset_bit(b, 6, true);
-    iresearch::unset_bit(b, 7, false);
+    irs::unset_bit(b, 0, true);
+    irs::unset_bit(b, 1, false);
+    irs::unset_bit(b, 2, true);
+    irs::unset_bit(b, 3, false);
+    irs::unset_bit(b, 4, true);
+    irs::unset_bit(b, 5, false);
+    irs::unset_bit(b, 6, true);
+    irs::unset_bit(b, 7, false);
 
-    EXPECT_FALSE(iresearch::check_bit(b, 0));
-    EXPECT_FALSE(iresearch::check_bit(b, 1));
-    EXPECT_FALSE(iresearch::check_bit(b, 2));
-    EXPECT_TRUE(iresearch::check_bit(b, 3));
-    EXPECT_FALSE(iresearch::check_bit(b, 4));
-    EXPECT_TRUE(iresearch::check_bit(b, 5));
-    EXPECT_FALSE(iresearch::check_bit(b, 6));
-    EXPECT_FALSE(iresearch::check_bit(b, 7));
+    EXPECT_FALSE(irs::check_bit(b, 0));
+    EXPECT_FALSE(irs::check_bit(b, 1));
+    EXPECT_FALSE(irs::check_bit(b, 2));
+    EXPECT_TRUE(irs::check_bit(b, 3));
+    EXPECT_FALSE(irs::check_bit(b, 4));
+    EXPECT_TRUE(irs::check_bit(b, 5));
+    EXPECT_FALSE(irs::check_bit(b, 6));
+    EXPECT_FALSE(irs::check_bit(b, 7));
   }
 }

@@ -24,7 +24,7 @@
 
 #include "utils/utf8_character_tables.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace utf8_utils {
 
 // Returns true if a specified character 'c' is a whitespace according to
@@ -54,4 +54,4 @@ constexpr bool char_is_alphanumeric(uint32_t c) noexcept {
 }
 
 }  // namespace utf8_utils
-}  // namespace iresearch
+}  // namespace irs

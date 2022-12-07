@@ -37,7 +37,7 @@
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct field_writer;
 class token_stream;
@@ -220,6 +220,6 @@ class fields_data : util::noncopyable {
   int_block_pool::inserter int_writer_;
 };  // fields_data
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

@@ -38,6 +38,7 @@ set_ipo(iresearch-index-util)
 
 target_link_libraries(iresearch-index-util
   iresearch-static
+  iresearch-cmdline
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
   )
@@ -70,6 +71,7 @@ add_dependencies(iresearch-benchmarks
 
 target_link_libraries(iresearch-benchmarks
   iresearch-static
+  iresearch-cmdline
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
   )
@@ -96,6 +98,7 @@ set_ipo(iresearch-pdd)
 
 target_link_libraries(iresearch-pdd
   iresearch-static
+  iresearch-cmdline
   ${PTHREAD_LIBRARY}
   ${ATOMIC_LIBRARY}
   )

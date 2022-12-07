@@ -31,7 +31,7 @@
 
 #include "memory.hpp"
 
-namespace iresearch::memory {
+namespace irs::memory {
 
 void dump_mem_stats_trace() noexcept {
 #ifndef _MSC_VER
@@ -74,4 +74,4 @@ Topmost releasable block (keepcost):   %u\n\
 #endif
 }
 
-}  // namespace iresearch::memory
+}  // namespace irs::memory

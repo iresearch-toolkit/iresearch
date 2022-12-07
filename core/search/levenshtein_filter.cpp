@@ -45,7 +45,7 @@ using namespace irs;
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns levenshtein similarity
 ////////////////////////////////////////////////////////////////////////////////
-FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
+IRS_FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
   IRS_ASSERT(size);
 
   static_assert(sizeof(score_t) == sizeof(uint32_t),
@@ -236,7 +236,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ field_visitor by_edit_distance::visitor(
   const options_type::filter_options& opts) {
@@ -314,4 +314,4 @@ namespace iresearch {
     });
 }
 
-}  // namespace iresearch
+}  // namespace irs

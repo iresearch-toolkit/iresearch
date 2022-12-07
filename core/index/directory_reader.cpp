@@ -33,7 +33,7 @@
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 
 MSVC_ONLY(__pragma(warning(push)))
@@ -333,4 +333,4 @@ directory_reader_impl::directory_reader_impl(
     docs_count, docs_max);
 }
 
-}  // namespace iresearch
+}  // namespace irs

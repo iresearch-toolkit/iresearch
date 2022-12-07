@@ -31,7 +31,7 @@
 #include "utils/log.hpp"
 #include "utils/thread_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        index_lock implementation
@@ -61,4 +61,4 @@ bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) noexcept {
   return false;
 }
 
-}  // namespace iresearch
+}  // namespace irs

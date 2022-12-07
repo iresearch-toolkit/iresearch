@@ -25,7 +25,7 @@
 
 #include "automaton.hpp"
 
-namespace iresearch {
+namespace irs {
 
 enum class WildcardType {
   INVALID = 0,     // invalid input sequence
@@ -63,6 +63,6 @@ inline automaton from_wildcard(std::string_view expr) {
   return from_wildcard(ViewCast<byte_type>(expr));
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_WILDCARD_UTILS_H

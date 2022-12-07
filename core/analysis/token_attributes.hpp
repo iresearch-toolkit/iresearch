@@ -32,7 +32,7 @@
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Represents token offset in a stream
 struct offset final : attribute {
@@ -176,6 +176,6 @@ struct score_threshold final : public attribute {
   std::span<const value_type> skip_scores;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

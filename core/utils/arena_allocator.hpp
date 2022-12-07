@@ -29,7 +29,7 @@
 #include "noncopyable.hpp"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace memory {
 
 template<size_t Size, size_t Alignment = alignof(std::max_align_t)>
@@ -167,6 +167,6 @@ template<typename T, typename Arena>
 using arena_vector = std::vector<T, arena_allocator<T, Arena>>;
 
 }  // namespace memory
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_ARENA_ALLOCATOR_H

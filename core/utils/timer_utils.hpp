@@ -36,7 +36,7 @@
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace timer_utils {
 
 struct timer_stat_t {
@@ -69,12 +69,12 @@ timer_stat_t& get_stat(const std::string& key);
 // as *(nullptr)
 //       therefore for MSVC before use, check if the static variable has been
 //       initialized
-#define REGISTER_TIMER__(timer_name, line)                       \
-  static auto& timer_state##_##line =                            \
-    ::iresearch::timer_utils::get_stat(timer_name);              \
-  ::iresearch::timer_utils::scoped_timer timer_stat##_##line(    \
-    MSVC_ONLY(&timer_state##_##line == nullptr                   \
-                ? ::iresearch::timer_utils::get_stat(timer_name) \
+#define REGISTER_TIMER__(timer_name, line)                 \
+  static auto& timer_state##_##line =                      \
+    ::irs::timer_utils::get_stat(timer_name);              \
+  ::irs::timer_utils::scoped_timer timer_stat##_##line(    \
+    MSVC_ONLY(&timer_state##_##line == nullptr             \
+                ? ::irs::timer_utils::get_stat(timer_name) \
                 :) timer_state##_##line);
 #define REGISTER_TIMER_EXPANDER__(timer_name, line) \
   REGISTER_TIMER__(timer_name, line)
@@ -84,14 +84,14 @@ timer_stat_t& get_stat(const std::string& key);
 #define REGISTER_TIMER(timer_name) \
   REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
 #define REGISTER_TIMER_DETAILED() \
-  REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, ":" TOSTRING(__LINE__)))
+  REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, ":" IRS_TO_STRING(__LINE__)))
 #define REGISTER_TIMER_DETAILED_VERBOSE() \
   REGISTER_TIMER(                         \
-    absl::StrCat(__FILE__ ":" TOSTRING(__LINE__) " -> ", IRS_FUNC_NAME))
+    absl::StrCat(__FILE__ ":" IRS_TO_STRING(__LINE__) " -> ", IRS_FUNC_NAME))
 #define REGISTER_TIMER_NAMED_DETAILED(timer_name) \
   REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, " \"", timer_name, "\""))
-#define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)             \
-  REGISTER_TIMER(absl::StrCat(__FILE__ ":" TOSTRING(__LINE__) " -> ", \
+#define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)                  \
+  REGISTER_TIMER(absl::StrCat(__FILE__ ":" IRS_TO_STRING(__LINE__) " -> ", \
                               IRS_FUNC_NAME, " \"", timer_name, "\""))
 #else
 #define REGISTER_TIMER(timer_name)
@@ -127,4 +127,4 @@ bool visit(const std::function<bool(const std::string& key, size_t count,
 void flush_stats(std::ostream& out);
 
 }  // namespace timer_utils
-}  // namespace iresearch
+}  // namespace irs

@@ -35,7 +35,7 @@
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class memory_file
   : public container_utils::raw_block_vector<16, 8,
@@ -183,7 +183,7 @@ class memory_index_input final : public index_input {
   void switch_buffer(size_t pos);
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(begin_, end_); }
+  IRS_FORCE_INLINE size_t remain() const { return std::distance(begin_, end_); }
 
   const memory_file* file_;       // underline file
   const byte_type* buf_{};        // current buffer
@@ -245,7 +245,7 @@ class memory_index_output : public index_output {
 
  private:
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
 
  protected:
   memory_file::buffer_t buf_;  // current buffer
@@ -328,6 +328,6 @@ struct memory_output {
   memory_index_output stream{file};
 };  // memory_output
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

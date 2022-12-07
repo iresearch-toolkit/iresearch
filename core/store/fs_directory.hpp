@@ -28,7 +28,7 @@
 #include "store/directory.hpp"
 #include "store/directory_attributes.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class FSDirectory : public directory {
  public:
@@ -81,4 +81,4 @@ class CachingFSDirectory : public CachingDirectoryBase<FSDirectory, uint64_t> {
                         IOAdvice advice) const noexcept override;
 };
 
-}  // namespace iresearch
+}  // namespace irs

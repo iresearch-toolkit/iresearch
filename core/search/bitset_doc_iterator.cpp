@@ -25,7 +25,7 @@
 #include "formats/empty_term_reader.hpp"
 #include "utils/math_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 bitset_doc_iterator::bitset_doc_iterator(const word_t* begin,
                                          const word_t* end) noexcept
@@ -106,4 +106,4 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
   return doc_.value;
 }
 
-}  // namespace iresearch
+}  // namespace irs

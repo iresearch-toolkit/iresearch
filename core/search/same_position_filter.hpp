@@ -26,7 +26,7 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_same_position;
 
@@ -66,6 +66,6 @@ class by_same_position : public filter_with_options<by_same_position_options> {
                                 const attribute_provider* ctx) const override;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SAME_POSITION_FILTER_H

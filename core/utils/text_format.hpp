@@ -24,7 +24,7 @@
 #ifndef IRESEARCH_TEXT_FORMAT_H
 #define IRESEARCH_TEXT_FORMAT_H
 
-namespace iresearch {
+namespace irs {
 namespace text_format {
 
 // -----------------------------------------------------------------------------
@@ -47,6 +47,6 @@ struct text {};
 struct vpack {};
 
 }  // namespace text_format
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

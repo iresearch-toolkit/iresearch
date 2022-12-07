@@ -38,7 +38,7 @@ empty_position NO_POSITION;
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ irs::position* position::empty() noexcept { return &NO_POSITION; }
 
@@ -49,6 +49,6 @@ REGISTER_ATTRIBUTE(frequency);
 REGISTER_ATTRIBUTE(position);
 REGISTER_ATTRIBUTE(offset);
 REGISTER_ATTRIBUTE(payload);
-REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
+REGISTER_ATTRIBUTE(irs::granularity_prefix);
 
-}  // namespace iresearch
+}  // namespace irs

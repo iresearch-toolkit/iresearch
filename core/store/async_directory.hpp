@@ -28,7 +28,7 @@
 #include "store/mmap_directory.hpp"
 #include "utils/object_pool.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class async_file;
 
@@ -64,4 +64,4 @@ class AsyncDirectory : public MMapDirectory {
   unsigned flags_;
 };
 
-}  // namespace iresearch
+}  // namespace irs

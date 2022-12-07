@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_wildcard;
 struct filter_visitor;
@@ -91,13 +91,13 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
   }
 };  // by_wildcard
 
-}  // namespace iresearch
+}  // namespace irs
 
 namespace std {
 
 template<>
-struct hash<::iresearch::by_wildcard_options> {
-  size_t operator()(const ::iresearch::by_wildcard_options& v) const noexcept {
+struct hash<::irs::by_wildcard_options> {
+  size_t operator()(const ::irs::by_wildcard_options& v) const noexcept {
     return v.hash();
   }
 };

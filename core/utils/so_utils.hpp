@@ -25,7 +25,7 @@
 
 #include <string_view>
 
-namespace iresearch {
+namespace irs {
 
 void* load_library(const char* soname, int mode = 2);
 void* get_function(void* handle, const char* fname);
@@ -33,6 +33,6 @@ bool free_library(void* handle);
 void load_libraries(std::string_view path, std::string_view prefix,
                     std::string_view suffix);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SO_UTILS_H

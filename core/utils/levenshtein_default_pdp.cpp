@@ -25,7 +25,7 @@
 #include "levenshtein_utils.hpp"
 #include "std.hpp"
 
-namespace iresearch {
+namespace irs {
 
 const irs::parametric_description& default_pdp(irs::byte_type distance,
                                                bool with_transpositions) {
@@ -44,4 +44,4 @@ const irs::parametric_description& default_pdp(irs::byte_type distance,
   return irs::irstd::static_lazy_array<builder, 9>::at(idx);
 }
 
-}  // namespace iresearch
+}  // namespace irs

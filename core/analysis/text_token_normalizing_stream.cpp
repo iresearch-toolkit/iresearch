@@ -45,7 +45,7 @@
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 // -----------------------------------------------------------------------------
@@ -64,7 +64,7 @@ struct normalizing_token_stream::state_t {
 };
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 namespace {
 
@@ -319,7 +319,7 @@ REGISTER_ANALYZER_VPACK(analysis::normalizing_token_stream, make_vpack,
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 void normalizing_token_stream::state_deleter_t::operator()(
@@ -433,4 +433,4 @@ bool normalizing_token_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

@@ -29,7 +29,7 @@
 #include "types.hpp"
 #include "utils/type_id.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct proxy_query_cache;
 
@@ -67,4 +67,4 @@ class proxy_filter final : public filter {
 
   mutable cache_ptr cache_;
 };
-}  // namespace iresearch
+}  // namespace irs

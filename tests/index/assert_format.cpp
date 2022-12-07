@@ -1221,10 +1221,10 @@ void assert_index(const irs::directory& dir, irs::format::ptr codec,
 
 }  // namespace tests
 
-namespace iresearch {
+namespace irs {
 
 // use base irs::position type for ancestors
 template<>
 struct type<tests::doc_iterator::pos_iterator> : type<irs::position> {};
 
-}  // namespace iresearch
+}  // namespace irs

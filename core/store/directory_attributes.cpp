@@ -31,7 +31,7 @@ irs::memory_allocator kGlobalAlloc{128};
 
 }
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ memory_allocator::buffer::ptr memory_allocator::buffer::make(
   size_t size) {
@@ -66,4 +66,4 @@ directory_attributes::directory_attributes(size_t memory_pool_size,
     enc_{std::move(enc)},
     refs_{std::make_unique<index_file_refs>()} {}
 
-}  // namespace iresearch
+}  // namespace irs

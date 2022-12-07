@@ -24,7 +24,7 @@
 
 #include "utils/attribute_provider.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Provides an access to previous document before the current one.
 // Undefined after iterator reached EOF.
@@ -55,4 +55,4 @@ class prev_doc : public attribute {
   void* ctx_{};
 };
 
-}  // namespace iresearch
+}  // namespace irs

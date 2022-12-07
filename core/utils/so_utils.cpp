@@ -79,7 +79,7 @@ const std::string FILENAME_EXTENSION("");
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 void* load_library(const char* soname, int mode /* = 2 */) {
   if (!soname) {
@@ -90,7 +90,7 @@ void* load_library(const char* soname, int mode /* = 2 */) {
   name += FILENAME_EXTENSION;
 
 #if defined(_MSC_VER)  // Microsoft compiler
-  UNUSED(mode);
+  IRS_IGNORE(mode);
   auto handle = static_cast<void*>(::LoadLibraryW(name.c_str()));
 #elif defined(__GNUC__)  // GNU compiler
   auto handle = dlopen(name.c_str(), mode);
@@ -187,4 +187,4 @@ void load_libraries(std::string_view path, std::string_view prefix,
   file_utils::visit_directory(plugin_path.c_str(), visitor, false);
 }
 
-}  // namespace iresearch
+}  // namespace irs

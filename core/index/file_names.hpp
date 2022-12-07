@@ -25,7 +25,7 @@
 
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Returns string in the following format : {prefix}{gen}
 std::string file_name(std::string_view prefix, uint64_t gen);
@@ -46,4 +46,4 @@ inline std::string file_name(std::string_view name, std::string_view ext) {
 std::string file_name(std::string_view name, uint64_t gen,
                       std::string_view ext);
 
-}  // namespace iresearch
+}  // namespace irs

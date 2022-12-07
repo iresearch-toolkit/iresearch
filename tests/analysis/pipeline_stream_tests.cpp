@@ -707,8 +707,8 @@ TEST(pipeline_token_stream_test, normalize_json) {
 
 TEST(pipeline_token_stream_test, analyzers_with_payload_offset) {
   // store as separate arrays to make asan happy
-  iresearch::byte_type p1[] = {0x1, 0x2, 0x3};
-  iresearch::byte_type p2[] = {0x11, 0x22, 0x33};
+  irs::byte_type p1[] = {0x1, 0x2, 0x3};
+  irs::byte_type p2[] = {0x11, 0x22, 0x33};
 
   {
     auto payload_offset = std::make_unique<pipeline_test_analyzer>(

@@ -125,19 +125,19 @@ void format_test_case::assert_frequency_and_positions(
 }
 
 void format_test_case::assert_no_directory_artifacts(
-  const iresearch::directory& dir, const iresearch::format& codec,
+  const irs::directory& dir, const irs::format& codec,
   const std::unordered_set<std::string>& expect_additional /* ={} */) {
   std::vector<std::string> dir_files;
   auto visitor = [&dir_files](std::string_view file) {
     // ignore lock file present in fs_directory
-    if (iresearch::index_writer::kWriteLockName != file) {
+    if (irs::index_writer::kWriteLockName != file) {
       dir_files.emplace_back(file);
     }
     return true;
   };
   ASSERT_TRUE(dir.visit(visitor));
 
-  iresearch::index_meta index_meta;
+  irs::index_meta index_meta;
   std::string segment_file;
 
   auto reader = codec.get_index_meta_reader();

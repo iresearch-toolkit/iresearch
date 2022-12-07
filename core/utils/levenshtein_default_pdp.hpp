@@ -25,7 +25,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class parametric_description;
 
@@ -39,6 +39,6 @@ class parametric_description;
 const parametric_description& default_pdp(byte_type max_distance,
                                           bool with_transpositions);
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H

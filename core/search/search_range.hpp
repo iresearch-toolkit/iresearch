@@ -26,7 +26,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/type_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 enum class BoundType { UNBOUNDED, INCLUSIVE, EXCLUSIVE };
 
@@ -66,6 +66,6 @@ struct search_range {
   }
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_SEARCH_RANGE_H

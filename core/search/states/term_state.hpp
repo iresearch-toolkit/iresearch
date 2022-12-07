@@ -24,7 +24,7 @@
 
 #include "formats/seek_cookie.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct term_reader;
 
@@ -34,4 +34,4 @@ struct TermState {
   seek_cookie::ptr cookie;
 };
 
-}  // namespace iresearch
+}  // namespace irs

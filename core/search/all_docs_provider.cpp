@@ -24,7 +24,7 @@
 
 #include "search/all_filter.hpp"
 
-namespace iresearch {
+namespace irs {
 
 filter::ptr AllDocsProvider::Default(score_t boost) {
   auto filter = std::make_unique<all>();
@@ -32,4 +32,4 @@ filter::ptr AllDocsProvider::Default(score_t boost) {
   return filter;
 }
 
-}  // namespace iresearch
+}  // namespace irs

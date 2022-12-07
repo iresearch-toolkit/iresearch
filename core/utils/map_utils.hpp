@@ -29,7 +29,7 @@
 #include "shared.hpp"
 #include "utils/assert.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace map_utils {
 
 ////////////////////////////////////////////////////////////////////////////
@@ -64,6 +64,6 @@ inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
 }
 
 }  // namespace map_utils
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

@@ -26,7 +26,7 @@
 
 #include "utils/attribute_provider.hpp"
 
-namespace iresearch {
+namespace irs {
 
 // Implementation defined term value state
 struct seek_cookie : attribute_provider {
@@ -41,4 +41,4 @@ struct seek_cookie : attribute_provider {
   virtual size_t Hash() const = 0;
 };
 
-}  // namespace iresearch
+}  // namespace irs

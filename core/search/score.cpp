@@ -24,7 +24,7 @@
 
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 
 /*static*/ const score score::kNoScore;
 
@@ -111,4 +111,4 @@ void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
   }
 }
 
-}  // namespace iresearch
+}  // namespace irs

@@ -32,7 +32,7 @@
 
 using namespace std::chrono_literals;
 
-namespace iresearch {
+namespace irs {
 namespace async_utils {
 
 void busywait_mutex::lock() noexcept {
@@ -364,4 +364,4 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
 }
 
 }  // namespace async_utils
-}  // namespace iresearch
+}  // namespace irs

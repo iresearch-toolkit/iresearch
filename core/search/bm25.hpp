@@ -25,7 +25,7 @@
 
 #include "scorers.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class bm25_sort : public sort {
  public:
@@ -68,6 +68,6 @@ class bm25_sort : public sort {
   bool boost_as_score_;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

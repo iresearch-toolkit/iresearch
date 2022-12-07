@@ -31,7 +31,7 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/hash_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,6 +65,6 @@ class token_stopwords_stream final : public analyzer,
 };
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_TOKEN_STOPWORDS_STREAM_H

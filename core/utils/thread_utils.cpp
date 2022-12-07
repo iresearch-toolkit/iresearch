@@ -30,7 +30,7 @@
 
 #include <memory>
 
-namespace iresearch {
+namespace irs {
 
 // posix restricts name length to 16 bytes
 constexpr size_t MAX_THREAD_NAME_LENGTH = 16;
@@ -49,7 +49,7 @@ bool get_thread_name(
   return false;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #elif defined(_WIN32)
 
@@ -92,7 +92,7 @@ void init_thread_name_api() {
 }
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 
 struct local_deleter {
   void operator()(void* p) const noexcept { LocalFree(p); }
@@ -117,14 +117,14 @@ bool get_thread_name(
   return false;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #elif defined(__APPLE__)
 
 #include <pthread.h>
 #include <sys/proc_info.h>
 
-namespace iresearch {
+namespace irs {
 
 // OSX as of 10.6 restricts name length to 64 bytes
 constexpr size_t MAX_THREAD_NAME_LENGTH = 64;
@@ -144,11 +144,11 @@ bool get_thread_name(
   return false;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #else
 
-namespace iresearch {
+namespace irs {
 
 bool set_thread_name(const thread_name_t name) noexcept { return false; }
 
@@ -156,6 +156,6 @@ bool get_thread_name(std::basic_string<std::remove_pointer_t<thread_name_t>>&) {
   return false;
 }
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif

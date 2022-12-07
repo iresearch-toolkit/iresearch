@@ -29,7 +29,7 @@
 #include "utils/attributes.hpp"
 #include "utils/log.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace directory_utils {
 
 // return a reference to a file or empty() if not found
@@ -390,4 +390,4 @@ bool ref_tracking_directory::visit_refs(
   return true;
 }
 
-}  // namespace iresearch
+}  // namespace irs

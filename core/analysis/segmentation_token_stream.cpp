@@ -294,7 +294,7 @@ bool accept_token(Iterator begin, Iterator end, word_break_t wb) {
 
 }  // namespace
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 using namespace boost::text;
@@ -392,4 +392,4 @@ bool segmentation_token_stream::reset(std::string_view data) {
 }
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs

@@ -26,7 +26,7 @@
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 
-namespace iresearch {
+namespace irs {
 
 class by_ngram_similarity;
 
@@ -59,6 +59,6 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
                                 const attribute_provider* ctx) const override;
 };
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

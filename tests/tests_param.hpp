@@ -175,9 +175,9 @@ class directory_test_case_base
 
 }  // namespace tests
 
-namespace iresearch {
+namespace irs {
 
 template<>
 struct type<tests::rot13_encryption> : type<encryption> {};
 
-}  // namespace iresearch
+}  // namespace irs

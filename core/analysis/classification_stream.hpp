@@ -32,7 +32,7 @@ namespace fasttext {
 class FastText;
 }
 
-namespace iresearch {
+namespace irs {
 namespace analysis {
 
 class classification_stream final : public analyzer, private util::noncopyable {
@@ -83,6 +83,6 @@ class classification_stream final : public analyzer, private util::noncopyable {
 };
 
 }  // namespace analysis
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_EMBEDDING_CLASSIFICATION_STREAM_H

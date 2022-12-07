@@ -25,7 +25,7 @@
 #include "store/caching_directory.hpp"
 #include "store/fs_directory.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace mmap_utils {
 class mmap_handle;
 }
@@ -51,4 +51,4 @@ class CachingMMapDirectory
                         IOAdvice advice) const noexcept override;
 };
 
-}  // namespace iresearch
+}  // namespace irs

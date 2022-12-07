@@ -27,7 +27,7 @@
 #include "shared.hpp"
 #include "type_id.hpp"
 
-namespace iresearch {
+namespace irs {
 
 struct attributes {
   static bool exists(std::string_view name, bool load_library = true);
@@ -48,14 +48,14 @@ class attribute_registrar {
   bool registered_;
 };
 
-#define REGISTER_ATTRIBUTE__(attribute_name, line, source)              \
-  static ::iresearch::attribute_registrar attribute_registrar##_##line( \
-    ::iresearch::type<attribute_name>::get(), source)
+#define REGISTER_ATTRIBUTE__(attribute_name, line, source)        \
+  static ::irs::attribute_registrar attribute_registrar##_##line( \
+    ::irs::type<attribute_name>::get(), source)
 #define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) \
-  REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
+  REGISTER_ATTRIBUTE__(attribute_name, line, file ":" IRS_TO_STRING(line))
 #define REGISTER_ATTRIBUTE(attribute_name) \
   REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 
-}  // namespace iresearch
+}  // namespace irs
 
 #endif  // IRESEARCH_ATTRIBUTES_H

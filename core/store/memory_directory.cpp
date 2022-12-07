@@ -38,7 +38,7 @@
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
 
-namespace iresearch {
+namespace irs {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class single_instance_lock
@@ -582,4 +582,4 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   return true;
 }
 
-}  // namespace iresearch
+}  // namespace irs

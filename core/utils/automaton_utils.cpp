@@ -26,7 +26,7 @@
 #include "search/limited_sample_collector.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 
-namespace iresearch {
+namespace irs {
 
 void utf8_emplace_arc(automaton& a, automaton::StateId from,
                       automaton::StateId rho_state, bytes_view label,
@@ -163,7 +163,7 @@ automaton::StateId utf8_expand_labels(automaton& a) {
     fst::kIDeterministic | fst::kILabelSorted;
 
   IRS_ASSERT(EXPECTED_PROPERTIES == a.Properties(EXPECTED_PROPERTIES, true));
-  UNUSED(EXPECTED_PROPERTIES);
+  IRS_IGNORE(EXPECTED_PROPERTIES);
 #endif
 
   using Label = automaton::Arc::Label;
@@ -427,4 +427,4 @@ filter::prepared::ptr prepare_automaton_filter(
     std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
-}  // namespace iresearch
+}  // namespace irs

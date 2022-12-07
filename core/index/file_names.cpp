@@ -27,7 +27,7 @@
 #include "absl/strings/str_cat.h"
 #include "shared.hpp"
 
-namespace iresearch {
+namespace irs {
 namespace {
 template<typename T>
 char* Append(char* out, const T& x) noexcept {
@@ -81,4 +81,4 @@ std::string file_name(std::string_view name, uint64_t gen,
   return result;
 }
 
-}  // namespace iresearch
+}  // namespace irs
