@@ -541,7 +541,7 @@ void postings_writer_base::encode(data_output& out,
   out.write_vlong(meta.doc_start - last_state_.doc_start);
   if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
     out.write_vlong(meta.pos_start - last_state_.pos_start);
-    if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
+    if (address_limits::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
     if (IndexFeatures::NONE !=
@@ -653,7 +653,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
     }
   }
 
-  meta.pos_end = type_limits<type_t::address_t>::invalid();
+  meta.pos_end = address_limits::invalid();
 
   // write remaining position using
   // variable length encoding
@@ -1852,7 +1852,7 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
       if (term_freq < IteratorTraits::block_size()) {
         state.tail_start = term_state.pos_start;
       } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = type_limits<type_t::address_t>::invalid();
+        state.tail_start = address_limits::invalid();
       } else {
         state.tail_start = term_state.pos_start + term_state.pos_end;
       }
@@ -2099,7 +2099,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
       if (term_freq < IteratorTraits::block_size()) {
         state.tail_start = term_state.pos_start;
       } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = type_limits<type_t::address_t>::invalid();
+        state.tail_start = address_limits::invalid();
       } else {
         state.tail_start = term_state.pos_start + term_state.pos_end;
       }
@@ -2475,7 +2475,7 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
       if (term_freq < IteratorTraits::block_size()) {
         state.tail_start = term_state.pos_start;
       } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = type_limits<type_t::address_t>::invalid();
+        state.tail_start = address_limits::invalid();
       } else {
         state.tail_start = term_state.pos_start + term_state.pos_end;
       }
@@ -2763,7 +2763,7 @@ uint64_t parse_generation(std::string_view segments_file) {
   char* suffix;
   auto gen = std::strtoull(gen_str, &suffix, 10);  // 10 for base-10
 
-  return suffix[0] ? type_limits<type_t::index_gen_t>::invalid() : gen;
+  return suffix[0] ? index_gen_limits::invalid() : gen;
 }
 
 bool index_meta_reader::last_segments_file(const directory& dir,
@@ -2773,7 +2773,7 @@ bool index_meta_reader::last_segments_file(const directory& dir,
     if (name.starts_with(index_meta_writer::FORMAT_PREFIX)) {
       const uint64_t gen = parse_generation(name);
 
-      if (type_limits<type_t::index_gen_t>::valid(gen) && gen > max_gen) {
+      if (index_gen_limits::valid(gen) && gen > max_gen) {
         out = std::move(name);
         max_gen = gen;
       }
@@ -3198,7 +3198,7 @@ size_t postings_reader_base::decode(const byte_type* in, IndexFeatures features,
 
     term_meta.pos_end = term_meta.freq > block_size_
                           ? vread<uint64_t>(p)
-                          : type_limits<type_t::address_t>::invalid();
+                          : address_limits::invalid();
 
     if (IndexFeatures::NONE !=
         (features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {

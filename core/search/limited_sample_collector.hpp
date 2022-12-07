@@ -145,8 +145,8 @@ class limited_sample_collector : private util::noncopyable {
 
       // find the stats for the current term
       const auto res =
-        term_stats.try_emplace(make_hashed_ref(bytes_view(scored_state.term)),
-                               index, field, order, stats_offset);
+        term_stats.try_emplace(hashed_bytes_view{scored_state.term}, index,
+                               field, order, stats_offset);
 
       auto& stats_entry = res.first->second;
 

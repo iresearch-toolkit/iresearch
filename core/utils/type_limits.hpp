@@ -21,36 +21,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TYPE_LIMITS_H
-#define IRESEARCH_TYPE_LIMITS_H
+#pragma once
 
-#include "shared.hpp"
+#include "types.hpp"
 
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// type identifiers for use with type_limits
-// ----------------------------------------------------------------------------
-
-namespace type_t {
-
-struct address_t {};
-struct doc_id_t {};
-struct field_id_t {};
-struct index_gen_t {};
-struct pos_t {};
-
-}  // namespace type_t
-
-// ----------------------------------------------------------------------------
-// type limits/boundaries
-// ----------------------------------------------------------------------------
-
-template<typename TYPE>
-struct type_limits;
-
-template<>
-struct type_limits<type_t::address_t> {
+struct address_limits {
   constexpr static uint64_t invalid() noexcept {
     return std::numeric_limits<uint64_t>::max();
   }
@@ -59,41 +36,33 @@ struct type_limits<type_t::address_t> {
   }
 };
 
-template<>
-struct type_limits<type_t::doc_id_t> {
+struct doc_limits {
   constexpr static doc_id_t eof() noexcept {
     return std::numeric_limits<doc_id_t>::max();
   }
   constexpr static bool eof(doc_id_t id) noexcept { return eof() == id; }
   constexpr static doc_id_t invalid() noexcept { return 0; }
   constexpr static doc_id_t(min)() noexcept {
-    return 1;  // +1 because INVALID_DOC == 0
+    return 1;  // > invalid()
   }
   constexpr static bool valid(doc_id_t id) noexcept { return invalid() != id; }
 };
 
-typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
-
-template<>
-struct type_limits<type_t::field_id_t> {
+struct field_limits {
   constexpr static field_id invalid() noexcept {
     return std::numeric_limits<field_id>::max();
   }
   constexpr static bool valid(field_id id) noexcept { return invalid() != id; }
 };
 
-typedef irs::type_limits<irs::type_t::field_id_t> field_limits;
-
-template<>
-struct type_limits<type_t::index_gen_t> {
+struct index_gen_limits {
   constexpr static uint64_t invalid() noexcept {
     return std::numeric_limits<field_id>::max();
   }
   constexpr static bool valid(uint64_t id) noexcept { return invalid() != id; }
 };
 
-template<>
-struct type_limits<type_t::pos_t> {
+struct pos_limits {
   constexpr static uint32_t invalid() noexcept { return 0; }
   constexpr static bool valid(uint32_t pos) noexcept {
     return invalid() != pos;
@@ -105,8 +74,4 @@ struct type_limits<type_t::pos_t> {
   constexpr static uint32_t(min)() noexcept { return 1; }
 };
 
-typedef irs::type_limits<irs::type_t::pos_t> pos_limits;
-
 }  // namespace iresearch
-
-#endif

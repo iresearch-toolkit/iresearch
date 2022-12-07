@@ -3333,8 +3333,8 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
             "invalid field order in segment '%s'", meta.name.c_str()));
         }
 
-        const auto res = name_to_field_.emplace(
-          make_hashed_ref(std::string_view(name)), &field);
+        const auto res =
+          name_to_field_.emplace(hashed_string_view{name}, &field);
 
         if (!res.second) {
           throw irs::index_error(string_utils::to_string(
@@ -3382,7 +3382,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
 }
 
 const irs::term_reader* field_reader::field(std::string_view field) const {
-  auto it = name_to_field_.find(make_hashed_ref(field));
+  auto it = name_to_field_.find(hashed_string_view{field});
   return it == name_to_field_.end() ? nullptr : it->second;
 }
 
