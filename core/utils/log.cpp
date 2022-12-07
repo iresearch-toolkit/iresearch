@@ -150,7 +150,7 @@ class logger_ctx : public irs::singleton<logger_ctx> {
   }
 
  private:
-  struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) level_ctx_t {
+  struct alignas(irs::kCmpXChg16Align) level_ctx_t {
     irs::logger::log_appender_callback_t appender_;
     void* appender_context_;
     level_ctx_t() noexcept
@@ -160,7 +160,7 @@ class logger_ctx : public irs::singleton<logger_ctx> {
       : appender_(appender), appender_context_(context) {}
   };
 
-  static_assert(IRESEARCH_CMPXCHG16B_ALIGNMENT == alignof(level_ctx_t),
+  static_assert(irs::kCmpXChg16Align == alignof(level_ctx_t),
                 "invalid alignment");
 
   std::atomic<level_ctx_t>

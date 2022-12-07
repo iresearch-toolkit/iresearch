@@ -88,22 +88,21 @@ static_assert(sizeof(float_t) != sizeof(double_t));
 #endif
 
 #ifndef __has_feature
-#define IRESEARCH_HAS_FEATURE(x) 0
+#define IRS_HAS_FEATURE(x) 0
 #else
-#define IRESEARCH_HAS_FEATURE(x) __has_feature(x)
+#define IRS_HAS_FEATURE(x) __has_feature(x)
 #endif
 
 #ifndef __has_attribute
-#define IRESEARCH_HAS_ATTRIBUTE(x) 0
+#define IRS_HAS_ATTRIBUTE(x) 0
 #else
-#define IRESEARCH_HAS_ATTRIBUTE(x) __has_attribute(x)
+#define IRS_HAS_ATTRIBUTE(x) __has_attribute(x)
 #endif
 
-#if IRESEARCH_HAS_ATTRIBUTE(nonnull)
-#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) \
-  __attribute__((nonnull(arg_index)))
+#if IRS_HAS_ATTRIBUTE(nonnull)
+#define IRS_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
 #else
-#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index)
+#define IRS_ATTRIBUTE_NONNULL(arg_index)
 #endif
 
 // for MSVC on x64 architecture SSE2 is always enabled
@@ -131,12 +130,11 @@ consteval bool is_big_endian() noexcept {
   return std::endian::native == std::endian::big;
 }
 
+inline constexpr size_t kCmpXChg16Align = 16;
+
 }  // namespace iresearch
 
 namespace irs = ::iresearch;
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-
-// CMPXCHG16B requires that the destination (memory) operand be 16-byte aligned
-#define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
+#define IRS_STRINGIFY(x) #x
+#define IRS_TO_STRING(x) IRS_STRINGIFY(x)

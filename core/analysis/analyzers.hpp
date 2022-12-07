@@ -92,7 +92,7 @@ bool visit(
 #define REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory,    \
                                      normalizer, file, line)                 \
   REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, line, \
-                      file ":" TOSTRING(line))
+                      file ":" IRS_TO_STRING(line))
 #define REGISTER_ANALYZER(analyzer_name, args_format, factory, normalizer) \
   REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory,        \
                                normalizer, __FILE__, __LINE__)

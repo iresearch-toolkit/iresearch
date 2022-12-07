@@ -39,7 +39,8 @@
 #define REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, \
                                         decompressor_factory, file, line)     \
   REGISTER_COMPRESSION__(compression_name, compressor_factory,                \
-                         decompressor_factory, line, file ":" TOSTRING(line))
+                         decompressor_factory, line,                          \
+                         file ":" IRS_TO_STRING(line))
 #define REGISTER_COMPRESSION(compression_name, compressor_factory,      \
                              decompressor_factory)                      \
   REGISTER_COMPRESSION_EXPANDER__(compression_name, compressor_factory, \

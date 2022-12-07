@@ -616,7 +616,8 @@ class format_registrar {
     ::iresearch::type<format_name>::get(), mudule_name, &format_name::make, \
     source)
 #define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) \
-  REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
+  REGISTER_FORMAT__(format_name, mudule_name, line,                      \
+                    file ":" IRS_TO_STRING(line))
 #define REGISTER_FORMAT_MODULE(format_name, module_name) \
   REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
 #define REGISTER_FORMAT(format_name) \

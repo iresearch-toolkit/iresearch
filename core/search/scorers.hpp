@@ -51,7 +51,7 @@ class scorer_registrar {
 #define REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, file, \
                                    line)                                    \
   REGISTER_SCORER__(scorer_name, args_format, factory, line,                \
-                    file ":" TOSTRING(line))
+                    file ":" IRS_TO_STRING(line))
 #define REGISTER_SCORER(scorer_name, args_format, factory)                \
   REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, __FILE__, \
                              __LINE__)

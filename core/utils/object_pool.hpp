@@ -102,7 +102,7 @@ class concurrent_stack : private util::noncopyable {
  private:
   // CMPXCHG16B requires that the destination
   // (memory) operand be 16-byte aligned
-  struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) concurrent_node {
+  struct alignas(kCmpXChg16Align) concurrent_node {
     explicit concurrent_node(node_type* node = nullptr) noexcept
       : version{0}, node{node} {}
 
@@ -110,7 +110,7 @@ class concurrent_stack : private util::noncopyable {
     node_type* node;
   };  // concurrent_node
 
-  static_assert(IRESEARCH_CMPXCHG16B_ALIGNMENT == alignof(concurrent_node),
+  static_assert(kCmpXChg16Align == alignof(concurrent_node),
                 "invalid alignment");
 
   void move_unsynchronized(concurrent_stack&& rhs) noexcept {

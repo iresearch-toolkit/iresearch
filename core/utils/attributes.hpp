@@ -52,7 +52,7 @@ class attribute_registrar {
   static ::iresearch::attribute_registrar attribute_registrar##_##line( \
     ::iresearch::type<attribute_name>::get(), source)
 #define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) \
-  REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
+  REGISTER_ATTRIBUTE__(attribute_name, line, file ":" IRS_TO_STRING(line))
 #define REGISTER_ATTRIBUTE(attribute_name) \
   REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 

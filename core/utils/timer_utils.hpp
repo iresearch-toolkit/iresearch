@@ -84,14 +84,14 @@ timer_stat_t& get_stat(const std::string& key);
 #define REGISTER_TIMER(timer_name) \
   REGISTER_TIMER_EXPANDER__(timer_name, __LINE__)
 #define REGISTER_TIMER_DETAILED() \
-  REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, ":" TOSTRING(__LINE__)))
+  REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, ":" IRS_TO_STRING(__LINE__)))
 #define REGISTER_TIMER_DETAILED_VERBOSE() \
   REGISTER_TIMER(                         \
-    absl::StrCat(__FILE__ ":" TOSTRING(__LINE__) " -> ", IRS_FUNC_NAME))
+    absl::StrCat(__FILE__ ":" IRS_TO_STRING(__LINE__) " -> ", IRS_FUNC_NAME))
 #define REGISTER_TIMER_NAMED_DETAILED(timer_name) \
   REGISTER_TIMER(absl::StrCat(IRS_FUNC_NAME, " \"", timer_name, "\""))
-#define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)             \
-  REGISTER_TIMER(absl::StrCat(__FILE__ ":" TOSTRING(__LINE__) " -> ", \
+#define REGISTER_TIMER_NAMED_DETAILED_VERBOSE(timer_name)                  \
+  REGISTER_TIMER(absl::StrCat(__FILE__ ":" IRS_TO_STRING(__LINE__) " -> ", \
                               IRS_FUNC_NAME, " \"", timer_name, "\""))
 #else
 #define REGISTER_TIMER(timer_name)
