@@ -406,15 +406,15 @@ template<typename Aggregator>
 inline constexpr bool HasScore_v = HasScoreHelper<Aggregator>::value;
 
 struct SumMerger {
-  void operator()(size_t idx, score_t* RESTRICT dst,
-                  const score_t* RESTRICT src) const noexcept {
+  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+                  const score_t* IRS_RESTRICT src) const noexcept {
     dst[idx] += src[idx];
   }
 };
 
 struct MaxMerger {
-  void operator()(size_t idx, score_t* RESTRICT dst,
-                  const score_t* RESTRICT src) const noexcept {
+  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+                  const score_t* IRS_RESTRICT src) const noexcept {
     auto& casted_dst = dst[idx];
     auto& casted_src = src[idx];
 
@@ -425,8 +425,8 @@ struct MaxMerger {
 };
 
 struct MinMerger {
-  void operator()(size_t idx, score_t* RESTRICT dst,
-                  const score_t* RESTRICT src) const noexcept {
+  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+                  const score_t* IRS_RESTRICT src) const noexcept {
     auto& casted_dst = dst[idx];
     auto& casted_src = src[idx];
 

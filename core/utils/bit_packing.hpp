@@ -107,16 +107,16 @@ inline T max_value(uint32_t bits) noexcept {
                                 : ~(~T(0) << bits);
 }
 
-void pack_block(const uint32_t* RESTRICT first, uint32_t* RESTRICT out,
+void pack_block(const uint32_t* IRS_RESTRICT first, uint32_t* IRS_RESTRICT out,
                 const uint32_t bit) noexcept;
 
-void pack_block(const uint64_t* RESTRICT first, uint64_t* RESTRICT out,
+void pack_block(const uint64_t* IRS_RESTRICT first, uint64_t* IRS_RESTRICT out,
                 const uint32_t bit) noexcept;
 
-void unpack_block(const uint32_t* RESTRICT in, uint32_t* RESTRICT out,
+void unpack_block(const uint32_t* IRS_RESTRICT in, uint32_t* IRS_RESTRICT out,
                   const uint32_t bit) noexcept;
 
-void unpack_block(const uint64_t* RESTRICT in, uint64_t* RESTRICT out,
+void unpack_block(const uint64_t* IRS_RESTRICT in, uint64_t* IRS_RESTRICT out,
                   const uint32_t bit) noexcept;
 
 uint32_t fastpack_at(const uint32_t* encoded, const size_t i,

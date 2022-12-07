@@ -88,8 +88,8 @@ inline void skip_block64(index_input& in, uint64_t size) {
 // returns number of bits used to encoded the block (0 == RL)
 template<typename PackFunc>
 uint32_t write_block32(PackFunc&& pack, data_output& out,
-                       const uint32_t* RESTRICT decoded, uint32_t size,
-                       uint32_t* RESTRICT encoded) {
+                       const uint32_t* IRS_RESTRICT decoded, uint32_t size,
+                       uint32_t* IRS_RESTRICT encoded) {
   IRS_ASSERT(size);
   IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
@@ -124,8 +124,8 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
 // returns number of bits used to encoded the block (0 == RL)
 template<size_t Size, typename PackFunc>
 uint32_t write_block32(PackFunc&& pack, data_output& out,
-                       const uint32_t* RESTRICT decoded,
-                       uint32_t* RESTRICT encoded) {
+                       const uint32_t* IRS_RESTRICT decoded,
+                       uint32_t* IRS_RESTRICT encoded) {
   static_assert(Size);
   IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
@@ -160,8 +160,8 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
 // returns number of bits used to encoded the block (0 == RL)
 template<typename PackFunc>
 uint32_t write_block64(PackFunc&& pack, data_output& out,
-                       const uint64_t* RESTRICT decoded, uint64_t size,
-                       uint64_t* RESTRICT encoded) {
+                       const uint64_t* IRS_RESTRICT decoded, uint64_t size,
+                       uint64_t* IRS_RESTRICT encoded) {
   IRS_ASSERT(size);
   IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
@@ -191,8 +191,8 @@ uint32_t write_block64(PackFunc&& pack, data_output& out,
 // returns number of bits used to encoded the block (0 == RL)
 template<size_t Size, typename PackFunc>
 uint32_t write_block64(PackFunc&& pack, data_output& out,
-                       const uint64_t* RESTRICT decoded,
-                       uint64_t* RESTRICT encoded) {
+                       const uint64_t* IRS_RESTRICT decoded,
+                       uint64_t* IRS_RESTRICT encoded) {
   static_assert(Size);
   return write_block64(std::forward<PackFunc>(pack), out, decoded, Size,
                        encoded);
@@ -203,7 +203,8 @@ uint32_t write_block64(PackFunc&& pack, data_output& out,
 // 'write_block32' function
 template<size_t Size, typename UnpackFunc>
 void read_block32(UnpackFunc&& unpack, data_input& in,
-                  uint32_t* RESTRICT encoded, uint32_t* RESTRICT decoded) {
+                  uint32_t* IRS_RESTRICT encoded,
+                  uint32_t* IRS_RESTRICT decoded) {
   static_assert(Size);
   IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
@@ -234,8 +235,8 @@ void read_block32(UnpackFunc&& unpack, data_input& in,
 // 'write_block32' function
 template<typename UnpackFunc>
 void read_block32(UnpackFunc&& unpack, data_input& in,
-                  uint32_t* RESTRICT encoded, uint32_t size,
-                  uint32_t* RESTRICT decoded) {
+                  uint32_t* IRS_RESTRICT encoded, uint32_t size,
+                  uint32_t* IRS_RESTRICT decoded) {
   IRS_ASSERT(size);
   IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
@@ -266,7 +267,8 @@ void read_block32(UnpackFunc&& unpack, data_input& in,
 // 'write_block64' function
 template<size_t Size, typename UnpackFunc>
 void read_block64(UnpackFunc&& unpack, data_input& in,
-                  uint64_t* RESTRICT encoded, uint64_t* RESTRICT decoded) {
+                  uint64_t* IRS_RESTRICT encoded,
+                  uint64_t* IRS_RESTRICT decoded) {
   static_assert(Size);
   IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);

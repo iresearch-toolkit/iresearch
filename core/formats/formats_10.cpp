@@ -76,9 +76,9 @@ struct format_traits {
   static constexpr uint32_t pos_min() noexcept { return PosMin; }
   static constexpr bool wand() noexcept { return Wand; }
 
-  IRS_FORCE_INLINE static void pack_block32(const uint32_t* RESTRICT decoded,
-                                            uint32_t* RESTRICT encoded,
-                                            const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack_block32(
+    const uint32_t* IRS_RESTRICT decoded, uint32_t* IRS_RESTRICT encoded,
+    const uint32_t bits) noexcept {
     packed::pack_block(decoded, encoded, bits);
     packed::pack_block(decoded + packed::BLOCK_SIZE_32, encoded + bits, bits);
     packed::pack_block(decoded + 2 * packed::BLOCK_SIZE_32, encoded + 2 * bits,
@@ -87,9 +87,9 @@ struct format_traits {
                        bits);
   }
 
-  IRS_FORCE_INLINE static void unpack_block32(uint32_t* RESTRICT decoded,
-                                              const uint32_t* RESTRICT encoded,
-                                              const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void unpack_block32(
+    uint32_t* IRS_RESTRICT decoded, const uint32_t* IRS_RESTRICT encoded,
+    const uint32_t bits) noexcept {
     packed::unpack_block(encoded, decoded, bits);
     packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_32, bits);
     packed::unpack_block(encoded + 2 * bits,
@@ -98,8 +98,9 @@ struct format_traits {
                          decoded + 3 * packed::BLOCK_SIZE_32, bits);
   }
 
-  IRS_FORCE_INLINE static void pack32(const uint32_t* RESTRICT decoded,
-                                      uint32_t* RESTRICT encoded, size_t size,
+  IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
+                                      uint32_t* IRS_RESTRICT encoded,
+                                      size_t size,
                                       const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
@@ -107,8 +108,9 @@ struct format_traits {
     packed::pack(decoded, decoded + size, encoded, bits);
   }
 
-  IRS_FORCE_INLINE static void pack64(const uint64_t* RESTRICT decoded,
-                                      uint64_t* RESTRICT encoded, size_t size,
+  IRS_FORCE_INLINE static void pack64(const uint64_t* IRS_RESTRICT decoded,
+                                      uint64_t* IRS_RESTRICT encoded,
+                                      size_t size,
                                       const uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
@@ -3780,8 +3782,8 @@ struct format_traits_sse4 {
   static constexpr uint32_t pos_min() noexcept { return PosMin; }
   static constexpr uint32_t block_size() noexcept { return SIMDBlockSize; }
 
-  IRS_FORCE_INLINE static void pack_block(const uint32_t* RESTRICT decoded,
-                                          uint32_t* RESTRICT encoded,
+  IRS_FORCE_INLINE static void pack_block(const uint32_t* IRS_RESTRICT decoded,
+                                          uint32_t* IRS_RESTRICT encoded,
                                           const uint32_t bits) noexcept {
     ::simdpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded),
                           bits);

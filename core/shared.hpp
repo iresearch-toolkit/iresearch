@@ -39,7 +39,7 @@
 
 #define IRS_FORCE_INLINE inline __forceinline
 #define IRS_NO_INLINE __declspec(noinline)
-#define RESTRICT __restrict
+#define IRS_RESTRICT __restrict
 #define IRS_NO_UNIQUE_ADDRESS [[msvc::no_unique_address]]
 #else
 #if !((defined(__GNUC__) && (__GNUC__ >= 10)) || \
@@ -49,7 +49,7 @@
 
 #define IRS_FORCE_INLINE inline __attribute__((always_inline))
 #define IRS_NO_INLINE __attribute__((noinline))
-#define RESTRICT __restrict__
+#define IRS_RESTRICT __restrict__
 #define IRS_NO_UNIQUE_ADDRESS [[no_unique_address]]
 #endif
 
