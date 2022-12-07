@@ -68,8 +68,7 @@ class pipeline_test_analyzer : public irs::analysis::analyzer,
       irs::ViewCast<irs::byte_type>(data);
     return true;
   }
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -141,8 +140,7 @@ class pipeline_test_analyzer2 : public irs::analysis::analyzer,
     }
     return false;
   }
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 

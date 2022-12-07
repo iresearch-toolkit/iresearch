@@ -55,33 +55,29 @@ class directory_mock : public irs::directory {
     return impl_.attributes();
   }
 
-  virtual irs::index_output::ptr create(
-    std::string_view name) noexcept override {
+  irs::index_output::ptr create(std::string_view name) noexcept override {
     return impl_.create(name);
   }
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
-  virtual irs::index_lock::ptr make_lock(
-    std::string_view name) noexcept override {
+  irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
     return impl_.make_lock(name);
   }
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result,
+             std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
-  virtual irs::index_input::ptr open(
-    std::string_view name, irs::IOAdvice advice) const noexcept override {
+  irs::index_input::ptr open(std::string_view name,
+                             irs::IOAdvice advice) const noexcept override {
     return impl_.open(name, advice);
   }
 
@@ -89,8 +85,7 @@ class directory_mock : public irs::directory {
     return impl_.remove(name);
   }
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override {
+  bool rename(std::string_view src, std::string_view dst) noexcept override {
     return impl_.rename(src, dst);
   }
 

@@ -73,8 +73,8 @@ TEST_P(sorted_column_test_case, flush_empty) {
   ASSERT_NE(nullptr, codec);
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_view lhs,
-                      irs::bytes_view rhs) const noexcept override {
+    bool less(irs::bytes_view lhs,
+              irs::bytes_view rhs) const noexcept override {
       const auto* plhs = lhs.data();
       const auto* prhs = rhs.data();
 
@@ -146,8 +146,8 @@ TEST_P(sorted_column_test_case, insert_duplicates) {
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_view lhs,
-                      irs::bytes_view rhs) const noexcept override {
+    bool less(irs::bytes_view lhs,
+              irs::bytes_view rhs) const noexcept override {
       const auto* plhs = lhs.data();
       const auto* prhs = rhs.data();
 
@@ -278,8 +278,8 @@ TEST_P(sorted_column_test_case, sort) {
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
   struct comparator final : irs::comparer {
-    virtual bool less(irs::bytes_view lhs,
-                      irs::bytes_view rhs) const noexcept override {
+    bool less(irs::bytes_view lhs,
+              irs::bytes_view rhs) const noexcept override {
       const auto* plhs = lhs.data();
       const auto* prhs = rhs.data();
 

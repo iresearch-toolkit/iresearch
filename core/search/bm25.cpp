@@ -208,8 +208,8 @@ struct field_collector final : public irs::sort::field_collector {
   // number of terms for processed field
   uint64_t total_term_freq = 0;
 
-  virtual void collect(const irs::sub_reader& /*segment*/,
-                       const irs::term_reader& field) override {
+  void collect(const irs::sub_reader& /*segment*/,
+               const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
 
     auto* freq = irs::get<irs::frequency>(field);
@@ -247,9 +247,9 @@ struct term_collector final : public irs::sort::term_collector {
   // number of documents containing the matched term
   uint64_t docs_with_term = 0;
 
-  virtual void collect(const irs::sub_reader& /*segment*/,
-                       const irs::term_reader& /*field*/,
-                       const irs::attribute_provider& term_attrs) override {
+  void collect(const irs::sub_reader& /*segment*/,
+               const irs::term_reader& /*field*/,
+               const irs::attribute_provider& term_attrs) override {
     auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
@@ -476,9 +476,9 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
   sort(float_t k, float_t b, bool boost_as_score) noexcept
     : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
 
-  virtual void collect(byte_type* stats_buf, const irs::index_reader& /*index*/,
-                       const irs::sort::field_collector* field,
-                       const irs::sort::term_collector* term) const override {
+  void collect(byte_type* stats_buf, const irs::index_reader& /*index*/,
+               const irs::sort::field_collector* field,
+               const irs::sort::term_collector* term) const override {
     auto& stats = stats_cast(stats_buf);
 
     const auto* field_ptr = down_cast<field_collector>(field);

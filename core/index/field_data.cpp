@@ -565,8 +565,7 @@ class term_iterator : public irs::term_iterator {
     // Does nothing now
   }
 
-  virtual irs::doc_iterator::ptr postings(
-    IndexFeatures /*features*/) const override {
+  irs::doc_iterator::ptr postings(IndexFeatures /*features*/) const override {
     REGISTER_TIMER_DETAILED();
     IRS_ASSERT(it_ != end_);
 

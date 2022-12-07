@@ -86,15 +86,13 @@ struct tracking_directory final : public directory {
 
   void clear_tracked() noexcept;
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
   void flush_tracked(file_set& other) noexcept;
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
@@ -102,18 +100,17 @@ struct tracking_directory final : public directory {
     return impl_.make_lock(name);
   }
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result,
+             std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
-  virtual index_input::ptr open(std::string_view name,
-                                IOAdvice advice) const noexcept override;
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
 
   bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override;
+  bool rename(std::string_view src, std::string_view dst) noexcept override;
 
   bool sync(std::string_view name) noexcept override {
     return impl_.sync(name);
@@ -151,13 +148,11 @@ struct ref_tracking_directory : public directory {
 
   index_output::ptr create(std::string_view name) noexcept override;
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
@@ -165,18 +160,17 @@ struct ref_tracking_directory : public directory {
     return impl_.make_lock(name);
   }
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result,
+             std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
-  virtual index_input::ptr open(std::string_view name,
-                                IOAdvice advice) const noexcept override;
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
 
   bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override;
+  bool rename(std::string_view src, std::string_view dst) noexcept override;
 
   bool sync(std::span<std::string_view> names) noexcept override {
     return impl_.sync(names);

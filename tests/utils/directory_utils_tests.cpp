@@ -63,8 +63,8 @@ class directory_utils_tests : public ::testing::Test {
       return false;
     }
 
-    virtual irs::index_input::ptr open(std::string_view,
-                                       irs::IOAdvice) const noexcept override {
+    irs::index_input::ptr open(std::string_view,
+                               irs::IOAdvice) const noexcept override {
       return nullptr;
     }
 
@@ -90,8 +90,8 @@ class directory_utils_tests : public ::testing::Test {
     explicit callback_directory(irs::directory& impl, AfterCallback&& p)
       : tests::directory_mock(impl), after(p) {}
 
-    virtual irs::index_input::ptr open(
-      std::string_view name, irs::IOAdvice advice) const noexcept override {
+    irs::index_input::ptr open(std::string_view name,
+                               irs::IOAdvice advice) const noexcept override {
       auto stream = tests::directory_mock::open(name, advice);
       after();
       return stream;
@@ -687,8 +687,8 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     bool mtime(std::time_t&, std::string_view) const noexcept override {
       return false;
     }
-    virtual irs::index_input::ptr open(std::string_view,
-                                       irs::IOAdvice) const noexcept override {
+    irs::index_input::ptr open(std::string_view,
+                               irs::IOAdvice) const noexcept override {
       return nullptr;
     }
     bool remove(std::string_view) noexcept override { return false; }

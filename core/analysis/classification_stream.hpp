@@ -64,8 +64,7 @@ class classification_stream final : public analyzer, private util::noncopyable {
   explicit classification_stream(const Options& options,
                                  model_ptr mode) noexcept;
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 

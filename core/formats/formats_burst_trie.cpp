@@ -870,9 +870,8 @@ class field_writer final : public irs::field_writer {
 
   void end() override;
 
-  virtual void write(std::string_view name, IndexFeatures index_features,
-                     const irs::feature_map_t& features,
-                     term_iterator& terms) override;
+  void write(std::string_view name, IndexFeatures index_features,
+             const irs::feature_map_t& features, term_iterator& terms) override;
 
  private:
   static constexpr size_t DEFAULT_SIZE = 8;
@@ -1393,8 +1392,7 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   uint64_t docs_count() const noexcept override { return doc_count_; }
   bytes_view min() const noexcept override { return min_term_ref_; }
   bytes_view max() const noexcept override { return max_term_ref_; }
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override;
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override;
 
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
@@ -3059,8 +3057,8 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  virtual void prepare(const directory& dir, const segment_meta& meta,
-                       const document_mask& mask) override;
+  void prepare(const directory& dir, const segment_meta& meta,
+               const document_mask& mask) override;
 
   const irs::term_reader* field(std::string_view field) const override;
   irs::field_iterator::ptr iterator() const override;
@@ -3074,8 +3072,8 @@ class field_reader final : public irs::field_reader {
     term_reader(term_reader&& rhs) = default;
     term_reader& operator=(term_reader&& rhs) = delete;
 
-    virtual void prepare(burst_trie::Version version, index_input& in,
-                         const feature_map_t& features) override {
+    void prepare(burst_trie::Version version, index_input& in,
+                 const feature_map_t& features) override {
       term_reader_base::prepare(version, in, features);
 
       // read FST
@@ -3111,8 +3109,8 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_);
     }
 
-    virtual size_t bit_union(const cookie_provider& provider,
-                             size_t* set) const override {
+    size_t bit_union(const cookie_provider& provider,
+                     size_t* set) const override {
       auto term_provider = [&provider]() mutable -> const term_meta* {
         if (auto* cookie = provider()) {
           return &down_cast<::cookie>(*cookie).meta;
@@ -3124,7 +3122,7 @@ class field_reader final : public irs::field_reader {
       return owner_->pr_->bit_union(meta().index_features, term_provider, set);
     }
 
-    virtual seek_term_iterator::ptr iterator(
+    seek_term_iterator::ptr iterator(
       automaton_table_matcher& matcher) const override {
       auto& acceptor = matcher.GetFst();
 
@@ -3157,14 +3155,14 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_, matcher);
     }
 
-    virtual doc_iterator::ptr postings(const seek_cookie& cookie,
-                                       IndexFeatures features) const override {
+    doc_iterator::ptr postings(const seek_cookie& cookie,
+                               IndexFeatures features) const override {
       return owner_->pr_->iterator(meta().index_features, features,
                                    down_cast<::cookie>(cookie).meta);
     }
 
-    virtual doc_iterator::ptr wanderator(
-      const seek_cookie& cookie, IndexFeatures features) const override {
+    doc_iterator::ptr wanderator(const seek_cookie& cookie,
+                                 IndexFeatures features) const override {
       return owner_->pr_->wanderator(meta().index_features, features,
                                      down_cast<::cookie>(cookie).meta);
     }

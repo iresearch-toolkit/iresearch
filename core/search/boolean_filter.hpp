@@ -66,9 +66,9 @@ class boolean_filter : public filter, public AllDocsProvider {
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
@@ -96,10 +96,11 @@ class And final : public boolean_filter {
   using filter::prepare;
 
  protected:
-  virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(std::vector<const filter*>& incl,
+                                std::vector<const filter*>& excl,
+                                const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 };
 
 // Represents disjunction
@@ -122,10 +123,11 @@ class Or final : public boolean_filter {
                                 const attribute_provider* ctx) const final;
 
  protected:
-  virtual filter::prepared::ptr prepare(
-    std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(std::vector<const filter*>& incl,
+                                std::vector<const filter*>& excl,
+                                const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 
  private:
   size_t min_match_count_;
@@ -160,9 +162,9 @@ class Not : public filter, public AllDocsProvider {
 
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 
   size_t hash() const noexcept override;
 

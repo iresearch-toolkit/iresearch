@@ -43,8 +43,7 @@ class delimited_token_stream final : public analyzer,
   static ptr make(std::string_view delimiter);
 
   explicit delimited_token_stream(std::string_view delimiter);
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
   bool next() override;

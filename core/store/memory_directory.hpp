@@ -152,10 +152,9 @@ class memory_index_input final : public index_input {
   int64_t checksum(size_t offset) const override;
   bool eof() const override;
   byte_type read_byte() override;
-  virtual const byte_type* read_buffer(size_t size,
-                                       BufferHint hint) noexcept override;
-  virtual const byte_type* read_buffer(size_t offset, size_t size,
-                                       BufferHint hint) noexcept override;
+  const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override;
+  const byte_type* read_buffer(size_t offset, size_t size,
+                               BufferHint hint) noexcept override;
   size_t read_bytes(byte_type* b, size_t len) override;
   size_t read_bytes(size_t offset, byte_type* b, size_t len) override {
     seek(offset);
@@ -272,24 +271,21 @@ class memory_directory final : public directory {
 
   index_output::ptr create(std::string_view name) noexcept override;
 
-  virtual bool exists(bool& result,
-                      std::string_view name) const noexcept override;
+  bool exists(bool& result, std::string_view name) const noexcept override;
 
-  virtual bool length(uint64_t& result,
-                      std::string_view name) const noexcept override;
+  bool length(uint64_t& result, std::string_view name) const noexcept override;
 
   index_lock::ptr make_lock(std::string_view name) noexcept override;
 
-  virtual bool mtime(std::time_t& result,
-                     std::string_view name) const noexcept override;
+  bool mtime(std::time_t& result,
+             std::string_view name) const noexcept override;
 
-  virtual index_input::ptr open(std::string_view name,
-                                IOAdvice advice) const noexcept override;
+  index_input::ptr open(std::string_view name,
+                        IOAdvice advice) const noexcept override;
 
   bool remove(std::string_view name) noexcept override;
 
-  virtual bool rename(std::string_view src,
-                      std::string_view dst) noexcept override;
+  bool rename(std::string_view src, std::string_view dst) noexcept override;
 
   bool sync(std::string_view name) noexcept override;
 

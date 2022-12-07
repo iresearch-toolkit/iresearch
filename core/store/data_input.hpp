@@ -189,11 +189,10 @@ class buffered_index_input : public index_input {
     return read_bytes(b, count);
   }
 
-  virtual const byte_type* read_buffer(size_t size,
-                                       BufferHint hint) noexcept final;
+  const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
 
-  virtual const byte_type* read_buffer(size_t offset, size_t size,
-                                       BufferHint hint) noexcept final;
+  const byte_type* read_buffer(size_t offset, size_t size,
+                               BufferHint hint) noexcept final;
 
   size_t file_pointer() const noexcept final { return start_ + offset(); }
 

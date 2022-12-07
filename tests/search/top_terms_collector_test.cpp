@@ -63,8 +63,8 @@ struct sort : irs::sort {
             // without matching terms)
       uint64_t total_term_freq = 0;  // number of terms for processed field
 
-      virtual void collect(const irs::sub_reader&,
-                           const irs::term_reader& field) override {
+      void collect(const irs::sub_reader&,
+                   const irs::term_reader& field) override {
         docs_with_field += field.docs_count();
 
         auto* freq = irs::get<irs::frequency>(field);
@@ -87,8 +87,8 @@ struct sort : irs::sort {
       uint64_t docs_with_term =
         0;  // number of documents containing the matched term
 
-      virtual void collect(const irs::sub_reader&, const irs::term_reader&,
-                           const irs::attribute_provider& term_attrs) override {
+      void collect(const irs::sub_reader&, const irs::term_reader&,
+                   const irs::attribute_provider& term_attrs) override {
         auto* meta = irs::get<irs::term_meta>(term_attrs);
 
         if (meta) {
@@ -102,21 +102,19 @@ struct sort : irs::sort {
       void write(irs::data_output&) const override {}
     };
 
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
-                         const irs::sort::field_collector*,
-                         const irs::sort::term_collector*) const override {}
+    void collect(irs::byte_type*, const irs::index_reader&,
+                 const irs::sort::field_collector*,
+                 const irs::sort::term_collector*) const override {}
 
     irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-      const override {
+    irs::sort::field_collector::ptr prepare_field_collector() const override {
       return std::make_unique<field_collector>();
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-      const override {
+    irs::sort::term_collector::ptr prepare_term_collector() const override {
       return std::make_unique<term_collector>();
     }
 
@@ -153,8 +151,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return std::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (type == irs::type<decltype(meta_)>::id()) {
       return &meta_;
     }
@@ -180,7 +177,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 
   void read() override {}
 
-  virtual irs::doc_iterator::ptr postings(
+  irs::doc_iterator::ptr postings(
     irs::IndexFeatures /*features*/) const override {
     return irs::doc_iterator::empty();
   }

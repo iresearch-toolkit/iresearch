@@ -61,8 +61,7 @@ class all_iterator final : public doc_iterator {
 
   doc_id_t value() const noexcept override { return doc_.value; }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<document>::id() == type ? &doc_ : nullptr;
   }
 
@@ -101,8 +100,7 @@ class mask_doc_iterator final : public doc_iterator {
 
   doc_id_t value() const override { return it_->value(); }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return it_->get_mutable(type);
   }
 
@@ -138,8 +136,7 @@ class masked_docs_iterator : public doc_iterator, private util::noncopyable {
     return value();
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<document>::id() == type ? &current_ : nullptr;
   }
 

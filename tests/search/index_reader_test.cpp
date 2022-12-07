@@ -79,13 +79,13 @@ TEST(directory_reader_test, open_empty_index) {
 
 TEST(directory_reader_test, open_newest_index) {
   struct test_index_meta_reader : public irs::index_meta_reader {
-    virtual bool last_segments_file(const irs::directory&,
-                                    std::string& out) const override {
+    bool last_segments_file(const irs::directory&,
+                            std::string& out) const override {
       out = segments_file;
       return true;
     }
-    virtual void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
-                      std::string_view filename = std::string_view{}) override {
+    void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
+              std::string_view filename = std::string_view{}) override {
       read_file.assign(filename.data(), filename.size());
     };
     std::string segments_file;
@@ -102,32 +102,26 @@ TEST(directory_reader_test, open_newest_index) {
       return irs::memory::to_managed<irs::index_meta_reader, false>(
         &index_meta_reader);
     }
-    virtual irs::segment_meta_writer::ptr get_segment_meta_writer()
-      const override {
+    irs::segment_meta_writer::ptr get_segment_meta_writer() const override {
       return nullptr;
     }
-    virtual irs::segment_meta_reader::ptr get_segment_meta_reader()
-      const override {
+    irs::segment_meta_reader::ptr get_segment_meta_reader() const override {
       return nullptr;
     }
-    virtual irs::document_mask_writer::ptr get_document_mask_writer()
-      const override {
+    irs::document_mask_writer::ptr get_document_mask_writer() const override {
       return nullptr;
     }
-    virtual irs::document_mask_reader::ptr get_document_mask_reader()
-      const override {
+    irs::document_mask_reader::ptr get_document_mask_reader() const override {
       return nullptr;
     }
     irs::field_writer::ptr get_field_writer(bool) const override {
       return nullptr;
     }
     irs::field_reader::ptr get_field_reader() const override { return nullptr; }
-    virtual irs::columnstore_writer::ptr get_columnstore_writer(
-      bool) const override {
+    irs::columnstore_writer::ptr get_columnstore_writer(bool) const override {
       return nullptr;
     }
-    virtual irs::columnstore_reader::ptr get_columnstore_reader()
-      const override {
+    irs::columnstore_reader::ptr get_columnstore_reader() const override {
       return nullptr;
     }
   };

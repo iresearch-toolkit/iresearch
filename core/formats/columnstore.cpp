@@ -606,8 +606,8 @@ class writer final : public irs::columnstore_writer {
 
   void prepare(directory& dir, const segment_meta& meta) override;
   // Current implmentation doesn't support column headers
-  virtual column_t push_column(const column_info& info,
-                               column_finalizer_f /*writer*/) override;
+  column_t push_column(const column_info& info,
+                       column_finalizer_f /*writer*/) override;
   bool commit(const flush_state& state) override;
   void rollback() noexcept override;
 
@@ -1779,8 +1779,7 @@ class column_iterator final : public irs::doc_iterator {
     std::get<cost>(attrs_).reset(column.size());
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -1890,8 +1889,8 @@ class sparse_column final : public column {
   sparse_column(const context_provider& ctxs, field_id id, ColumnProperty props)
     : column(id, props), ctxs_(&ctxs) {}
 
-  virtual void read(data_input& in, uint64_t* buf,
-                    compression::decompressor::ptr decomp) override {
+  void read(data_input& in, uint64_t* buf,
+            compression::decompressor::ptr decomp) override {
     column::read(in, buf, std::move(decomp));  // read common header
 
     uint32_t blocks_count =
@@ -2044,8 +2043,8 @@ class dense_fixed_offset_column final : public column {
                             ColumnProperty prop)
     : column(id, prop), ctxs_(&ctxs) {}
 
-  virtual void read(data_input& in, uint64_t* buf,
-                    compression::decompressor::ptr decomp) override {
+  void read(data_input& in, uint64_t* buf,
+            compression::decompressor::ptr decomp) override {
     column::read(in, buf, std::move(decomp));  // read common header
 
     size_t blocks_count =
@@ -2179,8 +2178,8 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   explicit dense_fixed_offset_column(field_id id, ColumnProperty prop) noexcept
     : column(id, prop) {}
 
-  virtual void read(data_input& in, uint64_t* buf,
-                    compression::decompressor::ptr decomp) override {
+  void read(data_input& in, uint64_t* buf,
+            compression::decompressor::ptr decomp) override {
     // we treat data in blocks as "garbage" which could be
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
@@ -2237,8 +2236,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       std::get<cost>(attrs_).reset(column.size());
     }
 
-    virtual attribute* get_mutable(
-      irs::type_info::type_id type) noexcept final {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       return irs::get_mutable(attrs_, type);
     }
 

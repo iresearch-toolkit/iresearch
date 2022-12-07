@@ -14256,7 +14256,7 @@ class index_test_case_14 : public index_test_case {
                    irs::doc_id_t min_doc) noexcept
       : call_stats_{&call_stats}, filter_doc_{filter_doc}, min_doc_{min_doc} {}
 
-    virtual void write(
+    void write(
       const irs::field_stats& stats, irs::doc_id_t doc,
       std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
       ++call_stats_->num_write_calls;

@@ -618,8 +618,7 @@ class term_iterator final : public irs::seek_term_iterator {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual doc_iterator::ptr postings(
-    irs::IndexFeatures features) const override {
+  doc_iterator::ptr postings(irs::IndexFeatures features) const override {
     return irs::memory::make_managed<doc_iterator>(
       data_.index_features & features, *prev_);
   }

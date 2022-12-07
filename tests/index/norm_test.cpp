@@ -47,8 +47,7 @@ class Analyzer : public irs::analysis::analyzer {
   explicit Analyzer(size_t count)
     : irs::analysis::analyzer{irs::type<Analyzer>::get()}, count_{count} {}
 
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id id) noexcept final {
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 

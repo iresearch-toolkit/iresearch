@@ -28,20 +28,16 @@ TEST(formats_tests, duplicate_register) {
   struct dummy_format : public irs::format {
     static ptr make() { return ptr(new dummy_format()); }
     dummy_format() : irs::format(dummy_format::type()) {}
-    virtual irs::columnstore_writer::ptr get_columnstore_writer(
-      bool) const override {
+    irs::columnstore_writer::ptr get_columnstore_writer(bool) const override {
       return nullptr;
     }
-    virtual irs::columnstore_reader::ptr get_columnstore_reader()
-      const override {
+    irs::columnstore_reader::ptr get_columnstore_reader() const override {
       return nullptr;
     }
-    virtual irs::document_mask_writer::ptr get_document_mask_writer()
-      const override {
+    irs::document_mask_writer::ptr get_document_mask_writer() const override {
       return nullptr;
     }
-    virtual irs::document_mask_reader::ptr get_document_mask_reader()
-      const override {
+    irs::document_mask_reader::ptr get_document_mask_reader() const override {
       return nullptr;
     }
     irs::field_writer::ptr get_field_writer(bool) const override {
@@ -54,12 +50,10 @@ TEST(formats_tests, duplicate_register) {
     irs::index_meta_reader::ptr get_index_meta_reader() const override {
       return nullptr;
     }
-    virtual irs::segment_meta_writer::ptr get_segment_meta_writer()
-      const override {
+    irs::segment_meta_writer::ptr get_segment_meta_writer() const override {
       return nullptr;
     }
-    virtual irs::segment_meta_reader::ptr get_segment_meta_reader()
-      const override {
+    irs::segment_meta_reader::ptr get_segment_meta_reader() const override {
       return nullptr;
     }
   };

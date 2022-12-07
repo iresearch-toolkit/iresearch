@@ -307,8 +307,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   const FST& GetFst() const noexcept override { return *fst_; }
 
-  virtual std::uint64_t Properties(
-    std::uint64_t inprops) const noexcept override {
+  std::uint64_t Properties(std::uint64_t inprops) const noexcept override {
     return inprops | (error_ ? kError : 0);
   }
 

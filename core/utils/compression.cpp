@@ -76,8 +76,8 @@ class compression_register
 };
 
 struct identity_compressor final : irs::compression::compressor {
-  virtual irs::bytes_view compress(irs::byte_type* in, size_t size,
-                                   irs::bstring& /*buf*/) override {
+  irs::bytes_view compress(irs::byte_type* in, size_t size,
+                           irs::bstring& /*buf*/) override {
     return {in, size};
   }
 

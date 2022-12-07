@@ -104,8 +104,7 @@ class noop_directory : public directory {
     return false;
   }
 
-  virtual index_input::ptr open(std::string_view,
-                                IOAdvice) const noexcept override {
+  index_input::ptr open(std::string_view, IOAdvice) const noexcept override {
     return nullptr;
   }
 
@@ -173,8 +172,7 @@ class remapping_doc_iterator final : public doc_iterator {
     return value();
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::type<irs::document>::id() == type ? &doc_
                                                   : it_->get_mutable(type);
   }
@@ -317,8 +315,7 @@ class sorting_compound_doc_iterator final : public doc_iterator {
     return true;
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return doc_it_->get_mutable(type);
   }
 

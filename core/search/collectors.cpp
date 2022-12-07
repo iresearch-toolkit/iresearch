@@ -34,8 +34,8 @@ struct noop_field_collector final : sort::field_collector {
 };
 
 struct noop_term_collector final : sort::term_collector {
-  virtual void collect(const sub_reader&, const term_reader&,
-                       const attribute_provider&) override {}
+  void collect(const sub_reader&, const term_reader&,
+               const attribute_provider&) override {}
   void reset() override {}
   void collect(bytes_view) override {}
   void write(data_output&) const override {}

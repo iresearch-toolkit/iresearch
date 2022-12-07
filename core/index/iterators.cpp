@@ -38,8 +38,7 @@ struct empty_doc_iterator final : irs::doc_iterator {
   irs::doc_id_t value() const override { return irs::doc_limits::eof(); }
   bool next() override { return false; }
   irs::doc_id_t seek(irs::doc_id_t) override { return irs::doc_limits::eof(); }
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (irs::type<irs::document>::id() == type) {
       return &doc;
     }
@@ -56,8 +55,7 @@ empty_doc_iterator kEmptyDocIterator;
 // Represents an iterator without terms
 struct empty_term_iterator : irs::term_iterator {
   irs::bytes_view value() const noexcept final { return {}; }
-  virtual irs::doc_iterator::ptr postings(
-    irs::IndexFeatures) const noexcept final {
+  irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept final {
     return irs::doc_iterator::empty();
   }
   void read() noexcept final {}
@@ -72,8 +70,7 @@ empty_term_iterator kEmptyTermIterator;
 // Represents an iterator without terms
 struct empty_seek_term_iterator final : irs::seek_term_iterator {
   irs::bytes_view value() const noexcept final { return {}; }
-  virtual irs::doc_iterator::ptr postings(
-    irs::IndexFeatures) const noexcept final {
+  irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept final {
     return irs::doc_iterator::empty();
   }
   void read() noexcept final {}
@@ -116,8 +113,7 @@ struct empty_column_reader final : irs::column_reader {
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  virtual irs::doc_iterator::ptr iterator(
-    irs::ColumnHint /*hint*/) const override {
+  irs::doc_iterator::ptr iterator(irs::ColumnHint /*hint*/) const override {
     return irs::doc_iterator::empty();
   }
 

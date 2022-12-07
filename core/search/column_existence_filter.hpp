@@ -52,9 +52,9 @@ class by_column_existence final
  public:
   using filter::prepare;
 
-  virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
-    const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* ctx) const override;
 };
 
 }  // namespace iresearch

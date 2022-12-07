@@ -36,28 +36,26 @@ class empty_term_reader final : public irs::term_reader {
   explicit empty_term_reader(uint64_t docs_count) noexcept
     : docs_count_(docs_count) {}
 
-  virtual irs::seek_term_iterator::ptr iterator(
-    SeekMode) const noexcept override {
+  irs::seek_term_iterator::ptr iterator(SeekMode) const noexcept override {
     return irs::seek_term_iterator::empty();
   }
 
-  virtual irs::seek_term_iterator::ptr iterator(
+  irs::seek_term_iterator::ptr iterator(
     automaton_table_matcher&) const noexcept override {
     return irs::seek_term_iterator::empty();
   }
 
-  virtual size_t bit_union(const cookie_provider&,
-                           size_t*) const noexcept override {
+  size_t bit_union(const cookie_provider&, size_t*) const noexcept override {
     return 0;
   }
 
-  virtual doc_iterator::ptr postings(const seek_cookie&,
-                                     IndexFeatures) const noexcept override {
+  doc_iterator::ptr postings(const seek_cookie&,
+                             IndexFeatures) const noexcept override {
     return doc_iterator::empty();
   }
 
-  virtual doc_iterator::ptr wanderator(const seek_cookie&,
-                                       IndexFeatures) const noexcept override {
+  doc_iterator::ptr wanderator(const seek_cookie&,
+                               IndexFeatures) const noexcept override {
     return doc_iterator::empty();
   }
 
@@ -65,8 +63,7 @@ class empty_term_reader final : public irs::term_reader {
     return irs::field_meta::kEmpty;
   }
 
-  virtual irs::attribute* get_mutable(
-    irs::type_info::type_id) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     return nullptr;
   }
 

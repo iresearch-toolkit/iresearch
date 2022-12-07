@@ -1138,7 +1138,7 @@ struct unestimated : public irs::filter {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual irs::attribute* get_mutable(
+    irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
       return type == irs::type<irs::document>::id() ? &doc : nullptr;
     }
@@ -1147,7 +1147,7 @@ struct unestimated : public irs::filter {
   };  // doc_iterator
 
   struct prepared : public irs::filter::prepared {
-    virtual irs::doc_iterator::ptr execute(
+    irs::doc_iterator::ptr execute(
       const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
@@ -1157,9 +1157,9 @@ struct unestimated : public irs::filter {
     }
   };  // prepared
 
-  virtual filter::prepared::ptr prepare(
-    const irs::index_reader&, const irs::Order&, irs::score_t,
-    const irs::attribute_provider*) const override {
+  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+                                irs::score_t,
+                                const irs::attribute_provider*) const override {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
@@ -1183,7 +1183,7 @@ struct estimated : public irs::filter {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual irs::attribute* get_mutable(
+    irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
       if (type == irs::type<irs::cost>::id()) {
         return &cost;
@@ -1200,7 +1200,7 @@ struct estimated : public irs::filter {
     explicit prepared(irs::cost::cost_t est, bool* evaluated)
       : evaluated(evaluated), est(est) {}
 
-    virtual irs::doc_iterator::ptr execute(
+    irs::doc_iterator::ptr execute(
       const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
@@ -1214,9 +1214,9 @@ struct estimated : public irs::filter {
     irs::cost::cost_t est;
   };  // prepared
 
-  virtual filter::prepared::ptr prepare(
-    const irs::index_reader&, const irs::Order&, irs::score_t,
-    const irs::attribute_provider*) const override {
+  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+                                irs::score_t,
+                                const irs::attribute_provider*) const override {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
   }
 

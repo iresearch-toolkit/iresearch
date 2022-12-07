@@ -258,8 +258,8 @@ class MinMatchQuery final : public BooleanQuery {
     IRS_ASSERT(min_match_count_ > 1);
   }
 
-  virtual doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
-                                    iterator end) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
+                            iterator end) const override {
     IRS_ASSERT(std::distance(begin, end) >= 0);
     const size_t size = size_t(std::distance(begin, end));
 

@@ -88,8 +88,8 @@ struct custom_sort : public irs::sort {
      public:
       field_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::sub_reader& segment,
-                           const irs::term_reader& field) override {
+      void collect(const irs::sub_reader& segment,
+                   const irs::term_reader& field) override {
         if (sort_.collector_collect_field) {
           sort_.collector_collect_field(segment, field);
         }
@@ -117,9 +117,9 @@ struct custom_sort : public irs::sort {
      public:
       term_collector(const custom_sort& sort) : sort_(sort) {}
 
-      virtual void collect(const irs::sub_reader& segment,
-                           const irs::term_reader& field,
-                           const irs::attribute_provider& term_attrs) override {
+      void collect(const irs::sub_reader& segment,
+                   const irs::term_reader& field,
+                   const irs::attribute_provider& term_attrs) override {
         if (sort_.collector_collect_term) {
           sort_.collector_collect_term(segment, field, term_attrs);
         }
@@ -163,10 +163,9 @@ struct custom_sort : public irs::sort {
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
-    virtual void collect(irs::byte_type* filter_attrs,
-                         const irs::index_reader& index,
-                         const irs::sort::field_collector* field,
-                         const irs::sort::term_collector* term) const override {
+    void collect(irs::byte_type* filter_attrs, const irs::index_reader& index,
+                 const irs::sort::field_collector* field,
+                 const irs::sort::term_collector* term) const override {
       if (sort_.collectors_collect_) {
         sort_.collectors_collect_(filter_attrs, index, field, term);
       }
@@ -176,8 +175,7 @@ struct custom_sort : public irs::sort {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-      const override {
+    irs::sort::field_collector::ptr prepare_field_collector() const override {
       if (sort_.prepare_field_collector_) {
         return sort_.prepare_field_collector_();
       }
@@ -209,8 +207,7 @@ struct custom_sort : public irs::sort {
               }};
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-      const override {
+    irs::sort::term_collector::ptr prepare_term_collector() const override {
       if (sort_.prepare_term_collector_) {
         return sort_.prepare_term_collector_();
       }
@@ -261,9 +258,9 @@ struct frequency_sort : public irs::sort {
       size_t docs_count{};
       const irs::term_meta* meta_attr;
 
-      virtual void collect(const irs::sub_reader& segment,
-                           const irs::term_reader& field,
-                           const irs::attribute_provider& term_attrs) override {
+      void collect(const irs::sub_reader& segment,
+                   const irs::term_reader& field,
+                   const irs::attribute_provider& term_attrs) override {
         meta_attr = irs::get<irs::term_meta>(term_attrs);
         ASSERT_NE(nullptr, meta_attr);
         docs_count += meta_attr->docs_count;
@@ -290,10 +287,9 @@ struct frequency_sort : public irs::sort {
 
     prepared() = default;
 
-    virtual void collect(irs::byte_type* stats_buf,
-                         const irs::index_reader& /*index*/,
-                         const irs::sort::field_collector* /*field*/,
-                         const irs::sort::term_collector* term) const override {
+    void collect(irs::byte_type* stats_buf, const irs::index_reader& /*index*/,
+                 const irs::sort::field_collector* /*field*/,
+                 const irs::sort::term_collector* term) const override {
       auto* term_ptr = dynamic_cast<const term_collector*>(term);
       if (term_ptr) {  // may be null e.g. 'all' filter
         stats_cast(stats_buf).count =
@@ -306,15 +302,15 @@ struct frequency_sort : public irs::sort {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::sort::field_collector::ptr prepare_field_collector()
-      const override {
+    irs::sort::field_collector::ptr prepare_field_collector() const override {
       return nullptr;  // do not need to collect stats
     }
 
-    virtual irs::ScoreFunction prepare_scorer(
-      const irs::sub_reader&, const irs::term_reader&,
-      const irs::byte_type* stats_buf, const irs::attribute_provider& doc_attrs,
-      irs::score_t /*boost*/) const override {
+    irs::ScoreFunction prepare_scorer(const irs::sub_reader&,
+                                      const irs::term_reader&,
+                                      const irs::byte_type* stats_buf,
+                                      const irs::attribute_provider& doc_attrs,
+                                      irs::score_t /*boost*/) const override {
       auto* doc = irs::get<irs::document>(doc_attrs);
       auto& stats = stats_cast(stats_buf);
       const irs::doc_id_t* docs_count = &stats.count;
@@ -333,8 +329,7 @@ struct frequency_sort : public irs::sort {
         }};
     }
 
-    virtual irs::sort::term_collector::ptr prepare_term_collector()
-      const override {
+    irs::sort::term_collector::ptr prepare_term_collector() const override {
       return std::make_unique<term_collector>();
     }
   };
@@ -454,9 +449,8 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:
-  virtual void prepare(const irs::sub_reader& segment,
-                       const irs::term_reader& field,
-                       const irs::seek_term_iterator& terms) noexcept override {
+  void prepare(const irs::sub_reader& segment, const irs::term_reader& field,
+               const irs::seek_term_iterator& terms) noexcept override {
     it_ = &terms;
     ++prepare_calls_counter_;
   }

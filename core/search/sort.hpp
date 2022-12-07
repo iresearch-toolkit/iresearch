@@ -514,9 +514,8 @@ class PreparedSortBase<void> : public sort::prepared {
     return nullptr;
   }
 
-  virtual void collect(byte_type*, const index_reader&,
-                       const sort::field_collector*,
-                       const sort::term_collector*) const override {
+  void collect(byte_type*, const index_reader&, const sort::field_collector*,
+               const sort::term_collector*) const override {
     // NOOP
   }
 

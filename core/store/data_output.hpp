@@ -95,8 +95,7 @@ class output_buf final : public std::streambuf, util::noncopyable {
 
   explicit output_buf(index_output* out);
 
-  virtual std::streamsize xsputn(const char_type* c,
-                                 std::streamsize size) override;
+  std::streamsize xsputn(const char_type* c, std::streamsize size) override;
 
   int_type overflow(int_type c) override;
 

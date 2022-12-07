@@ -76,9 +76,8 @@ class test_feature_writer final : public irs::feature_writer {
  public:
   explicit test_feature_writer(uint32_t value) noexcept : value_{value} {}
 
-  virtual void write(
-    const irs::field_stats& stats, irs::doc_id_t doc,
-    std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
+  void write(const irs::field_stats& stats, irs::doc_id_t doc,
+             std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
     writer(doc).write_int(stats.len + value_);
   }
 

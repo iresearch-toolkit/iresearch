@@ -146,8 +146,8 @@ class phrase_term_visitor final : public filter_visitor,
   explicit phrase_term_visitor(PhraseStates& phrase_states) noexcept
     : phrase_states_(phrase_states) {}
 
-  virtual void prepare(const sub_reader& segment, const term_reader& field,
-                       const seek_term_iterator& terms) noexcept override {
+  void prepare(const sub_reader& segment, const term_reader& field,
+               const seek_term_iterator& terms) noexcept override {
     segment_ = &segment;
     reader_ = &field;
     terms_ = &terms;

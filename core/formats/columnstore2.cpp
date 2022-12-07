@@ -210,8 +210,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     }
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 
@@ -295,8 +294,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
       irs::get_mutable<prev_doc>(&bitmap_);
   }
 
-  virtual attribute* get_mutable(
-    irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
 

@@ -151,9 +151,9 @@ struct custom_feature {
       }
     }
 
-    virtual void write(const irs::field_stats& stats, irs::doc_id_t doc,
-                       // cppcheck-suppress constParameter
-                       irs::columnstore_writer::values_writer_f& writer) final {
+    void write(const irs::field_stats& stats, irs::doc_id_t doc,
+               // cppcheck-suppress constParameter
+               irs::columnstore_writer::values_writer_f& writer) final {
       ++hdr.count;
 
       // We intentionally call `writer(doc)` multiple

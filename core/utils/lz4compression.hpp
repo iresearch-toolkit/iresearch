@@ -58,8 +58,7 @@ struct lz4 {
 
     int acceleration() const noexcept { return acceleration_; }
 
-    virtual bytes_view compress(byte_type* src, size_t size,
-                                bstring& out) override
+    bytes_view compress(byte_type* src, size_t size, bstring& out) override
       IRESEARCH_ATTRIBUTE_NONNULL();
 
    private:
@@ -68,8 +67,8 @@ struct lz4 {
 
   class lz4decompressor final : public compression::decompressor {
    public:
-    virtual bytes_view decompress(const byte_type* src, size_t src_size,
-                                  byte_type* dst, size_t dst_size) override
+    bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
+                          size_t dst_size) override
       IRESEARCH_ATTRIBUTE_NONNULL();
   };
 

@@ -68,9 +68,8 @@ struct aligned_scorer : public irs::sort {
     term_collector::ptr prepare_term_collector() const override {
       return nullptr;
     }
-    virtual void collect(irs::byte_type*, const irs::index_reader&,
-                         const field_collector*,
-                         const term_collector*) const override {
+    void collect(irs::byte_type*, const irs::index_reader&,
+                 const field_collector*, const term_collector*) const override {
       // NOOP
     }
     virtual irs::ScoreFunction prepare_scorer(

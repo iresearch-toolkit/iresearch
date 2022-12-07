@@ -38,8 +38,8 @@ class delta_compressor : public compressor, private util::noncopyable {
 class delta_decompressor : public decompressor, private util::noncopyable {
  public:
   /// @returns bytes_view::NIL in case of error
-  virtual bytes_view decompress(const byte_type* src, size_t src_size,
-                                byte_type* dst, size_t dst_size) final;
+  bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
+                        size_t dst_size) final;
 };  // delta_decompressor
 
 struct delta {

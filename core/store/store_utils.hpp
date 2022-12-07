@@ -454,8 +454,7 @@ class remapped_bytes_view_input : public bytes_view_input {
   using bytes_view_input::read_buffer;
   using bytes_view_input::read_bytes;
 
-  virtual size_t read_bytes(size_t offset, byte_type* b,
-                            size_t size) noexcept final {
+  size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept final {
     return bytes_view_input::read_bytes(src_to_internal(offset), b, size);
   }
 
