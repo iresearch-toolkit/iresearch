@@ -38,9 +38,7 @@ abstraction as a
 collection of fields to index and/or store.
 The index exposes its data retrieval functionality via 'reader' interface that returns records from an index matching a
 specified query.
-The queries themselves are constructed from either string IQL (index query language) requests or query trees built
-directly using the query
-building blocks available in the API.
+The queries themselves are constructed query trees built directly using the query building blocks available in the API.
 The querying infrastructure provides the capability of ordering the result set by one or more ranking/scoring
 implementations.
 The ranking/scoring implementation logic is plugin-based and lazy-initialized during runtime as needed, allowing for
@@ -519,9 +517,9 @@ the first whitespace is ignored), in the directory corresponding to its language
 
 ## Supported compilers
 
-- GCC: 10-11
-- MSVC: 2019
-- Apple Clang: 12
+- GCC: 10+
+- MSVC: 2019+
+- Clang: 12+
 
 ## License
 
