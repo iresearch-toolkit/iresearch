@@ -3113,33 +3113,36 @@ class field_reader final : public irs::field_reader {
     }
 
     term_meta term(bytes_view term) const override {
-      single_term_iterator<FST> it{meta(), *owner_->pr_,
-                                   owner_->terms_in_->reopen(),
-                                   owner_->terms_in_cipher_.get(), *fst_};
+      single_term_iterator it{meta(), *owner_->pr_, owner_->terms_in_->reopen(),
+                              owner_->terms_in_cipher_.get(), *fst_};
 
       it.seek(term);
       return it.meta();
     }
 
-    size_t read_documents(bytes_view term, doc_id_t* docs,
-                          size_t count) const override {
-      if (IRS_UNLIKELY(!count || !docs)) {
+    size_t read_documents(bytes_view term,
+                          std::span<doc_id_t> docs) const override {
+      if (IRS_UNLIKELY(docs.empty())) {
         return 0;
       }
 
-      single_term_iterator<FST> it{meta(), *owner_->pr_,
-                                   owner_->terms_in_->reopen(),
-                                   owner_->terms_in_cipher_.get(), *fst_};
+      single_term_iterator it{meta(), *owner_->pr_, owner_->terms_in_->reopen(),
+                              owner_->terms_in_cipher_.get(), *fst_};
       if (!it.seek(term)) {
         return 0;
       }
 
       if (const auto& meta = it.meta(); meta.docs_count == 1) {
-        *docs = doc_limits::min() + meta.e_single_doc;
+        docs.front() = doc_limits::min() + meta.e_single_doc;
         return 1;
       }
 
       auto docs_it = it.postings(IndexFeatures::NONE);
+
+      if (IRS_UNLIKELY(!docs_it)) {
+        assert(false);
+        return 0;
+      }
 
       const auto* doc = irs::get<document>(*docs_it);
 
@@ -3148,14 +3151,13 @@ class field_reader final : public irs::field_reader {
         return 0;
       }
 
-      auto* p = docs;
+      auto begin = docs.begin();
 
-      while (count && docs_it->next()) {
-        *p++ = doc->value;
-        --count;
+      for (auto end = docs.end(); begin != end && docs_it->next(); ++begin) {
+        *begin = doc->value;
       }
 
-      return std::distance(docs, p);
+      return std::distance(docs.begin(), begin);
     }
 
     size_t bit_union(const cookie_provider& provider,

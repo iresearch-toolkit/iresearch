@@ -48,7 +48,8 @@ class empty_term_reader final : public irs::term_reader {
     return 0;
   }
 
-  size_t read_documents(bytes_view, doc_id_t*, size_t) const noexcept override {
+  size_t read_documents(bytes_view,
+                        std::span<doc_id_t>) const noexcept override {
     return 0;
   }
 
