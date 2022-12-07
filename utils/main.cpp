@@ -67,7 +67,7 @@ void AssertCallback(std::string_view file, std::size_t line,
                     std::string_view message) noexcept {
   std::cerr << file << ":" << line << ": " << function << ": Condition '"
             << condition << "' is false. With message '" << message << "'\n";
-  assert(false);
+  std::abort();
 }
 
 const std::string HELP = "help";
