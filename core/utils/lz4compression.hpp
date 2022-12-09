@@ -47,8 +47,9 @@ lz4stream lz4_make_stream();
 lz4stream_decode lz4_make_stream_decode();
 
 struct lz4 {
+  // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "irs::compression::lz4";
+    return "iresearch::compression::lz4";
   }
 
   class lz4compressor final : public compression::compressor {
