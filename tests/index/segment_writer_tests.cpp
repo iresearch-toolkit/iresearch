@@ -153,6 +153,8 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   struct comparator final : irs::comparer {
     bool less(irs::bytes_view lhs,
               irs::bytes_view rhs) const noexcept override {
+      EXPECT_FALSE(irs::IsNull(lhs));
+      EXPECT_FALSE(irs::IsNull(rhs));
       return lhs < rhs;
     }
   } less;
@@ -269,6 +271,8 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   struct comparator final : irs::comparer {
     bool less(irs::bytes_view lhs,
               irs::bytes_view rhs) const noexcept override {
+      EXPECT_FALSE(irs::IsNull(lhs));
+      EXPECT_FALSE(irs::IsNull(rhs));
       return lhs < rhs;
     }
   } less;
@@ -320,6 +324,8 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   struct comparator final : irs::comparer {
     bool less(irs::bytes_view lhs,
               irs::bytes_view rhs) const noexcept override {
+      EXPECT_FALSE(irs::IsNull(lhs));
+      EXPECT_FALSE(irs::IsNull(rhs));
       return lhs < rhs;
     }
   } less;
@@ -524,13 +530,8 @@ TEST_F(segment_writer_tests, index_field) {
 
 struct StringComparer final : irs::comparer {
   bool less(irs::bytes_view lhs, irs::bytes_view rhs) const final {
-    if (lhs.empty() && rhs.empty()) {
-      return true;
-    } else if (rhs.empty()) {
-      return false;
-    } else if (lhs.empty()) {
-      return true;
-    }
+    EXPECT_FALSE(irs::IsNull(lhs));
+    EXPECT_FALSE(irs::IsNull(rhs));
 
     const auto lhs_value = irs::to_string<irs::bytes_view>(lhs.data());
     const auto rhs_value = irs::to_string<irs::bytes_view>(rhs.data());

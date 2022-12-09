@@ -113,13 +113,8 @@ class SortedEuroparlDocTemplate : public tests::europarl_doc_template {
 
 struct StringComparer : irs::comparer {
   virtual bool less(irs::bytes_view lhs, irs::bytes_view rhs) const {
-    if (lhs.empty() && rhs.empty()) {
-      return false;
-    } else if (rhs.empty()) {
-      return true;
-    } else if (lhs.empty()) {
-      return false;
-    }
+    EXPECT_FALSE(irs::IsNull(lhs));
+    EXPECT_FALSE(irs::IsNull(rhs));
 
     const auto lhs_value = irs::to_string<irs::bytes_view>(lhs.data());
     const auto rhs_value = irs::to_string<irs::bytes_view>(rhs.data());
@@ -130,13 +125,8 @@ struct StringComparer : irs::comparer {
 
 struct LongComparer : irs::comparer {
   virtual bool less(irs::bytes_view lhs, irs::bytes_view rhs) const {
-    if (irs::IsNull(lhs) && irs::IsNull(rhs)) {
-      return false;
-    } else if (irs::IsNull(rhs)) {
-      return false;
-    } else if (irs::IsNull(lhs)) {
-      return true;
-    }
+    EXPECT_FALSE(irs::IsNull(lhs));
+    EXPECT_FALSE(irs::IsNull(rhs));
 
     auto* plhs = lhs.data();
     auto* prhs = rhs.data();
