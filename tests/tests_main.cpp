@@ -78,11 +78,13 @@ namespace {
 void AssertCallback(std::string_view file, std::size_t line,
                     std::string_view function, std::string_view condition,
                     std::string_view message) noexcept {
-  FAIL() << file << ":" << line << ": " << function << ": Condition '"
-         << condition << "' is false."
-         << (message.empty() ? ""
-                             : absl::StrCat(" With message '", message, "'"))
-         << '\n';
+  testing::Message msg;
+  msg << file << ":" << line << ": " << function << ": Condition '" << condition
+      << "' is false.";
+  if (!message.empty()) {
+    msg << " With message '" << message << "'";
+  }
+  FAIL() << msg;
 }
 
 // Custom ICU data
