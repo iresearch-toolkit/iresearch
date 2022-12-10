@@ -267,6 +267,8 @@ void index_segment::insert_sorted(const ifield* f) {
     if (f->write(out)) {
       sort_.emplace_back(std::move(buf_), doc(), empty_count_);
       empty_count_ = 0;
+    } else {
+      ++empty_count_;
     }
   } else {
     ++empty_count_;
