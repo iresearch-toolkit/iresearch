@@ -81,7 +81,7 @@ class segment_writer : util::noncopyable {
     const feature_info_provider_t& feature_info, const comparer* comparator);
 
   // begin document-write transaction
-  // Return doc_id_t as per type_limits<type_t::doc_id_t>
+  // Return doc_id_t as per doc_limits
   doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
 
   std::span<update_context> docs_context() noexcept { return docs_context_; }
