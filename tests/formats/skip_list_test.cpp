@@ -135,7 +135,6 @@ TEST_F(SkipWriterTest, Prepare) {
     ASSERT_EQ(0, writer.MaxLevels());
   }
 
-  // at least 1 level must exists
   {
     const size_t max_levels = 0;
     const size_t doc_count = 17;
@@ -146,7 +145,7 @@ TEST_F(SkipWriterTest, Prepare) {
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip_0, writer.Skip0());
     ASSERT_EQ(skip_n, writer.SkipN());
-    ASSERT_EQ(1, writer.MaxLevels());
+    ASSERT_EQ(0, writer.MaxLevels());
   }
 
   // less than max levels
