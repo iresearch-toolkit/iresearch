@@ -394,10 +394,7 @@ void index_segment::sort(const irs::comparer& comparator) {
 
   std::sort(sort_.begin(), sort_.end(),
             [&comparator](const auto& lhs, const auto& rhs) {
-              if (std::get<1>(lhs) == std::get<1>(rhs)) {
-                return false;
-              }
-
+              EXPECT_NE(std::get<1>(lhs), std::get<1>(rhs));
               return comparator(std::get<0>(lhs), std::get<0>(rhs));
             });
 
@@ -412,6 +409,7 @@ void index_segment::sort(const irs::comparer& comparator) {
   }
   while (order.size() < this->doc_count()) {
     order[static_cast<irs::doc_id_t>(order.size()) + 1] = new_doc_id++;
+    ASSERT_LE(order.size(), this->doc_count());
   }
   for (auto& field : fields_) {
     field.second.sort(order);

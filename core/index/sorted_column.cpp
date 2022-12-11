@@ -33,10 +33,7 @@ bool sorted_column::flush_sprase_primary(
   doc_id_t docs_count, const comparer& less) {
   auto comparer = [&less, this](const std::pair<doc_id_t, size_t>& lhs,
                                 const std::pair<doc_id_t, size_t>& rhs) {
-    if (lhs.first == rhs.first) {
-      return false;
-    }
-
+    IRS_ASSERT(lhs.first != rhs.first);
     return less(get_value(&lhs), get_value(&rhs));
   };
 
