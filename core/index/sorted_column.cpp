@@ -73,8 +73,8 @@ bool sorted_column::flush_sprase_primary(
   }
 
   // Ensure that all docs up to new_doc are remapped without gaps
-  IRS_ASSERT(std::all_of(docmap.begin(), docmap.begin() + new_doc,
-                         [](doc_id_t doc) { return !doc_limits::eof(doc); }));
+  IRS_ASSERT(std::all_of(docmap.begin() + 1, docmap.begin() + new_doc,
+                         [](doc_id_t doc) { return doc_limits::valid(doc); }));
   // Ensure we reached the last doc in sort column
   IRS_ASSERT((std::prev(index_.end(), 2)->first + 1) == new_doc);
   // Handle docs without sort value that are placed after last filled sort doc
