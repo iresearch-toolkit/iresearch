@@ -320,9 +320,11 @@ size_t boolean_filter::hash() const noexcept {
 }
 
 bool boolean_filter::equals(const filter& rhs) const noexcept {
-  const boolean_filter& typed_rhs = static_cast<const boolean_filter&>(rhs);
-
-  return filter::equals(rhs) && filters_.size() == typed_rhs.size() &&
+  if (!filter::equals(rhs)) {
+    return false;
+  }
+  const auto& typed_rhs = down_cast<boolean_filter>(rhs);
+  return filters_.size() == typed_rhs.size() &&
          std::equal(begin(), end(), typed_rhs.begin());
 }
 
@@ -631,10 +633,12 @@ size_t Not::hash() const noexcept {
 }
 
 bool Not::equals(const irs::filter& rhs) const noexcept {
-  const Not& typed_rhs = static_cast<const Not&>(rhs);
-  return filter::equals(rhs) &&
-         ((!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_) ||
-          (empty() && typed_rhs.empty()));
+  if (!filter::equals(rhs)) {
+    return false;
+  }
+  const auto& typed_rhs = down_cast<Not>(rhs);
+  return (!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_) ||
+         (empty() && typed_rhs.empty());
 }
 
 }  // namespace irs
