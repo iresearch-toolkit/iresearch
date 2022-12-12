@@ -78,28 +78,25 @@ namespace {
 void AssertCallback(std::string_view file, std::size_t line,
                     std::string_view function, std::string_view condition,
                     std::string_view message) noexcept {
-  FAIL() << file << ":" << line << ": " << function << ": Condition '"
-         << condition << "' is false. With message '" << message << "'\n";
+  testing::Message msg;
+  msg << file << ":" << line << ": " << function << ": Condition '" << condition
+      << "' is false.";
+  if (!message.empty()) {
+    msg << " With message '" << message << "'";
+  }
+  FAIL() << msg;
 }
 
-/// @brief custom ICU data
+// Custom ICU data
 irs::mmap_utils::mmap_handle icu_data;
-}  // namespace
-/* -------------------------------------------------------------------
- * iteration_tracker
- * ------------------------------------------------------------------*/
 
-struct iteration_tracker : ::testing::Environment {
-  virtual void SetUp() { ++iteration; }
+struct IterationTracker final : ::testing::Environment {
+  static uint32_t sIteration;
 
-  static uint32_t iteration;
+  void SetUp() override { ++sIteration; }
 };
 
-uint32_t iteration_tracker::iteration = (std::numeric_limits<uint32_t>::max)();
-
-/* -------------------------------------------------------------------
- * test_base
- * ------------------------------------------------------------------*/
+uint32_t IterationTracker::sIteration = (std::numeric_limits<uint32_t>::max)();
 
 const std::string IRES_HELP("help");
 const std::string IRES_LOG_LEVEL("ires_log_level");
@@ -108,6 +105,8 @@ const std::string IRES_OUTPUT("ires_output");
 const std::string IRES_OUTPUT_PATH("ires_output_path");
 const std::string IRES_RESOURCE_DIR("ires_resource_dir");
 const std::string IRES_ICU_DATA("icu-data");
+
+}  // namespace
 
 const std::string test_env::test_results("test_detail.xml");
 
@@ -123,7 +122,7 @@ int test_env::argc_;
 char** test_env::argv_;
 decltype(test_env::argv_ires_output_) test_env::argv_ires_output_;
 
-uint32_t test_env::iteration() { return iteration_tracker::iteration; }
+uint32_t test_env::iteration() { return IterationTracker::sIteration; }
 
 std::filesystem::path test_env::resource(const std::string& name) {
   return resource_dir_ / name;
@@ -293,7 +292,7 @@ int test_env::initialize(int argc, char* argv[]) {
     return -1;
   }
 
-  ::testing::AddGlobalTestEnvironment(new iteration_tracker());
+  ::testing::AddGlobalTestEnvironment(new IterationTracker());
   ::testing::InitGoogleTest(&argc_, argv_);
 
   return RUN_ALL_TESTS();

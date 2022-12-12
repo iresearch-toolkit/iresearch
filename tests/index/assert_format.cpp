@@ -261,11 +261,15 @@ void index_segment::compute_features() {
 }
 
 void index_segment::insert_sorted(const ifield* f) {
-  buf_.clear();
-  irs::bytes_output out{buf_};
-  if (f && f->write(out)) {
-    sort_.emplace_back(std::move(buf_), doc(), empty_count_);
-    empty_count_ = 0;
+  if (f) {
+    buf_.clear();
+    irs::bytes_output out{buf_};
+    if (f->write(out)) {
+      sort_.emplace_back(std::move(buf_), doc(), empty_count_);
+      empty_count_ = 0;
+    } else {
+      ++empty_count_;
+    }
   } else {
     ++empty_count_;
   }
@@ -404,6 +408,7 @@ void index_segment::sort(const irs::comparer& comparator) {
   }
   while (order.size() < this->doc_count()) {
     order[static_cast<irs::doc_id_t>(order.size()) + 1] = new_doc_id++;
+    ASSERT_LE(order.size(), this->doc_count());
   }
   for (auto& field : fields_) {
     field.second.sort(order);

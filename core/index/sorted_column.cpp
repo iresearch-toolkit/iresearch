@@ -33,10 +33,6 @@ bool sorted_column::flush_sprase_primary(
   doc_id_t docs_count, const comparer& less) {
   auto comparer = [&less, this](const std::pair<doc_id_t, size_t>& lhs,
                                 const std::pair<doc_id_t, size_t>& rhs) {
-    if (lhs.first == rhs.first) {
-      return false;
-    }
-
     return less(get_value(&lhs), get_value(&rhs));
   };
 
@@ -72,8 +68,15 @@ bool sorted_column::flush_sprase_primary(
     ++new_doc;
   }
 
+  // Ensure that all docs up to new_doc are remapped without gaps
+  IRS_ASSERT(std::all_of(docmap.begin() + 1, docmap.begin() + new_doc,
+                         [](doc_id_t doc) { return doc_limits::valid(doc); }));
+  // Ensure we reached the last doc in sort column
+  IRS_ASSERT((std::prev(index_.end(), 2)->first + 1) == new_doc);
+  // Handle docs without sort value that are placed after last filled sort doc
   for (auto begin = std::next(docmap.begin(), new_doc); begin != docmap.end();
        ++begin) {
+    IRS_ASSERT(!doc_limits::valid(*begin));
     *begin = new_doc++;
   }
 
@@ -168,7 +171,7 @@ void sorted_column::flush_sparse(
   // flush sorted data
   for (const auto& entry : buffer) {
     write_value(writer(entry.second), &index_[entry.first]);
-  };
+  }
 }
 
 field_id sorted_column::flush(columnstore_writer& writer,
