@@ -3990,8 +3990,7 @@ TEST(block_disjunction_test, next) {
                     irs::doc_iterator::empty()}};
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
-    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum),
-              irs::cost::extract(it));
+    ASSERT_EQ(0, irs::cost::extract(it));
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     for (; it.next();) {
       result.push_back(it.value());
