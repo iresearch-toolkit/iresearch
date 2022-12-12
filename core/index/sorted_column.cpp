@@ -33,7 +33,6 @@ bool sorted_column::flush_sprase_primary(
   doc_id_t docs_count, const comparer& less) {
   auto comparer = [&less, this](const std::pair<doc_id_t, size_t>& lhs,
                                 const std::pair<doc_id_t, size_t>& rhs) {
-    IRS_ASSERT(lhs.first != rhs.first);
     return less(get_value(&lhs), get_value(&rhs));
   };
 
@@ -172,7 +171,7 @@ void sorted_column::flush_sparse(
   // flush sorted data
   for (const auto& entry : buffer) {
     write_value(writer(entry.second), &index_[entry.first]);
-  };
+  }
 }
 
 field_id sorted_column::flush(columnstore_writer& writer,

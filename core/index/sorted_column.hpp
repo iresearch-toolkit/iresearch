@@ -100,7 +100,7 @@ class sorted_column final : public column_output, private util::noncopyable {
   bytes_view get_value(
     const std::pair<doc_id_t, size_t>* value) const noexcept {
     IRS_ASSERT(index_.data() <= value);
-    IRS_ASSERT(value < index_.data() + index_.size() - 1);
+    IRS_ASSERT(value < (index_.data() + index_.size() - 1));
     IRS_ASSERT(!doc_limits::eof(value->first));
 
     const auto begin = value->second;
