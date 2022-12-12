@@ -32,7 +32,11 @@ class comparer {
  public:
   virtual ~comparer() = default;
 
-  bool operator()(bytes_ref lhs, bytes_ref rhs) const { return less(lhs, rhs); }
+  bool operator()(bytes_ref lhs, bytes_ref rhs) const {
+    assert(!lhs.null());
+    assert(!rhs.null());
+    return less(lhs, rhs);
+  }
 
  protected:
   virtual bool less(bytes_ref lhs, bytes_ref rhs) const = 0;

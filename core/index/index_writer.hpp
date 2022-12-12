@@ -795,8 +795,7 @@ class index_writer : private util::noncopyable {
     std::vector<flushed_t> flushed_;
     // update_contexts to use with 'flushed_'
     // sequentially increasing through all offsets
-    // (sequential doc_id in 'flushed_' == offset +
-    // type_limits<type_t::doc_id_t>::min(), size()
+    // (sequential doc_id in 'flushed_' == offset + doc_limits::min(), size()
     // == sum of all 'flushed_'.'docs_count')
     std::vector<segment_writer::update_context> flushed_update_contexts_;
     // function to get new segment_meta from

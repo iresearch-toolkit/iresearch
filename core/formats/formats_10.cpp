@@ -3246,7 +3246,7 @@ class postings_reader final : public postings_reader_base {
 
           return it;
         });
-    } else if (docs_count == 1) {
+    } else {
       return iterator_impl(
         field_features, required_features,
         [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
@@ -3257,8 +3257,6 @@ class postings_reader final : public postings_reader_base {
 
           return it;
         });
-    } else {
-      return irs::doc_iterator::empty();
     }
   }
 

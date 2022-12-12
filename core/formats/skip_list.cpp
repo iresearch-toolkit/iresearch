@@ -47,7 +47,7 @@ namespace iresearch {
 void SkipWriter::Prepare(
   size_t max_levels, size_t count,
   const memory_allocator& alloc /* = memory_allocator::global() */) {
-  max_levels_ = std::min(max_levels,  ::max_levels(skip_0_, skip_n_, count));
+  max_levels_ = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
   levels_.reserve(max_levels_);
 
   // reset existing skip levels
