@@ -7599,8 +7599,7 @@ TEST(block_disjunction_test, seek_no_readahead) {
                     irs::doc_iterator::empty()}};
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
-    ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum),
-              irs::cost::extract(it));
+    ASSERT_EQ(0, irs::cost::extract(it));
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     ASSERT_EQ(irs::doc_limits::eof(), it.seek(1));
     ASSERT_EQ(0, it.match_count());
