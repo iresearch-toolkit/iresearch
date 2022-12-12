@@ -394,7 +394,6 @@ void index_segment::sort(const irs::comparer& comparator) {
 
   std::sort(sort_.begin(), sort_.end(),
             [&comparator](const auto& lhs, const auto& rhs) {
-              EXPECT_NE(std::get<1>(lhs), std::get<1>(rhs));
               return comparator(std::get<0>(lhs), std::get<0>(rhs));
             });
 
