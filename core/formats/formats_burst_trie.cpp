@@ -166,16 +166,13 @@ class volatile_ref : util::noncopyable {
  private:
   str_t str_;
   ref_t ref_{};
-};  // volatile_ref
+};
 
 using volatile_byte_ref = volatile_ref<byte_type>;
 
 using feature_map_t = std::vector<irs::type_info::type_id>;
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct block_t
-/// @brief block of terms
-///////////////////////////////////////////////////////////////////////////////
+// Block of terms
 struct block_t : private util::noncopyable {
   struct prefixed_output final : data_output, private util::noncopyable {
     explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
@@ -189,7 +186,7 @@ struct block_t : private util::noncopyable {
 
     byte_weight weight;
     volatile_byte_ref prefix;
-  };  // prefixed_output
+  };
 
   static constexpr uint16_t INVALID_LABEL{std::numeric_limits<uint16_t>::max()};
 
@@ -233,15 +230,9 @@ static_assert(std::is_nothrow_move_constructible_v<block_t>);
 // FIXME std::is_nothrow_move_assignable_v<std::list<...>> == false
 static_assert(std::is_nothrow_move_assignable_v<block_t>);
 
-///////////////////////////////////////////////////////////////////////////////
-/// @enum EntryType
-///////////////////////////////////////////////////////////////////////////////
-enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };  // EntryType
+enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class entry
-/// @brief block or term
-///////////////////////////////////////////////////////////////////////////////
+// Block or term
 class entry : private util::noncopyable {
  public:
   entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
@@ -357,10 +348,7 @@ void entry::destroy() noexcept {
 
 entry::~entry() noexcept { destroy(); }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @struct block_meta
-/// @brief Provides set of helper functions to work with block metadata
-///////////////////////////////////////////////////////////////////////////////
+// Provides set of helper functions to work with block metadata
 struct block_meta {
   // mask bit layout:
   // 0 - has terms
@@ -394,11 +382,7 @@ struct block_meta {
     unset_bit<ET_TERM>(mask);
     unset_bit<ET_BLOCK>(mask);
   }
-};  // block_meta
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           Helpers
-// -----------------------------------------------------------------------------
+};
 
 template<typename FeatureMap>
 void write_segment_features_legacy(FeatureMap& feature_map, data_output& out,
@@ -719,7 +703,7 @@ struct cookie final : seek_cookie {
   }
 
   version10::term_meta meta;
-};  // cookie
+};
 
 const fst::FstWriteOptions& fst_write_options() {
   static const auto INSTANCE = []() {
@@ -805,16 +789,10 @@ void merge_blocks(std::vector<entry>& blocks) {
              byte_weight::NoWeight().Size() < MIN_WEIGHT_SIZE);
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class fst_buffer
-/// @brief resetable FST buffer
-///////////////////////////////////////////////////////////////////////////////
+// Resetable FST buffer
 class fst_buffer : public vector_byte_fst {
  public:
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @class fst_stats
-  /// @brief fst builder stats
-  ///////////////////////////////////////////////////////////////////////////////
+  // Fst builder stats
   struct fst_stats : irs::fst_stats {
     size_t total_weight_size{};
 
@@ -843,11 +821,8 @@ class fst_buffer : public vector_byte_fst {
 
  private:
   fst_byte_builder builder{*this};
-};  // fst_buffer
+};
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class field_writer
-////////////////////////////////////////////////////////////////////////////////
 class field_writer final : public irs::field_writer {
  public:
   static constexpr uint32_t DEFAULT_MIN_BLOCK_SIZE = 25;
@@ -920,7 +895,7 @@ class field_writer final : public irs::field_writer {
   const uint32_t min_block_size_;
   const uint32_t max_block_size_;
   const bool consolidation_;
-};  // field_writer
+};
 
 void field_writer::write_block(size_t prefix, size_t begin, size_t end,
                                irs::byte_type meta, uint16_t label) {
@@ -1433,9 +1408,6 @@ attribute* term_reader_base::get_mutable(
   return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class block_iterator
-///////////////////////////////////////////////////////////////////////////////
 class block_iterator : util::noncopyable {
  public:
   static constexpr uint32_t UNDEFINED_COUNT{
@@ -1504,6 +1476,13 @@ class block_iterator : util::noncopyable {
   uint32_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool done() const noexcept { return cur_ent_ == ent_count_; }
+  bool has_terms() const noexcept {
+    // FIXME(gnusi): add term mark to block entry?
+    //
+    // Block was loaded using address and doesn't have metadata,
+    // assume such blocks have terms
+    return sub_count_ == UNDEFINED_COUNT || block_meta::terms(meta());
+  }
   uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
@@ -1581,7 +1560,7 @@ class block_iterator : util::noncopyable {
 #ifdef IRESEARCH_DEBUG
     const byte_type* end{begin};
 #endif
-  };  // data_block
+  };
 
   template<typename Reader>
   void read_entry_nonleaf(Reader&& reader);
@@ -1617,16 +1596,16 @@ class block_iterator : util::noncopyable {
   uint64_t start_;      // initial block start pointer
   uint64_t cur_start_;  // current block start pointer
   uint64_t cur_end_;    // block end pointer
-  uint64_t cur_block_start_{
-    UNDEFINED_ADDRESS};       // start pointer of the current sub-block entry
+  // start pointer of the current sub-block entry
+  uint64_t cur_block_start_{UNDEFINED_ADDRESS};
   uint32_t prefix_;           // block prefix length, 32k at most
   uint32_t cur_ent_{};        // current entry in a block
   uint32_t ent_count_{};      // number of entries in a current block
   uint32_t term_count_{};     // number terms in a block we have seen
   uint32_t cur_stats_ent_{};  // current position of loaded stats
   uint32_t sub_count_;        // number of sub-blocks
-  uint16_t next_label_{
-    block_t::INVALID_LABEL};        // next label (of the next sub-block)
+  // next label (of the next sub-block)
+  uint16_t next_label_{block_t::INVALID_LABEL};
   EntryType cur_type_{ET_INVALID};  // term or block
   byte_type meta_{};                // initial block metadata
   byte_type cur_meta_{};            // current block metadata
@@ -2023,10 +2002,7 @@ void block_iterator::reset() {
   header_.assert_block_boundaries();
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class term_iterator_base
-/// @brief base class for term_iterator and automaton_term_iterator
-///////////////////////////////////////////////////////////////////////////////
+// Base class for term_iterator and automaton_term_iterator
 class term_iterator_base : public seek_term_iterator {
  public:
   term_iterator_base(const field_meta& field, postings_reader& postings,
@@ -2097,9 +2073,6 @@ class term_iterator_base : public seek_term_iterator {
 template<typename FST>
 using explicit_matcher = fst::explicit_matcher<fst::SortedMatcher<FST>>;
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class term_iterator
-///////////////////////////////////////////////////////////////////////////////
 template<typename FST>
 class term_iterator final : public term_iterator_base {
  public:
@@ -2118,7 +2091,7 @@ class term_iterator final : public term_iterator_base {
   bool next() override;
   SeekResult seek_ge(bytes_view term) override;
   bool seek(bytes_view term) override {
-    return SeekResult::FOUND == seek_equal(term);
+    return SeekResult::FOUND == seek_equal(term, true);
   }
 
   void read() override {
@@ -2163,7 +2136,7 @@ class term_iterator final : public term_iterator_base {
   // Note, that search may end up on a BLOCK entry. In all cases
   // "owner_->term_" will be refreshed with the valid number of
   // common bytes
-  SeekResult seek_equal(bytes_view term);
+  SeekResult seek_equal(bytes_view term, bool exact);
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
@@ -2214,11 +2187,7 @@ class term_iterator final : public term_iterator_base {
   std::vector<arc> sstate_;
   std::vector<block_iterator> block_stack_;
   block_iterator* cur_block_{};
-};  // term_iterator
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      term_iterator implementation
-// -----------------------------------------------------------------------------
+};
 
 template<typename FST>
 bool term_iterator<FST>::next() {
@@ -2239,7 +2208,7 @@ bool term_iterator<FST>::next() {
       // term_.reset() internally,
       // note, that since we do not create extra copy of term_
       // make sure that it does not reallocate memory !!!
-      [[maybe_unused]] const auto res = seek_equal(value());
+      [[maybe_unused]] const auto res = seek_equal(value(), true);
       IRS_ASSERT(SeekResult::FOUND == res);
     }
   }
@@ -2423,16 +2392,16 @@ bool term_iterator<FST>::seek_to_block(bytes_view term, size_t& prefix) {
 }
 
 template<typename FST>
-SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
-  size_t prefix;
+SeekResult term_iterator<FST>::seek_equal(bytes_view term, bool exact) {
+  [[maybe_unused]] size_t prefix;
   if (seek_to_block(term, prefix)) {
-    IRS_ASSERT(cur_block_->type() == ET_TERM);
+    IRS_ASSERT(ET_TERM == cur_block_->type());
     return SeekResult::FOUND;
   }
 
   IRS_ASSERT(cur_block_);
 
-  if (!cur_block_->dirty() && !block_meta::terms(cur_block_->meta())) {
+  if (exact && !cur_block_->has_terms()) {
     // current block has no terms
     std::get<term_attribute>(attrs_).value = {term_buf_.c_str(), prefix};
     return SeekResult::NOT_FOUND;
@@ -2455,27 +2424,7 @@ SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
 
 template<typename FST>
 SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
-  [[maybe_unused]] size_t prefix;
-  if (seek_to_block(term, prefix)) {
-    IRS_ASSERT(cur_block_->type() == ET_TERM);
-    return SeekResult::FOUND;
-  }
-
-  IRS_ASSERT(cur_block_);
-
-  auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
-    const auto prefix = cur_block_->prefix();
-    absl::strings_internal::STLStringResizeUninitializedAmortized(
-      &term_buf_, prefix + suffix_size);
-    std::memcpy(term_buf_.data() + prefix, suffix, suffix_size);
-  };
-
-  cur_block_->load(terms_input(), terms_cipher());
-
-  Finally refresh_value = [this]() noexcept { this->refresh_value(); };
-
-  IRS_ASSERT(term.starts_with(term_buf_));
-  switch (cur_block_->scan_to_term(term, append_suffix)) {
+  switch (seek_equal(term, false)) {
     case SeekResult::FOUND:
       IRS_ASSERT(ET_TERM == cur_block_->type());
       return SeekResult::FOUND;
@@ -2503,13 +2452,11 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
   return SeekResult::END;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class single_term_iterator
-/// @brief an iterator optimized for performing exact single seeks
-/// @warning BE CAREFUL: we intentially do not copy term value to avoid
-///          unnecessary allocations as this is mostly useless in case of
-///          exact single seek
-///////////////////////////////////////////////////////////////////////////////
+// An iterator optimized for performing exact single seeks
+//
+// WARNING: we intentionally do not copy term value to avoid
+//          unnecessary allocations as this is mostly useless
+//          in case of exact single seek
 template<typename FST>
 class single_term_iterator final : public seek_term_iterator {
  public:
@@ -2565,11 +2512,7 @@ class single_term_iterator final : public seek_term_iterator {
   postings_reader* postings_;
   const field_meta* field_;
   const FST* fst_;
-};  // single_term_iterator
-
-// -----------------------------------------------------------------------------
-// --SECTION--                               single_term_iterator implementation
-// -----------------------------------------------------------------------------
+};
 
 template<typename FST>
 bool single_term_iterator<FST>::seek(bytes_view term) {
@@ -2630,9 +2573,6 @@ bool single_term_iterator<FST>::seek(bytes_view term) {
   return false;
 }
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class automaton_arc_matcher
-///////////////////////////////////////////////////////////////////////////////
 class automaton_arc_matcher {
  public:
   automaton_arc_matcher(const automaton::Arc* arcs, size_t narcs) noexcept
@@ -2659,9 +2599,6 @@ class automaton_arc_matcher {
   const automaton::Arc* end_;    // end of arcs range
 };
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class fst_arc_matcher
-///////////////////////////////////////////////////////////////////////////////
 template<typename FST>
 class fst_arc_matcher {
  public:
@@ -2690,9 +2627,6 @@ class fst_arc_matcher {
   const typename FST::Arc* end_;    // end of arcs range
 };
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class automaton_term_iterator
-///////////////////////////////////////////////////////////////////////////////
 template<typename FST>
 class automaton_term_iterator final : public term_iterator_base {
  public:
@@ -2765,7 +2699,7 @@ class automaton_term_iterator final : public term_iterator_base {
     size_t weight_prefix_;
     automaton::StateId state_;  // state to which current block belongs
     typename FST::StateId fst_state_;
-  };  // block_iterator
+  };
 
   block_iterator* pop_block() noexcept {
     block_stack_.pop_back();
@@ -2807,7 +2741,7 @@ class automaton_term_iterator final : public term_iterator_base {
   automaton::Weight::PayloadType payload_value_;
   payload payload_;  // payload of the matched automaton state
   automaton::StateId sink_;
-};  // automaton_term_iterator
+};
 
 template<typename FST>
 bool automaton_term_iterator<FST>::next() {
@@ -3045,9 +2979,6 @@ bool automaton_term_iterator<FST>::next() {
 #pragma GCC diagnostic pop
 #endif
 
-///////////////////////////////////////////////////////////////////////////////
-/// @class field_reader
-///////////////////////////////////////////////////////////////////////////////
 class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
@@ -3228,10 +3159,6 @@ class field_reader final : public irs::field_reader {
   index_input::ptr terms_in_;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        term_reader implementation
-// -----------------------------------------------------------------------------
-
 field_reader::field_reader(irs::postings_reader::ptr&& pr)
   : pr_(std::move(pr)) {
   IRS_ASSERT(pr_);
@@ -3240,10 +3167,6 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
 void field_reader::prepare(const directory& dir, const segment_meta& meta,
                            const document_mask& /*mask*/) {
   std::string filename;
-
-  //-----------------------------------------------------------------
-  // read term index
-  //-----------------------------------------------------------------
 
   feature_map_t feature_map;
   IndexFeatures features{IndexFeatures::NONE};
@@ -3384,7 +3307,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
                     std::string_view rhs) const noexcept {
       return lhs.meta().name < rhs;
     }
-  };  // less
+  };
 
   return std::visit(
     [](const auto& fields) -> irs::field_iterator::ptr {
@@ -3401,10 +3324,7 @@ irs::field_iterator::ptr field_reader::iterator() const {
     fields_);
 }
 
-//////////////////////////////////////////////////////////////////////////////////
-///// @class term_reader_visitor
-///// @brief implements generalized visitation logic for term dictionary
-//////////////////////////////////////////////////////////////////////////////////
+// Implements generalized visitation logic for term dictionary
 template<typename FST>
 class term_reader_visitor {
  public:
@@ -3486,10 +3406,7 @@ class term_reader_visitor {
   encryption::stream* terms_in_cipher_;
 };
 
-//////////////////////////////////////////////////////////////////////////////////
-///// @brief "Dumper" visitor for term_reader_visitor. Suitable for debugging
-/// needs.
-//////////////////////////////////////////////////////////////////////////////////
+// "Dumper" visitor for term_reader_visitor. Suitable for debugging needs.
 class dumper : util::noncopyable {
  public:
   explicit dumper(std::ostream& out) : out_(out) {}
@@ -3533,7 +3450,7 @@ class dumper : util::noncopyable {
   std::ostream& out_;
   size_t indent_ = 0;
   size_t prefix_ = 0;
-};  // dumper
+};
 
 }  // namespace
 
