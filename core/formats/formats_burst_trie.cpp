@@ -2141,30 +2141,28 @@ class term_iterator final : public term_iterator_base {
     stateid_t state;
     bytes_view weight;
     size_t block;
-  };  // arc
+  };
 
   static_assert(std::is_nothrow_move_constructible_v<arc>);
-
-  typedef std::vector<arc> seek_state_t;
 
   ptrdiff_t seek_cached(size_t& prefix, stateid_t& state, size_t& block,
                         byte_weight& weight, bytes_view term);
 
-  /// @brief Seek to the closest block which contain a specified term
-  /// @param prefix size of the common term/block prefix
-  /// @returns true if we're already at a requested term
+  // Seek to the closest block which contain a specified term
+  // prefix - size of the common term/block prefix
+  // Returns true if we're already at a requested term
   bool seek_to_block(bytes_view term, size_t& prefix);
 
-  /// @brief Seeks to the specified term using FST
-  /// There may be several sutuations:
-  ///   1. There is no term in a block (SeekResult::NOT_FOUND)
-  ///   2. There is no term in a block and we have
-  ///      reached the end of the block (SeekResult::END)
-  ///   3. We have found term in a block (SeekResult::FOUND)
-  ///
-  /// Note, that search may end up on a BLOCK entry. In all cases
-  /// "owner_->term_" will be refreshed with the valid number of
-  /// common bytes
+  // Seeks to the specified term using FST
+  // There may be several sutuations:
+  //   1. There is no term in a block (SeekResult::NOT_FOUND)
+  //   2. There is no term in a block and we have
+  //      reached the end of the block (SeekResult::END)
+  //   3. We have found term in a block (SeekResult::FOUND)
+  //
+  // Note, that search may end up on a BLOCK entry. In all cases
+  // "owner_->term_" will be refreshed with the valid number of
+  // common bytes
   SeekResult seek_equal(bytes_view term);
 
   block_iterator* pop_block() noexcept {
@@ -2213,7 +2211,7 @@ class term_iterator final : public term_iterator_base {
   mutable index_input::ptr terms_in_;
   const FST* fst_;
   explicit_matcher<FST> matcher_;
-  seek_state_t sstate_;
+  std::vector<arc> sstate_;
   std::vector<block_iterator> block_stack_;
   block_iterator* cur_block_{};
 };  // term_iterator
@@ -2430,13 +2428,15 @@ SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
   if (seek_to_block(term, prefix)) {
     IRS_ASSERT(cur_block_->type() == ET_TERM);
     return SeekResult::FOUND;
-  } else if (!block_meta::terms(cur_block_->meta())) {
+  }
+
+  IRS_ASSERT(cur_block_);
+
+  if (!cur_block_->dirty() && !block_meta::terms(cur_block_->meta())) {
     // current block has no terms
     std::get<term_attribute>(attrs_).value = {term_buf_.c_str(), prefix};
     return SeekResult::NOT_FOUND;
   }
-
-  IRS_ASSERT(cur_block_);
 
   auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
     const auto prefix = cur_block_->prefix();
