@@ -23,6 +23,7 @@
 
 #include "index_tests.hpp"
 
+#include <string>
 #include <thread>
 
 #include "index/field_meta.hpp"
@@ -2223,6 +2224,61 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   ASSERT_EQ(expected_docs_A[0] | expected_docs_B[0], actual_docs_AB[0]);
   ASSERT_EQ(expected_docs_A[1] | expected_docs_B[1], actual_docs_AB[1]);
   ASSERT_EQ(expected_docs_A[2] | expected_docs_B[2], actual_docs_AB[2]);
+}
+
+TEST_P(index_test_case, term_sequence) {
+  std::vector<std::string> sequence;
+
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    std::ifstream stream{resource("term_sequence"), std::ifstream::in};
+    ASSERT_TRUE(static_cast<bool>(stream));
+
+    std::string str;
+    tests::string_field field{"value"};
+
+    for (auto trx = writer->documents(); std::getline(stream, str);) {
+      if (str.starts_with("#")) {
+        break;
+      }
+
+      field.value(str);
+      trx.insert().insert<irs::Action::INDEX>(field);
+    }
+
+    while (std::getline(stream, str)) {
+      sequence.emplace_back(std::move(str));
+    }
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  {
+    auto reader = open_reader();
+    ASSERT_NE(nullptr, reader);
+    ASSERT_EQ(1, reader->size());
+    auto& segment = (*reader)[0];
+    auto* field = segment.field("value");
+    ASSERT_NE(nullptr, field);
+    auto terms = field->iterator(irs::SeekMode::NORMAL);
+    ASSERT_NE(nullptr, terms);
+    auto* meta = irs::get<irs::term_meta>(*terms);
+    ASSERT_NE(nullptr, meta);
+
+    size_t i = 0;
+    for (auto& term : sequence) {
+      if (!terms->seek(irs::ViewCast<irs::byte_type>(std::string_view{term}))) {
+        continue;
+      }
+
+      ++i;
+      SCOPED_TRACE(testing::Message("Term: ") << term);
+      SCOPED_TRACE(testing::Message("Prev: ") << sequence[i - 1]);
+      ASSERT_GT(meta->docs_count, 0);
+    }
+  }
 }
 
 TEST_P(index_test_case, arango_demo_docs) {

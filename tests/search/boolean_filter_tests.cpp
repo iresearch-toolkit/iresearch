@@ -30,6 +30,7 @@
 #include "search/all_iterator.hpp"
 #include "search/bm25.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/conjunction.hpp"
 #include "search/disjunction.hpp"
 #include "search/exclusion.hpp"
 #include "search/min_match_disjunction.hpp"
@@ -3986,8 +3987,12 @@ TEST(block_disjunction_test, next) {
   {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
-    disjunction it{{irs::doc_iterator::empty(), irs::doc_iterator::empty(),
-                    irs::doc_iterator::empty()}};
+
+    disjunction::doc_iterators_t itrs;
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    disjunction it{std::move(itrs)};
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -7594,8 +7599,12 @@ TEST(block_disjunction_test, seek_no_readahead) {
   {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
-    disjunction it{{irs::doc_iterator::empty(), irs::doc_iterator::empty(),
-                    irs::doc_iterator::empty()}};
+
+    disjunction::doc_iterators_t itrs;
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    disjunction it{std::move(itrs)};
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
