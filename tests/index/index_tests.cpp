@@ -2261,52 +2261,89 @@ TEST_P(index_test_case, term_sequence) {
     ASSERT_TRUE(writer->commit());
   }
 
-  //  assert_index();
-  //  assert_columnstore();
+  assert_index();
+  assert_columnstore();
+
+  auto reader = open_reader();
+  ASSERT_NE(nullptr, reader);
+  ASSERT_EQ(1, reader->size());
+  auto& segment = (*reader)[0];
+  auto* field = segment.field("value");
+  ASSERT_NE(nullptr, field);
+  auto& expected_field = index().front().fields().at("value");
 
   {
-    auto reader = open_reader();
-    ASSERT_NE(nullptr, reader);
-    ASSERT_EQ(1, reader->size());
-    auto& segment = (*reader)[0];
-    auto* field = segment.field("value");
-    ASSERT_NE(nullptr, field);
-    auto terms = field->iterator(irs::SeekMode::NORMAL);
+    auto terms = field->iterator(irs::SeekMode::RANDOM_ONLY);
     ASSERT_NE(nullptr, terms);
-    auto terms1 = field->iterator(irs::SeekMode::NORMAL);
-    ASSERT_NE(nullptr, terms1);
     auto* meta = irs::get<irs::term_meta>(*terms);
     ASSERT_NE(nullptr, meta);
-    auto* meta1 = irs::get<irs::term_meta>(*terms1);
-    ASSERT_NE(nullptr, meta1);
 
-    auto expected_term = index().front().fields().at("value").iterator();
+    auto expected_term = expected_field.iterator();
+    ASSERT_NE(nullptr, expected_term);
 
-    size_t i = 0;
     for (std::string_view term : sequence) {
       SCOPED_TRACE(testing::Message("Term: ") << term);
-      // SCOPED_TRACE(testing::Message("Prev: ") << sequence[i - 1]);
 
-      if (term == "001") {
-        int i = 5;
-      }
-      if (term == "105") {
-        int i = 5;
-      }
-
-      auto res = terms->seek(irs::ViewCast<irs::byte_type>(term));
-      auto exp_res = expected_term->seek(irs::ViewCast<irs::byte_type>(term));
+      const auto res = terms->seek(irs::ViewCast<irs::byte_type>(term));
+      const auto exp_res =
+        expected_term->seek(irs::ViewCast<irs::byte_type>(term));
       ASSERT_EQ(exp_res, res);
 
-      if (!res) {
-        continue;
+      if (res) {
+        ASSERT_EQ(expected_term->value(), terms->value());
+        terms->read();
+        ASSERT_EQ(meta->docs_count, 1);
       }
-      ASSERT_EQ(expected_term->value(), terms->value());
+    }
+  }
 
-      terms->read();
+  {
+    auto terms = field->iterator(irs::SeekMode::NORMAL);
+    ASSERT_NE(nullptr, terms);
+    auto* meta = irs::get<irs::term_meta>(*terms);
+    ASSERT_NE(nullptr, meta);
 
-      ++i;
-      ASSERT_EQ(meta->docs_count, 1);
+    auto expected_term = expected_field.iterator();
+    ASSERT_NE(nullptr, expected_term);
+
+    for (std::string_view term : sequence) {
+      SCOPED_TRACE(testing::Message("Term: ") << term);
+
+      const auto res = terms->seek(irs::ViewCast<irs::byte_type>(term));
+      const auto exp_res =
+        expected_term->seek(irs::ViewCast<irs::byte_type>(term));
+      ASSERT_EQ(exp_res, res);
+
+      if (res) {
+        ASSERT_EQ(expected_term->value(), terms->value());
+        terms->read();
+        ASSERT_EQ(meta->docs_count, 1);
+      }
+    }
+  }
+
+  {
+    auto terms = field->iterator(irs::SeekMode::NORMAL);
+    ASSERT_NE(nullptr, terms);
+    auto* meta = irs::get<irs::term_meta>(*terms);
+    ASSERT_NE(nullptr, meta);
+
+    auto expected_term = expected_field.iterator();
+    ASSERT_NE(nullptr, expected_term);
+
+    for (std::string_view term : sequence) {
+      SCOPED_TRACE(testing::Message("Term: ") << term);
+
+      const auto res = terms->seek_ge(irs::ViewCast<irs::byte_type>(term));
+      const auto exp_res =
+        expected_term->seek_ge(irs::ViewCast<irs::byte_type>(term));
+      ASSERT_EQ(exp_res, res);
+
+      if (res != irs::SeekResult::END) {
+        ASSERT_EQ(expected_term->value(), terms->value());
+        terms->read();
+        ASSERT_EQ(meta->docs_count, 1);
+      }
     }
   }
 }
