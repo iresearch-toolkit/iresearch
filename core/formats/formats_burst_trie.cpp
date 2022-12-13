@@ -1632,7 +1632,7 @@ class block_iterator : util::noncopyable {
   byte_type cur_meta_{};            // current block metadata
   bool dirty_{true};                // current block is dirty
   bool leaf_{false};                // current block is leaf block
-};                                  // block_iterator
+};
 
 block_iterator::block_iterator(byte_weight&& header, size_t prefix) noexcept
   : header_{std::move(header)},
@@ -2177,21 +2177,18 @@ class term_iterator final : public term_iterator_base {
     // ensure final weight correctess
     IRS_ASSERT(out.size() >= MIN_WEIGHT_SIZE);
 
-    block_stack_.emplace_back(out, prefix);
-    return &block_stack_.back();
+    return &block_stack_.emplace_back(out, prefix);
   }
 
   block_iterator* push_block(byte_weight&& out, size_t prefix) {
     // ensure final weight correctess
     IRS_ASSERT(out.Size() >= MIN_WEIGHT_SIZE);
 
-    block_stack_.emplace_back(std::move(out), prefix);
-    return &block_stack_.back();
+    return &block_stack_.emplace_back(std::move(out), prefix);
   }
 
   block_iterator* push_block(uint64_t start, size_t prefix) {
-    block_stack_.emplace_back(start, prefix);
-    return &block_stack_.back();
+    return &block_stack_.emplace_back(start, prefix);
   }
 
   // as term_iterator is usually used by prepared queries
@@ -2360,8 +2357,14 @@ bool term_iterator<FST>::seek_to_block(bytes_view term, size_t& prefix) {
       // target term is before the current term
       block_stack_[block].reset();
     } else if (0 == cmp) {
-      // we're already at current term
-      return true;
+      if (cur_block_->type() == ET_BLOCK) {
+        // we're at the block with matching prefix
+        cur_block_ = push_block(cur_block_->block_start(), term_buf_.size());
+        return false;
+      } else {
+        // we're already at current term
+        return true;
+      }
     }
   } else {
     push_block(fst.Final(state), prefix);
@@ -2425,16 +2428,15 @@ template<typename FST>
 SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
   size_t prefix;
   if (seek_to_block(term, prefix)) {
+    IRS_ASSERT(cur_block_->type() == ET_TERM);
     return SeekResult::FOUND;
-  }
-
-  IRS_ASSERT(cur_block_);
-
-  if (!block_meta::terms(cur_block_->meta())) {
+  } else if (!block_meta::terms(cur_block_->meta())) {
     // current block has no terms
     std::get<term_attribute>(attrs_).value = {term_buf_.c_str(), prefix};
     return SeekResult::NOT_FOUND;
   }
+
+  IRS_ASSERT(cur_block_);
 
   auto append_suffix = [this](const byte_type* suffix, size_t suffix_size) {
     const auto prefix = cur_block_->prefix();
@@ -2453,11 +2455,11 @@ SeekResult term_iterator<FST>::seek_equal(bytes_view term) {
 
 template<typename FST>
 SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
-  size_t prefix;
+  [[maybe_unused]] size_t prefix;
   if (seek_to_block(term, prefix)) {
+    IRS_ASSERT(cur_block_->type() == ET_TERM);
     return SeekResult::FOUND;
   }
-  IRS_IGNORE(prefix);
 
   IRS_ASSERT(cur_block_);
 
@@ -2781,10 +2783,8 @@ class automaton_term_iterator final : public term_iterator_base {
     acceptor_->InitArcIterator(state, &data);
     IRS_ASSERT(data.narcs);  // ensured by term_reader::iterator(...)
 
-    block_stack_.emplace_back(out, fst, prefix, weight_prefix, state, fst_state,
-                              data.arcs, data.narcs);
-
-    return &block_stack_.back();
+    return &block_stack_.emplace_back(out, fst, prefix, weight_prefix, state,
+                                      fst_state, data.arcs, data.narcs);
   }
 
   // automaton_term_iterator usually accesses many term blocks and

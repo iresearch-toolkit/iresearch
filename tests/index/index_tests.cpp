@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -2280,8 +2280,7 @@ TEST_P(index_test_case, term_sequence) {
     auto* meta1 = irs::get<irs::term_meta>(*terms1);
     ASSERT_NE(nullptr, meta1);
 
-    auto expected_term =
-      segment.field("value")->iterator(irs::SeekMode::NORMAL);
+    auto expected_term = index().front().fields().at("value").iterator();
 
     size_t i = 0;
     for (std::string_view term : sequence) {
@@ -2300,9 +2299,8 @@ TEST_P(index_test_case, term_sequence) {
       ASSERT_EQ(exp_res, res);
 
       if (!res) {
-        break;
+        continue;
       }
-
       ASSERT_EQ(expected_term->value(), terms->value());
 
       terms->read();

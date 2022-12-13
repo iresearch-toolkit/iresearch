@@ -625,17 +625,11 @@ class term_iterator final : public irs::seek_term_iterator {
       return irs::SeekResult::END;
     }
 
-    if (it->value == value) {
-      prev_ = it;
-      next_ = ++it;
-      value_.value = prev_->value;
-      return irs::SeekResult::FOUND;
-    }
-
-    prev_ = ++it;
+    prev_ = it;
     next_ = ++it;
     value_.value = prev_->value;
-    return irs::SeekResult::NOT_FOUND;
+    return this->value() == value ? irs::SeekResult::FOUND
+                                  : irs::SeekResult::NOT_FOUND;
   }
 
   doc_iterator::ptr postings(irs::IndexFeatures features) const override {
