@@ -357,7 +357,7 @@ class delim_doc_generator : public doc_generator_base {
     virtual void reset() {}
   };  // doc_template
 
-  delim_doc_generator(const std::filesystem::path& file, doc_template& doc,
+  delim_doc_generator(const irs::utf8_path& file, doc_template& doc,
                       uint32_t delim = 0x0009);
 
   const tests::document* next() override;
@@ -380,7 +380,7 @@ class csv_doc_generator : public doc_generator_base {
     virtual void reset() {}
   };  // doc_template
 
-  csv_doc_generator(const std::filesystem::path& file, doc_template& doc);
+  csv_doc_generator(const irs::utf8_path& file, doc_template& doc);
   const tests::document* next() override;
   void reset() override;
   bool skip();  // skip a single document, return if anything was skiped, false
@@ -485,7 +485,7 @@ class json_doc_generator : public doc_generator_base {
                              const json_value&)>
     factory_f;
 
-  json_doc_generator(const std::filesystem::path& file,
+  json_doc_generator(const irs::utf8_path& file,
                      const factory_f& factory);
 
   json_doc_generator(const char* data, const factory_f& factory);
