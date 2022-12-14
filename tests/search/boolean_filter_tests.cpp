@@ -30,6 +30,7 @@
 #include "search/all_iterator.hpp"
 #include "search/bm25.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/conjunction.hpp"
 #include "search/disjunction.hpp"
 #include "search/exclusion.hpp"
 #include "search/min_match_disjunction.hpp"
@@ -3983,6 +3984,31 @@ TEST(block_disjunction_test, next) {
     }
     ASSERT_EQ(expected, result);
   }
+
+  // empty iterators
+  {
+    std::vector<irs::doc_id_t> expected{};
+    std::vector<irs::doc_id_t> result;
+
+    disjunction::doc_iterators_t itrs;
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    disjunction it{std::move(itrs)};
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    for (; it.next();) {
+      result.push_back(it.value());
+      ASSERT_EQ(1, it.match_count());
+    }
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(expected, result);
+  }
 }
 
 TEST(block_disjunction_test, next_scored) {
@@ -7570,6 +7596,28 @@ TEST(block_disjunction_test, seek_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
     }
+  }
+
+  // empty iterators
+  {
+    std::vector<irs::doc_id_t> expected{};
+    std::vector<irs::doc_id_t> result;
+
+    disjunction::doc_iterators_t itrs;
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    disjunction it{std::move(itrs)};
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(1));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(expected, result);
   }
 }
 

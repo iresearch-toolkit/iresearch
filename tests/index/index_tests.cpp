@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -23,6 +23,7 @@
 
 #include "index_tests.hpp"
 
+#include <string>
 #include <thread>
 
 #include "index/field_meta.hpp"
@@ -2223,6 +2224,128 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   ASSERT_EQ(expected_docs_A[0] | expected_docs_B[0], actual_docs_AB[0]);
   ASSERT_EQ(expected_docs_A[1] | expected_docs_B[1], actual_docs_AB[1]);
   ASSERT_EQ(expected_docs_A[2] | expected_docs_B[2], actual_docs_AB[2]);
+}
+
+TEST_P(index_test_case, s2sequence) {
+  std::vector<std::string> sequence;
+  absl::flat_hash_set<std::string> indexed;
+
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+
+    std::ifstream stream{resource("s2sequence"), std::ifstream::in};
+    ASSERT_TRUE(static_cast<bool>(stream));
+
+    std::string str;
+    auto field = std::make_shared<tests::string_field>("value");
+    tests::document doc;
+    doc.indexed.push_back(field);
+
+    auto& expected_segment = this->index().emplace_back(writer->feature_info());
+    while (std::getline(stream, str)) {
+      if (str.starts_with("#")) {
+        break;
+      }
+
+      field->value(str);
+      indexed.emplace(std::move(str));
+      ASSERT_TRUE(tests::insert(*writer, doc));
+      expected_segment.insert(doc);
+    }
+
+    while (std::getline(stream, str)) {
+      sequence.emplace_back(std::move(str));
+    }
+
+    ASSERT_TRUE(writer->commit());
+  }
+
+  assert_index();
+  assert_columnstore();
+
+  auto reader = open_reader();
+  ASSERT_NE(nullptr, reader);
+  ASSERT_EQ(1, reader->size());
+  auto& segment = (*reader)[0];
+  auto* field = segment.field("value");
+  ASSERT_NE(nullptr, field);
+  auto& expected_field = index().front().fields().at("value");
+
+  {
+    auto terms = field->iterator(irs::SeekMode::RANDOM_ONLY);
+    ASSERT_NE(nullptr, terms);
+    auto* meta = irs::get<irs::term_meta>(*terms);
+    ASSERT_NE(nullptr, meta);
+
+    auto expected_term = expected_field.iterator();
+    ASSERT_NE(nullptr, expected_term);
+
+    for (std::string_view term : sequence) {
+      SCOPED_TRACE(testing::Message("Term: ") << term);
+
+      const auto res = terms->seek(irs::ViewCast<irs::byte_type>(term));
+      const auto exp_res =
+        expected_term->seek(irs::ViewCast<irs::byte_type>(term));
+      ASSERT_EQ(exp_res, res);
+
+      if (res) {
+        ASSERT_EQ(expected_term->value(), terms->value());
+        terms->read();
+        ASSERT_EQ(meta->docs_count, 1);
+      }
+    }
+  }
+
+  {
+    auto terms = field->iterator(irs::SeekMode::NORMAL);
+    ASSERT_NE(nullptr, terms);
+    auto* meta = irs::get<irs::term_meta>(*terms);
+    ASSERT_NE(nullptr, meta);
+
+    auto expected_term = expected_field.iterator();
+    ASSERT_NE(nullptr, expected_term);
+
+    for (std::string_view term : sequence) {
+      SCOPED_TRACE(testing::Message("Term: ") << term);
+
+      const auto res = terms->seek(irs::ViewCast<irs::byte_type>(term));
+      const auto exp_res =
+        expected_term->seek(irs::ViewCast<irs::byte_type>(term));
+      ASSERT_EQ(exp_res, res);
+
+      if (res) {
+        ASSERT_EQ(expected_term->value(), terms->value());
+        terms->read();
+        ASSERT_EQ(meta->docs_count, 1);
+      }
+    }
+  }
+
+  {
+    auto terms = field->iterator(irs::SeekMode::NORMAL);
+    ASSERT_NE(nullptr, terms);
+    auto* meta = irs::get<irs::term_meta>(*terms);
+    ASSERT_NE(nullptr, meta);
+
+    auto expected_term = expected_field.iterator();
+    ASSERT_NE(nullptr, expected_term);
+
+    for (std::string_view term : sequence) {
+      SCOPED_TRACE(testing::Message("Term: ") << term);
+
+      const auto res = terms->seek_ge(irs::ViewCast<irs::byte_type>(term));
+      const auto exp_res =
+        expected_term->seek_ge(irs::ViewCast<irs::byte_type>(term));
+      ASSERT_EQ(exp_res, res);
+
+      if (res != irs::SeekResult::END) {
+        ASSERT_EQ(expected_term->value(), terms->value());
+        terms->read();
+        ASSERT_EQ(meta->docs_count, 1);
+      }
+    }
+  }
 }
 
 TEST_P(index_test_case, arango_demo_docs) {

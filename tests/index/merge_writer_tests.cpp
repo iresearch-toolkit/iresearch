@@ -99,13 +99,10 @@ class test_feature_writer final : public irs::feature_writer {
 struct binary_comparer : public irs::comparer {
  protected:
   bool less(irs::bytes_view lhs, irs::bytes_view rhs) const override {
-    if (irs::IsNull(rhs) != irs::IsNull(lhs)) {
-      return irs::IsNull(lhs);
-    }
-    if (!irs::IsNull(lhs)) {
-      return lhs < rhs;
-    }
-    return false;
+    EXPECT_FALSE(irs::IsNull(lhs));
+    EXPECT_FALSE(irs::IsNull(rhs));
+
+    return lhs < rhs;
   }
 };
 

@@ -190,8 +190,9 @@ bool visit(const std::function<bool(std::string_view)>& visitor);
 /// @brief no compression
 ////////////////////////////////////////////////////////////////////////////////
 struct none {
+  // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "irs::compression::none";
+    return "iresearch::compression::none";
   }
 
   static void init();

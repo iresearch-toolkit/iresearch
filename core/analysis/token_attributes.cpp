@@ -42,9 +42,6 @@ namespace irs {
 
 /*static*/ irs::position* position::empty() noexcept { return &NO_POSITION; }
 
-// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
-// already created indexes !!!
-
 REGISTER_ATTRIBUTE(frequency);
 REGISTER_ATTRIBUTE(position);
 REGISTER_ATTRIBUTE(offset);

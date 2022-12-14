@@ -98,7 +98,7 @@ struct frequency final : attribute {
 struct granularity_prefix final {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "irs::granularity_prefix";
+    return "iresearch::granularity_prefix";
   }
 };
 
@@ -167,7 +167,7 @@ class attribute_provider_change final : public attribute {
 struct score_threshold final : public attribute {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "irs::score_threshold";
+    return "iresearch::score_threshold";
   }
 
   score_t value;

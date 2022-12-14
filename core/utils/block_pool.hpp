@@ -533,7 +533,7 @@ class block_pool_sliced_reader
   }
 
   void init() noexcept {
-    IRS_ASSERT(end_ >= 0 && this->where_.pool_offset() <= end_);
+    IRS_ASSERT(this->where_.pool_offset() <= end_);
 
     this->left_ = std::min(end_ - this->where_.pool_offset(),
                            detail::LEVELS[level_].size - sizeof(uint32_t));

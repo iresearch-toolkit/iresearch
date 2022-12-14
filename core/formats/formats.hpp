@@ -273,8 +273,7 @@ struct column_output : data_output {
 struct columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
 
-  // NOTE: doc > type_limits<type_t::doc_id_t>::invalid() && doc <
-  // type_limits<type_t::doc_id_t>::eof()
+  // NOTE: doc > doc_limits::invalid() && doc < doc_limits::eof()
   using values_writer_f = std::function<column_output&(doc_id_t doc)>;
 
   // Finalizer can be used to assign name and payload to a column.
