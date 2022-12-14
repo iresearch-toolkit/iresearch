@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_STORE_UTILS_H
-#define IRESEARCH_STORE_UTILS_H
+#pragma once
 
 #include "data_input.hpp"
 #include "data_output.hpp"
@@ -770,4 +769,3 @@ inline void visit_block_packed(data_input& in, uint32_t size, uint32_t* packed,
 }  // namespace encode
 }  // namespace irs
 
-#endif

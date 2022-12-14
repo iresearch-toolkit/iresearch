@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SMALL_VECTOR_H
-#define IRESEARCH_SMALL_VECTOR_H
+#pragma once
 
 #include <boost/container/small_vector.hpp>
 
@@ -32,4 +31,3 @@ using SmallVector = boost::container::small_vector<T, N, A>;
 
 }
 
-#endif  // IRESEARCH_SMALL_VECTOR_H

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_JSON_UTILS_H
-#define IRESEARCH_JSON_UTILS_H
+#pragma once
 
 #include "string.hpp"
 
@@ -63,4 +62,3 @@ inline bool get_bool(GenericObject const& json, std::string_view name,
 
 }  // namespace irs
 
-#endif  // IRESEARCH_JSON_UTILS_H

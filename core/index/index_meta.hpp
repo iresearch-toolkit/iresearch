@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_META_H
-#define IRESEARCH_INDEX_META_H
+#pragma once
 
 #include <absl/container/flat_hash_set.h>
 
@@ -245,4 +244,3 @@ class index_meta {
 
 }  // namespace irs
 
-#endif

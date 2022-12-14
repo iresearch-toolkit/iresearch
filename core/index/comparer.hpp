@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COMPARER_H
-#define IRESEARCH_COMPARER_H
+#pragma once
 
 #include "shared.hpp"
 #include "utils/string.hpp"
@@ -50,4 +49,3 @@ inline bool use_dense_sort(size_t size, size_t total) noexcept {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_COMPARER_H

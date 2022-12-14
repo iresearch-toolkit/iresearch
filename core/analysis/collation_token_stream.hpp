@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COLLATION_TOKEN_STREAM_H
-#define IRESEARCH_COLLATION_TOKEN_STREAM_H
+#pragma once
 
 #include <unicode/locid.h>
 
@@ -81,4 +80,3 @@ class collation_token_stream final : public analyzer,
 }  // namespace analysis
 }  // namespace irs
 
-#endif  // IRESEARCH_COLLATION_TOKEN_STREAM_H

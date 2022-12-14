@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DISJUNCTION_H
-#define IRESEARCH_DISJUNCTION_H
+#pragma once
 
 #include <queue>
 
@@ -1420,4 +1419,3 @@ doc_iterator::ptr MakeWeakDisjunction(
 
 }  // namespace irs
 
-#endif  // IRESEARCH_DISJUNCTION_H

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_MATCHER_H
-#define IRESEARCH_FST_MATCHER_H
+#pragma once
 
 #include "shared.hpp"
 
@@ -110,4 +109,3 @@ class explicit_matcher final
 
 }  // namespace fst
 
-#endif  // IRESEARCH_FST_MATHCER_H

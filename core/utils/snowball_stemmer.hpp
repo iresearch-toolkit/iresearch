@@ -20,8 +20,7 @@
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef SNOWBALL_STEMMER_H
-#define SNOWBALL_STEMMER_H
+#pragma once
 
 #include <memory>
 
@@ -39,4 +38,3 @@ stemmer_ptr make_stemmer_ptr(const char* algorithm, const char* charenc);
 
 }  // namespace irs
 
-#endif  // SNOWBALL_STEMMER_H

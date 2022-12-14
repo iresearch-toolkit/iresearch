@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
-#define IRESEARCH_BITSET_DOC_ITERATOR_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
@@ -73,4 +72,3 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_BITSET_DOC_ITERATOR_H

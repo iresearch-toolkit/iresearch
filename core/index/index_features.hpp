@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_FEATURES_H
-#define IRESEARCH_INDEX_FEATURES_H
+#pragma once
 
 #include <functional>
 #include <span>
@@ -103,4 +102,3 @@ using feature_info_provider_t =
 
 }  // namespace irs
 
-#endif  // IRESEARCH_INDEX_FEATURES_H

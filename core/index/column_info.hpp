@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COLUMN_INFO_H
-#define IRESEARCH_COLUMN_INFO_H
+#pragma once
 
 #include <functional>
 
@@ -47,4 +46,3 @@ using column_info_provider_t =
 
 }  // namespace irs
 
-#endif  // IRESEARCH_COLUMN_INFO_H

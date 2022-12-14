@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SORT_H
-#define IRESEARCH_SORT_H
+#pragma once
 
 #include "index/index_features.hpp"
 #include "utils/attribute_provider.hpp"
@@ -527,4 +526,3 @@ class PreparedSortBase<void> : public sort::prepared {
 
 }  // namespace irs
 
-#endif

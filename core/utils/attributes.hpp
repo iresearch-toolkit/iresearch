@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ATTRIBUTES_H
-#define IRESEARCH_ATTRIBUTES_H
+#pragma once
 
 #include "shared.hpp"
 #include "type_id.hpp"
@@ -58,4 +57,3 @@ class attribute_registrar {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_ATTRIBUTES_H

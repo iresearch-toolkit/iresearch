@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_IO_UTILS_H
-#define IRESEARCH_IO_UTILS_H
+#pragma once
 
 #include "memory.hpp"
 #include "utils/string.hpp"
@@ -60,4 +59,3 @@ MAKE_DELETER(unlock);
 #define DECLARE_IO_PTR(class_name, method) \
   typedef ::irs::io_utils::auto_##method<class_name>::ptr ptr
 
-#endif

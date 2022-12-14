@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BITSET_H
-#define IRESEARCH_BITSET_H
+#pragma once
 
 #include <cstring>
 #include <memory>
@@ -208,4 +207,3 @@ using bitset = dynamic_bitset<std::allocator<size_t>>;
 
 }  // namespace irs
 
-#endif

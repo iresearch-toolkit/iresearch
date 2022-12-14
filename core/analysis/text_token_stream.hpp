@@ -23,8 +23,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TEXT_TOKEN_STREAM_H
-#define IRESEARCH_TEXT_TOKEN_STREAM_H
+#pragma once
 
 #include <absl/container/flat_hash_set.h>
 #include <unicode/locid.h>
@@ -111,4 +110,3 @@ class text_token_stream final : public analyzer, private util::noncopyable {
 }  // namespace analysis
 }  // namespace irs
 
-#endif

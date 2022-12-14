@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_POSTINGS_H
-#define IRESEARCH_POSTINGS_H
+#pragma once
 
 #include "shared.hpp"
 #include "utils/block_pool.hpp"
@@ -127,4 +126,3 @@ class postings : util::noncopyable {
 
 }  // namespace irs
 
-#endif

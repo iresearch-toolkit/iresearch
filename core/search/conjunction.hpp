@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_CONJUNCTION_H
-#define IRESEARCH_CONJUNCTION_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "search/cost.hpp"
@@ -293,4 +292,3 @@ doc_iterator::ptr MakeConjunction(typename Conjunction::doc_iterators_t&& itrs,
 
 }  // namespace irs
 
-#endif  // IRESEARCH_CONJUNCTION_H

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_CTR_ENCRYPTION_H
-#define IRESEARCH_CTR_ENCRYPTION_H
+#pragma once
 
 #include "encryption.hpp"
 
@@ -63,4 +62,3 @@ class ctr_encryption : public encryption {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_CTR_ENCRYPTION_H

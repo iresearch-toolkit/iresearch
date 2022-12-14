@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MAP_UTILS_H
-#define IRESEARCH_MAP_UTILS_H
+#pragma once
 
 #include <tuple>
 
@@ -66,4 +65,3 @@ inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
 }  // namespace map_utils
 }  // namespace irs
 
-#endif

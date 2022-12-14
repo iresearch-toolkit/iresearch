@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_AUTOMATON_UTILS_H
-#define IRESEARCH_AUTOMATON_UTILS_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "formats/formats.hpp"
@@ -485,4 +484,3 @@ filter::prepared::ptr prepare_automaton_filter(
 
 }  // namespace irs
 
-#endif

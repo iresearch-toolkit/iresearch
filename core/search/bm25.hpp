@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BM25_H
-#define IRESEARCH_BM25_H
+#pragma once
 
 #include "scorers.hpp"
 
@@ -70,4 +69,3 @@ class bm25_sort : public sort {
 
 }  // namespace irs
 
-#endif

@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SCORERS_H
-#define IRESEARCH_SCORERS_H
+#pragma once
 
 #include "sort.hpp"
 #include "utils/text_format.hpp"
@@ -113,4 +112,3 @@ class scorers {
 
 }  // namespace irs
 
-#endif

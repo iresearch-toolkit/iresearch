@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TYPE_ID_H
-#define IRESEARCH_TYPE_ID_H
+#pragma once
 
 #include "type_info.hpp"
 #include "type_utils.hpp"
@@ -66,4 +65,3 @@ struct type {
 
 }  // namespace irs
 
-#endif

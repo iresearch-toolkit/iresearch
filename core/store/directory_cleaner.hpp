@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DIRECTORY_CLEANER_H
-#define IRESEARCH_DIRECTORY_CLEANER_H
+#pragma once
 
 #include <functional>
 
@@ -54,4 +53,3 @@ class directory_cleaner {
 
 }  // namespace irs
 
-#endif

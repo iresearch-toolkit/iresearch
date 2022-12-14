@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_UTILS_H
-#define IRESEARCH_FST_UTILS_H
+#pragma once
 
 #include <fst/fst.h>
 
@@ -145,4 +144,3 @@ struct hash<typename ::fst::fstext::EmptyLabel<L>> {
 
 }  // namespace std
 
-#endif  // IRESEARCH_FST_UTILS_H

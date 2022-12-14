@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BIT_PACKING_H
-#define IRESEARCH_BIT_PACKING_H
+#pragma once
 
 #include <cmath>
 #include <iterator>
@@ -270,4 +269,3 @@ typedef iterator<uint64_t> iterator64;
 }  // namespace packed
 }  // namespace irs
 
-#endif

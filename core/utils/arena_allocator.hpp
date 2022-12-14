@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ARENA_ALLOCATOR_H
-#define IRESEARCH_ARENA_ALLOCATOR_H
+#pragma once
 
 #include <vector>
 
@@ -169,4 +168,3 @@ using arena_vector = std::vector<T, arena_allocator<T, Arena>>;
 }  // namespace memory
 }  // namespace irs
 
-#endif  // IRESEARCH_ARENA_ALLOCATOR_H

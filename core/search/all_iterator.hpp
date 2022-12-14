@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ALL_ITERATOR_H
-#define IRESEARCH_ALL_ITERATOR_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
@@ -75,4 +74,3 @@ class all_iterator final : public doc_iterator {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_ALL_ITERATOR_H

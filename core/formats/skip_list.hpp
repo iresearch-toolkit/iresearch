@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SKIP_LIST_H
-#define IRESEARCH_SKIP_LIST_H
+#pragma once
 
 #include "store/memory_directory.hpp"
 #include "utils/type_limits.hpp"
@@ -257,4 +256,3 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
 
 }  // namespace irs
 
-#endif

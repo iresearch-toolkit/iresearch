@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TFIDF_H
-#define IRESEARCH_TFIDF_H
+#pragma once
 
 #include "scorers.hpp"
 
@@ -57,4 +56,3 @@ class tfidf_sort : public sort {
 
 }  // namespace irs
 
-#endif

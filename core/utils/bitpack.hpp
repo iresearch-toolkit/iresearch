@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BITPACK_H
-#define IRESEARCH_BITPACK_H
+#pragma once
 
 #include "shared.hpp"
 #include "store/data_input.hpp"
@@ -297,4 +296,3 @@ void read_block64(UnpackFunc&& unpack, data_input& in,
 }  // namespace bitpack
 }  // namespace irs
 
-#endif  // IRESEARCH_BITPACK_H

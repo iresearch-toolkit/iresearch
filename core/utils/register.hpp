@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_REGISTER_H
-#define IRESEARCH_REGISTER_H
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -227,4 +226,3 @@ class tagged_generic_register
 
 }  // namespace irs
 
-#endif

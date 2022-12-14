@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MINHASH_TOKEN_STREAM_H
-#define IRESEARCH_MINHASH_TOKEN_STREAM_H
+#pragma once
 
 #include "analysis/analyzer.hpp"
 #include "analysis/token_attributes.hpp"
@@ -84,4 +83,3 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
 
 }  // namespace irs::analysis
 
-#endif

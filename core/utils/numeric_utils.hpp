@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NUMERIC_UTILS_H
-#define IRESEARCH_NUMERIC_UTILS_H
+#pragma once
 
 #include "utils/string.hpp"
 
@@ -225,4 +224,3 @@ struct numeric_traits<long double> {};  // numeric_traits
 }  // namespace numeric_utils
 }  // namespace irs
 
-#endif  // IRESEARCH_NUMERIC_UTILS_H

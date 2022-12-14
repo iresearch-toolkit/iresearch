@@ -20,8 +20,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NGRAM_SIMILARITY_FILTER_H
-#define IRESEARCH_NGRAM_SIMILARITY_FILTER_H
+#pragma once
 
 #include "search/filter.hpp"
 #include "utils/string.hpp"
@@ -61,4 +60,3 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_NGRAM_SIMILARITY_FILTER_H

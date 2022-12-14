@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ERROR_H
-#define IRESEARCH_ERROR_H
+#pragma once
 
 #include <exception>
 
@@ -179,4 +178,3 @@ struct illegal_state : detailed_error_base {
 
 }  // namespace irs
 
-#endif
