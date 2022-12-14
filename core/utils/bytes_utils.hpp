@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BYTES_UTILS_H
-#define IRESEARCH_BYTES_UTILS_H
+#pragma once
 
 #include "shared.hpp"
 #include "utils/bit_utils.hpp"
@@ -510,4 +509,3 @@ inline void zvwrite(Iterator& out, T value) {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_BYTES_UTILS_H

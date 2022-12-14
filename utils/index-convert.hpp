@@ -22,9 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_CONVERT_H
-#define IRESEARCH_INDEX_CONVERT_H
+#pragma once
 
 int convert(int argc, char* argv[]);
 
-#endif  // IRESEARCH_INDEX_CONVERT_H

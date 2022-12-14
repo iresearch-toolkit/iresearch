@@ -20,8 +20,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_UTF8_UTILS_H
-#define IRESEARCH_UTF8_UTILS_H
+#pragma once
 
 #include <vector>
 
@@ -252,4 +251,3 @@ IRS_FORCE_INLINE size_t utf8_length(bytes_view in) noexcept {
 }  // namespace utf8_utils
 }  // namespace irs
 
-#endif  // IRESEARCH_UTF8_UTILS_H

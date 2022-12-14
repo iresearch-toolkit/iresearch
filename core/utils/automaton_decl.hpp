@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_AUTOMATON_DECL_H
-#define IRESEARCH_AUTOMATON_DECL_H
+#pragma once
 
 #include <cstddef>
 
@@ -64,4 +63,3 @@ using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
 
 }  // namespace irs
 
-#endif  // IRESEARCH_AUTOMATON_DECL_H

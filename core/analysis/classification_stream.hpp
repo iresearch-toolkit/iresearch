@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_EMBEDDING_CLASSIFICATION_STREAM_H
-#define IRESEARCH_EMBEDDING_CLASSIFICATION_STREAM_H
+#pragma once
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -85,4 +84,3 @@ class classification_stream final : public analyzer, private util::noncopyable {
 }  // namespace analysis
 }  // namespace irs
 
-#endif  // IRESEARCH_EMBEDDING_CLASSIFICATION_STREAM_H

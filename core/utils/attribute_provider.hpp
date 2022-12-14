@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ATTRIBUTES_PROVIDER_H
-#define IRESEARCH_ATTRIBUTES_PROVIDER_H
+#pragma once
 
 #include "type_id.hpp"
 
@@ -61,4 +60,3 @@ inline T* get_mutable(Provider* attrs) {
 
 }  // namespace irs
 
-#endif

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SO_UTILS_H
-#define IRESEARCH_SO_UTILS_H
+#pragma once
 
 #include <string_view>
 
@@ -35,4 +34,3 @@ void load_libraries(std::string_view path, std::string_view prefix,
 
 }  // namespace irs
 
-#endif  // IRESEARCH_SO_UTILS_H

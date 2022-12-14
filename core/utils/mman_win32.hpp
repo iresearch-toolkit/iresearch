@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MMAN_WIN32_H
-#define IRESEARCH_MMAN_WIN32_H
+#pragma once
 
 #if defined(_MSC_VER)
 
@@ -77,4 +76,3 @@ int madvise(void *addr, size_t length, int advice);
 
 #endif  // (_MSC_VER)
 
-#endif  // IRESEARCH_MMAN_WIN32_H

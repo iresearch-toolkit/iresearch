@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FIELD_META_H
-#define IRESEARCH_FIELD_META_H
+#pragma once
 
 #include <set>
 
@@ -73,4 +72,3 @@ static_assert(std::is_move_constructible<field_meta>::value,
 
 }  // namespace irs
 
-#endif

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_UTF8_CHARACTER_UTILS_H
-#define IRESEARCH_UTF8_CHARACTER_UTILS_H
+#pragma once
 
 #include "utils/utf8_character_tables.hpp"
 
@@ -112,4 +111,3 @@ constexpr bool char_is_alphanumeric(uint32_t c) noexcept {
 }  // namespace utf8_utils
 }  // namespace irs
 
-#endif  // IRESEARCH_UTF8_CHARACTER_UTILS_H

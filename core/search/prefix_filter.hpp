@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_PREFIX_FILTER_H
-#define IRESEARCH_PREFIX_FILTER_H
+#pragma once
 
 #include "search/filter.hpp"
 #include "utils/string.hpp"
@@ -103,4 +102,3 @@ struct hash<::irs::by_prefix_options> {
 
 }  // namespace std
 
-#endif

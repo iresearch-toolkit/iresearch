@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BIT_UTILS_H
-#define IRESEARCH_BIT_UTILS_H
+#pragma once
 
 #include <numeric>
 
@@ -214,4 +213,3 @@ inline constexpr T enum_bitwise_not(T v) noexcept {
     return irs::enum_bitwise_not(v);                                     \
   }
 
-#endif

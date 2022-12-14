@@ -22,8 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_SEARCH_H
-#define IRESEARCH_INDEX_SEARCH_H
+#pragma once
 
 #include "shared.hpp"
 
@@ -35,4 +34,3 @@ class parser;
 
 int search(int argc, char* argv[]);
 
-#endif  // IRESEARCH_INDEX_SEARCH_H

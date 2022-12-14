@@ -21,8 +21,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NEAREST_NEIGHBORS_STREAM_H
-#define IRESEARCH_NEAREST_NEIGHBORS_STREAM_H
+#pragma once
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -88,4 +87,3 @@ class nearest_neighbors_stream final : public analyzer,
 }  // namespace analysis
 }  // namespace irs
 
-#endif  // IRESEARCH_NEAREST_NEIGHBORS_STREAM_H

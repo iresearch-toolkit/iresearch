@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ATTRIBUTE_HELPER_H
-#define IRESEARCH_ATTRIBUTE_HELPER_H
+#pragma once
 
 #include "attribute_provider.hpp"
 
@@ -74,4 +73,3 @@ constexpr attribute* get_mutable(std::tuple<T...>& t,
 
 }  // namespace irs
 
-#endif  // IRESEARCH_ATTRIBUTE_HELPER_H

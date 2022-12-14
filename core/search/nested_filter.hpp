@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NESTED_FILTER_H
-#define IRESEARCH_NESTED_FILTER_H
+#pragma once
 
 #include <compare>
 
@@ -118,4 +117,3 @@ class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_NESTED_FILTER_H

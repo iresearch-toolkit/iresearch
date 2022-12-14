@@ -22,9 +22,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_DUMP_H
-#define IRESEARCH_INDEX_DUMP_H
+#pragma once
 
 int dump(int argc, char* argv[]);
 
-#endif  // IRESEARCH_INDEX_DUMP_H

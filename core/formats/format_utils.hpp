@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FORMATS_UTILS_H
-#define IRESEARCH_FORMATS_UTILS_H
+#pragma once
 
 #include "index/field_meta.hpp"
 #include "store/store_utils.hpp"
@@ -72,4 +71,3 @@ int64_t checksum(const index_input& in);
 }  // namespace format_utils
 }  // namespace irs
 
-#endif

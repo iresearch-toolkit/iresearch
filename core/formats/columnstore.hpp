@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COLUMNSTORE_H
-#define IRESEARCH_COLUMNSTORE_H
+#pragma once
 
 #include "formats/formats.hpp"
 #include "shared.hpp"
@@ -62,4 +61,3 @@ irs::columnstore_reader::ptr make_reader();
 }  // namespace columnstore
 }  // namespace irs
 
-#endif  // IRESEARCH_COLUMNSTORE_H

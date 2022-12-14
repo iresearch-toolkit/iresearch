@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FIELD_DATA_H
-#define IRESEARCH_FIELD_DATA_H
+#pragma once
 
 #include <vector>
 
@@ -222,4 +221,3 @@ class fields_data : util::noncopyable {
 
 }  // namespace irs
 
-#endif

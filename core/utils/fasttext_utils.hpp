@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FASTTEXT_UTILS_H
-#define IRESEARCH_FASTTEXT_UTILS_H
+#pragma once
 
 #include "fasttext.h"
 
@@ -53,4 +52,3 @@ class ImmutableFastText : public FastText {
 
 }  // namespace fasttext
 
-#endif  // IRESEARCH_FASTTEXT_UTILS_H

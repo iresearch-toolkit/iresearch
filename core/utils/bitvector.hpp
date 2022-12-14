@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BITVECTOR_H
-#define IRESEARCH_BITVECTOR_H
+#pragma once
 
 #include "bitset.hpp"
 
@@ -349,4 +348,3 @@ static_assert(std::is_nothrow_move_constructible<bitvector>::value,
 
 }  // namespace irs
 
-#endif

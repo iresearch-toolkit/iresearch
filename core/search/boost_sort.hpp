@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BOOST_H
-#define IRESEARCH_BOOST_H
+#pragma once
 
 #include "scorers.hpp"
 
@@ -41,4 +40,3 @@ struct boost_sort final : public sort {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_BOOST_H

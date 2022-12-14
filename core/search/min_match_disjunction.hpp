@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MIN_MATCH_DISJUNCTION_H
-#define IRESEARCH_MIN_MATCH_DISJUNCTION_H
+#pragma once
 
 #include "disjunction.hpp"
 
@@ -418,4 +417,3 @@ struct RebindIterator<min_match_disjunction<DocIterator, Merger>> {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_MIN_MATCH_DISJUNCTION_H

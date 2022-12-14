@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_TESTS_H
-#define IRESEARCH_INDEX_TESTS_H
+#pragma once
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -252,4 +251,3 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
 }  // namespace tests
 
-#endif  // IRESEARCH_INDEX_TESTS_H

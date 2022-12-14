@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DIRECTORY_ATTRIBUTES_H
-#define IRESEARCH_DIRECTORY_ATTRIBUTES_H
+#pragma once
 
 #include "shared.hpp"
 #include "utils/container_utils.hpp"
@@ -136,4 +135,3 @@ class directory_attributes {
 
 }  // namespace irs
 
-#endif

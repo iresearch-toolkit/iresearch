@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FILE_NAMES_H
-#define IRESEARCH_FILE_NAMES_H
+#pragma once
 
 #include <memory>
 
@@ -46,4 +45,3 @@ std::string file_name(std::string_view name, uint64_t gen,
 
 }  // namespace irs
 
-#endif

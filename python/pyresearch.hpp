@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_PYRESEARCH_H
-#define IRESEARCH_PYRESEARCH_H
+#pragma once
 
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
@@ -322,4 +321,3 @@ class PYRESEARCH_API index_reader {
   std::vector<const irs::sub_reader*> segments_;
 };  // index_reader
 
-#endif  // IRESEARCH_PYRESEARCH_H

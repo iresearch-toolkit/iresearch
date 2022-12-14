@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NORM_H
-#define IRESEARCH_NORM_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "shared.hpp"
@@ -255,4 +254,3 @@ static_assert(std::is_nothrow_move_assignable_v<Norm2>);
 
 }  // namespace irs
 
-#endif  // IRESEARCH_NORM_H

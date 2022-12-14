@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_LZ4COMPRESSION_H
-#define IRESEARCH_LZ4COMPRESSION_H
+#pragma once
 
 #include <memory>
 
@@ -80,4 +79,3 @@ struct lz4 {
 }  // namespace compression
 }  // namespace irs
 
-#endif

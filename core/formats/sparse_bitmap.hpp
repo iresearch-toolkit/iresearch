@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SPARSE_BITMAP_H
-#define IRESEARCH_SPARSE_BITMAP_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
@@ -287,4 +286,3 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_SPARSE_BITMAP_H

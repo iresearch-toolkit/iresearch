@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FORMAT_H
-#define IRESEARCH_FORMAT_H
+#pragma once
 
 #include <absl/container/flat_hash_set.h>
 
@@ -623,4 +622,3 @@ class format_registrar {
 
 }  // namespace irs
 
-#endif

@@ -20,8 +20,7 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
-#define IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
+#pragma once
 
 #include "analyzers.hpp"
 #include "shared.hpp"
@@ -76,4 +75,3 @@ class segmentation_token_stream final : public analyzer,
 }  // namespace analysis
 }  // namespace irs
 
-#endif  // IRESEARCH_SEGMENTATION_TOKEN_STREAM_H
