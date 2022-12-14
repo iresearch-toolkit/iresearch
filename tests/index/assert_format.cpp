@@ -261,11 +261,15 @@ void index_segment::compute_features() {
 }
 
 void index_segment::insert_sorted(const ifield* f) {
-  buf_.clear();
-  irs::bytes_output out{buf_};
-  if (f && f->write(out)) {
-    sort_.emplace_back(std::move(buf_), doc(), empty_count_);
-    empty_count_ = 0;
+  if (f) {
+    buf_.clear();
+    irs::bytes_output out{buf_};
+    if (f->write(out)) {
+      sort_.emplace_back(std::move(buf_), doc(), empty_count_);
+      empty_count_ = 0;
+    } else {
+      ++empty_count_;
+    }
   } else {
     ++empty_count_;
   }
@@ -404,6 +408,7 @@ void index_segment::sort(const irs::comparer& comparator) {
   }
   while (order.size() < this->doc_count()) {
     order[static_cast<irs::doc_id_t>(order.size()) + 1] = new_doc_id++;
+    ASSERT_LE(order.size(), this->doc_count());
   }
   for (auto& field : fields_) {
     field.second.sort(order);
@@ -573,8 +578,13 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return type == irs::type<irs::term_attribute>::id() ? &value_ : nullptr;
-    ;
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &value_;
+    }
+    if (type == irs::type<irs::term_meta>::id()) {
+      return &meta_;
+    }
+    return nullptr;
   }
 
   irs::bytes_view value() const override { return value_.value; }
@@ -590,7 +600,7 @@ class term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  void read() override {}
+  void read() noexcept override { meta_.docs_count = prev_->docs_count(); }
 
   bool seek(irs::bytes_view value) override {
     auto it = data_.terms.find(term{value});
@@ -615,17 +625,11 @@ class term_iterator final : public irs::seek_term_iterator {
       return irs::SeekResult::END;
     }
 
-    if (it->value == value) {
-      prev_ = it;
-      next_ = ++it;
-      value_.value = prev_->value;
-      return irs::SeekResult::FOUND;
-    }
-
-    prev_ = ++it;
+    prev_ = it;
     next_ = ++it;
     value_.value = prev_->value;
-    return irs::SeekResult::NOT_FOUND;
+    return this->value() == value ? irs::SeekResult::FOUND
+                                  : irs::SeekResult::NOT_FOUND;
   }
 
   doc_iterator::ptr postings(irs::IndexFeatures features) const override {
@@ -642,6 +646,7 @@ class term_iterator final : public irs::seek_term_iterator {
   std::set<tests::term>::const_iterator prev_;
   std::set<tests::term>::const_iterator next_;
   irs::term_attribute value_;
+  irs::term_meta meta_;
 };
 
 irs::seek_term_iterator::ptr field::iterator() const {
@@ -739,10 +744,22 @@ void assert_docs(const irs::term_iterator& expected_term,
   // FIXME(gnusi): check bit_union
 }
 
-void assert_term(const irs::term_iterator& expected_term,
-                 const irs::term_iterator& actual_term,
+void assert_term(irs::term_iterator& expected_term,
+                 irs::term_iterator& actual_term,
                  irs::IndexFeatures requested_features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
+
+  auto* expected_meta = irs::get<irs::term_meta>(expected_term);
+  ASSERT_NE(nullptr, expected_meta);
+  auto* actual_meta = irs::get<irs::term_meta>(actual_term);
+  ASSERT_NE(nullptr, actual_meta);
+
+  expected_term.read();
+  actual_term.read();
+
+  ASSERT_EQ(expected_meta->docs_count, actual_meta->docs_count);
+  // FIXME(gnusi): uncomment
+  // ASSERT_EQ(expected_meta->freq, actual_meta->freq);
 
   assert_docs(expected_term.postings(requested_features),
               [&]() { return actual_term.postings(requested_features); });

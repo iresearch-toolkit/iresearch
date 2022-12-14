@@ -33,6 +33,8 @@ class comparer {
   virtual ~comparer() = default;
 
   bool operator()(bytes_view lhs, bytes_view rhs) const {
+    IRS_ASSERT(!IsNull(lhs));
+    IRS_ASSERT(!IsNull(rhs));
     return less(lhs, rhs);
   }
 

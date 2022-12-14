@@ -47,8 +47,9 @@ lz4stream lz4_make_stream();
 lz4stream_decode lz4_make_stream_decode();
 
 struct lz4 {
+  // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "irs::compression::lz4";
+    return "iresearch::compression::lz4";
   }
 
   class lz4compressor final : public compression::compressor {
@@ -59,7 +60,7 @@ struct lz4 {
     int acceleration() const noexcept { return acceleration_; }
 
     bytes_view compress(byte_type* src, size_t size, bstring& out) override
-      IRS_ATTRIBUTE_NONNULL();
+      IRS_ATTRIBUTE_NONNULL(2);
 
    private:
     const int acceleration_{0};  // 0 - default acceleration
@@ -68,7 +69,7 @@ struct lz4 {
   class lz4decompressor final : public compression::decompressor {
    public:
     bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
-                          size_t dst_size) override IRS_ATTRIBUTE_NONNULL();
+                          size_t dst_size) override IRS_ATTRIBUTE_NONNULL(2);
   };
 
   static void init();

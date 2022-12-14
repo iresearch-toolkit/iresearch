@@ -21,7 +21,7 @@ if (NOT MSVC)
   find_package(Threads REQUIRED)
   link_libraries(Threads::Threads)
 
-  set(CMAKE_CXX_FLAGS "-funroll-loops")
+  add_compile_options(-funroll-loops)
 endif()
 
 set(HEADER_FILES

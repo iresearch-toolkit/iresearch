@@ -1,6 +1,22 @@
 master
 -------------------------
 
+* Add ability to specify custom callback for debug assertions.
+
+* Extend `term_reader` interface with the following methods:
+  - `term_meta term_meta(bytes_view term)`
+     Provides fast and efficient access to term's metadata.
+  - `size_t read_documents(bytes_view term, std::span<doc_id_t> docs)`
+     Efficiently reads first K documents associated with the given term
+     into the specified span.
+
+* Avoid writing empty sort entries.
+
+* Add `CachingFSDirectory` and `CachingMMapDirectory` allowing to reduce
+  a number of syscalls.
+
+* Speedup checksum computation.
+
 v1.2 (2022-10-06)
 -------------------------
 

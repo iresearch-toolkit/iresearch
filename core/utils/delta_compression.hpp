@@ -43,8 +43,9 @@ class delta_decompressor : public decompressor, private util::noncopyable {
 };  // delta_decompressor
 
 struct delta {
+  // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
-    return "irs::compression::delta";
+    return "iresearch::compression::delta";
   }
 
   static void init();

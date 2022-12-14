@@ -36,17 +36,14 @@ namespace irs {
 // An iterator providing sequential and random access to a posting list
 //
 // After creation iterator is in uninitialized state:
-//   - `value()` returns `type_limits<type_t>::invalid()` or
-//     `type_limits<type_t>::eof()`
+//   - `value()` returns `doc_limits::invalid()` or `doc_limits::eof()`
 // `seek()` to:
-//   - `type_limits<type_t>::invalid()` is undefined
-//      and implementation dependent
-//   - `type_limits<type_t>::eof()` must always return
-//     `type_limits<type_t>::eof()`
+//   - `doc_limits::invalid()` is undefined and implementation dependent
+//   - `doc_limits::eof()` must always return `doc_limits::eof()`
 // Once iterator is exhausted:
 //   - `next()` must constantly return `false`
-//   - `seek()` to any value must return `type_limits<type_t>::eof()`
-//   - `value()` must return `type_limits<type_t>::eof()`
+//   - `seek()` to any value must return `doc_limits::eof()`
+//   - `value()` must return `doc_limits::eof()`
 //
 struct doc_iterator : iterator<doc_id_t>, attribute_provider {
   using ptr = memory::managed_ptr<doc_iterator>;
@@ -136,6 +133,8 @@ struct seek_term_iterator : term_iterator {
 
   // Position iterator at a value that is not less than the specified
   // one. Returns `true` on success, `false` otherwise.
+  // Caller isn't allowed to read iterator value in case if this method
+  // returned `false`.
   virtual bool seek(bytes_view value) = 0;
 
   // Returns seek cookie of the current term value.
