@@ -3215,7 +3215,7 @@ class postings_reader final : public postings_reader_base {
   irs::doc_iterator::ptr iterator(IndexFeatures field_features,
                                   IndexFeatures required_features,
                                   const term_meta& meta) override {
-    if (meta.docs_count > 1) {
+    if (const auto docs_count = meta.docs_count; docs_count > 1) {
       return iterator_impl(
         field_features, required_features,
         [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
@@ -3226,7 +3226,7 @@ class postings_reader final : public postings_reader_base {
 
           return it;
         });
-    } else {
+    } else if (docs_count == 1) {
       return iterator_impl(
         field_features, required_features,
         [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
@@ -3237,6 +3237,8 @@ class postings_reader final : public postings_reader_base {
 
           return it;
         });
+    } else {
+      return irs::doc_iterator::empty();
     }
   }
 

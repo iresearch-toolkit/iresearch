@@ -35,14 +35,14 @@ template<typename DocIterator>
 struct doc_iterator_adapter {
   using doc_iterator_t = DocIterator;
 
-  doc_iterator_adapter() = default;
+  doc_iterator_adapter() noexcept = default;
   doc_iterator_adapter(doc_iterator_t&& it) noexcept
     : it(std::move(it)), doc(irs::get<irs::document>(*this->it)) {
     IRS_ASSERT(doc);
   }
 
-  doc_iterator_adapter(doc_iterator_adapter&&) = default;
-  doc_iterator_adapter& operator=(doc_iterator_adapter&&) = default;
+  doc_iterator_adapter(doc_iterator_adapter&&) noexcept = default;
+  doc_iterator_adapter& operator=(doc_iterator_adapter&&) noexcept = default;
 
   typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();
@@ -72,15 +72,16 @@ template<typename DocIterator>
 struct score_iterator_adapter : public doc_iterator_adapter<DocIterator> {
   typedef DocIterator doc_iterator_t;
 
-  score_iterator_adapter() = default;
+  score_iterator_adapter() noexcept = default;
   score_iterator_adapter(doc_iterator_t&& it) noexcept
     : doc_iterator_adapter<DocIterator>(std::move(it)),
       score{&irs::score::get(*this->it)} {
     IRS_ASSERT(this->doc);
   }
 
-  score_iterator_adapter(score_iterator_adapter&&) = default;
-  score_iterator_adapter& operator=(score_iterator_adapter&&) = default;
+  score_iterator_adapter(score_iterator_adapter&&) noexcept = default;
+  score_iterator_adapter& operator=(score_iterator_adapter&&) noexcept =
+    default;
 
   const irs::score* score{};
 };

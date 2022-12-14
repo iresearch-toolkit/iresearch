@@ -133,6 +133,8 @@ struct seek_term_iterator : term_iterator {
 
   // Position iterator at a value that is not less than the specified
   // one. Returns `true` on success, `false` otherwise.
+  // Caller isn't allowed to read iterator value in case if this method
+  // returned `false`.
   virtual bool seek(bytes_view value) = 0;
 
   // Returns seek cookie of the current term value.

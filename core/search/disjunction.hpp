@@ -991,14 +991,15 @@ class block_disjunction final : public doc_iterator,
         }
 
         // this is to circumvent bug in GCC 10.1 on ARM64
-        constexpr bool is_min_match = traits_type::kMinMatch;
+        constexpr bool kMinMatch = traits_type::kMinMatch;
+
         if (value < doc.value) {
           doc.value = value;
-          if constexpr (is_min_match) {
+          if constexpr (kMinMatch) {
             match_count_ = 1;
           }
         } else {
-          if constexpr (is_min_match) {
+          if constexpr (kMinMatch) {
             if (target == value) {
               ++match_count_;
             }
@@ -1236,23 +1237,24 @@ class block_disjunction final : public doc_iterator,
   bool refill(adapter& it, bool& empty) {
     IRS_ASSERT(it.doc);
     const auto* doc = &it.doc->value;
-    IRS_ASSERT(!doc_limits::eof(*doc));
 
     // disjunction is 1 step next behind, that may happen:
     // - before the very first next()
     // - after seek() in case of 'kSeekReadahead == false'
-    if (*doc < doc_base_ && !it->next()) {
+    if ((*doc < doc_base_ && !it->next()) || doc_limits::eof(*doc)) {
       // exhausted
       return false;
     }
 
     for (;;) {
-      if (*doc >= max_) {
-        min_ = std::min(*doc, min_);
+      const auto value = *doc;
+
+      if (value >= max_) {
+        min_ = std::min(value, min_);
         return true;
       }
 
-      const size_t offset = *doc - doc_base_;
+      const size_t offset{value - doc_base_};
 
       irs::set_bit(mask_[offset / kBlockSize], offset % kBlockSize);
 
