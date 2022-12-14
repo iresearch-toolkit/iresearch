@@ -20,6 +20,8 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+// clang-format off
+
 #include "formats_burst_trie.hpp"
 
 #include <cassert>
@@ -70,36 +72,39 @@
 // NOOP
 #endif
 
-#include "analysis/token_attributes.hpp"
 #include "format_utils.hpp"
+#include "analysis/token_attributes.hpp"
 #include "formats/formats_10_attributes.hpp"
+#include "index/index_meta.hpp"
 #include "index/field_meta.hpp"
 #include "index/file_names.hpp"
-#include "index/index_meta.hpp"
 #include "index/iterators.hpp"
+#include "index/index_meta.hpp"
 #include "index/norm.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-#include "utils/attribute_helper.hpp"
 #include "utils/automaton.hpp"
-#include "utils/bit_utils.hpp"
-#include "utils/bitset.hpp"
-#include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
+#include "utils/hash_utils.hpp"
+#include "utils/memory.hpp"
+#include "utils/memory_pool.hpp"
+#include "utils/noncopyable.hpp"
+#include "utils/directory_utils.hpp"
+#include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/fst_string_ref_weight.h"
-#include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/fstext/immutable_fst.h"
-#include "utils/hash_utils.hpp"
-#include "utils/log.hpp"
-#include "utils/memory.hpp"
-#include "utils/memory_pool.hpp"
-#include "utils/noncopyable.hpp"
-#include "utils/string.hpp"
 #include "utils/timer_utils.hpp"
+#include "utils/bit_utils.hpp"
+#include "utils/bitset.hpp"
+#include "utils/attribute_helper.hpp"
+#include "utils/string.hpp"
+#include "utils/log.hpp"
+
+// clang-format on
 
 namespace {
 
