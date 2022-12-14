@@ -1239,9 +1239,10 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 
         res = cs.insert(
           feature_itr, info,
-          [feature_writer = std::move(feature_writer)](bstring& out) {
-            feature_writer->finish(out);
-            return std::string_view{};
+          [feature_writer =
+             make_move_on_copy(std::move(feature_writer))](bstring& out) {
+            feature_writer.value()->finish(out);
+            return irs::string_ref{};
           },
           std::move(value_writer));
       } else if (!factory) {  // Otherwise factory has failed to instantiate

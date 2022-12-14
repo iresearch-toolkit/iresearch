@@ -21,20 +21,18 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ASSERT_FORMAT_H
-#define IRESEARCH_ASSERT_FORMAT_H
+#pragma once
 
 #include "doc_generator.hpp"
-#include "index/field_meta.hpp"
 #include "formats/formats.hpp"
+#include "index/field_meta.hpp"
 
 namespace tests {
 
 class posting {
  public:
   struct position {
-    position(uint32_t pos, uint32_t start, uint32_t end,
-             const irs::bytes_ref& pay)
+    position(uint32_t pos, uint32_t start, uint32_t end, irs::bytes_ref pay)
       : pos{pos}, start{start}, end{end}, payload{pay} {}
 
     bool operator<(const position& rhs) const { return pos < rhs.pos; }
@@ -94,7 +92,7 @@ struct field : public irs::field_meta {
     uint32_t offs{};
   };
 
-  field(const irs::string_ref& name, irs::IndexFeatures index_features,
+  field(const std::string_view& name, irs::IndexFeatures index_features,
         const irs::features_t& features);
   field(field&& rhs) = default;
   field& operator=(field&& rhs) = default;
@@ -130,7 +128,7 @@ class column_values {
 
   irs::field_id id() const noexcept { return id_; }
   irs::string_ref name() const noexcept {
-    return name_.has_value() ? name_.value() : irs::string_ref::NIL;
+    return name_.has_value() ? name_.value() : irs::string_ref{};
   }
 
   irs::bstring payload() const;
@@ -154,7 +152,7 @@ class column_values {
 
 class index_segment : irs::util::noncopyable {
  public:
-  using field_map_t = std::map<irs::string_ref, field>;
+  using field_map_t = std::map<std::string_view, field>;
   using columns_t = std::deque<column_values>;  // pointers remain valid
   using named_columns_t = std::map<std::string, column_values*>;
 
@@ -179,9 +177,12 @@ class index_segment : irs::util::noncopyable {
               StoredFieldIterator stored_begin, StoredFieldIterator stored_end,
               const ifield* sorted = nullptr);
 
-  void insert(const document& doc) {
-    insert(std::begin(doc.indexed), std::end(doc.indexed),
-           std::begin(doc.stored), std::end(doc.stored), doc.sorted.get());
+  void insert(const document& doc, size_t count = 1, bool has_sorted = true) {
+    for (; count; --count) {
+      insert(std::begin(doc.indexed), std::end(doc.indexed),
+             std::begin(doc.stored), std::end(doc.stored),
+             has_sorted ? doc.sorted.get() : nullptr);
+    }
   }
 
   void sort(const irs::comparer& comparator);
@@ -199,12 +200,12 @@ class index_segment : irs::util::noncopyable {
 
   void insert_indexed(const ifield& field);
   void insert_stored(const ifield& field);
-  void insert_sorted(const ifield& field);
+  void insert_sorted(const ifield* field);
   void compute_features();
 
   irs::feature_info_provider_t field_features_;
   named_columns_t named_columns_;
-  std::vector<std::pair<irs::bstring, irs::doc_id_t>> sort_;
+  std::vector<std::tuple<irs::bstring, irs::doc_id_t, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;
   std::set<field*> doc_fields_;
   field_map_t fields_;
@@ -212,6 +213,7 @@ class index_segment : irs::util::noncopyable {
   irs::document_mask doc_mask_;
   irs::bstring buf_;
   irs::doc_id_t count_{};
+  irs::doc_id_t empty_count_{};
 };
 
 template<typename IndexedFieldIterator, typename StoredFieldIterator>
@@ -238,9 +240,7 @@ void index_segment::insert(IndexedFieldIterator indexed_begin,
     insert_stored(*stored_begin);
   }
 
-  if (sorted) {
-    insert_sorted(*sorted);
-  }
+  insert_sorted(sorted);
 
   compute_features();
 
@@ -269,5 +269,3 @@ void assert_index(const irs::directory& dir, irs::format::ptr codec,
                   irs::automaton_table_matcher* matcher = nullptr);
 
 }  // namespace tests
-
-#endif

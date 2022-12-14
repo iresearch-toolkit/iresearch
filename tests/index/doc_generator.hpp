@@ -25,6 +25,7 @@
 #define IRESEARCH_DOCUMENT_GENERATOR_H
 
 #include <atomic>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 
@@ -33,7 +34,6 @@
 #include "index/index_writer.hpp"
 #include "store/store_utils.hpp"
 #include "utils/iterator.hpp"
-#include "utils/utf8_path.hpp"
 
 namespace iresearch {
 
@@ -73,15 +73,15 @@ class field_base : public ifield {
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
 
-  virtual irs::features_t features() const noexcept override {
+  irs::features_t features() const noexcept override {
     return {features_.data(), features_.size()};
   }
 
-  virtual irs::IndexFeatures index_features() const noexcept override {
+  irs::IndexFeatures index_features() const noexcept override {
     return index_features_;
   }
 
-  virtual irs::string_ref name() const noexcept override { return name_; }
+  irs::string_ref name() const noexcept override { return name_; }
 
   void name(std::string name) noexcept { name_ = std::move(name); }
 
@@ -188,7 +188,7 @@ class binary_field : public field_base {
 
   irs::token_stream& get_tokens() const override;
   const irs::bstring& value() const { return value_; }
-  void value(const irs::bytes_ref& value) { value_ = value; }
+  void value(irs::bytes_ref value) { value_ = value; }
   void value(irs::bstring&& value) { value_ = std::move(value); }
 
   template<typename Iterator>
@@ -224,8 +224,8 @@ class particle : irs::util::noncopyable {
   void push_back(const ifield::ptr& fld) { fields_.emplace_back(fld); }
 
   ifield& back() const { return *fields_.back(); }
-  bool contains(const irs::string_ref& name) const;
-  std::vector<ifield::ptr> find(const irs::string_ref& name) const;
+  bool contains(irs::string_ref name) const;
+  std::vector<ifield::ptr> find(irs::string_ref name) const;
 
   template<typename T>
   T& back() const {
@@ -236,7 +236,7 @@ class particle : irs::util::noncopyable {
     return static_cast<type&>(*fields_.back());
   }
 
-  ifield* get(const irs::string_ref& name) const;
+  ifield* get(irs::string_ref name) const;
 
   template<typename T>
   T& get(size_t i) const {
@@ -248,7 +248,7 @@ class particle : irs::util::noncopyable {
   }
 
   template<typename T>
-  T* get(const irs::string_ref& name) const {
+  T* get(irs::string_ref name) const {
     typedef
       typename std::enable_if<std::is_base_of<tests::ifield, T>::value, T>::type
         type;
@@ -256,7 +256,7 @@ class particle : irs::util::noncopyable {
     return static_cast<type*>(get(name));
   }
 
-  void remove(const irs::string_ref& name);
+  void remove(irs::string_ref name);
 
   iterator begin() { return iterator(fields_.begin()); }
   iterator end() { return iterator(fields_.end()); }
@@ -308,7 +308,7 @@ class limiting_doc_generator : public doc_generator_base {
   limiting_doc_generator(doc_generator_base& gen, size_t offset, size_t limit)
     : gen_(&gen), begin_(offset), end_(offset + limit) {}
 
-  virtual const tests::document* next() override {
+  const tests::document* next() override {
     while (pos_ < begin_) {
       if (!gen_->next()) {
         // exhausted
@@ -333,7 +333,7 @@ class limiting_doc_generator : public doc_generator_base {
     return nullptr;
   }
 
-  virtual void reset() override {
+  void reset() override {
     pos_ = 0;
     gen_->reset();
   }
@@ -357,11 +357,11 @@ class delim_doc_generator : public doc_generator_base {
     virtual void reset() {}
   };  // doc_template
 
-  delim_doc_generator(const irs::utf8_path& file, doc_template& doc,
+  delim_doc_generator(const std::filesystem::path& file, doc_template& doc,
                       uint32_t delim = 0x0009);
 
-  virtual const tests::document* next() override;
-  virtual void reset() override;
+  const tests::document* next() override;
+  void reset() override;
 
  private:
   std::string str_;
@@ -380,9 +380,9 @@ class csv_doc_generator : public doc_generator_base {
     virtual void reset() {}
   };  // doc_template
 
-  csv_doc_generator(const irs::utf8_path& file, doc_template& doc);
-  virtual const tests::document* next() override;
-  virtual void reset() override;
+  csv_doc_generator(const std::filesystem::path& file, doc_template& doc);
+  const tests::document* next() override;
+  void reset() override;
   bool skip();  // skip a single document, return if anything was skiped, false
                 // == EOF
 
@@ -408,19 +408,19 @@ class json_doc_generator : public doc_generator_base {
     RAWNUM
   };  // ValueType
 
-  // an irs::string_ref for union inclusion without a user-defined constructor
+  // an std::string_view for union inclusion without a user-defined constructor
   // and non-trivial default constructor for compatibility with MSVC 2013
   struct json_string {
     const char* data;
     size_t size;
 
-    json_string& operator=(const irs::string_ref& ref) {
-      data = ref.c_str();
+    json_string& operator=(std::string_view ref) {
+      data = ref.data();
       size = ref.size();
       return *this;
     }
 
-    operator irs::string_ref() const { return irs::string_ref(data, size); }
+    operator irs::string_ref() const { return {data, size}; }
     operator std::string() const { return std::string(data, size); }
   };
 
@@ -453,7 +453,7 @@ class json_doc_generator : public doc_generator_base {
 
     template<typename T>
     T as_number() const noexcept {
-      assert(is_number());
+      IRS_ASSERT(is_number());
 
       switch (vt) {
         case ValueType::NIL:
@@ -476,7 +476,7 @@ class json_doc_generator : public doc_generator_base {
           break;
       }
 
-      assert(false);
+      IRS_ASSERT(false);
       return T(0.);
     }
   };  // json_value
@@ -485,14 +485,15 @@ class json_doc_generator : public doc_generator_base {
                              const json_value&)>
     factory_f;
 
-  json_doc_generator(const irs::utf8_path& file, const factory_f& factory);
+  json_doc_generator(const std::filesystem::path& file,
+                     const factory_f& factory);
 
   json_doc_generator(const char* data, const factory_f& factory);
 
   json_doc_generator(json_doc_generator&& rhs) noexcept;
 
-  virtual const tests::document* next() override;
-  virtual void reset() override;
+  const tests::document* next() override;
+  void reset() override;
 
  private:
   json_doc_generator(const json_doc_generator&) = delete;
@@ -557,7 +558,7 @@ class text_field : public tests::field_base {
 
   text_field(text_field&& other) = default;
 
-  irs::string_ref value() const { return value_; }
+  std::string_view value() const { return value_; }
   void value(const T& value) { value_ = value; }
   void value(T&& value) { value_ = std::move(value); }
 
@@ -588,11 +589,11 @@ class string_field : public tests::field_base {
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
-  void value(const irs::string_ref& str);
+  void value(irs::string_ref str);
   irs::string_ref value() const { return value_; }
 
-  virtual irs::token_stream& get_tokens() const override;
-  virtual bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
   mutable irs::string_token_stream stream_;
@@ -607,25 +608,25 @@ class string_ref_field : public tests::field_base {
     irs::IndexFeatures extra_index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
   string_ref_field(
-    const std::string& name, const irs::string_ref& value,
+    const std::string& name, irs::string_ref value,
     irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
     const std::vector<irs::type_info::type_id>& extra_features = {});
 
-  void value(const irs::string_ref& str);
+  void value(irs::string_ref str);
   irs::string_ref value() const { return value_; }
 
-  virtual irs::token_stream& get_tokens() const override;
-  virtual bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const override;
+  bool write(irs::data_output& out) const override;
 
  private:
   mutable irs::string_token_stream stream_;
-  irs::string_ref value_;
+  std::string_view value_;
 };  // string_field
 
 // document template for europarl.subset.text
 class europarl_doc_template : public delim_doc_generator::doc_template {
  public:
-  typedef text_field<irs::string_ref> text_ref_field;
+  typedef text_field<std::string_view> text_ref_field;
 
   virtual void init();
   virtual void value(size_t idx, const std::string& value);
@@ -678,6 +679,19 @@ bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
 
   return doc.insert<irs::Action::INDEX>(ibegin, iend) &&
          doc.insert<irs::Action::STORE>(sbegin, send);
+}
+
+template<typename Doc>
+bool insert(irs::index_writer& writer, const Doc& doc, size_t count = 1,
+            bool has_sort = false) {
+  for (; count; --count) {
+    if (!insert(writer, std::begin(doc.indexed), std::end(doc.indexed),
+                std::begin(doc.stored), std::end(doc.stored),
+                has_sort ? doc.sorted.get() : nullptr)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 template<typename Indexed>

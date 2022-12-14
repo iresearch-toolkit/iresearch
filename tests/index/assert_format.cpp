@@ -23,31 +23,25 @@
 
 #include "assert_format.hpp"
 
-#include <unordered_set>
 #include <algorithm>
 #include <iostream>
-#include <cassert>
+#include <unordered_set>
 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
-
 #include "index/comparer.hpp"
-#include "index/field_meta.hpp"
 #include "index/directory_reader.hpp"
-
-#include "search/term_filter.hpp"
+#include "index/field_meta.hpp"
 #include "search/boolean_filter.hpp"
-#include "search/tfidf.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-
-#include "utils/bit_utils.hpp"
-#include "utils/automaton_utils.hpp"
-#include "utils/fstext/fst_table_matcher.hpp"
-
+#include "search/term_filter.hpp"
+#include "search/tfidf.hpp"
 #include "store/data_output.hpp"
-
 #include "tests_shared.hpp"
+#include "utils/automaton_utils.hpp"
+#include "utils/bit_utils.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 namespace {
 
@@ -94,7 +88,7 @@ void posting::insert(uint32_t pos, uint32_t offs_start,
     end = offs_start + offs->end;
   }
 
-  positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref::NIL);
+  positions_.emplace(pos, start, end, pay ? pay->value : irs::bytes_ref{});
 }
 
 posting& term::insert(irs::doc_id_t id) {
@@ -120,7 +114,7 @@ void term::sort(const std::map<irs::doc_id_t, irs::doc_id_t>& docs) {
   postings = std::move(resorted_postings);
 }
 
-field::field(const irs::string_ref& name, irs::IndexFeatures index_features,
+field::field(const std::string_view& name, irs::IndexFeatures index_features,
              const irs::features_t& features)
   : field_meta(name, index_features), stats{} {
   for (const auto feature : features) {
@@ -180,7 +174,7 @@ void column_values::insert(irs::doc_id_t key, irs::bytes_ref value) {
   const auto res = values_.emplace(key, value);
 
   if (!res.second) {
-    res.first->second.append(value.c_str(), value.size());
+    res.first->second.append(value.data(), value.size());
   }
 }
 
@@ -231,13 +225,13 @@ void index_segment::compute_features() {
     column_output(column_output&&) = default;
     column_output& operator=(column_output&&) = default;
 
-    virtual void write_byte(irs::byte_type b) override { (*buf_) += b; }
+    void write_byte(irs::byte_type b) override { (*buf_) += b; }
 
-    virtual void write_bytes(const irs::byte_type* b, size_t size) override {
+    void write_bytes(const irs::byte_type* b, size_t size) override {
       buf_->append(b, size);
     }
 
-    virtual void reset() override { buf_->clear(); }
+    void reset() override { buf_->clear(); }
 
     irs::bstring* buf_;
   } out{buf_};
@@ -266,11 +260,18 @@ void index_segment::compute_features() {
   }
 }
 
-void index_segment::insert_sorted(const ifield& f) {
-  buf_.clear();
-  irs::bytes_output out{buf_};
-  if (f.write(out)) {
-    sort_.emplace_back(std::move(buf_), doc());
+void index_segment::insert_sorted(const ifield* f) {
+  if (f) {
+    buf_.clear();
+    irs::bytes_output out{buf_};
+    if (f->write(out)) {
+      sort_.emplace_back(std::move(buf_), doc(), empty_count_);
+      empty_count_ = 0;
+    } else {
+      ++empty_count_;
+    }
+  } else {
+    ++empty_count_;
   }
 }
 
@@ -299,7 +300,7 @@ void index_segment::insert_stored(const ifield& f) {
 }
 
 void index_segment::insert_indexed(const ifield& f) {
-  const irs::string_ref field_name = f.name();
+  const std::string_view field_name = f.name();
 
   const auto requested_features = f.index_features();
   const auto features = requested_features &
@@ -330,7 +331,7 @@ void index_segment::insert_indexed(const ifield& f) {
       }
     }
 
-    const_cast<irs::string_ref&>(res.first->first) = field.name;
+    const_cast<std::string_view&>(res.first->first) = field.name;
   }
 
   doc_fields_.insert(&field);
@@ -338,9 +339,9 @@ void index_segment::insert_indexed(const ifield& f) {
   auto& stream = f.get_tokens();
 
   auto* term = irs::get<irs::term_attribute>(stream);
-  assert(term);
+  IRS_ASSERT(term);
   auto* inc = irs::get<irs::increment>(stream);
-  assert(inc);
+  IRS_ASSERT(inc);
   auto* offs = irs::get<irs::offset>(stream);
   if (irs::IndexFeatures::OFFS ==
         (requested_features & irs::IndexFeatures::OFFS) &&
@@ -392,23 +393,31 @@ void index_segment::sort(const irs::comparer& comparator) {
   }
 
   std::sort(sort_.begin(), sort_.end(),
-            [&comparator](const std::pair<irs::bstring, irs::doc_id_t>& lhs,
-                          const std::pair<irs::bstring, irs::doc_id_t>& rhs) {
-              return comparator(lhs.first, rhs.first);
+            [&comparator](const auto& lhs, const auto& rhs) {
+              return comparator(std::get<0>(lhs), std::get<0>(rhs));
             });
 
   irs::doc_id_t new_doc_id = irs::doc_limits::min();
   std::map<irs::doc_id_t, irs::doc_id_t> order;
-  for (auto& entry : sort_) {
-    order[entry.second] = new_doc_id++;
-  }
 
+  for (auto& [_, doc, prev] : sort_) {
+    for (auto i = prev; i; --i) {
+      order[doc - i] = new_doc_id++;
+    }
+    order[doc] = new_doc_id++;
+  }
+  while (order.size() < this->doc_count()) {
+    order[static_cast<irs::doc_id_t>(order.size()) + 1] = new_doc_id++;
+    ASSERT_LE(order.size(), this->doc_count());
+  }
   for (auto& field : fields_) {
     field.second.sort(order);
   }
-
   for (auto& column : columns_) {
     column.sort(order);
+  }
+  for (auto& [_, doc, __] : sort_) {
+    doc = order.at(doc);
   }
 }
 
@@ -423,7 +432,7 @@ class doc_iterator : public irs::doc_iterator {
     return it == attrs_.end() ? nullptr : it->second;
   }
 
-  virtual bool next() override {
+  bool next() override {
     if (next_ == data_.postings.end()) {
       doc_.value = irs::doc_limits::eof();
       return false;
@@ -437,7 +446,7 @@ class doc_iterator : public irs::doc_iterator {
     return true;
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t id) override {
+  irs::doc_id_t seek(irs::doc_id_t id) override {
     auto it = data_.postings.find(posting{id});
 
     if (it == data_.postings.end()) {
@@ -481,14 +490,14 @@ class doc_iterator : public irs::doc_iterator {
 
     void clear() {
       next_ = owner_.prev_->positions().begin();
-      value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
+      value_ = irs::pos_limits::invalid();
       offs_.clear();
-      pay_.value = irs::bytes_ref::NIL;
+      pay_.value = irs::bytes_ref{};
     }
 
     bool next() override {
       if (next_ == owner_.prev_->positions().end()) {
-        value_ = irs::type_limits<irs::type_t::pos_t>::eof();
+        value_ = irs::pos_limits::eof();
         return false;
       }
 
@@ -501,7 +510,7 @@ class doc_iterator : public irs::doc_iterator {
       return true;
     }
 
-    virtual void reset() override {
+    void reset() override {
       ASSERT_TRUE(false);  // unsupported
     }
 
@@ -568,76 +577,76 @@ class term_iterator final : public irs::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
-    return nullptr;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return type == irs::type<irs::term_attribute>::id() ? &value_ : nullptr;
+    ;
   }
 
-  const irs::bytes_ref& value() const override { return value_; }
+  const irs::bytes_ref& value() const override { return value_.value; }
 
   bool next() override {
     if (next_ == data_.terms.end()) {
-      value_ = irs::bytes_ref::NIL;
+      value_.value = {};
       return false;
     }
 
     prev_ = next_, ++next_;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return true;
   }
 
-  virtual void read() override {}
+  void read() override {}
 
-  virtual bool seek(const irs::bytes_ref& value) override {
+  bool seek(const irs::bytes_ref& value) override {
     auto it = data_.terms.find(term{value});
 
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref::NIL;
+      value_.value = {};
       return false;
     }
 
     prev_ = it;
     next_ = ++it;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return true;
   }
 
-  virtual irs::SeekResult seek_ge(const irs::bytes_ref& value) override {
+  irs::SeekResult seek_ge(const irs::bytes_ref& value) override {
     auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = irs::bytes_ref::NIL;
+      value_.value = irs::bytes_ref{};
       return irs::SeekResult::END;
     }
 
     if (it->value == value) {
       prev_ = it;
       next_ = ++it;
-      value_ = prev_->value;
+      value_.value = prev_->value;
       return irs::SeekResult::FOUND;
     }
 
     prev_ = ++it;
     next_ = ++it;
-    value_ = prev_->value;
+    value_.value = prev_->value;
     return irs::SeekResult::NOT_FOUND;
   }
 
-  virtual doc_iterator::ptr postings(
-    irs::IndexFeatures features) const override {
+  doc_iterator::ptr postings(irs::IndexFeatures features) const override {
     return irs::memory::make_managed<doc_iterator>(
       data_.index_features & features, *prev_);
   }
 
-  virtual irs::seek_cookie::ptr cookie() const override {
-    return irs::memory::make_unique<term_cookie>(value_);
+  irs::seek_cookie::ptr cookie() const override {
+    return std::make_unique<term_cookie>(value_.value);
   }
 
  private:
   const tests::field& data_;
   std::set<tests::term>::const_iterator prev_;
   std::set<tests::term>::const_iterator next_;
-  irs::bytes_ref value_;
+  irs::term_attribute value_;
 };
 
 irs::seek_term_iterator::ptr field::iterator() const {
@@ -748,8 +757,8 @@ void assert_terms_next(const field& expected_field,
                        const irs::term_reader& actual_field,
                        irs::IndexFeatures features,
                        irs::automaton_table_matcher* matcher) {
-  irs::bytes_ref actual_min{irs::bytes_ref::NIL};
-  irs::bytes_ref actual_max{irs::bytes_ref::NIL};
+  irs::bytes_ref actual_min{};
+  irs::bytes_ref actual_max{};
   irs::bstring actual_min_buf;
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
@@ -915,9 +924,8 @@ void assert_terms_seek(const field& expected_field,
   }
 }
 
-void assert_pk(
-  const irs::column_reader& actual_reader,
-  const std::vector<std::pair<irs::bstring, irs::doc_id_t>>& expected_values) {
+void assert_pk(const irs::column_reader& actual_reader,
+               const auto& expected_values) {
   ASSERT_EQ(expected_values.size(), actual_reader.size());
 
   // check iterators & values
@@ -933,9 +941,7 @@ void assert_pk(
     auto* actual_value = irs::get<irs::payload>(*actual_it);
     ASSERT_NE(nullptr, actual_value);
 
-    irs::doc_id_t expected_key = irs::doc_limits::min();
-    for (auto& expected : expected_values) {
-      auto& expected_value = expected.first;
+    for (auto& [expected_value, expected_key, _] : expected_values) {
       ASSERT_TRUE(actual_it->next());
 
       auto actual_stateless_seek_it =
@@ -947,8 +953,6 @@ void assert_pk(
       ASSERT_EQ(expected_value, actual_value->value);
       ASSERT_EQ(expected_key, actual_seek_it->seek(expected_key));
       ASSERT_EQ(expected_key, actual_stateless_seek_it->seek(expected_key));
-
-      ++expected_key;
     }
     ASSERT_FALSE(actual_it->next());
     ASSERT_FALSE(actual_it->next());
@@ -957,16 +961,15 @@ void assert_pk(
   // check visit
   {
     auto begin = expected_values.begin();
-    irs::doc_id_t expected_key = irs::doc_limits::min();
 
-    visit(actual_reader, [&begin, &expected_key](
-                           auto actual_key, const auto& actual_value) mutable {
-      EXPECT_EQ(expected_key, actual_key);
-      EXPECT_EQ(begin->first, actual_value);
-      ++begin;
-      ++expected_key;
-      return true;
-    });
+    visit(actual_reader,
+          [&begin](auto actual_key, const auto& actual_value) mutable {
+            auto& [expected_value, expected_key, _] = *begin;
+            EXPECT_EQ(expected_key, actual_key);
+            EXPECT_EQ(expected_value, actual_value);
+            ++begin;
+            return true;
+          });
     ASSERT_EQ(begin, expected_values.end());
   }
 }

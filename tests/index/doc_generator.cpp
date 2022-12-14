@@ -23,18 +23,18 @@
 
 #include "doc_generator.hpp"
 
-#include <sstream>
-#include <iomanip>
-#include <numeric>
-
+#include <rapidjson/istreamwrapper.h>
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/reader.h>
-#include <rapidjson/istreamwrapper.h>
 #include <utf8.h>
 
-#include "index/norm.hpp"
-#include "index/field_data.hpp"
+#include <iomanip>
+#include <numeric>
+#include <sstream>
+
 #include "analysis/token_streams.hpp"
+#include "index/field_data.hpp"
+#include "index/norm.hpp"
 #include "store/store_utils.hpp"
 #include "utils/file_utils.hpp"
 
@@ -222,17 +222,17 @@ particle& particle::operator=(particle&& rhs) noexcept {
   return *this;
 }
 
-bool particle::contains(const irs::string_ref& name) const {
+bool particle::contains(irs::string_ref name) const {
   return fields_.end() != std::find_if(fields_.begin(), fields_.end(),
-                                       [&name](const ifield::ptr& fld) {
+                                       [name](const ifield::ptr& fld) {
                                          return name == fld->name();
                                        });
 }
 
-std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
+std::vector<ifield::ptr> particle::find(irs::string_ref name) const {
   std::vector<ifield::ptr> fields;
   std::for_each(fields_.begin(), fields_.end(),
-                [&fields, &name](ifield::ptr fld) {
+                [&fields, name](ifield::ptr fld) {
                   if (name == fld->name()) {
                     fields.emplace_back(fld);
                   }
@@ -241,15 +241,15 @@ std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
   return fields;
 }
 
-ifield* particle::get(const irs::string_ref& name) const {
+ifield* particle::get(irs::string_ref name) const {
   auto it = std::find_if(
     fields_.begin(), fields_.end(),
-    [&name](const ifield::ptr& fld) { return name == fld->name(); });
+    [name](const ifield::ptr& fld) { return name == fld->name(); });
 
   return fields_.end() == it ? nullptr : it->get();
 }
 
-void particle::remove(const irs::string_ref& name) {
+void particle::remove(irs::string_ref name) {
   fields_.erase(std::remove_if(
     fields_.begin(), fields_.end(),
     [&name](const ifield::ptr& fld) { return name == fld->name(); }));
@@ -554,7 +554,7 @@ string_field::string_field(
 }
 
 // reject too long terms
-void string_field::value(const irs::string_ref& str) {
+void string_field::value(irs::string_ref str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(
@@ -586,7 +586,7 @@ string_ref_field::string_ref_field(
 }
 
 string_ref_field::string_ref_field(
-  const std::string& name, const irs::string_ref& value,
+  const std::string& name, irs::string_ref value,
   irs::IndexFeatures extra_index_features,
   const std::vector<irs::type_info::type_id>& extra_features)
   : value_(value) {
@@ -597,7 +597,7 @@ string_ref_field::string_ref_field(
 }
 
 // truncate very long terms
-void string_ref_field::value(const irs::string_ref& str) {
+void string_ref_field::value(irs::string_ref str) {
   const auto size_len =
     irs::bytes_io<uint32_t>::vsize(irs::byte_block_pool::block_type::SIZE);
   const auto max_len = (std::min)(
