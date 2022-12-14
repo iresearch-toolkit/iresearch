@@ -23,8 +23,8 @@
 #include "formats_burst_trie.hpp"
 
 #include <cassert>
-#include <variant>
 #include <list>
+#include <variant>
 
 #if (defined(__clang__) || defined(_MSC_VER) || \
      defined(__GNUC__) &&                       \
@@ -70,37 +70,36 @@
 // NOOP
 #endif
 
-#include "format_utils.hpp"
 #include "analysis/token_attributes.hpp"
+#include "format_utils.hpp"
 #include "formats/formats_10_attributes.hpp"
-#include "index/index_meta.hpp"
 #include "index/field_meta.hpp"
 #include "index/file_names.hpp"
-#include "index/iterators.hpp"
 #include "index/index_meta.hpp"
+#include "index/iterators.hpp"
 #include "index/norm.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/automaton.hpp"
-#include "utils/encryption.hpp"
-#include "utils/hash_utils.hpp"
-#include "utils/memory.hpp"
-#include "utils/memory_pool.hpp"
-#include "utils/noncopyable.hpp"
+#include "utils/bit_utils.hpp"
+#include "utils/bitset.hpp"
 #include "utils/directory_utils.hpp"
-#include "utils/fstext/fst_string_weight.h"
+#include "utils/encryption.hpp"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_matcher.hpp"
 #include "utils/fstext/fst_string_ref_weight.h"
+#include "utils/fstext/fst_string_weight.h"
 #include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/fstext/immutable_fst.h"
-#include "utils/timer_utils.hpp"
-#include "utils/bit_utils.hpp"
-#include "utils/bitset.hpp"
-#include "utils/attribute_helper.hpp"
-#include "utils/string.hpp"
+#include "utils/hash_utils.hpp"
 #include "utils/log.hpp"
+#include "utils/memory.hpp"
+#include "utils/memory_pool.hpp"
+#include "utils/noncopyable.hpp"
+#include "utils/string.hpp"
+#include "utils/timer_utils.hpp"
 
 namespace {
 
@@ -1588,6 +1587,13 @@ class block_iterator : util::noncopyable {
   uint32_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool done() const noexcept { return cur_ent_ == ent_count_; }
+  bool no_terms() const noexcept {
+    // FIXME(gnusi): add term mark to block entry?
+    //
+    // Block was loaded using address and doesn't have metadata,
+    // assume such blocks have terms
+    return sub_count_ != UNDEFINED_COUNT && !block_meta::terms(meta());
+  }
   uint64_t size() const noexcept { return ent_count_; }
 
   template<typename Reader>
@@ -2452,8 +2458,14 @@ bool term_iterator<FST>::seek_to_block(const bytes_ref& term, size_t& prefix) {
       // target term is before the current term
       block_stack_[block].reset();
     } else if (0 == cmp) {
-      // we're already at current term
-      return true;
+      if (cur_block_->type() == ET_BLOCK) {
+        // we're at the block with matching prefix
+        cur_block_ = push_block(cur_block_->block_start(), term_.size());
+        return false;
+      } else {
+        // we're already at current term
+        return true;
+      }
     }
   } else {
     push_block(fst.Final(state), prefix);
@@ -2521,7 +2533,7 @@ SeekResult term_iterator<FST>::seek_equal(const bytes_ref& term) {
 
   assert(cur_block_);
 
-  if (!block_meta::terms(cur_block_->meta())) {
+  if (cur_block_->no_terms()) {
     // current block has no terms
     term_.reset(prefix);
     return SeekResult::NOT_FOUND;
