@@ -34,6 +34,7 @@
 #include "index/index_writer.hpp"
 #include "store/store_utils.hpp"
 #include "utils/iterator.hpp"
+#include "utils/utf8_path.hpp"
 
 namespace iresearch {
 
