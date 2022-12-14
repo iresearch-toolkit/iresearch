@@ -1476,12 +1476,12 @@ class block_iterator : util::noncopyable {
   uint32_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }
   bool done() const noexcept { return cur_ent_ == ent_count_; }
-  bool has_terms() const noexcept {
+  bool no_terms() const noexcept {
     // FIXME(gnusi): add term mark to block entry?
     //
     // Block was loaded using address and doesn't have metadata,
     // assume such blocks have terms
-    return sub_count_ == UNDEFINED_COUNT || block_meta::terms(meta());
+    return sub_count_ != UNDEFINED_COUNT && !block_meta::terms(meta());
   }
   uint64_t size() const noexcept { return ent_count_; }
 
@@ -2401,7 +2401,7 @@ SeekResult term_iterator<FST>::seek_equal(bytes_view term, bool exact) {
 
   IRS_ASSERT(cur_block_);
 
-  if (exact && !cur_block_->has_terms()) {
+  if (exact && cur_block_->no_terms()) {
     // current block has no terms
     std::get<term_attribute>(attrs_).value = {term_buf_.c_str(), prefix};
     return SeekResult::NOT_FOUND;

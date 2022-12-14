@@ -2226,7 +2226,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   ASSERT_EQ(expected_docs_A[2] | expected_docs_B[2], actual_docs_AB[2]);
 }
 
-TEST_P(index_test_case, term_sequence) {
+TEST_P(index_test_case, s2sequence) {
   std::vector<std::string> sequence;
   absl::flat_hash_set<std::string> indexed;
 
@@ -2234,7 +2234,7 @@ TEST_P(index_test_case, term_sequence) {
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
-    std::ifstream stream{resource("term_sequence"), std::ifstream::in};
+    std::ifstream stream{resource("s2sequence"), std::ifstream::in};
     ASSERT_TRUE(static_cast<bool>(stream));
 
     std::string str;
