@@ -19,8 +19,7 @@
 ///
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
-#ifndef IRESEARCH_COLLATION_TOKEN_STREAM_ENCODER_H
-#define IRESEARCH_COLLATION_TOKEN_STREAM_ENCODER_H
+#pragma once
 
 #include <array>
 
@@ -106,4 +105,3 @@ constexpr inline uint8_t kBytesRecalcMap[] = {
   0xde, 0x86, 0xde, 0x87, 0xdf, 0x80, 0xdf, 0x81, 0xdf, 0x82, 0xdf, 0x83, 0xdf,
   0x84, 0xdf, 0x85, 0xdf, 0x86, 0xdf, 0x87};
 }  // namespace
-#endif  // IRESEARCH_COLLATION_TOKEN_STREAM_ENCODER_H

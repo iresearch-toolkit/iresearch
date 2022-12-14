@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DIRECTORY_UTILS_H
-#define IRESEARCH_DIRECTORY_UTILS_H
+#pragma once
 
 #include "shared.hpp"
 #include "store/data_input.hpp"
@@ -201,4 +200,3 @@ struct ref_tracking_directory : public directory {
 
 }  // namespace irs
 
-#endif

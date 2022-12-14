@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_STATES_CACHE_H
-#define IRESEARCH_STATES_CACHE_H
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -73,4 +72,3 @@ class states_cache : private util::noncopyable {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_STATES_CACHE_H

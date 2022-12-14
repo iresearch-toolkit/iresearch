@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_UTF8_CHARACTER_TABLES_H
-#define IRESEARCH_UTF8_CHARACTER_TABLES_H
+#pragma once
 
 #include <frozen/map.h>
 #include <frozen/set.h>
@@ -930,4 +929,3 @@ constexpr frozen::map<uint32_t, uint16_t, 3566> GENERAL_CATEGORY_TABLE = {
 }  // namespace utf8_utils
 }  // namespace irs
 
-#endif  // IRESEARCH_UTF8_CHARACTER_TABLES_H

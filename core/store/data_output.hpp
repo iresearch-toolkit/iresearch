@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DATAOUTPUT_H
-#define IRESEARCH_DATAOUTPUT_H
+#pragma once
 
 #include <streambuf>
 
@@ -163,4 +162,3 @@ class buffered_index_output : public index_output, util::noncopyable {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_DATAOUTPUT_H

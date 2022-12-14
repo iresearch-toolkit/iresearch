@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_WILDCARD_FILTER_H
-#define IRESEARCH_WILDCARD_FILTER_H
+#pragma once
 
 #include "search/filter.hpp"
 #include "utils/string.hpp"
@@ -104,4 +103,3 @@ struct hash<::irs::by_wildcard_options> {
 
 }  // namespace std
 
-#endif  // IRESEARCH_WILDCARD_FILTER_H

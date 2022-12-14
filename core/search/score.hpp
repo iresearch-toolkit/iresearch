@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SCORE_H
-#define IRESEARCH_SCORE_H
+#pragma once
 
 #include "sort.hpp"
 #include "utils/attributes.hpp"
@@ -69,4 +68,3 @@ void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
 
 }  // namespace irs
 
-#endif  // IRESEARCH_SCORE_H

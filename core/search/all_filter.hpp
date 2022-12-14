@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ALL_FILTER_H
-#define IRESEARCH_ALL_FILTER_H
+#pragma once
 
 #include "filter.hpp"
 
@@ -41,4 +40,3 @@ class all : public filter {
 
 }  // namespace irs
 
-#endif

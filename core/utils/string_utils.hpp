@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_STRING_UTILS_H
-#define IRESEARCH_STRING_UTILS_H
+#pragma once
 
 #include "shared.hpp"
 
@@ -110,4 +109,3 @@ inline std::string to_string(const char* format, Args&&... args) {
 }  // namespace string_utils
 }  // namespace irs
 
-#endif

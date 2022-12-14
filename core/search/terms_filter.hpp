@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TERMS_FILTER_H
-#define IRESEARCH_TERMS_FILTER_H
+#pragma once
 
 #include <set>
 
@@ -111,4 +110,3 @@ struct hash<::irs::by_terms_options> {
 
 }  // namespace std
 
-#endif  // IRESEARCH_TERMS_FILTER_H

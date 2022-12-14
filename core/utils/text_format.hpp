@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TEXT_FORMAT_H
-#define IRESEARCH_TEXT_FORMAT_H
+#pragma once
 
 namespace irs {
 namespace text_format {
@@ -49,4 +48,3 @@ struct vpack {};
 }  // namespace text_format
 }  // namespace irs
 
-#endif

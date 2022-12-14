@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SINGLETONE_H
-#define IRESEARCH_SINGLETONE_H
+#pragma once
 
 // internal iResearch functionality not to be exported outside main library
 // (so/dll)
@@ -49,4 +48,3 @@ class singleton : util::noncopyable {
 }  // namespace irs
 
 #endif  // #ifdef IRESEARCH_DLL_PLUGIN
-#endif

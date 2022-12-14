@@ -4,8 +4,7 @@
 // Class to draw a binary FST by producing a text file in dot format, a helper
 // class to fstdraw.cc.
 
-#ifndef FST_SCRIPT_DRAW_IMPL_H_
-#define FST_SCRIPT_DRAW_IMPL_H_
+#pragma once
 
 #include <fst/fst.h>
 #include <fst/symbol-table.h>
@@ -296,4 +295,3 @@ inline bool drawFst(const Fst& fst, const std::string& dest,
 
 }  // namespace fst
 
-#endif  // FST_SCRIPT_DRAW_IMPL_H_

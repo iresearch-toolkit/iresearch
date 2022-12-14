@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SEGMENT_WRITER_H
-#define IRESEARCH_SEGMENT_WRITER_H
+#pragma once
 
 #include <absl/container/node_hash_set.h>
 
@@ -386,4 +385,3 @@ class segment_writer : util::noncopyable {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_SEGMENT_WRITER_H

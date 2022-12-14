@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COLLECTORS_H
-#define IRESEARCH_COLLECTORS_H
+#pragma once
 
 #include <vector>
 
@@ -293,4 +292,3 @@ static_assert(std::is_nothrow_move_assignable_v<term_collectors>);
 
 }  // namespace irs
 
-#endif  // IRESEARCH_COLLECTORS_H

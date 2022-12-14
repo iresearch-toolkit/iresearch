@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_STRING_REF_WEIGHT_H
-#define IRESEARCH_FST_STRING_REF_WEIGHT_H
+#pragma once
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4267)  // conversion from 'size_t' to 'uint32_t',
@@ -204,4 +203,3 @@ inline std::ostream& operator<<(std::ostream& strm,
 }  // namespace fstext
 }  // namespace fst
 
-#endif  // IRESEARCH_FST_STRING_REF_WEIGHT_H

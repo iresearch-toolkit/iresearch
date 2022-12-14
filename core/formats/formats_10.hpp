@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FORMATS_10_H
-#define IRESEARCH_FORMATS_10_H
+#pragma once
 
 #include "formats.hpp"
 
@@ -43,4 +42,3 @@ class format : public irs::format {
 }  // namespace version10
 }  // namespace irs
 
-#endif

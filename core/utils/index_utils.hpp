@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_UTILS_H
-#define IRESEARCH_INDEX_UTILS_H
+#pragma once
 
 #include "index/index_writer.hpp"
 
@@ -138,4 +137,3 @@ void flush_index_segment(directory& dir, index_meta::index_segment_t& segment);
 }  // namespace index_utils
 }  // namespace irs
 
-#endif

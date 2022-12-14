@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DIRECTORY_READER_H
-#define IRESEARCH_DIRECTORY_READER_H
+#pragma once
 
 #include "index_reader.hpp"
 #include "shared.hpp"
@@ -125,4 +124,3 @@ inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
 
 }  // namespace irs
 
-#endif

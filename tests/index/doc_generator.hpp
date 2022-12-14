@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DOCUMENT_GENERATOR_H
-#define IRESEARCH_DOCUMENT_GENERATOR_H
+#pragma once
 
 #include <atomic>
 #include <filesystem>
@@ -755,4 +754,3 @@ bool update(irs::index_writer& writer,
 
 }  // namespace tests
 
-#endif

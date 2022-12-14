@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_PHRASE_ITERATOR_H
-#define IRESEARCH_PHRASE_ITERATOR_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "disjunction.hpp"
@@ -625,4 +624,3 @@ class PhraseIterator : public doc_iterator {
 
 }  // namespace irs
 
-#endif

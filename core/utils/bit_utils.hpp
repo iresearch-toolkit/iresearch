@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BIT_UTILS_H
-#define IRESEARCH_BIT_UTILS_H
+#pragma once
 
 #include <cstring>
 #include <numeric>
@@ -242,4 +241,3 @@ inline To bit_cast(const From& from) noexcept {
     return irs::enum_bitwise_not(v);                                     \
   }
 
-#endif

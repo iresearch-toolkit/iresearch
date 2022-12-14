@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COMPOSITE_READER_H
-#define IRESEARCH_COMPOSITE_READER_H
+#pragma once
 
 #include "index_reader.hpp"
 #include "shared.hpp"
@@ -70,4 +69,3 @@ class composite_reader : public index_reader {
 
 }  // namespace irs
 
-#endif

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_LEVENSHTEIN_FILTER_H
-#define IRESEARCH_LEVENSHTEIN_FILTER_H
+#pragma once
 
 #include "filter.hpp"
 #include "utils/string.hpp"
@@ -146,4 +145,3 @@ struct hash<::irs::by_edit_distance_filter_options> {
 
 }  // namespace std
 
-#endif  // IRESEARCH_LEVENSHTEIN_FILTER_H

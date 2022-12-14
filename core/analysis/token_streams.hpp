@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TOKEN_STREAMS_H
-#define IRESEARCH_TOKEN_STREAMS_H
+#pragma once
 
 #include "analyzer.hpp"
 #include "token_attributes.hpp"
@@ -294,4 +293,3 @@ class null_token_stream final : public basic_token_stream,
 
 }  // namespace irs
 
-#endif

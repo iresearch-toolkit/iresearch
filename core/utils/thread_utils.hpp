@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_THREAD_UTILS_H
-#define IRESEARCH_THREAD_UTILS_H
+#pragma once
 
 #include <mutex>
 #include <shared_mutex>
@@ -45,4 +44,3 @@ bool get_thread_name(
 
 }  // namespace irs
 
-#endif  // IRESEARCH_THREAD_UTILS_H

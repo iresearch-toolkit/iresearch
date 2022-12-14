@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SORT_H
-#define IRESEARCH_SORT_H
+#pragma once
 
 #include "index/index_features.hpp"
 #include "search/score_function.hpp"
@@ -433,4 +432,3 @@ class PreparedSortBase<void> : public sort::prepared {
 
 }  // namespace irs
 
-#endif

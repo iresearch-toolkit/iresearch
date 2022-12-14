@@ -20,8 +20,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FILTER_VISITOR_H
-#define IRESEARCH_FILTER_VISITOR_H
+#pragma once
 
 #include "shared.hpp"
 
@@ -52,4 +51,3 @@ struct filter_visitor {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_FILTER_VISITOR_H

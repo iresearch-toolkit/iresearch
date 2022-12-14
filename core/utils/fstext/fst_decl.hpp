@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_DECL_H
-#define IRESEARCH_FST_DECL_H
+#pragma once
 
 #include <fst/fst-decl.h>
 
@@ -59,4 +58,3 @@ class fst_builder;
 
 }  // namespace irs
 
-#endif

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FORMAT_10_ATTRIBUTES
-#define IRESEARCH_FORMAT_10_ATTRIBUTES
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "utils/attributes.hpp"
@@ -72,4 +71,3 @@ struct type<version10::term_meta> : type<irs::term_meta> {};
 
 }  // namespace irs
 
-#endif  // IRESEARCH_FORMAT_10_ATTRIBUTES

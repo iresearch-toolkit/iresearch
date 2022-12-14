@@ -22,12 +22,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_UTILS_COMMON_H
-#define IRESEARCH_UTILS_COMMON_H
+#pragma once
 
 #include "store/directory.hpp"
 
 irs::directory::ptr create_directory(std::string_view type,
                                      std::string_view path);
 
-#endif  // IRESEARCH_UTILS_COMMON_H

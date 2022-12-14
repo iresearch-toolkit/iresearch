@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ITERATOR_H
-#define IRESEARCH_ITERATOR_H
+#pragma once
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <memory>
@@ -185,4 +184,3 @@ class ptr_iterator
 
 }  // namespace irs
 
-#endif

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ALL_TERMS_COLLECTOR_H
-#define IRESEARCH_ALL_TERMS_COLLECTOR_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "search/collectors.hpp"
@@ -101,4 +100,3 @@ class all_terms_collector : util::noncopyable {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_ALL_TERMS_COLLECTOR_H

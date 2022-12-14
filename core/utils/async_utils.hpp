@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ASYNC_UTILS_H
-#define IRESEARCH_ASYNC_UTILS_H
+#pragma once
 
 #include <atomic>
 #include <condition_variable>
@@ -117,4 +116,3 @@ class thread_pool {
 }  // namespace async_utils
 }  // namespace irs
 
-#endif

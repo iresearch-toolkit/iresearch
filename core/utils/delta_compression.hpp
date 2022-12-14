@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DELTA_COMPRESSION_H
-#define IRESEARCH_DELTA_COMPRESSION_H
+#pragma once
 
 #include "compression.hpp"
 #include "noncopyable.hpp"
@@ -56,4 +55,3 @@ struct delta {
 }  // namespace compression
 }  // namespace irs
 
-#endif

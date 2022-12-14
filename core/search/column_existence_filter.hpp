@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COLUMN_EXISTENCE_FILTER_H
-#define IRESEARCH_COLUMN_EXISTENCE_FILTER_H
+#pragma once
 
 #include "filter.hpp"
 #include "utils/string.hpp"
@@ -59,4 +58,3 @@ class by_column_existence final
 
 }  // namespace irs
 
-#endif  // IRESEARCH_COLUMN_EXISTENCE_FILTER_H
