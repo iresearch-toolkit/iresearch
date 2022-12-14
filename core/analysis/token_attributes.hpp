@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TOKEN_ATTRIBUTES_H
-#define IRESEARCH_TOKEN_ATTRIBUTES_H
+#pragma once
 
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
@@ -178,4 +177,3 @@ struct score_threshold final : public attribute {
 
 }  // namespace irs
 
-#endif

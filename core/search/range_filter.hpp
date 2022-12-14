@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_RANGE_FILTER_H
-#define IRESEARCH_RANGE_FILTER_H
+#pragma once
 
 #include "search/filter.hpp"
 #include "search/search_range.hpp"
@@ -110,4 +109,3 @@ struct hash<::irs::by_range_options> {
 
 }  // namespace std
 
-#endif  // IRESEARCH_RANGE_FILTER_H

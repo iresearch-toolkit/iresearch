@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TESTS_SHARED_H
-#define IRESEARCH_TESTS_SHARED_H
+#pragma once
 
 #include <gtest/gtest.h>
 
@@ -96,4 +95,3 @@ template<typename T>
 class test_param_base : public test_base,
                         public ::testing::WithParamInterface<T> {};
 
-#endif

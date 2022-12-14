@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_QUERY_H
-#define IRESEARCH_QUERY_H
+#pragma once
 
 #include <absl/container/node_hash_map.h>
 
@@ -220,4 +219,3 @@ struct hash<irs::filter> {
 
 }  // namespace std
 
-#endif

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_PHRASE_FILTER_H
-#define IRESEARCH_PHRASE_FILTER_H
+#pragma once
 
 #include <map>
 #include <variant>
@@ -165,4 +164,3 @@ class by_phrase : public filter_base<by_phrase_options> {
 
 }  // namespace irs
 
-#endif

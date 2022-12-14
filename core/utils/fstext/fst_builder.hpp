@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_H
-#define IRESEARCH_FST_H
+#pragma once
 
 #if defined(_MSC_VER)
 #pragma warning(disable : 4018)
@@ -372,4 +371,3 @@ class fst_builder : util::noncopyable {
 
 }  // namespace irs
 
-#endif

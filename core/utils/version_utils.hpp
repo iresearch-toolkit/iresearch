@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_VERSION_UTILS_H
-#define IRESEARCH_VERSION_UTILS_H
+#pragma once
 
 #include "shared.hpp"
 #include "utils/string.hpp"
@@ -45,4 +44,3 @@ const std::string_view build_version();
 }  // namespace version_utils
 }  // namespace irs
 
-#endif

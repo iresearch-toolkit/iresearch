@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ENCRYPTION_H
-#define IRESEARCH_ENCRYPTION_H
+#pragma once
 
 #include "store/data_input.hpp"
 #include "store/data_output.hpp"
@@ -155,4 +154,3 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_ENCRYPTION_H

@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SIMD_UTILS_H
-#define IRESEARCH_SIMD_UTILS_H
+#pragma once
 
 #include <hwy/highway.h>
 
@@ -330,4 +329,3 @@ void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
 }  // namespace simd
 }  // namespace irs
 
-#endif  // IRESEARCH_SIMD_UTILS_H

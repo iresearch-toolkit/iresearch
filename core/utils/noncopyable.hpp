@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NONCOPYABLE_H
-#define IRESEARCH_NONCOPYABLE_H
+#pragma once
 
 #include "shared.hpp"
 
@@ -41,4 +40,3 @@ struct noncopyable {
 }  // namespace util
 }  // namespace irs
 
-#endif

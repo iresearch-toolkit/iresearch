@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SAME_POSITION_FILTER_H
-#define IRESEARCH_SAME_POSITION_FILTER_H
+#pragma once
 
 #include "filter.hpp"
 #include "utils/string.hpp"
@@ -68,4 +67,3 @@ class by_same_position : public filter_with_options<by_same_position_options> {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_SAME_POSITION_FILTER_H

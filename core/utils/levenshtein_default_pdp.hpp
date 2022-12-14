@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H
-#define IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H
+#pragma once
 
 #include "shared.hpp"
 
@@ -41,4 +40,3 @@ const parametric_description& default_pdp(byte_type max_distance,
 
 }  // namespace irs
 
-#endif  // IRESEARCH_LEVENSHTEIN_DEFAULT_PDP_H

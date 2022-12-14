@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ITERATORS_H
-#define IRESEARCH_ITERATORS_H
+#pragma once
 
 #include "formats/seek_cookie.hpp"
 #include "index/index_features.hpp"
@@ -178,4 +177,3 @@ bool skip(Iterator& itr, size_t count) {
 
 }  // namespace irs
 
-#endif

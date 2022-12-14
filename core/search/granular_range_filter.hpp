@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_GRANULAR_RANGE_FILTER_H
-#define IRESEARCH_GRANULAR_RANGE_FILTER_H
+#pragma once
 
 #include "search/filter.hpp"
 #include "search/search_range.hpp"
@@ -120,4 +119,3 @@ class by_granular_range : public filter_base<by_granular_range_options> {
 
 }  // namespace irs
 
-#endif

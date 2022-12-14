@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COMPRESSION_H
-#define IRESEARCH_COMPRESSION_H
+#pragma once
 
 #include <functional>
 #include <map>
@@ -207,4 +206,3 @@ struct none {
 }  // namespace compression
 }  // namespace irs
 
-#endif  // IRESEARCH_COMPRESSION_H

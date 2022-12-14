@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MEMORYDIRECTORY_H
-#define IRESEARCH_MEMORYDIRECTORY_H
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -330,4 +329,3 @@ struct memory_output {
 
 }  // namespace irs
 
-#endif

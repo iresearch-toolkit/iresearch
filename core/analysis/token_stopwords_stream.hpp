@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TOKEN_STOPWORDS_STREAM_H
-#define IRESEARCH_TOKEN_STOPWORDS_STREAM_H
+#pragma once
 
 #include <absl/container/flat_hash_set.h>
 
@@ -67,4 +66,3 @@ class token_stopwords_stream final : public analyzer,
 }  // namespace analysis
 }  // namespace irs
 
-#endif  // IRESEARCH_TOKEN_STOPWORDS_STREAM_H

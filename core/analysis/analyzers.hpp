@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_ANALYZERS_H
-#define IRESEARCH_ANALYZERS_H
+#pragma once
 
 #include <functional>
 
@@ -107,4 +106,3 @@ bool visit(
   REGISTER_ANALYZER(analyzer_name, ::irs::text_format::vpack, factory, \
                     normalizer)
 
-#endif

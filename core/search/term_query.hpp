@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_TERM_QUERY_H
-#define IRESEARCH_TERM_QUERY_H
+#pragma once
 
 #include "search/filter.hpp"
 #include "search/states/term_state.hpp"
@@ -48,4 +47,3 @@ class TermQuery final : public filter::prepared {
 
 }  // namespace irs
 
-#endif

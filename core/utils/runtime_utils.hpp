@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_RUNTIME_UTILS_H
-#define IRESEARCH_RUNTIME_UTILS_H
+#pragma once
 
 namespace irs {
 
@@ -67,4 +66,3 @@ inline int unsetenv(const char* name) noexcept {
 
 }  // namespace irs
 
-#endif

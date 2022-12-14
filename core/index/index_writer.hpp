@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_INDEX_WRITER_H
-#define IRESEARCH_INDEX_WRITER_H
+#pragma once
 
 #include <absl/container/flat_hash_map.h>
 
@@ -1089,4 +1088,3 @@ class index_writer : private util::noncopyable {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_INDEX_WRITER_H

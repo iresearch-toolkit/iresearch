@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SEGMENT_READER_H
-#define IRESEARCH_SEGMENT_READER_H
+#pragma once
 
 #include "index_reader.hpp"
 #include "utils/object_pool.hpp"
@@ -118,4 +117,3 @@ class segment_reader final : public sub_reader {
 
 }  // namespace irs
 
-#endif

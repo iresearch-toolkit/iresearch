@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_EXCLUSION_H
-#define IRESEARCH_EXCLUSION_H
+#pragma once
 
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
@@ -102,4 +101,3 @@ class exclusion final : public doc_iterator {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_EXCLUSION_H

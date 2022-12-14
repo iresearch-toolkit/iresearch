@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_STATUS_H
-#define IRESEARCH_STATUS_H
+#pragma once
 
 #include <memory>
 
@@ -101,4 +100,3 @@ class result {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_STATUS_H

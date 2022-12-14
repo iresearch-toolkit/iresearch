@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FORMAT_BURST_TRIE_H
-#define IRESEARCH_FORMAT_BURST_TRIE_H
+#pragma once
 
 #include "formats.hpp"
 
@@ -63,4 +62,3 @@ irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader);
 }  // namespace burst_trie
 }  // namespace irs
 
-#endif

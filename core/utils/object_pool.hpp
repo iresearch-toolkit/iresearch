@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_OBJECT_POOL_H
-#define IRESEARCH_OBJECT_POOL_H
+#pragma once
 
 #include <algorithm>
 #include <atomic>
@@ -635,4 +634,3 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
 
 }  // namespace irs
 
-#endif

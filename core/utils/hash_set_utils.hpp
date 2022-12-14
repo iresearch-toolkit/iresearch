@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_HASH_CONTAINER_UTILS
-#define IRESEARCH_HASH_CONTAINER_UTILS
+#pragma once
 
 #include <absl/container/flat_hash_set.h>
 
@@ -80,4 +79,3 @@ using flat_hash_set =
 
 }  // namespace irs
 
-#endif  // IRESEARCH_HASH_CONTAINER_UTILS

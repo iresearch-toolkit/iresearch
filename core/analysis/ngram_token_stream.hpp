@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_NGRAM_TOKEN_STREAM_H
-#define IRESEARCH_NGRAM_TOKEN_STREAM_H
+#pragma once
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -141,4 +140,3 @@ struct type<analysis::ngram_token_stream<StreamType>>
 
 }  // namespace irs
 
-#endif  // IRESEARCH_NGRAM_TOKEN_STREAM_H

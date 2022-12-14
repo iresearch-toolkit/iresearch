@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_MMAP_UTILS_H
-#define IRESEARCH_MMAP_UTILS_H
+#pragma once
 
 #include "file_utils.hpp"
 #include "noncopyable.hpp"
@@ -127,4 +126,3 @@ class mmap_handle : private util::noncopyable {
 }  // namespace mmap_utils
 }  // namespace irs
 
-#endif  // IRESEARCH_MMAP_UTILS_H

@@ -1,5 +1,4 @@
-#ifndef IRESEARCH_VERSION_DEFINES_HPP
-#define IRESEARCH_VERSION_DEFINES_HPP
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -31,4 +30,3 @@
 
 // clang-format on
 
-#endif  // IRESEARCH_VERSION_DEFINES_HPP

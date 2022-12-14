@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_SEARCH_RANGE_H
-#define IRESEARCH_SEARCH_RANGE_H
+#pragma once
 
 #include "utils/hash_utils.hpp"
 #include "utils/type_utils.hpp"
@@ -68,4 +67,3 @@ struct search_range {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_SEARCH_RANGE_H

@@ -21,8 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DELIMITED_TOKEN_STREAM_H
-#define IRESEARCH_DELIMITED_TOKEN_STREAM_H
+#pragma once
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
@@ -64,4 +63,3 @@ class delimited_token_stream final : public analyzer,
 }  // namespace analysis
 }  // namespace irs
 
-#endif

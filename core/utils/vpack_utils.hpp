@@ -20,8 +20,7 @@
 /// @author Alexey Bakharew
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_VPACK_UTILS_H
-#define IRESEARCH_VPACK_UTILS_H
+#pragma once
 
 #include "string.hpp"
 #include "velocypack/Options.h"
@@ -59,4 +58,3 @@ T get_string(VPackSlice slice) {
 
 }  // namespace irs
 
-#endif  // IRESEARCH_VPACK_UTILS_H

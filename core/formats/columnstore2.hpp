@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_COLUMNSTORE2_H
-#define IRESEARCH_COLUMNSTORE2_H
+#pragma once
 
 #include "formats/formats.hpp"
 #include "formats/sparse_bitmap.hpp"
@@ -300,4 +299,3 @@ irs::columnstore_reader::ptr make_reader();
 }  // namespace columnstore2
 }  // namespace irs
 
-#endif  // IRESEARCH_COLUMNSTORE2_H

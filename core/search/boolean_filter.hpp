@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_BOOLEAN_FILTER_H
-#define IRESEARCH_BOOLEAN_FILTER_H
+#pragma once
 
 #include <vector>
 
@@ -177,4 +176,3 @@ class Not : public filter, public AllDocsProvider {
 
 }  // namespace irs
 
-#endif

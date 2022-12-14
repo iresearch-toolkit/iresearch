@@ -20,8 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_FST_STATES_MAP_H
-#define IRESEARCH_FST_STATES_MAP_H
+#pragma once
 
 #include <vector>
 
@@ -116,4 +115,3 @@ class fst_states_map : private util::noncopyable {
 
 }  // namespace irs
 
-#endif
