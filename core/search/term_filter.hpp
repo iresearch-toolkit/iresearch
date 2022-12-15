@@ -74,4 +74,3 @@ struct hash<::irs::by_term_options> {
 };
 
 }  // namespace std
-

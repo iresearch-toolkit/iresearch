@@ -205,4 +205,3 @@ struct none {
 
 }  // namespace compression
 }  // namespace irs
-

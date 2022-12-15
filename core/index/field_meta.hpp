@@ -71,4 +71,3 @@ static_assert(std::is_move_constructible<field_meta>::value,
               "default move constructor expected");
 
 }  // namespace irs
-

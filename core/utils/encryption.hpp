@@ -153,4 +153,3 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
 };  // encrypted_input
 
 }  // namespace irs
-

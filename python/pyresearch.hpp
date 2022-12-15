@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "index/index_reader.hpp"
 
 #ifdef SWIG
 #define SWIG_noexcept
@@ -320,4 +320,3 @@ class PYRESEARCH_API index_reader {
   irs::index_reader::ptr reader_;
   std::vector<const irs::sub_reader*> segments_;
 };  // index_reader
-

@@ -68,4 +68,3 @@ class bm25_sort : public sort {
 };
 
 }  // namespace irs
-

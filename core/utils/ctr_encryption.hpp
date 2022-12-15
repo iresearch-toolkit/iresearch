@@ -61,4 +61,3 @@ class ctr_encryption : public encryption {
 };  // ctr_encryption
 
 }  // namespace irs
-

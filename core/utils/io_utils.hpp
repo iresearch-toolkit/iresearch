@@ -58,4 +58,3 @@ MAKE_DELETER(unlock);
 
 #define DECLARE_IO_PTR(class_name, method) \
   typedef ::irs::io_utils::auto_##method<class_name>::ptr ptr
-

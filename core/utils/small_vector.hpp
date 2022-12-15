@@ -30,4 +30,3 @@ template<typename T, std::size_t N, typename A = std::allocator<T>>
 using SmallVector = boost::container::small_vector<T, N, A>;
 
 }
-

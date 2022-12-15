@@ -1418,4 +1418,3 @@ doc_iterator::ptr MakeWeakDisjunction(
 }
 
 }  // namespace irs
-

@@ -64,4 +64,3 @@ struct type {
 };  // type
 
 }  // namespace irs
-

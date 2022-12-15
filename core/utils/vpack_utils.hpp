@@ -57,4 +57,3 @@ T get_string(VPackSlice slice) {
 }
 
 }  // namespace irs
-

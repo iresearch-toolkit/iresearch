@@ -43,4 +43,3 @@ bool get_thread_name(
   std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
 
 }  // namespace irs
-

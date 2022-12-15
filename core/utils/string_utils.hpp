@@ -108,4 +108,3 @@ inline std::string to_string(const char* format, Args&&... args) {
 
 }  // namespace string_utils
 }  // namespace irs
-

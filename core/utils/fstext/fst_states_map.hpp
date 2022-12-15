@@ -114,4 +114,3 @@ class fst_states_map : private util::noncopyable {
 };
 
 }  // namespace irs
-

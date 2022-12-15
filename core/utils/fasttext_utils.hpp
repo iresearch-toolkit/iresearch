@@ -51,4 +51,3 @@ class ImmutableFastText : public FastText {
 };  // ImmutableFastText
 
 }  // namespace fasttext
-

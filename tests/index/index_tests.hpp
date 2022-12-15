@@ -250,4 +250,3 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 };  // index_test_base
 
 }  // namespace tests
-

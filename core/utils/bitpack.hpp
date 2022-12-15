@@ -295,4 +295,3 @@ void read_block64(UnpackFunc&& unpack, data_input& in,
 
 }  // namespace bitpack
 }  // namespace irs
-

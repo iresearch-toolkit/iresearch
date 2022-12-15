@@ -125,4 +125,3 @@ class postings : util::noncopyable {
 };
 
 }  // namespace irs
-

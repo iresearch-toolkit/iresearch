@@ -177,4 +177,3 @@ struct illegal_state : detailed_error_base {
 };  // illegal_state
 
 }  // namespace irs
-

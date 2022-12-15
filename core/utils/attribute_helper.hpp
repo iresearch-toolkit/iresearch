@@ -72,4 +72,3 @@ constexpr attribute* get_mutable(std::tuple<T...>& t,
 }
 
 }  // namespace irs
-

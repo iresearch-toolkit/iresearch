@@ -75,4 +75,3 @@ int madvise(void *addr, size_t length, int advice);
 }
 
 #endif  // (_MSC_VER)
-

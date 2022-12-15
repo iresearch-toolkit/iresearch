@@ -384,4 +384,3 @@ class segment_writer : util::noncopyable {
 };
 
 }  // namespace irs
-

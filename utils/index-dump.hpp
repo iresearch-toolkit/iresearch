@@ -25,4 +25,3 @@
 #pragma once
 
 int dump(int argc, char* argv[]);
-

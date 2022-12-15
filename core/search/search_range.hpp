@@ -66,4 +66,3 @@ struct search_range {
 };
 
 }  // namespace irs
-

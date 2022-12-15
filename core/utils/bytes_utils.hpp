@@ -508,4 +508,3 @@ inline void zvwrite(Iterator& out, T value) {
 }
 
 }  // namespace irs
-

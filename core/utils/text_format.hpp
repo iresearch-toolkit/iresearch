@@ -47,4 +47,3 @@ struct vpack {};
 
 }  // namespace text_format
 }  // namespace irs
-

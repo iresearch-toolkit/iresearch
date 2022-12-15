@@ -102,4 +102,3 @@ struct hash<::irs::by_wildcard_options> {
 };
 
 }  // namespace std
-

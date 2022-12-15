@@ -59,4 +59,3 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
 };
 
 }  // namespace irs
-

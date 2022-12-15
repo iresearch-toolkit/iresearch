@@ -116,4 +116,3 @@ class segment_reader final : public sub_reader {
 };  // segment_reade
 
 }  // namespace irs
-

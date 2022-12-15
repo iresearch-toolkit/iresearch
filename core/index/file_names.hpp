@@ -44,4 +44,3 @@ std::string file_name(std::string_view name, uint64_t gen,
                       std::string_view ext);
 
 }  // namespace irs
-

@@ -108,4 +108,3 @@ struct hash<::irs::by_range_options> {
 };
 
 }  // namespace std
-

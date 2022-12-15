@@ -285,4 +285,3 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
 };
 
 }  // namespace irs
-

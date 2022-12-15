@@ -33,4 +33,3 @@ class parser;
 }  // namespace cmdline
 
 int search(int argc, char* argv[]);
-

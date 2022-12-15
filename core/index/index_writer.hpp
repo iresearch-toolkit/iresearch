@@ -1087,4 +1087,3 @@ class index_writer : private util::noncopyable {
 };
 
 }  // namespace irs
-

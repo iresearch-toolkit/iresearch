@@ -212,4 +212,3 @@ inline constexpr T enum_bitwise_not(T v) noexcept {
   [[maybe_unused]] inline constexpr x operator~(x v) noexcept {          \
     return irs::enum_bitwise_not(v);                                     \
   }
-
