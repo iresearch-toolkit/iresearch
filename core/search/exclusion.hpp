@@ -100,4 +100,3 @@ class exclusion final : public doc_iterator {
 };  // exclusion
 
 }  // namespace irs
-

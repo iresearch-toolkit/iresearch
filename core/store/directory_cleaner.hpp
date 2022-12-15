@@ -52,4 +52,3 @@ class directory_cleaner {
 };
 
 }  // namespace irs
-

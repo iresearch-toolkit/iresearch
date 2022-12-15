@@ -206,4 +206,3 @@ class dynamic_bitset {
 using bitset = dynamic_bitset<std::allocator<size_t>>;
 
 }  // namespace irs
-

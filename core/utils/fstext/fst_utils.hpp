@@ -143,4 +143,3 @@ struct hash<typename ::fst::fstext::EmptyLabel<L>> {
 };
 
 }  // namespace std
-

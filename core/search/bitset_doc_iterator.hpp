@@ -71,4 +71,3 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
 };  // bitset_doc_iterator
 
 }  // namespace irs
-

@@ -39,4 +39,3 @@ struct boost_sort final : public sort {
 };  // boost_sort
 
 }  // namespace irs
-

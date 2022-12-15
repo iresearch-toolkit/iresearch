@@ -43,4 +43,3 @@ const std::string_view build_version();
 
 }  // namespace version_utils
 }  // namespace irs
-

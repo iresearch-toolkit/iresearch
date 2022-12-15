@@ -78,4 +78,3 @@ using flat_hash_set =
   absl::flat_hash_set<typename Eq::ref_t, value_ref_hash, Eq>;
 
 }  // namespace irs
-

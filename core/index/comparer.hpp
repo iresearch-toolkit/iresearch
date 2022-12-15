@@ -48,4 +48,3 @@ inline bool use_dense_sort(size_t size, size_t total) noexcept {
 }
 
 }  // namespace irs
-

@@ -74,4 +74,3 @@ class segmentation_token_stream final : public analyzer,
 };
 }  // namespace analysis
 }  // namespace irs
-

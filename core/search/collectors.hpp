@@ -291,4 +291,3 @@ static_assert(std::is_nothrow_move_constructible_v<term_collectors>);
 static_assert(std::is_nothrow_move_assignable_v<term_collectors>);
 
 }  // namespace irs
-

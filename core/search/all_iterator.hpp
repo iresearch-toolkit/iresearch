@@ -73,4 +73,3 @@ class all_iterator final : public doc_iterator {
 };
 
 }  // namespace irs
-

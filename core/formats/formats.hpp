@@ -621,4 +621,3 @@ class format_registrar {
   REGISTER_FORMAT_MODULE(format_name, std::string_view{})
 
 }  // namespace irs
-

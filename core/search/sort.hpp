@@ -525,4 +525,3 @@ class PreparedSortBase<void> : public sort::prepared {
 };
 
 }  // namespace irs
-

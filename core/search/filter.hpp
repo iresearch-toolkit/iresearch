@@ -218,4 +218,3 @@ struct hash<irs::filter> {
 };
 
 }  // namespace std
-

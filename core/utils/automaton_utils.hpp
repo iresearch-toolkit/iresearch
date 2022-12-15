@@ -483,4 +483,3 @@ filter::prepared::ptr prepare_automaton_filter(
   const index_reader& index, const Order& order, score_t boost);
 
 }  // namespace irs
-

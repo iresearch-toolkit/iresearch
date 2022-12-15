@@ -39,4 +39,3 @@ class all : public filter {
 };
 
 }  // namespace irs
-

@@ -176,4 +176,3 @@ bool skip(Iterator& itr, size_t count) {
 }
 
 }  // namespace irs
-

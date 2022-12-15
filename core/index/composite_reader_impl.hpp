@@ -68,4 +68,3 @@ class composite_reader : public index_reader {
 };  // composite_reader
 
 }  // namespace irs
-

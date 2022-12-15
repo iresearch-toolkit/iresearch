@@ -37,4 +37,3 @@ using stemmer_ptr = std::unique_ptr<sb_stemmer, stemmer_deleter>;
 stemmer_ptr make_stemmer_ptr(const char* algorithm, const char* charenc);
 
 }  // namespace irs
-

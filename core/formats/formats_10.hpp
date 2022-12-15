@@ -41,4 +41,3 @@ class format : public irs::format {
 
 }  // namespace version10
 }  // namespace irs
-

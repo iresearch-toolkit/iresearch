@@ -292,4 +292,3 @@ class null_token_stream final : public basic_token_stream,
 };  // null_token_stream
 
 }  // namespace irs
-

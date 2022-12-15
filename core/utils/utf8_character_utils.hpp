@@ -110,4 +110,3 @@ constexpr bool char_is_alphanumeric(uint32_t c) noexcept {
 
 }  // namespace utf8_utils
 }  // namespace irs
-

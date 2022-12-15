@@ -125,4 +125,3 @@ class mmap_handle : private util::noncopyable {
 
 }  // namespace mmap_utils
 }  // namespace irs
-

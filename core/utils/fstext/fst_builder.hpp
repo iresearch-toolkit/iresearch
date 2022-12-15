@@ -370,4 +370,3 @@ class fst_builder : util::noncopyable {
 };  // fst_builder
 
 }  // namespace irs
-

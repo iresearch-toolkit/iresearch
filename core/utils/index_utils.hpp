@@ -136,4 +136,3 @@ void flush_index_segment(directory& dir, index_meta::index_segment_t& segment);
 
 }  // namespace index_utils
 }  // namespace irs
-

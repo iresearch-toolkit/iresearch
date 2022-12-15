@@ -250,4 +250,3 @@ IRS_FORCE_INLINE size_t utf8_length(bytes_view in) noexcept {
 
 }  // namespace utf8_utils
 }  // namespace irs
-

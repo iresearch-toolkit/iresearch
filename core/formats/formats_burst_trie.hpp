@@ -61,4 +61,3 @@ irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader);
 
 }  // namespace burst_trie
 }  // namespace irs
-

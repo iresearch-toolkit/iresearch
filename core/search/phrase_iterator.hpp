@@ -623,4 +623,3 @@ class PhraseIterator : public doc_iterator {
 };
 
 }  // namespace irs
-

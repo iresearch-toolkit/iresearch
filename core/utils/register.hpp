@@ -225,4 +225,3 @@ class tagged_generic_register
 };
 
 }  // namespace irs
-

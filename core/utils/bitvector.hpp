@@ -347,4 +347,3 @@ static_assert(std::is_nothrow_move_constructible<bitvector>::value,
               "default move constructor expected");
 
 }  // namespace irs
-

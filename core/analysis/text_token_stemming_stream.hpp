@@ -71,4 +71,3 @@ class stemming_token_stream final : public analyzer, private util::noncopyable {
 
 }  // namespace analysis
 }  // namespace irs
-

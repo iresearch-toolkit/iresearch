@@ -134,4 +134,3 @@ class directory_attributes {
 };
 
 }  // namespace irs
-

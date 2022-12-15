@@ -255,4 +255,3 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
 }
 
 }  // namespace irs
-
