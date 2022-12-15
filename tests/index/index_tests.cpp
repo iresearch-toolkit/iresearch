@@ -2229,7 +2229,7 @@ TEST_P(index_test_case, s2sequence) {
     auto writer = open_writer();
     ASSERT_NE(nullptr, writer);
 
-    std::ifstream stream{resource("s2sequence"), std::ifstream::in};
+    std::ifstream stream{resource("s2sequence").string(), std::ifstream::in};
     ASSERT_TRUE(static_cast<bool>(stream));
 
     std::string str;
