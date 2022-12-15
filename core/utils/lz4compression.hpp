@@ -60,7 +60,7 @@ struct lz4 {
 
     virtual bytes_ref compress(byte_type* src, size_t size,
                                bstring& out) override
-      IRESEARCH_ATTRIBUTE_NONNULL();
+      IRESEARCH_ATTRIBUTE_NONNULL(2);
 
    private:
     const int acceleration_{0};  // 0 - default acceleration
@@ -70,7 +70,7 @@ struct lz4 {
    public:
     virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                  byte_type* dst, size_t dst_size) override
-      IRESEARCH_ATTRIBUTE_NONNULL();
+      IRESEARCH_ATTRIBUTE_NONNULL(2);
   };
 
   static void init();

@@ -1243,23 +1243,24 @@ class block_disjunction final : public doc_iterator,
   bool refill(adapter& it, bool& empty) {
     assert(it.doc);
     const auto* doc = &it.doc->value;
-    assert(!doc_limits::eof(*doc));
 
     // disjunction is 1 step next behind, that may happen:
     // - before the very first next()
     // - after seek() in case of 'kSeekReadahead == false'
-    if (*doc < doc_base_ && !it->next()) {
+    if ((*doc < doc_base_ && !it->next()) || doc_limits::eof(*doc)) {
       // exhausted
       return false;
     }
 
     for (;;) {
-      if (*doc >= max_) {
-        min_ = std::min(*doc, min_);
+      const auto value = *doc;
+
+      if (value >= max_) {
+        min_ = std::min(value, min_);
         return true;
       }
 
-      const size_t offset = *doc - doc_base_;
+      const size_t offset = value - doc_base_;
 
       irs::set_bit(mask_[offset / kBlockSize], offset % kBlockSize);
 

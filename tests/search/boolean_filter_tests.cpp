@@ -30,6 +30,7 @@
 #include "search/all_iterator.hpp"
 #include "search/bm25.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/conjunction.hpp"
 #include "search/disjunction.hpp"
 #include "search/exclusion.hpp"
 #include "search/min_match_disjunction.hpp"
@@ -42,7 +43,7 @@
 namespace {
 
 template<typename Filter>
-Filter make_filter(const irs::string_ref& field, const irs::string_ref term) {
+Filter make_filter(std::string_view field, irs::string_ref term) {
   Filter q;
   *q.mutable_field() = field;
   q.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -50,8 +51,8 @@ Filter make_filter(const irs::string_ref& field, const irs::string_ref term) {
 }
 
 template<typename Filter>
-Filter& append(irs::boolean_filter& root, const irs::string_ref& name,
-               const irs::string_ref& term) {
+Filter& append(irs::boolean_filter& root, std::string_view name,
+               irs::string_ref term) {
   auto& sub = root.add<Filter>();
   *sub.mutable_field() = name;
   sub.mutable_options()->term = irs::ref_cast<irs::byte_type>(term);
@@ -80,7 +81,7 @@ struct basic_sort : irs::sort {
   struct prepared_sort final : irs::PreparedSortBase<void> {
     explicit prepared_sort(size_t idx) : idx(idx) {}
 
-    virtual irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const override {
       return irs::IndexFeatures::NONE;
     }
 
@@ -156,9 +157,9 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
 #pragma GCC diagnostic pop
 #endif
 
-  virtual irs::doc_id_t value() const override { return doc_.value; }
+  irs::doc_id_t value() const override { return doc_.value; }
 
-  virtual bool next() override {
+  bool next() override {
     if (first_ == last_) {
       doc_.value = irs::doc_limits::eof();
       return false;
@@ -174,7 +175,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
     return it == attrs_.end() ? nullptr : it->second;
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t doc) override {
+  irs::doc_id_t seek(irs::doc_id_t doc) override {
     if (irs::doc_limits::eof(doc_.value) || doc <= doc_.value) {
       return doc_.value;
     }
@@ -224,7 +225,8 @@ std::vector<DocIterator> execute_all(
 template<typename DocIterator>
 std::vector<DocIterator> execute_all(
   std::span<const std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs) {
-  const irs::byte_type* stats = irs::bytes_ref::EMPTY.c_str();
+  const auto emptyBytesRef = irs::bytes_ref::EMPTY;
+  const irs::byte_type* stats = emptyBytesRef.data();
   std::vector<DocIterator> itrs;
   itrs.reserve(docs.size());
   for (const auto& [doc, ord] : docs) {
@@ -1128,16 +1130,16 @@ namespace detail {
 
 struct unestimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
-    virtual irs::doc_id_t value() const override {
+    irs::doc_id_t value() const override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual bool next() override { return false; }
-    virtual irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() override { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual irs::attribute* get_mutable(
+    irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
       return type == irs::type<irs::document>::id() ? &doc : nullptr;
     }
@@ -1146,7 +1148,7 @@ struct unestimated : public irs::filter {
   };  // doc_iterator
 
   struct prepared : public irs::filter::prepared {
-    virtual irs::doc_iterator::ptr execute(
+    irs::doc_iterator::ptr execute(
       const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
@@ -1156,9 +1158,9 @@ struct unestimated : public irs::filter {
     }
   };  // prepared
 
-  virtual filter::prepared::ptr prepare(
-    const irs::index_reader&, const irs::Order&, irs::score_t,
-    const irs::attribute_provider*) const override {
+  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+                                irs::score_t,
+                                const irs::attribute_provider*) const override {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
@@ -1173,16 +1175,16 @@ struct estimated : public irs::filter {
         return est;
       });
     }
-    virtual irs::doc_id_t value() const override {
+    irs::doc_id_t value() const override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual bool next() override { return false; }
-    virtual irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() override { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) override {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    virtual irs::attribute* get_mutable(
+    irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
       if (type == irs::type<irs::cost>::id()) {
         return &cost;
@@ -1199,7 +1201,7 @@ struct estimated : public irs::filter {
     explicit prepared(irs::cost::cost_t est, bool* evaluated)
       : evaluated(evaluated), est(est) {}
 
-    virtual irs::doc_iterator::ptr execute(
+    irs::doc_iterator::ptr execute(
       const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
@@ -1213,9 +1215,9 @@ struct estimated : public irs::filter {
     irs::cost::cost_t est;
   };  // prepared
 
-  virtual filter::prepared::ptr prepare(
-    const irs::index_reader&, const irs::Order&, irs::score_t,
-    const irs::attribute_provider*) const override {
+  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+                                irs::score_t,
+                                const irs::attribute_provider*) const override {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
   }
 
@@ -1806,7 +1808,8 @@ TEST(basic_disjunction_test, seek_next) {
 }
 
 TEST(basic_disjunction_test, scored_seek_next) {
-  const irs::byte_type* empty_stats = irs::bytes_ref::EMPTY.c_str();
+  const auto empty_ref = irs::bytes_ref::EMPTY;
+  const irs::byte_type* empty_stats = empty_ref.data();
 
   // disjunction without order
   {
@@ -3977,6 +3980,31 @@ TEST(block_disjunction_test, next) {
       ASSERT_FALSE(it.next());
       ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     }
+    ASSERT_EQ(expected, result);
+  }
+
+  // empty iterators
+  {
+    std::vector<irs::doc_id_t> expected{};
+    std::vector<irs::doc_id_t> result;
+
+    disjunction::doc_iterators_t itrs;
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    disjunction it{std::move(itrs)};
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    for (; it.next();) {
+      result.push_back(it.value());
+      ASSERT_EQ(1, it.match_count());
+    }
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     ASSERT_EQ(expected, result);
   }
 }
@@ -7565,6 +7593,28 @@ TEST(block_disjunction_test, seek_no_readahead) {
       ASSERT_EQ(doc->value, it.value());
       ASSERT_EQ(target.match_count, it.match_count());
     }
+  }
+
+  // empty iterators
+  {
+    std::vector<irs::doc_id_t> expected{};
+    std::vector<irs::doc_id_t> result;
+
+    disjunction::doc_iterators_t itrs;
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    itrs.emplace_back(irs::doc_iterator::empty());
+    disjunction it{std::move(itrs)};
+    auto* doc = irs::get<irs::document>(it);
+    ASSERT_TRUE(bool(doc));
+    ASSERT_EQ(0, irs::cost::extract(it));
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_EQ(irs::doc_limits::eof(), it.seek(1));
+    ASSERT_EQ(0, it.match_count());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+    ASSERT_EQ(expected, result);
   }
 }
 
