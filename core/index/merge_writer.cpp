@@ -1076,14 +1076,7 @@ class MinHeapContext {
     const bytes_view lhs_value = lhs.payload->value;
     const bytes_view rhs_value = rhs.payload->value;
 
-    const auto r = (*compare_)(lhs_value, rhs_value);
-#ifdef IRESEARCH_DEBUG
-    // Comparator validity check
-    const auto r1 = (*compare_)(rhs_value, lhs_value);
-    IRS_ASSERT((r == 0 && r1 == 0) || (r * r1 < 0));
-#endif
-
-    if (r) {
+    if (const auto r = (*compare_)(lhs_value, rhs_value); r) {
       return r > 0;
     }
 

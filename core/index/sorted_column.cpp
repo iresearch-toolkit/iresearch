@@ -33,13 +33,7 @@ bool sorted_column::flush_sparse_primary(
   doc_id_t docs_count, const comparer& compare) {
   auto comparer = [&](const std::pair<doc_id_t, size_t>& lhs,
                       const std::pair<doc_id_t, size_t>& rhs) -> int {
-    const auto r = compare(get_value(&lhs), get_value(&rhs));
-#ifdef IRESEARCH_DEBUG
-    // Comparator validity check
-    const auto r1 = compare(get_value(&rhs), get_value(&lhs));
-    IRS_ASSERT((r == 0 && r1 == 0) || (r * r1 < 0));
-#endif
-    return r;
+    return compare(get_value(&lhs), get_value(&rhs));
   };
 
   if (std::is_sorted(index_.begin(), index_.end() - 1,
@@ -57,8 +51,7 @@ bool sorted_column::flush_sparse_primary(
             [&](size_t lhs, size_t rhs) {
               IRS_ASSERT(lhs < index_.size());
               IRS_ASSERT(rhs < index_.size());
-              const auto r = comparer(index_[lhs], index_[rhs]);
-              if (r) {
+              if (const auto r = comparer(index_[lhs], index_[rhs]); r) {
                 return r < 0;
               }
               return lhs < rhs;
