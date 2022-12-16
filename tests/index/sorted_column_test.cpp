@@ -35,26 +35,35 @@
 namespace {
 
 struct Comparator final : irs::comparer {
-  bool less(irs::bytes_view lhs, irs::bytes_view rhs) const noexcept override {
+  int compare(irs::bytes_view lhs,
+              irs::bytes_view rhs) const noexcept override {
     const auto* plhs = lhs.data();
     const auto* prhs = rhs.data();
 
     if (!plhs && !prhs) {
-      return false;
+      return 0;
     }
 
     if (!plhs) {
-      return true;
+      return -1;
     }
 
     if (!prhs) {
-      return false;
+      return 1;
     }
 
     const auto lhs_value = irs::vread<uint32_t>(plhs);
     const auto rhs_value = irs::vread<uint32_t>(prhs);
 
-    return lhs_value < rhs_value;
+    if (lhs_value < rhs_value) {
+      return -1;
+    }
+
+    if (rhs_value > lhs_value) {
+      return 1;
+    }
+
+    return 0;
   }
 };
 

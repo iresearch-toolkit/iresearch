@@ -31,14 +31,14 @@ class comparer {
  public:
   virtual ~comparer() = default;
 
-  bool operator()(bytes_view lhs, bytes_view rhs) const {
+  int operator()(bytes_view lhs, bytes_view rhs) const {
     IRS_ASSERT(!IsNull(lhs));
     IRS_ASSERT(!IsNull(rhs));
-    return less(lhs, rhs);
+    return compare(lhs, rhs);
   }
 
  protected:
-  virtual bool less(bytes_view lhs, bytes_view rhs) const = 0;
+  virtual int compare(bytes_view lhs, bytes_view rhs) const = 0;
 };  // comparer
 
 inline bool use_dense_sort(size_t size, size_t total) noexcept {

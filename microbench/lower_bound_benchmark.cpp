@@ -20,11 +20,89 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/node_hash_map.h>
 #include <benchmark/benchmark.h>
 
 #include <numeric>
 
 namespace {
+
+template<typename T>
+void fill(T& map, size_t size, int seed) {
+  ::srand(seed);
+  while (size) {
+    const auto kk = rand();
+    map.emplace(kk, kk);
+    --size;
+  }
+}
+
+/// @brief type for register numbers/ids
+
+void BM_hash_std(benchmark::State& state) {
+  int seed = 41;
+
+  std::unordered_map<uint32_t, uint64_t> map;
+  fill(map, state.range(0), seed);
+
+  for (auto _ : state) {
+    for (int i = 0; i < 100; ++i) {
+      srand(seed);
+      for (int64_t i = 0; i < state.range(0); ++i) {
+        auto it = map.find(rand());
+        if (it == map.end()) {
+          std::abort();
+        }
+        benchmark::DoNotOptimize(it);
+      }
+    }
+  }
+}
+
+void BM_hash_absl_flat(benchmark::State& state) {
+  int seed = 41;
+
+  absl::flat_hash_map<uint32_t, uint64_t> map;
+  fill(map, state.range(0), seed);
+
+  for (auto _ : state) {
+    for (int i = 0; i < 100; ++i) {
+      srand(seed);
+      for (int64_t i = 0; i < state.range(0); ++i) {
+        auto it = map.find(rand());
+        if (it == map.end()) {
+          std::abort();
+        }
+        benchmark::DoNotOptimize(it);
+      }
+    }
+  }
+}
+
+void BM_hash_absl_node(benchmark::State& state) {
+  int seed = 41;
+
+  absl::node_hash_map<uint32_t, uint64_t> map;
+  fill(map, state.range(0), seed);
+
+  for (auto _ : state) {
+    for (int i = 0; i < 100; ++i) {
+      srand(seed);
+      for (int64_t i = 0; i < state.range(0); ++i) {
+        auto it = map.find(rand());
+        if (it == map.end()) {
+          std::abort();
+        }
+        benchmark::DoNotOptimize(it);
+      }
+    }
+  }
+}
+
+BENCHMARK(BM_hash_absl_flat)->RangeMultiplier(2)->Range(0, 100);
+BENCHMARK(BM_hash_absl_node)->RangeMultiplier(2)->Range(0, 100);
+BENCHMARK(BM_hash_std)->RangeMultiplier(2)->Range(0, 100);
 
 void BM_lower_bound(benchmark::State& state) {
   std::vector<uint32_t> nums(state.range(0));

@@ -30,10 +30,17 @@ namespace irs {
 
 bool sorted_column::flush_sprase_primary(
   doc_map& docmap, const columnstore_writer::values_writer_f& writer,
-  doc_id_t docs_count, const comparer& less) {
-  auto comparer = [&less, this](const std::pair<doc_id_t, size_t>& lhs,
-                                const std::pair<doc_id_t, size_t>& rhs) {
-    return less(get_value(&lhs), get_value(&rhs));
+  doc_id_t docs_count, const comparer& compare) {
+  auto comparer = [&compare, this](
+                    const std::pair<doc_id_t, size_t>& lhs,
+                    const std::pair<doc_id_t, size_t>& rhs) -> bool {
+    const auto r = compare(get_value(&lhs), get_value(&rhs));
+
+    if (!r) {
+      return &lhs < &rhs;
+    }
+
+    return r < 0;
   };
 
   if (std::is_sorted(index_.begin(), index_.end() - 1, comparer)) {
@@ -44,10 +51,10 @@ bool sorted_column::flush_sprase_primary(
 
   std::vector<size_t> sorted_index(index_.size() - 1);
   std::iota(sorted_index.begin(), sorted_index.end(), 0);
-  std::sort(sorted_index.begin(), sorted_index.end(),
-            [&comparer, this](size_t lhs, size_t rhs) {
-              return comparer(index_[lhs], index_[rhs]);
-            });
+  std::stable_sort(sorted_index.begin(), sorted_index.end(),
+                   [&comparer, this](size_t lhs, size_t rhs) {
+                     return comparer(index_[lhs], index_[rhs]);
+                   });
 
   doc_id_t new_doc = doc_limits::min();
 
