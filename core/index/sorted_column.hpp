@@ -115,7 +115,7 @@ class sorted_column final : public column_output, private util::noncopyable {
     out.write_bytes(payload.data(), payload.size());
   }
 
-  bool flush_sprase_primary(doc_map& docmap,
+  bool flush_sparse_primary(doc_map& docmap,
                             const columnstore_writer::values_writer_f& writer,
                             doc_id_t docs_count, const comparer& less);
 
