@@ -55,7 +55,7 @@ bool sorted_column::flush_sparse_primary(
 #ifdef IRESEARCH_DEBUG
               // Comparator validity check
               const auto r1 = comparer(index_[rhs], index_[lhs]);
-              IRS_ASSERT((r == 0 && r1 == 0) || (r * r1 == -1));
+              IRS_ASSERT((r == 0 && r1 == 0) || (r * r1 < 0));
 #endif
               if (r) {
                 return r < 0;
