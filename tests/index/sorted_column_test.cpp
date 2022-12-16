@@ -59,7 +59,7 @@ struct Comparator final : irs::comparer {
       return -1;
     }
 
-    if (rhs_value > lhs_value) {
+    if (rhs_value < lhs_value) {
       return 1;
     }
 
@@ -302,7 +302,7 @@ TEST_P(SortedColumnTestCase, Sort) {
     ASSERT_TRUE(writer->commit(state));
   }
 
-  std::vector<uint32_t> sorted_values(values, values + std::size(values));
+  std::vector<uint32_t> sorted_values(std::begin(values), std::end(values));
   std::sort(sorted_values.begin(), sorted_values.end());
 
   // check order
