@@ -291,4 +291,3 @@ doc_iterator::ptr MakeConjunction(typename Conjunction::doc_iterators_t&& itrs,
 }
 
 }  // namespace irs
-

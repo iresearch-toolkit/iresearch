@@ -753,4 +753,3 @@ bool update(irs::index_writer& writer,
 }
 
 }  // namespace tests
-

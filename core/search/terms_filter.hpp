@@ -109,4 +109,3 @@ struct hash<::irs::by_terms_options> {
 };
 
 }  // namespace std
-

@@ -101,4 +101,3 @@ struct hash<::irs::by_prefix_options> {
 };
 
 }  // namespace std
-

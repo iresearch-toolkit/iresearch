@@ -101,4 +101,3 @@ using feature_info_provider_t =
     type_info::type_id)>;
 
 }  // namespace irs
-

@@ -67,4 +67,3 @@ void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
                        const index_reader& index);
 
 }  // namespace irs
-

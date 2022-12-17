@@ -70,4 +70,3 @@ int64_t checksum(const index_input& in);
 
 }  // namespace format_utils
 }  // namespace irs
-

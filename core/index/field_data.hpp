@@ -220,4 +220,3 @@ class fields_data : util::noncopyable {
 };  // fields_data
 
 }  // namespace irs
-

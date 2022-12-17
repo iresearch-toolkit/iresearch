@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "pyresearch.hpp"
+
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "store/mmap_directory.hpp"

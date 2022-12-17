@@ -65,4 +65,3 @@ class token_stopwords_stream final : public analyzer,
 
 }  // namespace analysis
 }  // namespace irs
-

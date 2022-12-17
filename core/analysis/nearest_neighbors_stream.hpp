@@ -86,4 +86,3 @@ class nearest_neighbors_stream final : public analyzer,
 
 }  // namespace analysis
 }  // namespace irs
-

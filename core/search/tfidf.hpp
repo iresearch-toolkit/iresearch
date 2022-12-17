@@ -55,4 +55,3 @@ class tfidf_sort : public sort {
 };
 
 }  // namespace irs
-

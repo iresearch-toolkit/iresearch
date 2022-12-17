@@ -56,4 +56,3 @@ class attribute_registrar {
   REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 
 }  // namespace irs
-

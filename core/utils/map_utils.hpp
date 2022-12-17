@@ -64,4 +64,3 @@ inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
 
 }  // namespace map_utils
 }  // namespace irs
-

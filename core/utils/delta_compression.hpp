@@ -54,4 +54,3 @@ struct delta {
 
 }  // namespace compression
 }  // namespace irs
-

@@ -99,4 +99,3 @@ class all_terms_collector : util::noncopyable {
 };
 
 }  // namespace irs
-

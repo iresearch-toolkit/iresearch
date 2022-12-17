@@ -199,4 +199,3 @@ struct ref_tracking_directory : public directory {
 };  // ref_tracking_directory
 
 }  // namespace irs
-

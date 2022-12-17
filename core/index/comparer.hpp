@@ -31,14 +31,20 @@ class comparer {
  public:
   virtual ~comparer() = default;
 
-  bool operator()(bytes_view lhs, bytes_view rhs) const {
+  int operator()(bytes_view lhs, bytes_view rhs) const {
     IRS_ASSERT(!IsNull(lhs));
     IRS_ASSERT(!IsNull(rhs));
-    return less(lhs, rhs);
+    const auto r = compare(lhs, rhs);
+#ifdef IRESEARCH_DEBUG
+    // Comparator validity check
+    const auto r1 = compare(rhs, lhs);
+    IRS_ASSERT((r == 0 && r1 == 0) || (r * r1 < 0));
+#endif
+    return r;
   }
 
  protected:
-  virtual bool less(bytes_view lhs, bytes_view rhs) const = 0;
+  virtual int compare(bytes_view lhs, bytes_view rhs) const = 0;
 };  // comparer
 
 inline bool use_dense_sort(size_t size, size_t total) noexcept {
@@ -48,4 +54,3 @@ inline bool use_dense_sort(size_t size, size_t total) noexcept {
 }
 
 }  // namespace irs
-

@@ -115,4 +115,3 @@ class thread_pool {
 
 }  // namespace async_utils
 }  // namespace irs
-

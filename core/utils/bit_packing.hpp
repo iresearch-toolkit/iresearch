@@ -268,4 +268,3 @@ typedef iterator<uint64_t> iterator64;
 
 }  // namespace packed
 }  // namespace irs
-

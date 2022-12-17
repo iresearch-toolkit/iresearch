@@ -176,4 +176,3 @@ struct score_threshold final : public attribute {
 };
 
 }  // namespace irs
-

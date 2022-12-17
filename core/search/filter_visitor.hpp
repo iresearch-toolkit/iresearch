@@ -50,4 +50,3 @@ struct filter_visitor {
 };  // filter_visitor
 
 }  // namespace irs
-

@@ -28,4 +28,3 @@
 
 irs::directory::ptr create_directory(std::string_view type,
                                      std::string_view path);
-

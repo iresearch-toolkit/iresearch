@@ -105,4 +105,3 @@ bool visit(
 #define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer)    \
   REGISTER_ANALYZER(analyzer_name, ::irs::text_format::vpack, factory, \
                     normalizer)
-

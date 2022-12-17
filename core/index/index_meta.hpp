@@ -243,4 +243,3 @@ class index_meta {
 };  // index_meta
 
 }  // namespace irs
-

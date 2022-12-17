@@ -768,4 +768,3 @@ inline void visit_block_packed(data_input& in, uint32_t size, uint32_t* packed,
 }  // namespace avg
 }  // namespace encode
 }  // namespace irs
-

@@ -118,4 +118,3 @@ class by_granular_range : public filter_base<by_granular_range_options> {
 };  // by_granular_range
 
 }  // namespace irs
-

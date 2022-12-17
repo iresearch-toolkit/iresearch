@@ -328,4 +328,3 @@ struct memory_output {
 };  // memory_output
 
 }  // namespace irs
-
