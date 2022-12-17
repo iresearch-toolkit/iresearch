@@ -321,34 +321,26 @@ class index_writer : private util::noncopyable {
 
   // Additional information required for removal/update requests
   struct modification_context {
-    modification_context(const irs::filter& match_filter, size_t gen,
-                         bool is_update)
-      : filter(std::shared_ptr<const irs::filter>{}, &match_filter),
-        generation(gen),
-        update(is_update),
-        seen(false) {}
     modification_context(std::shared_ptr<const irs::filter> match_filter,
                          size_t gen, bool is_update)
-      : filter(std::move(match_filter)),
-        generation(gen),
-        update(is_update),
-        seen(false) {}
+      : filter(std::move(match_filter)), generation(gen), update(is_update) {}
+    modification_context(const irs::filter& match_filter, size_t gen,
+                         bool is_update)
+      : modification_context{
+          {std::shared_ptr<const irs::filter>{}, &match_filter},
+          gen,
+          is_update} {}
     modification_context(irs::filter::ptr&& match_filter, size_t gen,
                          bool is_update)
-      : filter(std::move(match_filter)),
-        generation(gen),
-        update(is_update),
-        seen(false) {}
-    modification_context(modification_context&&) = default;
-    modification_context& operator=(const modification_context&) = delete;
-    modification_context& operator=(modification_context&&) = delete;
+      : modification_context{std::shared_ptr{std::move(match_filter)}, gen,
+                             is_update} {}
 
     // keep a handle to the filter for the case when this object has ownership
     std::shared_ptr<const irs::filter> filter;
-    const size_t generation;
+    size_t generation;
     // this is an update modification (as opposed to remove)
-    const bool update;
-    bool seen;
+    bool update;
+    bool seen{false};
   };
 
   static_assert(std::is_nothrow_move_constructible_v<modification_context>);

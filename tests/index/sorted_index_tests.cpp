@@ -2193,12 +2193,12 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(writer->commit());
 
   // Remove docs from segment 1
-  writer->documents().remove(
+  writer->documents().Remove(
     irs::filter::ptr{MakeByTerm("name", "B")});  // doc1
-  writer->documents().remove(
+  writer->documents().Remove(
     irs::filter::ptr{MakeByTerm("name", "D")});  // doc3
   // Remove docs from segment 0
-  writer->documents().remove(
+  writer->documents().Remove(
     irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
   ASSERT_TRUE(writer->commit());
 
@@ -2430,13 +2430,13 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(writer->commit());
 
   // Remove docs
-  writer->documents().remove(*docs[2].second);
-  writer->documents().remove(*docs[3].second);
+  writer->documents().Remove(*docs[2].second);
+  writer->documents().Remove(*docs[3].second);
 
-  writer->documents().remove(*docs[4].second);
-  writer->documents().remove(*docs[5].second);
+  writer->documents().Remove(*docs[4].second);
+  writer->documents().Remove(*docs[5].second);
 
-  writer->documents().remove(*docs[9].second);
+  writer->documents().Remove(*docs[9].second);
   ASSERT_TRUE(writer->commit());
 
   {
