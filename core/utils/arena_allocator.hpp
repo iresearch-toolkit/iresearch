@@ -167,4 +167,3 @@ using arena_vector = std::vector<T, arena_allocator<T, Arena>>;
 
 }  // namespace memory
 }  // namespace irs
-

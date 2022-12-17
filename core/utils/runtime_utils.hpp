@@ -65,4 +65,3 @@ inline int unsetenv(const char* name) noexcept {
 }
 
 }  // namespace irs
-

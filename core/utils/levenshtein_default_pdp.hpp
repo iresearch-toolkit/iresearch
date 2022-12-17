@@ -39,4 +39,3 @@ const parametric_description& default_pdp(byte_type max_distance,
                                           bool with_transpositions);
 
 }  // namespace irs
-

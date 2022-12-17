@@ -298,4 +298,3 @@ irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore2
 }  // namespace irs
-

@@ -84,7 +84,8 @@ void AssertCallback(std::string_view file, std::size_t line,
   if (!message.empty()) {
     msg << " With message '" << message << "'";
   }
-  FAIL() << msg;
+
+  ASSERT_TRUE(false) << msg;
 }
 
 // Custom ICU data

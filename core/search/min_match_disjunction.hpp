@@ -416,4 +416,3 @@ struct RebindIterator<min_match_disjunction<DocIterator, Merger>> {
 };
 
 }  // namespace irs
-

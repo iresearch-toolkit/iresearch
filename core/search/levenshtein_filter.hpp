@@ -144,4 +144,3 @@ struct hash<::irs::by_edit_distance_filter_options> {
 };
 
 }  // namespace std
-

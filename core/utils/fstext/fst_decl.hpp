@@ -57,4 +57,3 @@ template<typename Key, typename Weight, typename Stats>
 class fst_builder;
 
 }  // namespace irs
-

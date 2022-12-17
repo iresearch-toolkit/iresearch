@@ -633,4 +633,3 @@ class unbounded_object_pool_volatile : public unbounded_object_pool_base<T> {
 };
 
 }  // namespace irs
-

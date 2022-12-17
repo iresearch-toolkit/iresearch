@@ -116,4 +116,3 @@ class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
 };
 
 }  // namespace irs
-

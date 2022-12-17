@@ -78,4 +78,3 @@ struct lz4 {
 
 }  // namespace compression
 }  // namespace irs
-

@@ -46,4 +46,3 @@ class TermQuery final : public filter::prepared {
 };
 
 }  // namespace irs
-

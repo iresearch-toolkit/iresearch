@@ -71,4 +71,3 @@ class states_cache : private util::noncopyable {
 };  // states_cache
 
 }  // namespace irs
-

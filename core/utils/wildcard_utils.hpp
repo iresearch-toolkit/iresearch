@@ -63,4 +63,3 @@ inline automaton from_wildcard(std::string_view expr) {
 }
 
 }  // namespace irs
-

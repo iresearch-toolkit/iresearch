@@ -57,4 +57,3 @@ class by_column_existence final
 };
 
 }  // namespace irs
-

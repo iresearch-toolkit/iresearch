@@ -59,4 +59,3 @@ inline T* get_mutable(Provider* attrs) {
 }
 
 }  // namespace irs
-

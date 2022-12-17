@@ -183,4 +183,3 @@ class ptr_iterator
 };
 
 }  // namespace irs
-

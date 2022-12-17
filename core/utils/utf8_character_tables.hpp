@@ -928,4 +928,3 @@ constexpr frozen::map<uint32_t, uint16_t, 3566> GENERAL_CATEGORY_TABLE = {
 
 }  // namespace utf8_utils
 }  // namespace irs
-

@@ -175,4 +175,3 @@ class Not : public filter, public AllDocsProvider {
 };
 
 }  // namespace irs
-

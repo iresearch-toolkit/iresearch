@@ -202,4 +202,3 @@ inline std::ostream& operator<<(std::ostream& strm,
 
 }  // namespace fstext
 }  // namespace fst
-

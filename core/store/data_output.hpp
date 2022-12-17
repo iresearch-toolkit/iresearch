@@ -161,4 +161,3 @@ class buffered_index_output : public index_output, util::noncopyable {
 };  // buffered_index_output
 
 }  // namespace irs
-

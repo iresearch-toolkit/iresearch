@@ -139,4 +139,3 @@ struct type<analysis::ngram_token_stream<StreamType>>
   : type<analysis::ngram_token_stream_base> {};
 
 }  // namespace irs
-

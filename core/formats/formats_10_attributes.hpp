@@ -70,4 +70,3 @@ template<>
 struct type<version10::term_meta> : type<irs::term_meta> {};
 
 }  // namespace irs
-

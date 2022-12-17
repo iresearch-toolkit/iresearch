@@ -66,4 +66,3 @@ class by_same_position : public filter_with_options<by_same_position_options> {
 };
 
 }  // namespace irs
-

@@ -163,4 +163,3 @@ class by_phrase : public filter_base<by_phrase_options> {
 };
 
 }  // namespace irs
-

@@ -82,4 +82,3 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
 };
 
 }  // namespace irs::analysis
-

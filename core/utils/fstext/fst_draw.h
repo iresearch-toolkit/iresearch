@@ -294,4 +294,3 @@ inline bool drawFst(const Fst& fst, const std::string& dest,
 }
 
 }  // namespace fst
-

@@ -29,4 +29,3 @@
 #cmakedefine IResearch_version "${IResearch_version}"
 
 // clang-format on
-

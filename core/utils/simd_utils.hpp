@@ -328,4 +328,3 @@ void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
 
 }  // namespace simd
 }  // namespace irs
-

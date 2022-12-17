@@ -62,4 +62,3 @@ using range_label = fst::fsa::RangeLabel;
 using automaton_table_matcher = fst::TableMatcher<automaton, 256, true, true>;
 
 }  // namespace irs
-

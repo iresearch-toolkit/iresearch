@@ -61,4 +61,3 @@ inline bool get_bool(GenericObject const& json, std::string_view name,
 }
 
 }  // namespace irs
-

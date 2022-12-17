@@ -33,4 +33,3 @@ void load_libraries(std::string_view path, std::string_view prefix,
                     std::string_view suffix);
 
 }  // namespace irs
-

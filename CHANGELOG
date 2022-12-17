@@ -1,6 +1,8 @@
 master
 -------------------------
 
+* Make primary sort stable.
+
 * Add ability to specify custom callback for debug assertions.
 
 * Extend `term_reader` interface with the following methods:

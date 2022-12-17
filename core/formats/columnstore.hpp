@@ -60,4 +60,3 @@ irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore
 }  // namespace irs
-

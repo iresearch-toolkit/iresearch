@@ -39,4 +39,3 @@ struct noncopyable {
 
 }  // namespace util
 }  // namespace irs
-

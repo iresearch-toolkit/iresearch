@@ -240,4 +240,3 @@ inline To bit_cast(const From& from) noexcept {
   [[maybe_unused]] inline constexpr x operator~(x v) noexcept {          \
     return irs::enum_bitwise_not(v);                                     \
   }
-

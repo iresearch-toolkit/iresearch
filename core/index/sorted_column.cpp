@@ -28,15 +28,18 @@
 
 namespace irs {
 
-bool sorted_column::flush_sprase_primary(
+bool sorted_column::flush_sparse_primary(
   doc_map& docmap, const columnstore_writer::values_writer_f& writer,
-  doc_id_t docs_count, const comparer& less) {
-  auto comparer = [&less, this](const std::pair<doc_id_t, size_t>& lhs,
-                                const std::pair<doc_id_t, size_t>& rhs) {
-    return less(get_value(&lhs), get_value(&rhs));
+  doc_id_t docs_count, const comparer& compare) {
+  auto comparer = [&](const std::pair<doc_id_t, size_t>& lhs,
+                      const std::pair<doc_id_t, size_t>& rhs) -> int {
+    return compare(get_value(&lhs), get_value(&rhs));
   };
 
-  if (std::is_sorted(index_.begin(), index_.end() - 1, comparer)) {
+  if (std::is_sorted(index_.begin(), index_.end() - 1,
+                     [&](const auto& lhs, const auto& rhs) {
+                       return comparer(lhs, rhs) < 0;
+                     })) {
     return false;
   }
 
@@ -45,8 +48,13 @@ bool sorted_column::flush_sprase_primary(
   std::vector<size_t> sorted_index(index_.size() - 1);
   std::iota(sorted_index.begin(), sorted_index.end(), 0);
   std::sort(sorted_index.begin(), sorted_index.end(),
-            [&comparer, this](size_t lhs, size_t rhs) {
-              return comparer(index_[lhs], index_[rhs]);
+            [&](size_t lhs, size_t rhs) {
+              IRS_ASSERT(lhs < index_.size());
+              IRS_ASSERT(rhs < index_.size());
+              if (const auto r = comparer(index_[lhs], index_[rhs]); r) {
+                return r < 0;
+              }
+              return lhs < rhs;
             });
 
   doc_id_t new_doc = doc_limits::min();
@@ -100,7 +108,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
   auto [column_id, column_writer] =
     writer.push_column(info_, std::move(finalizer));
 
-  if (!flush_sprase_primary(docmap, column_writer, docs_count, less)) {
+  if (!flush_sparse_primary(docmap, column_writer, docs_count, less)) {
     flush_already_sorted(column_writer);
   }
 

@@ -123,4 +123,3 @@ inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
 }
 
 }  // namespace irs
-

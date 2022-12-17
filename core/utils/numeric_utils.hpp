@@ -223,4 +223,3 @@ struct numeric_traits<long double> {};  // numeric_traits
 
 }  // namespace numeric_utils
 }  // namespace irs
-

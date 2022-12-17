@@ -108,4 +108,3 @@ class explicit_matcher final
 };                        // explicit_matcher
 
 }  // namespace fst
-
