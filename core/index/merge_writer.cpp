@@ -1053,8 +1053,8 @@ struct PrimarySortIteratorAdapter {
 class MinHeapContext {
  public:
   MinHeapContext(std::span<PrimarySortIteratorAdapter> itrs,
-                 const comparer& less) noexcept
-    : itrs_{itrs}, less_{&less} {}
+                 const comparer& compare) noexcept
+    : itrs_{itrs}, compare_{&compare} {}
 
   // advance
   bool operator()(const size_t i) const {
@@ -1073,13 +1073,11 @@ class MinHeapContext {
     const auto& lhs = itrs_[lhs_idx];
     const auto& rhs = itrs_[rhs_idx];
 
-    // FIXME(gnusi): Consider changing comparator to 3-way comparison
-    if (const bytes_view lhs_value = lhs.payload->value,
-        rhs_value = rhs.payload->value;
-        (*less_)(rhs_value, lhs_value)) {
-      return true;
-    } else if ((*less_)(lhs_value, rhs_value)) {
-      return false;
+    const bytes_view lhs_value = lhs.payload->value;
+    const bytes_view rhs_value = rhs.payload->value;
+
+    if (const auto r = (*compare_)(lhs_value, rhs_value); r) {
+      return r > 0;
     }
 
     // tie braker to avoid splitting document blocks, can use index as we always
@@ -1089,7 +1087,7 @@ class MinHeapContext {
 
  private:
   std::span<PrimarySortIteratorAdapter> itrs_;
-  const comparer* less_;
+  const comparer* compare_;
 };
 
 template<typename Iterator>
