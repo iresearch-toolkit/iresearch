@@ -35,26 +35,35 @@
 namespace {
 
 struct Comparator final : irs::comparer {
-  bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept override {
+  int compare(irs::bytes_ref lhs,
+              irs::bytes_ref rhs) const noexcept override {
     const auto* plhs = lhs.data();
     const auto* prhs = rhs.data();
 
     if (!plhs && !prhs) {
-      return false;
+      return 0;
     }
 
     if (!plhs) {
-      return true;
+      return -1;
     }
 
     if (!prhs) {
-      return false;
+      return 1;
     }
 
     const auto lhs_value = irs::vread<uint32_t>(plhs);
     const auto rhs_value = irs::vread<uint32_t>(prhs);
 
-    return lhs_value < rhs_value;
+    if (lhs_value < rhs_value) {
+      return -1;
+    }
+
+    if (rhs_value < lhs_value) {
+      return 1;
+    }
+
+    return 0;
   }
 };
 
@@ -293,7 +302,7 @@ TEST_P(SortedColumnTestCase, Sort) {
     ASSERT_TRUE(writer->commit(state));
   }
 
-  std::vector<uint32_t> sorted_values(values, values + std::size(values));
+  std::vector<uint32_t> sorted_values(std::begin(values), std::end(values));
   std::sort(sorted_values.begin(), sorted_values.end());
 
   // check order

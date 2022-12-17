@@ -32,14 +32,15 @@ class comparer {
  public:
   virtual ~comparer() = default;
 
-  bool operator()(bytes_ref lhs, bytes_ref rhs) const {
+  int operator()(bytes_ref lhs, bytes_ref rhs) const {
     assert(!lhs.null());
     assert(!rhs.null());
-    return less(lhs, rhs);
+    const auto r = compare(lhs, rhs);
+    return r;
   }
 
  protected:
-  virtual bool less(bytes_ref lhs, bytes_ref rhs) const = 0;
+  virtual int compare(bytes_ref lhs, bytes_ref rhs) const = 0;
 };  // comparer
 
 inline bool use_dense_sort(size_t size, size_t total) noexcept {

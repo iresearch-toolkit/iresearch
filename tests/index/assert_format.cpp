@@ -392,10 +392,10 @@ void index_segment::sort(const irs::comparer& comparator) {
     return;
   }
 
-  std::sort(sort_.begin(), sort_.end(),
-            [&comparator](const auto& lhs, const auto& rhs) {
-              return comparator(std::get<0>(lhs), std::get<0>(rhs));
-            });
+  std::stable_sort(sort_.begin(), sort_.end(),
+                   [&comparator](const auto& lhs, const auto& rhs) {
+                     return comparator(std::get<0>(lhs), std::get<0>(rhs)) < 0;
+                   });
 
   irs::doc_id_t new_doc_id = irs::doc_limits::min();
   std::map<irs::doc_id_t, irs::doc_id_t> order;

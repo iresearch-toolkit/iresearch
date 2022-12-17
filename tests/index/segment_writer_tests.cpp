@@ -137,6 +137,14 @@ TEST_F(segment_writer_tests, invalid_actions) {
 
 #endif
 
+struct Comparator final : irs::comparer {
+  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const noexcept final {
+    EXPECT_FALSE(irs::IsNull(lhs));
+    EXPECT_FALSE(irs::IsNull(rhs));
+    return lhs.compare(rhs);
+  }
+};
+
 TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   struct field_t {
     const irs::string_ref& name() const {
@@ -150,14 +158,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
     }
   } field;
 
-  struct comparator final : irs::comparer {
-    bool less(irs::bytes_ref lhs,
-              irs::bytes_ref rhs) const noexcept override {
-      EXPECT_FALSE(lhs.null());
-      EXPECT_FALSE(rhs.null());
-      return lhs < rhs;
-    }
-  } less;
+  Comparator compare;
 
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
@@ -165,7 +166,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   irs::memory_directory dir;
 
   auto writer_sorted =
-    irs::segment_writer::make(dir, column_info, feature_info, &less);
+    irs::segment_writer::make(dir, column_info, feature_info, &compare);
   ASSERT_EQ(0, writer_sorted->memory_active());
   auto writer_unsorted =
     irs::segment_writer::make(dir, column_info, feature_info, nullptr);
@@ -268,21 +269,14 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
     }
   } field;
 
-  struct comparator final : irs::comparer {
-    bool less(irs::bytes_ref lhs,
-              irs::bytes_ref rhs) const noexcept override {
-      EXPECT_FALSE(lhs.null());
-      EXPECT_FALSE(rhs.null());
-      return lhs < rhs;
-    }
-  } less;
+  Comparator compare;
 
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
   irs::memory_directory dir;
   auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, &less);
+    irs::segment_writer::make(dir, column_info, feature_info, &compare);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
@@ -321,21 +315,14 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
     }
   } field;
 
-  struct comparator final : irs::comparer {
-    bool less(irs::bytes_ref lhs,
-              irs::bytes_ref rhs) const noexcept override {
-      EXPECT_FALSE(lhs.null());
-      EXPECT_FALSE(rhs.null());
-      return lhs < rhs;
-    }
-  } less;
+  Comparator compare;
 
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
   irs::memory_directory dir;
   auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, &less);
+    irs::segment_writer::make(dir, column_info, feature_info, &compare);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::segment_meta segment;
@@ -529,14 +516,14 @@ TEST_F(segment_writer_tests, index_field) {
 }
 
 struct StringComparer final : irs::comparer {
-  bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
+  int compare(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
     EXPECT_FALSE(lhs.null());
     EXPECT_FALSE(rhs.null());
 
     const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.data());
     const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.data());
 
-    return lhs_value < rhs_value;
+    return lhs_value.compare(rhs_value);
   }
 };
 
