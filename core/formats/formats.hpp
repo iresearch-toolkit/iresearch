@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-
 #include <function2/function2.hpp>
 #include <set>
 #include <vector>
@@ -41,6 +39,8 @@
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/type_info.hpp"
+
+#include <absl/container/flat_hash_set.h>
 
 namespace irs {
 

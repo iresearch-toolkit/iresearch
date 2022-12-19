@@ -23,8 +23,6 @@
 
 #include "segment_reader.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
 #include "analysis/token_attributes.hpp"
 #include "formats/format_utils.hpp"
 #include "index/index_meta.hpp"
@@ -33,6 +31,8 @@
 #include "utils/index_utils.hpp"
 #include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace {
 

@@ -22,13 +22,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/container/flat_hash_map.h>
-
 #include <functional>
 #include <string>
 
 #include "index-convert.hpp"
 #include "index-dump.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 using handlers_t =
   absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;

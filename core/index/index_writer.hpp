@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <atomic>
 #include <functional>
 #include <string_view>
@@ -44,6 +42,8 @@
 #include "utils/object_pool.hpp"
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 

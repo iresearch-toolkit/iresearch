@@ -23,8 +23,6 @@
 
 #include "merge_writer.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
 #if defined(IRESEARCH_DEBUG) && !defined(__clang__)
 #include <ranges>
 #endif
@@ -43,6 +41,8 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 namespace {

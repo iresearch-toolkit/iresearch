@@ -23,8 +23,6 @@
 
 #include "index_writer.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
 #include <sstream>
 
 #include "formats/format_utils.hpp"
@@ -40,6 +38,8 @@
 #include "utils/string_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 namespace {

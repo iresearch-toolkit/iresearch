@@ -20,8 +20,6 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/container/flat_hash_map.h>
-
 #include <functional>
 #include <iomanip>
 
@@ -41,6 +39,8 @@
 #include "store/store_utils.hpp"
 #include "utils/compression.hpp"
 #include "utils/levenshtein_utils.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 using handlers_t =
   absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;

@@ -22,12 +22,12 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <vector>
 
 #include "index/index_reader.hpp"
 #include "shared.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 

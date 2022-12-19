@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
 #include <unicode/locid.h>
 
 #include "analyzers.hpp"
@@ -33,6 +32,8 @@
 #include "token_attributes.hpp"
 #include "token_stream.hpp"
 #include "utils/attribute_helper.hpp"
+
+#include <absl/container/flat_hash_set.h>
 
 namespace irs {
 namespace analysis {

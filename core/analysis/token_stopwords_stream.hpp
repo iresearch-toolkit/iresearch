@@ -23,12 +23,12 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/attribute_helper.hpp"
 #include "utils/hash_utils.hpp"
+
+#include <absl/container/flat_hash_set.h>
 
 namespace irs {
 namespace analysis {
