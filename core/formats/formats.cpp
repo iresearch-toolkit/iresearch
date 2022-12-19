@@ -85,7 +85,7 @@ namespace irs {
 
 /* static */ void index_meta_reader::complete(
   index_meta& meta, uint64_t generation, uint64_t counter,
-  index_meta::index_segments_t&& segments, bstring* payload) {
+  std::vector<index_meta::index_segment_t>&& segments, bstring* payload) {
   meta.gen_ = generation;
   meta.last_gen_ = generation;
   meta.seg_counter_ = counter;

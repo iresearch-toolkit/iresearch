@@ -107,38 +107,27 @@ bool segment_meta::operator!=(const segment_meta& other) const noexcept {
          files != other.files || sort != other.sort;
 }
 
-/* -------------------------------------------------------------------
- * index_meta
- * ------------------------------------------------------------------*/
-
-index_meta::index_meta()
-  : gen_(index_gen_limits::invalid()),
-    last_gen_(index_gen_limits::invalid()),
-    seg_counter_(0) {}
 index_meta::index_meta(const index_meta& rhs)
   : gen_(rhs.gen_),
     last_gen_(rhs.last_gen_),
-    seg_counter_(rhs.seg_counter_.load()),
+    seg_counter_(rhs.seg_counter_.load(std::memory_order_relaxed)),
     segments_(rhs.segments_),
-    payload_buf_(rhs.payload_buf_),
-    payload_(IsNull(rhs.payload_) ? bytes_view{} : bytes_view(payload_buf_)) {}
+    payload_(std::move(rhs.payload_)) {}
 
 index_meta::index_meta(index_meta&& rhs) noexcept
   : gen_(std::move(rhs.gen_)),
     last_gen_(std::move(rhs.last_gen_)),
-    seg_counter_(rhs.seg_counter_.load()),
+    seg_counter_(rhs.seg_counter_.load(std::memory_order_relaxed)),
     segments_(std::move(rhs.segments_)),
-    payload_buf_(std::move(rhs.payload_buf_)),
-    payload_(IsNull(rhs.payload_) ? bytes_view{} : bytes_view(payload_buf_)) {}
+    payload_(std::move(rhs.payload_)) {}
 
 index_meta& index_meta::operator=(index_meta&& rhs) noexcept {
   if (this != &rhs) {
     gen_ = std::move(rhs.gen_);
     last_gen_ = std::move(rhs.last_gen_);
-    seg_counter_ = rhs.seg_counter_.load();
+    seg_counter_ = rhs.seg_counter_.load(std::memory_order_relaxed);
     segments_ = std::move(rhs.segments_);
-    payload_buf_ = std::move(rhs.payload_buf_);
-    payload_ = IsNull(rhs.payload_) ? bytes_view{} : bytes_view(payload_buf_);
+    payload_ = std::move(rhs.payload_);
   }
 
   return *this;
@@ -150,7 +139,7 @@ bool index_meta::operator==(const index_meta& other) const noexcept {
   }
 
   if (gen_ != other.gen_ || last_gen_ != other.last_gen_ ||
-      seg_counter_ != other.seg_counter_ ||
+      counter() != other.counter() ||
       segments_.size() != other.segments_.size() ||
       payload_ != other.payload_) {
     return false;

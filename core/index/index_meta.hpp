@@ -27,10 +27,10 @@
 
 #include <algorithm>
 #include <atomic>
+#include <span>
 #include <vector>
 
 #include "error/error.hpp"
-#include "store/directory.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
 
@@ -41,13 +41,8 @@ typedef std::shared_ptr<const format> format_ptr;
 
 }  // namespace irs
 
-// format_ptr
-MSVC_ONLY(                                             // cppcheck-suppress
-  template class std::shared_ptr<const irs::format>;)  // unknownMacro
-
 namespace irs {
 
-struct directory;
 class index_writer;
 
 struct segment_meta {
@@ -110,15 +105,12 @@ class index_meta {
 
     std::string filename;
     segment_meta meta;
-  };  // index_segment_t
+  };
 
   static_assert(std::is_nothrow_move_constructible_v<index_segment_t>);
   static_assert(std::is_nothrow_move_assignable_v<index_segment_t>);
 
-  using index_segments_t = std::vector<index_segment_t>;
-  using ptr = std::unique_ptr<index_meta>;
-
-  index_meta();
+  index_meta() = default;
   index_meta(index_meta&& rhs) noexcept;
   index_meta(const index_meta& rhs);
   index_meta& operator=(index_meta&& rhs) noexcept;
@@ -127,12 +119,6 @@ class index_meta {
   bool operator==(const index_meta& other) const noexcept;
   bool operator!=(const index_meta& other) const noexcept {
     return !(*this == other);
-  }
-
-  template<typename ForwardIterator>
-  void add(ForwardIterator begin, ForwardIterator end) {
-    segments_.reserve(segments_.size() + std::distance(begin, end));
-    std::move(begin, end, std::back_inserter(segments_));
   }
 
   void add(index_segment_t&& segment) {
@@ -170,8 +156,12 @@ class index_meta {
     return true;
   }
 
-  uint64_t increment() noexcept { return ++seg_counter_; }
-  uint64_t counter() const noexcept { return seg_counter_; }
+  uint64_t increment() noexcept {
+    return seg_counter_.fetch_add(1, std::memory_order_relaxed) + 1;
+  }
+  uint64_t counter() const noexcept {
+    return seg_counter_.load(std::memory_order_relaxed);
+  }
   uint64_t generation() const noexcept { return gen_; }
 
   auto begin() noexcept { return segments_.begin(); }
@@ -189,8 +179,8 @@ class index_meta {
   bool empty() const noexcept { return segments_.empty(); }
 
   void clear() {
-    segments_.clear();
     // leave version and generation counters unchanged do to possible readers
+    segments_.clear();
   }
 
   void reset(const index_meta& rhs) {
@@ -208,38 +198,38 @@ class index_meta {
     return segments_[i];
   }
 
-  const index_segments_t& segments() const noexcept { return segments_; }
+  std::span<const index_segment_t> segments() const noexcept {
+    return segments_;
+  }
 
-  const bytes_view& payload() const noexcept { return payload_; }
+  bytes_view payload() const noexcept {
+    return payload_.has_value() ? payload_.value() : bytes_view{};
+  }
 
  private:
   friend class index_writer;
   friend struct index_meta_reader;
   friend struct index_meta_writer;
 
-  uint64_t gen_;
-  uint64_t last_gen_;
-  std::atomic<uint64_t> seg_counter_;
-  index_segments_t segments_;
-  bstring payload_buf_;
-  bytes_view payload_;
-
   uint64_t next_generation() const noexcept;
 
   void payload(bstring&& payload) noexcept {
-    payload_buf_ = std::move(payload);
-    payload_ = payload_buf_;
+    payload_.emplace(std::move(payload));
   }
 
   void payload(bytes_view payload) {
     if (IsNull(payload)) {
-      payload_buf_.clear();
-      payload_ = {};
+      payload_.reset();
     } else {
-      payload_buf_ = payload;
-      payload_ = payload_buf_;
+      payload_.emplace(payload);
     }
   }
-};  // index_meta
+
+  uint64_t gen_{index_gen_limits::invalid()};
+  uint64_t last_gen_{index_gen_limits::invalid()};
+  std::atomic<uint64_t> seg_counter_{0};
+  std::vector<index_segment_t> segments_;
+  std::optional<bstring> payload_;
+};
 
 }  // namespace irs

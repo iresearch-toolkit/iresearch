@@ -508,7 +508,7 @@ struct index_meta_reader {
 
  protected:
   static void complete(index_meta& meta, uint64_t generation, uint64_t counter,
-                       index_meta::index_segments_t&& segments,
+                       std::vector<index_meta::index_segment_t>&& segments,
                        bstring* payload_buf);
 };
 
