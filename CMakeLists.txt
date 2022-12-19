@@ -92,10 +92,11 @@ option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
-option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 
 if (CMAKE_BUILD_TYPE MATCHES "Debug|Coverage")
-  set(IRESEARCH_DEBUG ON)
+  option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" ON)
+else ()
+  option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 endif ()
 
 add_option_gprof(FALSE)
