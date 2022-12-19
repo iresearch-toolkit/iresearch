@@ -25,6 +25,8 @@
 #include <absl/container/flat_hash_set.h>
 
 #include <function2/function2.hpp>
+#include <set>
+#include <vector>
 
 #include "formats/seek_cookie.hpp"
 #include "index/column_info.hpp"

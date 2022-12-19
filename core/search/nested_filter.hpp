@@ -23,6 +23,7 @@
 #pragma once
 
 #include <compare>
+#include <variant>
 
 #include "search/filter.hpp"
 #include "utils/type_limits.hpp"

@@ -28,6 +28,8 @@
 #include <unicode/ustring.h>   // for u_strToUTF32, u_strToUTF8
 #include <velocypack/Parser.h>
 
+#include <unordered_set>
+
 #include "analysis/text_token_stream.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
