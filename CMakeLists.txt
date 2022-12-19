@@ -98,10 +98,6 @@ if (CMAKE_BUILD_TYPE MATCHES "Debug|Coverage")
   set(IRESEARCH_DEBUG ON)
 endif ()
 
-if (IRESEARCH_DEBUG)
-  add_definitions(-DIRESEARCH_DEBUG)
-endif ()
-
 add_option_gprof(FALSE)
 
 # test for ARM
@@ -314,6 +310,11 @@ foreach (ELEMENT ${IRESEARCH_PREBUILT_LIST})
 endforeach ()
 
 add_subdirectory(external)
+
+if (IRESEARCH_DEBUG)
+  add_definitions(-DIRESEARCH_DEBUG)
+endif ()
+
 add_subdirectory(core)
 
 if (USE_UTILS)
