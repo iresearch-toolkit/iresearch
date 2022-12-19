@@ -40,6 +40,7 @@
 #endif
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/strings/internal/resize_uninitialized.h>
 
 #include "utils/fstext/fst_utils.hpp"
 
