@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_map>
+#include <unordered_set>
+
 #include "formats/formats_10.hpp"
 #include "index/comparer.hpp"
 #include "index/merge_writer.hpp"

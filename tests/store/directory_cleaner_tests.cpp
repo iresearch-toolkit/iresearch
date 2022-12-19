@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_set>
+
 #include "formats/formats_10.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"

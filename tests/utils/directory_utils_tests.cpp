@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_set>
+
 #include "index/index_meta.hpp"
 #include "index/index_tests.hpp"
 #include "store/memory_directory.hpp"
