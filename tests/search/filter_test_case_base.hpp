@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <variant>
+
 #include "analysis/token_attributes.hpp"
 #include "index/index_tests.hpp"
 #include "search/cost.hpp"
