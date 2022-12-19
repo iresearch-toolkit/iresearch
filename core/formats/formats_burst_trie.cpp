@@ -103,6 +103,7 @@
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/strings/internal/resize_uninitialized.h>
+#include <absl/strings/str_cat.h>
 
 // clang-format on
 
