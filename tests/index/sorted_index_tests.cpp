@@ -519,6 +519,74 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
   }
 }
 
+TEST_P(SortedIndexTestCase, reader_components) {
+  StringComparer comparer;
+
+  tests::json_doc_generator gen{
+    resource("simple_sequential.json"),
+    [](tests::document& doc, const std::string& name,
+       const tests::json_doc_generator::json_value& data) {
+      if (name == "name") {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.insert(field);
+        doc.sorted = field;
+      }
+    }};
+
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+
+  irs::index_writer::init_options opts;
+  opts.comparator = &comparer;
+
+  auto query_doc1 = MakeByTerm("name", "A");
+  auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, opts);
+  ASSERT_TRUE(insert(*writer, *doc1, 1, true));
+  ASSERT_TRUE(insert(*writer, *doc2, 1, true));
+  ASSERT_TRUE(writer->commit());
+
+  auto check_reader = [](irs::directory_reader reader, irs::doc_id_t live_docs,
+                         bool has_columnstore, bool has_index) {
+    ASSERT_EQ(1, reader.size());
+
+    auto& segment = reader[0];
+    ASSERT_EQ(2, segment.docs_count());
+    ASSERT_EQ(live_docs, segment.live_docs_count());
+    ASSERT_EQ(has_index, nullptr != segment.field("name"));
+    ASSERT_EQ(has_columnstore, nullptr != segment.column("name"));
+    ASSERT_EQ(has_columnstore, nullptr != segment.sort());
+  };
+
+  auto default_reader = irs::directory_reader::open(dir(), codec());
+  auto no_cs_mask_reader = irs::directory_reader::open(
+    dir(), codec(),
+    irs::index_reader_options{.columnstore = false, .doc_mask = false});
+  auto no_index_reader = irs::directory_reader::open(
+    dir(), codec(), irs::index_reader_options{.index = false});
+  auto empty_index_reader = irs::directory_reader::open(
+    dir(), codec(),
+    irs::index_reader_options{
+      .index = false, .columnstore = false, .doc_mask = false});
+
+  check_reader(default_reader, 2, true, true);
+  check_reader(no_cs_mask_reader, 2, false, true);
+  check_reader(no_index_reader, 2, true, false);
+  check_reader(empty_index_reader, 2, false, false);
+
+  writer->documents().remove(*query_doc1);
+  ASSERT_TRUE(writer->commit());
+
+  default_reader = default_reader.reopen();
+  no_cs_mask_reader = no_cs_mask_reader.reopen();
+  no_index_reader = no_index_reader.reopen();
+  empty_index_reader = empty_index_reader.reopen();
+
+  check_reader(default_reader, 1, true, true);
+  check_reader(no_cs_mask_reader, 2, false, true);
+  check_reader(no_index_reader, 1, true, false);
+  check_reader(empty_index_reader, 2, false, false);
+}
+
 TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
   constexpr std::string_view sorted_column = "name";
 

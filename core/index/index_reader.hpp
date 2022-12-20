@@ -45,6 +45,15 @@ using column_warmup_callback_f =
 struct index_reader_options {
   column_warmup_callback_f warmup_columns;
   memory_accounting_f pinned_memory_accounting;
+
+  // Open inverted index
+  bool index{true};
+
+  // Open columnstore
+  bool columnstore{true};
+
+  // Read document mask
+  bool doc_mask{true};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
