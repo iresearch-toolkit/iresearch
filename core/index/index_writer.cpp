@@ -550,7 +550,7 @@ std::string to_string(const index_writer::consolidation_t& consolidation) {
 using namespace std::chrono_literals;
 
 readers_cache::key_t::key_t(const segment_meta& meta)
-  : name(meta.name), version(meta.version) {}
+  : name{meta.name}, version{meta.version} {}
 
 segment_reader readers_cache::emplace(const segment_meta& meta) {
   REGISTER_TIMER_DETAILED();
@@ -565,11 +565,10 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   cached_reader = std::move(reader);  // clear existing reader
 
   // update cache, in case of failure reader stays empty
-  // intentionally never open columnstore
+  // intentionally never cache columnstore columns
   reader = cached_reader
              ? cached_reader.reopen(meta)
-             : segment_reader::open(dir_, meta,
-                                    index_reader_options{.columnstore = false});
+             : segment_reader::open(dir_, meta, index_reader_options{});
 
   return reader;
 }
