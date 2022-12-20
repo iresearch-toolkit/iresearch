@@ -565,12 +565,11 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   cached_reader = std::move(reader);  // clear existing reader
 
   // update cache, in case of failure reader stays empty
-  // intentionally never open columnstore and doc masks
+  // intentionally never open columnstore
   reader = cached_reader
              ? cached_reader.reopen(meta)
-             : segment_reader::open(
-                 dir_, meta,
-                 index_reader_options{.columnstore = false, .doc_mask = false});
+             : segment_reader::open(dir_, meta,
+                                    index_reader_options{.columnstore = false});
 
   return reader;
 }
