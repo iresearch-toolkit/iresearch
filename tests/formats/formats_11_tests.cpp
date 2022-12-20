@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_set>
+
 #include "formats_test_case_base.hpp"
 #include "index/norm.hpp"
 #include "store/directory_attributes.hpp"

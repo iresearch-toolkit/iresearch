@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "doc_generator.hpp"
 #include "formats/formats.hpp"
 #include "index/field_meta.hpp"

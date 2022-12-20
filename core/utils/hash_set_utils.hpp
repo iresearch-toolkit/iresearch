@@ -22,9 +22,9 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-
 #include "hash_utils.hpp"
+
+#include <absl/container/flat_hash_set.h>
 
 namespace irs {
 

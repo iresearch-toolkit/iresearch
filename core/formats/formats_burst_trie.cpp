@@ -39,8 +39,6 @@
 #include <memory_resource>
 #endif
 
-#include <absl/container/flat_hash_map.h>
-
 #include "utils/fstext/fst_utils.hpp"
 
 #if defined(_MSC_VER)
@@ -102,6 +100,10 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
+
+#include <absl/container/flat_hash_map.h>
+#include <absl/strings/internal/resize_uninitialized.h>
+#include <absl/strings/str_cat.h>
 
 // clang-format on
 

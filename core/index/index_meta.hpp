@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-
 #include <algorithm>
 #include <atomic>
 #include <vector>
@@ -33,6 +31,8 @@
 #include "store/directory.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/flat_hash_set.h>
 
 namespace irs {
 

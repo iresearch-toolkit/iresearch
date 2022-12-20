@@ -22,12 +22,12 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include "analysis/token_attributes.hpp"
 #include "filter.hpp"
 #include "types.hpp"
 #include "utils/type_id.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 

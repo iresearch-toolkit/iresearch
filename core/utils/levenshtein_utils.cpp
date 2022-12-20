@@ -22,9 +22,6 @@
 
 #include "levenshtein_utils.hpp"
 
-#include <absl/container/flat_hash_map.h>
-#include <absl/hash/hash.h>
-
 #include <cmath>
 #include <queue>
 
@@ -38,6 +35,9 @@
 #include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utf8_utils.hpp"
+
+#include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
 
 namespace {
 

@@ -44,8 +44,6 @@
 #pragma warning(default : 4229)
 #endif
 
-#include <absl/container/flat_hash_map.h>
-
 #include <functional>
 #include <iostream>
 
@@ -54,6 +52,8 @@
 #include "utils/log.hpp"
 #include "utils/misc.hpp"
 #include "utils/timer_utils.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 using handlers_t =
   absl::flat_hash_map<std::string, std::function<int(int argc, char* argv[])>>;

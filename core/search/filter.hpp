@@ -22,14 +22,14 @@
 
 #pragma once
 
-#include <absl/container/node_hash_map.h>
-
 #include <functional>
 
 #include "index/iterators.hpp"
 #include "search/sort.hpp"
 #include "shared.hpp"
 #include "utils/hash_utils.hpp"
+
+#include <absl/container/node_hash_map.h>
 
 namespace irs {
 

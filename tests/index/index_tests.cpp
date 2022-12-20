@@ -25,6 +25,8 @@
 
 #include <string>
 #include <thread>
+#include <unordered_map>
+#include <unordered_set>
 
 #include "index/field_meta.hpp"
 #include "index/norm.hpp"

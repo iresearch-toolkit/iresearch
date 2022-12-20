@@ -23,8 +23,6 @@
 
 #include "directory_reader.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
 #include "index/composite_reader_impl.hpp"
 #include "index/segment_reader.hpp"
 #include "utils/directory_utils.hpp"
@@ -32,6 +30,8 @@
 #include "utils/singleton.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 namespace {

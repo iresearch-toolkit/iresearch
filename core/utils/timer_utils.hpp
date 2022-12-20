@@ -23,18 +23,18 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-
-#if defined(IRESEARCH_DEBUG) && !defined(IRESEARCH_VALGRIND)
-#include <absl/strings/str_cat.h>
-#endif
-
 #include <atomic>
 #include <functional>
 
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
+
+#include <absl/container/flat_hash_set.h>
+
+#if defined(IRESEARCH_DEBUG) && !defined(IRESEARCH_VALGRIND)
+#include <absl/strings/str_cat.h>
+#endif
 
 namespace irs {
 namespace timer_utils {

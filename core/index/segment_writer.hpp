@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/node_hash_set.h>
-
 #include "analysis/token_stream.hpp"
 #include "column_info.hpp"
 #include "field_data.hpp"
@@ -36,6 +34,8 @@
 #include "utils/noncopyable.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/node_hash_set.h>
 
 namespace irs {
 
