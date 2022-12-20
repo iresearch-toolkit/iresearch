@@ -1099,7 +1099,7 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 
 fields_data::fields_data(const feature_info_provider_t& feature_info,
                          std::deque<cached_column>& cached_features,
-                         const comparer* comparator /*= nullptr*/)
+                         const Comparer* comparator /*= nullptr*/)
   : comparator_(comparator),
     feature_info_(&feature_info),
     cached_features_(&cached_features),

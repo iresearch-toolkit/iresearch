@@ -188,7 +188,7 @@ class index_segment : irs::util::noncopyable {
     }
   }
 
-  void sort(const irs::comparer& comparator);
+  void sort(const irs::Comparer& comparator);
 
   void clear() noexcept {
     fields_.clear();

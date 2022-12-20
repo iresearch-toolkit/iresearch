@@ -1167,7 +1167,7 @@ void index_writer::flush_context::reset() noexcept {
 index_writer::segment_context::segment_context(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const comparer* comparator)
+  const feature_info_provider_t& feature_info, const Comparer* comparator)
   : active_count_(0),
     buffered_docs_(0),
     dirty_(false),
@@ -1213,7 +1213,7 @@ uint64_t index_writer::segment_context::flush() {
 index_writer::segment_context::ptr index_writer::segment_context::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const comparer* comparator) {
+  const feature_info_provider_t& feature_info, const Comparer* comparator) {
   return std::make_unique<segment_context>(
     dir, std::move(meta_generator), column_info, feature_info, comparator);
 }
@@ -1317,7 +1317,7 @@ index_writer::index_writer(
   ConstructToken, index_lock::ptr&& lock,
   index_file_refs::ref_t&& lock_file_ref, directory& dir, format::ptr codec,
   size_t segment_pool_size, const segment_options& segment_limits,
-  const comparer* comparator, const column_info_provider_t& column_info,
+  const Comparer* comparator, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info,
   const payload_provider_t& meta_payload_provider, index_meta&& meta,
   committed_state_t&& committed_state)

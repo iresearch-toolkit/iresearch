@@ -179,7 +179,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   const index_t& index() const { return index_; }
   index_t& index() { return index_; }
 
-  void sort(const irs::comparer& comparator) {
+  void sort(const irs::Comparer& comparator) {
     for (auto& segment : index_) {
       segment.sort(comparator);
     }

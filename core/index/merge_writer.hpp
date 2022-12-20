@@ -35,7 +35,7 @@
 namespace irs {
 
 struct tracking_directory;
-class comparer;
+class Comparer;
 
 class merge_writer : public util::noncopyable {
  public:
@@ -54,7 +54,7 @@ class merge_writer : public util::noncopyable {
   explicit merge_writer(directory& dir,
                         const column_info_provider_t& column_info,
                         const feature_info_provider_t& feature_info,
-                        const comparer* comparator = nullptr) noexcept
+                        const Comparer* comparator = nullptr) noexcept
     : dir_(dir),
       column_info_(&column_info),
       feature_info_(&feature_info),
@@ -106,7 +106,7 @@ class merge_writer : public util::noncopyable {
   std::vector<reader_ctx> readers_;
   const column_info_provider_t* column_info_;
   const feature_info_provider_t* feature_info_;
-  const comparer* comparator_;
+  const Comparer* comparator_;
 };
 
 static_assert(std::is_nothrow_move_constructible_v<merge_writer>);

@@ -32,7 +32,7 @@ namespace irs {
 
 using doc_map = std::vector<doc_id_t>;
 
-class comparer;
+class Comparer;
 
 class sorted_column final : public column_output, private util::noncopyable {
  public:
@@ -78,7 +78,7 @@ class sorted_column final : public column_output, private util::noncopyable {
     columnstore_writer& writer,
     columnstore_writer::column_finalizer_f header_writer,
     doc_id_t docs_count,  // total number of docs in segment
-    const comparer& less);
+    const Comparer& compare);
 
   field_id flush(columnstore_writer& writer,
                  columnstore_writer::column_finalizer_f header_writer,
@@ -117,7 +117,7 @@ class sorted_column final : public column_output, private util::noncopyable {
 
   bool flush_sparse_primary(doc_map& docmap,
                             const columnstore_writer::values_writer_f& writer,
-                            doc_id_t docs_count, const comparer& less);
+                            doc_id_t docs_count, const Comparer& compare);
 
   void flush_already_sorted(const columnstore_writer::values_writer_f& writer);
 

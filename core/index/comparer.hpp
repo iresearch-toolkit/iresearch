@@ -27,25 +27,25 @@
 
 namespace irs {
 
-class comparer {
+class Comparer {
  public:
-  virtual ~comparer() = default;
+  virtual ~Comparer() = default;
 
-  int operator()(bytes_view lhs, bytes_view rhs) const {
+  int Compare(bytes_view lhs, bytes_view rhs) const {
     IRS_ASSERT(!IsNull(lhs));
     IRS_ASSERT(!IsNull(rhs));
-    const auto r = compare(lhs, rhs);
+    const auto r = CompareImpl(lhs, rhs);
 #ifdef IRESEARCH_DEBUG
     // Comparator validity check
-    const auto r1 = compare(rhs, lhs);
+    const auto r1 = CompareImpl(rhs, lhs);
     IRS_ASSERT((r == 0 && r1 == 0) || (r * r1 < 0));
 #endif
     return r;
   }
 
  protected:
-  virtual int compare(bytes_view lhs, bytes_view rhs) const = 0;
-};  // comparer
+  virtual int CompareImpl(bytes_view lhs, bytes_view rhs) const = 0;
+};
 
 inline bool use_dense_sort(size_t size, size_t total) noexcept {
   // check: N*logN > K

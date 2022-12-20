@@ -111,8 +111,8 @@ class SortedEuroparlDocTemplate : public tests::europarl_doc_template {
   std::vector<irs::type_info::type_id> field_features_;
 };
 
-struct StringComparer final : irs::comparer {
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const final {
+class StringComparer final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs, irs::bytes_view rhs) const final {
     EXPECT_FALSE(irs::IsNull(lhs));
     EXPECT_FALSE(irs::IsNull(rhs));
 
@@ -123,8 +123,8 @@ struct StringComparer final : irs::comparer {
   }
 };
 
-struct LongComparer final : irs::comparer {
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const final {
+class LongComparer final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs, irs::bytes_view rhs) const final {
     EXPECT_FALSE(irs::IsNull(lhs));
     EXPECT_FALSE(irs::IsNull(rhs));
 
@@ -418,7 +418,7 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
       std::stable_sort(column_payload.begin(), column_payload.end(),
                        [&](const irs::bstring& lhs, const irs::bstring& rhs) {
-                         return compare(lhs, rhs) < 0;
+                         return compare.Compare(lhs, rhs) < 0;
                        });
 
       auto& sorted_column = *segment.sort();
@@ -477,7 +477,7 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
       std::stable_sort(column_docs.begin(), column_docs.end(),
                        [&](const doc& lhs, const doc& rhs) {
-                         return compare(lhs.order, rhs.order) < 0;
+                         return compare.Compare(lhs.order, rhs.order) < 0;
                        });
 
       auto* column_meta = segment.column(column_name);
@@ -605,7 +605,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
         std::stable_sort(column_payload.begin(), column_payload.end(),
                          [&](const irs::bstring& lhs, const irs::bstring& rhs) {
-                           return compare(lhs, rhs) < 0;
+                           return compare.Compare(lhs, rhs) < 0;
                          });
 
         auto& sorted_column = *segment.sort();
@@ -667,7 +667,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
         std::stable_sort(column_docs.begin(), column_docs.end(),
                          [&](const doc& lhs, const doc& rhs) {
-                           return compare(lhs.order, rhs.order) < 0;
+                           return compare.Compare(lhs.order, rhs.order) < 0;
                          });
 
         auto* column_meta = segment.column(column_name);
@@ -780,7 +780,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
       std::stable_sort(column_payload.begin(), column_payload.end(),
                        [&](const irs::bstring& lhs, const irs::bstring& rhs) {
-                         return compare(lhs, rhs) < 0;
+                         return compare.Compare(lhs, rhs) < 0;
                        });
 
       auto& sorted_column = *segment.sort();
@@ -841,7 +841,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
       std::stable_sort(column_docs.begin(), column_docs.end(),
                        [&](const doc& lhs, const doc& rhs) {
-                         return compare(lhs.order, rhs.order) < 0;
+                         return compare.Compare(lhs.order, rhs.order) < 0;
                        });
 
       auto* column_meta = segment.column(column_name);
@@ -949,7 +949,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
 
       std::stable_sort(column_payload.begin(), column_payload.end(),
                        [&](const irs::bstring& lhs, const irs::bstring& rhs) {
-                         return comparer(lhs, rhs) < 0;
+                         return comparer.Compare(lhs, rhs) < 0;
                        });
 
       auto& sorted_column = *segment.sort();
@@ -1010,7 +1010,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
 
       std::stable_sort(column_docs.begin(), column_docs.end(),
                        [&](const doc& lhs, const doc& rhs) {
-                         return comparer(lhs.order, rhs.order) < 0;
+                         return comparer.Compare(lhs.order, rhs.order) < 0;
                        });
 
       auto* column_meta = segment.column(column_name);
