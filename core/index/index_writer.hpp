@@ -922,7 +922,7 @@ class index_writer : private util::noncopyable {
 
     // add the segment to this flush_context pending segments
     // but not to freelist. So this segment would be waited upon flushing
-    void AddToPending(active_segment_context& segment);
+    bool AddToPending(active_segment_context& segment);
 
     void reset() noexcept;
   };
