@@ -68,7 +68,7 @@ class readers_cache final : util::noncopyable {
 
   struct key_hash_t {
     size_t operator()(const key_t& key) const noexcept {
-      return absl::HashOf(key.name, key.version);
+      return hash_utils::Hash(key.name);
     }
   };
 
