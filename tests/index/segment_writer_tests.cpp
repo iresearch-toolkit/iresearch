@@ -137,8 +137,9 @@ TEST_F(segment_writer_tests, invalid_actions) {
 
 #endif
 
-struct Comparator final : irs::comparer {
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const noexcept final {
+class Comparator final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs,
+                  irs::bytes_view rhs) const noexcept final {
     EXPECT_FALSE(irs::IsNull(lhs));
     EXPECT_FALSE(irs::IsNull(rhs));
     return lhs.compare(rhs);
@@ -515,8 +516,8 @@ TEST_F(segment_writer_tests, index_field) {
   }
 }
 
-struct StringComparer final : irs::comparer {
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const final {
+class StringComparer final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs, irs::bytes_view rhs) const final {
     EXPECT_FALSE(irs::IsNull(lhs));
     EXPECT_FALSE(irs::IsNull(rhs));
 
