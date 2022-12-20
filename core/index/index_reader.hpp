@@ -43,8 +43,8 @@ using column_warmup_callback_f =
                      const column_reader& column)>;
 
 struct index_reader_options {
-  column_warmup_callback_f warmup_columns;
-  memory_accounting_f pinned_memory_accounting;
+  column_warmup_callback_f warmup_columns{};
+  memory_accounting_f pinned_memory_accounting{};
 
   // Open inverted index
   bool index{true};
