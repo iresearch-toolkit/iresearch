@@ -43,9 +43,6 @@ struct directory_meta {
 ////////////////////////////////////////////////////////////////////////////////
 class directory_reader final : public index_reader {
  public:
-  typedef directory_reader element_type;  // type same as self
-  typedef directory_reader ptr;           // pointer to self
-
   directory_reader() = default;  // allow creation of an uninitialized ptr
   directory_reader(const directory_reader& other) noexcept;
   directory_reader& operator=(const directory_reader& other) noexcept;
@@ -107,11 +104,9 @@ class directory_reader final : public index_reader {
   explicit operator index_reader::ptr() const noexcept { return impl_; }
 
  private:
-  typedef std::shared_ptr<const index_reader> impl_ptr;
+  directory_reader(std::shared_ptr<const index_reader> impl) noexcept;
 
-  impl_ptr impl_;
-
-  directory_reader(impl_ptr&& impl) noexcept;
+  std::shared_ptr<const index_reader> impl_;
 };
 
 inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {

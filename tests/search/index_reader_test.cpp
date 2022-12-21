@@ -361,7 +361,7 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_FALSE(irs::has_columnstore(meta));
+    ASSERT_FALSE(meta.column_store);
     ASSERT_FALSE(irs::has_removals(meta));
   }
 
@@ -380,7 +380,7 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_TRUE(irs::has_columnstore(meta));
+    ASSERT_TRUE(meta.column_store);
     ASSERT_FALSE(irs::has_removals(meta));
   }
 
@@ -403,7 +403,7 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_FALSE(irs::has_columnstore(meta));
+    ASSERT_FALSE(meta.column_store);
     ASSERT_TRUE(irs::has_removals(meta));
   }
 
@@ -427,7 +427,7 @@ TEST(segment_reader_test, segment_reader_has) {
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
-    ASSERT_TRUE(irs::has_columnstore(meta));
+    ASSERT_TRUE(meta.column_store);
     ASSERT_TRUE(irs::has_removals(meta));
   }
 }

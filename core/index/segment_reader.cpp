@@ -232,7 +232,7 @@ class segment_reader_impl : public sub_reader {
   index_reader_options opts_;
 };
 
-segment_reader::segment_reader(impl_ptr&& impl) noexcept
+segment_reader::segment_reader(std::shared_ptr<const sub_reader> impl) noexcept
   : impl_(std::move(impl)) {}
 
 segment_reader::segment_reader(const segment_reader& other) noexcept {
@@ -243,7 +243,7 @@ segment_reader& segment_reader::operator=(
   const segment_reader& other) noexcept {
   if (this != &other) {
     // make a copy
-    impl_ptr impl = std::atomic_load(&other.impl_);
+    auto impl = std::atomic_load(&other.impl_);
 
     std::atomic_store(&impl_, impl);
   }
@@ -259,7 +259,7 @@ segment_reader& segment_reader::operator=(
 
 segment_reader segment_reader::reopen(const segment_meta& meta) const {
   // make a copy
-  impl_ptr impl = std::atomic_load(&impl_);
+  auto impl = std::atomic_load(&impl_);
 
   auto& reader_impl = down_cast<segment_reader_impl>(*impl);
 
@@ -285,18 +285,22 @@ const irs::column_reader* segment_reader_impl::column(
   return it == named_columns_.end() ? nullptr : it->second;
 }
 
+const irs::column_reader* segment_reader_impl::column(field_id field) const {
+  IRS_ASSERT(columnstore_reader_);
+  return columnstore_reader_->column(field);
+}
+
 column_iterator::ptr segment_reader_impl::columns() const {
   struct less {
     bool operator()(const irs::column_reader& lhs,
                     std::string_view rhs) const noexcept {
       return lhs.name() < rhs;
     }
-  };  // less
+  };
 
-  typedef iterator_adaptor<std::string_view, irs::column_reader,
-                           decltype(sorted_named_columns_.begin()),
-                           column_iterator, less>
-    iterator_t;
+  using iterator_t = iterator_adaptor<std::string_view, irs::column_reader,
+                                      decltype(sorted_named_columns_.begin()),
+                                      column_iterator, less>;
 
   return memory::make_managed<iterator_t>(std::begin(sorted_named_columns_),
                                           std::end(sorted_named_columns_));
@@ -321,16 +325,25 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
                                                       meta.docs_count, opts);
 
   // read document mask
-  index_utils::read_document_mask(reader->docs_mask_, dir, meta);
+  if (opts.doc_mask) {
+    index_utils::read_document_mask(reader->docs_mask_, dir, meta);
+  }
 
-  // initialize mandatory field reader
+  // always instantiate to avoid unnecessary checks
   auto& field_reader = reader->field_reader_;
   field_reader = codec.get_field_reader();
-  field_reader->prepare(dir, meta, reader->docs_mask_);
 
-  // initialize optional columnstore
-  if (irs::has_columnstore(meta)) {
-    auto& columnstore_reader = reader->columnstore_reader_;
+  if (opts.index) {
+    // initialize optional field reader
+    field_reader->prepare(dir, meta, reader->docs_mask_);
+  }
+
+  // always instantiate to avoid unnecessary checks
+  auto& columnstore_reader = reader->columnstore_reader_;
+  columnstore_reader = codec.get_columnstore_reader();
+
+  if (opts.columnstore && meta.column_store) {
+    // initialize optional columnstore
     columnstore_reader::options columnstore_opts;
     if (reader->opts().warmup_columns) {
       columnstore_opts.warmup_column = [warmup = reader->opts().warmup_columns,
@@ -340,7 +353,6 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
       };
       columnstore_opts.pinned_memory = reader->opts().pinned_memory_accounting;
     }
-    columnstore_reader = codec.get_columnstore_reader();
 
     if (!columnstore_reader->prepare(dir, meta, columnstore_opts)) {
       throw index_error(
@@ -398,10 +410,6 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   }
 
   return reader;
-}
-
-const irs::column_reader* segment_reader_impl::column(field_id field) const {
-  return columnstore_reader_ ? columnstore_reader_->column(field) : nullptr;
 }
 
 }  // namespace irs
