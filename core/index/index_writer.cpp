@@ -737,15 +737,16 @@ void index_writer::documents_context::AddToFlush() {
     return;  // nothing to do
   }
 
-  writer_.get_flush_context()->AddToPending(segment_);
+  if (writer_.get_flush_context()->AddToPending(segment_)) {
+    ++segment_use_count_;
+  }
 }
 
 index_writer::documents_context::~documents_context() noexcept {
   auto& ctx = segment_.ctx();
 
   // failure may indicate a dangling 'document' instance
-  IRS_ASSERT(ctx.use_count() >= 0 &&
-             static_cast<uint64_t>(ctx.use_count()) == segment_use_count_);
+  IRS_ASSERT(ctx.use_count() == segment_use_count_);
 
   if (!ctx) {
     return;  // nothing to do
@@ -1131,17 +1132,18 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   }
 }
 
-void index_writer::flush_context::AddToPending(
+bool index_writer::flush_context::AddToPending(
   active_segment_context& segment) {
   if (segment.flush_ctx_ != nullptr) {
     // re-used active_segment_context
-    return;
+    return false;
   }
   std::lock_guard lock{mutex_};
   auto const sizeBefore = pending_segment_contexts_.size();
   pending_segment_contexts_.emplace_back(segment.ctx_, sizeBefore);
   segment.flush_ctx_ = this;
   segment.pending_segment_context_offset_ = sizeBefore;
+  return true;
 }
 
 void index_writer::flush_context::reset() noexcept {

@@ -314,7 +314,7 @@ class index_writer : private util::noncopyable {
     // the segment_context used for storing changes (lazy-initialized)
     active_segment_context segment_;
     // segment_.ctx().use_count() at constructor/destructor time must equal
-    uint64_t segment_use_count_{0};
+    long segment_use_count_{0};
     uint64_t last_operation_tick_{0};   // transaction commit tick
     uint64_t first_operation_tick_{0};  // transaction tick
     index_writer& writer_;
@@ -922,7 +922,7 @@ class index_writer : private util::noncopyable {
 
     // add the segment to this flush_context pending segments
     // but not to freelist. So this segment would be waited upon flushing
-    void AddToPending(active_segment_context& segment);
+    bool AddToPending(active_segment_context& segment);
 
     void reset() noexcept;
   };
