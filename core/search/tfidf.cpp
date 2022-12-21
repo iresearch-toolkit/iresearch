@@ -379,7 +379,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
 
     idf.value += float_t(
       std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
-    IRS_ASSERT(idf.value >= 0.f);
+    // TODO(MBkkt) SEARCH-444 IRS_ASSERT(idf.value >= 0.f);
   }
 
   IndexFeatures features() const noexcept override {
