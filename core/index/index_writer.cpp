@@ -40,7 +40,6 @@
 #include "utils/type_limits.hpp"
 
 #include <absl/container/flat_hash_map.h>
-#include <absl/strings/str_cat.h>
 
 namespace irs {
 namespace {
@@ -747,8 +746,7 @@ index_writer::documents_context::~documents_context() noexcept {
   auto& ctx = segment_.ctx();
 
   // failure may indicate a dangling 'document' instance
-  IRS_ASSERT(ctx.use_count() == segment_use_count_,
-             absl::StrCat(ctx.use_count(), " != ", segment_use_count_));
+  IRS_ASSERT(ctx.use_count() == segment_use_count_);
 
   if (!ctx) {
     return;  // nothing to do
