@@ -322,7 +322,7 @@ class index_writer : private util::noncopyable {
     index_writer& writer_;
 #ifdef IRESEARCH_DEBUG
     // segment_.ctx().use_count() at constructor/destructor time must equal
-    uint64_t segment_use_count_{0};
+    long segment_use_count_{0};
 #endif
   };
 
