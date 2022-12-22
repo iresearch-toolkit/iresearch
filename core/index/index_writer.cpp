@@ -352,7 +352,7 @@ using candidates_mapping_t = absl::flat_hash_map<
 std::pair<bool, size_t> map_candidates(
   candidates_mapping_t& candidates_mapping,
   const index_writer::consolidation_t& candidates,
-  const index_meta::index_segments_t& segments) {
+  std::span<const index_meta::index_segment_t> segments) {
   size_t i = 0;
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
@@ -1328,7 +1328,7 @@ index_writer::index_writer(
   const Comparer* comparator, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info,
   const payload_provider_t& meta_payload_provider, index_meta&& meta,
-  committed_state_t&& committed_state)
+  std::shared_ptr<CommittedState>&& committed_state)
   : feature_info_{feature_info},
     column_info_{column_info},
     meta_payload_provider_{meta_payload_provider},
@@ -1378,23 +1378,27 @@ void index_writer::clear(uint64_t tick) {
   // ensure there are no active struct update operations
   std::lock_guard ctx_lock{ctx->mutex_};
 
-  auto pending_commit = std::make_shared<committed_state_t::element_type>(
-    std::piecewise_construct,
-    std::forward_as_tuple(std::make_shared<index_meta>()),
-    std::forward_as_tuple());
+  auto pending_commit = std::make_shared<CommittedState>();
 
   auto& dir = *ctx->dir_;
-  auto& pending_meta = *pending_commit->first;
+  auto& pending_meta = *pending_commit->meta;
 
   // setup new meta
   pending_meta.update_generation(meta_);  // clone index metadata generation
-  pending_meta.payload_buf_.clear();
-  if (meta_payload_provider_ &&
-      meta_payload_provider_(tick, pending_meta.payload_buf_)) {
-    pending_meta.payload_ = pending_meta.payload_buf_;
+  if (meta_payload_provider_) {
+    if (pending_meta.payload_.has_value()) {
+      pending_meta.payload_->clear();
+    } else {
+      pending_meta.payload_.emplace(bstring{});
+    }
+    IRS_ASSERT(pending_meta.payload_.has_value());
+    if (!meta_payload_provider_(tick, *pending_meta.payload_)) {
+      pending_meta.payload_.reset();
+    }
   }
-  pending_meta.seg_counter_.store(
-    meta_.counter());  // ensure counter() >= max(seg#)
+
+  // ensure counter() >= max(seg#)
+  pending_meta.seg_counter_.store(meta_.counter());
 
   // rollback already opened transaction if any
   writer_->rollback();
@@ -1407,7 +1411,7 @@ void index_writer::clear(uint64_t tick) {
   auto ref =
     directory_utils::reference(dir, writer_->filename(pending_meta), true);
   if (ref) {
-    auto& pending_refs = pending_commit->second;
+    auto& pending_refs = pending_commit->refs;
     pending_refs.emplace_back(std::move(ref));
   }
 
@@ -1487,7 +1491,7 @@ index_writer::ptr index_writer::make(
     }
   }
 
-  auto comitted_state = std::make_shared<committed_state_t::element_type>(
+  auto comitted_state = std::make_shared<CommittedState>(
     std::make_shared<index_meta>(meta), std::move(file_refs));
 
   auto writer = std::make_shared<index_writer>(
@@ -1553,7 +1557,7 @@ index_writer::consolidation_result index_writer::consolidate(
   if (IRS_UNLIKELY(!committed_state)) {
     return {0, ConsolidationError::FAIL};
   }
-  auto committed_meta = committed_state->first;
+  auto committed_meta = committed_state->meta;  // FIXME(gnusi): need a copy?
   IRS_ASSERT(committed_meta);
   if (IRS_UNLIKELY(!committed_meta)) {
     return {0, ConsolidationError::FAIL};
@@ -1692,7 +1696,7 @@ index_writer::consolidation_result index_writer::consolidate(
     // ensure committed_state_ segments are not modified by concurrent
     // consolidate()/commit()
     std::unique_lock lock{commit_lock_};
-    const auto current_committed_meta = committed_state_->first;
+    const auto current_committed_meta = committed_state_->meta;
     IRS_ASSERT(current_committed_meta);
     if (IRS_UNLIKELY(!current_committed_meta)) {
       return {0, ConsolidationError::FAIL};
@@ -2382,7 +2386,7 @@ index_writer::pending_context_t index_writer::flush_all(
   if (pending_candidates_count) {
     // for pending consolidation we need to filter out
     // consolidation candidates after applying them
-    index_meta::index_segments_t tmp;
+    std::vector<index_meta::index_segment_t> tmp;
     decltype(sync_context::segments) tmp_sync;
 
     tmp.reserve(segments.size() - pending_candidates_count);
@@ -2604,10 +2608,16 @@ index_writer::pending_context_t index_writer::flush_all(
     return {};
   }
 
-  pending_meta->payload_buf_.clear();
-  if (meta_payload_provider_ &&
-      meta_payload_provider_(max_tick, pending_meta->payload_buf_)) {
-    pending_meta->payload_ = pending_meta->payload_buf_;
+  if (meta_payload_provider_) {
+    if (pending_meta->payload_.has_value()) {
+      pending_meta->payload_->clear();
+    } else {
+      pending_meta->payload_.emplace(bstring{});
+    }
+    IRS_ASSERT(pending_meta->payload_.has_value());
+    if (!meta_payload_provider_(max_tick, *pending_meta->payload_)) {
+      pending_meta->payload_.reset();
+    }
   }
 
   pending_meta->seg_counter_.store(
@@ -2666,7 +2676,7 @@ bool index_writer::start(progress_report_callback const& progress) {
     }
 
     // track all refs
-    file_refs_t pending_refs;
+    FileRefs pending_refs;
     append_segments_refs(pending_refs, dir, pending_meta);
     auto ref =
       directory_utils::reference(dir, writer_->filename(pending_meta), true);
@@ -2678,10 +2688,8 @@ bool index_writer::start(progress_report_callback const& progress) {
 
     // 1st phase of the transaction successfully finished here,
     // set to_commit as active flush context containing pending meta
-    pending_state_.commit = std::make_shared<committed_state_t::element_type>(
-      std::piecewise_construct,
-      std::forward_as_tuple(std::move(to_commit.meta)),
-      std::forward_as_tuple(std::move(pending_refs)));
+    pending_state_.commit = std::make_shared<CommittedState>(
+      std::move(to_commit.meta), std::move(pending_refs));
   } catch (...) {
     writer_->rollback();  // rollback started transaction
 
@@ -2732,7 +2740,7 @@ void index_writer::finish() {
   // after this line transaction is successfull (only noexcept operations below)
 
   // update 'last_gen_' to last committed/valid generation
-  meta_.last_gen_ = committed_state_->first->gen_;
+  meta_.last_gen_ = committed_state_->meta->gen_;
 }
 
 void index_writer::abort() {
@@ -2751,7 +2759,7 @@ void index_writer::abort() {
 
   // reset actual meta, note that here we don't change
   // segment counters since it can be changed from insert function
-  meta_.reset(*(committed_state_->first));
+  meta_.reset(*(committed_state_->meta));
 }
 
 }  // namespace irs

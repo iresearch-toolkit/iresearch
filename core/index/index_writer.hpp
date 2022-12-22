@@ -114,14 +114,21 @@ class index_writer : private util::noncopyable {
   using flush_context_ptr =
     std::unique_ptr<flush_context, void (*)(flush_context*)>;
 
+  using FileRefs = std::vector<index_file_refs::ref_t>;
+
   // Disallow using public constructor
   struct ConstructToken {
     explicit ConstructToken() = default;
   };
 
-  using file_refs_t = std::vector<index_file_refs::ref_t>;
-  using committed_state_t =
-    std::shared_ptr<std::pair<std::shared_ptr<index_meta>, file_refs_t>>;
+  struct CommittedState {
+    CommittedState() : meta{std::make_shared<index_meta>()} {}
+    CommittedState(std::shared_ptr<index_meta>&& meta, FileRefs&& refs) noexcept
+      : meta{std::move(meta)}, refs{std::move(refs)} {}
+
+    std::shared_ptr<index_meta> meta;
+    FileRefs refs;
+  };
 
   // Segment references given out by flush_context to allow tracking
   // and updating flush_context::pending_segment_context
@@ -573,7 +580,8 @@ class index_writer : private util::noncopyable {
                const column_info_provider_t& column_info,
                const feature_info_provider_t& feature_info,
                const payload_provider_t& meta_payload_provider,
-               index_meta&& meta, committed_state_t&& committed_state);
+               index_meta&& meta,
+               std::shared_ptr<CommittedState>&& committed_state);
 
  private:
   static constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
@@ -605,8 +613,7 @@ class index_writer : private util::noncopyable {
 
   struct import_context {
     import_context(index_meta::index_segment_t&& segment, size_t generation,
-                   file_refs_t&& refs,
-                   consolidation_t&& consolidation_candidates,
+                   FileRefs&& refs, consolidation_t&& consolidation_candidates,
                    std::shared_ptr<index_meta>&& consolidation_meta,
                    merge_writer&& merger) noexcept
       : generation(generation),
@@ -617,8 +624,7 @@ class index_writer : private util::noncopyable {
                           std::move(merger)) {}
 
     import_context(index_meta::index_segment_t&& segment, size_t generation,
-                   file_refs_t&& refs,
-                   consolidation_t&& consolidation_candidates,
+                   FileRefs&& refs, consolidation_t&& consolidation_candidates,
                    std::shared_ptr<index_meta>&& consolidation_meta) noexcept
       : generation(generation),
         segment(std::move(segment)),
@@ -627,7 +633,7 @@ class index_writer : private util::noncopyable {
                           std::move(consolidation_candidates)) {}
 
     import_context(index_meta::index_segment_t&& segment, size_t generation,
-                   file_refs_t&& refs,
+                   FileRefs&& refs,
                    consolidation_t&& consolidation_candidates) noexcept
       : generation(generation),
         segment(std::move(segment)),
@@ -635,7 +641,7 @@ class index_writer : private util::noncopyable {
         consolidation_ctx(nullptr, std::move(consolidation_candidates)) {}
 
     import_context(index_meta::index_segment_t&& segment, size_t generation,
-                   file_refs_t&& refs) noexcept
+                   FileRefs&& refs) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)) {}
@@ -651,7 +657,7 @@ class index_writer : private util::noncopyable {
 
     const size_t generation;
     index_meta::index_segment_t segment;
-    file_refs_t refs;
+    FileRefs refs;
     consolidation_context_t consolidation_ctx;
   };  // import_context
 
@@ -992,7 +998,7 @@ class index_writer : private util::noncopyable {
     // reference to flush context held until end of commit
     flush_context_ptr ctx{nullptr, nullptr};
     // index meta of next commit
-    index_meta::ptr meta;
+    std::unique_ptr<index_meta> meta;
     // file names and segments to be synced during next commit
     sync_context to_sync;
 
@@ -1006,7 +1012,7 @@ class index_writer : private util::noncopyable {
     // reference to flush context held until end of commit
     flush_context_ptr ctx{nullptr, nullptr};
     // meta + references of next commit
-    committed_state_t commit;
+    std::shared_ptr<CommittedState> commit;
 
     explicit operator bool() const noexcept { return ctx && commit; }
 
@@ -1050,7 +1056,8 @@ class index_writer : private util::noncopyable {
   // guard for cached_segment_readers_, commit_pool_, meta_
   // (modification during commit()/defragment()), payload_buf_
   std::mutex commit_lock_;
-  committed_state_t committed_state_;  // last successfully committed state
+  // last successfully committed state
+  std::shared_ptr<CommittedState> committed_state_;
   std::recursive_mutex consolidation_lock_;
   // segments that are under consolidation
   consolidating_segments_t consolidating_segments_;
