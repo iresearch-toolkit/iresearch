@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/node_hash_set.h>
-
 #include "analysis/token_stream.hpp"
 #include "column_info.hpp"
 #include "field_data.hpp"
@@ -37,9 +35,11 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
+#include <absl/container/node_hash_set.h>
+
 namespace irs {
 
-class comparer;
+class Comparer;
 struct segment_meta;
 
 // Defines how the inserting field should be processed
@@ -77,7 +77,7 @@ class segment_writer : util::noncopyable {
 
   static std::unique_ptr<segment_writer> make(
     directory& dir, const column_info_provider_t& column_info,
-    const feature_info_provider_t& feature_info, const comparer* comparator);
+    const feature_info_provider_t& feature_info, const Comparer* comparator);
 
   // begin document-write transaction
   // Return doc_id_t as per doc_limits
@@ -161,7 +161,7 @@ class segment_writer : util::noncopyable {
   segment_writer(ConstructToken, directory& dir,
                  const column_info_provider_t& column_info,
                  const feature_info_provider_t& feature_info,
-                 const comparer* comparator) noexcept;
+                 const Comparer* comparator) noexcept;
 
  private:
   struct stored_column : util::noncopyable {

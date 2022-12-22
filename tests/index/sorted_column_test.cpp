@@ -34,9 +34,9 @@
 
 namespace {
 
-struct Comparator final : irs::comparer {
-  int compare(irs::bytes_view lhs,
-              irs::bytes_view rhs) const noexcept override {
+class Comparator final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs,
+                  irs::bytes_view rhs) const noexcept final {
     const auto* plhs = lhs.data();
     const auto* prhs = rhs.data();
 

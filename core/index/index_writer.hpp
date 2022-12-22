@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <atomic>
 #include <functional>
 #include <string_view>
@@ -45,9 +43,11 @@
 #include "utils/string.hpp"
 #include "utils/thread_utils.hpp"
 
+#include <absl/container/flat_hash_map.h>
+
 namespace irs {
 
-class comparer;
+class Comparer;
 class bitvector;
 struct directory;
 class directory_reader;
@@ -388,7 +388,7 @@ class index_writer : private util::noncopyable {
     // Comparator defines physical order of documents in each segment
     // produced by an index_writer.
     // empty == use default system sorting order
-    const comparer* comparator{nullptr};
+    const Comparer* comparator{nullptr};
 
     // Number of free segments cached in the segment pool for reuse
     // 0 == do not cache any segments, i.e. always create new segments
@@ -519,7 +519,7 @@ class index_writer : private util::noncopyable {
 
   // Returns comparator using for sorting documents by a primary key
   // nullptr == default sort order
-  const comparer* comparator() const noexcept { return comparator_; }
+  const Comparer* comparator() const noexcept { return comparator_; }
 
   // Begins the two-phase transaction.
   // payload arbitrary user supplied data to store in the index
@@ -569,7 +569,7 @@ class index_writer : private util::noncopyable {
                index_file_refs::ref_t&& lock_file_ref, directory& dir,
                format::ptr codec, size_t segment_pool_size,
                const segment_options& segment_limits,
-               const comparer* comparator,
+               const Comparer* comparator,
                const column_info_provider_t& column_info,
                const feature_info_provider_t& feature_info,
                const payload_provider_t& meta_payload_provider,
@@ -762,12 +762,12 @@ class index_writer : private util::noncopyable {
     static segment_context::ptr make(
       directory& dir, segment_meta_generator_t&& meta_generator,
       const column_info_provider_t& column_info,
-      const feature_info_provider_t& feature_info, const comparer* comparator);
+      const feature_info_provider_t& feature_info, const Comparer* comparator);
 
     segment_context(directory& dir, segment_meta_generator_t&& meta_generator,
                     const column_info_provider_t& column_info,
                     const feature_info_provider_t& feature_info,
-                    const comparer* comparator);
+                    const Comparer* comparator);
 
     // Flush current writer state into a materialized segment.
     // Return tick of last committed transaction.
@@ -915,7 +915,7 @@ class index_writer : private util::noncopyable {
 
     // add the segment to this flush_context pending segments
     // but not to freelist. So this segment would be waited upon flushing
-    void AddToPending(active_segment_context& segment);
+    bool AddToPending(active_segment_context& segment);
 
     void reset() noexcept;
   };
@@ -1043,7 +1043,7 @@ class index_writer : private util::noncopyable {
   column_info_provider_t column_info_;
   // provides payload for new segments
   payload_provider_t meta_payload_provider_;
-  const comparer* comparator_;
+  const Comparer* comparator_;
   // readers by segment name
   readers_cache cached_readers_;
   format::ptr codec_;

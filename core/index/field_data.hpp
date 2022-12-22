@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <deque>
 #include <vector>
 
 #include "formats/formats.hpp"
@@ -44,7 +45,7 @@ struct offset;
 struct payload;
 class format;
 struct directory;
-class comparer;
+class Comparer;
 struct flush_state;
 
 namespace analysis {
@@ -183,9 +184,9 @@ class fields_data : util::noncopyable {
 
   explicit fields_data(const feature_info_provider_t& feature_info,
                        std::deque<cached_column>& cached_features,
-                       const comparer* comparator);
+                       const Comparer* comparator);
 
-  const comparer* comparator() const noexcept { return comparator_; }
+  const Comparer* comparator() const noexcept { return comparator_; }
 
   field_data* emplace(const hashed_string_view& name,
                       IndexFeatures index_features, const features_t& features,
@@ -206,7 +207,7 @@ class fields_data : util::noncopyable {
   void reset() noexcept;
 
  private:
-  const comparer* comparator_;
+  const Comparer* comparator_;
   const feature_info_provider_t* feature_info_;
   std::deque<field_data> fields_;               // pointers remain valid
   std::deque<cached_column>* cached_features_;  // pointers remain valid

@@ -23,12 +23,12 @@
 
 #include "timer_utils.hpp"
 
-#include <absl/container/node_hash_map.h>
-
 #include <map>
 #include <mutex>
 
 #include "singleton.hpp"
+
+#include <absl/container/node_hash_map.h>
 
 namespace {
 using namespace irs;

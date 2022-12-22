@@ -114,7 +114,7 @@ doc_id_t segment_writer::begin(const update_context& ctx,
 
 std::unique_ptr<segment_writer> segment_writer::make(
   directory& dir, const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const comparer* comparator) {
+  const feature_info_provider_t& feature_info, const Comparer* comparator) {
   return std::make_unique<segment_writer>(ConstructToken{}, dir, column_info,
                                           feature_info, comparator);
 }
@@ -180,7 +180,7 @@ bool segment_writer::remove(doc_id_t doc_id) {
 segment_writer::segment_writer(ConstructToken, directory& dir,
                                const column_info_provider_t& column_info,
                                const feature_info_provider_t& feature_info,
-                               const comparer* comparator) noexcept
+                               const Comparer* comparator) noexcept
   : sort_(column_info, {}),
     fields_(feature_info, cached_columns_, comparator),
     column_info_(&column_info),

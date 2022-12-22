@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
@@ -33,6 +31,8 @@
 #include "shared.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/string.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 

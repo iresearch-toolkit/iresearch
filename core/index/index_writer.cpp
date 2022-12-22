@@ -23,8 +23,6 @@
 
 #include "index_writer.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
 #include <sstream>
 
 #include "formats/format_utils.hpp"
@@ -40,6 +38,8 @@
 #include "utils/string_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 namespace {
@@ -550,7 +550,7 @@ std::string to_string(const index_writer::consolidation_t& consolidation) {
 using namespace std::chrono_literals;
 
 readers_cache::key_t::key_t(const segment_meta& meta)
-  : name(meta.name), version(meta.version) {}
+  : name{meta.name}, version{meta.version} {}
 
 segment_reader readers_cache::emplace(const segment_meta& meta) {
   REGISTER_TIMER_DETAILED();
@@ -565,7 +565,7 @@ segment_reader readers_cache::emplace(const segment_meta& meta) {
   cached_reader = std::move(reader);  // clear existing reader
 
   // update cache, in case of failure reader stays empty
-  // intentionally never warmup readers for writers
+  // intentionally never cache columnstore columns
   reader = cached_reader
              ? cached_reader.reopen(meta)
              : segment_reader::open(dir_, meta, index_reader_options{});
@@ -737,15 +737,16 @@ void index_writer::Transaction::ForceFlush() {
     return;  // nothing to do
   }
 
-  writer_.get_flush_context()->AddToPending(segment_);
+  if (writer_.get_flush_context()->AddToPending(segment_)) {
+    ++segment_use_count_;
+  }
 }
 
 bool index_writer::Transaction::Commit() noexcept {
   const auto& ctx = segment_.ctx();
 
   // failure may indicate a dangling 'document' instance
-  IRS_ASSERT(ctx.use_count() >= 0 &&
-             static_cast<uint64_t>(ctx.use_count()) == segment_use_count_);
+  IRS_ASSERT(ctx.use_count() == segment_use_count_);
 
   if (!ctx) {
     return true;  // nothing to do
@@ -1137,17 +1138,18 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   }
 }
 
-void index_writer::flush_context::AddToPending(
+bool index_writer::flush_context::AddToPending(
   active_segment_context& segment) {
   if (segment.flush_ctx_ != nullptr) {
     // re-used active_segment_context
-    return;
+    return false;
   }
   std::lock_guard lock{mutex_};
   auto const size_before = pending_segment_contexts_.size();
   pending_segment_contexts_.emplace_back(segment.ctx_, size_before);
   segment.flush_ctx_ = this;
   segment.pending_segment_context_offset_ = size_before;
+  return true;
 }
 
 void index_writer::flush_context::reset() noexcept {
@@ -1173,7 +1175,7 @@ void index_writer::flush_context::reset() noexcept {
 index_writer::segment_context::segment_context(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const comparer* comparator)
+  const feature_info_provider_t& feature_info, const Comparer* comparator)
   : active_count_(0),
     buffered_docs_(0),
     dirty_(false),
@@ -1219,7 +1221,7 @@ uint64_t index_writer::segment_context::flush() {
 index_writer::segment_context::ptr index_writer::segment_context::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const comparer* comparator) {
+  const feature_info_provider_t& feature_info, const Comparer* comparator) {
   return std::make_unique<segment_context>(
     dir, std::move(meta_generator), column_info, feature_info, comparator);
 }
@@ -1323,7 +1325,7 @@ index_writer::index_writer(
   ConstructToken, index_lock::ptr&& lock,
   index_file_refs::ref_t&& lock_file_ref, directory& dir, format::ptr codec,
   size_t segment_pool_size, const segment_options& segment_limits,
-  const comparer* comparator, const column_info_provider_t& column_info,
+  const Comparer* comparator, const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info,
   const payload_provider_t& meta_payload_provider, index_meta&& meta,
   committed_state_t&& committed_state)

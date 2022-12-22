@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "analysis/token_attributes.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"

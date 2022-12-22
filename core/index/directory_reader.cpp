@@ -23,8 +23,6 @@
 
 #include "directory_reader.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
 #include "index/composite_reader_impl.hpp"
 #include "index/segment_reader.hpp"
 #include "utils/directory_utils.hpp"
@@ -32,6 +30,8 @@
 #include "utils/singleton.hpp"
 #include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 namespace {
@@ -191,7 +191,8 @@ class directory_reader_impl : public composite_reader<segment_reader> {
   index_reader_options opts_;
 };
 
-directory_reader::directory_reader(impl_ptr&& impl) noexcept
+directory_reader::directory_reader(
+  std::shared_ptr<const index_reader> impl) noexcept
   : impl_(std::move(impl)) {}
 
 directory_reader::directory_reader(const directory_reader& other) noexcept {
@@ -202,7 +203,7 @@ directory_reader& directory_reader::operator=(
   const directory_reader& other) noexcept {
   if (this != &other) {
     // make a copy
-    impl_ptr impl = std::atomic_load(&other.impl_);
+    auto impl = std::atomic_load(&other.impl_);
 
     std::atomic_store(&impl_, impl);
   }
@@ -225,7 +226,7 @@ const directory_meta& directory_reader::meta() const {
 directory_reader directory_reader::reopen(
   format::ptr codec /*= nullptr*/) const {
   // make a copy
-  impl_ptr impl = std::atomic_load(&impl_);
+  auto impl = std::atomic_load(&impl_);
 
   const auto& reader_impl = down_cast<directory_reader_impl>(*impl);
 

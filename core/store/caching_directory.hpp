@@ -22,13 +22,13 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <mutex>  // unique_lock
 #include <shared_mutex>
 
 #include "shared.hpp"
 #include "store/directory.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 

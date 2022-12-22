@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <mutex>
 #include <shared_mutex>
 
@@ -33,6 +31,8 @@
 #include "utils/async_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 

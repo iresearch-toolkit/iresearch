@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "doc_generator.hpp"
 #include "formats/formats.hpp"
 #include "index/field_meta.hpp"
@@ -186,7 +188,7 @@ class index_segment : irs::util::noncopyable {
     }
   }
 
-  void sort(const irs::comparer& comparator);
+  void sort(const irs::Comparer& comparator);
 
   void clear() noexcept {
     fields_.clear();

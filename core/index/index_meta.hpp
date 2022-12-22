@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-
 #include <algorithm>
 #include <atomic>
 #include <span>
@@ -33,6 +31,8 @@
 #include "error/error.hpp"
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
+
+#include <absl/container/flat_hash_set.h>
 
 namespace irs {
 
@@ -79,11 +79,6 @@ struct segment_meta {
 inline bool has_removals(const segment_meta& meta) noexcept {
   //  return meta.version > 0; // all version > 0 have document mask
   return meta.live_docs_count != meta.docs_count;
-}
-
-inline bool has_columnstore(const segment_meta& meta) noexcept {
-  // A separate flag to track presence of column store
-  return meta.column_store;
 }
 
 static_assert(std::is_nothrow_move_constructible_v<segment_meta>);

@@ -23,6 +23,9 @@
 
 #include "formats_test_case_base.hpp"
 
+#include <unordered_map>
+#include <unordered_set>
+
 #include "formats/format_utils.hpp"
 #include "index/norm.hpp"
 #include "search/term_filter.hpp"

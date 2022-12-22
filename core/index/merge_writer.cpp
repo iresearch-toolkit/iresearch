@@ -23,8 +23,6 @@
 
 #include "merge_writer.hpp"
 
-#include <absl/container/flat_hash_map.h>
-
 #if defined(IRESEARCH_DEBUG) && !defined(__clang__)
 #include <ranges>
 #endif
@@ -43,6 +41,8 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 namespace {
@@ -537,7 +537,7 @@ class compound_term_iterator final : public term_iterator {
   static constexpr const size_t kProgressStepTerms = size_t(1) << 7;
 
   explicit compound_term_iterator(
-    const merge_writer::flush_progress_t& progress, const comparer* comparator)
+    const merge_writer::flush_progress_t& progress, const Comparer* comparator)
     : doc_itr_(progress),
       psorting_doc_itr_(nullptr == comparator ? nullptr : &sorting_doc_itr_),
       progress_(progress, kProgressStepTerms) {}
@@ -699,7 +699,7 @@ class compound_field_iterator final : public basic_term_reader {
 
   explicit compound_field_iterator(
     size_t size, const merge_writer::flush_progress_t& progress,
-    const comparer* comparator = nullptr)
+    const Comparer* comparator = nullptr)
     : term_itr_(progress, comparator),
       progress_(progress, kProgressStepFields) {
     field_iterators_.reserve(size);
@@ -1053,7 +1053,7 @@ struct PrimarySortIteratorAdapter {
 class MinHeapContext {
  public:
   MinHeapContext(std::span<PrimarySortIteratorAdapter> itrs,
-                 const comparer& compare) noexcept
+                 const Comparer& compare) noexcept
     : itrs_{itrs}, compare_{&compare} {}
 
   // advance
@@ -1076,18 +1076,18 @@ class MinHeapContext {
     const bytes_view lhs_value = lhs.payload->value;
     const bytes_view rhs_value = rhs.payload->value;
 
-    if (const auto r = (*compare_)(lhs_value, rhs_value); r) {
+    if (const auto r = compare_->Compare(lhs_value, rhs_value); r) {
       return r > 0;
     }
 
-    // tie braker to avoid splitting document blocks, can use index as we always
-    // merge different segments
+    // tie breaker to avoid splitting document blocks, can use index as we
+    // always merge different segments
     return rhs_idx > lhs_idx;
   }
 
  private:
   std::span<PrimarySortIteratorAdapter> itrs_;
-  const comparer* compare_;
+  const Comparer* compare_;
 };
 
 template<typename Iterator>

@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <unordered_map>
+#include <unordered_set>
+
 #include "formats/formats_10.hpp"
 #include "index/comparer.hpp"
 #include "index/merge_writer.hpp"
@@ -96,9 +99,8 @@ class test_feature_writer final : public irs::feature_writer {
   uint32_t value_;
 };
 
-struct binary_comparer final : public irs::comparer {
- protected:
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const final {
+class binary_comparer final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs, irs::bytes_view rhs) const final {
     EXPECT_FALSE(irs::IsNull(lhs));
     EXPECT_FALSE(irs::IsNull(rhs));
 

@@ -33,9 +33,6 @@ namespace irs {
 ////////////////////////////////////////////////////////////////////////////////
 class segment_reader final : public sub_reader {
  public:
-  typedef segment_reader element_type;  // type same as self
-  typedef segment_reader ptr;           // pointer to self
-
   static segment_reader open(const directory& dir, const segment_meta& meta,
                              const index_reader_options& opts);
 
@@ -108,11 +105,9 @@ class segment_reader final : public sub_reader {
   explicit operator sub_reader::ptr() const noexcept { return impl_; }
 
  private:
-  using impl_ptr = std::shared_ptr<const sub_reader>;
+  std::shared_ptr<const sub_reader> impl_;
 
-  impl_ptr impl_;
-
-  segment_reader(impl_ptr&& impl) noexcept;
-};  // segment_reade
+  segment_reader(std::shared_ptr<const sub_reader> impl) noexcept;
+};
 
 }  // namespace irs

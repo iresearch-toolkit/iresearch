@@ -1247,7 +1247,9 @@ namespace irs {
 namespace columnstore2 {
 
 void column::prepare(doc_id_t key) {
+#ifdef IRESEARCH_DEBUG
   IRS_ASSERT(!sealed_);
+#endif
   if (IRS_LIKELY(key > pend_)) {
     if (addr_table_.full()) {
       flush_block();

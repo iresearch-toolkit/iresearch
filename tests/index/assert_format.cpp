@@ -387,15 +387,15 @@ void index_segment::insert_indexed(const ifield& f) {
   }
 }
 
-void index_segment::sort(const irs::comparer& comparator) {
+void index_segment::sort(const irs::Comparer& comparator) {
   if (sort_.empty()) {
     return;
   }
 
-  std::stable_sort(sort_.begin(), sort_.end(),
-                   [&comparator](const auto& lhs, const auto& rhs) {
-                     return comparator(std::get<0>(lhs), std::get<0>(rhs)) < 0;
-                   });
+  std::stable_sort(
+    sort_.begin(), sort_.end(), [&](const auto& lhs, const auto& rhs) {
+      return comparator.Compare(std::get<0>(lhs), std::get<0>(rhs)) < 0;
+    });
 
   irs::doc_id_t new_doc_id = irs::doc_limits::min();
   std::map<irs::doc_id_t, irs::doc_id_t> order;

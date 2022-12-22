@@ -92,14 +92,11 @@ option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
-option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 
 if (CMAKE_BUILD_TYPE MATCHES "Debug|Coverage")
-  set(IRESEARCH_DEBUG ON)
-endif ()
-
-if (IRESEARCH_DEBUG)
-  add_definitions(-DIRESEARCH_DEBUG)
+  option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" ON)
+else ()
+  option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 endif ()
 
 add_option_gprof(FALSE)
@@ -314,6 +311,11 @@ foreach (ELEMENT ${IRESEARCH_PREBUILT_LIST})
 endforeach ()
 
 add_subdirectory(external)
+
+if (IRESEARCH_DEBUG)
+  add_definitions(-DIRESEARCH_DEBUG)
+endif ()
+
 add_subdirectory(core)
 
 if (USE_UTILS)
