@@ -215,9 +215,9 @@ struct merge_writer_test_case
 };
 
 void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
-  auto insert_documents = [primary_sort](
-                            irs::index_writer::Transaction& ctx,
-                            irs::doc_id_t seed, irs::doc_id_t count) {
+  auto insert_documents = [primary_sort](irs::index_writer::Transaction& ctx,
+                                         irs::doc_id_t seed,
+                                         irs::doc_id_t count) {
     for (; seed < count; ++seed) {
       auto doc = ctx.Insert();
       if (const tests::string_field field{"foo", "bar"}; primary_sort) {
