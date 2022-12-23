@@ -352,7 +352,7 @@ using candidates_mapping_t = absl::flat_hash_map<
 std::pair<bool, size_t> map_candidates(
   candidates_mapping_t& candidates_mapping,
   const index_writer::consolidation_t& candidates,
-  const index_meta::index_segments_t& segments) {
+  std::span<const index_meta::index_segment_t> segments) {
   size_t i = 0;
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
@@ -738,7 +738,9 @@ void index_writer::Transaction::ForceFlush() {
   }
 
   if (writer_.get_flush_context()->AddToPending(segment_)) {
+#ifdef IRESEARCH_DEBUG
     ++segment_use_count_;
+#endif
   }
 }
 
@@ -746,7 +748,9 @@ bool index_writer::Transaction::Commit() noexcept {
   const auto& ctx = segment_.ctx();
 
   // failure may indicate a dangling 'document' instance
+#ifdef IRESEARCH_DEBUG
   IRS_ASSERT(ctx.use_count() == segment_use_count_);
+#endif
 
   if (!ctx) {
     return true;  // nothing to do
@@ -1388,13 +1392,20 @@ void index_writer::clear(uint64_t tick) {
 
   // setup new meta
   pending_meta.update_generation(meta_);  // clone index metadata generation
-  pending_meta.payload_buf_.clear();
-  if (meta_payload_provider_ &&
-      meta_payload_provider_(tick, pending_meta.payload_buf_)) {
-    pending_meta.payload_ = pending_meta.payload_buf_;
+  if (meta_payload_provider_) {
+    if (pending_meta.payload_) {
+      pending_meta.payload_->clear();
+    } else {
+      pending_meta.payload_.emplace();
+    }
+    if (!meta_payload_provider_(tick, *pending_meta.payload_)) {
+      pending_meta.payload_.reset();
+    }
+  } else {
+    pending_meta.payload_.reset();
   }
-  pending_meta.seg_counter_.store(
-    meta_.counter());  // ensure counter() >= max(seg#)
+  // ensure counter() >= max(seg#)
+  pending_meta.seg_counter_.store(meta_.counter());
 
   // rollback already opened transaction if any
   writer_->rollback();
@@ -2382,7 +2393,7 @@ index_writer::pending_context_t index_writer::flush_all(
   if (pending_candidates_count) {
     // for pending consolidation we need to filter out
     // consolidation candidates after applying them
-    index_meta::index_segments_t tmp;
+    std::vector<index_meta::index_segment_t> tmp;
     decltype(sync_context::segments) tmp_sync;
 
     tmp.reserve(segments.size() - pending_candidates_count);
@@ -2603,15 +2614,20 @@ index_writer::pending_context_t index_writer::flush_all(
     }
     return {};
   }
-
-  pending_meta->payload_buf_.clear();
-  if (meta_payload_provider_ &&
-      meta_payload_provider_(max_tick, pending_meta->payload_buf_)) {
-    pending_meta->payload_ = pending_meta->payload_buf_;
+  if (meta_payload_provider_) {
+    if (pending_meta->payload_) {
+      pending_meta->payload_->clear();
+    } else {
+      pending_meta->payload_.emplace();
+    }
+    if (!meta_payload_provider_(max_tick, *pending_meta->payload_)) {
+      pending_meta->payload_.reset();
+    }
+  } else {
+    pending_meta->payload_.reset();
   }
-
-  pending_meta->seg_counter_.store(
-    meta_.counter());  // ensure counter() >= max(seg#)
+  // ensure counter() >= max(seg#)
+  pending_meta->seg_counter_.store(meta_.counter());
 
   pending_context_t pending_context;
   pending_context.ctx = std::move(ctx);  // retain flush context reference
