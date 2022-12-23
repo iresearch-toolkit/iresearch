@@ -421,7 +421,9 @@ TEST_F(directory_utils_tests, test_reference) {
 
     segments[0].meta.files.emplace("abc");
     segments[0].meta.files.emplace("def");
-    meta.add(segments.begin(), segments.end());
+    for (auto& segment : segments) {
+      meta.add(std::move(segment));
+    }
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor));
     ASSERT_EQ(1, count);
@@ -448,7 +450,9 @@ TEST_F(directory_utils_tests, test_reference) {
 
     segments[0].meta.files.emplace("abc");
     segments[0].meta.files.emplace("def");
-    meta.add(segments.begin(), segments.end());
+    for (auto& segment : segments) {
+      meta.add(std::move(segment));
+    }
 
     ASSERT_TRUE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(3, count);  // +1 for segment file
@@ -481,7 +485,9 @@ TEST_F(directory_utils_tests, test_reference) {
     segments[0].filename = "xyz";
     segments[0].meta.files.emplace("abc");
     segments[0].meta.files.emplace("def");
-    meta.add(segments.begin(), segments.end());
+    for (auto& segment : segments) {
+      meta.add(std::move(segment));
+    }
 
     ASSERT_FALSE(irs::directory_utils::reference(dir, meta, visitor, true));
     ASSERT_EQ(1, count);
