@@ -198,7 +198,16 @@ class index_meta {
   }
 
   bytes_view payload() const noexcept {
-    return payload_.has_value() ? payload_.value() : bytes_view{};
+    return payload_ ? *payload_ : bytes_view{};
+  }
+
+  // public for tests
+  void payload(bytes_view payload) {
+    if (IsNull(payload)) {
+      payload_.reset();
+    } else {
+      payload_.emplace(payload);
+    }
   }
 
  private:
@@ -210,14 +219,6 @@ class index_meta {
 
   void payload(bstring&& payload) noexcept {
     payload_.emplace(std::move(payload));
-  }
-
-  void payload(bytes_view payload) {
-    if (IsNull(payload)) {
-      payload_.reset();
-    } else {
-      payload_.emplace(payload);
-    }
   }
 
   uint64_t gen_{index_gen_limits::invalid()};

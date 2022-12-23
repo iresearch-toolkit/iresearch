@@ -2792,7 +2792,7 @@ void index_meta_reader::read(const directory& dir, index_meta& meta,
   auto gen = in->read_vlong();
   auto cnt = in->read_long();
   auto seg_count = in->read_vint();
-  index_meta::index_segments_t segments(seg_count);
+  std::vector<index_meta::index_segment_t> segments(seg_count);
 
   for (size_t i = 0, count = segments.size(); i < count; ++i) {
     auto& segment = segments[i];

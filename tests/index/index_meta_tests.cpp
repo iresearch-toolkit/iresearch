@@ -51,7 +51,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   // set payload
   const irs::bytes_view payload =
     ViewCast<byte_type>(std::string_view("payload"));
-  const_cast<bytes_view&>(meta_orig.payload()) = payload;
+  meta_orig.SetPayload(payload);
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig));
 
@@ -85,7 +85,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   EXPECT_TRUE(irs::IsNull(meta_read.payload()));
 
   EXPECT_NE(meta_orig, meta_read);
-  const_cast<bytes_view&>(meta_orig.payload()) = bytes_view{};
+  meta_orig.SetPayload(bytes_view{});
   EXPECT_EQ(meta_orig, meta_read);
 }
 
@@ -111,7 +111,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
   // set payload
   const irs::bytes_view payload =
     ViewCast<byte_type>(std::string_view("payload"));
-  const_cast<bytes_view&>(meta_orig.payload()) = payload;
+  meta_orig.SetPayload(payload);
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig));
 

@@ -395,7 +395,7 @@ TEST_F(directory_utils_tests, test_reference) {
   {
     irs::memory_directory dir;
     irs::index_meta meta;
-    irs::index_meta::index_segments_t segments;
+    std::vector<irs::index_meta::index_segment_t> segments;
     size_t count = 0;
     auto visitor = [&count](irs::index_file_refs::ref_t&&) -> bool {
       ++count;
@@ -410,7 +410,7 @@ TEST_F(directory_utils_tests, test_reference) {
   {
     irs::memory_directory dir;
     irs::index_meta meta;
-    irs::index_meta::index_segments_t segments(1);
+    std::vector<irs::index_meta::index_segment_t> segments(1);
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
@@ -437,7 +437,7 @@ TEST_F(directory_utils_tests, test_reference) {
   {
     irs::memory_directory dir;
     irs::index_meta meta;
-    irs::index_meta::index_segments_t segments(1);
+    std::vector<irs::index_meta::index_segment_t> segments(1);
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
@@ -464,7 +464,7 @@ TEST_F(directory_utils_tests, test_reference) {
   {
     irs::memory_directory dir;
     irs::index_meta meta;
-    irs::index_meta::index_segments_t segments(1);
+    std::vector<irs::index_meta::index_segment_t> segments(1);
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;

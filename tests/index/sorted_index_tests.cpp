@@ -573,7 +573,10 @@ TEST_P(SortedIndexTestCase, reader_components) {
   check_reader(no_index_reader, 2, true, false);
   check_reader(empty_index_reader, 2, false, false);
 
-  writer->documents().remove(*query_doc1);
+  {
+    auto trx = writer->documents();
+    trx.Remove(*query_doc1);
+  }
   ASSERT_TRUE(writer->commit());
 
   default_reader = default_reader.reopen();
