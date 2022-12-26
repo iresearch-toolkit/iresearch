@@ -795,8 +795,10 @@ TEST(thread_pool_test, test_stop_skip_pending_mt) {
 
   ASSERT_TRUE(pool.run(std::move(task1)));
   ASSERT_TRUE(pool.run(std::move(task2)));
-  std::this_thread::sleep_for(
-    100ms);  // assume threads start within 100msec (1 thread)
+  int tryCount{100};
+  while (tryCount-- && count.load(std::memory_order_relaxed) < 1) {
+    std::this_thread::sleep_for(100ms);  // assume threads start within 100msec
+  }
   lock.unlock();
   pool.stop(
     true);  // blocking call (thread runtime duration simulated via sleep)
@@ -821,8 +823,11 @@ TEST(thread_pool_test, test_stop_run_mt) {
   ASSERT_EQ(0, pool.threads());
   ASSERT_TRUE(pool.run(std::move(task1)));
   pool.max_threads(1);
-  std::this_thread::sleep_for(100ms);  // assume threads start within 100msec
-  ASSERT_EQ(1, count);                 // 1 task started
+  int tryCount{100};
+  while (tryCount-- && count.load(std::memory_order_relaxed) < 1) {
+    std::this_thread::sleep_for(100ms);  // assume threads start within 100msec
+  }
+  ASSERT_EQ(1, count);  // 1 task started
   ASSERT_EQ(1, pool.threads());
   lock.unlock();
   pool.stop(true);
