@@ -101,7 +101,8 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask,
   size_t offset = 0;
   irs::analysis::token_stopwords_stream::stopwords_set tokens;
 
-  for (auto itr = mask.begin(), end = mask.end(); itr != end; ++itr, ++offset) {
+  auto end = mask.end();
+  for (auto itr = mask.begin(); itr != end; ++itr, ++offset) {
     if (!(*itr).isString()) {
       IR_FRMT_WARN(
         "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER
