@@ -263,9 +263,17 @@ class index_writer : private util::noncopyable {
   class Transaction : private util::noncopyable {
    public:
     // cppcheck-suppress constParameter
-    explicit Transaction(index_writer& writer) noexcept : writer_(writer) {}
+    explicit Transaction(index_writer& writer) noexcept : writer_{writer} {}
 
-    Transaction(Transaction&& other) noexcept = default;
+    Transaction(Transaction&& other) noexcept
+      : segment_{std::move(other.segment_)},
+        last_operation_tick_{std::exchange(other.last_operation_tick_, 0)},
+        first_operation_tick_(std::exchange(other.first_operation_tick_, 0)),
+#ifdef IRESEARCH_DEBUG
+        segment_use_count_{std::exchange(other.segment_use_count_, 0)},
+#endif
+        writer_{other.writer_} {
+    }
 
     ~Transaction() {
       // FIXME(gnusi): consider calling reset in future
@@ -349,11 +357,11 @@ class index_writer : private util::noncopyable {
     active_segment_context segment_;
     uint64_t last_operation_tick_{0};   // transaction commit tick
     uint64_t first_operation_tick_{0};  // transaction tick
-    index_writer& writer_;
 #ifdef IRESEARCH_DEBUG
     // segment_.ctx().use_count() at constructor/destructor time must equal
     long segment_use_count_{0};
 #endif
+    index_writer& writer_;
   };
 
   // Additional information required for removal/update requests

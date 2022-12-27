@@ -180,19 +180,20 @@ class IndexMeta {
   std::span<const IndexSegment> segments() const noexcept { return segments_; }
 
   bytes_view payload() const noexcept {
-    return payload_.has_value() ? payload_.value() : bytes_view{};
+    return payload_ ? *payload_ : bytes_view{};
   }
 
-  void payload(bstring&& payload) noexcept {
-    payload_.emplace(std::move(payload));
-  }
-
+  // public for tests
   void payload(bytes_view payload) {
     if (IsNull(payload)) {
       payload_.reset();
     } else {
       payload_.emplace(payload);
     }
+  }
+
+  void payload(bstring&& payload) noexcept {
+    payload_.emplace(std::move(payload));
   }
 
  private:

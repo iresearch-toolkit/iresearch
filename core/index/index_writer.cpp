@@ -676,7 +676,9 @@ void index_writer::Transaction::ForceFlush() {
   }
 
   if (writer_.get_flush_context()->AddToPending(segment_)) {
+#ifdef IRESEARCH_DEBUG
     ++segment_use_count_;
+#endif
   }
 }
 
@@ -684,7 +686,9 @@ bool index_writer::Transaction::Commit() noexcept {
   const auto& ctx = segment_.ctx();
 
   // failure may indicate a dangling 'document' instance
+#ifdef IRESEARCH_DEBUG
   IRS_ASSERT(ctx.use_count() == segment_use_count_);
+#endif
 
   if (!ctx) {
     return true;  // nothing to do
