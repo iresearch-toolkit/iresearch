@@ -142,8 +142,10 @@ struct sub_reader final : irs::sub_reader {
   size_t size() const override { return 0; }
   const irs::column_reader* sort() const override { return nullptr; }
 
+  size_t size_in_bytes() const override { return 0; }
+
   size_t num_docs;
-};  // index_reader
+};
 
 struct state {
   struct segment_state {

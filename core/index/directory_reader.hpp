@@ -29,23 +29,29 @@
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief representation of the metadata of a directory_reader
-////////////////////////////////////////////////////////////////////////////////
-struct directory_meta {
+// Representation of the metadata of a directory_reader
+struct DirectoryMeta {
   std::string filename;
-  index_meta meta;
+  IndexMeta meta;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class directory_reader
-/// @brief interface for an index reader over a directory of segments
-////////////////////////////////////////////////////////////////////////////////
+// Interface for an index reader over a directory of segments
 class directory_reader final : public index_reader {
  public:
+  // Create an index reader over the specified directory
+  // if codec == nullptr then use the latest file for all known codecs
+  static directory_reader open(
+    const directory& dir, format::ptr codec = nullptr,
+    const index_reader_options& opts = index_reader_options{});
+
   directory_reader() = default;  // allow creation of an uninitialized ptr
   directory_reader(const directory_reader& other) noexcept;
   directory_reader& operator=(const directory_reader& other) noexcept;
+
+  // Return the directory_meta this reader is based upon
+  // Note that return value valid on an already open reader until call to
+  // reopen()
+  const DirectoryMeta& Meta() const;
 
   explicit operator bool() const noexcept { return bool(impl_); }
 
@@ -72,35 +78,15 @@ class directory_reader final : public index_reader {
 
   uint64_t live_docs_count() const override { return impl_->live_docs_count(); }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @return the directory_meta this reader is based upon
-  /// @note return value valid on an already open reader until call to reopen()
-  //////////////////////////////////////////////////////////////////////////////
-  const directory_meta& meta() const;
-
   size_t size() const override { return impl_->size(); }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief create an index reader over the specified directory
-  ///        if codec == nullptr then use the latest file for all known codecs
-  ////////////////////////////////////////////////////////////////////////////////
-  static directory_reader open(
-    const directory& dir, format::ptr codec = nullptr,
-    const index_reader_options& opts = index_reader_options{});
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief open a new instance based on the latest file for the specified
-  /// codec
-  ///        this call will atempt to reuse segments from the existing reader
-  ///        if codec == nullptr then use the latest file for all known codecs
-  ////////////////////////////////////////////////////////////////////////////////
+  // Open a new instance based on the latest file for the specified codec
+  //        this call will atempt to reuse segments from the existing reader
+  //        if codec == nullptr then use the latest file for all known codecs
   virtual directory_reader reopen(format::ptr codec = nullptr) const;
 
   void reset() noexcept { impl_.reset(); }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief converts current directory_reader to 'index_reader::ptr'
-  ////////////////////////////////////////////////////////////////////////////////
   explicit operator index_reader::ptr() const noexcept { return impl_; }
 
  private:

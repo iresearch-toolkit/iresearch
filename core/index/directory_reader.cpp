@@ -38,9 +38,9 @@ namespace {
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable : 4457)))  // variable hides function param
-index_file_refs::ref_t load_newest_index_meta(index_meta& meta,
-                                              const directory& dir,
-                                              const format* codec) noexcept {
+index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
+                                           const directory& dir,
+                                           const format* codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -160,34 +160,35 @@ MSVC_ONLY(__pragma(warning(pop)))
 
 }  // namespace
 
-class directory_reader_impl : public composite_reader<segment_reader> {
+class DirectoryReaderImpl final
+  : public CompositeReaderImpl<std::vector<segment_reader>> {
  public:
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
-  static index_reader::ptr open(const directory& dir,
+  static index_reader::ptr Open(const directory& dir,
                                 const index_reader_options& opts,
                                 const format* codec = nullptr,
                                 const index_reader::ptr& cached = nullptr);
 
-  using segment_file_refs_t = absl::flat_hash_set<index_file_refs::ref_t>;
-  using reader_file_refs_t = std::vector<segment_file_refs_t>;
+  using SegmentFileRefs = absl::flat_hash_set<index_file_refs::ref_t>;
+  using ReaderFileRefs = std::vector<SegmentFileRefs>;
 
-  directory_reader_impl(const directory& dir, const index_reader_options& opts,
-                        reader_file_refs_t&& file_refs, directory_meta&& meta,
-                        readers_t&& readers, uint64_t docs_count,
-                        uint64_t docs_max);
+  DirectoryReaderImpl(const directory& dir, const index_reader_options& opts,
+                      ReaderFileRefs&& file_refs, DirectoryMeta&& meta,
+                      ReadersType&& readers, uint64_t docs_count,
+                      uint64_t docs_max);
 
-  const directory& dir() const noexcept { return dir_; }
+  const directory& Dir() const noexcept { return dir_; }
 
-  const directory_meta& meta() const noexcept { return meta_; }
+  const DirectoryMeta& Meta() const noexcept { return meta_; }
 
-  const index_reader_options& opts() const noexcept { return opts_; }
+  const index_reader_options& Options() const noexcept { return opts_; }
 
  private:
   const directory& dir_;
-  reader_file_refs_t file_refs_;
-  directory_meta meta_;
+  ReaderFileRefs file_refs_;
+  DirectoryMeta meta_;
   index_reader_options opts_;
 };
 
@@ -211,16 +212,16 @@ directory_reader& directory_reader::operator=(
   return *this;
 }
 
-const directory_meta& directory_reader::meta() const {
+const DirectoryMeta& directory_reader::Meta() const {
   auto impl = std::atomic_load(&impl_);  // make a copy
 
-  return down_cast<directory_reader_impl>(*impl).meta();
+  return down_cast<DirectoryReaderImpl>(*impl).Meta();
 }
 
 /*static*/ directory_reader directory_reader::open(
   const directory& dir, format::ptr codec /*= nullptr*/,
   const index_reader_options& opts /*= directory_reader_options()*/) {
-  return directory_reader_impl::open(dir, opts, codec.get());
+  return DirectoryReaderImpl::Open(dir, opts, codec.get());
 }
 
 directory_reader directory_reader::reopen(
@@ -228,35 +229,36 @@ directory_reader directory_reader::reopen(
   // make a copy
   auto impl = std::atomic_load(&impl_);
 
-  const auto& reader_impl = down_cast<directory_reader_impl>(*impl);
+  const auto& reader_impl = down_cast<DirectoryReaderImpl>(*impl);
 
-  return directory_reader_impl::open(reader_impl.dir(), reader_impl.opts(),
-                                     codec.get(), impl);
+  return DirectoryReaderImpl::Open(reader_impl.Dir(), reader_impl.Options(),
+                                   codec.get(), impl);
 }
 
-directory_reader_impl::directory_reader_impl(
-  const directory& dir, const index_reader_options& opts,
-  reader_file_refs_t&& file_refs, directory_meta&& meta, readers_t&& readers,
-  uint64_t docs_count, uint64_t docs_max)
-  : composite_reader(std::move(readers), docs_count, docs_max),
-    dir_(dir),
-    file_refs_(std::move(file_refs)),
-    meta_(std::move(meta)),
-    opts_(opts) {}
+DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
+                                         const index_reader_options& opts,
+                                         ReaderFileRefs&& file_refs,
+                                         DirectoryMeta&& meta,
+                                         ReadersType&& readers,
+                                         uint64_t docs_count, uint64_t docs_max)
+  : CompositeReaderImpl{std::move(readers), docs_count, docs_max},
+    dir_{dir},
+    file_refs_{std::move(file_refs)},
+    meta_{std::move(meta)},
+    opts_{opts} {}
 
-/*static*/ index_reader::ptr directory_reader_impl::open(
+/*static*/ index_reader::ptr DirectoryReaderImpl::Open(
   const directory& dir, const index_reader_options& opts,
   const format* codec /*= nullptr*/,
   const index_reader::ptr& cached /*= nullptr*/) {
-  index_meta meta;
-  index_file_refs::ref_t meta_file_ref =
-    load_newest_index_meta(meta, dir, codec);
+  IndexMeta meta;
+  index_file_refs::ref_t meta_file_ref = LoadNewestIndexMeta(meta, dir, codec);
 
   if (!meta_file_ref) {
     throw index_not_found{};
   }
 
-  auto* cached_impl = down_cast<directory_reader_impl>(cached.get());
+  auto* cached_impl = down_cast<DirectoryReaderImpl>(cached.get());
 
   if (cached_impl && cached_impl->meta_.meta == meta) {
     return cached;  // no changes to refresh
@@ -279,13 +281,13 @@ directory_reader_impl::directory_reader_impl(
     }
   }
 
-  readers_t readers(meta.size());
+  ReadersType readers(meta.size());
   uint64_t docs_max = 0;    // overall number of documents (with deleted)
   uint64_t docs_count = 0;  // number of live documents
 
   // +1 for index_meta file refs
-  reader_file_refs_t file_refs(readers.size() + 1);
-  segment_file_refs_t tmp_file_refs;
+  ReaderFileRefs file_refs(readers.size() + 1);
+  SegmentFileRefs tmp_file_refs;
 
   const std::function visitor =
     [&tmp_file_refs](index_file_refs::ref_t&& ref) -> bool {
@@ -321,17 +323,13 @@ directory_reader_impl::directory_reader_impl(
 
   directory_utils::reference(dir, meta, visitor, true);
   tmp_file_refs.emplace(meta_file_ref);
-  file_refs.back().swap(
-    tmp_file_refs);  // use last position for storing index_meta refs
+  // use last position for storing index_meta refs
+  file_refs.back().swap(tmp_file_refs);
 
-  directory_meta dir_meta;
-
-  dir_meta.filename = *meta_file_ref;
-  dir_meta.meta = std::move(meta);
-
-  return std::make_shared<directory_reader_impl>(
-    dir, opts, std::move(file_refs), std::move(dir_meta), std::move(readers),
-    docs_count, docs_max);
+  return std::make_shared<DirectoryReaderImpl>(
+    dir, opts, std::move(file_refs),
+    DirectoryMeta{.filename = *meta_file_ref, .meta = std::move(meta)},
+    std::move(readers), docs_count, docs_max);
 }
 
 }  // namespace irs

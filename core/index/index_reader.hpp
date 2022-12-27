@@ -36,10 +36,10 @@
 
 namespace irs {
 
-struct sub_reader;
+class sub_reader;
 
 using column_warmup_callback_f =
-  std::function<bool(const segment_meta& meta, const field_reader& fields,
+  std::function<bool(const SegmentMeta& meta, const field_reader& fields,
                      const column_reader& column)>;
 
 struct index_reader_options {
@@ -56,10 +56,7 @@ struct index_reader_options {
   bool doc_mask{true};
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct index_reader
-/// @brief generic interface for accessing an index
-////////////////////////////////////////////////////////////////////////////////
+// Generic interface for accessing an index
 struct index_reader {
   class reader_iterator {
    public:
@@ -105,7 +102,7 @@ struct index_reader {
 
     const index_reader* reader_;
     size_t i_;
-  };  // reader_iterator
+  };
 
   using ptr = std::shared_ptr<const index_reader>;
 
@@ -124,22 +121,24 @@ struct index_reader {
   virtual size_t size() const = 0;
 
   // first sub-segment
-  reader_iterator begin() const noexcept { return reader_iterator(*this, 0); }
+  reader_iterator begin() const noexcept { return reader_iterator{*this, 0}; }
 
   // after the last sub-segment
-  reader_iterator end() const { return reader_iterator(*this, size()); }
-};  // index_reader
+  reader_iterator end() const { return reader_iterator{*this, size()}; }
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct sub_reader
-/// @brief generic interface for accessing an index segment
-////////////////////////////////////////////////////////////////////////////////
-struct sub_reader : index_reader {
+// Generic interface for accessing an index segment
+class sub_reader : public index_reader {
+ public:
   using ptr = std::shared_ptr<const sub_reader>;
 
   static const sub_reader& empty() noexcept;
 
+  virtual const SegmentInfo& meta() const = 0;
+
   // Live & deleted docs
+
+  virtual const document_mask* docs_mask() const = 0;
 
   // Returns an iterator over live documents in current segment.
   virtual doc_iterator::ptr docs_iterator() const = 0;
@@ -164,7 +163,7 @@ struct sub_reader : index_reader {
   virtual const irs::column_reader* column(std::string_view field) const = 0;
 
   virtual const irs::column_reader* sort() const = 0;
-};  // sub_reader
+};
 
 template<typename Visitor, typename FilterVisitor>
 void visit(const index_reader& index, std::string_view field,

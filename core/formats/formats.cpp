@@ -76,16 +76,16 @@ class format_register
 
 namespace irs {
 
-/* static */ void index_meta_writer::complete(index_meta& meta) noexcept {
+/* static */ void index_meta_writer::complete(IndexMeta& meta) noexcept {
   meta.last_gen_ = meta.gen_;
 }
-/* static */ void index_meta_writer::prepare(index_meta& meta) noexcept {
+/* static */ void index_meta_writer::prepare(IndexMeta& meta) noexcept {
   meta.gen_ = meta.next_generation();
 }
 
 /* static */ void index_meta_reader::complete(
-  index_meta& meta, uint64_t generation, uint64_t counter,
-  std::vector<index_meta::index_segment_t>&& segments, bstring* payload) {
+  IndexMeta& meta, uint64_t generation, uint64_t counter,
+  std::vector<IndexSegment>&& segments, bstring* payload) {
   meta.gen_ = generation;
   meta.last_gen_ = generation;
   meta.seg_counter_ = counter;

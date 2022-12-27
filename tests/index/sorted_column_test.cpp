@@ -101,7 +101,7 @@ TEST_P(SortedColumnTestCase, FlushEmpty) {
   irs::field_id column_id;
   irs::doc_map order;
   irs::memory_directory dir;
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "123";
   auto codec = irs::formats::get(GetParam());
   ASSERT_NE(nullptr, codec);
@@ -154,7 +154,7 @@ TEST_P(SortedColumnTestCase, InsertDuplicates) {
     81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "123";
 
   irs::memory_directory dir;
@@ -238,7 +238,7 @@ TEST_P(SortedColumnTestCase, Sort) {
     81, 82, 74, 53, 84, 13, 95, 84, 51,  9,  19, 18, 21, 82, 22,  91, 70,
     68, 14, 73, 30, 70, 38, 85, 98, 79,  75, 38, 79, 85, 85, 100, 91};
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "123";
 
   irs::memory_directory dir;

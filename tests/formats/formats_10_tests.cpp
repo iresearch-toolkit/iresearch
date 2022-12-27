@@ -143,7 +143,7 @@ class format_10_test_case : public tests::format_test_case {
 
     // read postings
     {
-      irs::segment_meta meta;
+      irs::SegmentMeta meta;
       meta.name = "segment_name";
 
       irs::reader_state state;
@@ -368,7 +368,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 
   // read postings
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.name = "segment_name";
 
     irs::reader_state state;
@@ -512,7 +512,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
   // read postings
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.name = "segment_name";
 
     irs::reader_state state;
@@ -803,7 +803,7 @@ TEST_P(format_10_test_case, ires336) {
     fw->end();
   }
 
-  irs::segment_meta meta;
+  irs::SegmentMeta meta;
   meta.name = segment_name;
 
   irs::document_mask docs_mask;

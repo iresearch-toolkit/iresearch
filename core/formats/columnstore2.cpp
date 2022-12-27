@@ -1469,7 +1469,7 @@ writer::writer(Version version, bool consolidation)
     ver_{version},
     consolidation_{consolidation} {}
 
-void writer::prepare(directory& dir, const segment_meta& meta) {
+void writer::prepare(directory& dir, const SegmentMeta& meta) {
   columns_.clear();
 
   auto filename = data_file_name(meta.name);
@@ -1665,7 +1665,7 @@ void reader::prepare_data(const directory& dir, std::string_view filename) {
 }
 
 // FIXME return result???
-void reader::prepare_index(const directory& dir, const segment_meta& meta,
+void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
                            std::string_view filename,
                            std::string_view data_filename,
                            const options& opts) {
@@ -1807,7 +1807,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
   IRS_ASSERT(columns_.size() == sorted_columns_.size());
 }
 
-bool reader::prepare(const directory& dir, const segment_meta& meta,
+bool reader::prepare(const directory& dir, const SegmentMeta& meta,
                      const options& opts) {
   bool exists;
   const auto data_filename = data_file_name(meta.name);

@@ -215,9 +215,9 @@ struct merge_writer_test_case
 };
 
 void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
-  auto insert_documents = [primary_sort](
-                            irs::index_writer::Transaction& ctx,
-                            irs::doc_id_t seed, irs::doc_id_t count) {
+  auto insert_documents = [primary_sort](irs::index_writer::Transaction& ctx,
+                                         irs::doc_id_t seed,
+                                         irs::doc_id_t count) {
     for (; seed < count; ++seed) {
       auto doc = ctx.Insert();
       if (const tests::string_field field{"foo", "bar"}; primary_sort) {
@@ -619,7 +619,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   writer.add(reader[0]);
   writer.add(reader[1]);
 
-  irs::index_meta::index_segment_t index_segment;
+  irs::IndexSegment index_segment;
 
   index_segment.meta.codec = codec_ptr;
   writer.flush(index_segment);
@@ -987,7 +987,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   writer.add(reader[0]);
   writer.add(reader[1]);
 
-  irs::index_meta::index_segment_t index_segment;
+  irs::IndexSegment index_segment;
 
   index_segment.meta.codec = codec_ptr;
   writer.flush(index_segment);
@@ -2119,7 +2119,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     ASSERT_TRUE(expected_string.empty());
   }
 
-  irs::index_meta::index_segment_t index_segment;
+  irs::IndexSegment index_segment;
   index_segment.meta.codec = codec_ptr;
 
   const auto column_info = default_column_info();
@@ -2627,7 +2627,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
     ASSERT_TRUE(feature_info);
 
     irs::memory_directory dir;
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
     irs::merge_writer writer(dir, column_info, feature_info);
 
     for (auto& sub_reader : reader) {
@@ -2681,7 +2681,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
   // test default progress (false)
   {
     irs::memory_directory dir;
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
     irs::merge_writer::flush_progress_t progress;
     irs::merge_writer writer(dir, column_info, feature_info);
 
@@ -2704,7 +2704,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
   // test always-false progress
   {
     irs::memory_directory dir;
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
     irs::merge_writer::flush_progress_t progress = []() -> bool {
       return false;
     };
@@ -2722,7 +2722,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.version);
     ASSERT_EQ(0, index_segment.meta.docs_count);
     ASSERT_EQ(0, index_segment.meta.live_docs_count);
-    ASSERT_EQ(0, index_segment.meta.size);
+    ASSERT_EQ(0, index_segment.meta.size_in_bytes);
 
     ASSERT_ANY_THROW(irs::segment_reader::open(dir, index_segment.meta,
                                                irs::index_reader_options{}));
@@ -2733,7 +2733,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
   // test always-true progress
   {
     irs::memory_directory dir;
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
     irs::merge_writer::flush_progress_t progress =
       [&progress_call_count]() -> bool {
       ++progress_call_count;
@@ -2765,7 +2765,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
        ++i) {  // +1 for pre-decrement in 'progress'
     size_t call_count = i;
     irs::memory_directory dir;
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
     irs::merge_writer::flush_progress_t progress = [&call_count]() -> bool {
       return --call_count;
     };
@@ -2840,7 +2840,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     writer.add(reader[1]);  // assume 1 is segment with text field
     writer.add(reader[0]);  // assume 0 is segment with string field
 
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
 
     index_segment.meta.codec = codec_ptr;
     ASSERT_TRUE(writer.flush(index_segment));
@@ -2852,7 +2852,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     writer.add(reader[0]);  // assume 0 is segment with text field
     writer.add(reader[1]);  // assume 1 is segment with string field
 
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
 
     index_segment.meta.codec = codec_ptr;
     ASSERT_FALSE(writer.flush(index_segment));
@@ -2943,7 +2943,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   writer.add(reader[0]);
   writer.add(reader[1]);
 
-  irs::index_meta::index_segment_t index_segment;
+  irs::IndexSegment index_segment;
 
   index_segment.meta.codec = codec_ptr;
 
@@ -4079,7 +4079,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     ASSERT_TRUE(expected_string.empty());
   }
 
-  irs::index_meta::index_segment_t index_segment;
+  irs::IndexSegment index_segment;
   index_segment.meta.codec = codec_ptr;
 
   const auto column_info = default_column_info();

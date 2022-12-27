@@ -27,27 +27,25 @@
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief common implementation for readers composied of multiple other readers
-///        for use/inclusion into cpp files
-////////////////////////////////////////////////////////////////////////////////
-template<typename ReaderType>
-class composite_reader : public index_reader {
+// Common implementation for readers composied of multiple other readers
+// for use/inclusion into cpp files
+template<typename Readers>
+class CompositeReaderImpl : public index_reader {
  public:
-  typedef
-    typename std::enable_if<std::is_base_of<index_reader, ReaderType>::value,
-                            ReaderType>::type reader_type;
+  using ReadersType = Readers;
 
-  typedef std::vector<reader_type> readers_t;
+  using ReaderType = typename std::enable_if_t<
+    std::is_base_of_v<index_reader, typename Readers::value_type>,
+    typename Readers::value_type>;
 
-  composite_reader(readers_t&& readers, uint64_t docs_count,
-                   uint64_t docs_max) noexcept
-    : readers_(std::move(readers)),
-      docs_count_(docs_count),
-      docs_max_(docs_max) {}
+  CompositeReaderImpl(ReadersType&& readers, uint64_t docs_count,
+                      uint64_t docs_max) noexcept
+    : readers_{std::move(readers)},
+      docs_count_{docs_count},
+      docs_max_{docs_max} {}
 
   // returns corresponding sub-reader
-  const reader_type& operator[](size_t i) const noexcept override {
+  const ReaderType& operator[](size_t i) const noexcept override {
     IRS_ASSERT(i < readers_.size());
     return *(readers_[i]);
   }
@@ -62,7 +60,7 @@ class composite_reader : public index_reader {
   size_t size() const noexcept override { return readers_.size(); }
 
  private:
-  readers_t readers_;
+  ReadersType readers_;
   uint64_t docs_count_;
   uint64_t docs_max_;
 };  // composite_reader

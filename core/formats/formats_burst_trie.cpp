@@ -2985,7 +2985,7 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  void prepare(const directory& dir, const segment_meta& meta,
+  void prepare(const directory& dir, const SegmentMeta& meta,
                const document_mask& mask) override;
 
   const irs::term_reader* field(std::string_view field) const override;
@@ -3166,7 +3166,7 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
   IRS_ASSERT(pr_);
 }
 
-void field_reader::prepare(const directory& dir, const segment_meta& meta,
+void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
                            const document_mask& /*mask*/) {
   std::string filename;
 

@@ -173,7 +173,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
     irs::segment_writer::make(dir, column_info, feature_info, nullptr);
   ASSERT_EQ(0, writer_unsorted->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer_sorted->reset(segment);
@@ -234,7 +234,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
     irs::segment_writer::make(dir, column_info, feature_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -280,7 +280,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
     irs::segment_writer::make(dir, column_info, feature_info, &compare);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -326,7 +326,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
     irs::segment_writer::make(dir, column_info, feature_info, &compare);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -370,7 +370,7 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
     irs::segment_writer::make(dir, column_info, feature_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -414,7 +414,7 @@ TEST_F(segment_writer_tests, memory_index_field) {
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "tmp";
   segment.codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, segment.codec);
@@ -463,7 +463,7 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (increment)
   {
-    irs::segment_meta segment;
+    irs::SegmentMeta segment;
     segment.name = "tmp";
     segment.codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, segment.codec);
@@ -490,7 +490,7 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (term_attribute)
   {
-    irs::segment_meta segment;
+    irs::SegmentMeta segment;
     segment.name = "tmp";
     segment.codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, segment.codec);
@@ -580,7 +580,7 @@ TEST_F(segment_writer_tests, reorder) {
       irs::segment_writer::make(dir, column_info, feature_info, &less);
     ASSERT_EQ(0, writer->memory_active());
 
-    irs::segment_meta segment;
+    irs::SegmentMeta segment;
     segment.name = "foo";
     segment.codec = default_codec();
     writer->reset(segment);
@@ -596,7 +596,7 @@ TEST_F(segment_writer_tests, reorder) {
 
     // we don't count stored field without comparator
     ASSERT_GT(writer->memory_active(), 0);
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
     index_segment.meta.codec = default_codec();
     writer->flush(index_segment);
     auto docs_context = writer->docs_context();

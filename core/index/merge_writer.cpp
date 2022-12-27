@@ -902,7 +902,7 @@ class columnstore {
               const merge_writer::flush_progress_t& progress)
     : progress_{progress, kProgressStepColumn}, writer_{std::move(writer)} {}
 
-  columnstore(directory& dir, const segment_meta& meta,
+  columnstore(directory& dir, const SegmentMeta& meta,
               const merge_writer::flush_progress_t& progress)
     : progress_{progress, kProgressStepColumn} {
     auto writer = meta.codec->get_columnstore_writer(true);
@@ -1149,7 +1149,7 @@ bool write_columns(columnstore& cs, Iterator& columns,
 // Write field term data
 template<typename Iterator>
 bool write_fields(columnstore& cs, Iterator& feature_itr,
-                  const flush_state& flush_state, const segment_meta& meta,
+                  const flush_state& flush_state, const SegmentMeta& meta,
                   const feature_info_provider_t& column_info,
                   compound_field_iterator& field_itr,
                   const merge_writer::flush_progress_t& progress) {
@@ -1337,8 +1337,7 @@ merge_writer::operator bool() const noexcept {
   return &dir_ != &noop_directory::instance();
 }
 
-bool merge_writer::flush(tracking_directory& dir,
-                         index_meta::index_segment_t& segment,
+bool merge_writer::flush(tracking_directory& dir, IndexSegment& segment,
                          const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
@@ -1447,8 +1446,7 @@ bool merge_writer::flush(tracking_directory& dir,
   return true;
 }
 
-bool merge_writer::flush_sorted(tracking_directory& dir,
-                                index_meta::index_segment_t& segment,
+bool merge_writer::flush_sorted(tracking_directory& dir, IndexSegment& segment,
                                 const flush_progress_t& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
@@ -1681,7 +1679,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir,
   return true;
 }
 
-bool merge_writer::flush(index_meta::index_segment_t& segment,
+bool merge_writer::flush(IndexSegment& segment,
                          const flush_progress_t& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(segment.meta.codec);  // must be set outside
@@ -1702,7 +1700,7 @@ bool merge_writer::flush(index_meta::index_segment_t& segment,
     meta.column_store = false;
     meta.docs_count = 0;
     meta.live_docs_count = 0;
-    meta.size = 0;
+    meta.size_in_bytes = 0;
     meta.version = 0;
   };
 

@@ -29,6 +29,7 @@
 
 #include "formats/formats.hpp"
 #include "index/column_info.hpp"
+#include "index/directory_reader.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
@@ -48,42 +49,27 @@
 namespace irs {
 
 class Comparer;
-class bitvector;
 struct directory;
-class directory_reader;
 
-class readers_cache final : util::noncopyable {
- public:
-  struct key_t {
-    // cppcheck-suppress noExplicitConstructor
-    /* implicit */ key_t(const segment_meta& meta);
+// FIXME(gnusi): remove
+struct key_t {
+  // cppcheck-suppress noExplicitConstructor
+  /* implicit */ key_t(const SegmentInfo& meta)
+    : name{meta.name}, version{meta.version} {}
 
-    bool operator==(const key_t& other) const noexcept {
-      return name == other.name && version == other.version;
-    }
+  bool operator==(const key_t& other) const noexcept {
+    return name == other.name && version == other.version;
+  }
 
-    std::string name;
-    uint64_t version;
-  };
+  std::string name;
+  uint64_t version;
+};
 
-  struct key_hash_t {
-    size_t operator()(const key_t& key) const noexcept {
-      return hash_utils::Hash(key.name);
-    }
-  };
-
-  // cppcheck-suppress constParameter
-  explicit readers_cache(directory& dir) noexcept : dir_(dir) {}
-
-  void clear() noexcept;
-  segment_reader emplace(const segment_meta& meta);
-  size_t purge(const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept;
-
- private:
-  std::mutex lock_;
-  absl::flat_hash_map<key_t, segment_reader, key_hash_t> cache_;
-  directory& dir_;
-};  // readers_cache
+struct key_hash_t {
+  size_t operator()(const key_t& key) const noexcept {
+    return hash_utils::Hash(key.name);
+  }
+};
 
 // Defines how index writer should be opened
 enum OpenMode {
@@ -97,6 +83,49 @@ enum OpenMode {
 };
 
 ENABLE_BITMASK_ENUM(OpenMode);
+
+// A set of candidates denoting an instance of consolidation
+using Consolidation = std::vector<const sub_reader*>;
+using ConsolidationView = std::span<const sub_reader* const>;
+
+// segments that are under consolidation
+using ConsolidatingSegments = absl::flat_hash_set<const sub_reader*>;
+
+// Mark consolidation candidate segments matching the current policy
+// candidates the segments that should be consolidated
+// in: segment candidates that may be considered by this policy
+// out: actual segments selected by the current policy
+// dir the segment directory
+// meta the index meta containing segments to be considered
+// Consolidating_segments segments that are currently in progress
+// of consolidation
+// Final candidates are all segments selected by at least some policy
+using ConsolidationPolicy =
+  std::function<void(Consolidation& candidates, const index_reader& index,
+                     const ConsolidatingSegments& consolidating_segments)>;
+
+enum class ConsolidationError : uint32_t {
+  // Consolidation failed
+  FAIL = 0,
+
+  // Consolidation successfully finished
+  OK,
+
+  // Consolidation was scheduled for the upcoming commit
+  PENDING
+};
+
+// Represents result of a consolidation
+struct ConsolidationResult {
+  // Number of candidates
+  size_t size;
+
+  // Error code
+  ConsolidationError error;
+
+  // intentionally implicit
+  operator bool() const noexcept { return error != ConsolidationError::FAIL; }
+};
 
 // The object is using for indexing data. Only one writer can write to
 // the same directory simultaneously.
@@ -122,11 +151,12 @@ class index_writer : private util::noncopyable {
   };
 
   struct CommittedState {
-    CommittedState() : meta{std::make_shared<index_meta>()} {}
-    CommittedState(std::shared_ptr<index_meta>&& meta, FileRefs&& refs) noexcept
+    CommittedState() : meta{std::make_shared<IndexMeta>()} {}
+    CommittedState(std::shared_ptr<IndexMeta>&& meta, FileRefs&& refs) noexcept
       : meta{std::move(meta)}, refs{std::move(refs)} {}
 
-    std::shared_ptr<index_meta> meta;
+    directory_reader reader;
+    std::shared_ptr<IndexMeta> meta;
     FileRefs refs;
   };
 
@@ -408,63 +438,7 @@ class index_writer : private util::noncopyable {
     init_options() {}  // compiler requires non-default definition
   };
 
-  struct segment_hash {
-    size_t operator()(const segment_meta* segment) const noexcept {
-      return hash_utils::Hash(segment->name);
-    }
-  };
-
-  struct segment_equal {
-    bool operator()(const segment_meta* lhs,
-                    const segment_meta* rhs) const noexcept {
-      return lhs->name == rhs->name;
-    }
-  };
-
-  // segments that are under consolidation
-  using consolidating_segments_t =
-    absl::flat_hash_set<const segment_meta*, segment_hash, segment_equal>;
-
-  enum class ConsolidationError : uint32_t {
-    // Consolidation failed
-    FAIL = 0,
-
-    // Consolidation successfully finished
-    OK,
-
-    // Consolidation was scheduled for the upcoming commit
-    PENDING
-  };
-
-  // Represents result of a consolidation
-  struct consolidation_result {
-    // Number of candidates
-    size_t size;
-
-    // Error code
-    ConsolidationError error;
-
-    // intentionally implicit
-    operator bool() const noexcept { return error != ConsolidationError::FAIL; }
-  };
-
   using ptr = std::shared_ptr<index_writer>;
-
-  // A set of candidates denoting an instance of consolidation
-  using consolidation_t = std::vector<const segment_meta*>;
-
-  // Mark consolidation candidate segments matching the current policy
-  // candidates the segments that should be consolidated
-  // in: segment candidates that may be considered by this policy
-  // out: actual segments selected by the current policy
-  // dir the segment directory
-  // meta the index meta containing segments to be considered
-  // Consolidating_segments segments that are currently in progress
-  // of consolidation
-  // Final candidates are all segments selected by at least some policy
-  using consolidation_policy_t =
-    std::function<void(consolidation_t& candidates, const index_meta& meta,
-                       const consolidating_segments_t& consolidating_segments)>;
 
   // Name of the lock for index repository
   static constexpr std::string_view kWriteLockName = "write.lock";
@@ -492,8 +466,8 @@ class index_writer : private util::noncopyable {
   // given the exact same index_meta containing all segments in the
   // commit, however, the resulting acceptor will only be segments not
   // yet marked for consolidation by other policies in the same commit
-  consolidation_result consolidate(
-    const consolidation_policy_t& policy, format::ptr codec = nullptr,
+  ConsolidationResult consolidate(
+    const ConsolidationPolicy& policy, format::ptr codec = nullptr,
     const merge_writer::flush_progress_t& progress = {});
 
   // Returns a context allowing index modification operations
@@ -561,9 +535,6 @@ class index_writer : private util::noncopyable {
     return modified;
   }
 
-  // Clears index writer's reader cache.
-  void purge_cached_readers() noexcept { cached_readers_.clear(); }
-
   // Returns field features.
   const feature_info_provider_t& feature_info() const noexcept {
     return feature_info_;
@@ -580,7 +551,7 @@ class index_writer : private util::noncopyable {
                const column_info_provider_t& column_info,
                const feature_info_provider_t& feature_info,
                const payload_provider_t& meta_payload_provider,
-               index_meta&& meta,
+               IndexMeta&& meta,
                std::shared_ptr<CommittedState>&& committed_state);
 
  private:
@@ -592,29 +563,29 @@ class index_writer : private util::noncopyable {
     consolidation_context_t(consolidation_context_t&&) = default;
     consolidation_context_t& operator=(consolidation_context_t&&) = delete;
 
-    consolidation_context_t(std::shared_ptr<index_meta>&& consolidation_meta,
-                            consolidation_t&& candidates,
+    consolidation_context_t(std::shared_ptr<IndexMeta>&& consolidation_meta,
+                            Consolidation&& candidates,
                             merge_writer&& merger) noexcept
       : consolidation_meta{std::move(consolidation_meta)},
         candidates{std::move(candidates)},
         merger{std::move(merger)} {}
 
-    consolidation_context_t(std::shared_ptr<index_meta>&& consolidation_meta,
-                            consolidation_t&& candidates) noexcept
+    consolidation_context_t(std::shared_ptr<IndexMeta>&& consolidation_meta,
+                            Consolidation&& candidates) noexcept
       : consolidation_meta{std::move(consolidation_meta)},
         candidates{std::move(candidates)} {}
 
-    std::shared_ptr<index_meta> consolidation_meta;
-    consolidation_t candidates;
+    std::shared_ptr<IndexMeta> consolidation_meta;
+    Consolidation candidates;
     merge_writer merger;
   };
 
   static_assert(std::is_nothrow_move_constructible_v<consolidation_context_t>);
 
   struct import_context {
-    import_context(index_meta::index_segment_t&& segment, size_t generation,
-                   FileRefs&& refs, consolidation_t&& consolidation_candidates,
-                   std::shared_ptr<index_meta>&& consolidation_meta,
+    import_context(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+                   Consolidation&& consolidation_candidates,
+                   std::shared_ptr<IndexMeta>&& consolidation_meta,
                    merge_writer&& merger) noexcept
       : generation(generation),
         segment(std::move(segment)),
@@ -623,31 +594,29 @@ class index_writer : private util::noncopyable {
                           std::move(consolidation_candidates),
                           std::move(merger)) {}
 
-    import_context(index_meta::index_segment_t&& segment, size_t generation,
-                   FileRefs&& refs, consolidation_t&& consolidation_candidates,
-                   std::shared_ptr<index_meta>&& consolidation_meta) noexcept
+    import_context(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+                   Consolidation&& consolidation_candidates,
+                   std::shared_ptr<IndexMeta>&& consolidation_meta) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
         consolidation_ctx(std::move(consolidation_meta),
                           std::move(consolidation_candidates)) {}
 
-    import_context(index_meta::index_segment_t&& segment, size_t generation,
-                   FileRefs&& refs,
-                   consolidation_t&& consolidation_candidates) noexcept
+    import_context(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+                   Consolidation&& consolidation_candidates) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
         consolidation_ctx(nullptr, std::move(consolidation_candidates)) {}
 
-    import_context(index_meta::index_segment_t&& segment, size_t generation,
+    import_context(IndexSegment&& segment, size_t generation,
                    FileRefs&& refs) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)) {}
 
-    import_context(index_meta::index_segment_t&& segment,
-                   size_t generation) noexcept
+    import_context(IndexSegment&& segment, size_t generation) noexcept
       : generation(generation), segment(std::move(segment)) {}
 
     import_context(import_context&&) = default;
@@ -656,7 +625,7 @@ class index_writer : private util::noncopyable {
     import_context& operator=(import_context&&) = delete;
 
     const size_t generation;
-    index_meta::index_segment_t segment;
+    IndexSegment segment;
     FileRefs refs;
     consolidation_context_t consolidation_ctx;
   };  // import_context
@@ -704,16 +673,16 @@ class index_writer : private util::noncopyable {
   //   generation == local generation (updated when segment_context
   //   registered once again with flush_context)
   struct segment_context {
-    struct flushed_t : public index_meta::index_segment_t {
+    struct FlushedSegment : public IndexSegment {
+      FlushedSegment() = default;
+      explicit FlushedSegment(SegmentMeta&& meta) noexcept
+        : IndexSegment{std::move(meta)} {}
+
       // starting doc_id that should be added to docs_mask
       doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
-
-      flushed_t() = default;
-      explicit flushed_t(segment_meta&& meta) noexcept
-        : index_meta::index_segment_t{std::move(meta)} {}
     };
 
-    using segment_meta_generator_t = std::function<segment_meta()>;
+    using segment_meta_generator_t = std::function<SegmentMeta()>;
     using ptr = std::unique_ptr<segment_context>;
 
     // number of active in-progress
@@ -737,13 +706,13 @@ class index_writer : private util::noncopyable {
     std::mutex flush_mutex_;
     // all of the previously flushed versions of this segment,
     // guarded by the flush_context::flush_mutex_
-    std::vector<flushed_t> flushed_;
+    std::vector<FlushedSegment> flushed_;
     // update_contexts to use with 'flushed_'
     // sequentially increasing through all offsets
     // (sequential doc_id in 'flushed_' == offset + doc_limits::min(), size()
     // == sum of all 'flushed_'.'docs_count')
     std::vector<segment_writer::update_context> flushed_update_contexts_;
-    // function to get new segment_meta from
+    // function to get new SegmentMeta from
     segment_meta_generator_t meta_generator_;
     // sequential list of pending modification
     std::vector<modification_context> modification_queries_;
@@ -762,8 +731,8 @@ class index_writer : private util::noncopyable {
     // 'modification_queries_' that is not part of the current flush_context
     size_t uncomitted_modification_queries_;
     std::unique_ptr<segment_writer> writer_;
-    // the segment_meta this writer was initialized with
-    index_meta::index_segment_t writer_meta_;
+    // the SegmentMeta this writer was initialized with
+    IndexSegment writer_meta_;
 
     static segment_context::ptr make(
       directory& dir, segment_meta_generator_t&& meta_generator,
@@ -908,8 +877,7 @@ class index_writer : private util::noncopyable {
     // are available for reuse
     freelist_t pending_segment_contexts_freelist_;
     // set of segment names to be removed from the index upon commit
-    absl::flat_hash_set<readers_cache::key_t, readers_cache::key_hash_t>
-      segment_mask_;
+    absl::flat_hash_set<const sub_reader*> segment_mask_;
 
     flush_context() = default;
 
@@ -948,7 +916,7 @@ class index_writer : private util::noncopyable {
     }
 
     template<typename Visitor>
-    bool visit(const Visitor& visitor, const index_meta& meta) const {
+    bool visit(const Visitor& visitor, const IndexMeta& meta) const {
       // cppcheck-suppress shadowFunction
       auto begin = files.begin();
 
@@ -998,7 +966,7 @@ class index_writer : private util::noncopyable {
     // reference to flush context held until end of commit
     flush_context_ptr ctx{nullptr, nullptr};
     // index meta of next commit
-    std::unique_ptr<index_meta> meta;
+    std::unique_ptr<IndexMeta> meta;
     // file names and segments to be synced during next commit
     sync_context to_sync;
 
@@ -1050,8 +1018,6 @@ class index_writer : private util::noncopyable {
   // provides payload for new segments
   payload_provider_t meta_payload_provider_;
   const Comparer* comparator_;
-  // readers by segment name
-  readers_cache cached_readers_;
   format::ptr codec_;
   // guard for cached_segment_readers_, commit_pool_, meta_
   // (modification during commit()/defragment()), payload_buf_
@@ -1060,7 +1026,7 @@ class index_writer : private util::noncopyable {
   std::shared_ptr<CommittedState> committed_state_;
   std::recursive_mutex consolidation_lock_;
   // segments that are under consolidation
-  consolidating_segments_t consolidating_segments_;
+  ConsolidatingSegments consolidating_segments_;
   // directory used for initialization of readers
   directory& dir_;
   // collection of contexts that collect data to be
@@ -1070,7 +1036,7 @@ class index_writer : private util::noncopyable {
   // processed during the next flush
   std::atomic<flush_context*> flush_context_;
   // latest/active state of index metadata
-  index_meta meta_;
+  IndexMeta meta_;
   // current state awaiting commit completion
   pending_state_t pending_state_;
   // limits for use with respect to segments

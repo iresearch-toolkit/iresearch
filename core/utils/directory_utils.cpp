@@ -102,7 +102,7 @@ bool reference(const directory& dir,
 
 // return success, visitor gets passed references to files registered with
 // index_meta
-bool reference(const directory& dir, const index_meta& meta,
+bool reference(const directory& dir, const IndexMeta& meta,
                const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
                bool include_missing /*= false*/) {
   if (meta.empty()) {
@@ -135,8 +135,8 @@ bool reference(const directory& dir, const index_meta& meta,
 }
 
 // return success, visitor gets passed references to files registered with
-// segment_meta
-bool reference(const directory& dir, const segment_meta& meta,
+// SegmentMeta
+bool reference(const directory& dir, const SegmentMeta& meta,
                const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
                bool include_missing /*= false*/) {
   auto files = meta.files;

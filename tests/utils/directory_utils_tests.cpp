@@ -287,10 +287,10 @@ TEST_F(directory_utils_tests, test_reference) {
     }
   }
 
-  // test add segment_meta files (empty)
+  // test add SegmentMeta files (empty)
   {
     irs::memory_directory dir;
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     size_t count = 0;
     auto visitor = [&count](irs::index_file_refs::ref_t&&) -> bool {
       ++count;
@@ -301,10 +301,10 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_EQ(0, count);
   }
 
-  // test add segment_meta files
+  // test add SegmentMeta files
   {
     irs::memory_directory dir;
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
@@ -326,10 +326,10 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_FALSE(attribute.refs().contains("def"));
   }
 
-  // test add segment_meta files (with missing)
+  // test add SegmentMeta files (with missing)
   {
     irs::memory_directory dir;
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
@@ -351,10 +351,10 @@ TEST_F(directory_utils_tests, test_reference) {
     ASSERT_TRUE(attribute.refs().contains("def"));
   }
 
-  // test add segment_meta files visitor terminate
+  // test add SegmentMeta files visitor terminate
   {
     irs::memory_directory dir;
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
@@ -394,8 +394,8 @@ TEST_F(directory_utils_tests, test_reference) {
   // test add index_meta files (empty)
   {
     irs::memory_directory dir;
-    irs::index_meta meta;
-    irs::index_meta::index_segments_t segments;
+    irs::IndexMeta meta;
+    irs::IndexMeta::index_segments_t segments;
     size_t count = 0;
     auto visitor = [&count](irs::index_file_refs::ref_t&&) -> bool {
       ++count;
@@ -409,8 +409,8 @@ TEST_F(directory_utils_tests, test_reference) {
   // test add index_meta files
   {
     irs::memory_directory dir;
-    irs::index_meta meta;
-    irs::index_meta::index_segments_t segments(1);
+    irs::IndexMeta meta;
+    irs::IndexMeta::index_segments_t segments(1);
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
@@ -436,8 +436,8 @@ TEST_F(directory_utils_tests, test_reference) {
   // test add index_meta files (with missing)
   {
     irs::memory_directory dir;
-    irs::index_meta meta;
-    irs::index_meta::index_segments_t segments(1);
+    irs::IndexMeta meta;
+    irs::IndexMeta::index_segments_t segments(1);
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;
@@ -463,8 +463,8 @@ TEST_F(directory_utils_tests, test_reference) {
   // test add index_meta files visitor terminate
   {
     irs::memory_directory dir;
-    irs::index_meta meta;
-    irs::index_meta::index_segments_t segments(1);
+    irs::IndexMeta meta;
+    irs::IndexMeta::index_segments_t segments(1);
     auto file = dir.create("abc");
     ASSERT_FALSE(!file);
     size_t count = 0;

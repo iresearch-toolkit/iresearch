@@ -28,19 +28,15 @@
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief interface for a segment reader
-////////////////////////////////////////////////////////////////////////////////
+// Interface for a segment reader
 class segment_reader final : public sub_reader {
  public:
-  static segment_reader open(const directory& dir, const segment_meta& meta,
+  static segment_reader open(const directory& dir, const SegmentMeta& meta,
                              const index_reader_options& opts);
 
   segment_reader() = default;  // required for context<segment_reader>
   segment_reader(const segment_reader& other) noexcept;
   segment_reader& operator=(const segment_reader& other) noexcept;
-
-  explicit operator bool() const noexcept { return bool(impl_); }
 
   bool operator==(const segment_reader& rhs) const noexcept {
     return impl_ == rhs.impl_;
@@ -54,6 +50,8 @@ class segment_reader final : public sub_reader {
   const segment_reader& operator*() const noexcept { return *this; }
   segment_reader* operator->() noexcept { return this; }
   const segment_reader* operator->() const noexcept { return this; }
+
+  const SegmentInfo& meta() const override { return impl_->meta(); }
 
   const sub_reader& operator[](size_t i) const noexcept override {
     IRS_ASSERT(!i);
@@ -70,6 +68,8 @@ class segment_reader final : public sub_reader {
     return impl_->docs_iterator();
   }
 
+  const document_mask* docs_mask() const override { return impl_->docs_mask(); }
+
   // FIXME find a better way to mask documents
   doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
     return impl_->mask(std::move(it));
@@ -83,9 +83,7 @@ class segment_reader final : public sub_reader {
 
   uint64_t live_docs_count() const override { return impl_->live_docs_count(); }
 
-  segment_reader reopen(const segment_meta& meta) const;
-
-  void reset() noexcept { impl_.reset(); }
+  segment_reader reopen(const SegmentMeta& meta) const;
 
   size_t size() const override { return impl_->size(); }
 
@@ -99,10 +97,8 @@ class segment_reader final : public sub_reader {
     return impl_->column(field);
   }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief converts current 'segment_reader' to 'sub_reader::ptr'
-  ////////////////////////////////////////////////////////////////////////////////
   explicit operator sub_reader::ptr() const noexcept { return impl_; }
+  explicit operator bool() const noexcept { return bool(impl_); }
 
  private:
   std::shared_ptr<const sub_reader> impl_;

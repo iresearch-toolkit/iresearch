@@ -23,10 +23,9 @@
 
 #pragma once
 
-#include <algorithm>
 #include <atomic>
+#include <optional>
 #include <span>
-#include <vector>
 
 #include "error/error.hpp"
 #include "utils/string.hpp"
@@ -37,92 +36,84 @@
 namespace irs {
 
 class format;
-typedef std::shared_ptr<const format> format_ptr;
-
-}  // namespace irs
-
-namespace irs {
-
 class index_writer;
 
-struct segment_meta {
-  using file_set = absl::flat_hash_set<std::string>;
+struct SegmentInfo {
+  bool operator==(const SegmentInfo& other) const noexcept;
 
-  segment_meta() = default;
-  segment_meta(const segment_meta&) = default;
-  segment_meta(segment_meta&& rhs) noexcept(
-    noexcept(std::is_nothrow_move_constructible_v<file_set>));
-  segment_meta(std::string_view name, format_ptr codec);
-  segment_meta(std::string&& name, format_ptr codec, uint64_t docs_count,
-               uint64_t live_docs_count, bool column_store, file_set&& files,
-               size_t size = 0,
-               field_id sort = field_limits::invalid()) noexcept;
-
-  segment_meta& operator=(segment_meta&& rhs) noexcept(
-    noexcept(std::is_nothrow_move_assignable_v<file_set>));
-  segment_meta& operator=(const segment_meta&) = default;
-
-  bool operator==(const segment_meta& other) const noexcept;
-  bool operator!=(const segment_meta& other) const noexcept;
-
-  file_set files;
   std::string name;
   uint64_t docs_count{};       // Total number of documents in a segment
   uint64_t live_docs_count{};  // Total number of live documents in a segment
-  format_ptr codec;
-  size_t size{};  // Size of a segment in bytes
   uint64_t version{};
+  size_t size_in_bytes{};  // Size of a segment in bytes
+};
+
+static_assert(std::is_nothrow_move_constructible_v<SegmentInfo>);
+static_assert(std::is_nothrow_move_assignable_v<SegmentInfo>);
+
+struct SegmentMeta : SegmentInfo {
+  using FileSet = absl::flat_hash_set<std::string>;
+
+  SegmentMeta() = default;
+  SegmentMeta(std::string&& name, std::shared_ptr<const format> codec) noexcept
+    : SegmentInfo{.name = std::move(name)}, codec{std::move(codec)} {}
+
+  bool operator==(const SegmentMeta& other) const noexcept;
+
+  FileSet files;
+  std::shared_ptr<const format> codec;
   field_id sort{field_limits::invalid()};
   bool column_store{};
 };
 
-inline bool has_removals(const segment_meta& meta) noexcept {
+inline bool HasRemovals(const SegmentInfo& meta) noexcept {
   //  return meta.version > 0; // all version > 0 have document mask
   return meta.live_docs_count != meta.docs_count;
 }
 
-static_assert(std::is_nothrow_move_constructible_v<segment_meta>);
-static_assert(std::is_nothrow_move_assignable_v<segment_meta>);
+static_assert(std::is_nothrow_move_constructible_v<SegmentMeta>);
+static_assert(std::is_nothrow_move_assignable_v<SegmentMeta>);
 
-class index_meta {
+struct IndexSegment {
+  IndexSegment() = default;
+  // cppcheck-suppress noExplicitConstructor
+  IndexSegment(SegmentMeta&& meta) : meta{std::move(meta)} {}
+  IndexSegment(const IndexSegment& other) = default;
+  IndexSegment& operator=(const IndexSegment& other) = default;
+  IndexSegment(IndexSegment&&) = default;
+  IndexSegment& operator=(IndexSegment&&) = default;
+
+  bool operator==(const IndexSegment& other) const noexcept {
+    return filename == other.filename || meta == other.meta;
+  }
+
+  std::string filename;
+  SegmentMeta meta;
+};
+
+static_assert(std::is_nothrow_move_constructible_v<IndexSegment>);
+static_assert(std::is_nothrow_move_assignable_v<IndexSegment>);
+
+class IndexMeta {
  public:
-  struct index_segment_t {
-    index_segment_t() = default;
-    // cppcheck-suppress noExplicitConstructor
-    index_segment_t(segment_meta&& meta);
-    index_segment_t(const index_segment_t& other) = default;
-    index_segment_t& operator=(const index_segment_t& other) = default;
-    index_segment_t(index_segment_t&&) = default;
-    index_segment_t& operator=(index_segment_t&&) = default;
+  IndexMeta() = default;
+  IndexMeta(IndexMeta&& rhs) noexcept;
+  IndexMeta(const IndexMeta& rhs);
+  IndexMeta& operator=(IndexMeta&& rhs) noexcept;
+  IndexMeta& operator=(const IndexMeta&) = delete;
 
-    bool operator==(const index_segment_t& other) const noexcept;
-    bool operator!=(const index_segment_t& other) const noexcept;
-
-    std::string filename;
-    segment_meta meta;
-  };
-
-  static_assert(std::is_nothrow_move_constructible_v<index_segment_t>);
-  static_assert(std::is_nothrow_move_assignable_v<index_segment_t>);
-
-  index_meta() = default;
-  index_meta(index_meta&& rhs) noexcept;
-  index_meta(const index_meta& rhs);
-  index_meta& operator=(index_meta&& rhs) noexcept;
-  index_meta& operator=(const index_meta&) = delete;
-
-  bool operator==(const index_meta& other) const noexcept;
-  bool operator!=(const index_meta& other) const noexcept {
+  bool operator==(const IndexMeta& other) const noexcept;
+  bool operator!=(const IndexMeta& other) const noexcept {
     return !(*this == other);
   }
 
-  void add(index_segment_t&& segment) {
+  void add(IndexSegment&& segment) {
     segments_.emplace_back(std::move(segment));
   }
 
   template<typename Visitor>
   bool visit_files(const Visitor& visitor) const {
-    return const_cast<index_meta&>(*this).visit_files(visitor);
+    return const_cast<IndexMeta&>(*this).visit_files(visitor);
   }
 
   template<typename Visitor>
@@ -141,21 +132,14 @@ class index_meta {
     return true;
   }
 
-  template<typename Visitor>
-  bool visit_segments(const Visitor& visitor) const {
-    for (auto& curr_segment : segments_) {
-      if (!visitor(curr_segment.filename, curr_segment.meta)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
   uint64_t increment() noexcept {
     return seg_counter_.fetch_add(1, std::memory_order_relaxed) + 1;
   }
   uint64_t counter() const noexcept {
     return seg_counter_.load(std::memory_order_relaxed);
+  }
+  void SetCounter(uint64_t v) noexcept {
+    seg_counter_.store(v, std::memory_order_relaxed);
   }
   uint64_t generation() const noexcept { return gen_; }
 
@@ -165,7 +149,7 @@ class index_meta {
   auto begin() const noexcept { return segments_.begin(); }
   auto end() const noexcept { return segments_.end(); }
 
-  void update_generation(const index_meta& rhs) noexcept {
+  void update_generation(const IndexMeta& rhs) noexcept {
     gen_ = rhs.gen_;
     last_gen_ = rhs.last_gen_;
   }
@@ -178,35 +162,26 @@ class index_meta {
     segments_.clear();
   }
 
-  void reset(const index_meta& rhs) {
+  void reset(const IndexMeta& rhs) {
     // leave version and generation counters unchanged
     segments_ = rhs.segments_;
   }
 
-  const index_segment_t& segment(size_t i) const noexcept {
+  const IndexSegment& segment(size_t i) const noexcept {
     IRS_ASSERT(i < segments_.size());
     return segments_[i];
   }
 
-  const index_segment_t& operator[](size_t i) const noexcept {
+  const IndexSegment& operator[](size_t i) const noexcept {
     IRS_ASSERT(i < segments_.size());
     return segments_[i];
   }
 
-  std::span<const index_segment_t> segments() const noexcept {
-    return segments_;
-  }
+  std::span<const IndexSegment> segments() const noexcept { return segments_; }
 
   bytes_view payload() const noexcept {
     return payload_.has_value() ? payload_.value() : bytes_view{};
   }
-
- private:
-  friend class index_writer;
-  friend struct index_meta_reader;
-  friend struct index_meta_writer;
-
-  uint64_t next_generation() const noexcept;
 
   void payload(bstring&& payload) noexcept {
     payload_.emplace(std::move(payload));
@@ -220,10 +195,17 @@ class index_meta {
     }
   }
 
+ private:
+  friend class index_writer;
+  friend struct index_meta_reader;
+  friend struct index_meta_writer;
+
+  uint64_t next_generation() const noexcept;
+
   uint64_t gen_{index_gen_limits::invalid()};
   uint64_t last_gen_{index_gen_limits::invalid()};
   std::atomic<uint64_t> seg_counter_{0};
-  std::vector<index_segment_t> segments_;
+  std::vector<IndexSegment> segments_;
   std::optional<bstring> payload_;
 };
 

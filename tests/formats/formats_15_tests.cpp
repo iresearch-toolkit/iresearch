@@ -215,7 +215,7 @@ void Format15TestCase::PostingsWandSeek(
   }
 
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.name = "segment_name";
 
     irs::reader_state state;

@@ -28,37 +28,37 @@
 namespace {
 
 [[maybe_unused]] void print_consolidation(
-  const irs::index_meta& meta,
-  const irs::index_writer::consolidation_policy_t& policy) {
+  const irs::index_reader& reader, const irs::ConsolidationPolicy& policy) {
   struct less_t {
-    bool operator()(const irs::segment_meta* lhs,
-                    const irs::segment_meta* rhs) const {
-      return lhs->size == rhs->size ? lhs->name < rhs->name
-                                    : lhs->size < rhs->size;
+    bool operator()(const irs::SegmentMeta* lhs,
+                    const irs::SegmentMeta* rhs) const {
+      return lhs->size_in_bytes == rhs->size_in_bytes
+               ? lhs->name < rhs->name
+               : lhs->size_in_bytes < rhs->size_in_bytes;
     }
   };
-  irs::index_writer::consolidation_t candidates;
-  irs::index_writer::consolidating_segments_t consolidating_segments;
+  irs::Consolidation candidates;
+  irs::ConsolidatingSegments consolidating_segments;
 
   size_t i = 0;
   while (true) {
     candidates.clear();
-    policy(candidates, meta, consolidating_segments);
+    policy(candidates, reader, consolidating_segments);
 
     if (candidates.empty()) {
       break;
     }
 
-    std::set<const irs::segment_meta*, less_t> sorted_candidates(
+    std::set<const irs::SegmentMeta*, less_t> sorted_candidates(
       candidates.begin(), candidates.end(), less_t());
 
     std::cerr << "Consolidation " << i++ << ": ";
     for (auto* segment : sorted_candidates) {
-      std::cerr << segment->size << " ("
+      std::cerr << segment->size_in_bytes << " ("
                 << double_t(segment->live_docs_count) / segment->docs_count
                 << "), ";
     }
-    std::cerr << std::endl;
+    std::cerr << "\n";
 
     consolidating_segments.insert(
       candidates.begin(),
@@ -66,9 +66,9 @@ namespace {
   }
 }
 
-void assert_candidates(
-  const irs::index_meta& meta, const std::vector<size_t>& expected_candidates,
-  const irs::index_writer::consolidation_t& actual_candidates) {
+void assert_candidates(const irs::IndexMeta& meta,
+                       const std::vector<size_t>& expected_candidates,
+                       const irs::Consolidation& actual_candidates) {
   ASSERT_EQ(expected_candidates.size(), actual_candidates.size());
 
   for (const size_t expected_candidate_idx : expected_candidates) {
@@ -83,10 +83,10 @@ void assert_candidates(
 
 TEST(consolidation_test_tier, test_max_consolidation_size) {
   // generate meta
-  irs::index_meta meta;
+  irs::IndexMeta meta;
   for (size_t i = 0; i < 22; ++i) {
-    meta.add(irs::segment_meta(std::to_string(i), nullptr, 1, 1, false,
-                               irs::segment_meta::file_set(), 1));
+    meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 1, 1, false,
+                              irs::SegmentMeta::FileSet(), 1));
   }
 
   {
@@ -96,12 +96,12 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
     options.min_segments = 1;
     options.max_segments_bytes = 10;
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -111,7 +111,7 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
 
     // 2nd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -121,7 +121,7 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
 
     // 3rd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -132,7 +132,7 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -146,12 +146,12 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
     options.min_segments = 1;
     options.max_segments_bytes = 0;
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // all segments are too big
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -159,24 +159,24 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
 }
 
 TEST(consolidation_test_tier, empty_meta) {
-  irs::index_meta meta;
+  irs::IndexMeta meta;
   irs::index_utils::consolidate_tier options;
   options.floor_segment_bytes = 1;
   options.max_segments = 10;
   options.min_segments = 1;
   options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-  irs::index_writer::consolidating_segments_t consolidating_segments;
+  irs::ConsolidatingSegments consolidating_segments;
   auto policy = irs::index_utils::consolidation_policy(options);
-  irs::index_writer::consolidation_t candidates;
+  irs::Consolidation candidates;
   policy(candidates, meta, consolidating_segments);
   ASSERT_TRUE(candidates.empty());
 }
 
 TEST(consolidation_test_tier, empty_consolidating_segment) {
-  irs::index_meta meta;
-  meta.add(irs::segment_meta("empty", nullptr, 1, 0, false,
-                             irs::segment_meta::file_set(), 1));
+  irs::IndexMeta meta;
+  meta.add(irs::SegmentMeta("empty", nullptr, 1, 0, false,
+                            irs::SegmentMeta::FileSet(), 1));
 
   irs::index_utils::consolidate_tier options;
   options.floor_segment_bytes = 1;
@@ -184,18 +184,17 @@ TEST(consolidation_test_tier, empty_consolidating_segment) {
   options.min_segments = 1;
   options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-  irs::index_writer::consolidating_segments_t consolidating_segments{
-    &meta[0].meta};
+  irs::ConsolidatingSegments consolidating_segments{&meta[0].meta};
   auto policy = irs::index_utils::consolidation_policy(options);
-  irs::index_writer::consolidation_t candidates;
+  irs::Consolidation candidates;
   policy(candidates, meta, consolidating_segments);
   ASSERT_TRUE(candidates.empty());  // skip empty consolidating segments
 }
 
 TEST(consolidation_test_tier, empty_segment) {
-  irs::index_meta meta;
-  meta.add(irs::segment_meta("empty", nullptr, 0, 0, false,
-                             irs::segment_meta::file_set(), 1));
+  irs::IndexMeta meta;
+  meta.add(irs::SegmentMeta("empty", nullptr, 0, 0, false,
+                            irs::SegmentMeta::FileSet(), 1));
 
   irs::index_utils::consolidate_tier options;
   options.floor_segment_bytes = 1;
@@ -203,20 +202,19 @@ TEST(consolidation_test_tier, empty_segment) {
   options.min_segments = 1;
   options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-  irs::index_writer::consolidating_segments_t consolidating_segments{
-    &meta[0].meta};
+  irs::ConsolidatingSegments consolidating_segments{&meta[0].meta};
   auto policy = irs::index_utils::consolidation_policy(options);
-  irs::index_writer::consolidation_t candidates;
+  irs::Consolidation candidates;
   policy(candidates, meta, consolidating_segments);
   ASSERT_TRUE(candidates.empty());  // skip empty segments
 }
 
 TEST(consolidation_test_tier, test_max_consolidation_count) {
   // generate meta
-  irs::index_meta meta;
+  irs::IndexMeta meta;
   for (size_t i = 0; i < 22; ++i) {
-    meta.add(irs::segment_meta(std::to_string(i), nullptr, 1, 1, false,
-                               irs::segment_meta::file_set(), 1));
+    meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 1, 1, false,
+                              irs::SegmentMeta::FileSet(), 1));
   }
 
   {
@@ -226,12 +224,12 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     options.min_segments = 1;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -241,7 +239,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
 
     // 2nd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -251,7 +249,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
 
     // 3rd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -261,7 +259,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -275,12 +273,12 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     options.min_segments = 1;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -290,7 +288,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -304,12 +302,12 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     options.min_segments = 1;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -323,12 +321,12 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
     options.min_segments = 3;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -338,7 +336,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
 
     // 2nd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -348,7 +346,7 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -357,10 +355,10 @@ TEST(consolidation_test_tier, test_max_consolidation_count) {
 
 TEST(consolidation_test_tier, test_min_consolidation_count) {
   // generate meta
-  irs::index_meta meta;
+  irs::IndexMeta meta;
   for (size_t i = 0; i < 22; ++i) {
-    meta.add(irs::segment_meta(std::to_string(i), nullptr, 1, 1, false,
-                               irs::segment_meta::file_set(), 1));
+    meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 1, 1, false,
+                              irs::SegmentMeta::FileSet(), 1));
   }
 
   // min_segments == 3
@@ -371,12 +369,12 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
     options.min_segments = 3;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -386,7 +384,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
     // 2nd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -396,7 +394,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -410,12 +408,12 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
     options.min_segments = 0;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -425,7 +423,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
     // 2nd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -435,7 +433,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
     // 3rd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -445,7 +443,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -459,12 +457,12 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
     options.min_segments = std::numeric_limits<size_t>::max();
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -474,7 +472,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
     // 2nd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -484,7 +482,7 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -498,12 +496,12 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
     options.min_segments = std::numeric_limits<size_t>::max();
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // can't find anything
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -512,16 +510,16 @@ TEST(consolidation_test_tier, test_min_consolidation_count) {
 
 TEST(consolidation_test_tier, test_consolidation_floor) {
   // generate meta
-  irs::index_meta meta;
+  irs::IndexMeta meta;
   {
     size_t i = 0;
     for (; i < 5; ++i) {
-      meta.add(irs::segment_meta(std::to_string(i), nullptr, 1, 1, false,
-                                 irs::segment_meta::file_set(), 2 * i));
+      meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 1, 1, false,
+                                irs::SegmentMeta::FileSet(), 2 * i));
     }
     for (; i < 22; ++i) {
-      meta.add(irs::segment_meta(std::to_string(i), nullptr, 1, 1, false,
-                                 irs::segment_meta::file_set(), 2 * i));
+      meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 1, 1, false,
+                                irs::SegmentMeta::FileSet(), 2 * i));
     }
   }
 
@@ -532,12 +530,12 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
     options.min_segments = 1;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -552,7 +550,7 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
 
     // 2nd tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -562,7 +560,7 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -576,12 +574,12 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
     options.min_segments = 1;
     options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     auto policy = irs::index_utils::consolidation_policy(options);
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       consolidating_segments.insert(
         candidates.begin(),
@@ -591,7 +589,7 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
 
     // last empty tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -600,15 +598,15 @@ TEST(consolidation_test_tier, test_consolidation_floor) {
 
 TEST(consolidation_test_tier, test_prefer_segments_with_removals) {
   // generate meta
-  irs::index_meta meta;
-  meta.add(irs::segment_meta("0", nullptr, 10, 10, false,
-                             irs::segment_meta::file_set(), 10));
-  meta.add(irs::segment_meta("1", nullptr, 10, 10, false,
-                             irs::segment_meta::file_set(), 10));
-  meta.add(irs::segment_meta("2", nullptr, 11, 10, false,
-                             irs::segment_meta::file_set(), 11));
-  meta.add(irs::segment_meta("3", nullptr, 11, 10, false,
-                             irs::segment_meta::file_set(), 11));
+  irs::IndexMeta meta;
+  meta.add(irs::SegmentMeta("0", nullptr, 10, 10, false,
+                            irs::SegmentMeta::FileSet(), 10));
+  meta.add(irs::SegmentMeta("1", nullptr, 10, 10, false,
+                            irs::SegmentMeta::FileSet(), 10));
+  meta.add(irs::SegmentMeta("2", nullptr, 11, 10, false,
+                            irs::SegmentMeta::FileSet(), 11));
+  meta.add(irs::SegmentMeta("3", nullptr, 11, 10, false,
+                            irs::SegmentMeta::FileSet(), 11));
 
   // ensure policy prefers segments with removals
   irs::index_utils::consolidate_tier options;
@@ -617,13 +615,13 @@ TEST(consolidation_test_tier, test_prefer_segments_with_removals) {
   options.min_segments = 1;
   options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-  irs::index_writer::consolidating_segments_t consolidating_segments;
+  irs::ConsolidatingSegments consolidating_segments;
   auto policy = irs::index_utils::consolidation_policy(options);
 
   const std::vector<std::vector<size_t>> expected_tiers{{2, 3}, {0, 1}};
 
   for (auto& expected_tier : expected_tiers) {
-    irs::index_writer::consolidation_t candidates;
+    irs::Consolidation candidates;
     policy(candidates, meta, consolidating_segments);
     assert_candidates(meta, expected_tier, candidates);
     candidates.clear();
@@ -636,7 +634,7 @@ TEST(consolidation_test_tier, test_prefer_segments_with_removals) {
 
   // no more segments to consolidate
   {
-    irs::index_writer::consolidation_t candidates;
+    irs::Consolidation candidates;
     policy(candidates, meta, consolidating_segments);
     ASSERT_TRUE(candidates.empty());
   }
@@ -652,14 +650,14 @@ TEST(consolidation_test_tier, test_singleton) {
 
   // singleton consolidation without removals
   {
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 150));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 150));
 
     // avoid having singletone merges without removals
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -667,14 +665,14 @@ TEST(consolidation_test_tier, test_singleton) {
 
   // singleton consolidation with removals
   {
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 99, false,
-                               irs::segment_meta::file_set{}, 150));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 99, false,
+                              irs::SegmentMeta::FileSet{}, 150));
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0}, candidates);
       candidates.clear();
@@ -686,7 +684,7 @@ TEST(consolidation_test_tier, test_singleton) {
     }
 
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -698,23 +696,23 @@ TEST(consolidation_test_tier, test_defaults) {
   auto policy = irs::index_utils::consolidation_policy(options);
 
   {
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
 
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 150));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 150));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {0, 1, 2, 3, 4}, candidates);
       candidates.clear();
@@ -727,41 +725,41 @@ TEST(consolidation_test_tier, test_defaults) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
   }
 
   {
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 150));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("5", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("6", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("7", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("8", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("9", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("10", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 150));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("5", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("6", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("7", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("8", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("9", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("10", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
 
     // 1st tier
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, candidates);
       candidates.clear();
@@ -774,7 +772,7 @@ TEST(consolidation_test_tier, test_defaults) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -790,20 +788,20 @@ TEST(consolidation_test_tier, test_no_candidates) {
     10;  // max number of segments per tier to merge at once
   auto policy = irs::index_utils::consolidation_policy(options);
 
-  irs::index_writer::consolidating_segments_t consolidating_segments;
-  irs::index_meta meta;
-  meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                             irs::segment_meta::file_set{}, 141747));
-  meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                             irs::segment_meta::file_set{}, 1548373791));
-  meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                             irs::segment_meta::file_set{}, 1699787770));
-  meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                             irs::segment_meta::file_set{}, 1861963739));
-  meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                             irs::segment_meta::file_set{}, 2013404723));
+  irs::ConsolidatingSegments consolidating_segments;
+  irs::IndexMeta meta;
+  meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                            irs::SegmentMeta::FileSet{}, 141747));
+  meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                            irs::SegmentMeta::FileSet{}, 1548373791));
+  meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                            irs::SegmentMeta::FileSet{}, 1699787770));
+  meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                            irs::SegmentMeta::FileSet{}, 1861963739));
+  meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                            irs::SegmentMeta::FileSet{}, 2013404723));
 
-  irs::index_writer::consolidation_t candidates;
+  irs::Consolidation candidates;
   policy(candidates, meta, consolidating_segments);
   ASSERT_TRUE(candidates.empty());  // candidates too large
 }
@@ -820,42 +818,42 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 10));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 40));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 60));
-    meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 70));
-    meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("5", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 150));
-    meta.add(irs::segment_meta("6", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 200));
-    meta.add(irs::segment_meta("7", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 500));
-    meta.add(irs::segment_meta("8", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 750));
-    meta.add(irs::segment_meta("9", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1100));
-    meta.add(irs::segment_meta("10", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 90));
-    meta.add(irs::segment_meta("11", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 75));
-    meta.add(irs::segment_meta("12", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1500));
-    meta.add(irs::segment_meta("13", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 10000));
-    meta.add(irs::segment_meta("14", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 5000));
-    meta.add(irs::segment_meta("15", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1750));
-    meta.add(irs::segment_meta("16", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 690));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 10));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 40));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 60));
+    meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 70));
+    meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("5", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 150));
+    meta.add(irs::SegmentMeta("6", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 200));
+    meta.add(irs::SegmentMeta("7", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 500));
+    meta.add(irs::SegmentMeta("8", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 750));
+    meta.add(irs::SegmentMeta("9", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1100));
+    meta.add(irs::SegmentMeta("10", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 90));
+    meta.add(irs::SegmentMeta("11", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 75));
+    meta.add(irs::SegmentMeta("12", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1500));
+    meta.add(irs::SegmentMeta("13", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 10000));
+    meta.add(irs::SegmentMeta("14", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 5000));
+    meta.add(irs::SegmentMeta("15", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1750));
+    meta.add(irs::SegmentMeta("16", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 690));
 
     const std::vector<std::vector<size_t>> expected_tiers{
       {0, 1, 2, 3, 4, 10, 11},
@@ -864,7 +862,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     };
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -877,7 +875,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -894,28 +892,28 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 10));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 500));
-    meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1000));
-    meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 2000));
-    meta.add(irs::segment_meta("5", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 4000));
-    meta.add(irs::segment_meta("6", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 12000));
-    meta.add(irs::segment_meta("7", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 30000));
-    meta.add(irs::segment_meta("8", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 50000));
-    meta.add(irs::segment_meta("9", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100000));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 10));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 500));
+    meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1000));
+    meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 2000));
+    meta.add(irs::SegmentMeta("5", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 4000));
+    meta.add(irs::SegmentMeta("6", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 12000));
+    meta.add(irs::SegmentMeta("7", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 30000));
+    meta.add(irs::SegmentMeta("8", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 50000));
+    meta.add(irs::SegmentMeta("9", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100000));
 
     const std::vector<std::vector<size_t>> expected_tiers{
       {0, 1},
@@ -925,7 +923,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     };
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -938,7 +936,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -955,34 +953,34 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 10));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 500));
-    meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1000));
-    meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 2000));
-    meta.add(irs::segment_meta("5", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 4000));
-    meta.add(irs::segment_meta("6", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 12000));
-    meta.add(irs::segment_meta("7", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 30000));
-    meta.add(irs::segment_meta("8", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 50000));
-    meta.add(irs::segment_meta("9", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100000));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 10));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 500));
+    meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1000));
+    meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 2000));
+    meta.add(irs::SegmentMeta("5", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 4000));
+    meta.add(irs::SegmentMeta("6", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 12000));
+    meta.add(irs::SegmentMeta("7", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 30000));
+    meta.add(irs::SegmentMeta("8", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 50000));
+    meta.add(irs::SegmentMeta("9", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100000));
 
     const std::vector<std::vector<size_t>> expected_tiers{
       {0, 1}, {2, 3}, {4, 5}, {6, 7}, {8, 9}};
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -995,7 +993,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1012,28 +1010,28 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 10));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 500));
-    meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1000));
-    meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 2000));
-    meta.add(irs::segment_meta("5", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 4000));
-    meta.add(irs::segment_meta("6", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 12000));
-    meta.add(irs::segment_meta("7", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 30000));
-    meta.add(irs::segment_meta("8", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 50000));
-    meta.add(irs::segment_meta("9", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100000));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 10));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 500));
+    meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1000));
+    meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 2000));
+    meta.add(irs::SegmentMeta("5", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 4000));
+    meta.add(irs::SegmentMeta("6", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 12000));
+    meta.add(irs::SegmentMeta("7", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 30000));
+    meta.add(irs::SegmentMeta("8", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 50000));
+    meta.add(irs::SegmentMeta("9", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100000));
 
     const std::vector<std::vector<size_t>> expected_tiers{
       {2, 3, 4}, {6, 7, 8}
@@ -1041,7 +1039,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     };
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1054,7 +1052,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1071,51 +1069,51 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 10));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 500));
-    meta.add(irs::segment_meta("3", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1000));
-    meta.add(irs::segment_meta("4", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 2000));
-    meta.add(irs::segment_meta("5", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 4000));
-    meta.add(irs::segment_meta("6", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 12000));
-    meta.add(irs::segment_meta("7", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 30000));
-    meta.add(irs::segment_meta("8", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 50000));
-    meta.add(irs::segment_meta("9", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 100000));
-    meta.add(irs::segment_meta("10", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 51));
-    meta.add(irs::segment_meta("11", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 151));
-    meta.add(irs::segment_meta("12", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 637));
-    meta.add(irs::segment_meta("13", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 351));
-    meta.add(irs::segment_meta("14", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 2351));
-    meta.add(irs::segment_meta("15", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1351));
-    meta.add(irs::segment_meta("16", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1351));
-    meta.add(irs::segment_meta("17", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 20));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 10));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 500));
+    meta.add(irs::SegmentMeta("3", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1000));
+    meta.add(irs::SegmentMeta("4", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 2000));
+    meta.add(irs::SegmentMeta("5", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 4000));
+    meta.add(irs::SegmentMeta("6", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 12000));
+    meta.add(irs::SegmentMeta("7", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 30000));
+    meta.add(irs::SegmentMeta("8", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 50000));
+    meta.add(irs::SegmentMeta("9", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 100000));
+    meta.add(irs::SegmentMeta("10", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 51));
+    meta.add(irs::SegmentMeta("11", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 151));
+    meta.add(irs::SegmentMeta("12", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 637));
+    meta.add(irs::SegmentMeta("13", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 351));
+    meta.add(irs::SegmentMeta("14", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 2351));
+    meta.add(irs::SegmentMeta("15", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1351));
+    meta.add(irs::SegmentMeta("16", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1351));
+    meta.add(irs::SegmentMeta("17", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 20));
 
     const std::vector<std::vector<size_t>> expected_tiers{
       {0, 10, 17}, {1, 11}, {2, 3, 12, 13, 15, 16}, {4, 14}, {5, 6}, {7, 8},
     };
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1128,7 +1126,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1146,17 +1144,17 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.min_score = 0;  // default min score
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 9886));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 9886));
 
     const std::vector<std::vector<size_t>> expected_tiers{{0, 1}};
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1170,7 +1168,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1188,16 +1186,16 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.min_score = 0.001;  // filter out irrelevant merges
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 9886));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 9886));
 
     // no segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1215,21 +1213,21 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.min_score = 0;  // default min score
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 9886));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 2));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 9886));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 2));
 
     const std::vector<std::vector<size_t>> expected_tiers{
       {0, 2},
     };
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1242,7 +1240,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1260,21 +1258,21 @@ TEST(consolidation_test_tier, test_skewed_segments) {
     options.min_score = 0.001;  // filter our irrelevant merges
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
-    irs::index_meta meta;
-    meta.add(irs::segment_meta("0", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 1));
-    meta.add(irs::segment_meta("1", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 9886));
-    meta.add(irs::segment_meta("2", nullptr, 100, 100, false,
-                               irs::segment_meta::file_set{}, 2));
+    irs::ConsolidatingSegments consolidating_segments;
+    irs::IndexMeta meta;
+    meta.add(irs::SegmentMeta("0", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 1));
+    meta.add(irs::SegmentMeta("1", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 9886));
+    meta.add(irs::SegmentMeta("2", nullptr, 100, 100, false,
+                              irs::SegmentMeta::FileSet{}, 2));
 
     const std::vector<std::vector<size_t>> expected_tiers{
       {0, 2},
     };
 
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1287,7 +1285,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1305,7 +1303,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_meta meta;
+    irs::IndexMeta meta;
 
     // generate meta
     {
@@ -1317,8 +1315,8 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       for (auto begin = std::begin(sizes), end = std::end(sizes); begin != end;
            ++begin) {
         const auto i = std::distance(begin, end);
-        meta.add(irs::segment_meta(std::to_string(i), nullptr, 100, 100, false,
-                                   irs::segment_meta::file_set{}, *begin));
+        meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 100, 100, false,
+                                  irs::SegmentMeta::FileSet{}, *begin));
       }
     }
 
@@ -1330,9 +1328,9 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       {20, 21, 23},
     };
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1346,7 +1344,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1365,7 +1363,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_meta meta;
+    irs::IndexMeta meta;
 
     // generate meta
     {
@@ -1378,11 +1376,11 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       for (auto begin = std::begin(sizes), end = std::end(sizes); begin != end;
            ++begin) {
         const auto i = std::distance(begin, end);
-        meta.add(irs::segment_meta(std::to_string(i), nullptr, 100, 100, false,
-                                   irs::segment_meta::file_set{}, *begin));
+        meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 100, 100, false,
+                                  irs::SegmentMeta::FileSet{}, *begin));
       }
 
-      const_cast<irs::segment_meta&>(meta[10].meta).live_docs_count = 1;
+      const_cast<irs::SegmentMeta&>(meta[10].meta).live_docs_count = 1;
     }
 
     const std::vector<std::vector<size_t>> expected_tiers{
@@ -1391,9 +1389,9 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       {22, 24},         {20, 21, 23},
     };
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1407,7 +1405,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1425,7 +1423,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       50;  // smaller segments will be treated as equal to this value
     auto policy = irs::index_utils::consolidation_policy(options);
 
-    irs::index_meta meta;
+    irs::IndexMeta meta;
 
     // generate meta
     {
@@ -1438,11 +1436,11 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       for (auto begin = std::begin(sizes), end = std::end(sizes); begin != end;
            ++begin) {
         const auto i = std::distance(begin, end);
-        meta.add(irs::segment_meta(std::to_string(i), nullptr, 100, 100, false,
-                                   irs::segment_meta::file_set{}, *begin));
+        meta.add(irs::SegmentMeta(std::to_string(i), nullptr, 100, 100, false,
+                                  irs::SegmentMeta::FileSet{}, *begin));
       }
 
-      const_cast<irs::segment_meta&>(meta[10].meta).live_docs_count = 1;
+      const_cast<irs::SegmentMeta&>(meta[10].meta).live_docs_count = 1;
     }
 
     const std::vector<std::vector<size_t>> expected_tiers{
@@ -1451,9 +1449,9 @@ TEST(consolidation_test_tier, test_skewed_segments) {
       {22, 24},         {20, 21, 23},
     };
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1467,7 +1465,7 @@ TEST(consolidation_test_tier, test_skewed_segments) {
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }
@@ -1537,11 +1535,11 @@ irs::index_utils::consolidation_policy(options);
         if (i > 15 && i < 25) {
           docs_count += i*5;
         }
-        meta.add(irs::segment_meta(std::to_string(i), nullptr, docs_count, 100,
-false, irs::segment_meta::file_set{}, *begin));
+        meta.add(irs::SegmentMeta(std::to_string(i), nullptr, docs_count, 100,
+false, irs::SegmentMeta::FileSet{}, *begin));
       }
 
-//      const_cast<irs::segment_meta&>(meta[10].meta).live_docs_count = 1;
+//      const_cast<irs::SegmentMeta&>(meta[10].meta).live_docs_count = 1;
     }
 
     print_consolidation(meta, policy);
@@ -1555,9 +1553,9 @@ false, irs::segment_meta::file_set{}, *begin));
       { 20, 21, 23 },
     };
 
-    irs::index_writer::consolidating_segments_t consolidating_segments;
+    irs::ConsolidatingSegments consolidating_segments;
     for (auto& expected_tier : expected_tiers) {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       assert_candidates(meta, expected_tier, candidates);
       candidates.clear();
@@ -1570,7 +1568,7 @@ register candidates for consolidation
 
     // no more segments to consolidate
     {
-      irs::index_writer::consolidation_t candidates;
+      irs::Consolidation candidates;
       policy(candidates, meta, consolidating_segments);
       ASSERT_TRUE(candidates.empty());
     }

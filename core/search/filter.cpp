@@ -29,8 +29,7 @@ namespace {
 using namespace irs;
 
 // Represents a query returning empty result set
-struct empty_query final : public filter::prepared,
-                           public singleton<empty_query> {
+struct EmptyQuery final : public filter::prepared {
  public:
   doc_iterator::ptr execute(const ExecutionContext&) const override {
     return irs::doc_iterator::empty();
@@ -41,22 +40,24 @@ struct empty_query final : public filter::prepared,
   }
 };
 
+const EmptyQuery kEmptyQuery;
+
 }  // namespace
 
 namespace irs {
 
 filter::filter(const type_info& type) noexcept
-  : boost_(irs::kNoBoost), type_(type.id()) {}
+  : boost_{irs::kNoBoost}, type_{type.id()} {}
 
 filter::prepared::ptr filter::prepared::empty() {
-  return memory::to_managed<filter::prepared, false>(&empty_query::instance());
+  return memory::to_managed<const filter::prepared, false>(&kEmptyQuery);
 }
 
 empty::empty() : filter(irs::type<empty>::get()) {}
 
 filter::prepared::ptr empty::prepare(const index_reader&, const Order&, score_t,
                                      const attribute_provider*) const {
-  return memory::to_managed<filter::prepared, false>(&empty_query::instance());
+  return memory::to_managed<const filter::prepared, false>(&kEmptyQuery);
 }
 
 }  // namespace irs

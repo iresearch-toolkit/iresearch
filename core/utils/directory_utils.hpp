@@ -31,8 +31,8 @@
 
 namespace irs {
 
-class index_meta;
-struct segment_meta;
+class IndexMeta;
+struct SegmentMeta;
 
 namespace directory_utils {
 
@@ -47,14 +47,14 @@ bool reference(const directory& dir,
                bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with
-// index_meta
-bool reference(const directory& dir, const index_meta& meta,
+// IndexMeta
+bool reference(const directory& dir, const IndexMeta& meta,
                const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
                bool include_missing = false);
 
 // return success, visitor gets passed references to files registered with
-// segment_meta
-bool reference(const directory& dir, const segment_meta& meta,
+// SegmentMeta
+bool reference(const directory& dir, const SegmentMeta& meta,
                const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
                bool include_missing = false);
 

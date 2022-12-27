@@ -140,7 +140,7 @@ void format_test_case::assert_no_directory_artifacts(
   };
   ASSERT_TRUE(dir.visit(visitor));
 
-  irs::index_meta index_meta;
+  irs::IndexMeta index_meta;
   std::string segment_file;
 
   auto reader = codec.get_index_meta_reader();
@@ -305,7 +305,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     auto reader = irs::directory_reader::open(*dir, codec());
     std::unordered_set<std::string> reader_files;
     {
-      irs::index_meta index_meta;
+      irs::IndexMeta index_meta;
       std::string segments_file;
       auto meta_reader = codec()->get_index_meta_reader();
       const bool exists = meta_reader->last_segments_file(*dir, segments_file);
@@ -741,7 +741,7 @@ TEST_P(format_test_case, fields_read_write) {
 
   // read field
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.name = "segment_name";
 
     irs::document_mask docs_mask;
@@ -949,11 +949,11 @@ TEST_P(format_test_case, fields_read_write) {
 TEST_P(format_test_case, segment_meta_read_write) {
   // read valid meta
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.name = "meta_name";
     meta.docs_count = 453;
     meta.live_docs_count = 345;
-    meta.size = 666;
+    meta.size_in_bytes = 666;
     meta.version = 100;
     meta.column_store = true;
 
@@ -972,7 +972,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
     // read segment meta
     {
-      irs::segment_meta read_meta;
+      irs::SegmentMeta read_meta;
       read_meta.name = meta.name;
       read_meta.version = 100;
 
@@ -983,7 +983,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
       ASSERT_EQ(meta.docs_count, read_meta.docs_count);
       ASSERT_EQ(meta.live_docs_count, read_meta.live_docs_count);
       ASSERT_EQ(meta.version, read_meta.version);
-      ASSERT_EQ(meta.size, read_meta.size);
+      ASSERT_EQ(meta.size_in_bytes, read_meta.size_in_bytes);
       ASSERT_EQ(meta.files, read_meta.files);
       ASSERT_EQ(meta.column_store, read_meta.column_store);
     }
@@ -991,11 +991,11 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
   // write broken meta (live_docs_count > docs_count)
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.name = "broken_meta_name";
     meta.docs_count = 453;
     meta.live_docs_count = 1345;
-    meta.size = 666;
+    meta.size_in_bytes = 666;
     meta.version = 100;
 
     meta.files.emplace("file1");
@@ -1013,7 +1013,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
     // read segment meta
     {
-      irs::segment_meta read_meta;
+      irs::SegmentMeta read_meta;
       read_meta.name = meta.name;
       read_meta.version = 100;
 
@@ -1027,7 +1027,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     class segment_meta_corrupting_directory : public irs::directory {
      public:
       segment_meta_corrupting_directory(irs::directory& dir,
-                                        irs::segment_meta& meta)
+                                        irs::SegmentMeta& meta)
         : dir_(dir), meta_(meta) {}
 
       using directory::attributes;
@@ -1084,14 +1084,14 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
      private:
       irs::directory& dir_;
-      irs::segment_meta& meta_;
+      irs::SegmentMeta& meta_;
     };  // directory_mock
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.name = "broken_meta_name";
     meta.docs_count = 1453;
     meta.live_docs_count = 1345;
-    meta.size = 666;
+    meta.size_in_bytes = 666;
     meta.version = 100;
 
     meta.files.emplace("file1");
@@ -1111,7 +1111,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
     // read segment meta
     {
-      irs::segment_meta read_meta;
+      irs::SegmentMeta read_meta;
       read_meta.name = meta.name;
       read_meta.version = 100;
 
@@ -1122,7 +1122,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
 }
 
 TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
-  irs::segment_meta seg("_1", codec());
+  irs::SegmentMeta seg("_1", codec());
 
   size_t column_id;
   const irs::bytes_view payload(
@@ -1185,7 +1185,7 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 }
 
 TEST_P(format_test_case, columns_rw_dense_mask) {
-  irs::segment_meta seg("_1", codec());
+  irs::SegmentMeta seg("_1", codec());
   const irs::doc_id_t MAX_DOC = 1026;
 
   size_t column_id;
@@ -1231,7 +1231,7 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 }
 
 TEST_P(format_test_case, columns_rw_bit_mask) {
-  irs::segment_meta segment("bit_mask", nullptr);
+  irs::SegmentMeta segment("bit_mask", nullptr);
   irs::field_id id;
 
   segment.codec = codec();
@@ -1491,7 +1491,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 }
 
 TEST_P(format_test_case, columns_rw_empty) {
-  irs::segment_meta meta0("_1", nullptr);
+  irs::SegmentMeta meta0("_1", nullptr);
   meta0.version = 42;
   meta0.docs_count = 89;
   meta0.live_docs_count = 67;
@@ -1563,7 +1563,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
   } doc_template;  // two_columns_doc_template
 
   tests::csv_doc_generator gen{resource("simple_two_column.csv"), doc_template};
-  irs::segment_meta seg("_1", nullptr);
+  irs::SegmentMeta seg("_1", nullptr);
 
   seg.codec = codec();
 
@@ -1663,7 +1663,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
   irs::field_id id;
 
-  irs::segment_meta segment("big_docs", nullptr);
+  irs::SegmentMeta segment("big_docs", nullptr);
 
   segment.codec = codec();
 
@@ -1818,9 +1818,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
 
-  irs::segment_meta seg_1("_1", nullptr);
-  irs::segment_meta seg_2("_2", nullptr);
-  irs::segment_meta seg_3("_3", nullptr);
+  irs::SegmentMeta seg_1("_1", nullptr);
+  irs::SegmentMeta seg_2("_2", nullptr);
+  irs::SegmentMeta seg_3("_3", nullptr);
 
   seg_1.codec = codec();
   seg_2.codec = codec();
@@ -2110,7 +2110,7 @@ TEST_P(format_test_case, columns_rw_typed) {
       }
     });
 
-  irs::segment_meta meta("_1", nullptr);
+  irs::SegmentMeta meta("_1", nullptr);
   meta.version = 42;
   meta.codec = codec();
 
@@ -2366,7 +2366,7 @@ TEST_P(format_test_case, columns_issue700) {
     docs.emplace_back(doc, 25);
   }
 
-  irs::segment_meta meta("issue-#700", nullptr);
+  irs::SegmentMeta meta("issue-#700", nullptr);
   meta.version = 0;
   meta.docs_count = docs.size();
   meta.live_docs_count = docs.size();
@@ -2419,7 +2419,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
   // | 2   | 16         |  | 4   | 16         |
   // |-----|------------|  |-----|------------|
 
-  irs::segment_meta meta0("_fixed_offset_columns", nullptr);
+  irs::SegmentMeta meta0("_fixed_offset_columns", nullptr);
   meta0.version = 0;
   meta0.docs_count = 2;
   meta0.live_docs_count = 2;
@@ -2590,13 +2590,13 @@ TEST_P(format_test_case, columns_rw) {
   irs::field_id segment1_field1_id;
   irs::field_id segment1_field2_id;
 
-  irs::segment_meta meta0("_1", nullptr);
+  irs::SegmentMeta meta0("_1", nullptr);
   meta0.version = 42;
   meta0.docs_count = 89;
   meta0.live_docs_count = 67;
   meta0.codec = codec();
 
-  irs::segment_meta meta1("_2", nullptr);
+  irs::SegmentMeta meta1("_2", nullptr);
   meta1.version = 23;
   meta1.docs_count = 115;
   meta1.live_docs_count = 111;
@@ -3361,7 +3361,7 @@ ASSERT_TRUE(writer->commit(state));
 
 TEST_P(format_test_case, document_mask_rw) {
   const irs::document_mask mask_set = {1, 4, 5, 7, 10, 12};
-  irs::segment_meta meta("_1", nullptr);
+  irs::SegmentMeta meta("_1", nullptr);
   meta.version = 42;
 
   // write document_mask
@@ -3483,13 +3483,13 @@ TEST_P(format_test_case_with_encryption,
 
   ASSERT_NE(nullptr, dir().attributes().encryption());
 
-  irs::segment_meta meta;
+  irs::SegmentMeta meta;
   meta.name = "_1";
 
   // write meta
   {
     auto writer = codec()->get_columnstore_writer(false);
-    irs::segment_meta meta1;
+    irs::SegmentMeta meta1;
 
     const irs::column_info info{
       irs::type<irs::compression::none>::get(), {}, true};
@@ -3616,7 +3616,7 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
     writer->end();
   }
 
-  irs::segment_meta meta;
+  irs::SegmentMeta meta;
   meta.name = "segment_name";
   irs::document_mask docs_mask;
 

@@ -40,7 +40,7 @@
 namespace irs {
 
 class Comparer;
-struct segment_meta;
+struct SegmentMeta;
 
 // Defines how the inserting field should be processed
 enum class Action {
@@ -146,14 +146,14 @@ class segment_writer : util::noncopyable {
     valid_ = false;
   }
 
-  void flush(index_meta::index_segment_t& segment);
+  void flush(IndexSegment& segment);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t docs_cached() const noexcept { return docs_context_.size(); }
   bool initialized() const noexcept { return initialized_; }
   bool valid() const noexcept { return valid_; }
   void reset() noexcept;
-  void reset(const segment_meta& meta);
+  void reset(const SegmentMeta& meta);
 
   void tick(uint64_t tick) noexcept { tick_ = tick; }
   uint64_t tick() const noexcept { return tick_; }
@@ -360,7 +360,7 @@ class segment_writer : util::noncopyable {
   }
 
   // Flushes document mask to directory, returns number of masked documens
-  size_t flush_doc_mask(const segment_meta& meta, const doc_map& docmap);
+  size_t flush_doc_mask(const SegmentMeta& meta, const doc_map& docmap);
   // Flushes indexed fields to directory
   void flush_fields(const doc_map& docmap);
 

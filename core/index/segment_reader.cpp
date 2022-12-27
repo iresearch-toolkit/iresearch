@@ -153,20 +153,29 @@ class masked_docs_iterator final : public doc_iterator,
 
 namespace irs {
 
-class segment_reader_impl : public sub_reader {
+class SegmentReaderImpl final : public sub_reader {
  public:
-  static sub_reader::ptr open(const directory& dir, const segment_meta& meta,
+  static sub_reader::ptr Open(const SegmentReaderImpl& src,
+                              const SegmentMeta& meta);
+
+  static sub_reader::ptr Open(const directory& dir, const SegmentMeta& meta,
                               const index_reader_options& warmup);
 
-  segment_reader_impl(const directory& dir, uint64_t meta_version,
-                      uint64_t docs_count, const index_reader_options& opts);
+  SegmentReaderImpl(const directory& dir, const SegmentMeta& meta,
+                    const index_reader_options& opts);
 
-  const directory& dir() const noexcept { return dir_; }
+  const directory& Dir() const noexcept { return *dir_; }
+
+  const index_reader_options& Options() const noexcept { return opts_; }
+
+  const SegmentInfo& meta() const override { return info_; }
 
   column_iterator::ptr columns() const override;
 
   using sub_reader::docs_count;
-  uint64_t docs_count() const override { return docs_count_; }
+  uint64_t docs_count() const override { return info_.docs_count; }
+
+  const document_mask* docs_mask() const override { return &docs_mask_; }
 
   doc_iterator::ptr docs_iterator() const override;
 
@@ -183,18 +192,16 @@ class segment_reader_impl : public sub_reader {
   }
 
   const term_reader* field(std::string_view name) const override {
-    return field_reader_->field(name);
+    return data_->field_reader_->field(name);
   }
 
   field_iterator::ptr fields() const override {
-    return field_reader_->iterator();
+    return data_->field_reader_->iterator();
   }
 
   uint64_t live_docs_count() const noexcept override {
-    return docs_count_ - docs_mask_.size();
+    return info_.live_docs_count;
   }
-
-  uint64_t meta_version() const noexcept { return meta_version_; }
 
   const sub_reader& operator[](size_t i) const noexcept override {
     IRS_ASSERT(!i);
@@ -212,23 +219,31 @@ class segment_reader_impl : public sub_reader {
 
   const irs::column_reader* column(std::string_view name) const override;
 
-  const index_reader_options& opts() const noexcept { return opts_; }
-
  private:
-  using named_columns =
+  using NamedColumns =
     absl::flat_hash_map<hashed_string_view, const irs::column_reader*>;
-  using sorted_named_columns =
+  using SortedNamedColumns =
     std::vector<std::reference_wrapper<const irs::column_reader>>;
 
-  columnstore_reader::ptr columnstore_reader_;
-  const irs::column_reader* sort_{};
-  const directory& dir_;
-  uint64_t docs_count_;
+  struct Data {
+    field_reader::ptr field_reader_;
+    columnstore_reader::ptr columnstore_reader_;
+    NamedColumns named_columns_;
+    SortedNamedColumns sorted_named_columns_;
+  };
+
+  SegmentReaderImpl(const SegmentReaderImpl& rhs, const SegmentMeta& meta)
+    : data_{rhs.data_},
+      info_{meta},
+      dir_{rhs.dir_},
+      sort_{rhs.sort_},
+      opts_{rhs.opts_} {}
+
+  std::shared_ptr<Data> data_;
   document_mask docs_mask_;
-  field_reader::ptr field_reader_;
-  uint64_t meta_version_;
-  named_columns named_columns_;
-  sorted_named_columns sorted_named_columns_;
+  SegmentInfo info_;
+  const directory* dir_;
+  const irs::column_reader* sort_{};
   index_reader_options opts_;
 };
 
@@ -252,45 +267,41 @@ segment_reader& segment_reader::operator=(
 }
 
 /*static*/ segment_reader segment_reader::open(
-  const directory& dir, const segment_meta& meta,
+  const directory& dir, const SegmentMeta& meta,
   const index_reader_options& opts) {
-  return segment_reader_impl::open(dir, meta, opts);
+  return SegmentReaderImpl::Open(dir, meta, opts);
 }
 
-segment_reader segment_reader::reopen(const segment_meta& meta) const {
+segment_reader segment_reader::reopen(const SegmentMeta& meta) const {
   // make a copy
   auto impl = std::atomic_load(&impl_);
 
-  auto& reader_impl = down_cast<segment_reader_impl>(*impl);
+  auto& reader_impl = down_cast<SegmentReaderImpl>(*impl);
 
   // reuse self if no changes to meta
-  return reader_impl.meta_version() == meta.version
-           ? *this
-           : segment_reader_impl::open(reader_impl.dir(), meta,
-                                       reader_impl.opts());
+  return {reader_impl.meta().version == meta.version
+            ? *this
+            : SegmentReaderImpl::Open(reader_impl, meta)};
 }
 
-segment_reader_impl::segment_reader_impl(const directory& dir,
-                                         uint64_t meta_version,
-                                         uint64_t docs_count,
-                                         const index_reader_options& opts)
-  : dir_(dir),
-    docs_count_(docs_count),
-    meta_version_(meta_version),
-    opts_(opts) {}
+SegmentReaderImpl::SegmentReaderImpl(const directory& dir,
+                                     const SegmentMeta& meta,
+                                     const index_reader_options& opts)
+  : data_{std::make_shared<Data>()}, info_{meta}, dir_{&dir}, opts_{opts} {}
 
-const irs::column_reader* segment_reader_impl::column(
+const irs::column_reader* SegmentReaderImpl::column(
   std::string_view name) const {
-  auto it = named_columns_.find(hashed_string_view{name});
-  return it == named_columns_.end() ? nullptr : it->second;
+  const auto& named_columns = data_->named_columns_;
+  const auto it = named_columns.find(hashed_string_view{name});
+  return it == named_columns.end() ? nullptr : it->second;
 }
 
-const irs::column_reader* segment_reader_impl::column(field_id field) const {
-  IRS_ASSERT(columnstore_reader_);
-  return columnstore_reader_->column(field);
+const irs::column_reader* SegmentReaderImpl::column(field_id field) const {
+  IRS_ASSERT(data_->columnstore_reader_);
+  return data_->columnstore_reader_->column(field);
 }
 
-column_iterator::ptr segment_reader_impl::columns() const {
+column_iterator::ptr SegmentReaderImpl::columns() const {
   struct less {
     bool operator()(const irs::column_reader& lhs,
                     std::string_view rhs) const noexcept {
@@ -298,31 +309,44 @@ column_iterator::ptr segment_reader_impl::columns() const {
     }
   };
 
-  using iterator_t = iterator_adaptor<std::string_view, irs::column_reader,
-                                      decltype(sorted_named_columns_.begin()),
-                                      column_iterator, less>;
+  using iterator_t =
+    iterator_adaptor<std::string_view, irs::column_reader,
+                     decltype(data_->sorted_named_columns_.begin()),
+                     column_iterator, less>;
 
-  return memory::make_managed<iterator_t>(std::begin(sorted_named_columns_),
-                                          std::end(sorted_named_columns_));
+  return memory::make_managed<iterator_t>(
+    std::begin(data_->sorted_named_columns_),
+    std::end(data_->sorted_named_columns_));
 }
 
-doc_iterator::ptr segment_reader_impl::docs_iterator() const {
+doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
   if (docs_mask_.empty()) {
-    return memory::make_managed<::all_iterator>(docs_count_);
+    return memory::make_managed<::all_iterator>(info_.docs_count);
   }
 
   // the implementation generates doc_ids sequentially
   return memory::make_managed<masked_docs_iterator>(
-    doc_limits::min(), doc_limits::min() + docs_count_, docs_mask_);
+    doc_limits::min(), doc_limits::min() + info_.docs_count, docs_mask_);
 }
 
-/*static*/ sub_reader::ptr segment_reader_impl::open(
-  const directory& dir, const segment_meta& meta,
+/*static*/ sub_reader::ptr SegmentReaderImpl::Open(const SegmentReaderImpl& src,
+                                                   const SegmentMeta& meta) {
+  auto reader = std::make_shared<SegmentReaderImpl>(src, meta);
+
+  // read document mask
+  if (src.Options().doc_mask) {
+    index_utils::read_document_mask(reader->docs_mask_, src.Dir(), meta);
+  }
+
+  return reader;
+}
+
+/*static*/ sub_reader::ptr SegmentReaderImpl::Open(
+  const directory& dir, const SegmentMeta& meta,
   const index_reader_options& opts) {
   auto& codec = *meta.codec;
 
-  auto reader = std::make_shared<segment_reader_impl>(dir, meta.version,
-                                                      meta.docs_count, opts);
+  auto reader = std::make_shared<SegmentReaderImpl>(dir, meta, opts);
 
   // read document mask
   if (opts.doc_mask) {
@@ -330,7 +354,7 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   }
 
   // always instantiate to avoid unnecessary checks
-  auto& field_reader = reader->field_reader_;
+  auto& field_reader = reader->data_->field_reader_;
   field_reader = codec.get_field_reader();
 
   if (opts.index) {
@@ -339,19 +363,19 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
   }
 
   // always instantiate to avoid unnecessary checks
-  auto& columnstore_reader = reader->columnstore_reader_;
+  auto& columnstore_reader = reader->data_->columnstore_reader_;
   columnstore_reader = codec.get_columnstore_reader();
 
   if (opts.columnstore && meta.column_store) {
     // initialize optional columnstore
     columnstore_reader::options columnstore_opts;
-    if (reader->opts().warmup_columns) {
-      columnstore_opts.warmup_column = [warmup = reader->opts().warmup_columns,
+    if (const auto& opts = reader->Options(); opts.warmup_columns) {
+      columnstore_opts.warmup_column = [warmup = opts.warmup_columns,
                                         &field_reader,
                                         &meta](const column_reader& column) {
         return warmup(meta, *field_reader, column);
       };
-      columnstore_opts.pinned_memory = reader->opts().pinned_memory_accounting;
+      columnstore_opts.pinned_memory = opts.pinned_memory_accounting;
     }
 
     if (!columnstore_reader->prepare(dir, meta, columnstore_opts)) {
@@ -375,9 +399,9 @@ doc_iterator::ptr segment_reader_impl::docs_iterator() const {
     // FIXME(gnusi): too rough, we must exclude unnamed columns
     const size_t num_columns = columnstore_reader->size();
 
-    auto& named_columns = reader->named_columns_;
+    auto& named_columns = reader->data_->named_columns_;
     named_columns.reserve(num_columns);
-    auto& sorted_named_columns = reader->sorted_named_columns_;
+    auto& sorted_named_columns = reader->data_->sorted_named_columns_;
     sorted_named_columns.reserve(num_columns);
 
     columnstore_reader->visit([&named_columns, &sorted_named_columns,

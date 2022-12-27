@@ -45,13 +45,13 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   ASSERT_TRUE(files.empty());
 
   // create index metadata and write it into the specified directory
-  irs::index_meta meta_orig;
+  irs::IndexMeta meta_orig;
   ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
 
   // set payload
   const irs::bytes_view payload =
     ViewCast<byte_type>(std::string_view("payload"));
-  const_cast<bytes_view&>(meta_orig.payload()) = payload;
+  meta_orig.payload(payload);
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig));
 
@@ -68,7 +68,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   writer->commit();
 
   // create index metadata and read it from the specified  directory
-  irs::index_meta meta_read;
+  irs::IndexMeta meta_read;
   {
     std::string segments_file;
 
@@ -85,7 +85,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   EXPECT_TRUE(irs::IsNull(meta_read.payload()));
 
   EXPECT_NE(meta_orig, meta_read);
-  const_cast<bytes_view&>(meta_orig.payload()) = bytes_view{};
+  meta_orig.payload(bytes_view{});
   EXPECT_EQ(meta_orig, meta_read);
 }
 
@@ -105,13 +105,13 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
   ASSERT_TRUE(files.empty());
 
   // create index metadata and write it into the specified directory
-  irs::index_meta meta_orig;
+  irs::IndexMeta meta_orig;
   ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
 
   // set payload
   const irs::bytes_view payload =
     ViewCast<byte_type>(std::string_view("payload"));
-  const_cast<bytes_view&>(meta_orig.payload()) = payload;
+  meta_orig.payload(payload);
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig));
 
@@ -128,7 +128,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
   writer->commit();
 
   // create index metadata and read it from the specified  directory
-  irs::index_meta meta_read;
+  irs::IndexMeta meta_read;
   {
     std::string segments_file;
 
@@ -147,7 +147,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
 }
 
 TEST(index_meta_tests, ctor) {
-  irs::index_meta meta;
+  irs::IndexMeta meta;
   EXPECT_EQ(0, meta.counter());
   EXPECT_EQ(0, meta.size());
   EXPECT_TRUE(irs::IsNull(meta.payload()));
@@ -177,7 +177,7 @@ TEST(index_meta_tests, last_generation) {
   // get max value
   uint64_t max = 0;
   for (const auto& s : names) {
-    int num = atoi(s.c_str() + sizeof(prefix) - 1);
+    uint64_t num = atoi(s.c_str() + sizeof(prefix) - 1);
     if (num > max) {
       max = num;
     }

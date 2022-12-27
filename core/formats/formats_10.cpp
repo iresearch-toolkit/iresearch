@@ -2592,21 +2592,21 @@ struct index_meta_writer final : public irs::index_meta_writer {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
-  std::string filename(const index_meta& meta) const override;
+  std::string filename(const IndexMeta& meta) const override;
   using irs::index_meta_writer::prepare;
-  bool prepare(directory& dir, index_meta& meta) override;
+  bool prepare(directory& dir, IndexMeta& meta) override;
   bool commit() override;
   void rollback() noexcept override;
 
  private:
   directory* dir_ = nullptr;
-  index_meta* meta_ = nullptr;
+  IndexMeta* meta_ = nullptr;
   int32_t version_;
 };  // index_meta_writer
 
 template<>
-std::string file_name<irs::index_meta_writer, index_meta>(
-  const index_meta& meta) {
+std::string file_name<irs::index_meta_writer, IndexMeta>(
+  const IndexMeta& meta) {
   return irs::file_name(index_meta_writer::FORMAT_PREFIX_TMP,
                         meta.generation());
 }
@@ -2615,21 +2615,21 @@ struct index_meta_reader final : public irs::index_meta_reader {
   bool last_segments_file(const directory& dir,
                           std::string& name) const override;
 
-  void read(const directory& dir, index_meta& meta,
+  void read(const directory& dir, IndexMeta& meta,
             std::string_view filename = {}) override;  // null == use meta
 };                                                     // index_meta_reader
 
 template<>
-std::string file_name<irs::index_meta_reader, index_meta>(
-  const index_meta& meta) {
+std::string file_name<irs::index_meta_reader, IndexMeta>(
+  const IndexMeta& meta) {
   return irs::file_name(index_meta_writer::FORMAT_PREFIX, meta.generation());
 }
 
-std::string index_meta_writer::filename(const index_meta& meta) const {
+std::string index_meta_writer::filename(const IndexMeta& meta) const {
   return file_name<irs::index_meta_reader>(meta);
 }
 
-bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
+bool index_meta_writer::prepare(directory& dir, IndexMeta& meta) {
   if (meta_) {
     // prepare() was already called with no corresponding call to commit()
     return false;
@@ -2767,7 +2767,7 @@ bool index_meta_reader::last_segments_file(const directory& dir,
   return max_gen > 0;
 }
 
-void index_meta_reader::read(const directory& dir, index_meta& meta,
+void index_meta_reader::read(const directory& dir, IndexMeta& meta,
                              std::string_view filename /*= {} */) {
   const std::string meta_file = IsNull(filename)
                                   ? file_name<irs::index_meta_reader>(meta)
@@ -2792,7 +2792,7 @@ void index_meta_reader::read(const directory& dir, index_meta& meta,
   auto gen = in->read_vlong();
   auto cnt = in->read_long();
   auto seg_count = in->read_vint();
-  index_meta::index_segments_t segments(seg_count);
+  std::vector<IndexSegment> segments(seg_count);
 
   for (size_t i = 0, count = segments.size(); i < count; ++i) {
     auto& segment = segments[i];
@@ -2835,21 +2835,21 @@ struct segment_meta_writer final : public irs::segment_meta_writer {
   }
 
   void write(directory& dir, std::string& filename,
-             const segment_meta& meta) override;
+             const SegmentMeta& meta) override;
 
  private:
   int32_t version_;
-};  // segment_meta_writer
+};
 
 template<>
-std::string file_name<irs::segment_meta_writer, segment_meta>(
-  const segment_meta& meta) {
+std::string file_name<irs::segment_meta_writer, SegmentMeta>(
+  const SegmentMeta& meta) {
   return irs::file_name(meta.name, meta.version,
                         segment_meta_writer::FORMAT_EXT);
 }
 
 void segment_meta_writer::write(directory& dir, std::string& meta_file,
-                                const segment_meta& meta) {
+                                const SegmentMeta& meta) {
   if (meta.docs_count < meta.live_docs_count) {
     throw index_error(string_utils::to_string(
       "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER
@@ -2873,7 +2873,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
   out->write_vlong(meta.live_docs_count);
   out->write_vlong(meta.docs_count -
                    meta.live_docs_count);  // docs_count >= live_docs_count
-  out->write_vlong(meta.size);
+  out->write_vlong(meta.size_in_bytes);
   if (version_ > FORMAT_MIN) {
     // sorted indices are not supported in version 1.0
     if (field_limits::valid(meta.sort)) {
@@ -2890,15 +2890,15 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
 }
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
-  void read(const directory& dir, segment_meta& meta,
+  void read(const directory& dir, SegmentMeta& meta,
             std::string_view filename = {}) override;  // null == use meta
 };
 
-void segment_meta_reader::read(const directory& dir, segment_meta& meta,
+void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
                                std::string_view filename /*= {} */) {
   const std::string meta_file = IsNull(filename)
                                   ? file_name<irs::segment_meta_writer>(meta)
-                                  : static_cast<std::string>(filename);
+                                  : std::string{filename};
 
   auto in =
     dir.open(meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
@@ -2932,7 +2932,7 @@ void segment_meta_reader::read(const directory& dir, segment_meta& meta,
   if (version > segment_meta_writer::FORMAT_MIN) {
     sort = in->read_vlong() - 1;
   }
-  auto files = read_strings<segment_meta::file_set>(*in);
+  auto files = read_strings<SegmentMeta::FileSet>(*in);
 
   if (flags &
       ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
@@ -2967,7 +2967,7 @@ void segment_meta_reader::read(const directory& dir, segment_meta& meta,
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
   meta.sort = sort;
-  meta.size = size;
+  meta.size_in_bytes = size;
   meta.files = std::move(files);
 }
 
@@ -2981,24 +2981,24 @@ class document_mask_writer final : public irs::document_mask_writer {
 
   virtual ~document_mask_writer() = default;
 
-  std::string filename(const segment_meta& meta) const override;
+  std::string filename(const SegmentMeta& meta) const override;
 
-  void write(directory& dir, const segment_meta& meta,
+  void write(directory& dir, const SegmentMeta& meta,
              const document_mask& docs_mask) override;
 };  // document_mask_writer
 
 template<>
-std::string file_name<irs::document_mask_writer, segment_meta>(
-  const segment_meta& meta) {
+std::string file_name<irs::document_mask_writer, SegmentMeta>(
+  const SegmentMeta& meta) {
   return irs::file_name(meta.name, meta.version,
                         document_mask_writer::FORMAT_EXT);
 }
 
-std::string document_mask_writer::filename(const segment_meta& meta) const {
+std::string document_mask_writer::filename(const SegmentMeta& meta) const {
   return file_name<irs::document_mask_writer>(meta);
 }
 
-void document_mask_writer::write(directory& dir, const segment_meta& meta,
+void document_mask_writer::write(directory& dir, const SegmentMeta& meta,
                                  const document_mask& docs_mask) {
   const auto filename = file_name<irs::document_mask_writer>(meta);
   auto out = dir.create(filename);
@@ -3026,11 +3026,11 @@ class document_mask_reader final : public irs::document_mask_reader {
  public:
   virtual ~document_mask_reader() = default;
 
-  bool read(const directory& dir, const segment_meta& meta,
+  bool read(const directory& dir, const SegmentMeta& meta,
             document_mask& docs_mask) override;
 };  // document_mask_reader
 
-bool document_mask_reader::read(const directory& dir, const segment_meta& meta,
+bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
                                 document_mask& docs_mask) {
   const auto in_name = file_name<irs::document_mask_writer>(meta);
 

@@ -84,7 +84,7 @@ TEST(directory_reader_test, open_newest_index) {
       out = segments_file;
       return true;
     }
-    void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
+    void read(const irs::directory& /*dir*/, irs::IndexMeta& /*meta*/,
               std::string_view filename = std::string_view{}) override {
       read_file.assign(filename.data(), filename.size());
     };
@@ -352,17 +352,17 @@ TEST(segment_reader_test, segment_reader_has) {
     irs::memory_directory dir;
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(meta.column_store);
-    ASSERT_FALSE(irs::has_removals(meta));
+    ASSERT_FALSE(irs::HasRemovals(meta));
   }
 
   // has column store
@@ -370,18 +370,18 @@ TEST(segment_reader_test, segment_reader_has) {
     irs::memory_directory dir;
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     expected.column_store = true;
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(meta.column_store);
-    ASSERT_FALSE(irs::has_removals(meta));
+    ASSERT_FALSE(irs::HasRemovals(meta));
   }
 
   // has document mask
@@ -390,7 +390,7 @@ TEST(segment_reader_test, segment_reader_has) {
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
     auto docs_mask_writer = codec->get_document_mask_writer();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     expected.docs_count = 43;
     expected.live_docs_count = 42;
@@ -398,13 +398,13 @@ TEST(segment_reader_test, segment_reader_has) {
     docs_mask_writer->write(dir, expected, {0});
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(meta.column_store);
-    ASSERT_TRUE(irs::has_removals(meta));
+    ASSERT_TRUE(irs::HasRemovals(meta));
   }
 
   // has all
@@ -413,7 +413,7 @@ TEST(segment_reader_test, segment_reader_has) {
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
     auto docs_mask_writer = codec->get_document_mask_writer();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     expected.docs_count = 43;
     expected.live_docs_count = 42;
@@ -422,13 +422,13 @@ TEST(segment_reader_test, segment_reader_has) {
     docs_mask_writer->write(dir, expected, {0});
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(meta.column_store);
-    ASSERT_TRUE(irs::has_removals(meta));
+    ASSERT_TRUE(irs::HasRemovals(meta));
   }
 }
 
@@ -439,7 +439,7 @@ TEST(segment_reader_test, open_invalid_segment) {
 
   /* open invalid segment */
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
@@ -481,7 +481,7 @@ TEST(segment_reader_test, open) {
 
   // check segment
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.codec = codec_ptr;
     meta.column_store = true;
     meta.docs_count = 5;

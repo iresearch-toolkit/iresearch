@@ -191,7 +191,7 @@ class writer final : public columnstore_writer {
 
   writer(Version version, bool consolidation);
 
-  void prepare(directory& dir, const segment_meta& meta) override;
+  void prepare(directory& dir, const SegmentMeta& meta) override;
   column_t push_column(const column_info& info,
                        column_finalizer_f finalizer) override;
   bool commit(const flush_state& state) override;
@@ -263,7 +263,7 @@ struct column_header {
 
 class reader final : public columnstore_reader {
  public:
-  bool prepare(const directory& dir, const segment_meta& meta,
+  bool prepare(const directory& dir, const SegmentMeta& meta,
                const options& opts = options{}) final;
 
   const column_header* header(field_id field) const;
@@ -283,7 +283,7 @@ class reader final : public columnstore_reader {
 
   void prepare_data(const directory& dir, std::string_view filename);
 
-  void prepare_index(const directory& dir, const segment_meta& meta,
+  void prepare_index(const directory& dir, const SegmentMeta& meta,
                      std::string_view filename, std::string_view data_filename,
                      const options& opts);
 

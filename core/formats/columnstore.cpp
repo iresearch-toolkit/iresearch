@@ -357,7 +357,7 @@ void meta_writer::flush() {
 
 class meta_reader final {
  public:
-  bool prepare(const directory& dir, const segment_meta& meta, size_t& count,
+  bool prepare(const directory& dir, const SegmentMeta& meta, size_t& count,
                field_id& max_id);
   bool read(column_meta& column);
 
@@ -368,7 +368,7 @@ class meta_reader final {
   field_id max_id_{0};
 };  // meta_writer
 
-bool meta_reader::prepare(const directory& dir, const segment_meta& meta,
+bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
                           size_t& count, field_id& max_id) {
   const auto filename = irs::file_name(meta.name, meta_writer::FORMAT_EXT);
 
@@ -606,7 +606,7 @@ class writer final : public irs::columnstore_writer {
     IRS_ASSERT(version >= Version::MIN && version <= Version::MAX);
   }
 
-  void prepare(directory& dir, const segment_meta& meta) override;
+  void prepare(directory& dir, const SegmentMeta& meta) override;
   // Current implmentation doesn't support column headers
   column_t push_column(const column_info& info,
                        column_finalizer_f /*writer*/) override;
@@ -823,7 +823,7 @@ class writer final : public irs::columnstore_writer {
   Version version_;
 };  // writer
 
-void writer::prepare(directory& dir, const segment_meta& meta) {
+void writer::prepare(directory& dir, const SegmentMeta& meta) {
   columns_.clear();
 
   auto filename = file_name(meta.name, writer::FORMAT_EXT);
@@ -2336,7 +2336,7 @@ class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
-  bool prepare(const directory& dir, const segment_meta& meta,
+  bool prepare(const directory& dir, const SegmentMeta& meta,
                const options& opts = options{}) override;
 
   const column_reader* column(field_id field) const override;
@@ -2346,7 +2346,7 @@ class reader final : public columnstore_reader, public context_provider {
   size_t size() const noexcept override { return columns_.size(); }
 
  private:
-  static bool read_meta(const directory& dir, const segment_meta& meta,
+  static bool read_meta(const directory& dir, const SegmentMeta& meta,
                         std::vector<column::ptr>& columns,
                         std::vector<const class column*>& sorted_columns);
 
@@ -2354,7 +2354,7 @@ class reader final : public columnstore_reader, public context_provider {
   std::vector<const class column*> sorted_columns_;
 };  // reader
 
-bool reader::read_meta(const directory& dir, const segment_meta& meta,
+bool reader::read_meta(const directory& dir, const SegmentMeta& meta,
                        std::vector<column::ptr>& columns,
                        std::vector<const class column*>& sorted_columns) {
   size_t count{};
@@ -2392,7 +2392,7 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
   return true;
 }
 
-bool reader::prepare(const directory& dir, const segment_meta& meta,
+bool reader::prepare(const directory& dir, const SegmentMeta& meta,
                      const columnstore_reader::options&) {
   const auto filename = file_name(meta.name, writer::FORMAT_EXT);
   bool exists;

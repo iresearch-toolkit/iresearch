@@ -241,7 +241,7 @@ void segment_writer::flush_fields(const doc_map& docmap) {
   }
 }
 
-size_t segment_writer::flush_doc_mask(const segment_meta& meta,
+size_t segment_writer::flush_doc_mask(const SegmentMeta& meta,
                                       const doc_map& docmap) {
   document_mask docs_mask;
   docs_mask.reserve(docs_mask_.size());
@@ -265,7 +265,7 @@ size_t segment_writer::flush_doc_mask(const segment_meta& meta,
   return docs_mask.size();
 }
 
-void segment_writer::flush(index_meta::index_segment_t& segment) {
+void segment_writer::flush(IndexSegment& segment) {
   REGISTER_TIMER_DETAILED();
 
   auto& meta = segment.meta;
@@ -340,7 +340,7 @@ void segment_writer::reset() noexcept {
   }
 }
 
-void segment_writer::reset(const segment_meta& meta) {
+void segment_writer::reset(const SegmentMeta& meta) {
   reset();
 
   seg_name_ = meta.name;

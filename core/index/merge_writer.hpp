@@ -83,8 +83,7 @@ class merge_writer : public util::noncopyable {
   // `segment` the segment that was flushed.
   // `progress` report flush progress (abort if 'progress' returns false).
   // Return merge successful.
-  bool flush(index_meta::index_segment_t& segment,
-             const flush_progress_t& progress = {});
+  bool flush(IndexSegment& segment, const flush_progress_t& progress = {});
 
   const reader_ctx& operator[](size_t i) const noexcept {
     IRS_ASSERT(i < readers_.size());
@@ -95,11 +94,10 @@ class merge_writer : public util::noncopyable {
   void reserve(size_t size) { readers_.reserve(size); }
 
  private:
-  bool flush_sorted(tracking_directory& dir,
-                    index_meta::index_segment_t& segment,
+  bool flush_sorted(tracking_directory& dir, IndexSegment& segment,
                     const flush_progress_t& progress);
 
-  bool flush(tracking_directory& dir, index_meta::index_segment_t& segment,
+  bool flush(tracking_directory& dir, IndexSegment& segment,
              const flush_progress_t& progress);
 
   directory& dir_;

@@ -53,7 +53,7 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
     return !retain.contains(filename);
   };
 
-  index_meta meta;
+  IndexMeta meta;
   auto reader = codec.get_index_meta_reader();
 
   std::string segment_file;
@@ -283,7 +283,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   {
     std::string segments_file;
 
-    irs::index_meta index_meta;
+    irs::IndexMeta index_meta;
     auto meta_reader = codec_ptr->get_index_meta_reader();
     const auto index_exists =
       meta_reader->last_segments_file(dir, segments_file);
@@ -324,7 +324,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   {
     std::string segments_file;
 
-    irs::index_meta index_meta;
+    irs::IndexMeta index_meta;
     auto meta_reader = codec_ptr->get_index_meta_reader();
     const auto index_exists =
       meta_reader->last_segments_file(dir, segments_file);
