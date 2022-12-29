@@ -33,7 +33,7 @@ class SegmentReaderImpl;
 class SegmentReader final : public SubReader {
  public:
   static SegmentReader open(const directory& dir, const SegmentMeta& meta,
-                             const IndexReaderOptions& opts);
+                            const IndexReaderOptions& opts);
 
   SegmentReader() = default;
   SegmentReader(const SegmentReader& other) noexcept;

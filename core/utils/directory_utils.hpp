@@ -183,6 +183,9 @@ struct ref_tracking_directory : public directory {
     return impl_.visit(visitor);
   }
 
+  std::vector<index_file_refs::ref_t> GetRefs() const;
+
+  // FIXME(gnusi): remove
   bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>&
                     visitor) const;
 

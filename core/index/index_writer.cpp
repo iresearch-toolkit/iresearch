@@ -23,14 +23,12 @@
 
 #include "index_writer.hpp"
 
-#include <sstream>
-
 #include "formats/format_utils.hpp"
 #include "index/comparer.hpp"
 #include "index/composite_reader_impl.hpp"
 #include "index/file_names.hpp"
+#include "index/index_meta.hpp"
 #include "index/merge_writer.hpp"
-#include "search/exclusion.hpp"
 #include "shared.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/compression.hpp"
@@ -40,6 +38,7 @@
 #include "utils/type_limits.hpp"
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/strings/str_cat.h>
 
 namespace irs {
 namespace {
@@ -66,7 +65,7 @@ const feature_info_provider_t kDefaultFeatureInfo =
       feature_writer_factory_t{});
   };
 
-struct flush_segment_context {
+struct FlushSegmentContext {
   // starting doc_id to consider in 'segment.meta' (inclusive)
   const size_t doc_id_begin_;
   // ending doc_id to consider in 'segment.meta' (exclusive)
@@ -81,7 +80,7 @@ struct flush_segment_context {
   std::span<const segment_writer::update_context> update_contexts_;
   SegmentReader reader_;
 
-  flush_segment_context(
+  FlushSegmentContext(
     SegmentReader&& reader, const IndexSegment& segment, size_t doc_id_begin,
     size_t doc_id_end,
     std::span<const segment_writer::update_context> update_contexts,
@@ -97,20 +96,6 @@ struct flush_segment_context {
     IRS_ASSERT(update_contexts.size() == segment_.meta.docs_count);
   }
 };
-
-std::vector<index_file_refs::ref_t> extract_refs(
-  const ref_tracking_directory& dir) {
-  std::vector<index_file_refs::ref_t> refs;
-  // FIXME reserve
-
-  auto visitor = [&refs](const index_file_refs::ref_t& ref) {
-    refs.emplace_back(ref);
-    return true;
-  };
-  dir.visit_refs(visitor);
-
-  return refs;
-}
 
 // Apply any document removals based on filters in the segment.
 // modifications where to get document update_contexts from
@@ -178,7 +163,7 @@ bool add_document_mask_modified_records(
 // Return if any new records were added (modification_queries_ modified).
 bool add_document_mask_modified_records(
   std::span<index_writer::modification_context> modifications,
-  flush_segment_context& ctx, const SegmentReader& reader) {
+  FlushSegmentContext& ctx, const SegmentReader& reader) {
   if (modifications.empty()) {
     return false;  // nothing new to flush
   }
@@ -252,7 +237,7 @@ bool add_document_mask_modified_records(
 
 // Mask documents created by updates which did not have any matches.
 // Return if any new records were added (modification_contexts_ modified).
-bool add_document_mask_unused_updates(flush_segment_context& ctx) {
+bool add_document_mask_unused_updates(FlushSegmentContext& ctx) {
   if (ctx.modification_contexts_.empty()) {
     return false;  // nothing new to add
   }
@@ -511,29 +496,31 @@ bool map_removals(const CandidatesMapping& candidates_mapping,
 }
 
 std::string to_string(ConsolidationView consolidation) {
-  std::stringstream ss;
+  std::string str;
+
   size_t total_size = 0;
   size_t total_docs_count = 0;
   size_t total_live_docs_count = 0;
 
   for (const auto* segment : consolidation) {
-    auto* meta = &segment->meta();
+    auto& meta = segment->meta();
 
-    ss << "Name='" << meta->name << "', docs_count=" << meta->docs_count
-       << ", live_docs_count=" << meta->live_docs_count
-       << ", size=" << meta->size_in_bytes << std::endl;
+    absl::StrAppend(&str, "Name='", meta.name,
+                    "', docs_count=", meta.docs_count,
+                    ", live_docs_count=", meta.live_docs_count,
+                    ", size=", meta.size_in_bytes, "\n");
 
-    total_docs_count += meta->docs_count;
-    total_live_docs_count += meta->live_docs_count;
-    total_size += meta->size_in_bytes;
+    total_docs_count += meta.docs_count;
+    total_live_docs_count += meta.live_docs_count;
+    total_size += meta.size_in_bytes;
   }
 
-  ss << "Total: segments=" << consolidation.size()
-     << ", docs_count=" << total_docs_count
-     << ", live_docs_count=" << total_live_docs_count << " size=" << total_size
-     << "";
+  absl::StrAppend(&str, "Total: segments=", consolidation.size(),
+                  ", docs_count=", total_docs_count,
+                  ", live_docs_count=", total_live_docs_count,
+                  " size=", total_size, "");
 
-  return ss.str();
+  return str;
 }
 
 }  // namespace
@@ -1685,7 +1672,7 @@ ConsolidationResult index_writer::consolidate(
         std::move(consolidation_segment),
         std::numeric_limits<size_t>::max(),  // skip deletes, will accumulate
                                              // deletes from existing candidates
-        extract_refs(dir),                   // do not forget to track refs
+        dir.GetRefs(),                       // do not forget to track refs
         std::move(candidates),               // consolidation context candidates
         std::move(committed_meta),           // consolidation context meta
         std::move(merger));                  // merge context
@@ -1712,8 +1699,8 @@ ConsolidationResult index_writer::consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
-        0,  // deletes must be applied to the consolidated segment
-        extract_refs(dir),           // do not forget to track refs
+        0,              // deletes must be applied to the consolidated segment
+        dir.GetRefs(),  // do not forget to track refs
         std::move(candidates),       // consolidation context candidates
         std::move(committed_meta));  // consolidation context meta
 
@@ -1797,8 +1784,8 @@ ConsolidationResult index_writer::consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
-        0,  // deletes must be applied to the consolidated segment
-        extract_refs(dir),           // do not forget to track refs
+        0,              // deletes must be applied to the consolidated segment
+        dir.GetRefs(),  // do not forget to track refs
         std::move(candidates),       // consolidation context candidates
         std::move(committed_meta));  // consolidation context meta
 
@@ -1868,7 +1855,7 @@ bool index_writer::import(
 
   index_utils::flush_index_segment(dir, segment);
 
-  auto refs = extract_refs(dir);
+  auto refs = dir.GetRefs();
 
   auto ctx = get_flush_context();
   // lock due to context modification
@@ -2359,7 +2346,7 @@ index_writer::pending_context_t index_writer::flush_all(
       }
     }
 
-    std::vector<flush_segment_context> segment_ctxs;
+    std::vector<FlushSegmentContext> segment_ctxs;
     size_t current_pending_segment_context_segments = 0;
 
     // proces all segments that have been seen by the current flush_context

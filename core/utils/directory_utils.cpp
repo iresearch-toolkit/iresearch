@@ -390,4 +390,11 @@ bool ref_tracking_directory::visit_refs(
   return true;
 }
 
+std::vector<index_file_refs::ref_t> ref_tracking_directory::GetRefs() const {
+  // cppcheck-suppress unreadVariable
+  std::lock_guard lock{mutex_};
+
+  return {refs_.begin(), refs_.end()};
+}
+
 }  // namespace irs
