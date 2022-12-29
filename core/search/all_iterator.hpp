@@ -32,9 +32,9 @@
 
 namespace irs {
 
-class all_iterator final : public doc_iterator {
+class AllIterator final : public doc_iterator {
  public:
-  all_iterator(const irs::sub_reader& reader, const byte_type* query_stats,
+  AllIterator(const irs::sub_reader& reader, const byte_type* query_stats,
                const irs::Order& order, uint64_t docs_count, score_t boost);
 
   attribute* get_mutable(irs::type_info::type_id id) noexcept override {

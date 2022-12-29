@@ -24,12 +24,10 @@
 #include "segment_reader.hpp"
 
 #include "analysis/token_attributes.hpp"
-#include "formats/format_utils.hpp"
 #include "index/index_meta.hpp"
 #include "shared.hpp"
 #include "utils/hash_set_utils.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
 
 #include <absl/container/flat_hash_map.h>
@@ -37,9 +35,9 @@
 namespace irs {
 namespace {
 
-class all_iterator final : public doc_iterator {
+class AllIterator final : public doc_iterator {
  public:
-  explicit all_iterator(doc_id_t docs_count) noexcept
+  explicit AllIterator(doc_id_t docs_count) noexcept
     : max_doc_{doc_limits::min() + docs_count - 1} {}
 
   bool next() noexcept override {
@@ -69,9 +67,9 @@ class all_iterator final : public doc_iterator {
   doc_id_t max_doc_;  // largest valid doc_id
 };
 
-class mask_doc_iterator final : public doc_iterator {
+class MaskDocIterator final : public doc_iterator {
  public:
-  mask_doc_iterator(doc_iterator::ptr&& it, const document_mask& mask) noexcept
+  MaskDocIterator(doc_iterator::ptr&& it, const document_mask& mask) noexcept
     : mask_{mask}, it_{std::move(it)} {}
 
   bool next() override {
@@ -107,11 +105,10 @@ class mask_doc_iterator final : public doc_iterator {
   doc_iterator::ptr it_;
 };
 
-class masked_docs_iterator final : public doc_iterator,
-                                   private util::noncopyable {
+class MaskedDocIterator final : public doc_iterator, private util::noncopyable {
  public:
-  masked_docs_iterator(doc_id_t begin, doc_id_t end,
-                       const document_mask& docs_mask) noexcept
+  MaskedDocIterator(doc_id_t begin, doc_id_t end,
+                    const document_mask& docs_mask) noexcept
     : docs_mask_{docs_mask}, end_{end}, next_{begin} {}
 
   bool next() override {
@@ -204,7 +201,7 @@ class SegmentReaderImpl final : public sub_reader {
       return std::move(it);
     }
 
-    return memory::make_managed<mask_doc_iterator>(std::move(it), docs_mask_);
+    return memory::make_managed<MaskDocIterator>(std::move(it), docs_mask_);
   }
 
   const term_reader* field(std::string_view name) const override {
@@ -307,11 +304,11 @@ column_iterator::ptr SegmentReaderImpl::columns() const {
 
 doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
   if (docs_mask_.empty()) {
-    return memory::make_managed<all_iterator>(info_.docs_count);
+    return memory::make_managed<AllIterator>(info_.docs_count);
   }
 
   // the implementation generates doc_ids sequentially
-  return memory::make_managed<masked_docs_iterator>(
+  return memory::make_managed<MaskedDocIterator>(
     doc_limits::min(), doc_limits::min() + info_.docs_count, docs_mask_);
 }
 
@@ -366,20 +363,19 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
     }
 
     if (!columnstore_reader->prepare(dir, meta, columnstore_opts)) {
-      throw index_error(
-        string_utils::to_string("failed to find existing (according to meta) "
-                                "columnstore in segment '%s'",
-                                meta.name.c_str()));
+      throw index_error{
+        absl::StrCat("Failed to find existing (according to meta) "
+                     "columnstore in segment '",
+                     meta.name, "'")};
     }
 
     if (field_limits::valid(meta.sort)) {
       reader->sort_ = columnstore_reader->column(meta.sort);
 
       if (!reader->sort_) {
-        throw index_error(string_utils::to_string(
-          "failed to find sort column '" IR_UINT64_T_SPECIFIER
-          "' (according to meta) in columnstore in segment '%s'",
-          meta.sort, meta.name.c_str()));
+        throw index_error{absl::StrCat(
+          "Failed to find sort column '", meta.sort,
+          "' (according to meta) in columnstore in segment '", meta.name, "'")};
       }
     }
 
@@ -401,16 +397,14 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
         IRS_IGNORE(it);
 
         if (IRS_UNLIKELY(!is_new)) {
-          throw index_error(string_utils::to_string(
-            "duplicate named column '%s' in segment '%s'",
-            static_cast<std::string>(name).c_str(), meta.name.c_str()));
+          throw index_error{absl::StrCat("Duplicate named column '", name,
+                                         "' in segment '", meta.name, "'")};
         }
 
         if (!sorted_named_columns.empty() &&
             sorted_named_columns.back().get().name() >= name) {
-          throw index_error(string_utils::to_string(
-            "Named columns are out of order in segment '%s'",
-            meta.name.c_str()));
+          throw index_error{absl::StrCat(
+            "Named columns are out of order in segment '", meta.name, "'")};
         }
 
         sorted_named_columns.emplace_back(column);

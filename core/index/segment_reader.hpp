@@ -24,7 +24,6 @@
 #pragma once
 
 #include "index_reader.hpp"
-#include "utils/object_pool.hpp"
 
 namespace irs {
 

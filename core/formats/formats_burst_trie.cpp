@@ -3189,7 +3189,7 @@ void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
     static_cast<int32_t>(burst_trie::Version::MAX), &checksum));
 
   constexpr const size_t FOOTER_LEN = sizeof(uint64_t)  // fields count
-                                      + format_utils::FOOTER_LEN;
+                                      + format_utils::kFooterLen;
 
   // read total number of indexed fields
   size_t fields_count{0};

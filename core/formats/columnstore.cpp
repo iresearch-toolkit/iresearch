@@ -395,7 +395,7 @@ bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
 
   constexpr size_t kFooterLength = sizeof(uint64_t)    // count
                                    + sizeof(uint64_t)  // max id
-                                   + format_utils::FOOTER_LEN;
+                                   + format_utils::kFooterLen;
 
   const size_t length = in_->length();
 
@@ -2437,7 +2437,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
   format_utils::read_checksum(*stream);
 
   // seek to data start
-  stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
+  stream->seek(stream->length() - format_utils::kFooterLen - sizeof(uint64_t));
   stream->seek(stream->read_long());  // seek to blocks index
 
   const size_t count = stream->read_vlong();

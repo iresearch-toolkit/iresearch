@@ -35,7 +35,7 @@ class all_query final : public filter::prepared {
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     auto& rdr = ctx.segment;
 
-    return memory::make_managed<all_iterator>(rdr, stats_.c_str(), ctx.scorers,
+    return memory::make_managed<AllIterator>(rdr, stats_.c_str(), ctx.scorers,
                                               rdr.docs_count(), boost());
   }
 
