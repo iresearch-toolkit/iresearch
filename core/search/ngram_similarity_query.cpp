@@ -451,7 +451,7 @@ class NGramSimilarityDocIterator final : public doc_iterator,
   }
 
   NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
-                             const sub_reader& segment,
+                             const SubReader& segment,
                              const term_reader& field, score_t boost,
                              const byte_type* stats, size_t total_terms_count,
                              size_t min_match_count = 1,
@@ -570,7 +570,7 @@ doc_iterator::ptr NGramSimilarityQuery::execute(
 }
 
 doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
-  const sub_reader& rdr) const {
+  const SubReader& rdr) const {
   auto query_state = states_.find(rdr);
 
   if (!query_state) {

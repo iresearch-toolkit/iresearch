@@ -30,25 +30,20 @@
 namespace irs {
 
 class DirectoryReaderImpl;
-
-// Representation of the metadata of a directory_reader
-struct DirectoryMeta {
-  std::string filename;
-  IndexMeta meta;
-};
+struct DirectoryMeta;
 
 // Interface for an index reader over a directory of segments
-class directory_reader final : public index_reader {
+class DirectoryReader final : public IndexReader {
  public:
   // Create an index reader over the specified directory
   // if codec == nullptr then use the latest file for all known codecs
-  static directory_reader open(
+  static DirectoryReader open(
     const directory& dir, format::ptr codec = nullptr,
-    const index_reader_options& opts = index_reader_options{});
+    const IndexReaderOptions& opts = IndexReaderOptions{});
 
-  directory_reader() = default;  // allow creation of an uninitialized ptr
-  directory_reader(const directory_reader& other) noexcept;
-  directory_reader& operator=(const directory_reader& other) noexcept;
+  DirectoryReader() = default;  // allow creation of an uninitialized ptr
+  DirectoryReader(const DirectoryReader& other) noexcept;
+  DirectoryReader& operator=(const DirectoryReader& other) noexcept;
 
   // Return the directory_meta this reader is based upon
   // Note that return value valid on an already open reader until call to
@@ -59,16 +54,16 @@ class directory_reader final : public index_reader {
 
   bool operator==(std::nullptr_t) const noexcept { return !impl_; }
 
-  bool operator==(const directory_reader& rhs) const noexcept {
+  bool operator==(const DirectoryReader& rhs) const noexcept {
     return impl_ == rhs.impl_;
   }
 
-  directory_reader& operator*() noexcept { return *this; }
-  const directory_reader& operator*() const noexcept { return *this; }
-  directory_reader* operator->() noexcept { return this; }
-  const directory_reader* operator->() const noexcept { return this; }
+  DirectoryReader& operator*() noexcept { return *this; }
+  const DirectoryReader& operator*() const noexcept { return *this; }
+  DirectoryReader* operator->() noexcept { return this; }
+  const DirectoryReader* operator->() const noexcept { return this; }
 
-  const sub_reader& operator[](size_t i) const override;
+  const SubReader& operator[](size_t i) const override;
 
   uint64_t docs_count() const override;
 
@@ -81,22 +76,22 @@ class directory_reader final : public index_reader {
   //  Open a new instance based on the latest file for the specified codec
   //         this call will atempt to reuse segments from the existing reader
   //         if codec == nullptr then use the latest file for all known codecs
-  directory_reader reopen(format::ptr codec = nullptr) const;
+  DirectoryReader reopen(format::ptr codec = nullptr) const;
 
-  explicit operator index_reader::ptr() const noexcept;
+  explicit operator IndexReader::ptr() const noexcept;
 
  private:
-  explicit directory_reader(
-    std::shared_ptr<const DirectoryReaderImpl> impl) noexcept;
+  explicit DirectoryReader(
+    std::shared_ptr<const DirectoryReaderImpl>&& impl) noexcept;
 
   std::shared_ptr<const DirectoryReaderImpl> impl_;
 };
 
-inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {
+inline bool operator==(std::nullptr_t, const DirectoryReader& rhs) noexcept {
   return rhs == nullptr;
 }
 
-inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
+inline bool operator!=(std::nullptr_t, const DirectoryReader& rhs) noexcept {
   return rhs != nullptr;
 }
 

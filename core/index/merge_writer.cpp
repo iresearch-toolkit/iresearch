@@ -424,7 +424,7 @@ class compound_column_iterator final {
 
   size_t size() const { return iterators_.size(); }
 
-  void add(const sub_reader& reader, const doc_map_f& doc_map) {
+  void add(const SubReader& reader, const doc_map_f& doc_map) {
     auto it = reader.columns();
     IRS_ASSERT(it);
 
@@ -511,7 +511,7 @@ class compound_column_iterator final {
 
  private:
   struct iterator_t : util::noncopyable {
-    iterator_t(column_iterator::ptr&& it, const sub_reader& reader,
+    iterator_t(column_iterator::ptr&& it, const SubReader& reader,
                const doc_map_f& doc_map)
       : it(std::move(it)), reader(&reader), doc_map(&doc_map) {}
 
@@ -519,7 +519,7 @@ class compound_column_iterator final {
     iterator_t& operator=(iterator_t&&) = delete;
 
     column_iterator::ptr it;
-    const sub_reader* reader;
+    const SubReader* reader;
     const doc_map_f* doc_map;
   };
 
@@ -706,7 +706,7 @@ class compound_field_iterator final : public basic_term_reader {
     field_iterator_mask_.reserve(size);
   }
 
-  void add(const sub_reader& reader, const doc_map_f& doc_id_map);
+  void add(const SubReader& reader, const doc_map_f& doc_id_map);
   bool next();
   size_t size() const noexcept { return field_iterators_.size(); }
 
@@ -743,7 +743,7 @@ class compound_field_iterator final : public basic_term_reader {
 
  private:
   struct field_iterator_t : util::noncopyable {
-    field_iterator_t(field_iterator::ptr&& itr, const sub_reader& reader,
+    field_iterator_t(field_iterator::ptr&& itr, const SubReader& reader,
                      const doc_map_f& doc_map)
       : itr(std::move(itr)), reader(&reader), doc_map(&doc_map) {}
 
@@ -751,7 +751,7 @@ class compound_field_iterator final : public basic_term_reader {
     field_iterator_t& operator=(field_iterator_t&&) = delete;
 
     field_iterator::ptr itr;
-    const sub_reader* reader;
+    const SubReader* reader;
     const doc_map_f* doc_map;
   };
 
@@ -774,7 +774,7 @@ class compound_field_iterator final : public basic_term_reader {
   progress_tracker progress_;
 };  // compound_field_iterator
 
-void compound_field_iterator::add(const sub_reader& reader,
+void compound_field_iterator::add(const SubReader& reader,
                                   const doc_map_f& doc_id_map) {
   auto it = reader.fields();
   IRS_ASSERT(it);
@@ -869,7 +869,7 @@ term_iterator::ptr compound_field_iterator::iterator() const {
 bool compute_field_meta(field_meta_map_t& field_meta_map,
                         IndexFeatures& index_features,
                         feature_set_t& fields_features,
-                        const sub_reader& reader) {
+                        const SubReader& reader) {
   REGISTER_TIMER_DETAILED();
 
   for (auto it = reader.fields(); it->next();) {
@@ -1100,7 +1100,7 @@ bool write_columns(columnstore& cs, Iterator& columns,
   IRS_ASSERT(progress);
 
   auto add_iterators = [&column_itr](auto& itrs) {
-    auto add_iterators = [&itrs](const sub_reader& /*segment*/,
+    auto add_iterators = [&itrs](const SubReader& /*segment*/,
                                  const doc_map_f& doc_map,
                                  const irs::column_reader& column) {
       auto it = column.iterator(ColumnHint::kConsolidation);
@@ -1162,7 +1162,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
   hdrs.reserve(field_itr.size());
 
   auto add_iterators = [&field_itr, &hdrs, &feature](auto& itrs) {
-    auto add_iterators = [&itrs, &hdrs, &feature](const sub_reader& segment,
+    auto add_iterators = [&itrs, &hdrs, &feature](const SubReader& segment,
                                                   const doc_map_f& doc_map,
                                                   const field_meta& field) {
       const auto column = field.features.find(feature);
@@ -1274,7 +1274,7 @@ bool write_fields(columnstore& cs, Iterator& feature_itr,
 }
 
 // Computes doc_id_map and docs_count
-doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const sub_reader& reader,
+doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const SubReader& reader,
                          doc_id_t next_id) noexcept {
   REGISTER_TIMER_DETAILED();
   // assume not a lot of space wasted if doc_limits::min() > 0
@@ -1320,7 +1320,7 @@ const merge_writer::flush_progress_t kProgressNoop = []() { return true; };
 
 }  // namespace
 
-merge_writer::reader_ctx::reader_ctx(sub_reader::ptr reader) noexcept
+merge_writer::reader_ctx::reader_ctx(SubReader::ptr reader) noexcept
   : reader{std::move(reader)}, doc_map{[](doc_id_t) noexcept {
       return doc_limits::eof();
     }} {
@@ -1465,7 +1465,7 @@ bool merge_writer::flush_sorted(tracking_directory& dir, IndexSegment& segment,
   std::vector<PrimarySortIteratorAdapter> itrs;
   itrs.reserve(size);
 
-  auto emplace_iterator = [&itrs](const sub_reader& segment) {
+  auto emplace_iterator = [&itrs](const SubReader& segment) {
     if (!segment.sort()) {
       // sort column is not present, give up
       return false;

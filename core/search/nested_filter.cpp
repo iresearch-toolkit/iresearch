@@ -553,7 +553,7 @@ class MinMatcher : public Merger,
 };
 
 template<typename A, typename Visitor>
-auto ResolveMatchType(const sub_reader& segment,
+auto ResolveMatchType(const SubReader& segment,
                       const ByNestedOptions::MatchType& match,
                       score_t none_boost, A&& aggregator, Visitor&& visitor) {
   return std::visit(
@@ -598,7 +598,7 @@ class ByNestedQuery final : public filter::prepared {
   using filter::prepared::execute;
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+  void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const override {
     boost *= this->boost();
 
@@ -686,7 +686,7 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
 }
 
 filter::prepared::ptr ByNestedFilter::prepare(
-  const index_reader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Order& ord, score_t boost,
   const attribute_provider* ctx) const {
   auto& [parent, child, match, merge_type] = options();
 

@@ -29,7 +29,7 @@ namespace irs {
 /*static*/ const score score::kNoScore;
 
 Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const sub_reader& segment, const term_reader& field,
+                       const SubReader& segment, const term_reader& field,
                        const byte_type* stats_buf,
                        const attribute_provider& doc, score_t boost) {
   Scorers scorers;
@@ -102,7 +102,7 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
 }
 
 void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
-                       const index_reader& index) {
+                       const IndexReader& index) {
   for (auto& entry : order) {
     if (IRS_LIKELY(entry.bucket)) {
       entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr,

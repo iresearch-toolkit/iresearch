@@ -51,26 +51,6 @@ namespace irs {
 class Comparer;
 struct directory;
 
-// FIXME(gnusi): remove
-struct key_t {
-  // cppcheck-suppress noExplicitConstructor
-  /* implicit */ key_t(const SegmentInfo& meta)
-    : name{meta.name}, version{meta.version} {}
-
-  bool operator==(const key_t& other) const noexcept {
-    return name == other.name && version == other.version;
-  }
-
-  std::string name;
-  uint64_t version;
-};
-
-struct key_hash_t {
-  size_t operator()(const key_t& key) const noexcept {
-    return hash_utils::Hash(key.name);
-  }
-};
-
 // Defines how index writer should be opened
 enum OpenMode {
   // Creates new index repository. In case if repository already
@@ -85,11 +65,11 @@ enum OpenMode {
 ENABLE_BITMASK_ENUM(OpenMode);
 
 // A set of candidates denoting an instance of consolidation
-using Consolidation = std::vector<const sub_reader*>;
-using ConsolidationView = std::span<const sub_reader* const>;
+using Consolidation = std::vector<const SubReader*>;
+using ConsolidationView = std::span<const SubReader* const>;
 
 // segments that are under consolidation
-using ConsolidatingSegments = absl::flat_hash_set<const sub_reader*>;
+using ConsolidatingSegments = absl::flat_hash_set<const SubReader*>;
 
 // Mark consolidation candidate segments matching the current policy
 // candidates the segments that should be consolidated
@@ -101,7 +81,7 @@ using ConsolidatingSegments = absl::flat_hash_set<const sub_reader*>;
 // of consolidation
 // Final candidates are all segments selected by at least some policy
 using ConsolidationPolicy =
-  std::function<void(Consolidation& candidates, const index_reader& index,
+  std::function<void(Consolidation& candidates, const IndexReader& index,
                      const ConsolidatingSegments& consolidating_segments)>;
 
 enum class ConsolidationError : uint32_t {
@@ -155,7 +135,7 @@ class index_writer : private util::noncopyable {
     CommittedState(std::shared_ptr<IndexMeta>&& meta, FileRefs&& refs) noexcept
       : meta{std::move(meta)}, refs{std::move(refs)} {}
 
-    directory_reader reader;
+    DirectoryReader reader;
     std::shared_ptr<IndexMeta> meta;
     FileRefs refs;
   };
@@ -490,7 +470,7 @@ class index_writer : private util::noncopyable {
   // Progress callback triggered for consolidation steps, if the
   // callback returns false then consolidation is aborted.
   // Returns true on success.
-  bool import(const index_reader& reader, format::ptr codec = nullptr,
+  bool import(const IndexReader& reader, format::ptr codec = nullptr,
               const merge_writer::flush_progress_t& progress = {});
 
   // Opens new index writer.
@@ -885,7 +865,7 @@ class index_writer : private util::noncopyable {
     // are available for reuse
     freelist_t pending_segment_contexts_freelist_;
     // set of segment names to be removed from the index upon commit
-    absl::flat_hash_set<const sub_reader*> segment_mask_;
+    absl::flat_hash_set<const SubReader*> segment_mask_;
 
     flush_context() = default;
 

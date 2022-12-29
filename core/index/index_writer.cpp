@@ -80,10 +80,10 @@ struct flush_segment_context {
   std::span<const index_writer::modification_context> modification_contexts_;
   // update contexts for documents in SegmentMeta
   std::span<const segment_writer::update_context> update_contexts_;
-  segment_reader reader_;
+  SegmentReader reader_;
 
   flush_segment_context(
-    segment_reader&& reader, const IndexSegment& segment, size_t doc_id_begin,
+    SegmentReader&& reader, const IndexSegment& segment, size_t doc_id_begin,
     size_t doc_id_end,
     std::span<const segment_writer::update_context> update_contexts,
     std::span<const index_writer::modification_context> modification_contexts)
@@ -122,7 +122,7 @@ std::vector<index_file_refs::ref_t> extract_refs(
 // Return if any new records were added (modification_queries_ modified).
 bool add_document_mask_modified_records(
   std::span<index_writer::modification_context> modifications,
-  const segment_reader& reader, size_t min_modification_generation = 0) {
+  const SegmentReader& reader, size_t min_modification_generation = 0) {
   if (modifications.empty()) {
     return false;  // nothing new to flush
   }
@@ -179,7 +179,7 @@ bool add_document_mask_modified_records(
 // Return if any new records were added (modification_queries_ modified).
 bool add_document_mask_modified_records(
   std::span<index_writer::modification_context> modifications,
-  flush_segment_context& ctx, const segment_reader& reader) {
+  flush_segment_context& ctx, const SegmentReader& reader) {
   if (modifications.empty()) {
     return false;  // nothing new to flush
   }
@@ -339,9 +339,9 @@ std::string_view write_document_mask(directory& dir, SegmentMeta& meta,
 // mapping: name -> { new segment, old segment }
 using CandidatesMapping = absl::flat_hash_map<
   std::string_view,
-  std::pair<const sub_reader*,                       // new segment
-            std::pair<const sub_reader*, size_t>>>;  // old segment + index
-                                                     // within merge_writer
+  std::pair<const SubReader*,                       // new segment
+            std::pair<const SubReader*, size_t>>>;  // old segment + index
+                                                    // within merge_writer
 
 // candidates_mapping output mapping
 // candidates candidates for mapping
@@ -349,7 +349,7 @@ using CandidatesMapping = absl::flat_hash_map<
 // Returns first - has removals, second - number of mapped candidates.
 std::pair<bool, size_t> map_candidates(CandidatesMapping& candidates_mapping,
                                        ConsolidationView candidates,
-                                       const index_reader& index) {
+                                       const IndexReader& index) {
   size_t i = 0;
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
@@ -1658,8 +1658,7 @@ ConsolidationResult index_writer::consolidate(
 
         // pointers are different so check by name
         for (const auto* candidate : candidates) {
-          if (end ==
-              std::find_if(begin, end, [&candidate](const sub_reader& s) {
+          if (end == std::find_if(begin, end, [&candidate](const SubReader& s) {
                 // FIXME(gnusi): compare pointers?
                 return candidate->meta().name == s.meta().name;
               })) {
@@ -1841,7 +1840,7 @@ ConsolidationResult index_writer::consolidate(
 }
 
 bool index_writer::import(
-  const index_reader& reader, format::ptr codec /*= nullptr*/,
+  const IndexReader& reader, format::ptr codec /*= nullptr*/,
   const merge_writer::flush_progress_t& progress /*= {}*/) {
   if (!reader.live_docs_count()) {
     return true;  // skip empty readers since no documents to import
@@ -2041,7 +2040,7 @@ index_writer::flush_pending(flush_context& ctx,
   return {std::move(segment_flush_locks), max_tick};
 }
 
-using CompositeReaderView = CompositeReaderImpl<std::span<segment_reader>>;
+using CompositeReaderView = CompositeReaderImpl<std::span<SegmentReader>>;
 
 index_writer::pending_context_t index_writer::flush_all(
   progress_report_callback const& progress_callback) {
@@ -2098,7 +2097,7 @@ index_writer::pending_context_t index_writer::flush_all(
 
   std::vector<std::string> files_to_sync;
 
-  std::vector<segment_reader> readers;
+  std::vector<SegmentReader> readers;
   readers.reserve(committed_reader->size());
 
   for (auto& existing_segment : committed_reader) {
@@ -2172,18 +2171,18 @@ index_writer::pending_context_t index_writer::flush_all(
   for (auto& pending_segment : ctx->pending_segments_) {
     auto& pending_meta = pending_segment.segment.meta;
 
-    segment_reader pending_reader;
+    SegmentReader pending_reader;
 
-    auto open_pending_reader = [&]() -> segment_reader& {
+    auto open_pending_reader = [&]() -> SegmentReader& {
       // FIXME(gnusi): reader options? warmup?
-      pending_reader = segment_reader::open(dir, pending_meta, {});
+      pending_reader = SegmentReader::open(dir, pending_meta, {});
 
       if (!pending_reader) {
-        throw index_error(
-          string_utils::to_string("while adding document mask modified records "
-                                  "to flush_segment_context of "
-                                  "segment '%s', error: failed to open segment",
-                                  pending_meta.name.c_str()));
+        throw index_error{
+          absl::StrCat("While adding document mask modified records "
+                       "to flush_segment_context of "
+                       "segment '",
+                       pending_meta.name, "', error: failed to open segment")};
       }
 
       return pending_reader;
@@ -2427,14 +2426,14 @@ index_writer::pending_context_t index_writer::flush_all(
 
         // FIXME(gnusi): reader options? warmup?
         auto reader =
-          segment_reader::open(dir, flushed.meta, index_reader_options{});
+          SegmentReader::open(dir, flushed.meta, IndexReaderOptions{});
 
         if (!reader) {
-          throw index_error(string_utils::to_string(
+          throw index_error{absl::StrCat(
             "while adding document mask modified records "
             "to flush_segment_context of "
-            "segment '%s', error: failed to open segment",
-            flushed.meta.name.c_str()));
+            "segment '",
+            flushed.meta.name, "', error: failed to open segment")};
         }
 
         auto& flush_segment_ctx = segment_ctxs.emplace_back(

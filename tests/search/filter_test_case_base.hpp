@@ -60,7 +60,7 @@ struct boost : public irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-      const irs::sub_reader&, const irs::term_reader&,
+      const irs::SubReader&, const irs::term_reader&,
       const irs::byte_type* /*query_attrs*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t boost) const override {
@@ -90,7 +90,7 @@ struct custom_sort : public irs::sort {
      public:
       field_collector(const custom_sort& sort) : sort_(sort) {}
 
-      void collect(const irs::sub_reader& segment,
+      void collect(const irs::SubReader& segment,
                    const irs::term_reader& field) override {
         if (sort_.collector_collect_field) {
           sort_.collector_collect_field(segment, field);
@@ -119,7 +119,7 @@ struct custom_sort : public irs::sort {
      public:
       term_collector(const custom_sort& sort) : sort_(sort) {}
 
-      void collect(const irs::sub_reader& segment,
+      void collect(const irs::SubReader& segment,
                    const irs::term_reader& field,
                    const irs::attribute_provider& term_attrs) override {
         if (sort_.collector_collect_term) {
@@ -146,7 +146,7 @@ struct custom_sort : public irs::sort {
     };
 
     struct scorer : public irs::score_ctx {
-      scorer(const custom_sort& sort, const irs::sub_reader& segment_reader,
+      scorer(const custom_sort& sort, const irs::SubReader& segment_reader,
              const irs::term_reader& term_reader,
              const irs::byte_type* filter_node_attrs,
              const irs::attribute_provider& document_attrs)
@@ -158,14 +158,14 @@ struct custom_sort : public irs::sort {
 
       const irs::attribute_provider& document_attrs_;
       const irs::byte_type* filter_node_attrs_;
-      const irs::sub_reader& segment_reader_;
+      const irs::SubReader& segment_reader_;
       const custom_sort& sort_;
       const irs::term_reader& term_reader_;
     };
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
-    void collect(irs::byte_type* filter_attrs, const irs::index_reader& index,
+    void collect(irs::byte_type* filter_attrs, const irs::IndexReader& index,
                  const irs::sort::field_collector* field,
                  const irs::sort::term_collector* term) const override {
       if (sort_.collectors_collect_) {
@@ -186,7 +186,7 @@ struct custom_sort : public irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-      const irs::sub_reader& segment_reader,
+      const irs::SubReader& segment_reader,
       const irs::term_reader& term_reader,
       const irs::byte_type* filter_node_attrs,
       const irs::attribute_provider& document_attrs,
@@ -260,7 +260,7 @@ struct frequency_sort : public irs::sort {
       size_t docs_count{};
       const irs::term_meta* meta_attr;
 
-      void collect(const irs::sub_reader& segment,
+      void collect(const irs::SubReader& segment,
                    const irs::term_reader& field,
                    const irs::attribute_provider& term_attrs) override {
         meta_attr = irs::get<irs::term_meta>(term_attrs);
@@ -289,7 +289,7 @@ struct frequency_sort : public irs::sort {
 
     prepared() = default;
 
-    void collect(irs::byte_type* stats_buf, const irs::index_reader& /*index*/,
+    void collect(irs::byte_type* stats_buf, const irs::IndexReader& /*index*/,
                  const irs::sort::field_collector* /*field*/,
                  const irs::sort::term_collector* term) const override {
       auto* term_ptr = dynamic_cast<const term_collector*>(term);
@@ -308,7 +308,7 @@ struct frequency_sort : public irs::sort {
       return nullptr;  // do not need to collect stats
     }
 
-    irs::ScoreFunction prepare_scorer(const irs::sub_reader&,
+    irs::ScoreFunction prepare_scorer(const irs::SubReader&,
                                       const irs::term_reader&,
                                       const irs::byte_type* stats_buf,
                                       const irs::attribute_provider& doc_attrs,
@@ -374,44 +374,44 @@ class FilterTestCaseBase : public index_test_base {
   // Validate matched documents and query cost
   static void CheckQuery(const irs::filter& filter, const Docs& expected,
                          const Costs& expected_costs,
-                         const irs::index_reader& index,
+                         const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate matched documents
   static void CheckQuery(const irs::filter& filter, const Docs& expected,
-                         const irs::index_reader& index,
+                         const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate documents and its scores
   static void CheckQuery(const irs::filter& filter,
                          std::span<const irs::sort::ptr> order,
                          const ScoredDocs& expected,
-                         const irs::index_reader& index,
+                         const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate documents and its scores with test cases
   static void CheckQuery(const irs::filter& filter,
                          std::span<const irs::sort::ptr> order,
                          const std::vector<Tests>& tests,
-                         const irs::index_reader& index,
+                         const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate document order
   static void CheckQuery(const irs::filter& filter,
                          std::span<const irs::sort::ptr> order,
                          const std::vector<irs::doc_id_t>& expected,
-                         const irs::index_reader& index,
+                         const irs::IndexReader& index,
                          bool score_must_be_present = true,
                          bool reverse = false);
 
  private:
   static void GetQueryResult(const irs::filter::prepared::ptr& q,
-                             const irs::index_reader& index, Docs& result,
+                             const irs::IndexReader& index, Docs& result,
                              Costs& result_costs,
                              std::string_view source_location);
 
   static void GetQueryResult(const irs::filter::prepared::ptr& q,
-                             const irs::index_reader& index,
+                             const irs::IndexReader& index,
                              const irs::Order& ord, ScoredDocs& result,
                              Costs& result_costs,
                              std::string_view source_location);
@@ -451,7 +451,7 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:
-  void prepare(const irs::sub_reader& segment, const irs::term_reader& field,
+  void prepare(const irs::SubReader& segment, const irs::term_reader& field,
                const irs::seek_term_iterator& terms) noexcept override {
     it_ = &terms;
     ++prepare_calls_counter_;

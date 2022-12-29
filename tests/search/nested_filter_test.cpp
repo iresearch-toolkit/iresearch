@@ -113,7 +113,7 @@ struct DocIdScorer : irs::sort {
       return irs::IndexFeatures::NONE;
     }
 
-    irs::ScoreFunction prepare_scorer(const irs::sub_reader&,
+    irs::ScoreFunction prepare_scorer(const irs::SubReader&,
                                       const irs::term_reader&,
                                       const irs::byte_type*,
                                       const irs::attribute_provider& attrs,
@@ -144,7 +144,7 @@ struct DocIdScorer : irs::sort {
 
 // exists(name)
 auto MakeParentProvider(std::string_view name) {
-  return [name](const irs::sub_reader& segment) {
+  return [name](const irs::SubReader& segment) {
     const auto* col = segment.column(name);
 
     return col
@@ -559,7 +559,7 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   auto& opts = *filter.mutable_options();
   opts.child = MakeByNumericTerm("count", 2);
   opts.parent = MakeParentProvider("customer");
-  opts.match = [](const irs::sub_reader& segment) -> irs::doc_iterator::ptr {
+  opts.match = [](const irs::SubReader& segment) -> irs::doc_iterator::ptr {
     return irs::memory::make_managed<ChildIterator>(
       irs::all().prepare(segment)->execute(segment),
       std::set{6U, 13U, 15U, 20U});
@@ -1201,7 +1201,7 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
 
   // Bitset iterator doesn't provide score, check that wrapper works correctly
   opts.parent = [word = irs::bitset::word_t{}](
-                  const irs::sub_reader&) mutable -> irs::doc_iterator::ptr {
+                  const irs::SubReader&) mutable -> irs::doc_iterator::ptr {
     irs::set_bit<6>(word);
     irs::set_bit<8>(word);
     irs::set_bit<13>(word);

@@ -33,7 +33,7 @@
 
 namespace irs {
 
-struct index_reader;
+struct IndexReader;
 struct PreparedStateVisitor;
 
 enum class ExecutionMode : uint32_t {
@@ -42,7 +42,7 @@ enum class ExecutionMode : uint32_t {
 };
 
 struct ExecutionContext {
-  const sub_reader& segment;
+  const SubReader& segment;
   const Order& scorers;
   const attribute_provider* ctx{};
   ExecutionMode mode{ExecutionMode::kAll};
@@ -61,7 +61,7 @@ class filter {
     explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
     virtual ~prepared() = default;
 
-    doc_iterator::ptr execute(const sub_reader& segment,
+    doc_iterator::ptr execute(const SubReader& segment,
                               const Order& scorers = Order::kUnordered,
                               ExecutionMode mode = ExecutionMode::kAll) const {
       return execute({.segment = segment, .scorers = scorers, .mode = mode});
@@ -69,7 +69,7 @@ class filter {
 
     virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;
 
-    virtual void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+    virtual void visit(const SubReader& segment, PreparedStateVisitor& visitor,
                        score_t boost) const = 0;
 
     score_t boost() const noexcept { return boost_; }
@@ -96,25 +96,25 @@ class filter {
 
   // boost - external boost
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr, const Order& ord, score_t boost,
+    const IndexReader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const = 0;
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 const attribute_provider* ctx) const {
     return prepare(rdr, ord, irs::kNoBoost, ctx);
   }
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost) const {
     return prepare(rdr, ord, boost, nullptr);
   }
 
-  filter::prepared::ptr prepare(const index_reader& rdr,
+  filter::prepared::ptr prepare(const IndexReader& rdr,
                                 const Order& ord) const {
     return prepare(rdr, ord, irs::kNoBoost);
   }
 
-  filter::prepared::ptr prepare(const index_reader& rdr) const {
+  filter::prepared::ptr prepare(const IndexReader& rdr) const {
     return prepare(rdr, Order::kUnordered);
   }
 
@@ -196,14 +196,14 @@ class empty final : public filter {
  public:
   empty();
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const override;
 };
 
 struct filter_visitor;
 using field_visitor =
-  std::function<void(const sub_reader&, const term_reader&, filter_visitor&)>;
+  std::function<void(const SubReader&, const term_reader&, filter_visitor&)>;
 
 }  // namespace irs
 

@@ -30,12 +30,12 @@ namespace irs {
 // Common implementation for readers composied of multiple other readers
 // for use/inclusion into cpp files
 template<typename Readers>
-class CompositeReaderImpl : public index_reader {
+class CompositeReaderImpl : public IndexReader {
  public:
   using ReadersType = Readers;
 
   using ReaderType = typename std::enable_if_t<
-    std::is_base_of_v<index_reader, typename Readers::value_type>,
+    std::is_base_of_v<IndexReader, typename Readers::value_type>,
     typename Readers::value_type>;
 
   CompositeReaderImpl(ReadersType&& readers, uint64_t docs_count,
@@ -45,19 +45,19 @@ class CompositeReaderImpl : public index_reader {
       docs_max_{docs_max} {}
 
   // returns corresponding sub-reader
-  const ReaderType& operator[](size_t i) const noexcept override {
+  const ReaderType& operator[](size_t i) const noexcept final {
     IRS_ASSERT(i < readers_.size());
     return *(readers_[i]);
   }
 
   // maximum number of documents
-  uint64_t docs_count() const noexcept override { return docs_max_; }
+  uint64_t docs_count() const noexcept final { return docs_max_; }
 
   // number of live documents
-  uint64_t live_docs_count() const noexcept override { return docs_count_; }
+  uint64_t live_docs_count() const noexcept final { return docs_count_; }
 
   // returns total number of opened writers
-  size_t size() const noexcept override { return readers_.size(); }
+  size_t size() const noexcept final { return readers_.size(); }
 
  private:
   ReadersType readers_;

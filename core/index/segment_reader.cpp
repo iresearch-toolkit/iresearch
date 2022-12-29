@@ -163,20 +163,20 @@ std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
 
 }  // namespace
 
-class SegmentReaderImpl final : public sub_reader {
+class SegmentReaderImpl final : public SubReader {
  public:
   static std::shared_ptr<const SegmentReaderImpl> Open(
     const directory& dir, const SegmentMeta& meta,
-    const index_reader_options& warmup);
+    const IndexReaderOptions& warmup);
 
   SegmentReaderImpl(const directory& dir, const SegmentMeta& meta,
-                    const index_reader_options& opts);
+                    const IndexReaderOptions& opts);
 
   SegmentReaderImpl(const SegmentReaderImpl& rhs, const SegmentMeta& meta);
 
   const directory& Dir() const noexcept { return *dir_; }
 
-  const index_reader_options& Options() const noexcept { return opts_; }
+  const IndexReaderOptions& Options() const noexcept { return opts_; }
 
   const SegmentInfo& meta() const override { return info_; }
 
@@ -185,7 +185,7 @@ class SegmentReaderImpl final : public sub_reader {
 
   column_iterator::ptr columns() const override;
 
-  using sub_reader::docs_count;
+  using SubReader::docs_count;
   uint64_t docs_count() const override { return info_.docs_count; }
 
   const document_mask* docs_mask() const override { return &docs_mask_; }
@@ -216,7 +216,7 @@ class SegmentReaderImpl final : public sub_reader {
     return info_.live_docs_count;
   }
 
-  const sub_reader& operator[](size_t i) const noexcept override {
+  const SubReader& operator[](size_t i) const noexcept override {
     IRS_ASSERT(!i);
     IRS_IGNORE(i);
     return *this;
@@ -251,12 +251,12 @@ class SegmentReaderImpl final : public sub_reader {
   SegmentInfo info_;
   const directory* dir_;
   const irs::column_reader* sort_{};
-  index_reader_options opts_;
+  IndexReaderOptions opts_;
 };
 
 SegmentReaderImpl::SegmentReaderImpl(const directory& dir,
                                      const SegmentMeta& meta,
-                                     const index_reader_options& opts)
+                                     const IndexReaderOptions& opts)
   : file_refs_{GetRefs(dir, meta)},
     data_{std::make_shared<Data>()},
     info_{meta},
@@ -327,7 +327,7 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
 
 /*static*/ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   const directory& dir, const SegmentMeta& meta,
-  const index_reader_options& opts) {
+  const IndexReaderOptions& opts) {
   auto& codec = *meta.codec;
 
   auto reader = std::make_shared<SegmentReaderImpl>(dir, meta, opts);
@@ -417,15 +417,14 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
   return reader;
 }
 
-segment_reader::segment_reader(
+SegmentReader::SegmentReader(
   std::shared_ptr<const SegmentReaderImpl> impl) noexcept
   : impl_{std::move(impl)} {}
 
-segment_reader::segment_reader(const segment_reader& other) noexcept
+SegmentReader::SegmentReader(const SegmentReader& other) noexcept
   : impl_{std::atomic_load(&other.impl_)} {}
 
-segment_reader& segment_reader::operator=(
-  const segment_reader& other) noexcept {
+SegmentReader& SegmentReader::operator=(const SegmentReader& other) noexcept {
   if (this != &other) {
     // make a copy
     auto impl = std::atomic_load(&other.impl_);
@@ -436,63 +435,61 @@ segment_reader& segment_reader::operator=(
   return *this;
 }
 
-/*static*/ segment_reader segment_reader::open(
-  const directory& dir, const SegmentMeta& meta,
-  const index_reader_options& opts) {
-  return segment_reader{SegmentReaderImpl::Open(dir, meta, opts)};
+/*static*/ SegmentReader SegmentReader::open(const directory& dir,
+                                             const SegmentMeta& meta,
+                                             const IndexReaderOptions& opts) {
+  return SegmentReader{SegmentReaderImpl::Open(dir, meta, opts)};
 }
 
-segment_reader segment_reader::reopen(const SegmentMeta& meta) const {
+SegmentReader SegmentReader::reopen(const SegmentMeta& meta) const {
   // make a copy
   auto impl = std::atomic_load(&impl_);
 
   // reuse self if no changes to meta
-  return segment_reader{
+  return SegmentReader{
     impl->meta().version == meta.version ? impl : impl->Reopen(meta)};
 }
 
-field_iterator::ptr segment_reader::fields() const { return impl_->fields(); }
+field_iterator::ptr SegmentReader::fields() const { return impl_->fields(); }
 
-uint64_t segment_reader::live_docs_count() const {
+uint64_t SegmentReader::live_docs_count() const {
   return impl_->live_docs_count();
 }
 
-size_t segment_reader::size() const { return impl_->size(); }
+size_t SegmentReader::size() const { return impl_->size(); }
 
-const irs::column_reader* segment_reader::sort() const { return impl_->sort(); }
+const irs::column_reader* SegmentReader::sort() const { return impl_->sort(); }
 
-const irs::column_reader* segment_reader::column(std::string_view name) const {
+const irs::column_reader* SegmentReader::column(std::string_view name) const {
   return impl_->column(name);
 }
 
-const irs::column_reader* segment_reader::column(field_id field) const {
+const irs::column_reader* SegmentReader::column(field_id field) const {
   return impl_->column(field);
 }
 
-segment_reader::operator sub_reader::ptr() const noexcept { return impl_; }
+SegmentReader::operator SubReader::ptr() const noexcept { return impl_; }
 
 // FIXME find a better way to mask documents
-doc_iterator::ptr segment_reader::mask(doc_iterator::ptr&& it) const {
+doc_iterator::ptr SegmentReader::mask(doc_iterator::ptr&& it) const {
   return impl_->mask(std::move(it));
 }
 
-const term_reader* segment_reader::field(std::string_view name) const {
+const term_reader* SegmentReader::field(std::string_view name) const {
   return impl_->field(name);
 }
 
-uint64_t segment_reader::docs_count() const { return impl_->docs_count(); }
+uint64_t SegmentReader::docs_count() const { return impl_->docs_count(); }
 
-doc_iterator::ptr segment_reader::docs_iterator() const {
+doc_iterator::ptr SegmentReader::docs_iterator() const {
   return impl_->docs_iterator();
 }
 
-column_iterator::ptr segment_reader::columns() const {
-  return impl_->columns();
-}
+column_iterator::ptr SegmentReader::columns() const { return impl_->columns(); }
 
-const SegmentInfo& segment_reader::meta() const { return impl_->meta(); }
+const SegmentInfo& SegmentReader::meta() const { return impl_->meta(); }
 
-const document_mask* segment_reader::docs_mask() const {
+const document_mask* SegmentReader::docs_mask() const {
   return impl_->docs_mask();
 }
 

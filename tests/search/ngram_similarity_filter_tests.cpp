@@ -922,17 +922,17 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
-                                     const irs::sub_reader&,
+                                     const irs::SubReader&,
                                      const irs::term_reader&) -> void {
     ++collect_field_count;
   };
   scorer.collector_collect_term =
-    [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+    [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                           const irs::attribute_provider&) -> void {
     ++collect_term_count;
   };
   scorer.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::index_reader&,
+                                 irs::byte_type*, const irs::IndexReader&,
                                  const irs::sort::field_collector*,
                                  const irs::sort::term_collector*) -> void {
     ++finish_count;
@@ -949,7 +949,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   };
   scorer.prepare_scorer =
     [&frequency, &filter_boost](
-      const irs::sub_reader& /*segment*/, const irs::term_reader& /*term*/,
+      const irs::SubReader& /*segment*/, const irs::term_reader& /*term*/,
       const irs::byte_type* /*stats_buf*/, const irs::attribute_provider& attr,
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
@@ -1001,17 +1001,17 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
-                                     const irs::sub_reader&,
+                                     const irs::SubReader&,
                                      const irs::term_reader&) -> void {
     ++collect_field_count;
   };
   scorer.collector_collect_term =
-    [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+    [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                           const irs::attribute_provider&) -> void {
     ++collect_term_count;
   };
   scorer.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::index_reader&,
+                                 irs::byte_type*, const irs::IndexReader&,
                                  const irs::sort::field_collector*,
                                  const irs::sort::term_collector*) -> void {
     ++finish_count;
@@ -1028,7 +1028,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   };
   scorer.prepare_scorer =
     [&frequency, &filter_boost](
-      const irs::sub_reader& /*segment*/, const irs::term_reader& /*term*/,
+      const irs::SubReader& /*segment*/, const irs::term_reader& /*term*/,
       const irs::byte_type* /*stats_buf*/, const irs::attribute_provider& attr,
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);

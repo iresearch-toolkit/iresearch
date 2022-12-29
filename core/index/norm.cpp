@@ -58,7 +58,7 @@ NormWriter kNormWriter;
 
 namespace irs {
 
-bool NormReaderContext::Reset(const sub_reader& reader, field_id column_id,
+bool NormReaderContext::Reset(const SubReader& reader, field_id column_id,
                               const document& doc) {
   const auto* column = reader.column(column_id);
 
@@ -79,7 +79,7 @@ bool NormReaderContext::Reset(const sub_reader& reader, field_id column_id,
   return false;
 }
 
-bool Norm2ReaderContext::Reset(const sub_reader& reader, field_id column_id,
+bool Norm2ReaderContext::Reset(const SubReader& reader, field_id column_id,
                                const document& doc) {
   if (NormReaderContext::Reset(reader, column_id, doc)) {
     const auto hdr = Norm2Header::Read(header);

@@ -114,8 +114,8 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   iterator_type cookie_ptr_;
 };
 
-struct sub_reader final : irs::sub_reader {
-  explicit sub_reader(size_t num_docs) : num_docs(num_docs) {}
+struct SubReader final : irs::SubReader {
+  explicit SubReader(size_t num_docs) : num_docs(num_docs) {}
   const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
@@ -136,13 +136,11 @@ struct sub_reader final : irs::sub_reader {
     return irs::field_iterator::empty();
   }
   uint64_t live_docs_count() const override { return 0; }
-  const irs::sub_reader& operator[](size_t) const override {
+  const irs::SubReader& operator[](size_t) const override {
     throw std::out_of_range("index out of range");
   }
   size_t size() const override { return 0; }
   const irs::column_reader* sort() const override { return nullptr; }
-
-  size_t size_in_bytes() const override { return 0; }
 
   size_t num_docs;
 };
@@ -154,14 +152,14 @@ struct state {
     std::vector<const std::pair<std::string_view, term_meta>*> cookies;
   };
 
-  std::map<const irs::sub_reader*, segment_state> segments;
+  std::map<const irs::SubReader*, segment_state> segments;
 };
 
 void BM_top_term_collector(benchmark::State& state) {
   using collector_type = irs::top_terms_collector<irs::top_term_state<int>>;
   collector_type collector(64);  // same as collector(1)
   irs::empty_term_reader term_reader(42);
-  sub_reader segment(100);
+  SubReader segment(100);
 
   std::vector<std::tuple<irs::bytes_view, term_meta, int>> terms(
     state.range(0));

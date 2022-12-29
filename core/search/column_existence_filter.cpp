@@ -45,12 +45,12 @@ class column_existence_query : public irs::filter::prepared {
     return iterator(segment, *column, ctx.scorers);
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 
  protected:
-  doc_iterator::ptr iterator(const sub_reader& segment,
+  doc_iterator::ptr iterator(const SubReader& segment,
                              const column_reader& column,
                              const Order& ord) const {
     auto it = column.iterator(ColumnHint::kMask);
@@ -132,7 +132,7 @@ class column_prefix_existence_query final : public column_existence_query {
 namespace irs {
 
 filter::prepared::ptr by_column_existence::prepare(
-  const index_reader& reader, const Order& order, score_t filter_boost,
+  const IndexReader& reader, const Order& order, score_t filter_boost,
   const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics

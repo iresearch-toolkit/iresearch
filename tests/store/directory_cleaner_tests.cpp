@@ -348,7 +348,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       return true;
     };
     std::unordered_set<std::string> current_files(file_set);
-    auto reader = irs::directory_reader::open(dir, codec_ptr);
+    auto reader = irs::DirectoryReader::open(dir, codec_ptr);
     irs::directory_cleaner::clean(dir);
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());

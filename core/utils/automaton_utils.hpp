@@ -382,7 +382,7 @@ inline bool validate(const automaton& a,
 /// @param visitor visitor
 //////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& reader,
+void visit(const SubReader& segment, const term_reader& reader,
            automaton_table_matcher& matcher, Visitor& visitor) {
   IRS_ASSERT(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
@@ -480,6 +480,6 @@ inline automaton make_all() {
 //////////////////////////////////////////////////////////////////////////////
 filter::prepared::ptr prepare_automaton_filter(
   std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
-  const index_reader& index, const Order& order, score_t boost);
+  const IndexReader& index, const Order& order, score_t boost);
 
 }  // namespace irs

@@ -42,9 +42,9 @@ class merge_writer : public util::noncopyable {
   using flush_progress_t = std::function<bool()>;
 
   struct reader_ctx {
-    explicit reader_ctx(sub_reader::ptr reader) noexcept;
+    explicit reader_ctx(SubReader::ptr reader) noexcept;
 
-    sub_reader::ptr reader;                     // segment reader
+    SubReader::ptr reader;                      // segment reader
     std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
@@ -66,12 +66,12 @@ class merge_writer : public util::noncopyable {
 
   operator bool() const noexcept;
 
-  void add(const sub_reader& reader) {
+  void add(const SubReader& reader) {
     // add reference, noexcept aliasing ctor
-    readers_.emplace_back(sub_reader::ptr{sub_reader::ptr{}, &reader});
+    readers_.emplace_back(SubReader::ptr{SubReader::ptr{}, &reader});
   }
 
-  void add(sub_reader::ptr reader) {
+  void add(SubReader::ptr reader) {
     // add shared pointer
     IRS_ASSERT(reader);
     if (reader) {

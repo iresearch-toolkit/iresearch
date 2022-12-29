@@ -390,7 +390,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 
 filter::prepared::ptr prepare_automaton_filter(
   std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
-  const index_reader& index, const Order& order, score_t boost) {
+  const IndexReader& index, const Order& order, score_t boost) {
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {
@@ -406,7 +406,7 @@ filter::prepared::ptr prepare_automaton_filter(
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
     order.empty() ? 0 : scored_terms_limit);
-  MultiTermQuery::States states{index};
+  MultiTermQuery::States states{index.size()};
   multiterm_visitor mtv{collector, states};
 
   for (const auto& segment : index) {

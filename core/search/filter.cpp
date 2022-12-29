@@ -35,7 +35,7 @@ struct EmptyQuery final : public filter::prepared {
     return irs::doc_iterator::empty();
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 };
@@ -55,7 +55,7 @@ filter::prepared::ptr filter::prepared::empty() {
 
 empty::empty() : filter(irs::type<empty>::get()) {}
 
-filter::prepared::ptr empty::prepare(const index_reader&, const Order&, score_t,
+filter::prepared::ptr empty::prepare(const IndexReader&, const Order&, score_t,
                                      const attribute_provider*) const {
   return memory::to_managed<const filter::prepared, false>(&kEmptyQuery);
 }

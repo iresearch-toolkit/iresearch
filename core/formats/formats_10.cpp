@@ -53,6 +53,7 @@ extern "C" {
 #include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/std.hpp"
+#include "utils/string_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
@@ -144,8 +145,7 @@ void prepare_output(std::string& str, index_output::ptr& out,
   out = state.dir->create(str);
 
   if (!out) {
-    throw io_error(
-      string_utils::to_string("failed to create file, path: %s", str.c_str()));
+    throw io_error{absl::StrCat("Failed to create file, path: ", str)};
   }
 
   format_utils::write_header(*out, format, version);
@@ -160,8 +160,7 @@ void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
   in = state.dir->open(str, advice);
 
   if (!in) {
-    throw io_error(
-      string_utils::to_string("failed to open file, path: %s", str.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", str)};
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -825,10 +824,10 @@ void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
     pos_.last = FormatTraits::pos_min();
     pay_.last = 0;
   } else {
-    throw index_error(
-      string_utils::to_string("while beginning doc_ in postings_writer, error: "
-                              "docs out of order '%d' < '%d'",
-                              id, doc_.last));
+    throw index_error{
+      absl::StrCat("While beginning doc_ in postings_writer, error: "
+                   "docs out of order '",
+                   id, "' < '", doc_.last, "'")};
   }
 }
 
@@ -2213,9 +2212,9 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     goto seek_after_initialization;
   } else {
     IRS_ASSERT(false);
-    throw index_error{string_utils::to_string(
-      "Invalid number of skip levels %u, must be in range of [1, %u].",
-      num_levels, postings_writer_base::kMaxSkipLevels)};
+    throw index_error{absl::StrCat("Invalid number of skip levels ", num_levels,
+                                   ", must be in range of [1, ",
+                                   postings_writer_base::kMaxSkipLevels, "].")};
   }
 }
 
@@ -2487,9 +2486,9 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
                         std::get<score_threshold>(attrs_));
   } else {
     IRS_ASSERT(false);
-    throw index_error{string_utils::to_string(
-      "Invalid number of skip levels %u, must be in range of [1, %u].",
-      num_levels, postings_writer_base::kMaxSkipLevels)};
+    throw index_error{absl::StrCat("Invalid number of skip levels ", num_levels,
+                                   ", must be in range of [1, ",
+                                   postings_writer_base::kMaxSkipLevels, "].")};
   }
 }
 
@@ -2642,8 +2641,7 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta) {
   auto out = dir.create(seg_file);
 
   if (!out) {
-    throw io_error(string_utils::to_string("Failed to create file, path: %s",
-                                           seg_file.c_str()));
+    throw io_error{absl::StrCat("Failed to create file, path: ", seg_file)};
   }
 
   {
@@ -2672,8 +2670,7 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta) {
   }
 
   if (!dir.sync(seg_file)) {
-    throw io_error(string_utils::to_string("failed to sync file, path: %s",
-                                           seg_file.c_str()));
+    throw io_error{absl::StrCat("Failed to sync file, path: ", seg_file)};
   }
 
   // only noexcept operations below
@@ -2694,9 +2691,8 @@ bool index_meta_writer::commit() {
   if (!dir_->rename(src, dst)) {
     rollback();
 
-    throw io_error(string_utils::to_string(
-      "failed to rename file, src path: '%s' dst path: '%s'", src.c_str(),
-      dst.c_str()));
+    throw io_error{absl::StrCat("Failed to rename file, src path: '", src,
+                                "' dst path: '", dst, "'")};
   }
 
   // only noexcept operations below
@@ -2777,8 +2773,7 @@ void index_meta_reader::read(const directory& dir, IndexMeta& meta,
     dir.open(meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
-    throw io_error(string_utils::to_string("failed to open file, path: %s",
-                                           meta_file.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", meta_file)};
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2851,18 +2846,16 @@ std::string file_name<irs::segment_meta_writer, SegmentMeta>(
 void segment_meta_writer::write(directory& dir, std::string& meta_file,
                                 const SegmentMeta& meta) {
   if (meta.docs_count < meta.live_docs_count) {
-    throw index_error(string_utils::to_string(
-      "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER
-      ", live_docs_count=" IR_SIZE_T_SPECIFIER "",
-      meta.name.c_str(), meta.docs_count, meta.live_docs_count));
+    throw index_error{absl::StrCat("Invalid segment meta '", meta.name,
+                                   "' detected : docs_count=", meta.docs_count,
+                                   ", live_docs_count=", meta.live_docs_count)};
   }
 
   meta_file = file_name<irs::segment_meta_writer>(meta);
   auto out = dir.create(meta_file);
 
   if (!out) {
-    throw io_error(string_utils::to_string("failed to create file, path: %s",
-                                           meta_file.c_str()));
+    throw io_error{absl::StrCat("failed to create file, path: ", meta_file)};
   }
 
   byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
@@ -2904,8 +2897,7 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
     dir.open(meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
-    throw io_error(string_utils::to_string("failed to open file, path: %s",
-                                           meta_file.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", meta_file)};
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2920,10 +2912,9 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
   const auto docs_count = in->read_vlong() + live_docs_count;
 
   if (docs_count < live_docs_count) {
-    throw index_error(std::string("while reader segment meta '") + name +
-                      "', error: docs_count(" + std::to_string(docs_count) +
-                      ") < live_docs_count(" + std::to_string(live_docs_count) +
-                      ")");
+    throw index_error{
+      absl::StrCat("While reader segment meta '", name, "', error: docs_count(",
+                   docs_count, ") < live_docs_count(", live_docs_count, ")")};
   }
 
   const auto size = in->read_vlong();
@@ -2936,23 +2927,21 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
 
   if (flags &
       ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
-    throw index_error(string_utils::to_string(
-      "while reading segment meta '%s', error: use of unsupported flags '%u'",
-      name.c_str(), flags));
+    throw index_error{absl::StrCat("While reading segment meta '", name,
+                                   "', error: use of unsupported flags '",
+                                   flags, "'")};
   }
 
   const auto sorted = bool(flags & segment_meta_writer::SORTED);
 
   if ((!field_limits::valid(sort)) && sorted) {
-    throw index_error(string_utils::to_string(
-      "while reading segment meta '%s', error: incorrectly marked as sorted",
-      name.c_str()));
+    throw index_error{absl::StrCat("While reading segment meta '", name,
+                                   "', error: incorrectly marked as sorted")};
   }
 
   if ((field_limits::valid(sort)) && !sorted) {
-    throw index_error(string_utils::to_string(
-      "while reading segment meta '%s', error: incorrectly marked as unsorted",
-      name.c_str()));
+    throw index_error{absl::StrCat("While reading segment meta '", name,
+                                   "', error: incorrectly marked as unsorted")};
   }
 
   format_utils::check_footer(*in, checksum);
@@ -3004,8 +2993,7 @@ void document_mask_writer::write(directory& dir, const SegmentMeta& meta,
   auto out = dir.create(filename);
 
   if (!out) {
-    throw io_error(string_utils::to_string("Failed to create file, path: %s",
-                                           filename.c_str()));
+    throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
   // segment can't have more than std::numeric_limits<uint32_t>::max() documents
@@ -3037,8 +3025,8 @@ bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
   bool exists;
 
   if (!dir.exists(exists, in_name)) {
-    throw io_error(string_utils::to_string(
-      "failed to check existence of file, path: %s", in_name.c_str()));
+    throw io_error{
+      absl::StrCat("failed to check existence of file, path: ", in_name)};
   }
 
   if (!exists) {
@@ -3050,8 +3038,7 @@ bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
     dir.open(in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
-    throw io_error(string_utils::to_string("failed to open file, path: %s",
-                                           in_name.c_str()));
+    throw io_error{absl::StrCat("failed to open file, path: ", in_name)};
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -3152,11 +3139,13 @@ void postings_reader_base::prepare(index_input& in, const reader_state& state,
   const uint64_t block_size = in.read_vint();
 
   if (block_size != block_size_) {
-    throw index_error(
-      string_utils::to_string("while preparing postings_reader, error: "
-                              "invalid block size '" IR_UINT64_T_SPECIFIER "', "
-                              "expected '" IR_UINT64_T_SPECIFIER "'",
-                              block_size, block_size_));
+    throw index_error{
+      absl::StrCat("while preparing postings_reader, error: "
+                   "invalid block size '",
+                   block_size,
+                   "', "
+                   "expected '",
+                   block_size_, "'")};
   }
 }
 

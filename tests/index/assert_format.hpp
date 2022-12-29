@@ -258,10 +258,10 @@ void assert_columnstore(
   size_t skip = 0);  // do not validate the first 'skip' segments
 
 void assert_columnstore(
-  irs::index_reader::ptr actual_index, const index_t& expected_index,
+  irs::IndexReader::ptr actual_index, const index_t& expected_index,
   size_t skip = 0);  // do not validate the first 'skip' segments
 
-void assert_index(irs::index_reader::ptr actual_index,
+void assert_index(irs::IndexReader::ptr actual_index,
                   const index_t& expected_index, irs::IndexFeatures features,
                   size_t skip = 0,  // do not validate the first 'skip' segments
                   irs::automaton_table_matcher* matcher = nullptr);

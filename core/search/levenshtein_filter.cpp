@@ -84,7 +84,7 @@ struct aggregated_stats_visitor : util::noncopyable {
                            const term_collectors& term_stats) noexcept
     : term_stats(term_stats), states(states) {}
 
-  void operator()(const irs::sub_reader& segment, const irs::term_reader& field,
+  void operator()(const irs::SubReader& segment, const irs::term_reader& field,
                   uint32_t docs_count) const {
     this->segment = &segment;
     this->field = &field;
@@ -103,7 +103,7 @@ struct aggregated_stats_visitor : util::noncopyable {
   const term_collectors& term_stats;
   StatesType& states;
   mutable typename StatesType::state_type* state{};
-  mutable const sub_reader* segment{};
+  mutable const SubReader* segment{};
   mutable const term_reader* field{};
   score_t boost{irs::kNoBoost};
 };
@@ -116,7 +116,7 @@ class top_terms_collector
   top_terms_collector(size_t size, field_collectors& field_stats)
     : base_type(size), field_stats_(field_stats) {}
 
-  void prepare(const sub_reader& segment, const term_reader& field,
+  void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) {
     field_stats_.collect(segment, field);
     base_type::prepare(segment, field, terms);
@@ -134,7 +134,7 @@ class top_terms_collector
 /// @param visitor visitor
 //////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& reader,
+void visit(const SubReader& segment, const term_reader& reader,
            const byte_type no_distance, const uint32_t utf8_target_size,
            automaton_table_matcher& matcher, Visitor&& visitor) {
   IRS_ASSERT(fst::kError != matcher.Properties(0));
@@ -168,7 +168,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
 }
 
 template<typename Collector>
-bool collect_terms(const index_reader& index, std::string_view field,
+bool collect_terms(const IndexReader& index, std::string_view field,
                    bytes_view prefix, bytes_view term,
                    const parametric_description& d, Collector& collector) {
   const auto acceptor = make_levenshtein_automaton(d, prefix, term);
@@ -197,12 +197,12 @@ bool collect_terms(const index_reader& index, std::string_view field,
 }
 
 filter::prepared::ptr prepare_levenshtein_filter(
-  const index_reader& index, const Order& order, score_t boost,
+  const IndexReader& index, const Order& order, score_t boost,
   std::string_view field, bytes_view prefix, bytes_view term,
   size_t terms_limit, const parametric_description& d) {
   field_collectors field_stats(order);
   term_collectors term_stats(order, 1);
-  MultiTermQuery::States states{index};
+  MultiTermQuery::States states{index.size()};
 
   if (!terms_limit) {
     all_terms_collector term_collector{states, field_stats, term_stats};
@@ -244,11 +244,11 @@ namespace irs {
     opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
     opts.term,
     []() -> field_visitor {
-      return [](const sub_reader&, const term_reader&, filter_visitor&) {};
+      return [](const SubReader&, const term_reader&, filter_visitor&) {};
     },
     [&opts]() -> field_visitor {
       // must copy term as it may point to temporary string
-      return [target = opts.prefix + opts.term](const sub_reader& segment,
+      return [target = opts.prefix + opts.term](const SubReader& segment,
                                                 const term_reader& field,
                                                 filter_visitor& visitor) {
         return by_term::visit(segment, field, target, visitor);
@@ -269,7 +269,7 @@ namespace irs {
       auto ctx = std::make_shared<automaton_context>(d, prefix, term);
 
       if (!validate(ctx->acceptor)) {
-        return [](const sub_reader&, const term_reader&, filter_visitor&) {};
+        return [](const SubReader&, const term_reader&, filter_visitor&) {};
       }
 
       const uint32_t utf8_term_size =
@@ -278,7 +278,7 @@ namespace irs {
       const byte_type max_distance = d.max_distance() + 1;
 
       return [ctx = std::move(ctx), utf8_term_size, max_distance](
-               const sub_reader& segment, const term_reader& field,
+               const SubReader& segment, const term_reader& field,
                filter_visitor& visitor) mutable {
         return ::visit(segment, field, max_distance, utf8_term_size,
                        ctx->matcher, visitor);
@@ -287,7 +287,7 @@ namespace irs {
 }
 
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
-  const index_reader& index, const Order& order, score_t boost,
+  const IndexReader& index, const Order& order, score_t boost,
   std::string_view field, bytes_view term, size_t scored_terms_limit,
   byte_type max_distance, options_type::pdp_f provider,
   bool with_transpositions, bytes_view prefix) {

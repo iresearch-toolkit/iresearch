@@ -31,7 +31,7 @@ namespace irs {
 // Compiled query suitable for filters with non adjacent set of terms.
 class MultiTermQuery final : public filter::prepared {
  public:
-  using States = states_cache<MultiTermState>;
+  using States = StatesCache<MultiTermState>;
   using Stats = std::vector<bstring>;
 
   explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
@@ -44,7 +44,7 @@ class MultiTermQuery final : public filter::prepared {
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+  void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const override;
 
  private:

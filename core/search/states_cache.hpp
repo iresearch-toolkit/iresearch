@@ -22,36 +22,31 @@
 
 #pragma once
 
-#include <vector>
-
-#include "index/index_reader.hpp"
 #include "shared.hpp"
+#include "utils/noncopyable.hpp"
 
 #include <absl/container/flat_hash_map.h>
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class states_cache
-/// @brief generic cache for cached query states
-/// @todo consider changing an API so that a sub_reader is indexable by an
-///       integer. we can use a vector for lookup.
-////////////////////////////////////////////////////////////////////////////////
+class SubReader;
+
+// Generic cache for cached query states
+// TODO: consider changing an API so that a sub_reader is indexable by an
+//       integer. we can use a vector for lookup.
 template<typename State>
-class states_cache : private util::noncopyable {
+class StatesCache : private util::noncopyable {
  public:
   using state_type = State;
 
-  explicit states_cache(const index_reader& reader) {
-    states_.reserve(reader.size());
-  }
+  explicit StatesCache(size_t size) { states_.reserve(size); }
 
-  states_cache(states_cache&&) = default;
-  states_cache& operator=(states_cache&&) = default;
+  StatesCache(StatesCache&&) = default;
+  StatesCache& operator=(StatesCache&&) = default;
 
-  state_type& insert(const sub_reader& rdr) { return states_[&rdr]; }
+  state_type& insert(const SubReader& rdr) { return states_[&rdr]; }
 
-  const state_type* find(const sub_reader& rdr) const noexcept {
+  const state_type* find(const SubReader& rdr) const noexcept {
     auto it = states_.find(&rdr);
     return states_.end() == it ? nullptr : &(it->second);
   }
@@ -64,10 +59,10 @@ class states_cache : private util::noncopyable {
   bool empty() const noexcept { return states_.empty(); }
 
  private:
-  using states_map = absl::flat_hash_map<const sub_reader*, state_type>;
+  using states_map = absl::flat_hash_map<const SubReader*, state_type>;
 
   // FIXME use vector instead?
   states_map states_;
-};  // states_cache
+};
 
 }  // namespace irs

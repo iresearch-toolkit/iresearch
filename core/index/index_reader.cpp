@@ -34,7 +34,7 @@ namespace {
 
 const SegmentInfo kEmptyInfo;
 
-struct EmptySubReader final : sub_reader {
+struct EmptySubReader final : SubReader {
   column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
@@ -55,7 +55,7 @@ struct EmptySubReader final : sub_reader {
     return irs::field_iterator::empty();
   }
   uint64_t live_docs_count() const override { return 0; }
-  const irs::sub_reader& operator[](size_t) const override {
+  const irs::SubReader& operator[](size_t) const override {
     throw std::out_of_range{"index out of range"};
   }
   size_t size() const override { return 0; }
@@ -66,6 +66,6 @@ const EmptySubReader kEmpty;
 
 }  // namespace
 
-/*static*/ const sub_reader& sub_reader::empty() noexcept { return kEmpty; }
+/*static*/ const SubReader& SubReader::empty() noexcept { return kEmpty; }
 
 }  // namespace irs

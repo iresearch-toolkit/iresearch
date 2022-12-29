@@ -319,13 +319,13 @@ class Norm2TestCase : public tests::index_test_base {
 
   template<typename T>
   void AssertNormColumn(
-    const irs::sub_reader& segment, std::string_view name,
+    const irs::SubReader& segment, std::string_view name,
     const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_values);
 };
 
 template<typename T>
 void Norm2TestCase::AssertNormColumn(
-  const irs::sub_reader& segment, std::string_view name,
+  const irs::SubReader& segment, std::string_view name,
   const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_docs) {
   static_assert(std::is_same_v<T, irs::byte_type> ||
                 std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t>);

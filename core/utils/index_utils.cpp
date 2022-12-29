@@ -44,7 +44,7 @@ namespace tier {
 
 struct SegmentStats {
   // cppcheck-suppress noExplicitConstructor
-  SegmentStats(const irs::sub_reader& reader) noexcept
+  SegmentStats(const irs::SubReader& reader) noexcept
     : reader{&reader},
       meta{&reader.meta()},
       size{SizeWithoutRemovals(*meta)},
@@ -67,9 +67,9 @@ struct SegmentStats {
     return lhs.size < rhs.size;
   }
 
-  operator const irs::sub_reader*() const noexcept { return reader; }
+  operator const irs::SubReader*() const noexcept { return reader; }
 
-  const irs::sub_reader* reader;
+  const irs::SubReader* reader;
   const irs::SegmentInfo* meta;
   size_t size;  // approximate size of segment without removals
   double_t fill_factor;
@@ -185,7 +185,7 @@ double_t consolidation_score(const consolidation_candidate& consolidation,
 namespace irs::index_utils {
 
 ConsolidationPolicy consolidation_policy(const consolidate_bytes& options) {
-  return [options](Consolidation& candidates, const index_reader& reader,
+  return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
@@ -214,11 +214,11 @@ ConsolidationPolicy consolidation_policy(const consolidate_bytes& options) {
 
 ConsolidationPolicy consolidation_policy(
   const consolidate_bytes_accum& options) {
-  return [options](Consolidation& candidates, const index_reader& reader,
+  return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& consolidating_segments) {
     auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
-    std::vector<std::pair<size_t, const sub_reader*>> segments;
+    std::vector<std::pair<size_t, const SubReader*>> segments;
     segments.reserve(reader.size());
 
     for (auto& segment : reader) {
@@ -237,8 +237,8 @@ ConsolidationPolicy consolidation_policy(
       all_segment_bytes_size *
       std::max<float>(0, std::min<float>(1, byte_threshold));
     struct {
-      bool operator()(const std::pair<size_t, const sub_reader*>& lhs,
-                      const std::pair<size_t, const sub_reader*>& rhs) const {
+      bool operator()(const std::pair<size_t, const SubReader*>& lhs,
+                      const std::pair<size_t, const SubReader*>& rhs) const {
         return lhs.first < rhs.first;
       }
     } segments_less;
@@ -260,7 +260,7 @@ ConsolidationPolicy consolidation_policy(
 }
 
 ConsolidationPolicy consolidation_policy(const consolidate_count& options) {
-  return [options](Consolidation& candidates, const index_reader& reader,
+  return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     // merge first 'threshold' segments
     for (size_t i = 0, count = std::min(options.threshold, reader.size());
@@ -271,7 +271,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_count& options) {
 }
 
 ConsolidationPolicy consolidation_policy(const consolidate_docs_fill& options) {
-  return [options](Consolidation& candidates, const index_reader& reader,
+  return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     auto fill_threshold = options.threshold;
     auto threshold = std::max<float>(0, std::min<float>(1, fill_threshold));
@@ -289,7 +289,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_docs_fill& options) {
 }
 
 ConsolidationPolicy consolidation_policy(const consolidate_docs_live& options) {
-  return [options](Consolidation& candidates, const index_reader& meta,
+  return [options](Consolidation& candidates, const IndexReader& meta,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     auto docs_threshold = options.threshold;
     size_t all_segment_docs_count = 0;
@@ -335,7 +335,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_tier& options) {
 
   return [max_segments_per_tier, min_segments_per_tier, floor_segment_bytes,
           max_segments_bytes,
-          min_score](Consolidation& candidates, const index_reader& reader,
+          min_score](Consolidation& candidates, const IndexReader& reader,
                      const ConsolidatingSegments& consolidating_segments) {
     // size of segments in bytes that are currently under consolidation
     [[maybe_unused]] size_t consolidating_size = 0;

@@ -63,7 +63,7 @@ struct sort : irs::sort {
             // without matching terms)
       uint64_t total_term_freq = 0;  // number of terms for processed field
 
-      void collect(const irs::sub_reader&,
+      void collect(const irs::SubReader&,
                    const irs::term_reader& field) override {
         docs_with_field += field.docs_count();
 
@@ -87,7 +87,7 @@ struct sort : irs::sort {
       uint64_t docs_with_term =
         0;  // number of documents containing the matched term
 
-      void collect(const irs::sub_reader&, const irs::term_reader&,
+      void collect(const irs::SubReader&, const irs::term_reader&,
                    const irs::attribute_provider& term_attrs) override {
         auto* meta = irs::get<irs::term_meta>(term_attrs);
 
@@ -102,7 +102,7 @@ struct sort : irs::sort {
       void write(irs::data_output&) const override {}
     };
 
-    void collect(irs::byte_type*, const irs::index_reader&,
+    void collect(irs::byte_type*, const irs::IndexReader&,
                  const irs::sort::field_collector*,
                  const irs::sort::term_collector*) const override {}
 
@@ -119,7 +119,7 @@ struct sort : irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-      const irs::sub_reader& /*segment*/, const irs::term_reader& /*field*/,
+      const irs::SubReader& /*segment*/, const irs::term_reader& /*field*/,
       const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t /*boost*/) const override {
@@ -208,8 +208,8 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   iterator_type cookie_ptr_;
 };  // term_iterator
 
-struct sub_reader final : irs::sub_reader {
-  explicit sub_reader(size_t num_docs) : num_docs(num_docs) {}
+struct sub_reader final : irs::SubReader {
+  explicit SubReader(size_t num_docs) : num_docs(num_docs) {}
   irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
@@ -230,7 +230,7 @@ struct sub_reader final : irs::sub_reader {
     return irs::field_iterator::empty();
   }
   uint64_t live_docs_count() const override { return 0; }
-  const irs::sub_reader& operator[](size_t) const override {
+  const irs::SubReader& operator[](size_t) const override {
     throw std::out_of_range("index out of range");
   }
   size_t size() const override { return 0; }
@@ -246,11 +246,11 @@ struct state {
     std::vector<const std::pair<std::string_view, term_meta>*> cookies;
   };
 
-  std::map<const irs::sub_reader*, segment_state> segments;
+  std::map<const irs::SubReader*, segment_state> segments;
 };
 
 struct state_visitor {
-  void operator()(const irs::sub_reader& segment, const irs::term_reader& field,
+  void operator()(const irs::SubReader& segment, const irs::term_reader& field,
                   uint32_t docs) const {
     auto it = expected_state.segments.find(&segment);
     ASSERT_NE(it, expected_state.segments.end());

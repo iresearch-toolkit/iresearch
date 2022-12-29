@@ -100,11 +100,11 @@ field_visitor by_wildcard::visitor(bytes_view term) {
   return executeWildcard(
     buf, term,
     []() -> field_visitor {
-      return [](const sub_reader&, const term_reader&, filter_visitor&) {};
+      return [](const SubReader&, const term_reader&, filter_visitor&) {};
     },
     [](bytes_view term) -> field_visitor {
       // must copy term as it may point to temporary string
-      return [term = bstring(term)](const sub_reader& segment,
+      return [term = bstring(term)](const SubReader& segment,
                                     const term_reader& field,
                                     filter_visitor& visitor) {
         by_term::visit(segment, field, term, visitor);
@@ -112,7 +112,7 @@ field_visitor by_wildcard::visitor(bytes_view term) {
     },
     [](bytes_view term) -> field_visitor {
       // must copy term as it may point to temporary string
-      return [term = bstring(term)](const sub_reader& segment,
+      return [term = bstring(term)](const SubReader& segment,
                                     const term_reader& field,
                                     filter_visitor& visitor) {
         by_prefix::visit(segment, field, term, visitor);
@@ -131,10 +131,10 @@ field_visitor by_wildcard::visitor(bytes_view term) {
       auto ctx = std::make_shared<automaton_context>(term);
 
       if (!validate(ctx->acceptor)) {
-        return [](const sub_reader&, const term_reader&, filter_visitor&) {};
+        return [](const SubReader&, const term_reader&, filter_visitor&) {};
       }
 
-      return [ctx = std::move(ctx)](const sub_reader& segment,
+      return [ctx = std::move(ctx)](const SubReader& segment,
                                     const term_reader& field,
                                     filter_visitor& visitor) mutable {
         return irs::visit(segment, field, ctx->matcher, visitor);
@@ -143,7 +143,7 @@ field_visitor by_wildcard::visitor(bytes_view term) {
 }
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
-  const index_reader& index, const Order& order, score_t boost,
+  const IndexReader& index, const Order& order, score_t boost,
   std::string_view field, bytes_view term, size_t scored_terms_limit) {
   bstring buf;
   return executeWildcard(

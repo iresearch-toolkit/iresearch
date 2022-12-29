@@ -57,7 +57,7 @@ using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 // should never throw as may be used in dtors
-using memory_accounting_f = fu2::function<bool(int64_t) noexcept>;
+using MemoryAccountingFunc = fu2::function<bool(int64_t) noexcept>;
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
@@ -401,7 +401,7 @@ struct columnstore_reader {
     // allows to select "hot" columns
     column_visitor_f warmup_column;
     // allows to restrict "hot" columns memory usage
-    memory_accounting_f pinned_memory;
+    MemoryAccountingFunc pinned_memory;
   };
 
   virtual ~columnstore_reader() = default;

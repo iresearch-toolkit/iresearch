@@ -239,7 +239,7 @@ std::string_view splitFreq(const std::string& text) {
 }
 
 irs::filter::prepared::ptr prepareFilter(
-  const irs::directory_reader& reader, const irs::Order& order,
+  const irs::DirectoryReader& reader, const irs::Order& order,
   category_t category, const std::string& text,
   const irs::analysis::analyzer::ptr& analyzer, std::string& tmpBuf,
   size_t scored_terms_limit) {
@@ -536,13 +536,13 @@ int search(std::string_view path, std::string_view dir_type,
 
   SCOPED_TIMER("Total Time");
 
-  irs::directory_reader reader;
+  irs::DirectoryReader reader;
   irs::Order order;
   irs::async_utils::thread_pool thread_pool(search_threads);
 
   {
     SCOPED_TIMER("Index read time");
-    reader = irs::directory_reader::open(*dir, codec);
+    reader = irs::DirectoryReader::open(*dir, codec);
   }
 
   std::cout << "Index stats:\n"

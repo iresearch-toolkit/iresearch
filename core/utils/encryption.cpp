@@ -26,15 +26,12 @@
 #include "store/data_output.hpp"
 #include "store/directory_attributes.hpp"
 #include "store/store_utils.hpp"
-#include "string_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/crc.hpp"
 
-namespace irs {
+#include <absl/strings/str_cat.h>
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           helpers
-// -----------------------------------------------------------------------------
+namespace irs {
 
 bool encrypt(std::string_view filename, index_output& out, encryption* enc,
              bstring& header, encryption::stream::ptr& cipher) {
@@ -49,9 +46,8 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   IRS_ASSERT(enc);
 
   if (!enc->create_header(filename, &header[0])) {
-    throw index_error(string_utils::to_string(
-      "failed to initialize encryption header, path '%s'",
-      std::string{filename}.c_str()));
+    throw index_error{absl::StrCat(
+      "failed to initialize encryption header, path '", filename, "'")};
   }
 
   // header is encrypted here
@@ -60,15 +56,14 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   cipher = enc->create_stream(filename, &header[0]);
 
   if (!cipher) {
-    throw index_error(string_utils::to_string(
-      "failed to instantiate encryption stream, path '%s'",
-      std::string{filename}.c_str()));
+    throw index_error{absl::StrCat(
+      "Failed to instantiate encryption stream, path '", filename, "'")};
   }
 
   if (!cipher->block_size()) {
-    throw index_error(string_utils::to_string(
-      "failed to instantiate encryption stream with block of size 0, path '%s'",
-      std::string{filename}.c_str()));
+    throw index_error{absl::StrCat(
+      "Failed to instantiate encryption stream with block of size 0, path '",
+      filename, "'")};
   }
 
   // header is decrypted here, write checksum
@@ -89,32 +84,31 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
   }
 
   if (!enc) {
-    throw index_error(string_utils::to_string(
-      "failed to open encrypted file without cipher, path '%s'",
-      std::string{filename}.c_str()));
+    throw index_error{absl::StrCat(
+      "Failed to open encrypted file without cipher, path '", filename, "'")};
   }
 
   if (header.size() != enc->header_length()) {
-    throw index_error(string_utils::to_string(
-      "failed to open encrypted file, expect encryption header of "
-      "size " IR_SIZE_T_SPECIFIER ", got " IR_SIZE_T_SPECIFIER ", path '%s'",
-      enc->header_length(), header.size(), std::string{filename}.c_str()));
+    throw index_error{
+      absl::StrCat("failed to open encrypted file, expect encryption header of "
+                   "size ",
+                   enc->header_length(), ", got ", header.size(), ", path '",
+                   filename, "'")};
   }
 
   cipher = enc->create_stream(filename, &header[0]);
 
   if (!cipher) {
-    throw index_error(string_utils::to_string(
-      "failed to open encrypted file, path '%s'", std::string{filename}.c_str(),
-      enc->header_length(), header.size()));
+    throw index_error{
+      absl::StrCat("Failed to open encrypted file, path '", filename, "'")};
   }
 
   const auto block_size = cipher->block_size();
 
   if (!block_size) {
-    throw index_error(string_utils::to_string(
-      "invalid block size 0 specified for encrypted file, path '%s'",
-      std::string{filename}.c_str(), enc->header_length(), header.size()));
+    throw index_error{
+      absl::StrCat("Invalid block size 0 specified for encrypted file, path '",
+                   filename, "'")};
   }
 
   // header is decrypted here, check checksum
@@ -122,16 +116,12 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
   crc.process_bytes(header.c_str(), header.size());
 
   if (crc.checksum() != in.read_vlong()) {
-    throw index_error(string_utils::to_string(
-      "invalid ecryption header, path '%s'", std::string{filename}.c_str()));
+    throw index_error{
+      absl::StrCat("Invalid ecryption header, path '", filename, "'")};
   }
 
   return true;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                   encrypted_output implementation
-// -----------------------------------------------------------------------------
 
 encrypted_output::encrypted_output(index_output& out,
                                    encryption::stream& cipher,
@@ -242,10 +232,9 @@ void encrypted_output::flush() {
   const auto size = size_t(std::distance(buf_.get(), pos_));
 
   if (!cipher_->encrypt(out_->file_pointer(), buf_.get(), size)) {
-    throw io_error(string_utils::to_string(
-      "buffer size " IR_SIZE_T_SPECIFIER
-      " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
-      size, cipher_->block_size()));
+    throw io_error{absl::StrCat("Buffer size ", size,
+                                " is not multiple of cipher block size ",
+                                cipher_->block_size())};
   }
 
   out_->write_bytes(buf_.get(), size);
@@ -258,10 +247,6 @@ void encrypted_output::close() {
   start_ = 0;
   pos_ = buf_.get();
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                    encrypted_input implementation
-// -----------------------------------------------------------------------------
 
 encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
                                  size_t num_buffers, size_t padding /* = 0*/)
@@ -323,8 +308,8 @@ index_input::ptr encrypted_input::dup() const {
   auto dup = in_->dup();
 
   if (!dup) {
-    throw io_error(string_utils::to_string(
-      "Failed to duplicate input file, error: %d", errno));
+    throw io_error{
+      absl::StrCat("Failed to duplicate input file, error: ", errno)};
   }
 
   return index_input::ptr(new encrypted_input(*this, std::move(dup)));
@@ -334,8 +319,7 @@ index_input::ptr encrypted_input::reopen() const {
   auto reopened = in_->reopen();
 
   if (!reopened) {
-    throw io_error(
-      string_utils::to_string("Failed to reopen input file, error: %d", errno));
+    throw io_error(absl::StrCat("Failed to reopen input file, error: ", errno));
   }
 
   return index_input::ptr(new encrypted_input(*this, std::move(reopened)));
@@ -355,10 +339,9 @@ size_t encrypted_input::read_internal(byte_type* b, size_t count) {
   const auto read = in_->read_bytes(b, count);
 
   if (!cipher_->decrypt(offset, b, read)) {
-    throw io_error(string_utils::to_string(
-      "buffer size " IR_SIZE_T_SPECIFIER
-      " is not multiple of cipher block size " IR_SIZE_T_SPECIFIER,
-      read, cipher_->block_size()));
+    throw io_error{absl::StrCat("Buffer size ", read,
+                                " is not multiple of cipher block size ",
+                                cipher_->block_size())};
   }
 
   return read;

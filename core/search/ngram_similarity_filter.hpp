@@ -53,7 +53,7 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
  public:
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const override;
 };

@@ -73,11 +73,11 @@ struct top_term_comparer {
 template<typename T>
 struct top_term_state : top_term<T> {
   struct segment_state {
-    segment_state(const sub_reader& segment, const term_reader& field,
+    segment_state(const SubReader& segment, const term_reader& field,
                   uint32_t docs_count) noexcept
       : segment(&segment), field(&field), docs_count(docs_count) {}
 
-    const sub_reader* segment;
+    const SubReader* segment;
     const term_reader* field;
     size_t terms_count{1};  // number of terms in a segment
     uint32_t docs_count;
@@ -139,7 +139,7 @@ class top_terms_collector : private util::noncopyable {
   // `segment` segment reader for the current term
   // `state` state containing this scored term
   // `terms` segment term-iterator positioned at the current term
-  void prepare(const sub_reader& segment, const term_reader& field,
+  void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
     state_.segment = &segment;
     state_.field = &field;
@@ -225,7 +225,7 @@ class top_terms_collector : private util::noncopyable {
 
   // Collector state
   struct collector_state {
-    const sub_reader* segment{};
+    const SubReader* segment{};
     const term_reader* field{};
     const seek_term_iterator* terms{};
     const bytes_view* term{};

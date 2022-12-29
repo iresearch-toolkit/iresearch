@@ -197,19 +197,19 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     return irs::index_writer::make(*dir_, codec_, mode, options);
   }
 
-  irs::directory_reader open_reader() const {
-    return irs::directory_reader::open(*dir_, codec_);
+  irs::DirectoryReader open_reader() const {
+    return irs::DirectoryReader::open(*dir_, codec_);
   }
 
   void assert_index(irs::IndexFeatures features, size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    tests::assert_index(static_cast<irs::index_reader::ptr>(open_reader()),
+    tests::assert_index(static_cast<irs::IndexReader::ptr>(open_reader()),
                         index(), features, skip, matcher);
   }
 
   void assert_columnstore(size_t skip = 0) const {
     tests::assert_columnstore(
-      static_cast<irs::index_reader::ptr>(open_reader()), index(), skip);
+      static_cast<irs::IndexReader::ptr>(open_reader()), index(), skip);
   }
 
   void SetUp() override {

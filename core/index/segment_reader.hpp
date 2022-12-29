@@ -30,27 +30,27 @@ namespace irs {
 class SegmentReaderImpl;
 
 // Interface for a segment reader
-class segment_reader final : public sub_reader {
+class SegmentReader final : public SubReader {
  public:
-  static segment_reader open(const directory& dir, const SegmentMeta& meta,
-                             const index_reader_options& opts);
+  static SegmentReader open(const directory& dir, const SegmentMeta& meta,
+                             const IndexReaderOptions& opts);
 
-  segment_reader() = default;
-  segment_reader(const segment_reader& other) noexcept;
-  segment_reader& operator=(const segment_reader& other) noexcept;
+  SegmentReader() = default;
+  SegmentReader(const SegmentReader& other) noexcept;
+  SegmentReader& operator=(const SegmentReader& other) noexcept;
 
-  bool operator==(const segment_reader& rhs) const noexcept {
+  bool operator==(const SegmentReader& rhs) const noexcept {
     return impl_ == rhs.impl_;
   }
 
-  segment_reader& operator*() noexcept { return *this; }
-  const segment_reader& operator*() const noexcept { return *this; }
-  segment_reader* operator->() noexcept { return this; }
-  const segment_reader* operator->() const noexcept { return this; }
+  SegmentReader& operator*() noexcept { return *this; }
+  const SegmentReader& operator*() const noexcept { return *this; }
+  SegmentReader* operator->() noexcept { return this; }
+  const SegmentReader* operator->() const noexcept { return this; }
 
   const SegmentInfo& meta() const override;
 
-  const sub_reader& operator[](size_t i) const noexcept override {
+  const SubReader& operator[](size_t i) const noexcept override {
     IRS_ASSERT(!i);
     IRS_IGNORE(i);
     return *this;
@@ -58,7 +58,7 @@ class segment_reader final : public sub_reader {
 
   column_iterator::ptr columns() const override;
 
-  using sub_reader::docs_count;
+  using SubReader::docs_count;
   uint64_t docs_count() const override;
 
   doc_iterator::ptr docs_iterator() const override;
@@ -74,7 +74,7 @@ class segment_reader final : public sub_reader {
 
   uint64_t live_docs_count() const override;
 
-  segment_reader reopen(const SegmentMeta& meta) const;
+  SegmentReader reopen(const SegmentMeta& meta) const;
 
   size_t size() const override;
 
@@ -84,12 +84,12 @@ class segment_reader final : public sub_reader {
 
   const irs::column_reader* column(field_id field) const override;
 
-  explicit operator sub_reader::ptr() const noexcept;
+  explicit operator SubReader::ptr() const noexcept;
 
   explicit operator bool() const noexcept { return nullptr != impl_; }
 
  private:
-  explicit segment_reader(
+  explicit SegmentReader(
     std::shared_ptr<const SegmentReaderImpl> impl) noexcept;
 
   std::shared_ptr<const SegmentReaderImpl> impl_;

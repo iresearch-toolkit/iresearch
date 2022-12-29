@@ -39,7 +39,7 @@ class all_query final : public filter::prepared {
                                               rdr.docs_count(), boost());
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 
@@ -49,7 +49,7 @@ class all_query final : public filter::prepared {
 
 all::all() noexcept : filter(irs::type<all>::get()) {}
 
-filter::prepared::ptr all::prepare(const index_reader& reader,
+filter::prepared::ptr all::prepare(const IndexReader& reader,
                                    const Order& order, score_t filter_boost,
                                    const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit

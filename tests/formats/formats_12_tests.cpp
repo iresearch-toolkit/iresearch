@@ -57,7 +57,7 @@ TEST_P(format_12_test_case, open_10_with_12) {
   // check index
   auto codec = irs::formats::get("1_2", "1_0");
   ASSERT_NE(nullptr, codec);
-  auto index = irs::directory_reader::open(dir(), codec);
+  auto index = irs::DirectoryReader::open(dir(), codec);
   ASSERT_TRUE(index);
   ASSERT_EQ(1, index->size());
   ASSERT_EQ(1, index->docs_count());
@@ -129,7 +129,7 @@ TEST_P(format_12_test_case, formats_10_12) {
   }
 
   // check index
-  auto index = irs::directory_reader::open(dir());
+  auto index = irs::DirectoryReader::open(dir());
   ASSERT_TRUE(index);
   ASSERT_EQ(2, index->size());
   ASSERT_EQ(2, index->docs_count());

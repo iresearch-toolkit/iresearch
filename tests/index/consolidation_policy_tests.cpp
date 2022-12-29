@@ -28,7 +28,7 @@
 namespace {
 
 [[maybe_unused]] void print_consolidation(
-  const irs::index_reader& reader, const irs::ConsolidationPolicy& policy) {
+  const irs::IndexReader& reader, const irs::ConsolidationPolicy& policy) {
   struct less_t {
     bool operator()(const irs::SegmentMeta* lhs,
                     const irs::SegmentMeta* rhs) const {

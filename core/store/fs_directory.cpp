@@ -31,7 +31,8 @@
 #include "utils/file_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/object_pool.hpp"
-#include "utils/string_utils.hpp"
+
+#include <absl/strings/str_cat.h>
 
 #ifdef _WIN32
 #include <Windows.h>  // for GetLastError()
@@ -65,22 +66,18 @@ inline int get_posix_fadvice(IOAdvice advice) noexcept {
   return IR_FADVICE_NORMAL;
 }
 
-inline irs::file_utils::OpenMode get_read_mode(irs::IOAdvice advice) {
-  if (irs::IOAdvice::DIRECT_READ == (advice & irs::IOAdvice::DIRECT_READ)) {
-    return irs::file_utils::OpenMode::Read | irs::file_utils::OpenMode::Direct;
+inline file_utils::OpenMode get_read_mode(IOAdvice advice) {
+  if (IOAdvice::DIRECT_READ == (advice & IOAdvice::DIRECT_READ)) {
+    return file_utils::OpenMode::Read | file_utils::OpenMode::Direct;
   }
-  return irs::file_utils::OpenMode::Read;
+  return file_utils::OpenMode::Read;
 }
 
 }  // namespace
 
 MSVC_ONLY(__pragma(warning(push)))
-MSVC_ONLY(__pragma(warning(
-  disable : 4996)))  // the compiler encountered a deprecated declaration
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class fs_lock
-//////////////////////////////////////////////////////////////////////////////
+// the compiler encountered a deprecated declaration
+MSVC_ONLY(__pragma(warning(disable : 4996)))
 
 class fs_lock : public index_lock {
  public:
@@ -159,11 +156,8 @@ class fs_lock : public index_lock {
   std::filesystem::path dir_;
   std::string file_;
   file_utils::lock_handle_t handle_;
-};  // fs_lock
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class fs_index_output
-//////////////////////////////////////////////////////////////////////////////
 class fs_index_output : public buffered_index_output {
  public:
   DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
@@ -213,10 +207,8 @@ class fs_index_output : public buffered_index_output {
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
-      throw io_error(string_utils::to_string(
-        "failed to write buffer, written '" IR_SIZE_T_SPECIFIER
-        "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
-        len_written, len));
+      throw io_error{absl::StrCat("Failed to write buffer, written '",
+                                  len_written, "' out of '", len, "' bytes")};
     }
   }
 
@@ -315,10 +307,8 @@ class fs_index_input : public buffered_index_input {
  protected:
   void seek_internal(size_t pos) final {
     if (pos > handle_->size) {
-      throw io_error(string_utils::to_string(
-        "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER
-        "', position '" IR_SIZE_T_SPECIFIER "'",
-        handle_->size, pos));
+      throw io_error{absl::StrCat("seek out of range for input file, length '",
+                                  handle_->size, "', position '", pos, "'")};
     }
 
     pos_ = pos;
@@ -332,10 +322,9 @@ class fs_index_input : public buffered_index_input {
 
     if (handle_->pos != pos_) {
       if (irs::file_utils::fseek(fd, static_cast<long>(pos_), SEEK_SET) != 0) {
-        throw io_error(
-          string_utils::to_string("failed to seek to '" IR_SIZE_T_SPECIFIER
-                                  "' for input file, error '%d'",
-                                  pos_, irs::file_utils::ferror(fd)));
+        throw io_error{absl::StrCat("failed to seek to '", pos_,
+                                    "' for input file, error '",
+                                    irs::file_utils::ferror(fd), "'")};
       }
       handle_->pos = pos_;
     }
@@ -450,14 +439,13 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
-      throw io_error(string_utils::to_string(
-        "Failed to reopen input file, error: %d",
+      throw io_error{absl::StrCat("Failed to reopen input file, error: ",
 #ifdef _WIN32
-        GetLastError()
+                                  GetLastError()
 #else
-        errno
+                                  errno
 #endif
-          ));
+                                    )};
     }
     handle->io_advice = src.io_advice;
   }
@@ -466,14 +454,14 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
     handle->handle.get());  // match position of file descriptor
 
   if (pos < 0) {
-    throw io_error(string_utils::to_string(
-      "Failed to obtain current position of input file, error: %d",
+    throw io_error{absl::StrCat(
+      "Failed to obtain current position of input file, error: ",
 #ifdef _WIN32
       GetLastError()
 #else
       errno
 #endif
-        ));
+        )};
   }
 
   handle->pos = pos;
@@ -481,10 +469,6 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   return handle;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       fs_directory implementation
-// -----------------------------------------------------------------------------
 
 FSDirectory::FSDirectory(std::filesystem::path dir, directory_attributes attrs,
                          size_t fd_pool_size)
