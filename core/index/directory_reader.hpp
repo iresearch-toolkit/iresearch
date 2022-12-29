@@ -29,13 +29,13 @@
 
 namespace irs {
 
+class DirectoryReaderImpl;
+
 // Representation of the metadata of a directory_reader
 struct DirectoryMeta {
   std::string filename;
   IndexMeta meta;
 };
-
-class DirectoryReaderImpl;
 
 // Interface for an index reader over a directory of segments
 class directory_reader final : public index_reader {

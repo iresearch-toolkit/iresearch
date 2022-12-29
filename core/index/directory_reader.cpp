@@ -294,8 +294,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
   const auto segments = meta.segments();
 
   ReadersType readers(segments.size());
-  // +1 for index_meta file refs
-  FileRefs file_refs(segments.size() + 1);
+  FileRefs file_refs(segments.size() + 1);  // +1 for meta_file_ref
 
   auto reader = readers.begin();
   auto ref = file_refs.begin();
@@ -325,6 +324,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
     ++ref;
   }
 
+  IRS_ASSERT(ref != file_refs.end());
   *ref = std::move(meta_file_ref);
 
   return std::make_shared<DirectoryReaderImpl>(
