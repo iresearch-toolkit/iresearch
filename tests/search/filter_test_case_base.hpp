@@ -119,8 +119,7 @@ struct custom_sort : public irs::sort {
      public:
       term_collector(const custom_sort& sort) : sort_(sort) {}
 
-      void collect(const irs::SubReader& segment,
-                   const irs::term_reader& field,
+      void collect(const irs::SubReader& segment, const irs::term_reader& field,
                    const irs::attribute_provider& term_attrs) override {
         if (sort_.collector_collect_term) {
           sort_.collector_collect_term(segment, field, term_attrs);
@@ -186,8 +185,7 @@ struct custom_sort : public irs::sort {
     }
 
     virtual irs::ScoreFunction prepare_scorer(
-      const irs::SubReader& segment_reader,
-      const irs::term_reader& term_reader,
+      const irs::SubReader& segment_reader, const irs::term_reader& term_reader,
       const irs::byte_type* filter_node_attrs,
       const irs::attribute_provider& document_attrs,
       irs::score_t boost) const override {
@@ -221,18 +219,18 @@ struct custom_sort : public irs::sort {
     const custom_sort& sort_;
   };
 
-  std::function<void(const irs::sub_reader&, const irs::term_reader&)>
+  std::function<void(const irs::SubReader&, const irs::term_reader&)>
     collector_collect_field;
-  std::function<void(const irs::sub_reader&, const irs::term_reader&,
+  std::function<void(const irs::SubReader&, const irs::term_reader&,
                      const irs::attribute_provider&)>
     collector_collect_term;
-  std::function<void(irs::byte_type*, const irs::index_reader&,
+  std::function<void(irs::byte_type*, const irs::IndexReader&,
                      const irs::sort::field_collector*,
                      const irs::sort::term_collector*)>
     collectors_collect_;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
   std::function<irs::ScoreFunction(
-    const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+    const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
     const irs::attribute_provider&, irs::score_t)>
     prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
@@ -260,8 +258,7 @@ struct frequency_sort : public irs::sort {
       size_t docs_count{};
       const irs::term_meta* meta_attr;
 
-      void collect(const irs::SubReader& segment,
-                   const irs::term_reader& field,
+      void collect(const irs::SubReader& segment, const irs::term_reader& field,
                    const irs::attribute_provider& term_attrs) override {
         meta_attr = irs::get<irs::term_meta>(term_attrs);
         ASSERT_NE(nullptr, meta_attr);

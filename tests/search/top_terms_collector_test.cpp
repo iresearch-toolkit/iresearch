@@ -209,7 +209,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 };  // term_iterator
 
 struct sub_reader final : irs::SubReader {
-  explicit SubReader(size_t num_docs) : num_docs(num_docs) {}
+  explicit sub_reader(size_t num_docs) : num_docs(num_docs) {}
   irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }

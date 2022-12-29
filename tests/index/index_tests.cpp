@@ -7576,8 +7576,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
         irs::index_utils::consolidate_count())));  // consolidate
 
       auto check_consolidating_segments =
-        [](irs::Consolidation& /*candidates*/,
-           const irs::IndexReader& /*meta*/,
+        [](irs::Consolidation& /*candidates*/, const irs::IndexReader& /*meta*/,
            const irs::ConsolidatingSegments& consolidating_segments) {
           ASSERT_TRUE(consolidating_segments.empty());
         };
@@ -8582,8 +8581,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments =
-      [](irs::Consolidation& /*candidates*/,
-         const irs::IndexReader& /*reader*/,
+      [](irs::Consolidation& /*candidates*/, const irs::IndexReader& /*reader*/,
          const irs::ConsolidatingSegments& consolidating_segments) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
@@ -8631,8 +8629,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments =
-      [](irs::Consolidation& /*candidates*/,
-         const irs::IndexReader& /*reader*/,
+      [](irs::Consolidation& /*candidates*/, const irs::IndexReader& /*reader*/,
          const irs::ConsolidatingSegments& consolidating_segments) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
@@ -10376,7 +10373,7 @@ TEST_P(index_test_case, consolidate_segment_versions) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
       irs::Consolidation& candidates,
-      const irs::index_reader& meta,
+      const irs::IndexReader& meta,
       const irs::ConsolidatingSegments& consolidating_segments)
 { ASSERT_EQ(expected_consolidating_segments.size(),
 consolidating_segments.size()); for (auto i: expected_consolidating_segments) {
@@ -14337,12 +14334,12 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_NE(nullptr, field);
     ASSERT_TRUE(field->next());
     auto& field_reader = field->value();
-    ASSERT_EQ(empty.name(), field_reader.meta().name);
+    ASSERT_EQ(empty.name(), field_reader.Meta().name);
     ASSERT_EQ(1,
-              field_reader.meta().features.count(irs::type<irs::Norm>::id()));
+              field_reader.Meta().features.count(irs::type<irs::Norm>::id()));
     const auto norm =
-      field_reader.meta().features.find(irs::type<irs::Norm>::id());
-    ASSERT_NE(field_reader.meta().features.end(), norm);
+      field_reader.Meta().features.find(irs::type<irs::Norm>::id());
+    ASSERT_NE(field_reader.Meta().features.end(), norm);
     ASSERT_TRUE(irs::field_limits::valid(norm->second));
     ASSERT_FALSE(field->next());
     ASSERT_FALSE(field->next());
@@ -14654,29 +14651,29 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     ASSERT_NE(nullptr, fields);
     ASSERT_TRUE(fields->next());
     auto& field_reader = fields->value();
-    ASSERT_EQ(field.name(), field_reader.meta().name);
-    ASSERT_EQ(3, field_reader.meta().features.size());
+    ASSERT_EQ(field.name(), field_reader.Meta().name);
+    ASSERT_EQ(3, field_reader.Meta().features.size());
     {
       ASSERT_EQ(1,
-                field_reader.meta().features.count(irs::type<feature1>::id()));
+                field_reader.Meta().features.count(irs::type<feature1>::id()));
       const auto [type, id] =
-        *field_reader.meta().features.find(irs::type<feature1>::id());
+        *field_reader.Meta().features.find(irs::type<feature1>::id());
       ASSERT_EQ(irs::type<feature1>::id(), type);
       ASSERT_EQ(0, id);
     }
     {
       ASSERT_EQ(1,
-                field_reader.meta().features.count(irs::type<feature2>::id()));
+                field_reader.Meta().features.count(irs::type<feature2>::id()));
       const auto [type, id] =
-        *field_reader.meta().features.find(irs::type<feature2>::id());
+        *field_reader.Meta().features.find(irs::type<feature2>::id());
       ASSERT_EQ(irs::type<feature2>::id(), type);
       ASSERT_FALSE(irs::field_limits::valid(id));
     }
     {
       ASSERT_EQ(1,
-                field_reader.meta().features.count(irs::type<feature3>::id()));
+                field_reader.Meta().features.count(irs::type<feature3>::id()));
       const auto [type, id] =
-        *field_reader.meta().features.find(irs::type<feature3>::id());
+        *field_reader.Meta().features.find(irs::type<feature3>::id());
       ASSERT_EQ(irs::type<feature3>::id(), type);
       ASSERT_EQ(1, id);
     }
@@ -14684,8 +14681,8 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     // check feature1
     {
       auto feature =
-        field_reader.meta().features.find(irs::type<feature1>::id());
-      ASSERT_NE(feature, field_reader.meta().features.end());
+        field_reader.Meta().features.find(irs::type<feature1>::id());
+      ASSERT_NE(feature, field_reader.Meta().features.end());
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
@@ -14738,8 +14735,8 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     // check feature3
     {
       auto feature =
-        field_reader.meta().features.find(irs::type<feature3>::id());
-      ASSERT_NE(feature, field_reader.meta().features.end());
+        field_reader.Meta().features.find(irs::type<feature3>::id());
+      ASSERT_NE(feature, field_reader.Meta().features.end());
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
@@ -14910,29 +14907,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       ASSERT_NE(nullptr, fields);
       ASSERT_TRUE(fields->next());
       auto& field_reader = fields->value();
-      ASSERT_EQ(field.name(), field_reader.meta().name);
-      ASSERT_EQ(3, field_reader.meta().features.size());
+      ASSERT_EQ(field.name(), field_reader.Meta().name);
+      ASSERT_EQ(3, field_reader.Meta().features.size());
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature1>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature1>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature1>::id());
+          *field_reader.Meta().features.find(irs::type<feature1>::id());
         ASSERT_EQ(irs::type<feature1>::id(), type);
         ASSERT_EQ(0, id);
       }
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature2>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature2>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature2>::id());
+          *field_reader.Meta().features.find(irs::type<feature2>::id());
         ASSERT_EQ(irs::type<feature2>::id(), type);
         ASSERT_FALSE(irs::field_limits::valid(id));
       }
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature3>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature3>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature3>::id());
+          *field_reader.Meta().features.find(irs::type<feature3>::id());
         ASSERT_EQ(irs::type<feature3>::id(), type);
         ASSERT_EQ(1, id);
       }
@@ -14940,8 +14937,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature1
       {
         auto feature =
-          field_reader.meta().features.find(irs::type<feature1>::id());
-        ASSERT_NE(feature, field_reader.meta().features.end());
+          field_reader.Meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.Meta().features.end());
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
@@ -14981,8 +14978,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // Check feature3
       {
         auto feature =
-          field_reader.meta().features.find(irs::type<feature3>::id());
-        ASSERT_NE(feature, field_reader.meta().features.end());
+          field_reader.Meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.Meta().features.end());
         // No documents written, tail column was filtered out.
         ASSERT_EQ(nullptr, segment.column(feature->second));
       }
@@ -15000,29 +14997,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       ASSERT_NE(nullptr, fields);
       ASSERT_TRUE(fields->next());
       auto& field_reader = fields->value();
-      ASSERT_EQ(field.name(), field_reader.meta().name);
-      ASSERT_EQ(3, field_reader.meta().features.size());
+      ASSERT_EQ(field.name(), field_reader.Meta().name);
+      ASSERT_EQ(3, field_reader.Meta().features.size());
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature1>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature1>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature1>::id());
+          *field_reader.Meta().features.find(irs::type<feature1>::id());
         ASSERT_EQ(irs::type<feature1>::id(), type);
         ASSERT_EQ(0, id);
       }
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature2>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature2>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature2>::id());
+          *field_reader.Meta().features.find(irs::type<feature2>::id());
         ASSERT_EQ(irs::type<feature2>::id(), type);
         ASSERT_FALSE(irs::field_limits::valid(id));
       }
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature3>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature3>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature3>::id());
+          *field_reader.Meta().features.find(irs::type<feature3>::id());
         ASSERT_EQ(irs::type<feature3>::id(), type);
         ASSERT_EQ(1, id);
       }
@@ -15030,8 +15027,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature1
       {
         auto feature =
-          field_reader.meta().features.find(irs::type<feature1>::id());
-        ASSERT_NE(feature, field_reader.meta().features.end());
+          field_reader.Meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.Meta().features.end());
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
@@ -15071,8 +15068,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // Check feature3
       {
         auto feature =
-          field_reader.meta().features.find(irs::type<feature3>::id());
-        ASSERT_NE(feature, field_reader.meta().features.end());
+          field_reader.Meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.Meta().features.end());
         // No documents written, tail column was filtered out.
         ASSERT_EQ(nullptr, segment.column(feature->second));
       }
@@ -15090,29 +15087,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       ASSERT_NE(nullptr, fields);
       ASSERT_TRUE(fields->next());
       auto& field_reader = fields->value();
-      ASSERT_EQ(field.name(), field_reader.meta().name);
-      ASSERT_EQ(3, field_reader.meta().features.size());
+      ASSERT_EQ(field.name(), field_reader.Meta().name);
+      ASSERT_EQ(3, field_reader.Meta().features.size());
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature1>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature1>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature1>::id());
+          *field_reader.Meta().features.find(irs::type<feature1>::id());
         ASSERT_EQ(irs::type<feature1>::id(), type);
         ASSERT_EQ(0, id);
       }
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature2>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature2>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature2>::id());
+          *field_reader.Meta().features.find(irs::type<feature2>::id());
         ASSERT_EQ(irs::type<feature2>::id(), type);
         ASSERT_FALSE(irs::field_limits::valid(id));
       }
       {
         ASSERT_EQ(
-          1, field_reader.meta().features.count(irs::type<feature3>::id()));
+          1, field_reader.Meta().features.count(irs::type<feature3>::id()));
         const auto [type, id] =
-          *field_reader.meta().features.find(irs::type<feature3>::id());
+          *field_reader.Meta().features.find(irs::type<feature3>::id());
         ASSERT_EQ(irs::type<feature3>::id(), type);
         ASSERT_EQ(1, id);
       }
@@ -15120,8 +15117,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature1
       {
         auto feature =
-          field_reader.meta().features.find(irs::type<feature1>::id());
-        ASSERT_NE(feature, field_reader.meta().features.end());
+          field_reader.Meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.Meta().features.end());
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
@@ -15161,8 +15158,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature3
       {
         auto feature =
-          field_reader.meta().features.find(irs::type<feature3>::id());
-        ASSERT_NE(feature, field_reader.meta().features.end());
+          field_reader.Meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.Meta().features.end());
         // No documents written, tail column was filtered out.
         ASSERT_EQ(nullptr, segment.column(feature->second));
       }
@@ -15223,29 +15220,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
     ASSERT_NE(nullptr, fields);
     ASSERT_TRUE(fields->next());
     auto& field_reader = fields->value();
-    ASSERT_EQ(field.name(), field_reader.meta().name);
-    ASSERT_EQ(3, field_reader.meta().features.size());
+    ASSERT_EQ(field.name(), field_reader.Meta().name);
+    ASSERT_EQ(3, field_reader.Meta().features.size());
     {
       ASSERT_EQ(1,
-                field_reader.meta().features.count(irs::type<feature1>::id()));
+                field_reader.Meta().features.count(irs::type<feature1>::id()));
       const auto [type, id] =
-        *field_reader.meta().features.find(irs::type<feature1>::id());
+        *field_reader.Meta().features.find(irs::type<feature1>::id());
       ASSERT_EQ(irs::type<feature1>::id(), type);
       ASSERT_EQ(0, id);
     }
     {
       ASSERT_EQ(1,
-                field_reader.meta().features.count(irs::type<feature2>::id()));
+                field_reader.Meta().features.count(irs::type<feature2>::id()));
       const auto [type, id] =
-        *field_reader.meta().features.find(irs::type<feature2>::id());
+        *field_reader.Meta().features.find(irs::type<feature2>::id());
       ASSERT_EQ(irs::type<feature2>::id(), type);
       ASSERT_FALSE(irs::field_limits::valid(id));
     }
     {
       ASSERT_EQ(1,
-                field_reader.meta().features.count(irs::type<feature3>::id()));
+                field_reader.Meta().features.count(irs::type<feature3>::id()));
       const auto [type, id] =
-        *field_reader.meta().features.find(irs::type<feature3>::id());
+        *field_reader.Meta().features.find(irs::type<feature3>::id());
       ASSERT_EQ(irs::type<feature3>::id(), type);
       ASSERT_FALSE(irs::field_limits::valid(id));
     }
@@ -15253,8 +15250,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
     // check feature1
     {
       auto feature =
-        field_reader.meta().features.find(irs::type<feature1>::id());
-      ASSERT_NE(feature, field_reader.meta().features.end());
+        field_reader.Meta().features.find(irs::type<feature1>::id());
+      ASSERT_NE(feature, field_reader.Meta().features.end());
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(3, column_reader->size());
@@ -15386,7 +15383,7 @@ TEST_P(index_test_case_10, commit_payload) {
   ASSERT_TRUE(writer->begin());  // initial commit
   writer->commit();
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
 
   ASSERT_FALSE(writer->begin());  // transaction hasn't been started, no changes
   writer->commit();
@@ -15424,7 +15421,7 @@ TEST_P(index_test_case_10, commit_payload) {
 
     payload_committed_tick = 0;
     input_payload =
-      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.Meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -15438,7 +15435,7 @@ TEST_P(index_test_case_10, commit_payload) {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
       ASSERT_TRUE(
-        irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+        irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
                                                          // support payload
       reader = new_reader;
     }
@@ -15533,7 +15530,7 @@ TEST_P(index_test_case_10, commit_payload) {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
       ASSERT_TRUE(
-        irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+        irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
                                                          // support payload
       reader = new_reader;
     }
@@ -15584,7 +15581,7 @@ TEST_P(index_test_case_10, commit_payload) {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
       ASSERT_TRUE(
-        irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+        irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
                                                          // support payload
       reader = new_reader;
     }
@@ -15610,7 +15607,7 @@ TEST_P(index_test_case_10, commit_payload) {
     auto new_reader = reader.reopen();
     ASSERT_NE(reader, new_reader);
     ASSERT_TRUE(
-      irs::IsNull(new_reader.meta().meta.payload()));  // '1_0' doesn't
+      irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
                                                        // support payload
     reader = new_reader;
   }
@@ -15647,8 +15644,8 @@ TEST_P(index_test_case_11, consolidate_old_format) {
     auto reader = irs::DirectoryReader::open(dir());
     ASSERT_NE(nullptr, reader);
     ASSERT_EQ(size, reader.size());
-    ASSERT_EQ(size, reader.meta().meta.size());
-    for (auto& meta : reader.meta().meta) {
+    ASSERT_EQ(size, reader.Meta().meta.size());
+    for (auto& meta : reader.Meta().meta) {
       ASSERT_EQ(codec, meta.meta.codec);
     }
   };
@@ -15712,7 +15709,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   {
     auto reader = irs::DirectoryReader::open(dir());
-    ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
+    ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
   }
   uint64_t expected_tick = 42;
 
@@ -15721,7 +15718,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   writer->clear(expected_tick);
   {
     auto reader = irs::DirectoryReader::open(dir());
-    ASSERT_EQ(input_payload, reader.meta().meta.payload());
+    ASSERT_EQ(input_payload, reader.Meta().meta.payload());
     ASSERT_EQ(payload_committed_tick, expected_tick);
   }
 }
@@ -15749,7 +15746,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
 
   // no changes
   writer->commit();
@@ -15775,7 +15772,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
   writer->commit();
 
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
 
   // no changes
   payload_calls_count = 0;
@@ -15817,7 +15814,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
 
   // no changes
   writer->commit();
@@ -15852,7 +15849,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
   ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
 
   payload_provider_result = true;
   // no changes
@@ -15893,7 +15890,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_EQ(input_payload, reader.meta().meta.payload());
+  ASSERT_EQ(input_payload, reader.Meta().meta.payload());
 
   // no changes
   writer->commit();
@@ -15927,7 +15924,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
   ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_EQ(input_payload, reader.meta().meta.payload());
+  ASSERT_EQ(input_payload, reader.Meta().meta.payload());
 
   // no changes
   payload_calls_count = 0;
@@ -15962,7 +15959,7 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_TRUE(writer->begin());  // initial commit
   writer->commit();
   auto reader = irs::DirectoryReader::open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
 
   ASSERT_FALSE(writer->begin());  // transaction hasn't been started, no changes
   writer->commit();
@@ -16001,7 +15998,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.Meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -16015,7 +16012,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_EQ(input_payload, new_reader.meta().meta.payload());
+      ASSERT_EQ(input_payload, new_reader.Meta().meta.payload());
       reader = new_reader;
     }
   }
@@ -16053,7 +16050,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.Meta().filename));
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
@@ -16099,7 +16096,7 @@ TEST_P(index_test_case_11, commit_payload) {
     payload_committed_tick = 0;
 
     input_payload =
-      irs::ViewCast<irs::byte_type>(std::string_view(reader.meta().filename));
+      irs::ViewCast<irs::byte_type>(std::string_view(reader.Meta().filename));
     payload_provider_result = false;
     ASSERT_TRUE(writer->begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
@@ -16113,7 +16110,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(irs::IsNull(new_reader.meta().meta.payload()));
+      ASSERT_TRUE(irs::IsNull(new_reader.Meta().meta.payload()));
       reader = new_reader;
     }
   }
@@ -16165,10 +16162,10 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_FALSE(irs::IsNull(new_reader.meta().meta.payload()));
-      ASSERT_TRUE(new_reader.meta().meta.payload().empty());
+      ASSERT_FALSE(irs::IsNull(new_reader.Meta().meta.payload()));
+      ASSERT_TRUE(new_reader.Meta().meta.payload().empty());
       ASSERT_EQ(irs::kEmptyStringView<irs::byte_type>,
-                new_reader.meta().meta.payload());
+                new_reader.Meta().meta.payload());
       reader = new_reader;
     }
   }
@@ -16193,7 +16190,7 @@ TEST_P(index_test_case_11, commit_payload) {
   {
     auto new_reader = reader.reopen();
     ASSERT_NE(reader, new_reader);
-    ASSERT_TRUE(irs::IsNull(new_reader.meta().meta.payload()));
+    ASSERT_TRUE(irs::IsNull(new_reader.Meta().meta.payload()));
     reader = new_reader;
   }
 

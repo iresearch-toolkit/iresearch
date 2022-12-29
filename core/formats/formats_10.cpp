@@ -1139,7 +1139,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
 
       if (pay_lengths_[i]) {
         const auto size = pay_lengths_[i];  // length of current payload
-        pay_data_.size(pos + size);
+        pay_data_.resize(pos + size);
 
         [[maybe_unused]] const auto read =
           this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
