@@ -57,54 +57,5 @@ inline std::basic_string<T>& oversize(
   return buf;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @param destination buffer
-/// @return as per sprintf(...)
-////////////////////////////////////////////////////////////////////////////////
-template<typename... Args>
-inline int to_string(std::string& buf, const char* format, Args&&... args) {
-  auto result =
-    snprintf(nullptr, 0, format,
-             std::forward<Args>(args)...);  // MSVC requires 'nullptr' buffer
-                                            // and '0' size to get expected size
-
-  if (result <= 0) {
-    return result;
-  }
-
-  auto start = buf.size();
-
-  ++result;  // +1 because snprintf(...) requires space for '\0'
-  buf.resize(buf.size() + result);
-
-  try {
-    // cppcheck-suppress accessForwarded
-    result = snprintf(&buf[start], result, format, std::forward<Args>(args)...);
-    buf.resize(start + (std::max)(0, result));
-  } catch (...) {
-    buf.resize(start);
-
-    throw;
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @return formatted string
-/// @note asserts on failure
-////////////////////////////////////////////////////////////////////////////////
-template<typename... Args>
-inline std::string to_string(const char* format, Args&&... args) {
-  std::string buf;
-  const auto result = to_string(buf, format, std::forward<Args>(args)...);
-
-  IRS_ASSERT(result >= 0);
-  IRS_ASSERT(size_t(result) == buf.size());
-  IRS_IGNORE(result);
-
-  return buf;
-}
-
 }  // namespace string_utils
 }  // namespace irs
