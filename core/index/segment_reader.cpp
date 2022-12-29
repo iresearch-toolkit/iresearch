@@ -34,9 +34,8 @@
 
 #include <absl/container/flat_hash_map.h>
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 class all_iterator final : public doc_iterator {
  public:
@@ -149,26 +148,43 @@ class masked_docs_iterator final : public doc_iterator,
   doc_id_t next_;
 };
 
-}  // namespace
+std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
+                                            const SegmentMeta& meta) {
+  std::vector<index_file_refs::ref_t> file_refs;
+  file_refs.reserve(meta.files.size());
 
-namespace irs {
+  directory_utils::reference(
+    dir, meta,
+    [&file_refs](index_file_refs::ref_t&& ref) {
+      file_refs.emplace_back(std::move(ref));
+      return true;
+    },
+    true);
+
+  return file_refs;
+}
+
+}  // namespace
 
 class SegmentReaderImpl final : public sub_reader {
  public:
-  static sub_reader::ptr Open(const SegmentReaderImpl& src,
-                              const SegmentMeta& meta);
-
-  static sub_reader::ptr Open(const directory& dir, const SegmentMeta& meta,
-                              const index_reader_options& warmup);
+  static std::shared_ptr<const SegmentReaderImpl> Open(
+    const directory& dir, const SegmentMeta& meta,
+    const index_reader_options& warmup);
 
   SegmentReaderImpl(const directory& dir, const SegmentMeta& meta,
                     const index_reader_options& opts);
+
+  SegmentReaderImpl(const SegmentReaderImpl& rhs, const SegmentMeta& meta);
 
   const directory& Dir() const noexcept { return *dir_; }
 
   const index_reader_options& Options() const noexcept { return opts_; }
 
   const SegmentInfo& meta() const override { return info_; }
+
+  std::shared_ptr<const SegmentReaderImpl> Reopen(
+    const SegmentMeta& meta) const;
 
   column_iterator::ptr columns() const override;
 
@@ -232,62 +248,32 @@ class SegmentReaderImpl final : public sub_reader {
     SortedNamedColumns sorted_named_columns_;
   };
 
-  SegmentReaderImpl(const SegmentReaderImpl& rhs, const SegmentMeta& meta)
-    : data_{rhs.data_},
-      info_{meta},
-      dir_{rhs.dir_},
-      sort_{rhs.sort_},
-      opts_{rhs.opts_} {}
-
-  std::shared_ptr<Data> data_;
+  std::vector<index_file_refs::ref_t> file_refs_;
   document_mask docs_mask_;
+  std::shared_ptr<Data> data_;
   SegmentInfo info_;
   const directory* dir_;
   const irs::column_reader* sort_{};
   index_reader_options opts_;
 };
 
-segment_reader::segment_reader(std::shared_ptr<const sub_reader> impl) noexcept
-  : impl_(std::move(impl)) {}
-
-segment_reader::segment_reader(const segment_reader& other) noexcept {
-  *this = other;
-}
-
-segment_reader& segment_reader::operator=(
-  const segment_reader& other) noexcept {
-  if (this != &other) {
-    // make a copy
-    auto impl = std::atomic_load(&other.impl_);
-
-    std::atomic_store(&impl_, impl);
-  }
-
-  return *this;
-}
-
-/*static*/ segment_reader segment_reader::open(
-  const directory& dir, const SegmentMeta& meta,
-  const index_reader_options& opts) {
-  return SegmentReaderImpl::Open(dir, meta, opts);
-}
-
-segment_reader segment_reader::reopen(const SegmentMeta& meta) const {
-  // make a copy
-  auto impl = std::atomic_load(&impl_);
-
-  auto& reader_impl = down_cast<SegmentReaderImpl>(*impl);
-
-  // reuse self if no changes to meta
-  return {reader_impl.meta().version == meta.version
-            ? *this
-            : SegmentReaderImpl::Open(reader_impl, meta)};
-}
-
 SegmentReaderImpl::SegmentReaderImpl(const directory& dir,
                                      const SegmentMeta& meta,
                                      const index_reader_options& opts)
-  : data_{std::make_shared<Data>()}, info_{meta}, dir_{&dir}, opts_{opts} {}
+  : file_refs_{GetRefs(dir, meta)},
+    data_{std::make_shared<Data>()},
+    info_{meta},
+    dir_{&dir},
+    opts_{opts} {}
+
+SegmentReaderImpl::SegmentReaderImpl(const SegmentReaderImpl& rhs,
+                                     const SegmentMeta& meta)
+  : file_refs_{GetRefs(rhs.Dir(), meta)},
+    data_{rhs.data_},
+    info_{meta},
+    dir_{rhs.dir_},
+    sort_{rhs.sort_},
+    opts_{rhs.opts_} {}
 
 const irs::column_reader* SegmentReaderImpl::column(
   std::string_view name) const {
@@ -321,7 +307,7 @@ column_iterator::ptr SegmentReaderImpl::columns() const {
 
 doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
   if (docs_mask_.empty()) {
-    return memory::make_managed<::all_iterator>(info_.docs_count);
+    return memory::make_managed<all_iterator>(info_.docs_count);
   }
 
   // the implementation generates doc_ids sequentially
@@ -329,19 +315,20 @@ doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
     doc_limits::min(), doc_limits::min() + info_.docs_count, docs_mask_);
 }
 
-/*static*/ sub_reader::ptr SegmentReaderImpl::Open(const SegmentReaderImpl& src,
-                                                   const SegmentMeta& meta) {
-  auto reader = std::make_shared<SegmentReaderImpl>(src, meta);
+std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
+  const SegmentMeta& meta) const {
+  IRS_ASSERT(this->meta().version != meta.version);
+  auto reader = std::make_shared<SegmentReaderImpl>(*this, meta);
 
   // read document mask
-  if (src.Options().doc_mask) {
-    index_utils::read_document_mask(reader->docs_mask_, src.Dir(), meta);
+  if (Options().doc_mask) {
+    index_utils::read_document_mask(reader->docs_mask_, Dir(), meta);
   }
 
   return reader;
 }
 
-/*static*/ sub_reader::ptr SegmentReaderImpl::Open(
+/*static*/ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   const directory& dir, const SegmentMeta& meta,
   const index_reader_options& opts) {
   auto& codec = *meta.codec;
@@ -434,6 +421,85 @@ doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
   }
 
   return reader;
+}
+
+segment_reader::segment_reader(
+  std::shared_ptr<const SegmentReaderImpl> impl) noexcept
+  : impl_{std::move(impl)} {}
+
+segment_reader::segment_reader(const segment_reader& other) noexcept
+  : impl_{std::atomic_load(&other.impl_)} {}
+
+segment_reader& segment_reader::operator=(
+  const segment_reader& other) noexcept {
+  if (this != &other) {
+    // make a copy
+    auto impl = std::atomic_load(&other.impl_);
+
+    std::atomic_store(&impl_, impl);
+  }
+
+  return *this;
+}
+
+/*static*/ segment_reader segment_reader::open(
+  const directory& dir, const SegmentMeta& meta,
+  const index_reader_options& opts) {
+  return segment_reader{SegmentReaderImpl::Open(dir, meta, opts)};
+}
+
+segment_reader segment_reader::reopen(const SegmentMeta& meta) const {
+  // make a copy
+  auto impl = std::atomic_load(&impl_);
+
+  // reuse self if no changes to meta
+  return segment_reader{
+    impl->meta().version == meta.version ? impl : impl->Reopen(meta)};
+}
+
+field_iterator::ptr segment_reader::fields() const { return impl_->fields(); }
+
+uint64_t segment_reader::live_docs_count() const {
+  return impl_->live_docs_count();
+}
+
+size_t segment_reader::size() const { return impl_->size(); }
+
+const irs::column_reader* segment_reader::sort() const { return impl_->sort(); }
+
+const irs::column_reader* segment_reader::column(std::string_view name) const {
+  return impl_->column(name);
+}
+
+const irs::column_reader* segment_reader::column(field_id field) const {
+  return impl_->column(field);
+}
+
+segment_reader::operator sub_reader::ptr() const noexcept { return impl_; }
+
+// FIXME find a better way to mask documents
+doc_iterator::ptr segment_reader::mask(doc_iterator::ptr&& it) const {
+  return impl_->mask(std::move(it));
+}
+
+const term_reader* segment_reader::field(std::string_view name) const {
+  return impl_->field(name);
+}
+
+uint64_t segment_reader::docs_count() const { return impl_->docs_count(); }
+
+doc_iterator::ptr segment_reader::docs_iterator() const {
+  return impl_->docs_iterator();
+}
+
+column_iterator::ptr segment_reader::columns() const {
+  return impl_->columns();
+}
+
+const SegmentInfo& segment_reader::meta() const { return impl_->meta(); }
+
+const document_mask* segment_reader::docs_mask() const {
+  return impl_->docs_mask();
 }
 
 }  // namespace irs

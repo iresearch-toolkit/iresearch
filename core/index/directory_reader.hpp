@@ -35,6 +35,8 @@ struct DirectoryMeta {
   IndexMeta meta;
 };
 
+class DirectoryReaderImpl;
+
 // Interface for an index reader over a directory of segments
 class directory_reader final : public index_reader {
  public:
@@ -53,18 +55,12 @@ class directory_reader final : public index_reader {
   // reopen()
   const DirectoryMeta& Meta() const;
 
-  explicit operator bool() const noexcept { return bool(impl_); }
+  explicit operator bool() const noexcept { return nullptr != impl_; }
 
   bool operator==(std::nullptr_t) const noexcept { return !impl_; }
 
-  bool operator!=(std::nullptr_t) const noexcept { return !(*this == nullptr); }
-
   bool operator==(const directory_reader& rhs) const noexcept {
     return impl_ == rhs.impl_;
-  }
-
-  bool operator!=(const directory_reader& rhs) const noexcept {
-    return !(*this == rhs);
   }
 
   directory_reader& operator*() noexcept { return *this; }
@@ -72,27 +68,28 @@ class directory_reader final : public index_reader {
   directory_reader* operator->() noexcept { return this; }
   const directory_reader* operator->() const noexcept { return this; }
 
-  const sub_reader& operator[](size_t i) const override { return (*impl_)[i]; }
+  const sub_reader& operator[](size_t i) const override;
 
-  uint64_t docs_count() const override { return impl_->docs_count(); }
+  uint64_t docs_count() const override;
 
-  uint64_t live_docs_count() const override { return impl_->live_docs_count(); }
+  uint64_t live_docs_count() const override;
 
-  size_t size() const override { return impl_->size(); }
+  size_t size() const override;
 
-  // Open a new instance based on the latest file for the specified codec
-  //        this call will atempt to reuse segments from the existing reader
-  //        if codec == nullptr then use the latest file for all known codecs
-  virtual directory_reader reopen(format::ptr codec = nullptr) const;
+  // FIXME(gnusi): remove codec arg
+  //
+  //  Open a new instance based on the latest file for the specified codec
+  //         this call will atempt to reuse segments from the existing reader
+  //         if codec == nullptr then use the latest file for all known codecs
+  directory_reader reopen(format::ptr codec = nullptr) const;
 
-  void reset() noexcept { impl_.reset(); }
-
-  explicit operator index_reader::ptr() const noexcept { return impl_; }
+  explicit operator index_reader::ptr() const noexcept;
 
  private:
-  directory_reader(std::shared_ptr<const index_reader> impl) noexcept;
+  explicit directory_reader(
+    std::shared_ptr<const DirectoryReaderImpl> impl) noexcept;
 
-  std::shared_ptr<const index_reader> impl_;
+  std::shared_ptr<const DirectoryReaderImpl> impl_;
 };
 
 inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {

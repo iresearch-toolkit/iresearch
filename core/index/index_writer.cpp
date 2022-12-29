@@ -1715,10 +1715,9 @@ ConsolidationResult index_writer::consolidate(
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
         0,  // deletes must be applied to the consolidated segment
-        extract_refs(dir),         // do not forget to track refs
-        std::move(candidates),     // consolidation context candidates
-        std::move(committed_meta)  // consolidation context meta
-      );
+        extract_refs(dir),           // do not forget to track refs
+        std::move(candidates),       // consolidation context candidates
+        std::move(committed_meta));  // consolidation context meta
 
       // filter out merged segments for the next commit
       const auto& pending_segment = ctx->pending_segments_.back();
@@ -1813,7 +1812,7 @@ ConsolidationResult index_writer::consolidate(
       // mask mapped candidates
       // segments from the to-be added new segment
       for (const auto* segment : consolidation_ctx.candidates) {
-        segment_mask.emplace(*segment);
+        segment_mask.emplace(segment);
       }
 
       // mask mapped (matched) segments
@@ -2054,8 +2053,6 @@ index_writer::pending_context_t index_writer::flush_all(
   bool modified = !index_gen_limits::valid(meta_.last_gen_);
   sync_context to_sync;
 
-  std::vector<segment_reader> readers;
-
   auto pending_meta = std::make_unique<IndexMeta>();
   auto& segments = pending_meta->segments_;
 
@@ -2099,6 +2096,11 @@ index_writer::pending_context_t index_writer::flush_all(
   // FIXME(gnusi): check committed state
   auto committed_reader = committed_state_->reader;
 
+  std::vector<std::string> files_to_sync;
+
+  std::vector<segment_reader> readers;
+  readers.reserve(committed_reader->size());
+
   for (auto& existing_segment : committed_reader) {
     // report progress
     progress("Stage 1: Apply removals to the existing segments",
@@ -2111,14 +2113,9 @@ index_writer::pending_context_t index_writer::flush_all(
     }
 
     const auto segment_id = segments.size();
-
     auto& segment = segments.emplace_back(existing_segment);
     auto& reader = readers.emplace_back(existing_segment);
     auto mask_modified = false;
-
-    // FIXME(gnusi): modify doc_mask in-place
-    IRS_ASSERT(existing_segment.docs_mask());
-    auto& docs_mask = const_cast<document_mask&>(*existing_segment.docs_mask());
 
     // mask documents matching filters from segment_contexts (i.e. from new
     // operations)
@@ -2126,35 +2123,36 @@ index_writer::pending_context_t index_writer::flush_all(
       // modification_queries_ range
       // [flush_segment_context::modification_offset_begin_,
       // segment_context::uncomitted_modification_queries_)
-      const auto modifications_begin = modifications.modification_offset_begin_;
-      const auto modifications_end = modifications.modification_offset_end_;
+      const auto begin = modifications.modification_offset_begin_;
+      const auto end = modifications.modification_offset_end_;
 
-      IRS_ASSERT(modifications_begin <= modifications_end);
-      IRS_ASSERT(modifications_end <=
-                 modifications.segment_->modification_queries_.size());
+      IRS_ASSERT(begin <= end);
+      IRS_ASSERT(end <= modifications.segment_->modification_queries_.size());
       const std::span modification_queries{
-        modifications.segment_->modification_queries_.data() +
-          modifications_begin,
-        modifications_end - modifications_begin};
+        modifications.segment_->modification_queries_.data() + begin,
+        end - begin};
 
       mask_modified |=
         add_document_mask_modified_records(modification_queries, reader);
     }
 
-    ++current_segment_index;
-
     // write docs_mask if masks added, if all docs are masked then mask segment
     if (mask_modified) {
       // mask empty segments
       if (!reader->meta().live_docs_count) {
-        // mask segment to clear reader cache
         segment_mask.emplace(&existing_segment);
         // remove empty segment
         segments.pop_back();
+        readers.pop_back();
         // removal of one of the existing segments
         modified = true;
         continue;
       }
+
+      // FIXME(gnusi): modify doc_mask in-place
+      IRS_ASSERT(existing_segment.docs_mask());
+      auto& docs_mask =
+        const_cast<document_mask&>(*existing_segment.docs_mask());
 
       to_sync.register_partial_sync(
         segment_id, write_document_mask(dir, segment.meta, docs_mask));
@@ -2195,6 +2193,8 @@ index_writer::pending_context_t index_writer::flush_all(
     progress("Stage 2: Handling consolidated/imported segments",
              current_pending_segments_index, ctx->pending_segments_.size());
     ++current_pending_segments_index;
+
+    bool docs_mask_modified = false;
 
     // pending consolidation
     const ConsolidationView candidates{
@@ -2256,6 +2256,7 @@ index_writer::pending_context_t index_writer::flush_all(
         // they have been already applied to candidates above
         // and successfully remapped to consolidated segment
         pending_meta.live_docs_count -= docs_mask.size();
+        docs_mask_modified |= true;
       }
 
       // we've seen at least 1 successfully applied
@@ -2264,9 +2265,8 @@ index_writer::pending_context_t index_writer::flush_all(
     } else {
       // during consolidation doc_mask could be already populated even for just
       // merged segment
-      auto& reader = open_pending_reader();
+      open_pending_reader();
 
-      bool docs_mask_modified = false;
       // pending already imported/consolidated segment, apply deletes
       // mask documents matching filters from segment_contexts (i.e. from new
       // operations)
@@ -2288,21 +2288,17 @@ index_writer::pending_context_t index_writer::flush_all(
         docs_mask_modified |= add_document_mask_modified_records(
           modification_queries, *pending_reader, pending_segment.generation);
       }
-
-      // if mask left untouched, reset it, to prevent unnecessary writes
-      if (!docs_mask_modified) {
-        docs_mask.clear();
-      }
     }
 
     // skip empty segments
-    if (!pending_meta.live_docs_count) {
+    if (!pending_reader->live_docs_count()) {
       modified = true;
       continue;
     }
 
     // write non-empty document mask
-    if (auto* mask = pending_reader.docs_mask(); mask && !mask->empty()) {
+    if (auto* mask = docs_mask_modified ? pending_reader.docs_mask() : nullptr;
+        mask && !mask->empty()) {
       write_document_mask(dir, pending_meta, *mask, !pending_consolidation);
       pending_consolidation = true;  // force write new segment meta
     }
@@ -2444,9 +2440,6 @@ index_writer::pending_context_t index_writer::flush_all(
         auto& flush_segment_ctx = segment_ctxs.emplace_back(
           std::move(reader), flushed, valid_doc_id_begin, valid_doc_id_end,
           flush_update_contexts, segment->modification_queries_);
-        // increment version for next run due to documents masked
-        // from this run, similar to write_document_mask(...)
-        ++flushed.meta.version;
 
         // read document_mask as was originally flushed
         // could be due to truncated records due to rollback of uncommitted data
@@ -2454,6 +2447,10 @@ index_writer::pending_context_t index_writer::flush_all(
           const_cast<document_mask&>(*flush_segment_ctx.reader_->docs_mask());
         auto& flushed_meta =
           const_cast<SegmentInfo&>(flush_segment_ctx.reader_->meta());
+
+        // increment version for next run due to documents masked
+        // from this run, similar to write_document_mask(...)
+        ++flushed_meta.version;
 
         // add doc_ids before start of this flush_context to document_mask
         for (size_t doc_id = doc_limits::min(); doc_id < valid_doc_id_begin;

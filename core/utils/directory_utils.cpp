@@ -139,7 +139,7 @@ bool reference(const directory& dir, const IndexMeta& meta,
 bool reference(const directory& dir, const SegmentMeta& meta,
                const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
                bool include_missing /*= false*/) {
-  auto files = meta.files;
+  const auto& files = meta.files;
 
   if (files.empty()) {
     return true;

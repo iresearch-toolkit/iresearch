@@ -90,15 +90,11 @@ struct index_reader {
       return i_ == rhs.i_;
     }
 
-    bool operator!=(const reader_iterator& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
    private:
     friend struct index_reader;
 
-    explicit reader_iterator(const index_reader& reader, size_t i = 0) noexcept
-      : reader_(&reader), i_(i) {}
+    reader_iterator(const index_reader& reader, size_t i) noexcept
+      : reader_{&reader}, i_{i} {}
 
     const index_reader* reader_;
     size_t i_;
