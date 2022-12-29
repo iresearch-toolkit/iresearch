@@ -27,7 +27,6 @@
 #include "utils/crc.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/memory.hpp"
-#include "utils/string_utils.hpp"
 
 #include <absl/strings/str_cat.h>
 

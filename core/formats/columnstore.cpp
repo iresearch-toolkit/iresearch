@@ -42,7 +42,6 @@
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
-#include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
 // ----------------------------------------------------------------------------
@@ -235,7 +234,7 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     const byte_type* ptr = buf + buf_size;
     buff_size = zvread<uint64_t>(ptr);
   } else {
-    irs::string_utils::oversize(encode_buf, buf_size);
+    encode_buf.resize(buf_size);
 
     [[maybe_unused]] const auto read =
       in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);

@@ -53,7 +53,6 @@ extern "C" {
 #include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/std.hpp"
-#include "utils/string_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
@@ -1112,7 +1111,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
     const uint32_t size = pay_in_->read_vint();
     if (size) {
       IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
-      string_utils::oversize(pay_data_, size);
+      pay_data_.resize(size);
 
       [[maybe_unused]] const auto read =
         pay_in_->read_bytes(&(pay_data_[0]), size);
@@ -1140,8 +1139,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
 
       if (pay_lengths_[i]) {
         const auto size = pay_lengths_[i];  // length of current payload
-
-        string_utils::oversize(pay_data_, pos + size);
+        pay_data_.size(pos + size);
 
         [[maybe_unused]] const auto read =
           this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
@@ -1237,7 +1235,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
     const uint32_t size = pay_in_->read_vint();
     if (size) {
       IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
-      string_utils::oversize(pay_data_, size);
+      pay_data_.resize(size);
 
       [[maybe_unused]] const auto read =
         pay_in_->read_bytes(&(pay_data_[0]), size);
@@ -1265,8 +1263,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
 
       if (pay_lengths_[i]) {
         const auto size = pay_lengths_[i];  // current payload length
-
-        string_utils::oversize(pay_data_, pos + size);
+        pay_data_.resize(pos + size);
 
         [[maybe_unused]] const auto read =
           this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
