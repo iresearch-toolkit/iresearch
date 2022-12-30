@@ -42,7 +42,7 @@ struct EmptySubReader final : SubReader {
   const column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  const SegmentInfo& meta() const override { return kEmptyInfo; }
+  const SegmentInfo& Meta() const override { return kEmptyInfo; }
   uint64_t docs_count() const override { return 0; }
   const irs::document_mask* docs_mask() const override { return nullptr; }
   irs::doc_iterator::ptr docs_iterator() const override {

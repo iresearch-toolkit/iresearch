@@ -32,7 +32,7 @@ class SegmentReaderImpl;
 // Interface for a segment reader
 class SegmentReader final : public SubReader {
  public:
-  static SegmentReader open(const directory& dir, const SegmentMeta& meta,
+  static SegmentReader Open(const directory& dir, const SegmentMeta& meta,
                             const IndexReaderOptions& opts);
 
   SegmentReader() = default;
@@ -43,12 +43,14 @@ class SegmentReader final : public SubReader {
     return impl_ == rhs.impl_;
   }
 
+  bool operator==(std::nullptr_t) const noexcept { return !impl_; }
+
   SegmentReader& operator*() noexcept { return *this; }
   const SegmentReader& operator*() const noexcept { return *this; }
   SegmentReader* operator->() noexcept { return this; }
   const SegmentReader* operator->() const noexcept { return this; }
 
-  const SegmentInfo& meta() const override;
+  const SegmentInfo& Meta() const override;
 
   const SubReader& operator[](size_t i) const noexcept override {
     IRS_ASSERT(!i);
@@ -74,7 +76,7 @@ class SegmentReader final : public SubReader {
 
   uint64_t live_docs_count() const override;
 
-  SegmentReader reopen(const SegmentMeta& meta) const;
+  SegmentReader Reopen(const SegmentMeta& meta) const;
 
   size_t size() const override;
 
@@ -84,7 +86,7 @@ class SegmentReader final : public SubReader {
 
   const irs::column_reader* column(field_id field) const override;
 
-  explicit operator SubReader::ptr() const noexcept;
+  SubReader::ptr GetImpl() const noexcept;
 
   explicit operator bool() const noexcept { return nullptr != impl_; }
 

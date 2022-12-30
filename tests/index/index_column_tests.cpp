@@ -133,7 +133,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -263,7 +263,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -423,7 +423,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1156,7 +1156,7 @@ TEST_P(index_column_test_case,
   // - not cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1276,7 +1276,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1421,7 +1421,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1953,7 +1953,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -2100,7 +2100,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -2282,7 +2282,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3021,7 +3021,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3228,7 +3228,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3421,7 +3421,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3553,7 +3553,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3717,7 +3717,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -4375,7 +4375,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -4480,7 +4480,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -4606,7 +4606,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5174,7 +5174,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5276,7 +5276,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5394,7 +5394,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5797,7 +5797,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5911,7 +5911,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6049,7 +6049,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6593,7 +6593,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6721,7 +6721,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6877,7 +6877,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -7505,7 +7505,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(dir());
+    auto reader = irs::DirectoryReader::Open(dir());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = reader[0];
@@ -7731,7 +7731,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(dir());
+    auto reader = irs::DirectoryReader::Open(dir());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = reader[0];
@@ -8053,7 +8053,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   // check inserted values:
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = *(reader.begin());
 
@@ -8134,7 +8134,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   // - iterate (not cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = *(reader.begin());
 
@@ -8294,7 +8294,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
     writer->commit();
   }
 
-  auto reader = irs::DirectoryReader::open(dir(), codec());
+  auto reader = irs::DirectoryReader::Open(dir(), codec());
   ASSERT_EQ(1, reader.size());
   auto& segment = *(reader.begin());
 

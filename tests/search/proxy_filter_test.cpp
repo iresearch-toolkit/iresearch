@@ -160,7 +160,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
       }
     }
     writer->commit();
-    index_ = irs::DirectoryReader::open(dir_, codec);
+    index_ = irs::DirectoryReader::Open(dir_, codec);
   }
 
  protected:

@@ -148,7 +148,7 @@ class MaskedDocIterator final : public doc_iterator, private util::noncopyable {
 std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
                                             const SegmentMeta& meta) {
   std::vector<index_file_refs::ref_t> file_refs;
-  file_refs.reserve(meta.files.size());
+  file_refs.reserve(meta.files.size() + 1);
 
   directory_utils::reference(
     dir, meta,
@@ -178,7 +178,7 @@ class SegmentReaderImpl final : public SubReader {
 
   const IndexReaderOptions& Options() const noexcept { return opts_; }
 
-  const SegmentInfo& meta() const override { return info_; }
+  const SegmentInfo& Meta() const override { return info_; }
 
   std::shared_ptr<const SegmentReaderImpl> Reopen(
     const SegmentMeta& meta) const;
@@ -314,7 +314,7 @@ doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
 
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
   const SegmentMeta& meta) const {
-  IRS_ASSERT(this->meta().version != meta.version);
+  IRS_ASSERT(this->Meta().version != meta.version);
   auto reader = std::make_shared<SegmentReaderImpl>(*this, meta);
 
   // read document mask
@@ -337,8 +337,10 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
     index_utils::read_document_mask(reader->docs_mask_, dir, meta);
   }
 
+  auto& data = *reader->data_;
+
   // always instantiate to avoid unnecessary checks
-  auto& field_reader = reader->data_->field_reader_;
+  auto& field_reader = data.field_reader_;
   field_reader = codec.get_field_reader();
 
   if (opts.index) {
@@ -347,7 +349,7 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
   }
 
   // always instantiate to avoid unnecessary checks
-  auto& columnstore_reader = reader->data_->columnstore_reader_;
+  auto& columnstore_reader = data.columnstore_reader_;
   columnstore_reader = codec.get_columnstore_reader();
 
   if (opts.columnstore && meta.column_store) {
@@ -382,9 +384,9 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
     // FIXME(gnusi): too rough, we must exclude unnamed columns
     const size_t num_columns = columnstore_reader->size();
 
-    auto& named_columns = reader->data_->named_columns_;
+    auto& named_columns = data.named_columns_;
     named_columns.reserve(num_columns);
-    auto& sorted_named_columns = reader->data_->sorted_named_columns_;
+    auto& sorted_named_columns = data.sorted_named_columns_;
     sorted_named_columns.reserve(num_columns);
 
     columnstore_reader->visit([&named_columns, &sorted_named_columns,
@@ -435,19 +437,19 @@ SegmentReader& SegmentReader::operator=(const SegmentReader& other) noexcept {
   return *this;
 }
 
-/*static*/ SegmentReader SegmentReader::open(const directory& dir,
+/*static*/ SegmentReader SegmentReader::Open(const directory& dir,
                                              const SegmentMeta& meta,
                                              const IndexReaderOptions& opts) {
   return SegmentReader{SegmentReaderImpl::Open(dir, meta, opts)};
 }
 
-SegmentReader SegmentReader::reopen(const SegmentMeta& meta) const {
+SegmentReader SegmentReader::Reopen(const SegmentMeta& meta) const {
   // make a copy
   auto impl = std::atomic_load(&impl_);
 
   // reuse self if no changes to meta
   return SegmentReader{
-    impl->meta().version == meta.version ? impl : impl->Reopen(meta)};
+    impl->Meta().version == meta.version ? impl : impl->Reopen(meta)};
 }
 
 field_iterator::ptr SegmentReader::fields() const { return impl_->fields(); }
@@ -468,7 +470,7 @@ const irs::column_reader* SegmentReader::column(field_id field) const {
   return impl_->column(field);
 }
 
-SegmentReader::operator SubReader::ptr() const noexcept { return impl_; }
+SubReader::ptr SegmentReader::GetImpl() const noexcept { return impl_; }
 
 // FIXME find a better way to mask documents
 doc_iterator::ptr SegmentReader::mask(doc_iterator::ptr&& it) const {
@@ -487,7 +489,7 @@ doc_iterator::ptr SegmentReader::docs_iterator() const {
 
 column_iterator::ptr SegmentReader::columns() const { return impl_->columns(); }
 
-const SegmentInfo& SegmentReader::meta() const { return impl_->meta(); }
+const SegmentInfo& SegmentReader::Meta() const { return impl_->Meta(); }
 
 const document_mask* SegmentReader::docs_mask() const {
   return impl_->docs_mask();

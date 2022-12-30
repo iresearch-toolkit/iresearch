@@ -143,12 +143,6 @@ class IndexMeta {
   }
   uint64_t generation() const noexcept { return gen_; }
 
-  auto begin() noexcept { return segments_.begin(); }
-  auto end() noexcept { return segments_.end(); }
-
-  auto begin() const noexcept { return segments_.begin(); }
-  auto end() const noexcept { return segments_.end(); }
-
   void update_generation(const IndexMeta& rhs) noexcept {
     gen_ = rhs.gen_;
     last_gen_ = rhs.last_gen_;
@@ -160,6 +154,8 @@ class IndexMeta {
   void clear() {
     // leave version and generation counters unchanged do to possible readers
     segments_.clear();
+    payload_.reset();
+    last_gen_ = index_gen_limits::invalid();
   }
 
   void reset(const IndexMeta& rhs) {

@@ -199,7 +199,7 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
 doc_iterator::ptr VariadicPhraseQuery::execute(
   const ExecutionContext& ctx) const {
   using Adapter = VariadicPhraseAdapter;
-  using CompoundDocIterator = irs::compound_doc_iterator<Adapter>;
+  using CompoundDocIterator = irs::CompoundDocIterator<Adapter>;
   using Disjunction =
     disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
   auto& rdr = ctx.segment;
@@ -301,7 +301,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
   using FixedPhraseIterator = PhraseIterator<
     conjunction<doc_iterator::ptr, NoopAggregator>,
     PhrasePosition<VariadicPhraseFrequency<Adapter, false, true, false>>>;
-  using CompundDocIterator = irs::compound_doc_iterator<Adapter>;
+  using CompundDocIterator = irs::CompoundDocIterator<Adapter>;
   using Disjunction =
     disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
 

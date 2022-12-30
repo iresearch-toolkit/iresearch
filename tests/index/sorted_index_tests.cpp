@@ -392,7 +392,7 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
   // Check columns
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -557,13 +557,13 @@ TEST_P(SortedIndexTestCase, reader_components) {
     ASSERT_EQ(has_columnstore, nullptr != segment.sort());
   };
 
-  auto default_reader = irs::DirectoryReader::open(dir(), codec());
-  auto no_cs_mask_reader = irs::DirectoryReader::open(
+  auto default_reader = irs::DirectoryReader::Open(dir(), codec());
+  auto no_cs_mask_reader = irs::DirectoryReader::Open(
     dir(), codec(),
     irs::IndexReaderOptions{.columnstore = false, .doc_mask = false});
-  auto no_index_reader = irs::DirectoryReader::open(
+  auto no_index_reader = irs::DirectoryReader::Open(
     dir(), codec(), irs::IndexReaderOptions{.index = false});
-  auto empty_index_reader = irs::DirectoryReader::open(
+  auto empty_index_reader = irs::DirectoryReader::Open(
     dir(), codec(),
     irs::IndexReaderOptions{
       .index = false, .columnstore = false, .doc_mask = false});
@@ -576,10 +576,10 @@ TEST_P(SortedIndexTestCase, reader_components) {
   writer->documents().Remove(*query_doc1);
   ASSERT_TRUE(writer->commit());
 
-  default_reader = default_reader.reopen();
-  no_cs_mask_reader = no_cs_mask_reader.reopen();
-  no_index_reader = no_index_reader.reopen();
-  empty_index_reader = empty_index_reader.reopen();
+  default_reader = default_reader.Reopen();
+  no_cs_mask_reader = no_cs_mask_reader.Reopen();
+  no_index_reader = no_index_reader.Reopen();
+  empty_index_reader = empty_index_reader.Reopen();
 
   check_reader(default_reader, 1, true, true);
   check_reader(no_cs_mask_reader, 2, false, true);
@@ -640,7 +640,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   // Check columns
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -820,7 +820,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   // Check columns in consolidated segment
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -991,7 +991,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
 
   // Check columns
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -1196,7 +1196,7 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
 
   // Read documents
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -1277,7 +1277,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 
   // Read documents
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1360,7 +1360,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 
   // Check consolidated segment
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -1479,7 +1479,7 @@ TEST_P(SortedIndexTestCase,
 
   // Read documents
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1563,7 +1563,7 @@ TEST_P(SortedIndexTestCase,
 
   // Read documents
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1644,7 +1644,7 @@ TEST_P(SortedIndexTestCase,
 
   // Check consolidated segment
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -1748,7 +1748,7 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
 
   // Check consolidated segment
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(3, reader->docs_count());
@@ -1823,7 +1823,7 @@ TEST_P(SortedIndexTestCase,
 
   // Read documents
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1906,7 +1906,7 @@ TEST_P(SortedIndexTestCase,
 
   // Check consolidated segment
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -2028,7 +2028,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
 
   // Read documents
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -2123,7 +2123,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   // Check consolidated segment:
   // <empty> - F - E - B - <empty> - A - <empty>
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -2272,7 +2272,7 @@ TEST_P(SortedIndexTestCase,
 
   // Read documents
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -2371,7 +2371,7 @@ TEST_P(SortedIndexTestCase,
   // Check consolidated segment:
   // F - <empty> - A - <empty>
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -2508,7 +2508,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(writer->commit());
 
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -2607,7 +2607,7 @@ TEST_P(SortedIndexTestCase,
 
   // Check consolidated segment
   {
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -2770,7 +2770,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
         writer->commit();
         writer = nullptr;
         // Check consolidated segment
-        auto reader = irs::DirectoryReader::open(dir(), codec());
+        auto reader = irs::DirectoryReader::Open(dir(), codec());
         ASSERT_TRUE(reader);
         size_t in_store_count = 0;
         for (auto v : in_store) {

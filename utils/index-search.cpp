@@ -542,7 +542,7 @@ int search(std::string_view path, std::string_view dir_type,
 
   {
     SCOPED_TIMER("Index read time");
-    reader = irs::DirectoryReader::open(*dir, codec);
+    reader = irs::DirectoryReader::Open(*dir, codec);
   }
 
   std::cout << "Index stats:\n"

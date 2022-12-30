@@ -56,6 +56,7 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
           return nullptr;
         }
 
+        // why not directory_utils::reference(.., .., true)?
         ref = directory_utils::reference(const_cast<directory&>(dir), filename);
       }
 
@@ -213,10 +214,10 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
 
     if (it != reuse_candidates.end() && it->second != kInvalidCandidate &&
         meta == cached->meta_.meta.segment(it->second).meta) {
-      *reader = (*cached)[it->second].reopen(meta);
+      *reader = (*cached)[it->second].Reopen(meta);
       reuse_candidates.erase(it);
     } else {
-      *reader = SegmentReader::open(dir, meta, opts);
+      *reader = SegmentReader::Open(dir, meta, opts);
     }
 
     if (!*reader) {
@@ -225,7 +226,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
                                      "', error: failed to open reader")};
     }
 
-    *ref = directory_utils::reference(dir, filename);
+    *ref = directory_utils::reference(dir, filename, true);
 
     docs_max += reader->docs_count();
     docs_count += reader->live_docs_count();

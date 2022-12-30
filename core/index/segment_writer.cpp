@@ -40,7 +40,7 @@
 namespace irs {
 namespace {
 
-[[maybe_unused]] inline bool is_subset_of(const features_t& lhs,
+[[maybe_unused]] inline bool IsSubsetOf(const features_t& lhs,
                                           const feature_map_t& rhs) noexcept {
   for (const irs::type_info::type_id type : lhs) {
     if (!rhs.contains(type)) {
@@ -196,8 +196,8 @@ bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
   // invert only if new field index features are a subset of slot index features
-  IRS_ASSERT(is_subset_of(features, slot->meta().features));
-  if (is_subset_of(index_features, slot->requested_features()) &&
+  IRS_ASSERT(IsSubsetOf(features, slot->meta().features));
+  if (IsSubsetOf(index_features, slot->requested_features()) &&
       slot->invert(tokens, doc)) {
     if (!slot->seen() && slot->has_features()) {
       doc_.emplace_back(slot);

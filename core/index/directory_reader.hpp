@@ -37,7 +37,7 @@ class DirectoryReader final : public IndexReader {
  public:
   // Create an index reader over the specified directory
   // if codec == nullptr then use the latest file for all known codecs
-  static DirectoryReader open(
+  static DirectoryReader Open(
     const directory& dir, format::ptr codec = nullptr,
     const IndexReaderOptions& opts = IndexReaderOptions{});
 
@@ -76,9 +76,9 @@ class DirectoryReader final : public IndexReader {
   //  Open a new instance based on the latest file for the specified codec
   //         this call will atempt to reuse segments from the existing reader
   //         if codec == nullptr then use the latest file for all known codecs
-  DirectoryReader reopen(format::ptr codec = nullptr) const;
+  DirectoryReader Reopen(format::ptr codec = nullptr) const;
 
-  explicit operator IndexReader::ptr() const noexcept;
+  IndexReader::ptr GetImpl() const noexcept;
 
  private:
   explicit DirectoryReader(
@@ -86,13 +86,5 @@ class DirectoryReader final : public IndexReader {
 
   std::shared_ptr<const DirectoryReaderImpl> impl_;
 };
-
-inline bool operator==(std::nullptr_t, const DirectoryReader& rhs) noexcept {
-  return rhs == nullptr;
-}
-
-inline bool operator!=(std::nullptr_t, const DirectoryReader& rhs) noexcept {
-  return rhs != nullptr;
-}
 
 }  // namespace irs

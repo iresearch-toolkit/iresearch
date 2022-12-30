@@ -117,7 +117,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
   auto prepared_order = irs::Order::Prepare(
     irs::bm25_sort{irs::bm25_sort::K(), irs::bm25_sort::B(), true});
 
-  auto reader = irs::DirectoryReader::open(dir(), codec());
+  auto reader = irs::DirectoryReader::Open(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -520,7 +520,7 @@ TEST_P(bm25_test_case, test_query) {
 
   auto prepared_order = irs::Order::Prepare(std::span{&sort, 1});
 
-  auto reader = irs::DirectoryReader::open(dir(), codec());
+  auto reader = irs::DirectoryReader::Open(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -609,7 +609,7 @@ TEST_P(bm25_test_case, test_query) {
       writer->commit();
     }
 
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     irs::by_term filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->term =
@@ -701,7 +701,7 @@ TEST_P(bm25_test_case, test_query) {
       writer->commit();
     }
 
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     irs::Or filter;
     {
       // doc 0, 2, 5
@@ -803,7 +803,7 @@ TEST_P(bm25_test_case, test_query) {
       writer->commit();
     }
 
-    auto reader = irs::DirectoryReader::open(dir(), codec());
+    auto reader = irs::DirectoryReader::Open(dir(), codec());
     irs::by_prefix filter;
     *filter.mutable_field() = "prefix";
     filter.mutable_options()->term =
@@ -1254,7 +1254,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     writer->commit();
   }
 
-  auto reader = irs::DirectoryReader::open(dir(), codec());
+  auto reader = irs::DirectoryReader::Open(dir(), codec());
   ASSERT_EQ(1, reader.size());
   auto* field = reader[0].field("name");
   ASSERT_NE(nullptr, field);
@@ -1518,7 +1518,7 @@ TEST_P(bm25_test_case, test_order) {
     add_segment(gen);
   }
 
-  auto reader = irs::DirectoryReader::open(dir(), codec());
+  auto reader = irs::DirectoryReader::Open(dir(), codec());
   auto& segment = *(reader.begin());
 
   irs::by_term query;

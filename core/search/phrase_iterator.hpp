@@ -196,7 +196,7 @@ static_assert(std::is_nothrow_move_assignable_v<VariadicPhraseOffsetAdapter>);
 
 template<typename Adapter>
 using VariadicTermPosition =
-  std::pair<compound_doc_iterator<Adapter>*,
+  std::pair<CompoundDocIterator<Adapter>*,
             position::value_t>;  // desired offset in the phrase
 
 // Helper for variadic phrase frequency evaluation for cases when

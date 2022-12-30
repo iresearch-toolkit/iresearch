@@ -37,21 +37,21 @@ namespace irs {
 struct tracking_directory;
 class Comparer;
 
-class merge_writer : public util::noncopyable {
+class MergeWriter : public util::noncopyable {
  public:
-  using flush_progress_t = std::function<bool()>;
+  using FlushProgress = std::function<bool()>;
 
-  struct reader_ctx {
-    explicit reader_ctx(SubReader::ptr reader) noexcept;
+  struct ReaderCtx {
+    explicit ReaderCtx(SubReader::ptr reader) noexcept;
 
     SubReader::ptr reader;                      // segment reader
     std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 
-  merge_writer() noexcept;
+  MergeWriter() noexcept;
 
-  explicit merge_writer(directory& dir,
+  explicit MergeWriter(directory& dir,
                         const column_info_provider_t& column_info,
                         const feature_info_provider_t& feature_info,
                         const Comparer* comparator = nullptr) noexcept
@@ -61,8 +61,8 @@ class merge_writer : public util::noncopyable {
       comparator_(comparator) {
     IRS_ASSERT(column_info);
   }
-  merge_writer(merge_writer&&) = default;
-  merge_writer& operator=(merge_writer&&) = delete;
+  MergeWriter(MergeWriter&&) = default;
+  MergeWriter& operator=(MergeWriter&&) = delete;
 
   operator bool() const noexcept;
 
@@ -83,9 +83,9 @@ class merge_writer : public util::noncopyable {
   // `segment` the segment that was flushed.
   // `progress` report flush progress (abort if 'progress' returns false).
   // Return merge successful.
-  bool flush(IndexSegment& segment, const flush_progress_t& progress = {});
+  bool flush(IndexSegment& segment, const FlushProgress& progress = {});
 
-  const reader_ctx& operator[](size_t i) const noexcept {
+  const ReaderCtx& operator[](size_t i) const noexcept {
     IRS_ASSERT(i < readers_.size());
     return readers_[i];
   }
@@ -95,18 +95,18 @@ class merge_writer : public util::noncopyable {
 
  private:
   bool flush_sorted(tracking_directory& dir, IndexSegment& segment,
-                    const flush_progress_t& progress);
+                    const FlushProgress& progress);
 
   bool flush(tracking_directory& dir, IndexSegment& segment,
-             const flush_progress_t& progress);
+             const FlushProgress& progress);
 
   directory& dir_;
-  std::vector<reader_ctx> readers_;
+  std::vector<ReaderCtx> readers_;
   const column_info_provider_t* column_info_;
   const feature_info_provider_t* feature_info_;
   const Comparer* comparator_;
 };
 
-static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
+static_assert(std::is_nothrow_move_constructible_v<MergeWriter>);
 
 }  // namespace irs

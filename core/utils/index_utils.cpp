@@ -46,7 +46,7 @@ struct SegmentStats {
   // cppcheck-suppress noExplicitConstructor
   SegmentStats(const irs::SubReader& reader) noexcept
     : reader{&reader},
-      meta{&reader.meta()},
+      meta{&reader.Meta()},
       size{SizeWithoutRemovals(*meta)},
       fill_factor{FillFactor(*meta)} {}
 

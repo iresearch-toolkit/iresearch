@@ -64,7 +64,7 @@ uint64_t DirectoryReader::live_docs_count() const {
 
 size_t DirectoryReader::size() const { return impl_->size(); }
 
-DirectoryReader::operator IndexReader::ptr() const noexcept { return impl_; }
+IndexReader::ptr DirectoryReader::GetImpl() const noexcept { return impl_; }
 
 const DirectoryMeta& DirectoryReader::Meta() const {
   auto impl = std::atomic_load(&impl_);  // make a copy
@@ -72,14 +72,14 @@ const DirectoryMeta& DirectoryReader::Meta() const {
   return impl->Meta();
 }
 
-/*static*/ DirectoryReader DirectoryReader::open(
+/*static*/ DirectoryReader DirectoryReader::Open(
   const directory& dir, format::ptr codec /*= nullptr*/,
   const IndexReaderOptions& opts /*= directory_reader_options()*/) {
   return DirectoryReader{
     DirectoryReaderImpl::Open(dir, opts, codec.get(), nullptr)};
 }
 
-DirectoryReader DirectoryReader::reopen(format::ptr codec /*= nullptr*/) const {
+DirectoryReader DirectoryReader::Reopen(format::ptr codec /*= nullptr*/) const {
   // make a copy
   auto impl = std::atomic_load(&impl_);
 

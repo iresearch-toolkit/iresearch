@@ -130,7 +130,7 @@ class SubReader : public IndexReader {
 
   static const SubReader& empty() noexcept;
 
-  virtual const SegmentInfo& meta() const = 0;
+  virtual const SegmentInfo& Meta() const = 0;
 
   // Live & deleted docs
 
