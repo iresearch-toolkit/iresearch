@@ -554,8 +554,6 @@ bool memory_directory::rename(std::string_view src,
   return false;
 }
 
-bool memory_directory::sync(std::string_view /*name*/) noexcept { return true; }
-
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
   std::vector<std::string> files;
 

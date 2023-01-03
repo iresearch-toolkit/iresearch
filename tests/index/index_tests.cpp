@@ -2054,16 +2054,19 @@ class index_test_case : public tests::index_test_base {
       override_sync_directory(irs::directory& impl, sync_f&& sync)
         : directory_mock(impl), sync_(std::move(sync)) {}
 
-      bool sync(std::string_view name) noexcept override {
-        try {
-          if (sync_(name)) {
-            return true;
-          }
-        } catch (...) {
-          return false;
-        }
+      bool sync(std::span<const std::string_view> files) noexcept override {
+        return std::all_of(std::begin(files), std::end(files),
+                           [this](std::string_view name) mutable noexcept {
+                             try {
+                               if (sync_(name)) {
+                                 return true;
+                               }
+                             } catch (...) {
+                               return false;
+                             }
 
-        return directory_mock::sync(name);
+                             return directory_mock::sync({&name, 1});
+                           });
       }
 
       sync_f sync_;
@@ -6388,8 +6391,8 @@ TEST_P(index_test_case, reuse_segment_writer) {
 
   // merge all segments
   {
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
     writer->commit();
   }
 }
@@ -7178,9 +7181,10 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
 
   // invalid candidate
   {
-    const irs::SegmentMeta meta("foo", nullptr, 6, 5, false,
-                                irs::SegmentMeta::FileSet{},
-                                irs::field_limits::invalid());
+    irs::SegmentMeta meta;
+    meta.name = "foo";
+    meta.docs_count = 6;
+    meta.live_docs_count = 5;
 
     auto invalid_candidate_policy = [&meta](irs::Consolidation& candidates,
                                             const irs::IndexReader& /*meta*/,
@@ -7240,8 +7244,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
     writer->commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // nothing to consolidate
     ASSERT_TRUE(writer->consolidate(
       check_consolidating_segments));  // check segments registered for
                                        // consolidation
@@ -7280,8 +7284,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
     count = 0;
     dir().visit(get_number_of_files_in_segments);
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // nothing to consolidate
     expected_consolidating_segments = {
       0};  // expect first segment to be marked for consolidation
     ASSERT_TRUE(writer->consolidate(
@@ -7395,8 +7399,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       .lock();  // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer]() {
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-        irs::index_utils::consolidate_count())));  // consolidate
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+        irs::index_utils::ConsolidateCount())));  // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
@@ -7572,8 +7576,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
-      ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-        irs::index_utils::consolidate_count())));  // consolidate
+      ASSERT_FALSE(writer->consolidate(irs::index_utils::MakePolicy(
+        irs::index_utils::ConsolidateCount())));  // consolidate
 
       auto check_consolidating_segments =
         [](irs::Consolidation& /*candidates*/, const irs::IndexReader& /*meta*/,
@@ -7740,8 +7744,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-        irs::index_utils::consolidate_count())));  // consolidate
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+        irs::index_utils::ConsolidateCount())));  // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
@@ -7900,8 +7904,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-        irs::index_utils::consolidate_count())));  // consolidate
+      ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+        irs::index_utils::ConsolidateCount())));  // consolidate
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
@@ -8085,9 +8089,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
     writer->begin();
     writer->clear();
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
-    writer->commit();                            // commit transaction
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
+    writer->commit();                           // commit transaction
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
     ASSERT_EQ(0, reader.size());
@@ -8113,8 +8117,8 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
                        doc3->stored.begin(), doc3->stored.end()));
 
     writer->begin();
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
     writer->clear();
     writer->commit();  // commit transaction
 
@@ -8137,8 +8141,8 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8172,8 +8176,8 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     writer->commit();
 
     writer->clear();
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -8249,8 +8253,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     count = 0;
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8259,8 +8263,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // all segments are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8271,8 +8275,8 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     writer->commit();  // commit transaction (will commit nothing)
     ASSERT_EQ(1 + count, irs::directory_cleaner::clean(
                            dir()));  // +1 for corresponding segments_* file
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // nothing to consolidate
     writer->commit();  // commit transaction (will commit nothing)
 
     // validate structure
@@ -8342,16 +8346,16 @@ TEST_P(index_test_case, segment_consolidate_commit) {
                        doc4->stored.begin(), doc4->stored.end()));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8461,16 +8465,16 @@ TEST_P(index_test_case, segment_consolidate_commit) {
                        doc4->stored.begin(), doc4->stored.end()));
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));  // segments_1
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8753,8 +8757,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_FALSE(
       writer->begin());  // begin transaction (will not start transaction)
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8762,8 +8766,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
     // all segments are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -8779,8 +8783,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // nothing to consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // nothing to consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -8863,16 +8867,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9001,16 +9005,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9178,16 +9182,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9325,16 +9329,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9481,8 +9485,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     auto do_commit_and_consolidate_count =
       [&writer](irs::Consolidation& candidates, const irs::IndexReader& reader,
                 const irs::ConsolidatingSegments& consolidating_segments) {
-        auto sub_policy = irs::index_utils::consolidation_policy(
-          irs::index_utils::consolidate_count());
+        auto sub_policy =
+          irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
         sub_policy(candidates, reader, consolidating_segments);
         writer->commit();
       };
@@ -9494,8 +9498,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     writer->documents().Remove(*query_doc4);
 
@@ -9607,8 +9611,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     count = 0;
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
     writer->commit();
 
     // check all old segments are deleted (no old version of segments is
@@ -9655,15 +9659,15 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // this consolidation will be postponed
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
     // check consolidating segments are pending
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     auto do_commit_and_consolidate_count =
       [&writer](irs::Consolidation& candidates, const irs::IndexReader& reader,
@@ -9672,8 +9676,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         writer->begin();  // another commit to process pending
                           // consolidating_segments
         writer->commit();
-        auto sub_policy = irs::index_utils::consolidation_policy(
-          irs::index_utils::consolidate_count());
+        auto sub_policy =
+          irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
         sub_policy(candidates, reader, consolidating_segments);
       };
 
@@ -9731,15 +9735,15 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     // this consolidation will be postponed
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
     // check consolidating segments are pending
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     auto do_commit_and_consolidate_count =
       [&writer, &query_doc4](
@@ -9752,8 +9756,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         // new transaction with passed 1st phase
         writer->documents().Remove(*query_doc4);
         writer->begin();
-        auto sub_policy = irs::index_utils::consolidation_policy(
-          irs::index_utils::consolidate_count());
+        auto sub_policy =
+          irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
         sub_policy(candidates, reader, consolidating_segments);
       };
 
@@ -9799,8 +9803,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     writer->documents().Remove(*query_doc1);
     ASSERT_TRUE(writer->begin());  // begin transaction
     // this consolidation will be postponed
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
     // check consolidating segments are pending
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
@@ -9823,8 +9827,8 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // could consolidate successfully
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // cleanup should remove old files
     ASSERT_NE(0, irs::directory_cleaner::clean(dir()));
@@ -9879,16 +9883,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10061,16 +10065,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_TRUE(writer->begin());  // begin transaction
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10255,16 +10259,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     count = 0;
     ASSERT_TRUE(dir().visit(get_number_of_files_in_segments));
 
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));  // consolidate
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     // can't consolidate segments that are already marked for consolidation
-    ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count())));
+    ASSERT_FALSE(writer->consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -12126,8 +12130,8 @@ TEST_P(index_test_case, consolidate_progress) {
                                 &tests::generic_json_field_factory);
   auto* doc1 = gen.next();
   auto* doc2 = gen.next();
-  auto policy = irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count());
+  auto policy =
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
 
   // test default progress (false)
   {
@@ -12174,9 +12178,7 @@ TEST_P(index_test_case, consolidate_progress) {
     ASSERT_EQ(1, reader[0].docs_count());
     ASSERT_EQ(1, reader[1].docs_count());
 
-    irs::MergeWriter::FlushProgress progress = []() -> bool {
-      return false;
-    };
+    irs::MergeWriter::FlushProgress progress = []() -> bool { return false; };
 
     ASSERT_FALSE(writer->consolidate(policy, get_codec(), progress));
     writer->commit();  // write consolidated segment
@@ -12289,8 +12291,8 @@ TEST_P(index_test_case, segment_consolidate) {
   tests::document const* doc5 = gen.next();
   tests::document const* doc6 = gen.next();
 
-  auto always_merge = irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count());
+  auto always_merge =
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
   constexpr irs::IndexFeatures all_features =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
@@ -12511,7 +12513,7 @@ TEST_P(index_test_case, segment_consolidate) {
                             const irs::IndexReader& reader,
                             const irs::ConsolidatingSegments&) -> void {
     for (auto& segment : reader) {
-      if (segment.meta().live_docs_count != segment.meta().docs_count) {
+      if (segment.Meta().live_docs_count != segment.Meta().docs_count) {
         candidates.emplace_back(&segment);
       }
     }
@@ -13142,10 +13144,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                        doc6->stored.begin(), doc6->stored.end()));
     writer->commit();
-    irs::index_utils::consolidate_bytes options;
+    irs::index_utils::ConsolidateBytes options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing merge
     writer->commit();
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -13222,10 +13224,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
-    irs::index_utils::consolidate_bytes options;
+    irs::index_utils::ConsolidateBytes options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->commit();
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -13296,10 +13298,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    irs::index_utils::consolidate_bytes_accum options;
+    irs::index_utils::ConsolidateBytesAccum options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing merge
     writer->commit();
     // segments merged because segment[0] is a candidate and needs to be
     // merged with something
@@ -13342,10 +13344,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->commit();
-    irs::index_utils::consolidate_bytes_accum options;
+    irs::index_utils::ConsolidateBytesAccum options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->commit();
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -13424,10 +13426,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
-    irs::index_utils::consolidate_docs_live options;
+    irs::index_utils::ConsolidateDocsLive options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string_view> expectedName = {"A", "E"};
@@ -13477,10 +13479,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
     writer->commit();
-    irs::index_utils::consolidate_docs_live options;
+    irs::index_utils::ConsolidateDocsLive options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->commit();
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -13560,10 +13562,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     writer->commit();
     writer->documents().Remove(std::move(query_doc2_doc4));
     writer->commit();
-    irs::index_utils::consolidate_docs_fill options;
+    irs::index_utils::ConsolidateDocsFill options;
     options.threshold = 1;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing merge
     writer->commit();
 
     std::unordered_set<std::string_view> expectedName = {"A", "C"};
@@ -13611,10 +13613,10 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     writer->commit();
     writer->documents().Remove(std::move(query_doc2_doc4));
     writer->commit();
-    irs::index_utils::consolidate_docs_fill options;
+    irs::index_utils::ConsolidateDocsFill options;
     options.threshold = 0;
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-      options)));  // value garanteeing non-merge
+    ASSERT_TRUE(writer->consolidate(
+      irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->commit();
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -14061,8 +14063,8 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
 
   // this consolidation should bring us to one consolidated segment without
   // removals.
-  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count())));
+  ASSERT_TRUE(writer->consolidate(
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
   writer->commit();
 
   // file removal should pass for all files (especially valid for Microsoft
@@ -14125,8 +14127,8 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
 
   // this consolidation should bring us to one consolidated segment without
   // removes.
-  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count())));
+  ASSERT_TRUE(writer->consolidate(
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
   writer->commit();
 
   // file removal should pass for all files (especially valid for Microsoft
@@ -14184,8 +14186,8 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
   }
 
   // this consolidation should still be ok
-  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count())));
+  ASSERT_TRUE(writer->consolidate(
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
   writer->commit();
 }
 
@@ -14224,8 +14226,8 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
 
   // this consolidation should bring us to one consolidated segment without
   // removes.
-  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count())));
+  ASSERT_TRUE(writer->consolidate(
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
   // Remove all documents from 'new' segment
   auto query_doc4 = MakeByTerm("name", "D");
   writer->documents().Remove(*(query_doc4.get()));
@@ -14251,8 +14253,8 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
   }
 
   // this consolidation should still be ok
-  ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count())));
+  ASSERT_TRUE(writer->consolidate(
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
   writer->commit();
 }
 
@@ -14334,12 +14336,12 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
     ASSERT_NE(nullptr, field);
     ASSERT_TRUE(field->next());
     auto& field_reader = field->value();
-    ASSERT_EQ(empty.name(), field_reader.Meta().name);
+    ASSERT_EQ(empty.name(), field_reader.meta().name);
     ASSERT_EQ(1,
-              field_reader.Meta().features.count(irs::type<irs::Norm>::id()));
+              field_reader.meta().features.count(irs::type<irs::Norm>::id()));
     const auto norm =
-      field_reader.Meta().features.find(irs::type<irs::Norm>::id());
-    ASSERT_NE(field_reader.Meta().features.end(), norm);
+      field_reader.meta().features.find(irs::type<irs::Norm>::id());
+    ASSERT_NE(field_reader.meta().features.end(), norm);
     ASSERT_TRUE(irs::field_limits::valid(norm->second));
     ASSERT_FALSE(field->next());
     ASSERT_FALSE(field->next());
@@ -14651,29 +14653,29 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     ASSERT_NE(nullptr, fields);
     ASSERT_TRUE(fields->next());
     auto& field_reader = fields->value();
-    ASSERT_EQ(field.name(), field_reader.Meta().name);
-    ASSERT_EQ(3, field_reader.Meta().features.size());
+    ASSERT_EQ(field.name(), field_reader.meta().name);
+    ASSERT_EQ(3, field_reader.meta().features.size());
     {
       ASSERT_EQ(1,
-                field_reader.Meta().features.count(irs::type<feature1>::id()));
+                field_reader.meta().features.count(irs::type<feature1>::id()));
       const auto [type, id] =
-        *field_reader.Meta().features.find(irs::type<feature1>::id());
+        *field_reader.meta().features.find(irs::type<feature1>::id());
       ASSERT_EQ(irs::type<feature1>::id(), type);
       ASSERT_EQ(0, id);
     }
     {
       ASSERT_EQ(1,
-                field_reader.Meta().features.count(irs::type<feature2>::id()));
+                field_reader.meta().features.count(irs::type<feature2>::id()));
       const auto [type, id] =
-        *field_reader.Meta().features.find(irs::type<feature2>::id());
+        *field_reader.meta().features.find(irs::type<feature2>::id());
       ASSERT_EQ(irs::type<feature2>::id(), type);
       ASSERT_FALSE(irs::field_limits::valid(id));
     }
     {
       ASSERT_EQ(1,
-                field_reader.Meta().features.count(irs::type<feature3>::id()));
+                field_reader.meta().features.count(irs::type<feature3>::id()));
       const auto [type, id] =
-        *field_reader.Meta().features.find(irs::type<feature3>::id());
+        *field_reader.meta().features.find(irs::type<feature3>::id());
       ASSERT_EQ(irs::type<feature3>::id(), type);
       ASSERT_EQ(1, id);
     }
@@ -14681,8 +14683,8 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     // check feature1
     {
       auto feature =
-        field_reader.Meta().features.find(irs::type<feature1>::id());
-      ASSERT_NE(feature, field_reader.Meta().features.end());
+        field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
@@ -14735,8 +14737,8 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
     // check feature3
     {
       auto feature =
-        field_reader.Meta().features.find(irs::type<feature3>::id());
-      ASSERT_NE(feature, field_reader.Meta().features.end());
+        field_reader.meta().features.find(irs::type<feature3>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(2, column_reader->size());
@@ -14907,29 +14909,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       ASSERT_NE(nullptr, fields);
       ASSERT_TRUE(fields->next());
       auto& field_reader = fields->value();
-      ASSERT_EQ(field.name(), field_reader.Meta().name);
-      ASSERT_EQ(3, field_reader.Meta().features.size());
+      ASSERT_EQ(field.name(), field_reader.meta().name);
+      ASSERT_EQ(3, field_reader.meta().features.size());
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature1>::id()));
+          1, field_reader.meta().features.count(irs::type<feature1>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature1>::id());
+          *field_reader.meta().features.find(irs::type<feature1>::id());
         ASSERT_EQ(irs::type<feature1>::id(), type);
         ASSERT_EQ(0, id);
       }
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature2>::id()));
+          1, field_reader.meta().features.count(irs::type<feature2>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature2>::id());
+          *field_reader.meta().features.find(irs::type<feature2>::id());
         ASSERT_EQ(irs::type<feature2>::id(), type);
         ASSERT_FALSE(irs::field_limits::valid(id));
       }
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature3>::id()));
+          1, field_reader.meta().features.count(irs::type<feature3>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature3>::id());
+          *field_reader.meta().features.find(irs::type<feature3>::id());
         ASSERT_EQ(irs::type<feature3>::id(), type);
         ASSERT_EQ(1, id);
       }
@@ -14937,8 +14939,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature1
       {
         auto feature =
-          field_reader.Meta().features.find(irs::type<feature1>::id());
-        ASSERT_NE(feature, field_reader.Meta().features.end());
+          field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
@@ -14978,8 +14980,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // Check feature3
       {
         auto feature =
-          field_reader.Meta().features.find(irs::type<feature3>::id());
-        ASSERT_NE(feature, field_reader.Meta().features.end());
+          field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
         // No documents written, tail column was filtered out.
         ASSERT_EQ(nullptr, segment.column(feature->second));
       }
@@ -14997,29 +14999,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       ASSERT_NE(nullptr, fields);
       ASSERT_TRUE(fields->next());
       auto& field_reader = fields->value();
-      ASSERT_EQ(field.name(), field_reader.Meta().name);
-      ASSERT_EQ(3, field_reader.Meta().features.size());
+      ASSERT_EQ(field.name(), field_reader.meta().name);
+      ASSERT_EQ(3, field_reader.meta().features.size());
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature1>::id()));
+          1, field_reader.meta().features.count(irs::type<feature1>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature1>::id());
+          *field_reader.meta().features.find(irs::type<feature1>::id());
         ASSERT_EQ(irs::type<feature1>::id(), type);
         ASSERT_EQ(0, id);
       }
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature2>::id()));
+          1, field_reader.meta().features.count(irs::type<feature2>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature2>::id());
+          *field_reader.meta().features.find(irs::type<feature2>::id());
         ASSERT_EQ(irs::type<feature2>::id(), type);
         ASSERT_FALSE(irs::field_limits::valid(id));
       }
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature3>::id()));
+          1, field_reader.meta().features.count(irs::type<feature3>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature3>::id());
+          *field_reader.meta().features.find(irs::type<feature3>::id());
         ASSERT_EQ(irs::type<feature3>::id(), type);
         ASSERT_EQ(1, id);
       }
@@ -15027,8 +15029,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature1
       {
         auto feature =
-          field_reader.Meta().features.find(irs::type<feature1>::id());
-        ASSERT_NE(feature, field_reader.Meta().features.end());
+          field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
@@ -15068,8 +15070,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // Check feature3
       {
         auto feature =
-          field_reader.Meta().features.find(irs::type<feature3>::id());
-        ASSERT_NE(feature, field_reader.Meta().features.end());
+          field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
         // No documents written, tail column was filtered out.
         ASSERT_EQ(nullptr, segment.column(feature->second));
       }
@@ -15087,29 +15089,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       ASSERT_NE(nullptr, fields);
       ASSERT_TRUE(fields->next());
       auto& field_reader = fields->value();
-      ASSERT_EQ(field.name(), field_reader.Meta().name);
-      ASSERT_EQ(3, field_reader.Meta().features.size());
+      ASSERT_EQ(field.name(), field_reader.meta().name);
+      ASSERT_EQ(3, field_reader.meta().features.size());
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature1>::id()));
+          1, field_reader.meta().features.count(irs::type<feature1>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature1>::id());
+          *field_reader.meta().features.find(irs::type<feature1>::id());
         ASSERT_EQ(irs::type<feature1>::id(), type);
         ASSERT_EQ(0, id);
       }
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature2>::id()));
+          1, field_reader.meta().features.count(irs::type<feature2>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature2>::id());
+          *field_reader.meta().features.find(irs::type<feature2>::id());
         ASSERT_EQ(irs::type<feature2>::id(), type);
         ASSERT_FALSE(irs::field_limits::valid(id));
       }
       {
         ASSERT_EQ(
-          1, field_reader.Meta().features.count(irs::type<feature3>::id()));
+          1, field_reader.meta().features.count(irs::type<feature3>::id()));
         const auto [type, id] =
-          *field_reader.Meta().features.find(irs::type<feature3>::id());
+          *field_reader.meta().features.find(irs::type<feature3>::id());
         ASSERT_EQ(irs::type<feature3>::id(), type);
         ASSERT_EQ(1, id);
       }
@@ -15117,8 +15119,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature1
       {
         auto feature =
-          field_reader.Meta().features.find(irs::type<feature1>::id());
-        ASSERT_NE(feature, field_reader.Meta().features.end());
+          field_reader.meta().features.find(irs::type<feature1>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
         auto column_reader = segment.column(feature->second);
         ASSERT_NE(nullptr, column_reader);
         ASSERT_EQ(1, column_reader->size());
@@ -15158,8 +15160,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
       // check feature3
       {
         auto feature =
-          field_reader.Meta().features.find(irs::type<feature3>::id());
-        ASSERT_NE(feature, field_reader.Meta().features.end());
+          field_reader.meta().features.find(irs::type<feature3>::id());
+        ASSERT_NE(feature, field_reader.meta().features.end());
         // No documents written, tail column was filtered out.
         ASSERT_EQ(nullptr, segment.column(feature->second));
       }
@@ -15170,8 +15172,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
   }
 
   sNumCalls.clear();
-  const auto res = writer->consolidate(irs::index_utils::consolidation_policy(
-    irs::index_utils::consolidate_count{}));
+  const auto res = writer->consolidate(
+    irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount{}));
   ASSERT_TRUE(res);
   ASSERT_EQ(3, res.size);
   ASSERT_TRUE(writer->commit());
@@ -15220,29 +15222,29 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
     ASSERT_NE(nullptr, fields);
     ASSERT_TRUE(fields->next());
     auto& field_reader = fields->value();
-    ASSERT_EQ(field.name(), field_reader.Meta().name);
-    ASSERT_EQ(3, field_reader.Meta().features.size());
+    ASSERT_EQ(field.name(), field_reader.meta().name);
+    ASSERT_EQ(3, field_reader.meta().features.size());
     {
       ASSERT_EQ(1,
-                field_reader.Meta().features.count(irs::type<feature1>::id()));
+                field_reader.meta().features.count(irs::type<feature1>::id()));
       const auto [type, id] =
-        *field_reader.Meta().features.find(irs::type<feature1>::id());
+        *field_reader.meta().features.find(irs::type<feature1>::id());
       ASSERT_EQ(irs::type<feature1>::id(), type);
       ASSERT_EQ(0, id);
     }
     {
       ASSERT_EQ(1,
-                field_reader.Meta().features.count(irs::type<feature2>::id()));
+                field_reader.meta().features.count(irs::type<feature2>::id()));
       const auto [type, id] =
-        *field_reader.Meta().features.find(irs::type<feature2>::id());
+        *field_reader.meta().features.find(irs::type<feature2>::id());
       ASSERT_EQ(irs::type<feature2>::id(), type);
       ASSERT_FALSE(irs::field_limits::valid(id));
     }
     {
       ASSERT_EQ(1,
-                field_reader.Meta().features.count(irs::type<feature3>::id()));
+                field_reader.meta().features.count(irs::type<feature3>::id()));
       const auto [type, id] =
-        *field_reader.Meta().features.find(irs::type<feature3>::id());
+        *field_reader.meta().features.find(irs::type<feature3>::id());
       ASSERT_EQ(irs::type<feature3>::id(), type);
       ASSERT_FALSE(irs::field_limits::valid(id));
     }
@@ -15250,8 +15252,8 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
     // check feature1
     {
       auto feature =
-        field_reader.Meta().features.find(irs::type<feature1>::id());
-      ASSERT_NE(feature, field_reader.Meta().features.end());
+        field_reader.meta().features.find(irs::type<feature1>::id());
+      ASSERT_NE(feature, field_reader.meta().features.end());
       auto column_reader = segment.column(feature->second);
       ASSERT_NE(nullptr, column_reader);
       ASSERT_EQ(3, column_reader->size());
@@ -15383,7 +15385,7 @@ TEST_P(index_test_case_10, commit_payload) {
   ASSERT_TRUE(writer->begin());  // initial commit
   writer->commit();
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
 
   ASSERT_FALSE(writer->begin());  // transaction hasn't been started, no changes
   writer->commit();
@@ -15434,9 +15436,9 @@ TEST_P(index_test_case_10, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(
-        irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
-                                                         // support payload
+      ASSERT_TRUE(irs::IsNull(
+        new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
+                                                   // support payload
       reader = new_reader;
     }
   }
@@ -15529,9 +15531,9 @@ TEST_P(index_test_case_10, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(
-        irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
-                                                         // support payload
+      ASSERT_TRUE(irs::IsNull(
+        new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
+                                                   // support payload
       reader = new_reader;
     }
   }
@@ -15580,9 +15582,9 @@ TEST_P(index_test_case_10, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(
-        irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
-                                                         // support payload
+      ASSERT_TRUE(irs::IsNull(
+        new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
+                                                   // support payload
       reader = new_reader;
     }
   }
@@ -15607,8 +15609,8 @@ TEST_P(index_test_case_10, commit_payload) {
     auto new_reader = reader.Reopen();
     ASSERT_NE(reader, new_reader);
     ASSERT_TRUE(
-      irs::IsNull(new_reader.Meta().meta.payload()));  // '1_0' doesn't
-                                                       // support payload
+      irs::IsNull(new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
+                                                             // support payload
     reader = new_reader;
   }
 
@@ -15644,8 +15646,8 @@ TEST_P(index_test_case_11, consolidate_old_format) {
     auto reader = irs::DirectoryReader::Open(dir());
     ASSERT_NE(nullptr, reader);
     ASSERT_EQ(size, reader.size());
-    ASSERT_EQ(size, reader.Meta().meta.size());
-    for (auto& meta : reader.Meta().meta) {
+    ASSERT_EQ(size, reader.Meta().index_meta.size());
+    for (auto& meta : reader.Meta().index_meta.segments()) {
       ASSERT_EQ(codec, meta.meta.codec);
     }
   };
@@ -15664,9 +15666,9 @@ TEST_P(index_test_case_11, consolidate_old_format) {
   validate_codec(codec(), 2);
   // consolidate
   auto old_codec = irs::formats::get("1_0");
-  irs::index_utils::consolidate_count consolidate_all;
-  ASSERT_TRUE(writer->consolidate(
-    irs::index_utils::consolidation_policy(consolidate_all), old_codec));
+  irs::index_utils::ConsolidateCount consolidate_all;
+  ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(consolidate_all),
+                                  old_codec));
   writer->commit();
   validate_codec(old_codec, 1);
 }
@@ -15709,7 +15711,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   {
     auto reader = irs::DirectoryReader::Open(dir());
-    ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
+    ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
   }
   uint64_t expected_tick = 42;
 
@@ -15718,7 +15720,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   writer->clear(expected_tick);
   {
     auto reader = irs::DirectoryReader::Open(dir());
-    ASSERT_EQ(input_payload, reader.Meta().meta.payload());
+    ASSERT_EQ(input_payload, reader.Meta().index_meta.payload());
     ASSERT_EQ(payload_committed_tick, expected_tick);
   }
 }
@@ -15746,7 +15748,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
 
   // no changes
   writer->commit();
@@ -15772,7 +15774,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
   writer->commit();
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
 
   // no changes
   payload_calls_count = 0;
@@ -15814,7 +15816,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
 
   // no changes
   writer->commit();
@@ -15849,7 +15851,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
   ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
 
   payload_provider_result = true;
   // no changes
@@ -15890,7 +15892,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_EQ(input_payload, reader.Meta().meta.payload());
+  ASSERT_EQ(input_payload, reader.Meta().index_meta.payload());
 
   // no changes
   writer->commit();
@@ -15924,7 +15926,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
   ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_EQ(input_payload, reader.Meta().meta.payload());
+  ASSERT_EQ(input_payload, reader.Meta().index_meta.payload());
 
   // no changes
   payload_calls_count = 0;
@@ -15959,7 +15961,7 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_TRUE(writer->begin());  // initial commit
   writer->commit();
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().meta.payload()));
+  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
 
   ASSERT_FALSE(writer->begin());  // transaction hasn't been started, no changes
   writer->commit();
@@ -16012,7 +16014,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_EQ(input_payload, new_reader.Meta().meta.payload());
+      ASSERT_EQ(input_payload, new_reader.Meta().index_meta.payload());
       reader = new_reader;
     }
   }
@@ -16110,7 +16112,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(irs::IsNull(new_reader.Meta().meta.payload()));
+      ASSERT_TRUE(irs::IsNull(new_reader.Meta().index_meta.payload()));
       reader = new_reader;
     }
   }
@@ -16162,10 +16164,10 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_FALSE(irs::IsNull(new_reader.Meta().meta.payload()));
-      ASSERT_TRUE(new_reader.Meta().meta.payload().empty());
+      ASSERT_FALSE(irs::IsNull(new_reader.Meta().index_meta.payload()));
+      ASSERT_TRUE(new_reader.Meta().index_meta.payload().empty());
       ASSERT_EQ(irs::kEmptyStringView<irs::byte_type>,
-                new_reader.Meta().meta.payload());
+                new_reader.Meta().index_meta.payload());
       reader = new_reader;
     }
   }
@@ -16190,7 +16192,7 @@ TEST_P(index_test_case_11, commit_payload) {
   {
     auto new_reader = reader.Reopen();
     ASSERT_NE(reader, new_reader);
-    ASSERT_TRUE(irs::IsNull(new_reader.Meta().meta.payload()));
+    ASSERT_TRUE(irs::IsNull(new_reader.Meta().index_meta.payload()));
     reader = new_reader;
   }
 

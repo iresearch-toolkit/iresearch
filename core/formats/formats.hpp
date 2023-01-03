@@ -478,8 +478,8 @@ struct index_meta_writer {
   using ptr = std::unique_ptr<index_meta_writer>;
 
   virtual ~index_meta_writer() = default;
-  virtual std::string filename(const IndexMeta& meta) const = 0;
-  virtual bool prepare(directory& dir, IndexMeta& meta) = 0;
+  virtual bool prepare(directory& dir, IndexMeta& meta,
+                       std::string& filename) = 0;
   virtual bool commit() = 0;
   virtual void rollback() noexcept = 0;
 

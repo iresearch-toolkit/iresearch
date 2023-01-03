@@ -484,8 +484,8 @@ class index_profile_test_case : public tests::index_test_base {
   void profile_bulk_index_dedicated_consolidate(size_t num_threads,
                                                 size_t batch_size,
                                                 size_t consolidate_interval) {
-    const auto policy = irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count());
+    const auto policy = irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount());
     irs::index_writer::init_options options;
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);

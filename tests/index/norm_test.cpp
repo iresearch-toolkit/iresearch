@@ -672,9 +672,9 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
 
   // Consolidate segments
   {
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
 
     // Simulate consolidation
@@ -939,9 +939,9 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
 
   // Consolidate segments
   {
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
 
     // Simulate consolidation
@@ -1031,9 +1031,9 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
 
   // Consolidate segments
   {
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
   }
 

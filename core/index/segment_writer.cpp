@@ -321,7 +321,7 @@ void segment_writer::flush(IndexSegment& segment) {
   dir_.flush_tracked(meta.files);
 
   // flush segment metadata
-  index_utils::flush_index_segment(dir_, segment);
+  index_utils::FlushIndexSegment(dir_, segment);
 }
 
 void segment_writer::reset() noexcept {

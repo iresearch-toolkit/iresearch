@@ -111,8 +111,8 @@ struct tracking_directory final : public directory {
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::string_view name) noexcept override {
-    return impl_.sync(name);
+  bool sync(std::span<const std::string_view> files) noexcept override {
+    return impl_.sync(files);
   }
 
   bool visit(const visitor_f& visitor) const override {
@@ -171,12 +171,8 @@ struct ref_tracking_directory : public directory {
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::span<std::string_view> names) noexcept override {
+  bool sync(std::span<const std::string_view> names) noexcept override {
     return impl_.sync(names);
-  }
-
-  bool sync(std::string_view name) noexcept override {
-    return impl_.sync(name);
   }
 
   bool visit(const visitor_f& visitor) const override {

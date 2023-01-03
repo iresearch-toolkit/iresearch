@@ -63,13 +63,13 @@ class DirectoryReader final : public IndexReader {
   DirectoryReader* operator->() noexcept { return this; }
   const DirectoryReader* operator->() const noexcept { return this; }
 
-  const SubReader& operator[](size_t i) const override;
+  const SubReader& operator[](size_t i) const final;
 
-  uint64_t docs_count() const override;
+  uint64_t docs_count() const final;
 
-  uint64_t live_docs_count() const override;
+  uint64_t live_docs_count() const final;
 
-  size_t size() const override;
+  size_t size() const final;
 
   // FIXME(gnusi): remove codec arg
   //
@@ -78,7 +78,9 @@ class DirectoryReader final : public IndexReader {
   //         if codec == nullptr then use the latest file for all known codecs
   DirectoryReader Reopen(format::ptr codec = nullptr) const;
 
-  IndexReader::ptr GetImpl() const noexcept;
+  std::shared_ptr<const DirectoryReaderImpl> GetImpl() const noexcept {
+    return impl_;
+  }
 
  private:
   explicit DirectoryReader(

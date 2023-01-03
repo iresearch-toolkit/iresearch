@@ -29,6 +29,7 @@
 #include "assert_format.hpp"
 #include "doc_generator.hpp"
 #include "index/directory_reader.hpp"
+#include "index/directory_reader_impl.hpp"
 #include "index/index_writer.hpp"
 #include "tests_param.hpp"
 #include "tests_shared.hpp"
@@ -88,8 +89,8 @@ class directory_mock : public irs::directory {
     return impl_.rename(src, dst);
   }
 
-  bool sync(std::string_view name) noexcept override {
-    return impl_.sync(name);
+  bool sync(std::span<const std::string_view> files) noexcept override {
+    return impl_.sync(files);
   }
 
   bool visit(const irs::directory::visitor_f& visitor) const override {
@@ -203,13 +204,12 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
   void assert_index(irs::IndexFeatures features, size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(open_reader()),
-                        index(), features, skip, matcher);
+    tests::assert_index(open_reader().GetImpl(), index(), features, skip,
+                        matcher);
   }
 
   void assert_columnstore(size_t skip = 0) const {
-    tests::assert_columnstore(
-      static_cast<irs::IndexReader::ptr>(open_reader()), index(), skip);
+    tests::assert_columnstore(open_reader().GetImpl(), index(), skip);
   }
 
   void SetUp() override {

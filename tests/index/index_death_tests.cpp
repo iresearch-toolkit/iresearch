@@ -198,12 +198,15 @@ class failing_directory : public tests::directory_mock {
 
     return tests::directory_mock::rename(src, dst);
   }
-  bool sync(std::string_view name) noexcept override {
-    if (should_fail(Failure::SYNC, name)) {
-      return false;
-    }
+  bool sync(std::span<const std::string_view> files) noexcept override {
+    return std::all_of(std::begin(files), std::end(files),
+                       [this](std::string_view name) mutable noexcept {
+                         if (should_fail(Failure::SYNC, name)) {
+                           return false;
+                         }
 
-    return tests::directory_mock::sync(name);
+                         return tests::directory_mock::sync(name);
+                       });
   }
 
  private:
@@ -298,8 +301,7 @@ void open_reader(
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   // validate columnstore
   auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -424,8 +426,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -563,8 +564,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -671,8 +671,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -770,8 +769,7 @@ TEST(index_death_test_formats_10,
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -834,8 +832,7 @@ TEST(index_death_test_formats_10,
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -904,8 +901,7 @@ TEST(index_death_test_formats_10,
     expected_index.back().insert(*doc1);
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1069,8 +1065,7 @@ TEST(index_death_test_formats_10,
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -1217,8 +1212,7 @@ TEST(index_death_test_formats_10,
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
 
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -1340,8 +1334,7 @@ TEST(index_death_test_formats_10,
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -1412,17 +1405,17 @@ TEST(index_death_test_formats_10,
       failing_directory::Failure::SYNC,
       "_4.0.sm");  // fail at segment meta synchronization on consolidation
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     // segment meta creation failure
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
+    ASSERT_THROW(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+      irs::io_error);
     ASSERT_FALSE(writer->begin());  // nothing to flush
 
     // segment meta synchronization failure
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_THROW(writer->begin(), irs::io_error);
     ASSERT_FALSE(writer->begin());  // nothing to flush
 
@@ -1439,8 +1432,7 @@ TEST(index_death_test_formats_10,
     expected_index.back().insert(*doc1);
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1538,13 +1530,13 @@ TEST(index_death_test_formats_10,
       failing_directory::Failure::SYNC,
       "_6.0.sm");  // fail at segment meta synchronization on consolidation
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     // segment meta creation failure
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(writer->begin());  // start transaction
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
       consolidate_all)));            // register pending consolidation
     ASSERT_FALSE(writer->commit());  // commit started transaction
     ASSERT_THROW(
@@ -1555,7 +1547,7 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(writer->begin());  // start transaction
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
+    ASSERT_TRUE(writer->consolidate(irs::index_utils::MakePolicy(
       consolidate_all)));            // register pending consolidation
     ASSERT_FALSE(writer->commit());  // commit started transaction
     ASSERT_THROW(
@@ -1579,8 +1571,7 @@ TEST(index_death_test_formats_10,
     expected_index.back().insert(*doc3);
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc4);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1726,10 +1717,10 @@ TEST(index_death_test_formats_10,
       .lock();  // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer]() {
-      const irs::index_utils::consolidate_count consolidate_all;
-      ASSERT_THROW(writer->consolidate(
-                     irs::index_utils::consolidation_policy(consolidate_all)),
-                   irs::io_error);  // consolidate
+      const irs::index_utils::ConsolidateCount consolidate_all;
+      ASSERT_THROW(
+        writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        irs::io_error);  // consolidate
     });
 
     dir.wait_for_blocker();
@@ -1757,8 +1748,7 @@ TEST(index_death_test_formats_10,
     expected_index.back().insert(*doc2);
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc3);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1863,9 +1853,9 @@ TEST(index_death_test_formats_10,
       .lock();  // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer]() {
-      const irs::index_utils::consolidate_count consolidate_all;
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-        consolidate_all)));  // consolidate
+      const irs::index_utils::ConsolidateCount consolidate_all;
+      ASSERT_TRUE(writer->consolidate(
+        irs::index_utils::MakePolicy(consolidate_all)));  // consolidate
     });
 
     dir.wait_for_blocker();
@@ -1896,8 +1886,7 @@ TEST(index_death_test_formats_10,
     expected_index.back().insert(*doc2);
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc3);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2015,12 +2004,12 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     dir.register_failure(failing_directory::Failure::CREATE,
                          "_8.pay");  // postings list (offset + payload)
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     while (!dir.no_failures()) {
-      ASSERT_THROW(writer->consolidate(
-                     irs::index_utils::consolidation_policy(consolidate_all)),
-                   irs::io_error);
+      ASSERT_THROW(
+        writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        irs::io_error);
       ASSERT_FALSE(writer->begin());  // nothing to flush
     }
 
@@ -2037,8 +2026,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     expected_index.back().insert(*doc1);
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2133,11 +2121,11 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_8.pay");  // postings list (offset + payload)
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     while (!dir.no_failures()) {
-      ASSERT_TRUE(writer->consolidate(
-        irs::index_utils::consolidation_policy(consolidate_all)));
+      ASSERT_TRUE(
+        writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)));
       ASSERT_THROW(writer->begin(), irs::io_error);  // nothing to flush
       ASSERT_FALSE(writer->begin());
     }
@@ -2155,8 +2143,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     expected_index.back().insert(*doc1);
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2335,8 +2322,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2462,8 +2448,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2620,8 +2605,7 @@ TEST(index_death_test_formats_10,
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc3);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -2700,8 +2684,7 @@ TEST(index_death_test_formats_10,
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -2803,8 +2786,7 @@ TEST(index_death_test_formats_14,
     tests::index_t expected_index;
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -3021,10 +3003,10 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->commit());
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->commit());
 
     dir.register_failure(failing_directory::Failure::REMOVE,
@@ -3056,8 +3038,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     expected_index.emplace_back(writer->feature_info());
     expected_index.back().insert(*doc1);
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -3131,22 +3112,22 @@ TEST(index_death_test_formats_14, fails_in_exists) {
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(writer->commit());
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_THROW(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+      irs::io_error);
+    ASSERT_THROW(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+      irs::io_error);
+    ASSERT_THROW(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+      irs::io_error);
+    ASSERT_THROW(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+      irs::io_error);
+    ASSERT_TRUE(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->commit());
 
     ASSERT_TRUE(dir.no_failures());
@@ -3165,8 +3146,7 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     expected_index.back().insert(*doc2);
     expected_index.back().insert(*doc3);
     expected_index.back().insert(*doc4);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -3318,16 +3298,16 @@ TEST(index_death_test_formats_14, fails_in_length) {
     dir.register_failure(failing_directory::Failure::EXISTS, "_4.csd");
     dir.register_failure(failing_directory::Failure::EXISTS, "_4.csi");
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     while (!dir.no_failures()) {
-      ASSERT_THROW(writer->consolidate(
-                     irs::index_utils::consolidation_policy(consolidate_all)),
-                   irs::io_error);
+      ASSERT_THROW(
+        writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        irs::io_error);
     }
 
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    ASSERT_TRUE(
+      writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)));
 
     irs::directory_cleaner::clean(dir);
     ASSERT_TRUE(writer->commit());
@@ -3348,8 +3328,7 @@ TEST(index_death_test_formats_14, fails_in_length) {
     expected_index.back().insert(*doc2);
     expected_index.back().insert(*doc3);
     expected_index.back().insert(*doc4);
-    tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -3491,8 +3470,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   // regiseter reopen failure in columnstore
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs");
@@ -3592,8 +3570,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   dir.register_failure(failing_directory::Failure::REOPEN,
                        "_1.csd");  // regiseter reopen failure in columnstore
@@ -3699,8 +3676,7 @@ TEST(index_death_test_formats_14, fails_in_dup) {
   expected_index.back().insert(*doc2);
   expected_index.back().insert(*doc3);
   expected_index.back().insert(*doc4);
-  tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
   // regiseter dup failure in columnstore
   dir.register_failure(failing_directory::Failure::DUP, "_1.csd");
   // regiseter dup failure in columnstore
@@ -3809,8 +3785,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::IndexReader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   // validate columnstore
   auto& segment = reader[0];  // assume 0 is id of first/only segment

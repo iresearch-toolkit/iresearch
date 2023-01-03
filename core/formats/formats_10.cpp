@@ -2588,9 +2588,8 @@ struct index_meta_writer final : public irs::index_meta_writer {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
-  std::string filename(const IndexMeta& meta) const override;
   using irs::index_meta_writer::prepare;
-  bool prepare(directory& dir, IndexMeta& meta) override;
+  bool prepare(directory& dir, IndexMeta& meta, std::string& filename) override;
   bool commit() override;
   void rollback() noexcept override;
 
@@ -2621,11 +2620,8 @@ std::string file_name<irs::index_meta_reader, IndexMeta>(
   return irs::file_name(index_meta_writer::FORMAT_PREFIX, meta.generation());
 }
 
-std::string index_meta_writer::filename(const IndexMeta& meta) const {
-  return file_name<irs::index_meta_reader>(meta);
-}
-
-bool index_meta_writer::prepare(directory& dir, IndexMeta& meta) {
+bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
+                                std::string& filename) {
   if (meta_) {
     // prepare() was already called with no corresponding call to commit()
     return false;
@@ -2633,12 +2629,12 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta) {
 
   prepare(meta);  // prepare meta before generating filename
 
-  const auto seg_file = file_name<irs::index_meta_writer>(meta);
+  filename = file_name<irs::index_meta_writer>(meta);
 
-  auto out = dir.create(seg_file);
+  auto out = dir.create(filename);
 
   if (!out) {
-    throw io_error{absl::StrCat("Failed to create file, path: ", seg_file)};
+    throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
   {
@@ -2648,7 +2644,7 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta) {
     IRS_ASSERT(meta.size() <= std::numeric_limits<uint32_t>::max());
     out->write_vint(uint32_t(meta.size()));
 
-    for (auto& segment : meta) {
+    for (auto& segment : meta.segments()) {
       write_string(*out, segment.filename);
       write_string(*out, segment.meta.codec->type().name());
     }
@@ -2666,8 +2662,8 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta) {
     // important to close output here
   }
 
-  if (!dir.sync(seg_file)) {
-    throw io_error{absl::StrCat("Failed to sync file, path: ", seg_file)};
+  if (std::string_view sync_me{filename}; !dir.sync({&sync_me, 1})) {
+    throw io_error{absl::StrCat("Failed to sync file, path: ", filename)};
   }
 
   // only noexcept operations below

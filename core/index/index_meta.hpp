@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <optional>
 #include <span>
 
@@ -67,7 +66,6 @@ struct SegmentMeta : SegmentInfo {
 };
 
 inline bool HasRemovals(const SegmentInfo& meta) noexcept {
-  //  return meta.version > 0; // all version > 0 have document mask
   return meta.live_docs_count != meta.docs_count;
 }
 
@@ -78,6 +76,7 @@ struct IndexSegment {
   IndexSegment() = default;
   // cppcheck-suppress noExplicitConstructor
   IndexSegment(SegmentMeta&& meta) : meta{std::move(meta)} {}
+  IndexSegment(const SegmentMeta& meta) : meta{meta} {}
   IndexSegment(const IndexSegment& other) = default;
   IndexSegment& operator=(const IndexSegment& other) = default;
   IndexSegment(IndexSegment&&) = default;
@@ -96,16 +95,7 @@ static_assert(std::is_nothrow_move_assignable_v<IndexSegment>);
 
 class IndexMeta {
  public:
-  IndexMeta() = default;
-  IndexMeta(IndexMeta&& rhs) noexcept;
-  IndexMeta(const IndexMeta& rhs);
-  IndexMeta& operator=(IndexMeta&& rhs) noexcept;
-  IndexMeta& operator=(const IndexMeta&) = delete;
-
   bool operator==(const IndexMeta& other) const noexcept;
-  bool operator!=(const IndexMeta& other) const noexcept {
-    return !(*this == other);
-  }
 
   void add(IndexSegment&& segment) {
     segments_.emplace_back(std::move(segment));
@@ -132,15 +122,8 @@ class IndexMeta {
     return true;
   }
 
-  uint64_t increment() noexcept {
-    return seg_counter_.fetch_add(1, std::memory_order_relaxed) + 1;
-  }
-  uint64_t counter() const noexcept {
-    return seg_counter_.load(std::memory_order_relaxed);
-  }
-  void SetCounter(uint64_t v) noexcept {
-    seg_counter_.store(v, std::memory_order_relaxed);
-  }
+  uint64_t counter() const noexcept { return seg_counter_; }
+  void SetCounter(uint64_t v) noexcept { seg_counter_ = v; }
   uint64_t generation() const noexcept { return gen_; }
 
   void update_generation(const IndexMeta& rhs) noexcept {
@@ -150,23 +133,6 @@ class IndexMeta {
 
   size_t size() const noexcept { return segments_.size(); }
   bool empty() const noexcept { return segments_.empty(); }
-
-  void clear() {
-    // leave version and generation counters unchanged do to possible readers
-    segments_.clear();
-    payload_.reset();
-    last_gen_ = index_gen_limits::invalid();
-  }
-
-  void reset(const IndexMeta& rhs) {
-    // leave version and generation counters unchanged
-    segments_ = rhs.segments_;
-  }
-
-  const IndexSegment& segment(size_t i) const noexcept {
-    IRS_ASSERT(i < segments_.size());
-    return segments_[i];
-  }
 
   const IndexSegment& operator[](size_t i) const noexcept {
     IRS_ASSERT(i < segments_.size());
@@ -201,7 +167,7 @@ class IndexMeta {
 
   uint64_t gen_{index_gen_limits::invalid()};
   uint64_t last_gen_{index_gen_limits::invalid()};
-  std::atomic<uint64_t> seg_counter_{0};
+  uint64_t seg_counter_{0};
   std::vector<IndexSegment> segments_;
   std::optional<bstring> payload_;
 };

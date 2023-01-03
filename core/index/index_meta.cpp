@@ -38,35 +38,9 @@ bool SegmentMeta::operator==(const SegmentMeta& other) const noexcept {
          sort == other.sort;
 }
 
-IndexMeta::IndexMeta(const IndexMeta& rhs)
-  : gen_(rhs.gen_),
-    last_gen_(rhs.last_gen_),
-    seg_counter_(rhs.seg_counter_.load(std::memory_order_relaxed)),
-    segments_(rhs.segments_),
-    payload_(std::move(rhs.payload_)) {}
-
-IndexMeta::IndexMeta(IndexMeta&& rhs) noexcept
-  : gen_(std::move(rhs.gen_)),
-    last_gen_(std::move(rhs.last_gen_)),
-    seg_counter_(rhs.seg_counter_.load(std::memory_order_relaxed)),
-    segments_(std::move(rhs.segments_)),
-    payload_(std::move(rhs.payload_)) {}
-
-IndexMeta& IndexMeta::operator=(IndexMeta&& rhs) noexcept {
-  if (this != &rhs) {
-    gen_ = std::move(rhs.gen_);
-    last_gen_ = std::move(rhs.last_gen_);
-    seg_counter_ = rhs.seg_counter_.load(std::memory_order_relaxed);
-    segments_ = std::move(rhs.segments_);
-    payload_ = std::move(rhs.payload_);
-  }
-
-  return *this;
-}
-
 bool IndexMeta::operator==(const IndexMeta& other) const noexcept {
   if (gen_ != other.gen_ || last_gen_ != other.last_gen_ ||
-      counter() != other.counter() ||
+      seg_counter_ != other.seg_counter_ ||
       segments_.size() != other.segments_.size() ||
       payload_ != other.payload_) {
     return false;

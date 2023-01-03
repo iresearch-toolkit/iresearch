@@ -22,13 +22,6 @@
 
 #include "index_reader.hpp"
 
-#include "index_meta.hpp"
-#include "segment_reader.hpp"
-#include "shared.hpp"
-#include "utils/directory_utils.hpp"
-#include "utils/singleton.hpp"
-#include "utils/type_limits.hpp"
-
 namespace irs {
 namespace {
 

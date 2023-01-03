@@ -109,7 +109,9 @@ class NoopDirectory : public directory {
     return false;
   }
 
-  bool sync(std::string_view) noexcept override { return false; }
+  bool sync(std::span<const std::string_view>) noexcept override {
+    return false;
+  }
 
   bool visit(const directory::visitor_f&) const override { return false; }
 
@@ -248,7 +250,7 @@ class CompoundDocIterator : public doc_iterator {
   size_t current_itr_{0};
   ProgressTracker progress_;
   document doc_;
-};  // compound_doc_iterator
+};
 
 bool CompoundDocIterator::next() {
   progress_();
@@ -1318,8 +1320,8 @@ const MergeWriter::FlushProgress kProgressNoop = []() { return true; };
 
 }  // namespace
 
-MergeWriter::ReaderCtx::ReaderCtx(SubReader::ptr reader) noexcept
-  : reader{std::move(reader)}, doc_map{[](doc_id_t) noexcept {
+MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
+  : reader{reader}, doc_map{[](doc_id_t) noexcept {
       return doc_limits::eof();
     }} {
   IRS_ASSERT(this->reader);

@@ -149,16 +149,9 @@ struct directory : private util::noncopyable {
   virtual bool rename(std::string_view src, std::string_view dst) noexcept = 0;
 
   // Ensures that all modification have been sucessfully persisted
-  // name - name of the file
+  // files - files to sync
   // Returns call success
-  virtual bool sync(std::string_view name) noexcept = 0;
-
-  virtual bool sync(std::span<std::string_view> files) noexcept {
-    return std::all_of(std::begin(files), std::end(files),
-                       [this](std::string_view name) mutable noexcept {
-                         return this->sync(name);
-                       });
-  }
+  virtual bool sync(std::span<const std::string_view> files) noexcept = 0;
 
   // Applies the specified 'visitor' to every filename in a directory
   // visitor - visitor to be applied

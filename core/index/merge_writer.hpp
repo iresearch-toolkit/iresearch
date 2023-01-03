@@ -42,9 +42,9 @@ class MergeWriter : public util::noncopyable {
   using FlushProgress = std::function<bool()>;
 
   struct ReaderCtx {
-    explicit ReaderCtx(SubReader::ptr reader) noexcept;
+    explicit ReaderCtx(const SubReader* reader) noexcept;
 
-    SubReader::ptr reader;                      // segment reader
+    const SubReader* reader;                    // segment reader
     std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
@@ -52,9 +52,9 @@ class MergeWriter : public util::noncopyable {
   MergeWriter() noexcept;
 
   explicit MergeWriter(directory& dir,
-                        const column_info_provider_t& column_info,
-                        const feature_info_provider_t& feature_info,
-                        const Comparer* comparator = nullptr) noexcept
+                       const column_info_provider_t& column_info,
+                       const feature_info_provider_t& feature_info,
+                       const Comparer* comparator = nullptr) noexcept
     : dir_(dir),
       column_info_(&column_info),
       feature_info_(&feature_info),
@@ -66,18 +66,7 @@ class MergeWriter : public util::noncopyable {
 
   operator bool() const noexcept;
 
-  void add(const SubReader& reader) {
-    // add reference, noexcept aliasing ctor
-    readers_.emplace_back(SubReader::ptr{SubReader::ptr{}, &reader});
-  }
-
-  void add(SubReader::ptr reader) {
-    // add shared pointer
-    IRS_ASSERT(reader);
-    if (reader) {
-      readers_.emplace_back(std::move(reader));
-    }
-  }
+  void add(const SubReader& reader) { readers_.emplace_back(&reader); }
 
   // Flush all of the added readers into a single segment.
   // `segment` the segment that was flushed.

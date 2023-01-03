@@ -76,7 +76,9 @@ class directory_utils_tests : public ::testing::Test {
       return false;
     }
 
-    bool sync(std::string_view) noexcept override { return false; }
+    bool sync(std::span<const std::string_view>) noexcept override {
+      return false;
+    }
 
     bool visit(const irs::directory::visitor_f&) const override {
       return false;
@@ -549,24 +551,25 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
   {
     irs::memory_directory dir;
     irs::ref_tracking_directory track_dir(dir);
-    auto file1 = dir.create("abc");
+    const std::string_view file{"abc"};
+    auto file1 = dir.create(file);
 
     ASSERT_FALSE(!file1);
     file1->write_byte(42);
     file1->flush();
 
-    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
+    auto file2 = track_dir.open(file, irs::IOAdvice::NORMAL);
 
     ASSERT_FALSE(!file2);
-    ASSERT_TRUE(track_dir.sync(
-      "abc"));  // does nothing in memory_directory, but adds line coverage
+    // does nothing in memory_directory, but adds line coverage
+    ASSERT_TRUE(track_dir.sync({&file, 1}));
     ASSERT_EQ(1, file2->length());
-    ASSERT_TRUE(track_dir.rename("abc", "def"));
+    ASSERT_TRUE(track_dir.rename(file, "def"));
     file1.reset();  // release before remove
     file2.reset();  // release before remove
-    ASSERT_FALSE(track_dir.remove("abc"));
+    ASSERT_FALSE(track_dir.remove(file));
     bool exists;
-    ASSERT_TRUE(dir.exists(exists, "abc") && !exists);
+    ASSERT_TRUE(dir.exists(exists, file) && !exists);
     ASSERT_TRUE(dir.exists(exists, "def") && exists);
     ASSERT_TRUE(track_dir.remove("def"));
     ASSERT_TRUE(dir.exists(exists, "def") && !exists);
@@ -703,7 +706,9 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     bool rename(std::string_view, std::string_view) noexcept override {
       return false;
     }
-    bool sync(std::string_view) noexcept override { return false; }
+    bool sync(std::span<const std::string_view>) noexcept override {
+      return false;
+    }
   } error_dir;
 
   // test create failure
@@ -768,7 +773,8 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
   {
     irs::memory_directory dir;
     irs::tracking_directory track_dir(dir);
-    auto file1 = dir.create("abc");
+    const std::string_view file{"abc"};
+    auto file1 = dir.create(file);
     ASSERT_FALSE(!file1);
 
     file1->write_byte(42);
@@ -776,16 +782,15 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
 
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
-
-    ASSERT_TRUE(track_dir.sync(
-      "abc"));  // does nothing in memory_directory, but adds line coverage
+    // does nothing in memory_directory, but adds line coverage
+    ASSERT_TRUE(track_dir.sync({&file, 1}));
     ASSERT_EQ(1, file2->length());
-    ASSERT_TRUE(track_dir.rename("abc", "def"));
+    ASSERT_TRUE(track_dir.rename(file, "def"));
     file1.reset();  // release before remove
     file2.reset();  // release before remove
-    ASSERT_FALSE(track_dir.remove("abc"));
+    ASSERT_FALSE(track_dir.remove(file));
     bool exists;
-    ASSERT_TRUE(dir.exists(exists, "abc") && !exists);
+    ASSERT_TRUE(dir.exists(exists, file) && !exists);
     ASSERT_TRUE(dir.exists(exists, "def") && exists);
     ASSERT_TRUE(track_dir.remove("def"));
     ASSERT_TRUE(dir.exists(exists, "def") && !exists);

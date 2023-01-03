@@ -23,7 +23,7 @@
 #pragma once
 
 #include "analysis/token_attributes.hpp"
-#include "shared.hpp"
+#include "index/field_meta.hpp"
 #include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 

@@ -178,7 +178,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
     throw index_not_found{};
   }
 
-  if (cached && cached->meta_.meta == meta) {
+  if (cached && cached->meta_.index_meta == meta) {
     return cached;  // no changes to refresh
   }
 
@@ -186,7 +186,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
   absl::flat_hash_map<std::string_view, size_t> reuse_candidates;
 
   if (cached) {
-    const auto segments = cached->Meta().meta.segments();
+    const auto segments = cached->Meta().index_meta.segments();
     reuse_candidates.reserve(segments.size());
 
     for (size_t i = 0; const auto& segment : segments) {
@@ -213,7 +213,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
     const auto it = reuse_candidates.find(meta.name);
 
     if (it != reuse_candidates.end() && it->second != kInvalidCandidate &&
-        meta == cached->meta_.meta.segment(it->second).meta) {
+        meta == cached->meta_.index_meta.segment(it->second).meta) {
       *reader = (*cached)[it->second].Reopen(meta);
       reuse_candidates.erase(it);
     } else {

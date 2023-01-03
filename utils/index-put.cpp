@@ -499,8 +499,8 @@ int put(const std::string& path, const std::string& dir_type,
   }
 
   // consolidation threads
-  const irs::index_utils::consolidate_tier consolidation_options;
-  auto policy = irs::index_utils::consolidation_policy(consolidation_options);
+  const irs::index_utils::ConsolidateTier consolidation_options;
+  auto policy = irs::index_utils::MakePolicy(consolidation_options);
 
   for (size_t i = consolidation_threads; i; --i) {
     thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex,
@@ -579,8 +579,8 @@ int put(const std::string& path, const std::string& dir_type,
     // merge all segments into a single segment
     SCOPED_TIMER("Consolidating all time");
     std::cout << "Consolidating all segments:" << std::endl;
-    writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count()));
+    writer->consolidate(irs::index_utils::MakePolicy(
+      irs::index_utils::ConsolidateCount()));
     writer->commit();
   }
 

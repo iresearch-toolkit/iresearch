@@ -64,8 +64,6 @@ uint64_t DirectoryReader::live_docs_count() const {
 
 size_t DirectoryReader::size() const { return impl_->size(); }
 
-IndexReader::ptr DirectoryReader::GetImpl() const noexcept { return impl_; }
-
 const DirectoryMeta& DirectoryReader::Meta() const {
   auto impl = std::atomic_load(&impl_);  // make a copy
 

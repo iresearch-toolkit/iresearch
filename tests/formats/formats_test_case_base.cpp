@@ -1074,8 +1074,8 @@ TEST_P(format_test_case, segment_meta_read_write) {
         return dir_.rename(src, dst);
       }
 
-      bool sync(std::string_view name) noexcept override {
-        return dir_.sync(name);
+      bool sync(std::span<const std::string_view> files) noexcept override {
+        return dir_.sync(files);
       }
 
       bool visit(const irs::directory::visitor_f& visitor) const override {

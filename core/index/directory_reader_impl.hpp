@@ -26,13 +26,14 @@
 
 #include "index/composite_reader_impl.hpp"
 #include "index/segment_reader.hpp"
+#include "store/directory_attributes.hpp"
 
 namespace irs {
 
 // Representation of the metadata of a directory_reader
 struct DirectoryMeta {
   std::string filename;
-  IndexMeta meta;
+  IndexMeta index_meta;
 };
 
 class DirectoryReaderImpl

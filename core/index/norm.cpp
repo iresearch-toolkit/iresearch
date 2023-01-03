@@ -22,6 +22,7 @@
 
 #include "norm.hpp"
 
+#include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utils/bytes_utils.hpp"
 
@@ -31,9 +32,9 @@ using namespace irs;
 
 class NormWriter final : public feature_writer {
  public:
-  virtual void write(const field_stats& stats, doc_id_t doc,
-                     // cppcheck-suppress constParameter
-                     columnstore_writer::values_writer_f& writer) final {
+  void write(const field_stats& stats, doc_id_t doc,
+             // cppcheck-suppress constParameter
+             columnstore_writer::values_writer_f& writer) final {
     if (stats.len > 0) {
       const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
       if (value != Norm::DEFAULT()) {

@@ -86,14 +86,17 @@ class SegmentReader final : public SubReader {
 
   const irs::column_reader* column(field_id field) const override;
 
-  SubReader::ptr GetImpl() const noexcept;
+  std::shared_ptr<const SegmentReaderImpl> GetImpl() const noexcept {
+    return impl_;
+  }
 
   explicit operator bool() const noexcept { return nullptr != impl_; }
 
- private:
-  explicit SegmentReader(
-    std::shared_ptr<const SegmentReaderImpl> impl) noexcept;
+  // FIXME(gnusi): make private
+  explicit SegmentReader(std::shared_ptr<const SegmentReaderImpl> impl) noexcept
+    : impl_{std::move(impl)} {}
 
+ private:
   std::shared_ptr<const SegmentReaderImpl> impl_;
 };
 

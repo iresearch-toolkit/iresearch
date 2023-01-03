@@ -238,8 +238,8 @@ TEST(directory_reader_test, open) {
   ASSERT_EQ(9, rdr.docs_count());
   ASSERT_EQ(9, rdr.live_docs_count());
   ASSERT_EQ(3, rdr.size());
-  ASSERT_EQ("segments_3", rdr.meta().filename);
-  ASSERT_EQ(rdr.size(), rdr.meta().meta.size());
+  ASSERT_EQ("segments_3", rdr.Meta().filename);
+  ASSERT_EQ(rdr.size(), rdr.Meta().index_meta.size());
 
   // check subreaders
   auto sub = rdr.begin();
@@ -443,9 +443,8 @@ TEST(segment_reader_test, open_invalid_segment) {
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(
-      irs::SegmentReader::Open(dir, meta, irs::IndexReaderOptions{}),
-      irs::io_error);
+    ASSERT_THROW(irs::SegmentReader::Open(dir, meta, irs::IndexReaderOptions{}),
+                 irs::io_error);
   }
 }
 
@@ -488,8 +487,7 @@ TEST(segment_reader_test, open) {
     meta.name = "_1";
     meta.version = IRESEARCH_VERSION;
 
-    auto rdr =
-      irs::SegmentReader::Open(dir, meta, irs::IndexReaderOptions{});
+    auto rdr = irs::SegmentReader::Open(dir, meta, irs::IndexReaderOptions{});
     ASSERT_FALSE(!rdr);
     ASSERT_EQ(1, rdr.size());
     ASSERT_EQ(meta.docs_count, rdr.docs_count());

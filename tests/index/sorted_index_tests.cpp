@@ -793,9 +793,9 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
+    irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
 
     // simulate consolidation
@@ -1352,9 +1352,9 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
+    irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
   }
 
@@ -1636,9 +1636,9 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
+    irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
   }
 
@@ -1898,9 +1898,9 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
+    irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
   }
 
@@ -2114,9 +2114,9 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
+    irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     writer->commit();
   }
 
@@ -2362,9 +2362,9 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
+    irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->commit());
   }
 
@@ -2599,9 +2599,9 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
+    irs::index_utils::ConsolidateCount consolidate_all;
     ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+      irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->commit());
   }
 

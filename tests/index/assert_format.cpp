@@ -31,6 +31,7 @@
 #include "analysis/token_stream.hpp"
 #include "index/comparer.hpp"
 #include "index/directory_reader.hpp"
+#include "index/directory_reader_impl.hpp"
 #include "index/field_meta.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/cost.hpp"
@@ -1139,8 +1140,7 @@ void assert_columnstore(const irs::directory& dir, irs::format::ptr codec,
   auto reader = irs::DirectoryReader::Open(dir, codec);
   ASSERT_NE(nullptr, reader);
 
-  assert_columnstore(static_cast<irs::IndexReader::ptr>(reader),
-                     expected_index, skip);
+  assert_columnstore(reader.GetImpl(), expected_index, skip);
 }
 
 void assert_index(irs::IndexReader::ptr actual_index,
@@ -1232,8 +1232,7 @@ void assert_index(const irs::directory& dir, irs::format::ptr codec,
   auto reader = irs::DirectoryReader::Open(dir, codec);
   ASSERT_NE(nullptr, reader);
 
-  assert_index(static_cast<irs::IndexReader::ptr>(reader), expected_index,
-               features, skip, matcher);
+  assert_index(reader.GetImpl(), expected_index, features, skip, matcher);
 }
 
 }  // namespace tests

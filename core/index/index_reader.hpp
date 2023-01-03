@@ -23,20 +23,14 @@
 #pragma once
 
 #include <functional>
-#include <numeric>
-#include <vector>
 
 #include "formats/formats.hpp"
-#include "index/field_meta.hpp"
-#include "store/directory.hpp"
-#include "store/directory_attributes.hpp"
 #include "utils/iterator.hpp"
-#include "utils/memory.hpp"
-#include "utils/string.hpp"
 
 namespace irs {
 
 class SubReader;
+struct SegmentMeta;
 
 using ColumnWarmupCallback =
   std::function<bool(const SegmentMeta& meta, const field_reader& fields,

@@ -75,11 +75,11 @@ struct SegmentStats {
   double_t fill_factor;
 };  // segment_stat
 
-struct consolidation_candidate {
+struct ConsolidationCandidate {
   using iterator_t = std::vector<SegmentStats>::const_iterator;
   using range_t = std::pair<iterator_t, iterator_t>;
 
-  explicit consolidation_candidate(iterator_t i) noexcept : segments(i, i) {}
+  explicit ConsolidationCandidate(iterator_t i) noexcept : segments(i, i) {}
 
   iterator_t begin() const noexcept { return segments.first; }
   iterator_t end() const noexcept { return segments.second; }
@@ -109,7 +109,7 @@ struct consolidation_candidate {
 };
 
 /// @returns score of the consolidation bucket
-double_t consolidation_score(const consolidation_candidate& consolidation,
+double_t consolidation_score(const ConsolidationCandidate& consolidation,
                              const size_t segments_per_tier,
                              const size_t floor_segment_bytes) noexcept {
   // to detect how skewed the consolidation we do the following:
@@ -184,7 +184,7 @@ double_t consolidation_score(const consolidation_candidate& consolidation,
 
 namespace irs::index_utils {
 
-ConsolidationPolicy consolidation_policy(const consolidate_bytes& options) {
+ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     auto byte_threshold = options.threshold;
@@ -193,7 +193,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_bytes& options) {
 
     for (auto& segment : reader) {
       // cppcheck-suppress 	useStlAlgorithm
-      all_segment_bytes_size += segment.meta().size_in_bytes;
+      all_segment_bytes_size += segment.Meta().size_in_bytes;
     }
 
     auto threshold = std::max<float>(0, std::min<float>(1, byte_threshold));
@@ -203,7 +203,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_bytes& options) {
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes /
     // #segments)
     for (auto& segment : reader) {
-      const size_t segment_bytes_size = segment.meta().size_in_bytes;
+      const size_t segment_bytes_size = segment.Meta().size_in_bytes;
 
       if (threshold_bytes_avg >= segment_bytes_size) {
         candidates.emplace_back(&segment);
@@ -212,8 +212,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_bytes& options) {
   };
 }
 
-ConsolidationPolicy consolidation_policy(
-  const consolidate_bytes_accum& options) {
+ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& consolidating_segments) {
     auto byte_threshold = options.threshold;
@@ -228,7 +227,7 @@ ConsolidationPolicy consolidation_policy(
         continue;
       }
 
-      segments.emplace_back(SizeWithoutRemovals(segment.meta()), &segment);
+      segments.emplace_back(SizeWithoutRemovals(segment.Meta()), &segment);
       all_segment_bytes_size += segments.back().first;
     }
 
@@ -259,7 +258,7 @@ ConsolidationPolicy consolidation_policy(
   };
 }
 
-ConsolidationPolicy consolidation_policy(const consolidate_count& options) {
+ConsolidationPolicy MakePolicy(const ConsolidateCount& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     // merge first 'threshold' segments
@@ -270,7 +269,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_count& options) {
   };
 }
 
-ConsolidationPolicy consolidation_policy(const consolidate_docs_fill& options) {
+ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     auto fill_threshold = options.threshold;
@@ -279,7 +278,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_docs_fill& options) {
     // merge segment if: {threshold} >= #segment_docs{valid} /
     // (#segment_docs{valid} + #segment_docs{removed})
     for (auto& segment : reader) {
-      auto& meta = segment.meta();
+      auto& meta = segment.Meta();
       if (!meta.live_docs_count  // if no valid doc_ids left in segment
           || meta.docs_count * threshold >= meta.live_docs_count) {
         candidates.emplace_back(&segment);
@@ -288,7 +287,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_docs_fill& options) {
   };
 }
 
-ConsolidationPolicy consolidation_policy(const consolidate_docs_live& options) {
+ConsolidationPolicy MakePolicy(const ConsolidateDocsLive& options) {
   return [options](Consolidation& candidates, const IndexReader& meta,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     auto docs_threshold = options.threshold;
@@ -297,7 +296,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_docs_live& options) {
 
     for (auto& segment : meta) {
       // cppcheck-suppress useStlAlgorithm
-      all_segment_docs_count += segment.meta().live_docs_count;
+      all_segment_docs_count += segment.Meta().live_docs_count;
     }
 
     auto threshold = std::max<float>(0, std::min<float>(1, docs_threshold));
@@ -307,7 +306,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_docs_live& options) {
     // merge segment if: {threshold} >= segment_docs{valid} /
     // (all_segment_docs{valid} / #segments)
     for (auto& segment : meta) {
-      auto& info = segment.meta();
+      auto& info = segment.Meta();
       if (!info.live_docs_count  // if no valid doc_ids left in segment
           || threshold_docs_avg >= info.live_docs_count) {
         candidates.emplace_back(&segment);
@@ -316,7 +315,7 @@ ConsolidationPolicy consolidation_policy(const consolidate_docs_live& options) {
   };
 }
 
-ConsolidationPolicy consolidation_policy(const consolidate_tier& options) {
+ConsolidationPolicy MakePolicy(const ConsolidateTier& options) {
   // can't merge less than 1 segment
   const auto max_segments_per_tier =
     (std::max)(size_t{1}, options.max_segments);
@@ -437,12 +436,12 @@ ConsolidationPolicy consolidation_policy(const consolidate_tier& options) {
     /// find proper candidates
     ///////////////////////////////////////////////////////////////////////////
 
-    tier::consolidation_candidate best(sorted_segments.begin());
+    tier::ConsolidationCandidate best(sorted_segments.begin());
 
     if (sorted_segments.size() >= min_segments_per_tier) {
       for (auto i = sorted_segments.begin(), end = sorted_segments.end();
            i != end; ++i) {
-        tier::consolidation_candidate candidate(i);
+        tier::ConsolidationCandidate candidate(i);
 
         while (candidate.segments.second != end &&
                candidate.count < max_segments_per_tier) {
@@ -485,9 +484,8 @@ ConsolidationPolicy consolidation_policy(const consolidate_tier& options) {
   };
 }
 
-void read_document_mask(irs::document_mask& docs_mask,
-                        const irs::directory& dir,
-                        const irs::SegmentMeta& meta) {
+void ReadDocumentMask(irs::document_mask& docs_mask, const irs::directory& dir,
+                      const irs::SegmentMeta& meta) {
   if (!irs::HasRemovals(meta)) {
     return;  // nothing to read
   }
@@ -496,7 +494,7 @@ void read_document_mask(irs::document_mask& docs_mask,
   reader->read(dir, meta, docs_mask);
 }
 
-void flush_index_segment(directory& dir, IndexSegment& segment) {
+void FlushIndexSegment(directory& dir, IndexSegment& segment) {
   IRS_ASSERT(segment.meta.codec);
 
   // estimate meta segment size

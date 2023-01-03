@@ -22,6 +22,7 @@
 
 #include "ngram_similarity_filter.hpp"
 
+#include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "search/collectors.hpp"
 #include "search/ngram_similarity_query.hpp"
