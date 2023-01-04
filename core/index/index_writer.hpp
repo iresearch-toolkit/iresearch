@@ -33,6 +33,7 @@
 #include "index/field_meta.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
+#include "index/index_reader_options.hpp"
 #include "index/merge_writer.hpp"
 #include "index/segment_reader.hpp"
 #include "index/segment_writer.hpp"
@@ -137,6 +138,9 @@ using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
 // Options the the writer should use after creation
 struct IndexWriterOptions : public SegmentOptions {
+  // Options for snapshot management
+  IndexReaderOptions reader_options;
+
   // Returns column info for a feature the writer should use for
   // columnstore
   FeatureInfoProvider features;

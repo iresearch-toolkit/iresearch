@@ -30,6 +30,7 @@
 #include "index/column_info.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
+#include "index/index_reader_options.hpp"
 #include "index/iterators.hpp"
 #include "shared.hpp"
 #include "store/data_output.hpp"
@@ -56,8 +57,6 @@ struct postings_writer;
 using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
-// should never throw as may be used in dtors
-using MemoryAccountingFunc = fu2::function<bool(int64_t) noexcept>;
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 

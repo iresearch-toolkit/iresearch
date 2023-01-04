@@ -22,33 +22,14 @@
 
 #pragma once
 
-#include <functional>
-
 #include "formats/formats.hpp"
+#include "index/index_reader_options.hpp"
 #include "utils/iterator.hpp"
 
 namespace irs {
 
 class SubReader;
 struct SegmentMeta;
-
-using ColumnWarmupCallback =
-  std::function<bool(const SegmentMeta& meta, const field_reader& fields,
-                     const column_reader& column)>;
-
-struct IndexReaderOptions {
-  ColumnWarmupCallback warmup_columns{};
-  MemoryAccountingFunc pinned_memory_accounting{};
-
-  // Open inverted index
-  bool index{true};
-
-  // Open columnstore
-  bool columnstore{true};
-
-  // Read document mask
-  bool doc_mask{true};
-};
 
 // Generic interface for accessing an index
 struct IndexReader {

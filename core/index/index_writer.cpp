@@ -58,13 +58,12 @@ const ColumnInfoProvider kDefaultColumnInfo = [](std::string_view) {
   return ColumnInfo{irs::type<compression::none>::get(), {}, false};
 };
 
-const FeatureInfoProvider kDefaultFeatureInfo =
-  [](irs::type_info::type_id) {
-    // no compression, no encryption
-    return std::make_pair(
-      ColumnInfo{irs::type<compression::none>::get(), {}, false},
-      FeatureWriterFactory{});
-  };
+const FeatureInfoProvider kDefaultFeatureInfo = [](irs::type_info::type_id) {
+  // no compression, no encryption
+  return std::make_pair(
+    ColumnInfo{irs::type<compression::none>::get(), {}, false},
+    FeatureWriterFactory{});
+};
 
 struct FlushSegmentContext {
   // starting doc_id to consider in 'segment.meta' (inclusive)
@@ -1420,9 +1419,8 @@ void IndexWriter::Clear(uint64_t tick) {
   // 1st phase of the transaction successfully finished here
   // ensure new generation reflected in 'meta_'
   pending_state_.ctx = std::move(ctx);  // retain flush context reference
-  // FIXME(gnusi): reader options? warmup?
   pending_state_.commit =
-    OpenReader(dir, std::move(pending_commit), IndexReaderOptions{});
+    OpenReader(dir, std::move(pending_commit), committed_reader_->Options());
 
   Finish();
 
@@ -1485,12 +1483,11 @@ IndexWriter::ptr IndexWriter::make(
     }
   }
 
-  // FIXME(gnusi): index reader options
-  auto reader = OpenReader(dir, std::move(meta), IndexReaderOptions{});
+  auto reader = OpenReader(dir, std::move(meta), opts.reader_options);
 
   auto writer = std::make_shared<IndexWriter>(
     ConstructToken{}, std::move(lock), std::move(lock_ref), dir,
-    std::move(codec), opts.segment_pool_size, SegmentOptions(opts),
+    std::move(codec), opts.segment_pool_size, SegmentOptions{opts},
     opts.comparator, opts.column_info ? opts.column_info : kDefaultColumnInfo,
     opts.features ? opts.features : kDefaultFeatureInfo,
     opts.meta_payload_provider, std::move(reader));
@@ -2124,7 +2121,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     }
   };
 
-  auto& committed_reader = *committed_reader_;
+  const auto& committed_reader = *committed_reader_;
+  const auto& reader_options = committed_reader.Options();
 
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
@@ -2230,9 +2228,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   for (auto& pending_segment : ctx->pending_segments_) {
     auto& meta = pending_segment.segment.meta;
 
-    // FIXME(gnusi): reader options? warmup?
     // FIXME(gnusi): move to consolidation
-    auto pending_reader = SegmentReaderImpl::Open(dir, meta, {});
+    auto pending_reader = SegmentReaderImpl::Open(dir, meta, reader_options);
 
     if (!pending_reader) {
       throw index_error{
@@ -2471,9 +2468,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           segment->flushed_update_contexts_.data() + flushed_docs_start,
           flushed.meta.docs_count};
 
-        // FIXME(gnusi): reader options? warmup?
         auto reader =
-          SegmentReaderImpl::Open(dir, flushed.meta, IndexReaderOptions{});
+          SegmentReaderImpl::Open(dir, flushed.meta, reader_options);
 
         if (!reader) {
           throw index_error{absl::StrCat(
@@ -2633,9 +2629,8 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
     // 1st phase of the transaction successfully finished here,
     // set to_commit as active flush context containing pending meta
 
-    // FIXME(gnusi): reader options? warmup?
     pending_state_.commit = std::make_shared<const DirectoryReaderImpl>(
-      dir, IndexReaderOptions{}, std::move(pending_meta),
+      dir, committed_reader_->Options(), std::move(pending_meta),
       std::move(to_commit.readers));
   } catch (...) {
     writer_->rollback();  // rollback started transaction
