@@ -63,7 +63,6 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
           return nullptr;
         }
 
-        // why not directory_utils::reference(.., .., true)?
         ref = directory_utils::Reference(const_cast<directory&>(dir), filename);
       }
 

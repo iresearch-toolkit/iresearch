@@ -318,9 +318,9 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
 };
 
 void NestedFilterTestCase::InitDataSet() {
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.column_info = [](std::string_view name) {
-    return irs::column_info{
+    return irs::ColumnInfo{
       .compression = irs::type<irs::compression::none>::get(),
       .options = {},
       .encryption = false,

@@ -107,6 +107,62 @@ struct ConsolidationResult {
   operator bool() const noexcept { return error != ConsolidationError::FAIL; }
 };
 
+// Options the the writer should use for segments
+struct SegmentOptions {
+  // Segment acquisition requests will block and wait for free segments
+  // after this many segments have been acquired e.g. via documents()
+  // 0 == unlimited
+  size_t segment_count_max{0};
+
+  // Flush the segment to the repository after its total document
+  // count (live + masked) grows beyond this byte limit, in-flight
+  // documents will still be written to the segment before flush
+  // 0 == unlimited
+  size_t segment_docs_max{0};
+
+  // Flush the segment to the repository after its in-memory size
+  // grows beyond this byte limit, in-flight documents will still be
+  // written to the segment before flush
+  // 0 == unlimited
+  size_t segment_memory_max{0};
+};
+
+// Progress report callback types for commits.
+using ProgressReportCallback =
+  std::function<void(std::string_view phase, size_t current, size_t total)>;
+
+// Functor for creating payload. Operation tick is provided for
+// payload generation.
+using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
+
+// Options the the writer should use after creation
+struct IndexWriterOptions : public SegmentOptions {
+  // Returns column info for a feature the writer should use for
+  // columnstore
+  FeatureInfoProvider features;
+
+  // Returns column info the writer should use for columnstore
+  ColumnInfoProvider column_info;
+
+  // Provides payload for index_meta created by writer
+  PayloadProvider meta_payload_provider;
+
+  // Comparator defines physical order of documents in each segment
+  // produced by an index_writer.
+  // empty == use default system sorting order
+  const Comparer* comparator{nullptr};
+
+  // Number of free segments cached in the segment pool for reuse
+  // 0 == do not cache any segments, i.e. always create new segments
+  size_t segment_pool_size{128};  // arbitrary size
+
+  // Acquire an exclusive lock on the repository to guard against index
+  // corruption from multiple index_writers
+  bool lock_repository{true};
+
+  IndexWriterOptions() {}  // compiler requires non-default definition
+};
+
 // The object is using for indexing data. Only one writer can write to
 // the same directory simultaneously.
 // Thread safe.
@@ -164,8 +220,6 @@ class IndexWriter : private util::noncopyable {
   static_assert(std::is_nothrow_move_constructible_v<ActiveSegmentContext>);
 
  public:
-  using FileRefs = std::vector<index_file_refs::ref_t>;
-
   // A context allowing index modification operations.
   // The object is non-thread-safe, each thread should use its own
   // separate instance.
@@ -357,62 +411,6 @@ class IndexWriter : private util::noncopyable {
 
   static_assert(std::is_nothrow_move_constructible_v<ModificationContext>);
 
-  // Options the the writer should use for segments
-  struct SegmentOptions {
-    // Segment acquisition requests will block and wait for free segments
-    // after this many segments have been acquired e.g. via documents()
-    // 0 == unlimited
-    size_t segment_count_max{0};
-
-    // Flush the segment to the repository after its total document
-    // count (live + masked) grows beyond this byte limit, in-flight
-    // documents will still be written to the segment before flush
-    // 0 == unlimited
-    size_t segment_docs_max{0};
-
-    // Flush the segment to the repository after its in-memory size
-    // grows beyond this byte limit, in-flight documents will still be
-    // written to the segment before flush
-    // 0 == unlimited
-    size_t segment_memory_max{0};
-  };
-
-  // Progress report callback types for commits.
-  using ProgressReportCallback =
-    std::function<void(std::string_view phase, size_t current, size_t total)>;
-
-  // Functor for creating payload. Operation tick is provided for
-  // payload generation.
-  using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
-
-  // Options the the writer should use after creation
-  struct InitOptions : public SegmentOptions {
-    // Returns column info for a feature the writer should use for
-    // columnstore
-    feature_info_provider_t features;
-
-    // Returns column info the writer should use for columnstore
-    column_info_provider_t column_info;
-
-    // Provides payload for index_meta created by writer
-    PayloadProvider meta_payload_provider;
-
-    // Comparator defines physical order of documents in each segment
-    // produced by an index_writer.
-    // empty == use default system sorting order
-    const Comparer* comparator{nullptr};
-
-    // Number of free segments cached in the segment pool for reuse
-    // 0 == do not cache any segments, i.e. always create new segments
-    size_t segment_pool_size{128};  // arbitrary size
-
-    // Acquire an exclusive lock on the repository to guard against index
-    // corruption from multiple index_writers
-    bool lock_repository{true};
-
-    InitOptions() {}  // compiler requires non-default definition
-  };
-
   using ptr = std::shared_ptr<IndexWriter>;
 
   // Name of the lock for index repository
@@ -466,7 +464,7 @@ class IndexWriter : private util::noncopyable {
   // mode specifies how to open a writer
   // options the configuration parameters for the writer
   static IndexWriter::ptr make(directory& dir, format::ptr codec, OpenMode mode,
-                               const InitOptions& opts = InitOptions());
+                               const IndexWriterOptions& opts = {});
 
   // Modify the runtime segment options as per the specified values
   // options will apply no later than after the next commit()
@@ -510,7 +508,7 @@ class IndexWriter : private util::noncopyable {
   }
 
   // Returns field features.
-  const feature_info_provider_t& FeatureInfo() const noexcept {
+  const FeatureInfoProvider& FeatureInfo() const noexcept {
     return feature_info_;
   }
 
@@ -521,12 +519,14 @@ class IndexWriter : private util::noncopyable {
               index_file_refs::ref_t&& lock_file_ref, directory& dir,
               format::ptr codec, size_t segment_pool_size,
               const SegmentOptions& segment_limits, const Comparer* comparator,
-              const column_info_provider_t& column_info,
-              const feature_info_provider_t& feature_info,
+              const ColumnInfoProvider& column_info,
+              const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
               std::shared_ptr<const DirectoryReaderImpl>&& committed_reader);
 
  private:
+  using FileRefs = std::vector<index_file_refs::ref_t>;
+
   static constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
   struct ConsolidationContext : util::noncopyable {
@@ -695,12 +695,12 @@ class IndexWriter : private util::noncopyable {
 
     static std::unique_ptr<SegmentContext> make(
       directory& dir, segment_meta_generator_t&& meta_generator,
-      const column_info_provider_t& column_info,
-      const feature_info_provider_t& feature_info, const Comparer* comparator);
+      const ColumnInfoProvider& column_info,
+      const FeatureInfoProvider& feature_info, const Comparer* comparator);
 
     SegmentContext(directory& dir, segment_meta_generator_t&& meta_generator,
-                   const column_info_provider_t& column_info,
-                   const feature_info_provider_t& feature_info,
+                   const ColumnInfoProvider& column_info,
+                   const FeatureInfoProvider& feature_info,
                    const Comparer* comparator);
 
     // Flush current writer state into a materialized segment.
@@ -945,9 +945,9 @@ class IndexWriter : private util::noncopyable {
   // aborts transaction
   void Abort();
 
-  feature_info_provider_t feature_info_;
+  FeatureInfoProvider feature_info_;
   std::vector<std::string_view> files_to_sync_;
-  column_info_provider_t column_info_;
+  ColumnInfoProvider column_info_;
   // provides payload for new segments
   PayloadProvider meta_payload_provider_;
   const Comparer* comparator_;

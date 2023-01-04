@@ -76,8 +76,8 @@ class segment_writer : util::noncopyable {
   };
 
   static std::unique_ptr<segment_writer> make(
-    directory& dir, const column_info_provider_t& column_info,
-    const feature_info_provider_t& feature_info, const Comparer* comparator);
+    directory& dir, const ColumnInfoProvider& column_info,
+    const FeatureInfoProvider& feature_info, const Comparer* comparator);
 
   // begin document-write transaction
   // Return doc_id_t as per doc_limits
@@ -159,8 +159,8 @@ class segment_writer : util::noncopyable {
   uint64_t tick() const noexcept { return tick_; }
 
   segment_writer(ConstructToken, directory& dir,
-                 const column_info_provider_t& column_info,
-                 const feature_info_provider_t& feature_info,
+                 const ColumnInfoProvider& column_info,
+                 const FeatureInfoProvider& feature_info,
                  const Comparer* comparator) noexcept;
 
  private:
@@ -198,7 +198,7 @@ class segment_writer : util::noncopyable {
 
     stored_column(const hashed_string_view& name,
                   columnstore_writer& columnstore,
-                  const column_info_provider_t& column_info,
+                  const ColumnInfoProvider& column_info,
                   std::deque<cached_column>& cached_columns, bool cache);
 
     std::string name;
@@ -215,7 +215,7 @@ class segment_writer : util::noncopyable {
 
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
-      const column_info_provider_t& column_info,
+      const ColumnInfoProvider& column_info,
       columnstore_writer::column_finalizer_f finalizer) noexcept
       : stream(column_info({})),  // compression for sorted column
         finalizer{std::move(finalizer)} {}
@@ -375,7 +375,7 @@ class segment_writer : util::noncopyable {
   std::vector<const field_data*> doc_;  // document fields
   std::string seg_name_;
   field_writer::ptr field_writer_;
-  const column_info_provider_t* column_info_;
+  const ColumnInfoProvider* column_info_;
   columnstore_writer::ptr col_writer_;
   TrackingDirectory dir_;
   uint64_t tick_{0};

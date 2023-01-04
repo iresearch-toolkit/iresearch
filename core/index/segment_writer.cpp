@@ -67,7 +67,7 @@ void reorder(std::vector<segment_writer::update_context>& ctxs,
 
 segment_writer::stored_column::stored_column(
   const hashed_string_view& name, columnstore_writer& columnstore,
-  const column_info_provider_t& column_info,
+  const ColumnInfoProvider& column_info,
   std::deque<cached_column>& cached_columns, bool cache)
   : name(name.data(), name.size()), name_hash(name.hash()) {
   const auto info = column_info(static_cast<const std::string_view&>(name));
@@ -113,8 +113,8 @@ doc_id_t segment_writer::begin(const update_context& ctx,
 }
 
 std::unique_ptr<segment_writer> segment_writer::make(
-  directory& dir, const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const Comparer* comparator) {
+  directory& dir, const ColumnInfoProvider& column_info,
+  const FeatureInfoProvider& feature_info, const Comparer* comparator) {
   return std::make_unique<segment_writer>(ConstructToken{}, dir, column_info,
                                           feature_info, comparator);
 }
@@ -178,8 +178,8 @@ bool segment_writer::remove(doc_id_t doc_id) {
 }
 
 segment_writer::segment_writer(ConstructToken, directory& dir,
-                               const column_info_provider_t& column_info,
-                               const feature_info_provider_t& feature_info,
+                               const ColumnInfoProvider& column_info,
+                               const FeatureInfoProvider& feature_info,
                                const Comparer* comparator) noexcept
   : sort_(column_info, {}),
     fields_(feature_info, cached_columns_, comparator),

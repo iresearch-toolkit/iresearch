@@ -75,7 +75,7 @@ struct norm2 {};
 
 REGISTER_ATTRIBUTE(tests::norm2);
 
-class test_feature_writer final : public irs::feature_writer {
+class test_feature_writer final : public irs::FeatureWriter {
  public:
   explicit test_feature_writer(uint32_t value) noexcept : value_{value} {}
 
@@ -190,9 +190,9 @@ struct merge_writer_test_case
     return (*factory)(nullptr).second + "___" + codec;
   }
 
-  static irs::column_info_provider_t default_column_info() {
+  static irs::ColumnInfoProvider default_column_info() {
     return [](std::string_view) {
-      return irs::column_info{
+      return irs::ColumnInfo{
         .compression = irs::type<irs::compression::lz4>::get(),
         .options = irs::compression::options{},
         .encryption = true,
@@ -200,14 +200,14 @@ struct merge_writer_test_case
     };
   }
 
-  static irs::feature_info_provider_t default_feature_info() {
+  static irs::FeatureInfoProvider default_feature_info() {
     return [](irs::type_info::type_id) {
       return std::make_pair(
-        irs::column_info{.compression = irs::type<irs::compression::lz4>::get(),
+        irs::ColumnInfo{.compression = irs::type<irs::compression::lz4>::get(),
                          .options = {},
                          .encryption = true,
                          .track_prev_doc = false},
-        irs::feature_writer_factory_t{});
+        irs::FeatureWriterFactory{});
     };
   }
 
@@ -235,7 +235,7 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   irs::memory_directory dir;
   binary_comparer test_comparer;
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   if (primary_sort) {
     opts.comparator = &test_comparer;
   }
@@ -1288,23 +1288,23 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   doc3.indexed.push_back(
     std::make_shared<tests::text_field<std::string_view>>("doc_text", text3));
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.features = [](irs::type_info::type_id id) {
-    irs::feature_writer_factory_t writer_factory{};
+    irs::FeatureWriterFactory writer_factory{};
     if (irs::type<irs::Norm>::id() == id) {
       writer_factory =
-        [](std::span<const irs::bytes_view>) -> irs::feature_writer::ptr {
+        [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
         return irs::memory::make_managed<test_feature_writer>(0);
       };
     } else if (irs::type<norm2>::id() == id) {
       writer_factory =
-        [](std::span<const irs::bytes_view>) -> irs::feature_writer::ptr {
+        [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
         return irs::memory::make_managed<test_feature_writer>(1);
       };
     }
 
     return std::make_pair(
-      irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
+      irs::ColumnInfo{irs::type<irs::compression::lz4>::get(), {}, false},
       std::move(writer_factory));
   };
 
@@ -2899,7 +2899,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
 
   // populate directory
   {
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.comparator = &test_comparer;
     opts.column_info = default_column_info();
     auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE, opts);
@@ -3188,23 +3188,23 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   doc3.indexed.push_back(std::make_shared<tests::text_field<std::string_view>>(
     "doc_text", text3, true));
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.features = [](irs::type_info::type_id type) {
-    irs::feature_writer_factory_t handler{};
+    irs::FeatureWriterFactory handler{};
     if (irs::type<irs::Norm>::id() == type) {
       handler =
-        [](std::span<const irs::bytes_view>) -> irs::feature_writer::ptr {
+        [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
         return irs::memory::make_managed<test_feature_writer>(0);
       };
     } else if (irs::type<norm2>::id() == type) {
       handler =
-        [](std::span<const irs::bytes_view>) -> irs::feature_writer::ptr {
+        [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
         return irs::memory::make_managed<test_feature_writer>(1);
       };
     }
 
     return std::make_pair(
-      irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
+      irs::ColumnInfo{irs::type<irs::compression::lz4>::get(), {}, false},
       std::move(handler));
   };
 

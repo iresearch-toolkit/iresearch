@@ -108,10 +108,10 @@ class index_profile_test_case : public tests::index_test_base {
     std::mutex commit_mutex;
 
     if (!writer) {
-      irs::IndexWriter::InitOptions options;
-      options.segment_count_max =
-        8;  // match original implementation or may run out of file handles
-            // (e.g. MacOS/Travis)
+      irs::IndexWriterOptions options;
+      // match original implementation or may run out of file handles
+      // (e.g. MacOS/Travis)
+      options.segment_count_max = 8;
       writer = open_writer(irs::OM_CREATE, options);
     }
 
@@ -447,7 +447,7 @@ class index_profile_test_case : public tests::index_test_base {
   void profile_bulk_index_dedicated_commit(size_t insert_threads,
                                            size_t commit_threads,
                                            size_t commit_interval) {
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     std::atomic<bool> working(true);
     std::atomic<size_t> writer_commit_count(0);
 
@@ -484,9 +484,9 @@ class index_profile_test_case : public tests::index_test_base {
   void profile_bulk_index_dedicated_consolidate(size_t num_threads,
                                                 size_t batch_size,
                                                 size_t consolidate_interval) {
-    const auto policy = irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount());
-    irs::IndexWriter::InitOptions options;
+    const auto policy =
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
+    irs::IndexWriterOptions options;
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
 

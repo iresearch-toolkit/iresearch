@@ -79,9 +79,9 @@ class index_column_test_case : public tests::index_test_base {};
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_sparse_variable_length) {
   // sparse_column<sparse_block>
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -1107,9 +1107,9 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_mask) {
   // sparse_column<dense_mask_block>
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -1894,9 +1894,9 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_variable_length) {
   // sparse_column<dense_block>
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::none>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::none>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -2943,9 +2943,9 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_fixed_offset) {
   // sparse_column<dense_fixed_length_block>
 
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::none>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::none>::get(),
                             irs::compression::options{}, false};
   };
 
@@ -3165,9 +3165,9 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_fixed_offset) {
   // dense_fixed_length_column<dense_fixed_length_block>
 
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -3362,9 +3362,9 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_fixed_length) {
   // sparse_column<dense_fixed_length_block>
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, false};
   };
 
@@ -4334,9 +4334,9 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_sparse_mask) {
   // sparse_column<sparse_mask_block>
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -5136,9 +5136,9 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_mask) {
   // dense_fixed_length_column<dense_mask_block>
 
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -5753,9 +5753,9 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_fixed_length) {
   // dense_fixed_length_column<dense_fixed_length_block>
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -6545,9 +6545,9 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_variable_length) {
   // sparse_column<dense_block>
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -7456,9 +7456,9 @@ TEST_P(index_column_test_case,
 }
 
 TEST_P(index_column_test_case, read_write_doc_attributes_big) {
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -8020,9 +8020,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 }
 
 TEST_P(index_column_test_case, read_write_doc_attributes) {
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 
@@ -8268,9 +8268,9 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 }
 
 TEST_P(index_column_test_case, read_empty_doc_attributes) {
-  irs::IndexWriter::InitOptions options;
+  irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
-    return irs::column_info{irs::type<irs::compression::lz4>::get(),
+    return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
   };
 

@@ -603,7 +603,7 @@ class writer final : public irs::columnstore_writer {
 
   void prepare(directory& dir, const SegmentMeta& meta) override;
   // Current implmentation doesn't support column headers
-  column_t push_column(const column_info& info,
+  column_t push_column(const ColumnInfo& info,
                        column_finalizer_f /*writer*/) override;
   bool commit(const flush_state& state) override;
   void rollback() noexcept override;
@@ -851,7 +851,7 @@ void writer::prepare(directory& dir, const SegmentMeta& meta) {
   filename_ = std::move(filename);
 }
 
-columnstore_writer::column_t writer::push_column(const column_info& info,
+columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
                                                  column_finalizer_f finalizer) {
   encryption::stream* cipher;
   irs::type_info compression;

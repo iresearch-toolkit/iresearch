@@ -343,7 +343,7 @@ struct columnstore_writer {
   virtual ~columnstore_writer() = default;
 
   virtual void prepare(directory& dir, const SegmentMeta& meta) = 0;
-  virtual column_t push_column(const column_info& info,
+  virtual column_t push_column(const ColumnInfo& info,
                                column_finalizer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
   virtual bool commit(

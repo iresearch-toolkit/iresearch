@@ -188,13 +188,13 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
   irs::IndexWriter::ptr open_writer(
     irs::directory& dir, irs::OpenMode mode = irs::OM_CREATE,
-    const irs::IndexWriter::InitOptions& options = {}) const {
+    const irs::IndexWriterOptions& options = {}) const {
     return irs::IndexWriter::make(dir, codec_, mode, options);
   }
 
   irs::IndexWriter::ptr open_writer(
     irs::OpenMode mode = irs::OM_CREATE,
-    const irs::IndexWriter::InitOptions& options = {}) const {
+    const irs::IndexWriterOptions& options = {}) const {
     return irs::IndexWriter::make(*dir_, codec_, mode, options);
   }
 
@@ -241,7 +241,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
 
   void add_segment(tests::doc_generator_base& gen,
                    irs::OpenMode mode = irs::OM_CREATE,
-                   const irs::IndexWriter::InitOptions& opts = {});
+                   const irs::IndexWriterOptions& opts = {});
 
  private:
   index_t index_;

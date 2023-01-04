@@ -917,7 +917,7 @@ class Columnstore {
   //  empty value is case if operation was interrupted.
   template<typename Writer>
   std::optional<field_id> insert(
-    DocIteratorContainer& itrs, const column_info& info,
+    DocIteratorContainer& itrs, const ColumnInfo& info,
     columnstore_writer::column_finalizer_f&& finalizer, Writer&& writer);
 
   // Inserts live values from the specified 'iterator' into a column.
@@ -926,7 +926,7 @@ class Columnstore {
   //  empty value is case if operation was interrupted.
   template<typename Writer>
   std::optional<field_id> insert(
-    SortingCompoundDocIterator& it, const column_info& info,
+    SortingCompoundDocIterator& it, const ColumnInfo& info,
     columnstore_writer::column_finalizer_f&& finalizer, Writer&& writer);
 
   // Returns `true` if anything was actually flushed
@@ -941,7 +941,7 @@ class Columnstore {
 
 template<typename Writer>
 std::optional<field_id> Columnstore::insert(
-  DocIteratorContainer& itrs, const column_info& info,
+  DocIteratorContainer& itrs, const ColumnInfo& info,
   columnstore_writer::column_finalizer_f&& finalizer, Writer&& writer) {
   auto next_iterator = [end = std::end(itrs)](auto begin) {
     return std::find_if(begin, end, [](auto& it) { return it.next(); });
@@ -989,7 +989,7 @@ std::optional<field_id> Columnstore::insert(
 
 template<typename Writer>
 std::optional<field_id> Columnstore::insert(
-  SortingCompoundDocIterator& it, const column_info& info,
+  SortingCompoundDocIterator& it, const ColumnInfo& info,
   columnstore_writer::column_finalizer_f&& finalizer, Writer&& writer) {
   const payload* payload = nullptr;
 
@@ -1092,7 +1092,7 @@ class MinHeapContext {
 
 template<typename Iterator>
 bool write_columns(Columnstore& cs, Iterator& columns,
-                   const column_info_provider_t& column_info,
+                   const ColumnInfoProvider& column_info,
                    CompoundColumnIterator& column_itr,
                    const MergeWriter::FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
@@ -1150,7 +1150,7 @@ bool write_columns(Columnstore& cs, Iterator& columns,
 template<typename Iterator>
 bool write_fields(Columnstore& cs, Iterator& feature_itr,
                   const flush_state& flush_state, const SegmentMeta& meta,
-                  const feature_info_provider_t& column_info,
+                  const FeatureInfoProvider& column_info,
                   CompoundFiledIterator& field_itr,
                   const MergeWriter::FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();

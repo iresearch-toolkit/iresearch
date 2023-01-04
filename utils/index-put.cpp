@@ -364,11 +364,11 @@ int put(const std::string& path, const std::string& dir_type,
                        consolidation_threads);  // -1 for commiter thread
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = segment_mem_max;
   opts.features = [](irs::type_info::type_id id) {
-    const irs::column_info info{
+    const irs::ColumnInfo info{
       irs::type<irs::compression::none>::get(), {}, false};
 
     if (irs::type<irs::Norm>::id() == id) {
@@ -379,7 +379,7 @@ int put(const std::string& path, const std::string& dir_type,
       return std::make_pair(info, &irs::Norm2::MakeWriter);
     }
 
-    return std::make_pair(info, irs::feature_writer_factory_t{});
+    return std::make_pair(info, irs::FeatureWriterFactory{});
   };
 
   auto writer = irs::IndexWriter::make(*dir, codec, irs::OM_CREATE, opts);

@@ -75,11 +75,11 @@ using namespace tests;
 class bm25_test_case : public index_test_base {
  protected:
   void test_query_norms(irs::type_info::type_id norm,
-                        irs::feature_writer_factory_t handler);
+                        irs::FeatureWriterFactory handler);
 };
 
 void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
-                                      irs::feature_writer_factory_t handler) {
+                                      irs::FeatureWriterFactory handler) {
   {
     const std::vector<irs::type_info::type_id> extra_features = {norm};
 
@@ -100,15 +100,15 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
         }
       });
 
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.features = [&](irs::type_info::type_id id) {
-      irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
+      irs::ColumnInfo info{irs::type<irs::compression::lz4>::get(), {}, false};
 
       if (id == norm) {
         return std::make_pair(info, handler);
       }
 
-      return std::make_pair(info, irs::feature_writer_factory_t{});
+      return std::make_pair(info, irs::FeatureWriterFactory{});
     };
 
     add_segment(gen, irs::OM_CREATE, opts);

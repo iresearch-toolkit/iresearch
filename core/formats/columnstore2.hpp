@@ -192,7 +192,7 @@ class writer final : public columnstore_writer {
   writer(Version version, bool consolidation);
 
   void prepare(directory& dir, const SegmentMeta& meta) override;
-  column_t push_column(const column_info& info,
+  column_t push_column(const ColumnInfo& info,
                        column_finalizer_f finalizer) override;
   bool commit(const flush_state& state) override;
   void rollback() noexcept override;

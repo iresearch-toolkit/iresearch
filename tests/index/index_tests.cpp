@@ -235,7 +235,7 @@ void index_test_base::add_segments(irs::IndexWriter& writer,
 
 void index_test_base::add_segment(
   tests::doc_generator_base& gen, irs::OpenMode mode /*= irs::OM_CREATE*/,
-  const irs::IndexWriter::InitOptions& opts /*= {}*/) {
+  const irs::IndexWriterOptions& opts /*= {}*/) {
   auto writer = open_writer(mode, opts);
   add_segment(*writer, gen);
 }
@@ -244,16 +244,16 @@ void index_test_base::add_segment(
 
 class index_test_case : public tests::index_test_base {
  public:
-  static irs::feature_info_provider_t features_with_norms() {
+  static irs::FeatureInfoProvider features_with_norms() {
     return [](irs::type_info::type_id id) {
-      const irs::column_info info{
+      const irs::ColumnInfo info{
         irs::type<irs::compression::lz4>::get(), {}, false};
 
       if (irs::type<irs::Norm>::id() == id) {
         return std::make_pair(info, &irs::Norm::MakeWriter);
       }
 
-      return std::make_pair(info, irs::feature_writer_factory_t{});
+      return std::make_pair(info, irs::FeatureWriterFactory{});
     };
   }
 
@@ -660,7 +660,7 @@ class index_test_case : public tests::index_test_base {
                 &dir.attributes().allocator());
 
       // open writer
-      irs::IndexWriter::InitOptions options;
+      irs::IndexWriterOptions options;
       auto writer =
         irs::IndexWriter::make(dir, codec(), irs::OM_CREATE, options);
       ASSERT_NE(nullptr, writer);
@@ -716,14 +716,14 @@ class index_test_case : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      irs::IndexWriter::InitOptions options0;
+      irs::IndexWriterOptions options0;
       options0.lock_repository = false;
       auto writer0 =
         irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options0);
       ASSERT_NE(nullptr, writer0);
 
       // can open another writer at the same time on the same directory
-      irs::IndexWriter::InitOptions options1;
+      irs::IndexWriterOptions options1;
       options1.lock_repository = false;
       auto writer1 =
         irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options1);
@@ -735,7 +735,7 @@ class index_test_case : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      irs::IndexWriter::InitOptions options0;
+      irs::IndexWriterOptions options0;
       options0.lock_repository = false;
       auto writer0 =
         irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options0);
@@ -753,7 +753,7 @@ class index_test_case : public tests::index_test_base {
 
     {
       // open writer with NOLOCK hint
-      irs::IndexWriter::InitOptions options0;
+      irs::IndexWriterOptions options0;
       options0.lock_repository = false;
       auto writer0 =
         irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options0);
@@ -3477,7 +3477,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback inserts split over multiple segment_writers
   {
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -3650,7 +3650,7 @@ TEST_P(index_test_case, document_context) {
   {
     auto query_doc1 = MakeByTerm("name", "A");
     auto query_doc2 = MakeByTerm("name", "B");
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -3838,7 +3838,7 @@ TEST_P(index_test_case, document_context) {
   {
     auto query_doc1 = MakeByTerm("name", "A");
     auto query_doc2 = MakeByTerm("name", "B");
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -3922,7 +3922,7 @@ TEST_P(index_test_case, document_context) {
 
   // segment flush due to memory bytes limit (same flush_context)
   {
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     options.segment_memory_max = 1;  // arbitaty size < 1 document (first doc
                                      // will always aquire a new segment_writer)
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3997,7 +3997,7 @@ TEST_P(index_test_case, document_context) {
   // segment flush due to memory bytes limit (split over different
   // flush_contexts)
   {
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     options.segment_memory_max = 1;  // arbitaty size < 1 document (first doc
                                      // will always aquire a new segment_writer)
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -4099,7 +4099,7 @@ TEST_P(index_test_case, document_context) {
 
   // segment flush due to document count limit (same flush_context)
   {
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -4173,7 +4173,7 @@ TEST_P(index_test_case, document_context) {
   // segment flush due to document count limit (split over different
   // flush_contexts)
   {
-    irs::IndexWriter::InitOptions options;
+    irs::IndexWriterOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -5590,7 +5590,7 @@ TEST_P(index_test_case, doc_update) {
     auto doc4 = gen.next();
     auto query_doc1 = MakeByTerm("name", "A");
 
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
 
     auto writer = open_writer(irs::OM_CREATE, opts);
     auto test_field0 = std::make_shared<test_field>();
@@ -6487,7 +6487,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.features = features_with_norms();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
@@ -13770,7 +13770,7 @@ TEST_P(index_test_case, segment_options) {
                                                  doc1->stored.end()));
     }
 
-    irs::IndexWriter::SegmentOptions options;
+    irs::SegmentOptions options;
     options.segment_count_max = 1;
     writer->Options(options);
 
@@ -13846,7 +13846,7 @@ TEST_P(index_test_case, segment_options) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    irs::IndexWriter::SegmentOptions options;
+    irs::SegmentOptions options;
     options.segment_docs_max = 1;
     writer->Options(options);
 
@@ -13920,7 +13920,7 @@ TEST_P(index_test_case, segment_options) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    irs::IndexWriter::SegmentOptions options;
+    irs::SegmentOptions options;
     options.segment_memory_max = 1;
     writer->Options(options);
 
@@ -13994,7 +13994,7 @@ TEST_P(index_test_case, segment_options) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    irs::IndexWriter::SegmentOptions options;
+    irs::SegmentOptions options;
     options.segment_docs_max = 1;
     writer->Options(options);
 
@@ -14352,7 +14352,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   } empty;
 
   {
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.features = features_with_norms();
 
     auto writer = open_writer(irs::OM_CREATE, opts);
@@ -14531,11 +14531,11 @@ class index_test_case_14 : public index_test_case {
     size_t num_finish_calls{};
   };
 
-  class feature_writer final : public irs::feature_writer {
+  class FeatureWriter final : public irs::FeatureWriter {
    public:
     static auto make(stats& call_stats, irs::doc_id_t filter_doc,
                      std::span<const irs::bytes_view> headers)
-      -> irs::feature_writer::ptr {
+      -> irs::FeatureWriter::ptr {
       ++call_stats.num_factory_calls;
 
       irs::doc_id_t min_doc{irs::doc_limits::eof()};
@@ -14544,12 +14544,12 @@ class index_test_case_14 : public index_test_case {
         min_doc = std::min(irs::read<irs::doc_id_t>(p), min_doc);
       }
 
-      return irs::memory::make_managed<feature_writer>(call_stats, filter_doc,
-                                                       min_doc);
+      return irs::memory::make_managed<FeatureWriter>(call_stats, filter_doc,
+                                                      min_doc);
     }
 
-    feature_writer(stats& call_stats, irs::doc_id_t filter_doc,
-                   irs::doc_id_t min_doc) noexcept
+    FeatureWriter(stats& call_stats, irs::doc_id_t filter_doc,
+                  irs::doc_id_t min_doc) noexcept
       : call_stats_{&call_stats}, filter_doc_{filter_doc}, min_doc_{min_doc} {}
 
     void write(
@@ -14609,26 +14609,26 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
   test_field field;
 
   {
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.features = [](irs::type_info::type_id id) {
-      irs::feature_writer_factory_t handler{};
+      irs::FeatureWriterFactory handler{};
 
       if (irs::type<feature1>::id() == id) {
         handler = [](std::span<const irs::bytes_view> headers)
-          -> irs::feature_writer::ptr {
-          return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2,
-                                      headers);
+          -> irs::FeatureWriter::ptr {
+          return FeatureWriter::make(sNumCalls[irs::type<feature1>::id()], 2,
+                                     headers);
         };
       } else if (irs::type<feature3>::id() == id) {
         handler = [](std::span<const irs::bytes_view> headers)
-          -> irs::feature_writer::ptr {
-          return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1,
-                                      headers);
+          -> irs::FeatureWriter::ptr {
+          return FeatureWriter::make(sNumCalls[irs::type<feature3>::id()], 1,
+                                     headers);
         };
       }
 
       return std::make_pair(
-        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
         std::move(handler));
     };
 
@@ -14860,26 +14860,28 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
 
   test_field field;
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.features = [](irs::type_info::type_id id) {
-    irs::feature_writer_factory_t handler{};
+    irs::FeatureWriterFactory handler{};
 
     if (irs::type<feature1>::id() == id) {
-      handler = [](std::span<const irs::bytes_view> headers)
-        -> irs::feature_writer::ptr {
-        return feature_writer::make(sNumCalls[irs::type<feature1>::id()], 2,
-                                    headers);
+      handler =
+        [](
+          std::span<const irs::bytes_view> headers) -> irs::FeatureWriter::ptr {
+        return FeatureWriter::make(sNumCalls[irs::type<feature1>::id()], 2,
+                                   headers);
       };
     } else if (irs::type<feature3>::id() == id) {
-      handler = [](std::span<const irs::bytes_view> headers)
-        -> irs::feature_writer::ptr {
-        return feature_writer::make(sNumCalls[irs::type<feature3>::id()], 1,
-                                    headers);
+      handler =
+        [](
+          std::span<const irs::bytes_view> headers) -> irs::FeatureWriter::ptr {
+        return FeatureWriter::make(sNumCalls[irs::type<feature3>::id()], 1,
+                                   headers);
       };
     }
 
     return std::make_pair(
-      irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+      irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
       std::move(handler));
   };
 
@@ -15430,7 +15432,7 @@ TEST_P(index_test_case_10, commit_payload) {
   auto& directory = dir();
   auto* doc0 = gen.next();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15714,7 +15716,7 @@ TEST_P(index_test_case_11, consolidate_old_format) {
     }
   };
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   // 1st segment
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -15747,7 +15749,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   tests::document const* doc1 = gen.next();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload = static_cast<irs::bstring>(
     irs::ViewCast<irs::byte_type>(std::string_view("init")));
@@ -15793,7 +15795,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
 
   auto& directory = dir();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_calls_count{0};
   writer_options.meta_payload_provider = [&payload_calls_count](uint64_t,
                                                                 irs::bstring&) {
@@ -15824,7 +15826,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
 
   auto& directory = dir();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_calls_count{0};
   writer_options.meta_payload_provider = [&payload_calls_count](uint64_t,
                                                                 irs::bstring&) {
@@ -15851,7 +15853,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
 
   auto& directory = dir();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15892,7 +15894,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
 
   auto& directory = dir();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15929,7 +15931,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
 
   auto& directory = dir();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15968,7 +15970,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
 
   auto& directory = dir();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -16004,7 +16006,7 @@ TEST_P(index_test_case_11, commit_payload) {
   auto& directory = dir();
   auto* doc0 = gen.next();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -16271,7 +16273,7 @@ TEST_P(index_test_case_11, testExternalGeneration) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->documents();
@@ -16316,7 +16318,7 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->documents();
@@ -16361,7 +16363,7 @@ TEST_P(index_test_case_11, testExternalGenerationRemoveBeforeInsert) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  irs::IndexWriter::InitOptions writer_options;
+  irs::IndexWriterOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->documents();

@@ -87,14 +87,14 @@ irs::columnstore_writer::column_finalizer_f column_finalizer(
   };
 }
 
-irs::column_info format_test_case::lz4_column_info() const noexcept {
+irs::ColumnInfo format_test_case::lz4_column_info() const noexcept {
   return {.compression = irs::type<irs::compression::lz4>::get(),
           .options = irs::compression::options{},
           .encryption = bool(dir().attributes().encryption()),
           .track_prev_doc = false};
 }
 
-irs::column_info format_test_case::none_column_info() const noexcept {
+irs::ColumnInfo format_test_case::none_column_info() const noexcept {
   return {.compression = irs::type<irs::compression::lz4>::get(),
           .options = irs::compression::options{},
           .encryption = bool(dir().attributes().encryption()),
@@ -3524,7 +3524,7 @@ TEST_P(format_test_case_with_encryption,
     auto writer = codec()->get_columnstore_writer(false);
     irs::SegmentMeta meta1;
 
-    const irs::column_info info{
+    const irs::ColumnInfo info{
       irs::type<irs::compression::none>::get(), {}, true};
 
     // write segment _1

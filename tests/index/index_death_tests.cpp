@@ -236,14 +236,14 @@ class failing_directory : public tests::directory_mock {
   mutable std::set<fail_t, fail_less> failures_;
 };  // failing_directory
 
-irs::feature_info_provider_t default_feature_info() {
+irs::FeatureInfoProvider default_feature_info() {
   return [](irs::type_info::type_id) {
     return std::make_pair(
-      irs::column_info{.compression = irs::type<irs::compression::none>::get(),
+      irs::ColumnInfo{.compression = irs::type<irs::compression::none>::get(),
                        .options = {},
                        .encryption = true,
                        .track_prev_doc = false},
-      irs::feature_writer_factory_t{});
+      irs::FeatureWriterFactory{});
   };
 }
 
@@ -2514,7 +2514,7 @@ TEST(index_death_test_formats_10,
                          "_8.0.sm");  // segment meta
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
@@ -2567,7 +2567,7 @@ TEST(index_death_test_formats_10,
                          "_8.0.sm");  // segment meta
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
@@ -2650,7 +2650,7 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
@@ -2729,7 +2729,7 @@ TEST(index_death_test_formats_14,
     failing_directory dir(impl);
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
@@ -2827,7 +2827,7 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
@@ -2876,7 +2876,7 @@ TEST(index_death_test_formats_14,
     failing_directory dir(impl);
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
@@ -2940,7 +2940,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     failing_directory dir(impl);
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
@@ -3089,7 +3089,7 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     failing_directory dir(impl);
 
     // write index
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
 
     auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);

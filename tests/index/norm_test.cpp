@@ -286,17 +286,17 @@ TEST(Norm2HeaderTest, ResetByPayload) {
 
 class Norm2TestCase : public tests::index_test_base {
  protected:
-  irs::feature_info_provider_t Features() {
+  irs::FeatureInfoProvider Features() {
     return [](irs::type_info::type_id id) {
       if (irs::type<irs::Norm2>::id() == id) {
         return std::make_pair(
-          irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+          irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
           &irs::Norm2::MakeWriter);
       }
 
       return std::make_pair(
-        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-        irs::feature_writer_factory_t{});
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        irs::FeatureWriterFactory{});
     };
   }
 
@@ -427,7 +427,7 @@ TEST_P(Norm2TestCase, CheckNorms) {
   auto* doc2 = gen.next();  // name == 'C'
   auto* doc3 = gen.next();  // name == 'D'
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.features = Features();
 
   // Create actual index
@@ -539,7 +539,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.features = Features();
 
   // Create actual index
@@ -799,7 +799,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.features = Features();
 
   // Create actual index

@@ -78,7 +78,7 @@ class columnstore2_test_case
     return options;
   }
 
-  irs::column_info column_info() const noexcept {
+  irs::ColumnInfo column_info() const noexcept {
     return {.compression = irs::type<irs::compression::none>::get(),
             .options = {},
             .encryption = has_encryption(),

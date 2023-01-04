@@ -107,16 +107,16 @@ TEST(ngram_similarity_base_test, equal) {
 
 class ngram_similarity_filter_test_case : public tests::FilterTestCaseBase {
  protected:
-  static irs::feature_info_provider_t features_with_norms() {
+  static irs::FeatureInfoProvider features_with_norms() {
     return [](irs::type_info::type_id id) {
-      const irs::column_info info{
+      const irs::ColumnInfo info{
         irs::type<irs::compression::lz4>::get(), {}, false};
 
       if (irs::type<irs::Norm>::id() == id) {
         return std::make_pair(info, &irs::Norm::MakeWriter);
       }
 
-      return std::make_pair(info, irs::feature_writer_factory_t{});
+      return std::make_pair(info, irs::FeatureWriterFactory{});
     };
   }
 };
@@ -1061,7 +1061,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),
@@ -1084,7 +1084,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
   {
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),
@@ -1107,7 +1107,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   {
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),
@@ -1130,7 +1130,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   {
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),

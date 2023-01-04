@@ -170,7 +170,7 @@ struct CustomFeature {
     size_t count{0};
   };
 
-  struct writer : irs::feature_writer {
+  struct writer : irs::FeatureWriter {
     explicit writer(std::span<const irs::bytes_view> headers) noexcept
       : hdr{{}} {
       if (!headers.empty()) {
@@ -211,7 +211,7 @@ struct CustomFeature {
     std::optional<size_t> expected_count;
   };
 
-  static irs::feature_writer::ptr make_writer(
+  static irs::FeatureWriter::ptr make_writer(
     std::span<const irs::bytes_view> payload) {
     return irs::memory::make_managed<writer>(payload);
   }
@@ -231,31 +231,31 @@ class SortedIndexTestCase : public tests::index_test_base {
                                               codec()->type().name());
   }
 
-  irs::feature_info_provider_t features() {
+  irs::FeatureInfoProvider features() {
     return [this](irs::type_info::type_id id) {
       if (id == irs::type<irs::Norm>::id()) {
         return std::make_pair(
-          irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
+          irs::ColumnInfo{irs::type<irs::compression::lz4>::get(), {}, false},
           &irs::Norm::MakeWriter);
       }
 
       if (supports_pluggable_features()) {
         if (irs::type<irs::Norm2>::id() == id) {
           return std::make_pair(
-            irs::column_info{
+            irs::ColumnInfo{
               irs::type<irs::compression::none>::get(), {}, false},
             &irs::Norm2::MakeWriter);
         } else if (irs::type<CustomFeature>::id() == id) {
           return std::make_pair(
-            irs::column_info{
+            irs::ColumnInfo{
               irs::type<irs::compression::none>::get(), {}, false},
             &CustomFeature::make_writer);
         }
       }
 
       return std::make_pair(
-        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-        irs::feature_writer_factory_t{});
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        irs::FeatureWriterFactory{});
     };
   }
 
@@ -381,7 +381,7 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
   StringComparer compare;
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
@@ -536,7 +536,7 @@ TEST_P(SortedIndexTestCase, reader_components) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
 
   auto query_doc1 = MakeByTerm("name", "A");
@@ -617,7 +617,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   StringComparer compare;
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
@@ -981,7 +981,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
     });
 
   LongComparer comparer;
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -1128,7 +1128,7 @@ TEST_P(SortedIndexTestCase, europarl) {
 
   LongComparer comparer;
 
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -1153,7 +1153,7 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
 
   // Open writer
   StringComparer comparer;
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -1253,7 +1253,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   StringComparer comparer;
 
   // open writer
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -1456,7 +1456,7 @@ TEST_P(SortedIndexTestCase,
   StringComparer comparer;
 
   // open writer
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
   auto writer = open_writer(irs::OM_CREATE, opts);
@@ -1728,7 +1728,7 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
     StringComparer comparer;
 
     // open writer
-    irs::IndexWriter::InitOptions opts;
+    irs::IndexWriterOptions opts;
     opts.comparator = &comparer;
     opts.features = features();
     auto writer = open_writer(irs::OM_CREATE, opts);
@@ -1799,7 +1799,7 @@ TEST_P(SortedIndexTestCase,
   auto* doc3 = gen.next();  // name == 'D'
 
   StringComparer comparer;
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -1998,7 +1998,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   auto* doc6 = gen.next();  // name == 'G'
 
   StringComparer comparer;
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -2232,7 +2232,7 @@ TEST_P(SortedIndexTestCase,
   auto* doc6 = gen.next();  // name == 'G'
 
   StringComparer compare;
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
@@ -2470,7 +2470,7 @@ TEST_P(SortedIndexTestCase,
   }
 
   StringComparer compare;
-  irs::IndexWriter::InitOptions opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
@@ -2740,7 +2740,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
         in_store.fill(false);
         // open writer
         StringComparer compare;
-        irs::IndexWriter::InitOptions opts;
+        irs::IndexWriterOptions opts;
         opts.comparator = &compare;
         opts.features = features();
         auto writer = open_writer(irs::OM_CREATE, opts);

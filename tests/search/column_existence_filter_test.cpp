@@ -1433,8 +1433,8 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
   auto max_doc_id = with_fields[std::size(with_fields) - 1];
   {
     pattern_doc_generator gen("all_docs", target, max_doc_id, with_fields);
-    irs::IndexWriter::InitOptions opts;
-    opts.column_info = [target](std::string_view name) -> irs::column_info {
+    irs::IndexWriterOptions opts;
+    opts.column_info = [target](std::string_view name) -> irs::ColumnInfo {
       // std::string to avoid ambigous comparison operator
       if (std::string(target) == name) {
         return {.compression = irs::type<irs::compression::lz4>::id()(),

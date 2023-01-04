@@ -48,22 +48,22 @@ constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
 // do-nothing progress reporter, used as fallback if no other progress
 // reporter is used
-const IndexWriter::ProgressReportCallback kNoProgress =
+const ProgressReportCallback kNoProgress =
   [](std::string_view /*phase*/, size_t /*current*/, size_t /*total*/) {
     // intentionally do nothing
   };
 
-const column_info_provider_t kDefaultColumnInfo = [](std::string_view) {
+const ColumnInfoProvider kDefaultColumnInfo = [](std::string_view) {
   // no compression, no encryption
-  return column_info{irs::type<compression::none>::get(), {}, false};
+  return ColumnInfo{irs::type<compression::none>::get(), {}, false};
 };
 
-const feature_info_provider_t kDefaultFeatureInfo =
+const FeatureInfoProvider kDefaultFeatureInfo =
   [](irs::type_info::type_id) {
     // no compression, no encryption
     return std::make_pair(
-      column_info{irs::type<compression::none>::get(), {}, false},
-      feature_writer_factory_t{});
+      ColumnInfo{irs::type<compression::none>::get(), {}, false},
+      FeatureWriterFactory{});
   };
 
 struct FlushSegmentContext {
@@ -1182,8 +1182,8 @@ void IndexWriter::FlushContext::reset() noexcept {
 
 IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
-  const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const Comparer* comparator)
+  const ColumnInfoProvider& column_info,
+  const FeatureInfoProvider& feature_info, const Comparer* comparator)
   : active_count_(0),
     buffered_docs_(0),
     dirty_(false),
@@ -1228,8 +1228,8 @@ uint64_t IndexWriter::SegmentContext::Flush() {
 
 IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
-  const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const Comparer* comparator) {
+  const ColumnInfoProvider& column_info,
+  const FeatureInfoProvider& feature_info, const Comparer* comparator) {
   return std::make_unique<SegmentContext>(
     dir, std::move(meta_generator), column_info, feature_info, comparator);
 }
@@ -1331,8 +1331,8 @@ IndexWriter::IndexWriter(
   ConstructToken, index_lock::ptr&& lock,
   index_file_refs::ref_t&& lock_file_ref, directory& dir, format::ptr codec,
   size_t segment_pool_size, const SegmentOptions& segment_limits,
-  const Comparer* comparator, const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info,
+  const Comparer* comparator, const ColumnInfoProvider& column_info,
+  const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
   std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
   : feature_info_{feature_info},
@@ -1436,7 +1436,7 @@ void IndexWriter::Clear(uint64_t tick) {
 
 IndexWriter::ptr IndexWriter::make(
   directory& dir, format::ptr codec, OpenMode mode,
-  const InitOptions& opts /*= init_options()*/) {
+  const IndexWriterOptions& opts /*= init_options()*/) {
   index_lock::ptr lock;
   index_file_refs::ref_t lock_ref;
 
@@ -1665,7 +1665,7 @@ ConsolidationResult IndexWriter::Consolidate(
   IndexSegment consolidation_segment;
   consolidation_segment.meta.codec = codec;  // should use new codec
   consolidation_segment.meta.version = 0;    // reset version for new segment
-  // increment active meta, not fn arg
+  // increment active meta
   consolidation_segment.meta.name = file_name(NextSegmentId());
 
   RefTrackingDirectory dir{dir_};  // track references for new segment

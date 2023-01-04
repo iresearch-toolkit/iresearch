@@ -52,8 +52,8 @@ class MergeWriter : public util::noncopyable {
   MergeWriter() noexcept;
 
   explicit MergeWriter(directory& dir,
-                       const column_info_provider_t& column_info,
-                       const feature_info_provider_t& feature_info,
+                       const ColumnInfoProvider& column_info,
+                       const FeatureInfoProvider& feature_info,
                        const Comparer* comparator = nullptr) noexcept
     : dir_(dir),
       column_info_(&column_info),
@@ -91,8 +91,8 @@ class MergeWriter : public util::noncopyable {
 
   directory& dir_;
   std::vector<ReaderCtx> readers_;
-  const column_info_provider_t* column_info_;
-  const feature_info_provider_t* feature_info_;
+  const ColumnInfoProvider* column_info_;
+  const FeatureInfoProvider* feature_info_;
   const Comparer* comparator_;
 };
 

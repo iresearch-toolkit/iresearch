@@ -39,7 +39,7 @@ using column_ptr = std::unique_ptr<column_reader>;
 using column_index = std::vector<sparse_bitmap_writer::block>;
 
 constexpr SparseBitmapVersion ToSparseBitmapVersion(
-  const column_info& info) noexcept {
+  const ColumnInfo& info) noexcept {
   static_assert(SparseBitmapVersion::kPrevDoc == SparseBitmapVersion{1});
 
   return SparseBitmapVersion{info.track_prev_doc};
@@ -1497,7 +1497,7 @@ void writer::prepare(directory& dir, const SegmentMeta& meta) {
   data_cipher_ = std::move(data_cipher);
 }
 
-columnstore_writer::column_t writer::push_column(const column_info& info,
+columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
                                                  column_finalizer_f finalizer) {
   // FIXME
   // Since current implementation doesn't support custom compression,

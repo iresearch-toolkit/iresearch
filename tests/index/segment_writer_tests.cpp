@@ -36,9 +36,9 @@ namespace {
 
 class segment_writer_tests : public test_base {
  protected:
-  static irs::column_info_provider_t default_column_info() {
+  static irs::ColumnInfoProvider default_column_info() {
     return [](const std::string_view&) {
-      return irs::column_info{
+      return irs::ColumnInfo{
         .compression = irs::type<irs::compression::lz4>::get(),
         .options = {},
         .encryption = true,
@@ -46,14 +46,14 @@ class segment_writer_tests : public test_base {
     };
   }
 
-  static irs::feature_info_provider_t default_feature_info() {
+  static irs::FeatureInfoProvider default_feature_info() {
     return [](irs::type_info::type_id) {
       return std::make_pair(
-        irs::column_info{.compression = irs::type<irs::compression::lz4>::get(),
+        irs::ColumnInfo{.compression = irs::type<irs::compression::lz4>::get(),
                          .options = {},
                          .encryption = true,
                          .track_prev_doc = false},
-        irs::feature_writer_factory_t{});
+        irs::FeatureWriterFactory{});
     };
   }
 
@@ -223,7 +223,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
   } field;
 
   decltype(default_column_info()) column_info = [](const std::string_view&) {
-    return irs::column_info{
+    return irs::ColumnInfo{
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(irs::compression::options::Hint::SPEED), true};
   };
