@@ -38,6 +38,8 @@ class format;
 class IndexWriter;
 
 struct SegmentInfo {
+  bool operator==(const SegmentInfo&) const = default;
+
   std::string name;            // FIXME(gnusi): move to SegmentMeta
   uint64_t docs_count{};       // Total number of documents in a segment
   uint64_t live_docs_count{};  // Total number of live documents in a segment
@@ -49,6 +51,8 @@ static_assert(std::is_nothrow_move_constructible_v<SegmentInfo>);
 static_assert(std::is_nothrow_move_assignable_v<SegmentInfo>);
 
 struct SegmentMeta : SegmentInfo {
+  bool operator==(const SegmentMeta&) const = default;
+
   absl::flat_hash_set<std::string> files;
   std::shared_ptr<const format> codec;
   field_id sort{field_limits::invalid()};
@@ -63,6 +67,8 @@ static_assert(std::is_nothrow_move_constructible_v<SegmentMeta>);
 static_assert(std::is_nothrow_move_assignable_v<SegmentMeta>);
 
 struct IndexSegment {
+  bool operator==(const IndexSegment&) const = default;
+
   std::string filename;
   SegmentMeta meta;
 };
@@ -71,6 +77,8 @@ static_assert(std::is_nothrow_move_constructible_v<IndexSegment>);
 static_assert(std::is_nothrow_move_assignable_v<IndexSegment>);
 
 struct IndexMeta {
+  bool operator==(const IndexMeta&) const = default;
+
   uint64_t gen{index_gen_limits::invalid()};
   uint64_t last_gen{index_gen_limits::invalid()};
   uint64_t seg_counter{0};
