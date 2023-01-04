@@ -226,7 +226,6 @@ struct sub_reader final : irs::SubReader {
   const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  uint64_t docs_count() const override { return info.docs_count; }
   irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
@@ -236,11 +235,6 @@ struct sub_reader final : irs::SubReader {
   irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  uint64_t live_docs_count() const override { return 0; }
-  const irs::SubReader& operator[](size_t) const override {
-    throw std::out_of_range("index out of range");
-  }
-  size_t size() const override { return 0; }
   const irs::column_reader* sort() const override { return nullptr; }
 
   irs::SegmentInfo info;

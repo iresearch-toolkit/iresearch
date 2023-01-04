@@ -60,9 +60,6 @@ class SegmentReader final : public SubReader {
 
   column_iterator::ptr columns() const override;
 
-  using SubReader::docs_count;
-  uint64_t docs_count() const override;
-
   doc_iterator::ptr docs_iterator() const override;
 
   const document_mask* docs_mask() const override;
@@ -74,11 +71,7 @@ class SegmentReader final : public SubReader {
 
   field_iterator::ptr fields() const override;
 
-  uint64_t live_docs_count() const override;
-
   SegmentReader Reopen(const SegmentMeta& meta) const;
-
-  size_t size() const override;
 
   const irs::column_reader* sort() const override;
 

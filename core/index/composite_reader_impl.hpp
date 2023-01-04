@@ -38,11 +38,11 @@ class CompositeReaderImpl : public IndexReader {
     std::is_base_of_v<IndexReader, typename Readers::value_type>,
     typename Readers::value_type>;
 
-  CompositeReaderImpl(ReadersType&& readers, uint64_t docs_count,
-                      uint64_t docs_max) noexcept
+  CompositeReaderImpl(ReadersType&& readers, uint64_t live_docs_count,
+                      uint64_t docs_count) noexcept
     : readers_{std::move(readers)},
-      docs_count_{docs_count},
-      docs_max_{docs_max} {}
+      live_docs_count_{live_docs_count},
+      docs_count_{docs_count} {}
 
   // returns corresponding sub-reader
   const ReaderType& operator[](size_t i) const noexcept final {
@@ -53,18 +53,18 @@ class CompositeReaderImpl : public IndexReader {
   std::span<const ReaderType> GetReaders() const noexcept { return readers_; }
 
   // maximum number of documents
-  uint64_t docs_count() const noexcept final { return docs_max_; }
+  uint64_t docs_count() const noexcept final { return docs_count_; }
 
   // number of live documents
-  uint64_t live_docs_count() const noexcept final { return docs_count_; }
+  uint64_t live_docs_count() const noexcept final { return live_docs_count_; }
 
   // returns total number of opened writers
   size_t size() const noexcept final { return readers_.size(); }
 
  private:
   ReadersType readers_;
+  uint64_t live_docs_count_;
   uint64_t docs_count_;
-  uint64_t docs_max_;
-};  // composite_reader
+};
 
 }  // namespace irs

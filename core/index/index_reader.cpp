@@ -36,7 +36,6 @@ struct EmptySubReader final : SubReader {
     return nullptr;
   }
   const SegmentInfo& Meta() const override { return kEmptyInfo; }
-  uint64_t docs_count() const override { return 0; }
   const irs::document_mask* docs_mask() const override { return nullptr; }
   irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
@@ -47,11 +46,6 @@ struct EmptySubReader final : SubReader {
   irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  uint64_t live_docs_count() const override { return 0; }
-  const irs::SubReader& operator[](size_t) const override {
-    throw std::out_of_range{"index out of range"};
-  }
-  size_t size() const override { return 0; }
   const irs::column_reader* sort() const override { return nullptr; }
 };
 

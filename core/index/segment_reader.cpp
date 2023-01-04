@@ -58,12 +58,6 @@ SegmentReader SegmentReader::Reopen(const SegmentMeta& meta) const {
 
 field_iterator::ptr SegmentReader::fields() const { return impl_->fields(); }
 
-uint64_t SegmentReader::live_docs_count() const {
-  return impl_->live_docs_count();
-}
-
-size_t SegmentReader::size() const { return impl_->size(); }
-
 const irs::column_reader* SegmentReader::sort() const { return impl_->sort(); }
 
 const irs::column_reader* SegmentReader::column(std::string_view name) const {
@@ -82,8 +76,6 @@ doc_iterator::ptr SegmentReader::mask(doc_iterator::ptr&& it) const {
 const term_reader* SegmentReader::field(std::string_view name) const {
   return impl_->field(name);
 }
-
-uint64_t SegmentReader::docs_count() const { return impl_->docs_count(); }
 
 doc_iterator::ptr SegmentReader::docs_iterator() const {
   return impl_->docs_iterator();

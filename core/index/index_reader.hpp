@@ -124,6 +124,18 @@ class SubReader : public IndexReader {
 
   static const SubReader& empty() noexcept;
 
+  uint64_t live_docs_count() const final { return Meta().live_docs_count; }
+
+  uint64_t docs_count() const final { return Meta().docs_count; }
+
+  const SubReader& operator[](size_t i) const noexcept override {
+    IRS_ASSERT(i == 0);
+    IRS_IGNORE(i);
+    return *this;
+  }
+
+  size_t size() const noexcept final { return 1; }
+
   virtual const SegmentInfo& Meta() const = 0;
 
   // Live & deleted docs

@@ -2231,6 +2231,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     auto& meta = pending_segment.segment.meta;
 
     // FIXME(gnusi): reader options? warmup?
+    // FIXME(gnusi): move to consolidation
     auto pending_reader = SegmentReaderImpl::Open(dir, meta, {});
 
     if (!pending_reader) {

@@ -97,6 +97,68 @@ irs::filter::ptr MakeOr(
   return filter;
 }
 
+class SubReaderMock final : public irs::SubReader {
+ public:
+  explicit SubReaderMock(const irs::SegmentInfo meta) : meta_{meta} {}
+
+  const irs::SegmentInfo& Meta() const final { return meta_; }
+
+  const SubReaderMock& operator*() const noexcept { return *this; }
+
+  // Live & deleted docs
+
+  const irs::document_mask* docs_mask() const final { return nullptr; }
+
+  // Returns an iterator over live documents in current segment.
+  irs::doc_iterator::ptr docs_iterator() const final {
+    EXPECT_FALSE(true);
+    return nullptr;
+  }
+
+  irs::doc_iterator::ptr mask(irs::doc_iterator::ptr&& it) const final {
+    EXPECT_FALSE(true);
+    return std::move(it);
+  }
+
+  // Inverted index
+
+  irs::field_iterator::ptr fields() const final {
+    EXPECT_FALSE(true);
+    return nullptr;
+  }
+
+  // Returns corresponding term_reader by the specified field name.
+  const irs::term_reader* field(std::string_view) const final {
+    EXPECT_FALSE(true);
+    return nullptr;
+  }
+
+  // Columnstore
+
+  irs::column_iterator::ptr columns() const final {
+    EXPECT_FALSE(true);
+    return nullptr;
+  }
+
+  const irs::column_reader* column(irs::field_id) const final {
+    EXPECT_FALSE(true);
+    return nullptr;
+  }
+
+  const irs::column_reader* column(std::string_view) const final {
+    EXPECT_FALSE(true);
+    return nullptr;
+  }
+
+  const irs::column_reader* sort() const final {
+    EXPECT_FALSE(true);
+    return nullptr;
+  }
+
+ private:
+  irs::SegmentInfo meta_;
+};
+
 }  // namespace
 
 namespace tests {
@@ -7183,17 +7245,19 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     meta.name = "foo";
     meta.docs_count = 6;
     meta.live_docs_count = 5;
+    SubReaderMock reader{meta};
 
-    auto invalid_candidate_policy = [&meta](irs::Consolidation& candidates,
-                                            const irs::IndexReader& /*meta*/,
-                                            const irs::ConsolidatingSegments&) {
-      candidates.emplace_back(&meta);
+    auto invalid_candidate_policy = [&reader](
+                                      irs::Consolidation& candidates,
+                                      const irs::IndexReader& /*meta*/,
+                                      const irs::ConsolidatingSegments&) {
+      candidates.emplace_back(&reader);
     };
 
-    ASSERT_FALSE(
-      writer->Consolidate(invalid_candidate_policy));  // invalid candidate
-    ASSERT_TRUE(writer->Consolidate(
-      check_consolidating_segments));  // check registered consolidation
+    // invalid candidate
+    ASSERT_FALSE(writer->Consolidate(invalid_candidate_policy));
+    // check registered consolidation
+    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
     writer->Commit();
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
   }
