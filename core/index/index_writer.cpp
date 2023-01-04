@@ -1349,7 +1349,7 @@ IndexWriter::IndexWriter(
     write_lock_file_ref_{std::move(lock_file_ref)} {
   IRS_ASSERT(column_info);   // ensured by 'make'
   IRS_ASSERT(feature_info);  // ensured by 'make'
-  IRS_ASSERT(codec);
+  IRS_ASSERT(codec_);
   flush_context_.store(flush_context_pool_.data());
 
   // setup round-robin chain
