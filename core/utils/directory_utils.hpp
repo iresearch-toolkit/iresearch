@@ -36,6 +36,8 @@ struct SegmentMeta;
 
 namespace directory_utils {
 
+// FIXME(gnusi): remove reference functions
+
 // return a reference to a file or empty() if not found
 index_file_refs::ref_t reference(const directory& dir, std::string_view name,
                                  bool include_missing = false);

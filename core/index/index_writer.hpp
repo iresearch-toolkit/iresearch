@@ -530,7 +530,7 @@ class IndexWriter : private util::noncopyable {
   static constexpr size_t kNonUpdateRecord = std::numeric_limits<size_t>::max();
 
   struct ConsolidationContext : util::noncopyable {
-    std::shared_ptr<const DirectoryReader> consolidation_reader;
+    std::shared_ptr<const DirectoryReaderImpl> consolidation_reader;
     Consolidation candidates;
     MergeWriter merger;
   };
@@ -538,10 +538,11 @@ class IndexWriter : private util::noncopyable {
   static_assert(std::is_nothrow_move_constructible_v<ConsolidationContext>);
 
   struct ImportContext {
-    ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates,
-                  std::shared_ptr<const DirectoryReader>&& consolidation_reader,
-                  MergeWriter&& merger) noexcept
+    ImportContext(
+      IndexSegment&& segment, size_t generation, FileRefs&& refs,
+      Consolidation&& consolidation_candidates,
+      std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
+      MergeWriter&& merger) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
@@ -550,10 +551,10 @@ class IndexWriter : private util::noncopyable {
           .candidates = std::move(consolidation_candidates),
           .merger = std::move(merger)} {}
 
-    ImportContext(
-      IndexSegment&& segment, size_t generation, FileRefs&& refs,
-      Consolidation&& consolidation_candidates,
-      std::shared_ptr<const DirectoryReader>&& consolidation_reader) noexcept
+    ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+                  Consolidation&& consolidation_candidates,
+                  std::shared_ptr<const DirectoryReaderImpl>&&
+                    consolidation_reader) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
@@ -692,7 +693,7 @@ class IndexWriter : private util::noncopyable {
     // the SegmentMeta this writer was initialized with
     IndexSegment writer_meta_;
 
-    static std::unique_ptr<SegmentContext> Make(
+    static std::unique_ptr<SegmentContext> make(
       directory& dir, segment_meta_generator_t&& meta_generator,
       const column_info_provider_t& column_info,
       const feature_info_provider_t& feature_info, const Comparer* comparator);
@@ -858,7 +859,7 @@ class IndexWriter : private util::noncopyable {
 
     void PushPartial(size_t i, std::string_view file) {
       files_.emplace_back(file);
-      segments_.emplace_back(i);
+      segments_.emplace_back(i, kPartial);
     }
 
     void PushFull(size_t i) { segments_.emplace_back(i, kFull); }
@@ -872,7 +873,7 @@ class IndexWriter : private util::noncopyable {
     bool Empty() const noexcept { return segments_.empty(); };
 
    private:
-    enum {
+    enum Type : size_t {
       kFull = 0,
       kPartial = 1,
       kInvalid = std::numeric_limits<size_t>::max()

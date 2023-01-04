@@ -320,18 +320,6 @@ bool MaskUnusedUpdatesInNewSegment(FlushSegmentContext& ctx) {
   return count;
 }
 
-// append file refs for files from the specified segments description
-void append_segments_refs(std::vector<index_file_refs::ref_t>& buf,
-                          directory& dir, const IndexMeta& meta) {
-  auto visitor = [&buf](const index_file_refs::ref_t& ref) -> bool {
-    buf.emplace_back(ref);
-    return true;
-  };
-
-  // track all files referenced in index_meta
-  directory_utils::reference(dir, meta, visitor, true);
-}
-
 std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
                                    const document_mask& docs_mask,
                                    bool increment_version = true) {
@@ -581,8 +569,8 @@ std::shared_ptr<const DirectoryReaderImpl> OpenReader(
     IRS_ASSERT(readers.back());
   }
 
-  return std::make_shared<const DirectoryReaderImpl>(
-    dir, meta, opts, std::move(meta), std::move(readers));
+  return std::make_shared<const DirectoryReaderImpl>(dir, opts, std::move(meta),
+                                                     std::move(readers));
 }
 
 }  // namespace
@@ -1238,7 +1226,7 @@ uint64_t IndexWriter::SegmentContext::Flush() {
   return tick;
 }
 
-IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::Make(
+IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const column_info_provider_t& column_info,
   const feature_info_provider_t& feature_info, const Comparer* comparator) {

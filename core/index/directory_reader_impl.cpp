@@ -235,21 +235,16 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
     }
   }
 
-  uint64_t docs_max = 0;    // total number of documents (incl deleted)
-  uint64_t docs_count = 0;  // number of live documents
-
   const auto segments = meta.segments();
 
   ReadersType readers(segments.size());
-  FileRefs file_refs(segments.size() + 1);  // +1 for meta_file_ref
-
   auto reader = readers.begin();
-  auto ref = file_refs.begin();
+
   for (const auto& [filename, meta] : segments) {
     const auto it = reuse_candidates.find(meta.name);
 
     if (it != reuse_candidates.end() && it->second != kInvalidCandidate &&
-        meta == cached->meta_.index_meta.segment(it->second).meta) {
+        meta == cached->meta_.index_meta[it->second].meta) {
       *reader = (*cached)[it->second].Reopen(meta);
       reuse_candidates.erase(it);
     } else {
@@ -262,22 +257,13 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
                                      "', error: failed to open reader")};
     }
 
-    *ref = directory_utils::reference(dir, filename, true);
-
-    docs_max += reader->docs_count();
-    docs_count += reader->live_docs_count();
-
     ++reader;
-    ++ref;
   }
 
-  IRS_ASSERT(ref != file_refs.end());
-  *ref = std::move(meta_file_ref);
-
   return std::make_shared<DirectoryReaderImpl>(
-    dir, opts, std::move(file_refs),
-    DirectoryMeta{.filename = **ref, .meta = std::move(meta)},
-    std::move(readers), docs_count, docs_max);
+    dir, opts,
+    DirectoryMeta{.filename = *meta_file_ref, .index_meta = std::move(meta)},
+    std::move(readers));
 }
 
 }  // namespace irs
