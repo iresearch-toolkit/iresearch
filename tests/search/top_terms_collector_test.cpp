@@ -209,7 +209,14 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 };  // term_iterator
 
 struct sub_reader final : irs::SubReader {
-  explicit sub_reader(size_t num_docs) : num_docs(num_docs) {}
+  explicit sub_reader(size_t num_docs) {
+    info.docs_count = num_docs;
+    info.live_docs_count = num_docs;
+  }
+  const irs::SegmentInfo& Meta() const override { return info; }
+
+  const irs::document_mask* docs_mask() const override { return nullptr; }
+
   irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
@@ -219,7 +226,7 @@ struct sub_reader final : irs::SubReader {
   const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  uint64_t docs_count() const override { return 0; }
+  uint64_t docs_count() const override { return info.docs_count; }
   irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
@@ -236,7 +243,7 @@ struct sub_reader final : irs::SubReader {
   size_t size() const override { return 0; }
   const irs::column_reader* sort() const override { return nullptr; }
 
-  size_t num_docs;
+  irs::SegmentInfo info;
 };  // index_reader
 
 struct state {

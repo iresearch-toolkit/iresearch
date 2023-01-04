@@ -38,9 +38,7 @@ class format;
 class IndexWriter;
 
 struct SegmentInfo {
-  bool operator==(const SegmentInfo& other) const noexcept;
-
-  std::string name;
+  std::string name;            // FIXME(gnusi): move to SegmentMeta
   uint64_t docs_count{};       // Total number of documents in a segment
   uint64_t live_docs_count{};  // Total number of live documents in a segment
   uint64_t version{};
@@ -51,15 +49,7 @@ static_assert(std::is_nothrow_move_constructible_v<SegmentInfo>);
 static_assert(std::is_nothrow_move_assignable_v<SegmentInfo>);
 
 struct SegmentMeta : SegmentInfo {
-  using FileSet = absl::flat_hash_set<std::string>;
-
-  SegmentMeta() = default;
-  SegmentMeta(std::string&& name, std::shared_ptr<const format> codec) noexcept
-    : SegmentInfo{.name = std::move(name)}, codec{std::move(codec)} {}
-
-  bool operator==(const SegmentMeta& other) const noexcept;
-
-  FileSet files;
+  absl::flat_hash_set<std::string> files;
   std::shared_ptr<const format> codec;
   field_id sort{field_limits::invalid()};
   bool column_store{};
@@ -73,19 +63,6 @@ static_assert(std::is_nothrow_move_constructible_v<SegmentMeta>);
 static_assert(std::is_nothrow_move_assignable_v<SegmentMeta>);
 
 struct IndexSegment {
-  IndexSegment() = default;
-  // cppcheck-suppress noExplicitConstructor
-  IndexSegment(SegmentMeta&& meta) : meta{std::move(meta)} {}
-  IndexSegment(const SegmentMeta& meta) : meta{meta} {}
-  IndexSegment(const IndexSegment& other) = default;
-  IndexSegment& operator=(const IndexSegment& other) = default;
-  IndexSegment(IndexSegment&&) = default;
-  IndexSegment& operator=(IndexSegment&&) = default;
-
-  bool operator==(const IndexSegment& other) const noexcept {
-    return filename == other.filename || meta == other.meta;
-  }
-
   std::string filename;
   SegmentMeta meta;
 };
@@ -93,83 +70,16 @@ struct IndexSegment {
 static_assert(std::is_nothrow_move_constructible_v<IndexSegment>);
 static_assert(std::is_nothrow_move_assignable_v<IndexSegment>);
 
-class IndexMeta {
- public:
-  bool operator==(const IndexMeta& other) const noexcept;
-
-  void add(IndexSegment&& segment) {
-    segments_.emplace_back(std::move(segment));
-  }
-
-  template<typename Visitor>
-  bool visit_files(const Visitor& visitor) const {
-    return const_cast<IndexMeta&>(*this).visit_files(visitor);
-  }
-
-  template<typename Visitor>
-  bool visit_files(const Visitor& visitor) {
-    for (auto& curr_segment : segments_) {
-      if (!visitor(curr_segment.filename)) {
-        return false;
-      }
-
-      for (auto& file : curr_segment.meta.files) {
-        if (!visitor(const_cast<std::string&>(file))) {
-          return false;
-        }
-      }
-    }
-    return true;
-  }
-
-  uint64_t counter() const noexcept { return seg_counter_; }
-  void SetCounter(uint64_t v) noexcept { seg_counter_ = v; }
-  uint64_t generation() const noexcept { return gen_; }
-
-  void update_generation(const IndexMeta& rhs) noexcept {
-    gen_ = rhs.gen_;
-    last_gen_ = rhs.last_gen_;
-  }
-
-  size_t size() const noexcept { return segments_.size(); }
-  bool empty() const noexcept { return segments_.empty(); }
-
-  const IndexSegment& operator[](size_t i) const noexcept {
-    IRS_ASSERT(i < segments_.size());
-    return segments_[i];
-  }
-
-  std::span<const IndexSegment> segments() const noexcept { return segments_; }
-
-  bytes_view payload() const noexcept {
-    return payload_ ? *payload_ : bytes_view{};
-  }
-
-  // public for tests
-  void payload(bytes_view payload) {
-    if (IsNull(payload)) {
-      payload_.reset();
-    } else {
-      payload_.emplace(payload);
-    }
-  }
-
-  void payload(bstring&& payload) noexcept {
-    payload_.emplace(std::move(payload));
-  }
-
- private:
-  friend class IndexWriter;
-  friend struct index_meta_reader;
-  friend struct index_meta_writer;
-
-  uint64_t next_generation() const noexcept;
-
-  uint64_t gen_{index_gen_limits::invalid()};
-  uint64_t last_gen_{index_gen_limits::invalid()};
-  uint64_t seg_counter_{0};
-  std::vector<IndexSegment> segments_;
-  std::optional<bstring> payload_;
+struct IndexMeta {
+  uint64_t gen{index_gen_limits::invalid()};
+  uint64_t last_gen{index_gen_limits::invalid()};
+  uint64_t seg_counter{0};
+  std::vector<IndexSegment> segments;
+  std::optional<bstring> payload;
 };
+
+inline bytes_view GetPayload(const IndexMeta& meta) noexcept {
+  return meta.payload ? *meta.payload : bytes_view{};
+}
 
 }  // namespace irs

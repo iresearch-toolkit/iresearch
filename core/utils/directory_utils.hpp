@@ -36,46 +36,21 @@ struct SegmentMeta;
 
 namespace directory_utils {
 
-// FIXME(gnusi): remove reference functions
-
 // return a reference to a file or empty() if not found
-index_file_refs::ref_t reference(const directory& dir, std::string_view name,
-                                 bool include_missing = false);
+index_file_refs::ref_t Reference(const directory& dir, std::string_view name);
 
-// return success, visitor gets passed references to files retrieved from source
-bool reference(const directory& dir,
-               const std::function<std::optional<std::string_view>()>& source,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing = false);
-
-// return success, visitor gets passed references to files registered with
-// IndexMeta
-bool reference(const directory& dir, const IndexMeta& meta,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing = false);
-
-// return success, visitor gets passed references to files registered with
-// SegmentMeta
-bool reference(const directory& dir, const SegmentMeta& meta,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing = false);
-
-// remove all (tracked and non-tracked) files if they are unreferenced
+// Remove all (tracked and non-tracked) files if they are unreferenced
 // return success
-bool remove_all_unreferenced(directory& dir);
+bool RemoveAllUnreferenced(directory& dir);
 
 }  // namespace directory_utils
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class tracking_directory
-/// @brief track files created/opened via file names
-//////////////////////////////////////////////////////////////////////////////
-struct tracking_directory final : public directory {
+// Track files created/opened via file names
+struct TrackingDirectory final : public directory {
   using file_set = absl::flat_hash_set<std::string>;
 
   // @param track_open - track file refs for calls to open(...)
-  explicit tracking_directory(directory& impl,
-                              bool track_open = false) noexcept;
+  explicit TrackingDirectory(directory& impl, bool track_open = false) noexcept;
 
   directory& operator*() noexcept { return impl_; }
 
@@ -125,19 +100,16 @@ struct tracking_directory final : public directory {
   mutable file_set files_;
   directory& impl_;
   bool track_open_;
-};  // tracking_directory
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class ref_tracking_directory
-/// @brief track files created/opened via file refs instead of file names
-//////////////////////////////////////////////////////////////////////////////
-struct ref_tracking_directory : public directory {
+// Track files created/opened via file refs instead of file names
+struct RefTrackingDirectory : public directory {
  public:
-  using ptr = std::unique_ptr<ref_tracking_directory>;
+  using ptr = std::unique_ptr<RefTrackingDirectory>;
 
   // @param track_open - track file refs for calls to open(...)
-  explicit ref_tracking_directory(directory& impl, bool track_open = false);
-  ref_tracking_directory(ref_tracking_directory&& other) noexcept;
+  explicit RefTrackingDirectory(directory& impl, bool track_open = false);
+  RefTrackingDirectory(RefTrackingDirectory&& other) noexcept;
 
   directory& operator*() noexcept { return impl_; }
 
@@ -197,6 +169,6 @@ struct ref_tracking_directory : public directory {
   mutable std::mutex mutex_;  // for use with refs_
   mutable refs_t refs_;
   bool track_open_;
-};  // ref_tracking_directory
+};
 
 }  // namespace irs

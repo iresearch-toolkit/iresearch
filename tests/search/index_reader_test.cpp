@@ -239,7 +239,7 @@ TEST(directory_reader_test, open) {
   ASSERT_EQ(9, rdr.live_docs_count());
   ASSERT_EQ(3, rdr.size());
   ASSERT_EQ("segments_3", rdr.Meta().filename);
-  ASSERT_EQ(rdr.size(), rdr.Meta().index_meta.size());
+  ASSERT_EQ(rdr.size(), rdr.Meta().index_meta.segments.size());
 
   // check subreaders
   auto sub = rdr.begin();

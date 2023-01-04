@@ -56,6 +56,22 @@ bool visit(const irs::column_reader& reader,
   return true;
 }
 
+template<typename Visitor>
+bool VisitFiles(const irs::IndexMeta& meta, Visitor&& visitor) {
+  for (auto& curr_segment : meta.segments) {
+    if (!visitor(curr_segment.filename)) {
+      return false;
+    }
+
+    for (auto& file : curr_segment.meta.files) {
+      if (!visitor(file)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 namespace tests {
@@ -151,7 +167,7 @@ void format_test_case::assert_no_directory_artifacts(
   if (exists) {
     reader->read(dir, index_meta, segment_file);
 
-    index_meta.visit_files([&index_files](const std::string& file) {
+    VisitFiles(index_meta, [&index_files](const std::string& file) {
       index_files.emplace(file);
       return true;
     });
@@ -313,8 +329,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
 
       meta_reader->read(*dir, index_meta, segments_file);
 
-      index_meta.visit_files([&reader_files](std::string& file) {
-        reader_files.emplace(std::move(file));
+      VisitFiles(index_meta, [&reader_files](std::string_view file) {
+        reader_files.emplace(file);
         return true;
       });
 
@@ -1122,7 +1138,9 @@ TEST_P(format_test_case, segment_meta_read_write) {
 }
 
 TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
-  irs::SegmentMeta seg("_1", codec());
+  irs::SegmentMeta seg;
+  seg.name = "_1";
+  seg.codec = codec();
 
   size_t column_id;
   const irs::bytes_view payload(
@@ -1185,7 +1203,9 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 }
 
 TEST_P(format_test_case, columns_rw_dense_mask) {
-  irs::SegmentMeta seg("_1", codec());
+  irs::SegmentMeta seg;
+  seg.name = "_1";
+  seg.codec = codec();
   const irs::doc_id_t MAX_DOC = 1026;
 
   size_t column_id;
@@ -1231,7 +1251,8 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 }
 
 TEST_P(format_test_case, columns_rw_bit_mask) {
-  irs::SegmentMeta segment("bit_mask", nullptr);
+  irs::SegmentMeta segment;
+  segment.name = "bit_mask";
   irs::field_id id;
 
   segment.codec = codec();
@@ -1491,7 +1512,8 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 }
 
 TEST_P(format_test_case, columns_rw_empty) {
-  irs::SegmentMeta meta0("_1", nullptr);
+  irs::SegmentMeta meta0;
+  meta0.name = "_1";
   meta0.version = 42;
   meta0.docs_count = 89;
   meta0.live_docs_count = 67;
@@ -1563,7 +1585,8 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
   } doc_template;  // two_columns_doc_template
 
   tests::csv_doc_generator gen{resource("simple_two_column.csv"), doc_template};
-  irs::SegmentMeta seg("_1", nullptr);
+  irs::SegmentMeta seg;
+  seg.name = "_1";
 
   seg.codec = codec();
 
@@ -1663,7 +1686,8 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
   irs::field_id id;
 
-  irs::SegmentMeta segment("big_docs", nullptr);
+  irs::SegmentMeta segment;
+  segment.name = "big_docs";
 
   segment.codec = codec();
 
@@ -1818,9 +1842,12 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   tests::csv_doc_generator gen(resource("simple_two_column.csv"), doc_template);
 
-  irs::SegmentMeta seg_1("_1", nullptr);
-  irs::SegmentMeta seg_2("_2", nullptr);
-  irs::SegmentMeta seg_3("_3", nullptr);
+  irs::SegmentMeta seg_1;
+  seg_1.name = "_1";
+  irs::SegmentMeta seg_2;
+  seg_2.name = "_2";
+  irs::SegmentMeta seg_3;
+  seg_3.name = "_3";
 
   seg_1.codec = codec();
   seg_2.codec = codec();
@@ -2110,7 +2137,8 @@ TEST_P(format_test_case, columns_rw_typed) {
       }
     });
 
-  irs::SegmentMeta meta("_1", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "_1";
   meta.version = 42;
   meta.codec = codec();
 
@@ -2366,7 +2394,8 @@ TEST_P(format_test_case, columns_issue700) {
     docs.emplace_back(doc, 25);
   }
 
-  irs::SegmentMeta meta("issue-#700", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "issue-#700";
   meta.version = 0;
   meta.docs_count = docs.size();
   meta.live_docs_count = docs.size();
@@ -2419,7 +2448,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
   // | 2   | 16         |  | 4   | 16         |
   // |-----|------------|  |-----|------------|
 
-  irs::SegmentMeta meta0("_fixed_offset_columns", nullptr);
+  irs::SegmentMeta meta0;
+  meta0.name = "_fixed_offset_columns";
   meta0.version = 0;
   meta0.docs_count = 2;
   meta0.live_docs_count = 2;
@@ -2590,13 +2620,15 @@ TEST_P(format_test_case, columns_rw) {
   irs::field_id segment1_field1_id;
   irs::field_id segment1_field2_id;
 
-  irs::SegmentMeta meta0("_1", nullptr);
+  irs::SegmentMeta meta0;
+  meta0.name = "_1";
   meta0.version = 42;
   meta0.docs_count = 89;
   meta0.live_docs_count = 67;
   meta0.codec = codec();
 
-  irs::SegmentMeta meta1("_2", nullptr);
+  irs::SegmentMeta meta1;
+  meta1.name = "_2";
   meta1.version = 23;
   meta1.docs_count = 115;
   meta1.live_docs_count = 111;
@@ -3361,7 +3393,8 @@ ASSERT_TRUE(writer->commit(state));
 
 TEST_P(format_test_case, document_mask_rw) {
   const irs::document_mask mask_set = {1, 4, 5, 7, 10, 12};
-  irs::SegmentMeta meta("_1", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "_1";
   meta.version = 42;
 
   // write document_mask

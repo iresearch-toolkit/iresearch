@@ -2053,7 +2053,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     ASSERT_NE(nullptr, writer);
 
     // add segment
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
 
     {
@@ -2078,7 +2078,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
 
       write_segment(*writer, segment, gen);
     }
-    writer->commit();
+    writer->Commit();
   }
 
   auto rdr = open_reader();

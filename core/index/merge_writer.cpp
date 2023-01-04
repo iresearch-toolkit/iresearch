@@ -1337,7 +1337,7 @@ MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
 }
 
-bool MergeWriter::flush(tracking_directory& dir, IndexSegment& segment,
+bool MergeWriter::flush(TrackingDirectory& dir, IndexSegment& segment,
                         const FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
@@ -1446,7 +1446,7 @@ bool MergeWriter::flush(tracking_directory& dir, IndexSegment& segment,
   return true;
 }
 
-bool MergeWriter::flush_sorted(tracking_directory& dir, IndexSegment& segment,
+bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
                                const FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
@@ -1706,7 +1706,7 @@ bool MergeWriter::flush(IndexSegment& segment,
 
   const auto& progress_callback = progress ? progress : kProgressNoop;
 
-  tracking_directory track_dir(dir_);  // track writer created files
+  TrackingDirectory track_dir(dir_);  // track writer created files
 
   result = comparator_ ? flush_sorted(track_dir, segment, progress_callback)
                        : flush(track_dir, segment, progress_callback);

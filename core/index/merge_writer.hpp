@@ -34,7 +34,7 @@
 
 namespace irs {
 
-struct tracking_directory;
+struct TrackingDirectory;
 class Comparer;
 
 class MergeWriter : public util::noncopyable {
@@ -83,10 +83,10 @@ class MergeWriter : public util::noncopyable {
   void reserve(size_t size) { readers_.reserve(size); }
 
  private:
-  bool flush_sorted(tracking_directory& dir, IndexSegment& segment,
+  bool flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
                     const FlushProgress& progress);
 
-  bool flush(tracking_directory& dir, IndexSegment& segment,
+  bool flush(TrackingDirectory& dir, IndexSegment& segment,
              const FlushProgress& progress);
 
   directory& dir_;

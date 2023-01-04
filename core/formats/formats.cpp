@@ -77,23 +77,23 @@ class format_register
 namespace irs {
 
 /* static */ void index_meta_writer::complete(IndexMeta& meta) noexcept {
-  meta.last_gen_ = meta.gen_;
+  meta.last_gen = meta.gen;
 }
 /* static */ void index_meta_writer::prepare(IndexMeta& meta) noexcept {
-  meta.gen_ = meta.next_generation();
+  meta.gen = index_gen_limits::valid(meta.gen) ? (meta.gen + 1) : 1;
 }
 
 /* static */ void index_meta_reader::complete(
   IndexMeta& meta, uint64_t generation, uint64_t counter,
   std::vector<IndexSegment>&& segments, bstring* payload) {
-  meta.gen_ = generation;
-  meta.last_gen_ = generation;
-  meta.seg_counter_ = counter;
-  meta.segments_ = std::move(segments);
+  meta.gen = generation;
+  meta.last_gen = generation;
+  meta.seg_counter = counter;
+  meta.segments = std::move(segments);
   if (payload) {
-    meta.payload(std::move(*payload));
+    meta.payload = std::move(*payload);
   } else {
-    meta.payload(bytes_view{});
+    meta.payload.reset();
   }
 }
 

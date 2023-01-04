@@ -145,7 +145,8 @@ TEST_P(columnstore2_test_case, reader_ctor) {
 
 TEST_P(columnstore2_test_case, empty_columnstore) {
   constexpr irs::doc_id_t kMax = 1;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -171,7 +172,8 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
 
 TEST_P(columnstore2_test_case, empty_column) {
   constexpr irs::doc_id_t kMax = 1;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -276,7 +278,8 @@ TEST_P(columnstore2_test_case, empty_column) {
 
 TEST_P(columnstore2_test_case, sparse_mask_column) {
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -421,7 +424,8 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 
 TEST_P(columnstore2_test_case, sparse_column_m) {
   constexpr irs::doc_id_t MAX = 5000;
-  const irs::SegmentMeta meta("test_m", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test_m";
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
@@ -480,7 +484,8 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
 
 TEST_P(columnstore2_test_case, sparse_column_mr) {
   constexpr irs::doc_id_t MAX = 5000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
@@ -545,7 +550,8 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
 
 TEST_P(columnstore2_test_case, sparse_column) {
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -761,7 +767,8 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
   static constexpr irs::doc_id_t kMax = 500000;
   static constexpr auto kBlockSize = irs::sparse_bitmap_writer::kBlockSize;
   static constexpr auto kGapBegin = ((kMax / kBlockSize) - 4) * kBlockSize;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -940,7 +947,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
   static constexpr irs::doc_id_t kMax = 500000;
   static constexpr auto kBlockSize = irs::sparse_bitmap_writer::kBlockSize;
   static constexpr auto kTailBegin = (kMax / kBlockSize) * kBlockSize;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1123,7 +1131,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
   static constexpr irs::doc_id_t kMax = 500000;
   // last value has different length
   static constexpr auto kTailBegin = kMax - 1;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1307,7 +1316,8 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
   static constexpr irs::doc_id_t kMax = 131072;
   // last value has different length
   static constexpr auto kTailBegin = kMax - 3;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1493,7 +1503,8 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
   static constexpr irs::doc_id_t kMax = 131072;
   // last value has different length
   static constexpr auto kTailBegin = kMax - 1;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1676,7 +1687,8 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
 
 TEST_P(columnstore2_test_case, dense_mask_column) {
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -1831,7 +1843,8 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
 
 TEST_P(columnstore2_test_case, dense_column) {
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -2033,7 +2046,8 @@ TEST_P(columnstore2_test_case, dense_column) {
 TEST_P(columnstore2_test_case, dense_column_range) {
   constexpr irs::doc_id_t kMin = 500000;
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -2209,7 +2223,8 @@ TEST_P(columnstore2_test_case, dense_column_range) {
 
 TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
   constexpr irs::doc_id_t MAX = 5000;
-  const irs::SegmentMeta meta("test_m", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test_m";
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
@@ -2286,7 +2301,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
 
 TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
   constexpr irs::doc_id_t MAX = 5000;
-  const irs::SegmentMeta meta("test_mr", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test_mr";
   const bool has_encryption = bool(dir().attributes().encryption());
 
   irs::flush_state state;
@@ -2369,7 +2385,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
 
 TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -2682,7 +2699,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
 TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;
@@ -2862,7 +2880,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 
 TEST_P(columnstore2_test_case, empty_columns) {
   constexpr irs::doc_id_t kMax = 1000000;
-  const irs::SegmentMeta meta("test", nullptr);
+  irs::SegmentMeta meta;
+  meta.name = "test";
 
   irs::flush_state state;
   state.doc_count = kMax;

@@ -526,7 +526,7 @@ int put(const std::string& path, const std::string& dir_type,
 
         {
           SCOPED_TIMER("Cleanup time");
-          irs::directory_utils::remove_all_unreferenced(*dir);
+          irs::directory_utils::RemoveAllUnreferenced(*dir);
         }
       }
     });
@@ -585,7 +585,7 @@ int put(const std::string& path, const std::string& dir_type,
   }
 
   if (consolidate_all || consolidation_threads) {
-    irs::directory_utils::remove_all_unreferenced(*dir);
+    irs::directory_utils::RemoveAllUnreferenced(*dir);
   }
 
   u_cleanup();

@@ -377,7 +377,7 @@ class segment_writer : util::noncopyable {
   field_writer::ptr field_writer_;
   const column_info_provider_t* column_info_;
   columnstore_writer::ptr col_writer_;
-  tracking_directory dir_;
+  TrackingDirectory dir_;
   uint64_t tick_{0};
   bool initialized_;
   bool valid_{true};  // current state

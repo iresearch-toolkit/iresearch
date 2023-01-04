@@ -558,7 +558,7 @@ auto AddRef(directory& dir, std::string_view filename) {
 
 std::shared_ptr<const DirectoryReaderImpl> OpenReader(
   directory& dir, DirectoryMeta&& meta, const IndexReaderOptions& opts) {
-  const auto segments = meta.index_meta.segments();
+  const auto& segments = meta.index_meta.segments;
 
   std::vector<SegmentReader> readers;
   readers.reserve(segments.size());
@@ -588,7 +588,7 @@ void IndexWriter::SyncContext::ExtractFiles(
   auto begin = files_.begin();
 
   for (const auto& [idx, count] : segments_) {
-    const auto& segment = meta[idx];
+    const auto& segment = meta.segments[idx];
 
     switch (count) {
       case kInvalid:
@@ -1276,7 +1276,7 @@ void IndexWriter::SegmentContext::Prepare() {
   IRS_ASSERT(writer_);
 
   if (!writer_->initialized()) {
-    writer_meta_ = meta_generator_();
+    writer_meta_ = IndexSegment{.meta = meta_generator_()};
     writer_->reset(writer_meta_.meta);
   }
 }
@@ -1347,8 +1347,8 @@ IndexWriter::IndexWriter(
     segment_limits_{segment_limits},
     segment_writer_pool_{segment_pool_size},
     segments_active_{0},
-    seg_counter_{committed_reader_->Meta().index_meta.seg_counter_},
-    last_gen_{committed_reader_->Meta().index_meta.last_gen_},
+    seg_counter_{committed_reader_->Meta().index_meta.seg_counter},
+    last_gen_{committed_reader_->Meta().index_meta.last_gen},
     writer_{codec_->get_index_meta_writer()},
     write_lock_{std::move(lock)},
     write_lock_file_ref_{std::move(lock_file_ref)} {
@@ -1360,26 +1360,26 @@ IndexWriter::IndexWriter(
   // setup round-robin chain
   for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
     auto* ctx = flush_context_pool_.data() + i;
-    ctx->dir_ = std::make_unique<ref_tracking_directory>(dir);
+    ctx->dir_ = std::make_unique<RefTrackingDirectory>(dir);
     ctx->next_context_ = ctx + 1;
   }
 
   // setup round-robin chain
   auto& ctx = flush_context_pool_[flush_context_pool_.size() - 1];
-  ctx.dir_ = std::make_unique<ref_tracking_directory>(dir);
+  ctx.dir_ = std::make_unique<RefTrackingDirectory>(dir);
   ctx.next_context_ = flush_context_pool_.data();
 }
 
 void IndexWriter::InitMeta(IndexMeta& meta, uint64_t tick) const {
   if (meta_payload_provider_) {
-    IRS_ASSERT(!meta.payload_.has_value());
-    auto& payload = meta.payload_.emplace(bstring{});
+    IRS_ASSERT(!meta.payload.has_value());
+    auto& payload = meta.payload.emplace(bstring{});
     if (IRS_UNLIKELY(!meta_payload_provider_(tick, payload))) {
-      meta.payload_.reset();
+      meta.payload.reset();
     }
   }
-  meta.seg_counter_ = CurrentSegmentId();  // Ensure counter() >= max(seg#)
-  meta.gen_ = meta.last_gen_ = last_gen_;  // Clone index metadata generation
+  meta.seg_counter = CurrentSegmentId();  // Ensure counter() >= max(seg#)
+  meta.gen = meta.last_gen = last_gen_;   // Clone index metadata generation
 }
 
 void IndexWriter::Clear(uint64_t tick) {
@@ -1388,8 +1388,8 @@ void IndexWriter::Clear(uint64_t tick) {
 
   auto& committed_meta = committed_reader_->Meta().index_meta;
 
-  if (!pending_state_ && committed_meta.empty() &&
-      index_gen_limits::valid(committed_meta.last_gen_)) {
+  if (!pending_state_ && committed_meta.segments.empty() &&
+      index_gen_limits::valid(committed_meta.last_gen)) {
     return;  // already empty
   }
 
@@ -1414,7 +1414,7 @@ void IndexWriter::Clear(uint64_t tick) {
 
   Finally update_generation = [this, &pending_meta]() noexcept {
     // Ensure writer's generation is updated
-    last_gen_ = pending_meta.gen_;
+    last_gen_ = pending_meta.gen;
   };
 
   // 1st phase of the transaction successfully finished here
@@ -1471,9 +1471,9 @@ IndexWriter::ptr IndexWriter::make(
           reader->read(dir, meta.index_meta, meta.filename);
 
           auto& index_meta = meta.index_meta;
-          index_meta.last_gen_ = index_gen_limits::invalid();
-          index_meta.payload_.reset();
-          index_meta.segments_.clear();
+          index_meta.last_gen = index_gen_limits::invalid();
+          index_meta.payload.reset();
+          index_meta.segments.clear();
         } catch (...) {
           meta = {};
         }
@@ -1496,7 +1496,7 @@ IndexWriter::ptr IndexWriter::make(
     opts.meta_payload_provider, std::move(reader));
 
   // remove non-index files from directory
-  directory_utils::remove_all_unreferenced(dir);
+  directory_utils::RemoveAllUnreferenced(dir);
 
   return writer;
 }
@@ -1650,8 +1650,7 @@ ConsolidationResult IndexWriter::Consolidate(
         "', "
         "found only '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER
         "' candidates",
-        committed_reader->Meta().index_meta.generation(), found,
-        candidates.size());
+        committed_reader->Meta().index_meta.gen, found, candidates.size());
       return {0, ConsolidationError::FAIL};
     }
   }
@@ -1669,7 +1668,7 @@ ConsolidationResult IndexWriter::Consolidate(
   // increment active meta, not fn arg
   consolidation_segment.meta.name = file_name(NextSegmentId());
 
-  ref_tracking_directory dir{dir_};  // track references for new segment
+  RefTrackingDirectory dir{dir_};  // track references for new segment
   MergeWriter merger{dir, column_info_, feature_info_, comparator_};
   merger.reserve(result.size);
 
@@ -1716,7 +1715,7 @@ ConsolidationResult IndexWriter::Consolidate(
               "Failed to start consolidation for index generation "
               "'" IR_UINT64_T_SPECIFIER
               "', not found segment %s in committed state",
-              committed_reader->Meta().index_meta.generation(),
+              committed_reader->Meta().index_meta.gen,
               candidate->Meta().name.c_str());
             return result;
           }
@@ -1898,7 +1897,7 @@ bool IndexWriter::Import(const IndexReader& reader,
     codec = codec_;
   }
 
-  ref_tracking_directory dir(dir_);  // track references
+  RefTrackingDirectory dir(dir_);  // track references
 
   IndexSegment segment;
   segment.meta.name = file_name(NextSegmentId());
@@ -2026,7 +2025,10 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext(
   std::shared_ptr<SegmentContext> segment_ctx{segment_writer_pool_.emplace(
     dir_,
     [this]() {
-      return SegmentMeta{file_name(NextSegmentId()), codec_};
+      SegmentMeta meta{.codec = codec_};
+      meta.name = file_name(NextSegmentId());
+
+      return meta;
     },
     column_info_, feature_info_, comparator_)};
 
@@ -2193,8 +2195,9 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       auto docs_mask = *existing_segment.docs_mask();
       docs_mask.insert(deleted_docs.begin(), deleted_docs.end());
 
-      IndexSegment segment{
-        committed_reader.Meta().index_meta[current_segment_index].meta};
+      IndexSegment segment{.meta = committed_reader.Meta()
+                                     .index_meta.segments[current_segment_index]
+                                     .meta};
 
       const auto mask_file = WriteDocumentMask(dir, segment.meta, docs_mask);
 
@@ -2206,13 +2209,13 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       auto new_segment = std::make_shared<SegmentReaderImpl>(
         *existing_segment.GetImpl(), segment.meta, std::move(docs_mask));
       readers.emplace_back(std::move(new_segment));
-      pending_meta.segments_.emplace_back(std::move(segment));
+      pending_meta.segments.emplace_back(std::move(segment));
 
       deleted_docs.clear();
     } else {
       readers.emplace_back(existing_segment.GetImpl());
-      pending_meta.segments_.emplace_back(
-        committed_reader.Meta().index_meta[current_segment_index]);
+      pending_meta.segments.emplace_back(
+        committed_reader.Meta().index_meta.segments[current_segment_index]);
     }
   }
 
@@ -2364,7 +2367,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     // register full segment sync
     to_sync.PushFull(readers.size());
     readers.emplace_back(std::move(pending_reader));
-    pending_meta.segments_.emplace_back(std::move(pending_segment.segment));
+    pending_meta.segments.emplace_back(std::move(pending_segment.segment));
   }
 
   // for pending consolidation we need to filter out
@@ -2375,7 +2378,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     std::vector<SegmentReader> tmp_readers;
     tmp_readers.reserve(count);
     IndexMeta tmp_meta;
-    tmp_meta.segments_.reserve(count);
+    tmp_meta.segments.reserve(count);
 
     for (size_t i = 0, size = readers.size(); i < size; ++i) {
       // FIXME(gnusi): valid pointer?
@@ -2383,7 +2386,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         to_sync.Invalidate(i);
       } else {
         tmp_readers.emplace_back(std::move(segment));
-        tmp_meta.segments_.emplace_back(std::move(pending_meta[i]));
+        tmp_meta.segments.emplace_back(std::move(pending_meta.segments[i]));
       }
     }
 
@@ -2569,7 +2572,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       // register full segment sync
       to_sync.PushFull(readers.size());
       readers.emplace_back(std::move(segment_ctx.reader_));
-      pending_meta.segments_.emplace_back(std::move(segment_ctx.segment_));
+      pending_meta.segments.emplace_back(std::move(segment_ctx.segment_));
     }
   }
 
@@ -2617,7 +2620,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
 
   Finally update_generation = [this, &pending_meta]() noexcept {
     // Ensure writer's generation is updated
-    last_gen_ = pending_meta.index_meta.gen_;
+    last_gen_ = pending_meta.index_meta.gen;
   };
 
   to_commit.to_sync.ExtractFiles(files_to_sync_, pending_meta.index_meta);

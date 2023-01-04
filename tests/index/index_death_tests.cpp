@@ -205,7 +205,7 @@ class failing_directory : public tests::directory_mock {
                            return false;
                          }
 
-                         return tests::directory_mock::sync(name);
+                         return tests::directory_mock::sync({&name, 1});
                        });
   }
 

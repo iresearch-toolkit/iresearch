@@ -2602,8 +2602,7 @@ struct index_meta_writer final : public irs::index_meta_writer {
 template<>
 std::string file_name<irs::index_meta_writer, IndexMeta>(
   const IndexMeta& meta) {
-  return irs::file_name(index_meta_writer::FORMAT_PREFIX_TMP,
-                        meta.generation());
+  return irs::file_name(index_meta_writer::FORMAT_PREFIX_TMP, meta.gen);
 }
 
 struct index_meta_reader final : public irs::index_meta_reader {
@@ -2617,7 +2616,7 @@ struct index_meta_reader final : public irs::index_meta_reader {
 template<>
 std::string file_name<irs::index_meta_reader, IndexMeta>(
   const IndexMeta& meta) {
-  return irs::file_name(index_meta_writer::FORMAT_PREFIX, meta.generation());
+  return irs::file_name(index_meta_writer::FORMAT_PREFIX, meta.gen);
 }
 
 bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
@@ -2639,22 +2638,23 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
 
   {
     format_utils::write_header(*out, FORMAT_NAME, version_);
-    out->write_vlong(meta.generation());
-    out->write_long(meta.counter());
-    IRS_ASSERT(meta.size() <= std::numeric_limits<uint32_t>::max());
-    out->write_vint(uint32_t(meta.size()));
+    out->write_vlong(meta.gen);
+    out->write_long(meta.seg_counter);
+    IRS_ASSERT(meta.segments.size() <= std::numeric_limits<uint32_t>::max());
+    out->write_vint(uint32_t(meta.segments.size()));
 
-    for (auto& segment : meta.segments()) {
+    for (const auto& segment : meta.segments) {
       write_string(*out, segment.filename);
       write_string(*out, segment.meta.codec->type().name());
     }
 
     if (version_ > FORMAT_MIN) {
-      const byte_type flags = IsNull(meta.payload()) ? 0 : HAS_PAYLOAD;
+      const auto payload = GetPayload(meta);
+      const byte_type flags = IsNull(payload) ? 0 : HAS_PAYLOAD;
       out->write_byte(flags);
 
       if (flags == HAS_PAYLOAD) {
-        irs::write_string(*out, meta.payload());
+        irs::write_string(*out, payload);
       }
     }
 
@@ -2916,7 +2916,7 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
   if (version > segment_meta_writer::FORMAT_MIN) {
     sort = in->read_vlong() - 1;
   }
-  auto files = read_strings<SegmentMeta::FileSet>(*in);
+  auto files = read_strings<decltype(meta.files)>(*in);
 
   if (flags &
       ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {

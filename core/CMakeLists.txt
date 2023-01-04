@@ -95,7 +95,6 @@ set(IResearch_core_sources
   ./index/field_data.cpp
   ./index/field_meta.cpp
   ./index/file_names.cpp
-  ./index/index_meta.cpp
   ./index/index_writer.cpp
   ./index/index_reader.cpp
   ./index/iterators.cpp

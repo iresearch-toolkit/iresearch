@@ -926,15 +926,15 @@ class index_test_case : public tests::index_test_base {
         ++file_count;
         return true;
       };
-      irs::directory_utils::remove_all_unreferenced(
-        dir());  // clear any unused files before taking count
+      // clear any unused files before taking count
+      irs::directory_utils::RemoveAllUnreferenced(dir());
       dir().visit(dir_visitor);
       auto file_count_before = file_count;
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(writer->Begin());  // prepare for commit tx #2
       writer->Rollback();            // rollback tx #2
-      irs::directory_utils::remove_all_unreferenced(dir());
+      irs::directory_utils::RemoveAllUnreferenced(dir());
       file_count = 0;
       dir().visit(dir_visitor);
       ASSERT_EQ(file_count_before,
@@ -2461,9 +2461,7 @@ TEST_P(index_test_case, writer_commit_cleanup_interleaved) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  auto clean = [this]() {
-    irs::directory_utils::remove_all_unreferenced(dir());
-  };
+  auto clean = [this]() { irs::directory_utils::RemoveAllUnreferenced(dir()); };
 
   {
     tests::callback_directory synced_dir(dir(), clean);
@@ -5644,7 +5642,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_NE(nullptr, meta_reader);
       ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
       meta_reader->read(dir(), meta, filename);
-      ASSERT_EQ(0, meta.counter());
+      ASSERT_EQ(0, meta.seg_counter);
     }
 
     data_writer->Commit();
@@ -5667,7 +5665,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_NE(nullptr, meta_reader);
       ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
       meta_reader->read(dir(), meta, filename);
-      ASSERT_EQ(1, meta.counter());
+      ASSERT_EQ(1, meta.seg_counter);
     }
   }
 
@@ -5690,7 +5688,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_NE(nullptr, meta_reader);
       ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
       meta_reader->read(dir(), meta, filename);
-      ASSERT_EQ(1, meta.counter());
+      ASSERT_EQ(1, meta.seg_counter);
     }
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -5719,7 +5717,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_NE(nullptr, meta_reader);
       ASSERT_TRUE(meta_reader->last_segments_file(dir(), filename));
       meta_reader->read(dir(), meta, filename);
-      ASSERT_EQ(2, meta.counter());
+      ASSERT_EQ(2, meta.seg_counter);
     }
   }
 
@@ -14069,7 +14067,7 @@ TEST_P(index_test_case, writer_insert_immediate_remove) {
 
   // file removal should pass for all files (especially valid for Microsoft
   // Windows)
-  irs::directory_utils::remove_all_unreferenced(directory);
+  irs::directory_utils::RemoveAllUnreferenced(directory);
 
   // validate that all files from old segments have been removed
   count = 0;
@@ -14133,7 +14131,7 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
 
   // file removal should pass for all files (especially valid for Microsoft
   // Windows)
-  irs::directory_utils::remove_all_unreferenced(directory);
+  irs::directory_utils::RemoveAllUnreferenced(directory);
 
   // validate that all files from old segments have been removed
   count = 0;
@@ -14177,7 +14175,7 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
     ASSERT_EQ(0, reader.size());
     // file removal should pass for all files (especially valid for
     // Microsoft Windows)
-    irs::directory_utils::remove_all_unreferenced(directory);
+    irs::directory_utils::RemoveAllUnreferenced(directory);
 
     // validate that all files from old segments have been removed
     count = 0;
@@ -14239,7 +14237,7 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
     ASSERT_EQ(0, reader.size());
     // file removal should pass for all files (especially valid for
     // Microsoft Windows)
-    irs::directory_utils::remove_all_unreferenced(directory);
+    irs::directory_utils::RemoveAllUnreferenced(directory);
 
     // validate that all files from old segments have been removed
     size_t count{0};
@@ -15385,7 +15383,7 @@ TEST_P(index_test_case_10, commit_payload) {
   ASSERT_TRUE(writer->Begin());  // initial commit
   writer->Commit();
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   ASSERT_FALSE(writer->Begin());  // transaction hasn't been started, no changes
   writer->Commit();
@@ -15437,8 +15435,8 @@ TEST_P(index_test_case_10, commit_payload) {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
       ASSERT_TRUE(irs::IsNull(
-        new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
-                                                   // support payload
+        irs::GetPayload(new_reader.Meta().index_meta)));  // '1_0' doesn't
+                                                          // support payload
       reader = new_reader;
     }
   }
@@ -15532,8 +15530,8 @@ TEST_P(index_test_case_10, commit_payload) {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
       ASSERT_TRUE(irs::IsNull(
-        new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
-                                                   // support payload
+        irs::GetPayload(new_reader.Meta().index_meta)));  // '1_0' doesn't
+                                                          // support payload
       reader = new_reader;
     }
   }
@@ -15583,8 +15581,8 @@ TEST_P(index_test_case_10, commit_payload) {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
       ASSERT_TRUE(irs::IsNull(
-        new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
-                                                   // support payload
+        irs::GetPayload(new_reader.Meta().index_meta)));  // '1_0' doesn't
+                                                          // support payload
       reader = new_reader;
     }
   }
@@ -15608,9 +15606,9 @@ TEST_P(index_test_case_10, commit_payload) {
   {
     auto new_reader = reader.Reopen();
     ASSERT_NE(reader, new_reader);
-    ASSERT_TRUE(
-      irs::IsNull(new_reader.Meta().index_meta.payload()));  // '1_0' doesn't
-                                                             // support payload
+    ASSERT_TRUE(irs::IsNull(
+      irs::GetPayload(new_reader.Meta().index_meta)));  // '1_0' doesn't
+                                                        // support payload
     reader = new_reader;
   }
 
@@ -15646,8 +15644,8 @@ TEST_P(index_test_case_11, consolidate_old_format) {
     auto reader = irs::DirectoryReader::Open(dir());
     ASSERT_NE(nullptr, reader);
     ASSERT_EQ(size, reader.size());
-    ASSERT_EQ(size, reader.Meta().index_meta.size());
-    for (auto& meta : reader.Meta().index_meta.segments()) {
+    ASSERT_EQ(size, reader.Meta().index_meta.segments.size());
+    for (auto& meta : reader.Meta().index_meta.segments) {
       ASSERT_EQ(codec, meta.meta.codec);
     }
   };
@@ -15711,7 +15709,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   {
     auto reader = irs::DirectoryReader::Open(dir());
-    ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
+    ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
   }
   uint64_t expected_tick = 42;
 
@@ -15720,7 +15718,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   writer->Clear(expected_tick);
   {
     auto reader = irs::DirectoryReader::Open(dir());
-    ASSERT_EQ(input_payload, reader.Meta().index_meta.payload());
+    ASSERT_EQ(input_payload, irs::GetPayload(reader.Meta().index_meta));
     ASSERT_EQ(payload_committed_tick, expected_tick);
   }
 }
@@ -15748,7 +15746,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   // no changes
   writer->Commit();
@@ -15774,7 +15772,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
   writer->Commit();
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   // no changes
   payload_calls_count = 0;
@@ -15816,7 +15814,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   // no changes
   writer->Commit();
@@ -15851,7 +15849,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
   ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   payload_provider_result = true;
   // no changes
@@ -15892,7 +15890,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
   ASSERT_EQ(0, payload_calls_count);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_EQ(input_payload, reader.Meta().index_meta.payload());
+  ASSERT_EQ(input_payload, irs::GetPayload(reader.Meta().index_meta));
 
   // no changes
   writer->Commit();
@@ -15926,7 +15924,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
   ASSERT_EQ(0, payload_committed_tick);
 
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_EQ(input_payload, reader.Meta().index_meta.payload());
+  ASSERT_EQ(input_payload, irs::GetPayload(reader.Meta().index_meta));
 
   // no changes
   payload_calls_count = 0;
@@ -15961,7 +15959,7 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_TRUE(writer->Begin());  // initial commit
   writer->Commit();
   auto reader = irs::DirectoryReader::Open(directory);
-  ASSERT_TRUE(irs::IsNull(reader.Meta().index_meta.payload()));
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   ASSERT_FALSE(writer->Begin());  // transaction hasn't been started, no changes
   writer->Commit();
@@ -16014,7 +16012,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_EQ(input_payload, new_reader.Meta().index_meta.payload());
+      ASSERT_EQ(input_payload, irs::GetPayload(new_reader.Meta().index_meta));
       reader = new_reader;
     }
   }
@@ -16112,7 +16110,7 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_TRUE(irs::IsNull(new_reader.Meta().index_meta.payload()));
+      ASSERT_TRUE(irs::IsNull(irs::GetPayload(new_reader.Meta().index_meta)));
       reader = new_reader;
     }
   }
@@ -16164,10 +16162,10 @@ TEST_P(index_test_case_11, commit_payload) {
     {
       auto new_reader = reader.Reopen();
       ASSERT_NE(reader, new_reader);
-      ASSERT_FALSE(irs::IsNull(new_reader.Meta().index_meta.payload()));
-      ASSERT_TRUE(new_reader.Meta().index_meta.payload().empty());
+      ASSERT_FALSE(irs::IsNull(irs::GetPayload(new_reader.Meta().index_meta)));
+      ASSERT_TRUE(irs::GetPayload(new_reader.Meta().index_meta).empty());
       ASSERT_EQ(irs::kEmptyStringView<irs::byte_type>,
-                new_reader.Meta().index_meta.payload());
+                irs::GetPayload(new_reader.Meta().index_meta));
       reader = new_reader;
     }
   }
@@ -16192,7 +16190,7 @@ TEST_P(index_test_case_11, commit_payload) {
   {
     auto new_reader = reader.Reopen();
     ASSERT_NE(reader, new_reader);
-    ASSERT_TRUE(irs::IsNull(new_reader.Meta().index_meta.payload()));
+    ASSERT_TRUE(irs::IsNull(irs::GetPayload(new_reader.Meta().index_meta)));
     reader = new_reader;
   }
 

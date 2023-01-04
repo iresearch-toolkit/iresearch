@@ -635,7 +635,7 @@ class IndexWriter : private util::noncopyable {
     struct FlushedSegment : public IndexSegment {
       FlushedSegment() = default;
       explicit FlushedSegment(SegmentMeta&& meta) noexcept
-        : IndexSegment{std::move(meta)} {}
+        : IndexSegment{.meta = std::move(meta)} {}
 
       // starting doc_id that should be added to docs_mask
       doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
@@ -659,7 +659,7 @@ class IndexWriter : private util::noncopyable {
     std::atomic<bool> dirty_;
     // ref tracking for segment_writer to allow for easy ref removal on
     // segment_writer reset
-    ref_tracking_directory dir_;
+    RefTrackingDirectory dir_;
     // guard 'flushed_', 'uncomitted_*' and 'writer_'
     // from concurrent flush
     std::mutex flush_mutex_;
@@ -809,7 +809,7 @@ class IndexWriter : private util::noncopyable {
     std::atomic<size_t> generation_{0};
     // ref tracking directory used by this context (tracks all/only
     // refs for this context)
-    ref_tracking_directory::ptr dir_;
+    RefTrackingDirectory::ptr dir_;
     // guard for the current context during flush (write)
     // operations vs update (read)
     std::shared_mutex flush_mutex_;

@@ -46,6 +46,22 @@ auto MakeByTerm(std::string_view name, std::string_view value) {
   return filter;
 }
 
+template<typename Visitor>
+bool VisitFiles(const IndexMeta& meta, Visitor&& visitor) {
+  for (auto& curr_segment : meta.segments) {
+    if (!visitor(curr_segment.filename)) {
+      return false;
+    }
+
+    for (auto& file : curr_segment.meta.files) {
+      if (!visitor(file)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
   const directory& dir, const format& codec) {
   const auto acceptor = [](std::string_view filename,
@@ -67,9 +83,8 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
   reader->read(dir, meta, segment_file);
 
   absl::flat_hash_set<std::string> retain;
-  retain.reserve(meta.size());
 
-  meta.visit_files([&retain](std::string_view file) {
+  VisitFiles(meta, [&retain](std::string_view file) {
     retain.emplace(file);
     return true;
   });
@@ -293,8 +308,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
     file_set.insert(segments_file);
 
-    index_meta.visit_files([&file_set](std::string& file) {
-      file_set.emplace(std::move(file));
+    VisitFiles(index_meta, [&file_set](std::string_view file) {
+      file_set.emplace(file);
       return true;
     });
   }
@@ -334,8 +349,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
     file_set.insert(segments_file);
 
-    index_meta.visit_files([&file_set](std::string& file) {
-      file_set.emplace(std::move(file));
+    VisitFiles(index_meta, [&file_set](std::string_view file) {
+      file_set.emplace(file);
       return true;
     });
   }

@@ -26,7 +26,6 @@
 #include "tests_shared.hpp"
 #include "utils/misc.hpp"
 #include "utils/string.hpp"
-#include "utils/string_utils.hpp"
 
 using namespace irs;
 
