@@ -2140,7 +2140,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   readers.reserve(commited_reader_size);
 
   for (std::vector<doc_id_t> deleted_docs;
-       const SegmentReader& existing_segment : committed_reader.GetReaders()) {
+       const auto& existing_segment : committed_reader.GetReaders()) {
     // report progress
     progress("Stage 1: Apply removals to the existing segments",
              current_segment_index, commited_reader_size);
@@ -2148,7 +2148,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     Finally increment = [&]() noexcept { ++current_segment_index; };
 
     // skip already masked segments
-    // FIXME(gnusi): valid pointer?
     if (segment_mask.contains(&existing_segment)) {
       continue;
     }
@@ -2179,7 +2178,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         // It's important to mask empty segment to rollback
         // the affected consolidations
 
-        // FIXME(gnusi): is it correct address?
         segment_mask.emplace(&existing_segment);
         modified = true;
         continue;
@@ -2272,16 +2270,15 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
       // mask mapped candidates
       // segments from the to-be added new segment
-      for (auto& mapping : mappings) {
-        // FIXME(gnusi): valid pointer?
-        segment_mask.emplace(mapping.second.second.first);
+      for (const auto& mapping : mappings) {
+        const auto* reader = mapping.second.second.first;
+        segment_mask.emplace(reader);
       }
 
       // mask mapped (matched) segments
       // segments from the currently ongoing commit
-      for (auto& segment : readers) {
+      for (const auto& segment : readers) {
         if (mappings.contains(segment.Meta().name)) {
-          // FIXME(gnusi): valid pointer?
           segment_mask.emplace(&segment);
         }
       }
@@ -2376,8 +2373,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     tmp_meta.segments.reserve(count);
 
     for (size_t i = 0, size = readers.size(); i < size; ++i) {
-      // FIXME(gnusi): valid pointer?
-      if (auto& segment = readers[i]; segment_mask.contains(&segment)) {
+      if (const auto& segment = readers[i]; segment_mask.contains(&segment)) {
         to_sync.Invalidate(i);
       } else {
         tmp_readers.emplace_back(std::move(segment));
