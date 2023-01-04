@@ -33,7 +33,7 @@ namespace irs {
 namespace directory_utils {
 
 // Return a reference to a file or empty() if not found
-index_file_refs::ref_t reference(const directory& dir, std::string_view name) {
+index_file_refs::ref_t Reference(const directory& dir, std::string_view name) {
   auto& refs = dir.attributes().refs();
 
   bool exists;
@@ -64,7 +64,7 @@ bool RemoveAllUnreferenced(directory& dir) {
 }  // namespace directory_utils
 
 TrackingDirectory::TrackingDirectory(directory& impl,
-                                       bool track_open /*= false*/) noexcept
+                                     bool track_open /*= false*/) noexcept
   : impl_(impl), track_open_(track_open) {}
 
 index_output::ptr TrackingDirectory::create(std::string_view name) noexcept {
@@ -88,7 +88,7 @@ index_output::ptr TrackingDirectory::create(std::string_view name) noexcept {
 }
 
 index_input::ptr TrackingDirectory::open(std::string_view name,
-                                          IOAdvice advice) const noexcept {
+                                         IOAdvice advice) const noexcept {
   if (track_open_) {
     try {
       files_.emplace(name);
@@ -116,7 +116,7 @@ bool TrackingDirectory::remove(std::string_view name) noexcept {
 }
 
 bool TrackingDirectory::rename(std::string_view src,
-                                std::string_view dst) noexcept {
+                               std::string_view dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
@@ -140,7 +140,7 @@ void TrackingDirectory::flush_tracked(file_set& other) noexcept {
 }
 
 RefTrackingDirectory::RefTrackingDirectory(directory& impl,
-                                               bool track_open /*= false*/)
+                                           bool track_open /*= false*/)
   : attribute_(impl.attributes().refs()),
     impl_(impl),
     track_open_(track_open) {}
@@ -158,8 +158,7 @@ void RefTrackingDirectory::clear_refs() const {
   refs_.clear();
 }
 
-index_output::ptr RefTrackingDirectory::create(
-  std::string_view name) noexcept {
+index_output::ptr RefTrackingDirectory::create(std::string_view name) noexcept {
   try {
     // Do not change the order of calls!
     // The cleaner should "see" the file in directory
@@ -183,7 +182,7 @@ index_output::ptr RefTrackingDirectory::create(
 }
 
 index_input::ptr RefTrackingDirectory::open(std::string_view name,
-                                              IOAdvice advice) const noexcept {
+                                            IOAdvice advice) const noexcept {
   if (!track_open_) {
     return impl_.open(name, advice);
   }
@@ -229,7 +228,7 @@ bool RefTrackingDirectory::remove(std::string_view name) noexcept {
 }
 
 bool RefTrackingDirectory::rename(std::string_view src,
-                                    std::string_view dst) noexcept {
+                                  std::string_view dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }

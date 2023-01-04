@@ -92,6 +92,7 @@ set(IResearch_core_sources
   ./formats/skip_list.cpp
   ./formats/sparse_bitmap.cpp
   ./index/directory_reader.cpp
+  ./index/directory_reader_impl.cpp
   ./index/field_data.cpp
   ./index/field_meta.cpp
   ./index/file_names.cpp
@@ -102,6 +103,7 @@ set(IResearch_core_sources
   ./index/norm.cpp
   ./index/postings.cpp
   ./index/segment_reader.cpp
+  ./index/segment_reader_impl.cpp
   ./index/segment_writer.cpp
   ./index/sorted_column.cpp
   ./search/all_docs_provider.cpp
@@ -185,6 +187,7 @@ set(IResearch_core_headers
   ./formats/format_utils.hpp
   ./formats/skip_list.hpp
   ./index/directory_reader.hpp
+  ./index/directory_reader_impl.hpp
   ./index/field_data.hpp
   ./index/field_meta.hpp
   ./index/file_names.hpp
@@ -192,6 +195,7 @@ set(IResearch_core_headers
   ./index/index_reader.hpp
   ./index/iterators.hpp
   ./index/segment_reader.hpp
+  ./index/segment_reader_impl.hpp
   ./index/segment_writer.hpp
   ./index/index_writer.hpp
   ./search/all_filter.hpp

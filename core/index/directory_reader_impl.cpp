@@ -64,7 +64,7 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
         }
 
         // why not directory_utils::reference(.., .., true)?
-        ref = directory_utils::reference(const_cast<directory&>(dir), filename);
+        ref = directory_utils::Reference(const_cast<directory&>(dir), filename);
       }
 
       if (ref) {
@@ -128,7 +128,7 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
           break;  // try the next codec
         }
 
-        ref = directory_utils::reference(const_cast<directory&>(dir), filename);
+        ref = directory_utils::Reference(const_cast<directory&>(dir), filename);
       }
 
       // initialize to a value that will never pass 'if' below (to make valgrind
@@ -168,17 +168,18 @@ DirectoryReaderImpl::Init GetInit(const directory& dir,
   DirectoryReaderImpl::Init init;
   auto& [file_refs, docs_count, live_docs_count] = init;
 
-  file_refs.reserve(meta.index_meta.size() + size_t{has_segments_file});
+  file_refs.reserve(meta.index_meta.segments.size() +
+                    size_t{has_segments_file});
 
   auto& refs = dir.attributes().refs();
-  for (const auto& [filename, segment] : meta.index_meta.segments()) {
+  for (const auto& [filename, segment] : meta.index_meta.segments) {
     file_refs.emplace_back(refs.add(filename));
     docs_count += segment.docs_count;
     live_docs_count += segment.live_docs_count;
   }
 
   if (has_segments_file) {
-    file_refs.emplace_back(meta.filename);
+    file_refs.emplace_back(refs.add(meta.filename));
   }
 
   return init;
@@ -222,7 +223,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
   absl::flat_hash_map<std::string_view, size_t> reuse_candidates;
 
   if (cached) {
-    const auto segments = cached->Meta().index_meta.segments();
+    const auto& segments = cached->Meta().index_meta.segments;
     reuse_candidates.reserve(segments.size());
 
     for (size_t i = 0; const auto& segment : segments) {
@@ -235,7 +236,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
     }
   }
 
-  const auto segments = meta.segments();
+  const auto& segments = meta.segments;
 
   ReadersType readers(segments.size());
   auto reader = readers.begin();
@@ -244,7 +245,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
     const auto it = reuse_candidates.find(meta.name);
 
     if (it != reuse_candidates.end() && it->second != kInvalidCandidate &&
-        meta == cached->meta_.index_meta[it->second].meta) {
+        meta == cached->meta_.index_meta.segments[it->second].meta) {
       *reader = (*cached)[it->second].Reopen(meta);
       reuse_candidates.erase(it);
     } else {
