@@ -441,11 +441,11 @@ TEST_P(Norm2TestCase, CheckNorms) {
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                doc0->stored.begin(), doc0->stored.end());
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -553,18 +553,18 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end()));
   ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                      doc5->stored.begin(), doc5->stored.end()));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  writer->commit();
+  writer->Commit();
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                doc0->stored.begin(), doc0->stored.end());
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -573,7 +573,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
                                doc2->stored.begin(), doc2->stored.end());
   expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
                                doc3->stored.begin(), doc3->stored.end());
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end(),
                                doc4->stored.begin(), doc4->stored.end());
   expected_index.back().insert(doc5->indexed.begin(), doc5->indexed.end(),
@@ -673,13 +673,13 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   // Consolidate segments
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
 
     // Simulate consolidation
     index().clear();
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
     expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                  doc0->stored.begin(), doc0->stored.end());
@@ -813,18 +813,18 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end()));
   ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                      doc5->stored.begin(), doc5->stored.end()));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  writer->commit();
+  writer->Commit();
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                doc0->stored.begin(), doc0->stored.end());
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -833,7 +833,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
                                doc2->stored.begin(), doc2->stored.end());
   expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
                                doc3->stored.begin(), doc3->stored.end());
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end(),
                                doc4->stored.begin(), doc4->stored.end());
   expected_index.back().insert(doc5->indexed.begin(), doc5->indexed.end(),
@@ -934,19 +934,19 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   {
     auto query_doc3 = MakeByTerm("name", "D");
     writer->documents().Remove(*query_doc3);
-    writer->commit();
+    writer->Commit();
   }
 
   // Consolidate segments
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
 
     // Simulate consolidation
     index().clear();
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
     expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                  doc0->stored.begin(), doc0->stored.end());
@@ -1027,14 +1027,14 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
 
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end()));
-  writer->commit();
+  writer->Commit();
 
   // Consolidate segments
   {
     const irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
   }
 
   reader = open_reader();

@@ -105,8 +105,8 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
     irs::make_parametric_description(3, false),
   };
 
-  const std::string_view TARGETS[]{"atlas",     "bloom",    "burden", "del",
-                                   "survenius", "surbenus", ""};
+  constexpr std::string_view TARGETS[]{"atlas",     "bloom",    "burden", "del",
+                                       "survenius", "surbenus", ""};
 
   // add data
   {
@@ -123,7 +123,7 @@ TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
       SCOPED_TRACE(testing::Message("Target: '")
                    << target << testing::Message("', Edit distance: ")
                    << size_t(description.max_distance()));
-      assert_index(static_cast<irs::IndexReader::ptr>(reader), description,
+      assert_index(reader.GetImpl(), description,
                    irs::kEmptyStringView<irs::byte_type>,
                    irs::ViewCast<irs::byte_type>(target));
     }

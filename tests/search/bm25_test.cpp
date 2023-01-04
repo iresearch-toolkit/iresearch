@@ -594,7 +594,7 @@ TEST_P(bm25_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
     }
 
     // add second segment (odd 'seq')
@@ -606,7 +606,7 @@ TEST_P(bm25_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
     }
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -686,7 +686,7 @@ TEST_P(bm25_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
     }
 
     // add second segment (odd 'seq')
@@ -698,7 +698,7 @@ TEST_P(bm25_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
     }
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -788,7 +788,7 @@ TEST_P(bm25_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
     }
 
     // add second segment (odd 'seq')
@@ -800,7 +800,7 @@ TEST_P(bm25_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
     }
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -1251,7 +1251,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
                          doc->stored.begin(), doc->stored.end()));
     }
 
-    writer->commit();
+    writer->Commit();
   }
 
   auto reader = irs::DirectoryReader::Open(dir(), codec());

@@ -8088,7 +8088,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
                        doc3->stored.begin(), doc3->stored.end()));
 
     writer->Begin();
-    writer->clear();
+    writer->Clear();
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       irs::index_utils::ConsolidateCount())));  // consolidate
     writer->Commit();                           // commit transaction
@@ -8119,7 +8119,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     writer->Begin();
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       irs::index_utils::ConsolidateCount())));  // consolidate
-    writer->clear();
+    writer->Clear();
     writer->Commit();  // commit transaction
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -8148,7 +8148,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
 
-    writer->clear();
+    writer->Clear();
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -8175,7 +8175,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->Commit();
 
-    writer->clear();
+    writer->Clear();
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       irs::index_utils::ConsolidateCount())));  // consolidate
 
@@ -9809,7 +9809,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {0, 1};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
 
-    writer->rollback();
+    writer->Rollback();
 
     // leftovers cleanup
     ASSERT_EQ(3, irs::directory_cleaner::clean(dir()));
@@ -15478,7 +15478,7 @@ TEST_P(index_test_case_10, commit_payload) {
     ASSERT_TRUE(writer->Begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
-    writer->rollback();
+    writer->Rollback();
 
     // check payload
     {
@@ -15717,7 +15717,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   payload_committed_tick = 0;
   payload_provider_result = true;
-  writer->clear(expected_tick);
+  writer->Clear(expected_tick);
   {
     auto reader = irs::DirectoryReader::Open(dir());
     ASSERT_EQ(input_payload, reader.Meta().index_meta.payload());
@@ -16056,7 +16056,7 @@ TEST_P(index_test_case_11, commit_payload) {
     ASSERT_TRUE(writer->Begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
 
-    writer->rollback();
+    writer->Rollback();
 
     // check payload
     {

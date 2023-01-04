@@ -15188,19 +15188,19 @@ TEST_P(boolean_filter_test_case, or_sequential_multiple_segments) {
                        doc3->stored.begin(), doc3->stored.end()));  // C
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));  // D
-    writer->commit();
+    writer->Commit();
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));  // E
     ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                        doc6->stored.begin(), doc6->stored.end()));  // F
     ASSERT_TRUE(insert(*writer, doc7->indexed.begin(), doc7->indexed.end(),
                        doc7->stored.begin(), doc7->stored.end()));  // G
-    writer->commit();
+    writer->Commit();
     ASSERT_TRUE(insert(*writer, doc8->indexed.begin(), doc8->indexed.end(),
                        doc8->stored.begin(), doc8->stored.end()));  // H
     ASSERT_TRUE(insert(*writer, doc9->indexed.begin(), doc9->indexed.end(),
                        doc9->stored.begin(), doc9->stored.end()));  // I
-    writer->commit();
+    writer->Commit();
   }
 
   auto rdr = open_reader();

@@ -46,6 +46,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
 
   // create index metadata and write it into the specified directory
   irs::IndexMeta meta_orig;
+  std::string filename;
   ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
 
   // set payload
@@ -53,7 +54,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
     ViewCast<byte_type>(std::string_view("payload"));
   meta_orig.payload(payload);
 
-  ASSERT_TRUE(writer->prepare(dir, meta_orig));
+  ASSERT_TRUE(writer->prepare(dir, meta_orig, filename));
 
   // we should increase meta generation after we write to directory
   EXPECT_EQ(1, meta_orig.generation());
@@ -106,6 +107,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
 
   // create index metadata and write it into the specified directory
   irs::IndexMeta meta_orig;
+  std::string filename;
   ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
 
   // set payload
@@ -113,7 +115,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
     ViewCast<byte_type>(std::string_view("payload"));
   meta_orig.payload(payload);
 
-  ASSERT_TRUE(writer->prepare(dir, meta_orig));
+  ASSERT_TRUE(writer->prepare(dir, meta_orig, filename));
 
   // we should increase meta generation after we write to directory
   EXPECT_EQ(1, meta_orig.generation());

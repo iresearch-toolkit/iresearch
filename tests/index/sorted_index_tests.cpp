@@ -623,7 +623,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&compare, writer->comparator());
+  ASSERT_EQ(&compare, writer->Comparator());
 
   // Add segment 0
   {
@@ -794,13 +794,13 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
   // Consolidate segments
   {
     irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
 
     // simulate consolidation
     index().clear();
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
 
     gen.reset();
@@ -812,8 +812,8 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
       column.rewrite();
     }
 
-    ASSERT_NE(nullptr, writer->comparator());
-    segment.sort(*writer->comparator());
+    ASSERT_NE(nullptr, writer->Comparator());
+    segment.sort(*writer->Comparator());
   }
 
   assert_index();
@@ -1159,7 +1159,7 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&comparer, writer->comparator());
+  ASSERT_EQ(&comparer, writer->Comparator());
 
   // Write documents
   {
@@ -1192,7 +1192,7 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
     }
   }
 
-  writer->commit();
+  writer->Commit();
 
   // Read documents
   {
@@ -1259,21 +1259,21 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&comparer, writer->comparator());
+  ASSERT_EQ(&comparer, writer->Comparator());
 
   // Segment 0
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-  writer->commit();
+  writer->Commit();
 
   // Segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
-  writer->commit();
+  writer->Commit();
 
   // Read documents
   {
@@ -1353,9 +1353,9 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   // Consolidate segments
   {
     irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
   }
 
   // Check consolidated segment
@@ -1410,7 +1410,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
                  doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
@@ -1419,7 +1419,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
                  doc1->stored.begin(), doc1->stored.end(), doc1->sorted.get());
   segment.insert(doc3->indexed.begin(), doc3->indexed.end(),
                  doc3->stored.begin(), doc3->stored.end(), doc3->sorted.get());
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
@@ -1461,21 +1461,21 @@ TEST_P(SortedIndexTestCase,
   opts.features = features();
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&comparer, writer->comparator());
+  ASSERT_EQ(&comparer, writer->Comparator());
 
   // segment 0
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-  writer->commit();
+  writer->Commit();
 
   // segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
-  writer->commit();
+  writer->Commit();
 
   // Read documents
   {
@@ -1558,7 +1558,7 @@ TEST_P(SortedIndexTestCase,
   {
     auto query_doc1 = MakeByTerm("name", "C");
     writer->documents().Remove(*query_doc1);
-    writer->commit();
+    writer->Commit();
   }
 
   // Read documents
@@ -1637,9 +1637,9 @@ TEST_P(SortedIndexTestCase,
   // Consolidate segments
   {
     irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
   }
 
   // Check consolidated segment
@@ -1691,7 +1691,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
                  doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
   segment.insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -1701,7 +1701,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -1733,7 +1733,7 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
     opts.features = features();
     auto writer = open_writer(irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
-    ASSERT_EQ(&comparer, writer->comparator());
+    ASSERT_EQ(&comparer, writer->Comparator());
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
@@ -1743,7 +1743,7 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
     writer->documents().Remove(*(query_doc2));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
   }
 
   // Check consolidated segment
@@ -1805,21 +1805,21 @@ TEST_P(SortedIndexTestCase,
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
-  writer->commit();
+  writer->Commit();
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
 
   // Read documents
   {
@@ -1899,9 +1899,9 @@ TEST_P(SortedIndexTestCase,
   // Consolidate segments
   {
     irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
   }
 
   // Check consolidated segment
@@ -1956,7 +1956,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
                  doc2->stored.begin(), doc2->stored.end(), &kEmpty);
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
@@ -1968,7 +1968,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -2004,7 +2004,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
@@ -2013,7 +2013,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end(), doc4->sorted));
-  writer->commit();
+  writer->Commit();
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2024,7 +2024,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
                      doc5->stored.begin(), doc5->stored.end(), doc5->sorted));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  writer->commit();
+  writer->Commit();
 
   // Read documents
   {
@@ -2115,9 +2115,9 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   // Consolidate segments
   {
     irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    writer->commit();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
   }
 
   // Check consolidated segment:
@@ -2183,7 +2183,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
                  doc2->stored.begin(), doc2->stored.end(), &kEmpty);
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
@@ -2201,7 +2201,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -2238,7 +2238,7 @@ TEST_P(SortedIndexTestCase,
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
@@ -2247,7 +2247,7 @@ TEST_P(SortedIndexTestCase,
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end(), doc4->sorted));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2258,7 +2258,7 @@ TEST_P(SortedIndexTestCase,
                      doc5->stored.begin(), doc5->stored.end(), doc5->sorted));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   // Remove docs from segment 1
   writer->documents().Remove(
@@ -2268,7 +2268,7 @@ TEST_P(SortedIndexTestCase,
   // Remove docs from segment 0
   writer->documents().Remove(
     irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   // Read documents
   {
@@ -2363,9 +2363,9 @@ TEST_P(SortedIndexTestCase,
   // Consolidate segments
   {
     irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_TRUE(writer->Commit());
   }
 
   // Check consolidated segment:
@@ -2421,7 +2421,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
                  doc2->stored.begin(), doc2->stored.end(), &kEmpty);
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
@@ -2433,7 +2433,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -2476,7 +2476,7 @@ TEST_P(SortedIndexTestCase,
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, *docs[0].first, 5, false));
@@ -2485,7 +2485,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, *docs[3].first, 1, true));
   ASSERT_TRUE(insert(*writer, *docs[12].first, 2, false));
   ASSERT_TRUE(insert(*writer, *docs[13].first, 1, true));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, *docs[6].first, 1, false));
@@ -2495,7 +2495,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, *docs[5].first, 1, true));
   ASSERT_TRUE(insert(*writer, *docs[10].first, 8, false));
   ASSERT_TRUE(insert(*writer, *docs[11].first, 1, true));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   // Remove docs
   writer->documents().Remove(*docs[2].second);
@@ -2505,7 +2505,7 @@ TEST_P(SortedIndexTestCase,
   writer->documents().Remove(*docs[5].second);
 
   writer->documents().Remove(*docs[9].second);
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   {
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -2600,9 +2600,9 @@ TEST_P(SortedIndexTestCase,
   // Consolidate segments
   {
     irs::index_utils::ConsolidateCount consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::MakePolicy(consolidate_all)));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_TRUE(writer->Commit());
   }
 
   // Check consolidated segment
@@ -2659,7 +2659,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(*docs[0].first, 5, false);
   segment.insert(*docs[1].first, 1, true);
   segment.insert(*docs[12].first, 2, false);
@@ -2671,7 +2671,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -2745,7 +2745,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
         opts.features = features();
         auto writer = open_writer(irs::OM_CREATE, opts);
         ASSERT_NE(nullptr, writer);
-        ASSERT_EQ(&compare, writer->comparator());
+        ASSERT_EQ(&compare, writer->Comparator());
         for (size_t i = 0; i < kLen; ++i) {
           {
             auto ctx = writer->documents();
@@ -2767,7 +2767,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
           writer->documents().Remove(*(remove_docs[i].second));
           in_store[remove_docs[i].first] = false;
         }
-        writer->commit();
+        writer->Commit();
         writer = nullptr;
         // Check consolidated segment
         auto reader = irs::DirectoryReader::Open(dir(), codec());
