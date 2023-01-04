@@ -52,12 +52,6 @@ class SegmentReader final : public SubReader {
 
   const SegmentInfo& Meta() const override;
 
-  const SubReader& operator[](size_t i) const noexcept override {
-    IRS_ASSERT(!i);
-    IRS_IGNORE(i);
-    return *this;
-  }
-
   column_iterator::ptr columns() const override;
 
   doc_iterator::ptr docs_iterator() const override;

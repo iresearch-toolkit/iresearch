@@ -31,10 +31,33 @@
 namespace irs {
 
 struct DirectoryReaderImpl::Init {
+  Init(const directory& dir, const DirectoryMeta& meta);
+
   FileRefs file_refs;
   uint64_t docs_count;
   uint64_t live_docs_count;
 };
+
+DirectoryReaderImpl::Init::Init(const directory& dir,
+                                const DirectoryMeta& meta) {
+  const bool has_segments_file = !meta.filename.empty();
+
+  auto& [file_refs, docs_count, live_docs_count] = *this;
+
+  file_refs.reserve(meta.index_meta.segments.size() +
+                    size_t{has_segments_file});
+
+  auto& refs = dir.attributes().refs();
+  for (const auto& [filename, segment] : meta.index_meta.segments) {
+    file_refs.emplace_back(refs.add(filename));
+    docs_count += segment.docs_count;
+    live_docs_count += segment.live_docs_count;
+  }
+
+  if (has_segments_file) {
+    file_refs.emplace_back(refs.add(meta.filename));
+  }
+}
 
 namespace {
 
@@ -160,37 +183,13 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
-DirectoryReaderImpl::Init GetInit(const directory& dir,
-                                  const DirectoryMeta& meta) {
-  const bool has_segments_file = !meta.filename.empty();
-
-  DirectoryReaderImpl::Init init;
-  auto& [file_refs, docs_count, live_docs_count] = init;
-
-  file_refs.reserve(meta.index_meta.segments.size() +
-                    size_t{has_segments_file});
-
-  auto& refs = dir.attributes().refs();
-  for (const auto& [filename, segment] : meta.index_meta.segments) {
-    file_refs.emplace_back(refs.add(filename));
-    docs_count += segment.docs_count;
-    live_docs_count += segment.live_docs_count;
-  }
-
-  if (has_segments_file) {
-    file_refs.emplace_back(refs.add(meta.filename));
-  }
-
-  return init;
-}
-
 }  // namespace
 
 DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
                                          const IndexReaderOptions& opts,
                                          DirectoryMeta&& meta,
                                          ReadersType&& readers)
-  : DirectoryReaderImpl{GetInit(dir, meta), dir, opts, std::move(meta),
+  : DirectoryReaderImpl{Init{dir, meta}, dir, opts, std::move(meta),
                         std::move(readers)} {}
 
 DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,

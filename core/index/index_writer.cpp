@@ -551,10 +551,6 @@ std::string ToString(ConsolidationView consolidation) {
   return str;
 }
 
-auto AddRef(directory& dir, std::string_view filename) {
-  return dir.attributes().refs().add(filename);
-}
-
 std::shared_ptr<const DirectoryReaderImpl> OpenReader(
   directory& dir, DirectoryMeta&& meta, const IndexReaderOptions& opts) {
   const auto& segments = meta.index_meta.segments;
@@ -1442,7 +1438,7 @@ IndexWriter::ptr IndexWriter::make(
     // lock the directory
     lock = dir.make_lock(kWriteLockName);
     // will be created by try_lock
-    lock_ref = AddRef(dir, kWriteLockName);
+    lock_ref = dir.attributes().refs().add(kWriteLockName);
 
     if (!lock || !lock->try_lock()) {
       throw lock_obtain_failed(kWriteLockName);
@@ -2122,6 +2118,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   };
 
   const auto& committed_reader = *committed_reader_;
+  const auto& committed_meta = committed_reader.Meta();
   const auto& reader_options = committed_reader.Options();
 
   // Stage 0
@@ -2143,7 +2140,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   readers.reserve(commited_reader_size);
 
   for (std::vector<doc_id_t> deleted_docs;
-       auto& existing_segment : committed_reader.GetReaders()) {
+       const SegmentReader& existing_segment : committed_reader.GetReaders()) {
     // report progress
     progress("Stage 1: Apply removals to the existing segments",
              current_segment_index, commited_reader_size);
@@ -2193,9 +2190,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       auto docs_mask = *existing_segment.docs_mask();
       docs_mask.insert(deleted_docs.begin(), deleted_docs.end());
 
-      IndexSegment segment{.meta = committed_reader.Meta()
-                                     .index_meta.segments[current_segment_index]
-                                     .meta};
+      IndexSegment segment{
+        .meta = committed_meta.index_meta.segments[current_segment_index].meta};
 
       const auto mask_file = WriteDocumentMask(dir, segment.meta, docs_mask);
 
@@ -2213,7 +2209,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     } else {
       readers.emplace_back(existing_segment.GetImpl());
       pending_meta.segments.emplace_back(
-        committed_reader.Meta().index_meta.segments[current_segment_index]);
+        committed_meta.index_meta.segments[current_segment_index]);
     }
   }
 
@@ -2228,7 +2224,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   for (auto& pending_segment : ctx->pending_segments_) {
     auto& meta = pending_segment.segment.meta;
 
-    // FIXME(gnusi): move to consolidation
+    // FIXME(gnusi): move to consolidation in case if it's not pending
     auto pending_reader = SegmentReaderImpl::Open(dir, meta, reader_options);
 
     if (!pending_reader) {
@@ -2255,6 +2251,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
     const auto pending_consolidation =
       static_cast<bool>(pending_segment.consolidation_ctx.merger);
+
     if (pending_consolidation) {
       // Pending consolidation request
       CandidatesMapping mappings;

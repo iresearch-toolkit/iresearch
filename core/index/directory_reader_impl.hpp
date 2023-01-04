@@ -36,11 +36,9 @@ struct DirectoryMeta {
   IndexMeta index_meta;
 };
 
-class DirectoryReaderImpl
+class DirectoryReaderImpl final
   : public CompositeReaderImpl<std::vector<SegmentReader>> {
  public:
-  struct Init;
-
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
@@ -58,6 +56,8 @@ class DirectoryReaderImpl
   const IndexReaderOptions& Options() const noexcept { return opts_; }
 
  private:
+  struct Init;
+
   DirectoryReaderImpl(Init&& init, const directory& dir,
                       const IndexReaderOptions& opts, DirectoryMeta&& meta,
                       ReadersType&& readers);
