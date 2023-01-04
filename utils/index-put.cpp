@@ -364,7 +364,7 @@ int put(const std::string& path, const std::string& dir_type,
                        consolidation_threads);  // -1 for commiter thread
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = segment_mem_max;
   opts.features = [](irs::type_info::type_id id) {
@@ -382,7 +382,7 @@ int put(const std::string& path, const std::string& dir_type,
     return std::make_pair(info, irs::feature_writer_factory_t{});
   };
 
-  auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE, opts);
+  auto writer = irs::IndexWriter::make(*dir, codec, irs::OM_CREATE, opts);
 
   irs::async_utils::thread_pool thread_pool(
     indexer_threads + consolidation_threads + 1);  // +1 for commiter thread
@@ -483,7 +483,7 @@ int put(const std::string& path, const std::string& dir_type,
           std::cout << "[COMMIT]"
                     << std::endl;  // break indexer thread output by commit
           SCOPED_TIMER("Commit time");
-          writer->commit();
+          writer->Commit();
         }
 
         // notify consolidation threads
@@ -521,7 +521,7 @@ int put(const std::string& path, const std::string& dir_type,
         {
           std::cout << "[CONSOLIDATE]" << std::flush;
           SCOPED_TIMER("Consolidation time");
-          writer->consolidate(policy);
+          writer->Consolidate(policy);
         }
 
         {
@@ -572,16 +572,16 @@ int put(const std::string& path, const std::string& dir_type,
     std::cout << "[COMMIT]"
               << std::endl;  // break indexer thread output by commit
     SCOPED_TIMER("Commit time");
-    writer->commit();
+    writer->Commit();
   }
 
   if (consolidate_all) {
     // merge all segments into a single segment
     SCOPED_TIMER("Consolidating all time");
     std::cout << "Consolidating all segments:" << std::endl;
-    writer->consolidate(irs::index_utils::MakePolicy(
+    writer->Consolidate(irs::index_utils::MakePolicy(
       irs::index_utils::ConsolidateCount()));
-    writer->commit();
+    writer->Commit();
   }
 
   if (consolidate_all || consolidation_threads) {

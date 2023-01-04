@@ -282,7 +282,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
   static constexpr auto kIndexAndStore =
     irs::Action::INDEX | irs::Action::STORE;
 
-  static void InsertItemDocument(irs::index_writer::Transaction& trx,
+  static void InsertItemDocument(irs::IndexWriter::Transaction& trx,
                                  std::string_view item, int32_t price,
                                  int32_t count) {
     auto doc = trx.Insert();
@@ -294,7 +294,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
     ASSERT_TRUE(doc);
   }
 
-  static void InsertOrderDocument(irs::index_writer::Transaction& trx,
+  static void InsertOrderDocument(irs::IndexWriter::Transaction& trx,
                                   std::string_view customer,
                                   std::string_view date) {
     auto doc = trx.Insert();
@@ -306,7 +306,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
     ASSERT_TRUE(doc);
   }
 
-  static void InsertOrder(irs::index_writer& writer, const Order& order) {
+  static void InsertOrder(irs::IndexWriter& writer, const Order& order) {
     auto trx = writer.documents();
     for (const auto& [item, price, count] : order.items) {
       InsertItemDocument(trx, item, price, count);
@@ -318,7 +318,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
 };
 
 void NestedFilterTestCase::InitDataSet() {
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.column_info = [](std::string_view name) {
     return irs::column_info{
       .compression = irs::type<irs::compression::none>::get(),
@@ -361,7 +361,7 @@ void NestedFilterTestCase::InitDataSet() {
                          {"CPU", 1000, 2},
                          {"RAM", 5000, 2}}});
 
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   auto reader = open_reader();
   ASSERT_NE(nullptr, reader);

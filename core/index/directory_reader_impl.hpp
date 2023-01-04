@@ -39,7 +39,7 @@ struct DirectoryMeta {
 class DirectoryReaderImpl
   : public CompositeReaderImpl<std::vector<SegmentReader>> {
  public:
-  using FileRefs = std::vector<index_file_refs::ref_t>;
+  struct Init;
 
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
@@ -49,9 +49,7 @@ class DirectoryReaderImpl
     const std::shared_ptr<const DirectoryReaderImpl>& cached);
 
   DirectoryReaderImpl(const directory& dir, const IndexReaderOptions& opts,
-                      FileRefs&& file_refs, DirectoryMeta&& meta,
-                      ReadersType&& readers, uint64_t docs_count,
-                      uint64_t docs_max);
+                      DirectoryMeta&& meta, ReadersType&& readers);
 
   const directory& Dir() const noexcept { return dir_; }
 
@@ -60,6 +58,12 @@ class DirectoryReaderImpl
   const IndexReaderOptions& Options() const noexcept { return opts_; }
 
  private:
+  DirectoryReaderImpl(Init&& init, const directory& dir,
+                      const IndexReaderOptions& opts, DirectoryMeta&& meta,
+                      ReadersType&& readers);
+
+  using FileRefs = std::vector<index_file_refs::ref_t>;
+
   const directory& dir_;
   FileRefs file_refs_;
   DirectoryMeta meta_;

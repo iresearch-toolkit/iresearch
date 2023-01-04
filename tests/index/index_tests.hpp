@@ -186,16 +186,16 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     }
   }
 
-  irs::index_writer::ptr open_writer(
+  irs::IndexWriter::ptr open_writer(
     irs::directory& dir, irs::OpenMode mode = irs::OM_CREATE,
-    const irs::index_writer::init_options& options = {}) const {
-    return irs::index_writer::make(dir, codec_, mode, options);
+    const irs::IndexWriter::InitOptions& options = {}) const {
+    return irs::IndexWriter::make(dir, codec_, mode, options);
   }
 
-  irs::index_writer::ptr open_writer(
+  irs::IndexWriter::ptr open_writer(
     irs::OpenMode mode = irs::OM_CREATE,
-    const irs::index_writer::init_options& options = {}) const {
-    return irs::index_writer::make(*dir_, codec_, mode, options);
+    const irs::IndexWriter::InitOptions& options = {}) const {
+    return irs::IndexWriter::make(*dir_, codec_, mode, options);
   }
 
   irs::DirectoryReader open_reader() const {
@@ -231,17 +231,17 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     irs::timer_utils::init_stats();  // disable profile state tracking
   }
 
-  void write_segment(irs::index_writer& writer, tests::index_segment& segment,
+  void write_segment(irs::IndexWriter& writer, tests::index_segment& segment,
                      tests::doc_generator_base& gen);
 
-  void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen);
+  void add_segment(irs::IndexWriter& writer, tests::doc_generator_base& gen);
 
-  void add_segments(irs::index_writer& writer,
+  void add_segments(irs::IndexWriter& writer,
                     std::vector<doc_generator_base::ptr>& gens);
 
   void add_segment(tests::doc_generator_base& gen,
                    irs::OpenMode mode = irs::OM_CREATE,
-                   const irs::index_writer::init_options& opts = {});
+                   const irs::IndexWriter::InitOptions& opts = {});
 
  private:
   index_t index_;

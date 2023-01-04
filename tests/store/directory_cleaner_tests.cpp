@@ -244,11 +244,11 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // writer commit tracks files that are in active segments
   {
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->commit();
+    writer->Commit();
 
     std::vector<std::string> files;
     auto list_files = [&files](std::string_view name) {
@@ -263,7 +263,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     writer->documents().Remove(std::move(query_doc1));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->commit();
+    writer->Commit();
 
     irs::directory_cleaner::clean(
       dir, remove_except_current_segments(dir, *codec_ptr));

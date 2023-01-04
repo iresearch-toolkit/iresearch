@@ -137,7 +137,7 @@ irs::format::ptr index_test_base::get_codec() const {
   return irs::formats::get(info.codec, info.module);
 }
 
-void index_test_base::write_segment(irs::index_writer& writer,
+void index_test_base::write_segment(irs::IndexWriter& writer,
                                     tests::index_segment& segment,
                                     tests::doc_generator_base& gen) {
   // add segment
@@ -150,30 +150,30 @@ void index_test_base::write_segment(irs::index_writer& writer,
                        src->stored.begin(), src->stored.end(), src->sorted));
   }
 
-  if (writer.comparator()) {
-    segment.sort(*writer.comparator());
+  if (writer.Comparator()) {
+    segment.sort(*writer.Comparator());
   }
 }
 
-void index_test_base::add_segment(irs::index_writer& writer,
+void index_test_base::add_segment(irs::IndexWriter& writer,
                                   tests::doc_generator_base& gen) {
-  index_.emplace_back(writer.feature_info());
+  index_.emplace_back(writer.FeatureInfo());
   write_segment(writer, index_.back(), gen);
-  writer.commit();
+  writer.Commit();
 }
 
-void index_test_base::add_segments(irs::index_writer& writer,
+void index_test_base::add_segments(irs::IndexWriter& writer,
                                    std::vector<doc_generator_base::ptr>& gens) {
   for (auto& gen : gens) {
-    index_.emplace_back(writer.feature_info());
+    index_.emplace_back(writer.FeatureInfo());
     write_segment(writer, index_.back(), *gen);
   }
-  writer.commit();
+  writer.Commit();
 }
 
 void index_test_base::add_segment(
   tests::doc_generator_base& gen, irs::OpenMode mode /*= irs::OM_CREATE*/,
-  const irs::index_writer::init_options& opts /*= {}*/) {
+  const irs::IndexWriter::InitOptions& opts /*= {}*/) {
   auto writer = open_writer(mode, opts);
   add_segment(*writer, gen);
 }
@@ -237,12 +237,12 @@ class index_test_case : public tests::index_test_base {
       irs::memory_directory data_dir;
       auto writer = open_writer();
 
-      writer->commit();  // create initial empty segment
+      writer->Commit();  // create initial empty segment
 
       // populate 'import' dir
       {
         auto data_writer =
-          irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+          irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
         ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(),
                            doc1->indexed.end(), doc1->stored.begin(),
                            doc1->stored.end()));
@@ -252,7 +252,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_TRUE(insert(*data_writer, doc3->indexed.begin(),
                            doc3->indexed.end(), doc3->stored.begin(),
                            doc3->stored.end()));
-        data_writer->commit();
+        data_writer->Commit();
 
         auto reader = irs::DirectoryReader::Open(data_dir);
         ASSERT_EQ(1, reader.size());
@@ -273,7 +273,7 @@ class index_test_case : public tests::index_test_base {
                            doc4->stored.begin(), doc4->stored.end()));
         ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                            doc5->stored.begin(), doc5->stored.end()));
-        writer->commit();
+        writer->Commit();
       }
 
       {
@@ -291,7 +291,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                            doc6->stored.begin(), doc6->stored.end()));
         writer->documents().Remove(std::move(query_doc4));
-        ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir)));
+        ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir)));
       }
 
       size_t file_count = 0;
@@ -303,7 +303,7 @@ class index_test_case : public tests::index_test_base {
         });
       }
 
-      writer->clear();
+      writer->Clear();
 
       // should be empty after clear
       {
@@ -321,7 +321,7 @@ class index_test_case : public tests::index_test_base {
           file_count_post_clear);  // +1 extra file for new empty index meta
       }
 
-      writer->commit();
+      writer->Commit();
 
       // should be empty after commit (no new files or uncomited changes)
       {
@@ -343,7 +343,7 @@ class index_test_case : public tests::index_test_base {
     // test creation of an empty writer
     {
       irs::memory_directory dir;
-      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir, codec(), irs::OM_CREATE);
       ASSERT_THROW(irs::DirectoryReader::Open(dir),
                    irs::index_not_found);  // throws due to missing index
 
@@ -357,7 +357,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(0, file_count);  // empty dierctory
       }
 
-      writer->clear();
+      writer->Clear();
 
       {
         size_t file_count = 0;
@@ -381,7 +381,7 @@ class index_test_case : public tests::index_test_base {
 
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
-      writer->commit();
+      writer->Commit();
 
       size_t file_count0 = 0;
       dir().visit([&file_count0](std::string_view) -> bool {
@@ -389,7 +389,7 @@ class index_test_case : public tests::index_test_base {
         return true;
       });
 
-      writer->clear();
+      writer->Clear();
 
       size_t file_count1 = 0;
       dir().visit([&file_count1](std::string_view) -> bool {
@@ -399,7 +399,7 @@ class index_test_case : public tests::index_test_base {
       ASSERT_EQ(file_count0 + 1,
                 file_count1);  // +1 extra file for new empty index meta
 
-      writer->clear();
+      writer->Clear();
 
       size_t file_count2 = 0;
       dir().visit([&file_count2](std::string_view) -> bool {
@@ -585,7 +585,7 @@ class index_test_case : public tests::index_test_base {
                 &dir.attributes().allocator());
 
       // open writer
-      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
       ASSERT_EQ(&irs::memory_allocator::global(),
                 &dir.attributes().allocator());
@@ -598,9 +598,9 @@ class index_test_case : public tests::index_test_base {
                 &dir.attributes().allocator());
 
       // open writer
-      irs::index_writer::init_options options;
+      irs::IndexWriter::InitOptions options;
       auto writer =
-        irs::index_writer::make(dir, codec(), irs::OM_CREATE, options);
+        irs::IndexWriter::make(dir, codec(), irs::OM_CREATE, options);
       ASSERT_NE(nullptr, writer);
       ASSERT_EQ(&irs::memory_allocator::global(),
                 &dir.attributes().allocator());
@@ -613,7 +613,7 @@ class index_test_case : public tests::index_test_base {
                 &dir.attributes().allocator());
 
       // open writer
-      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir, codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
       ASSERT_NE(&irs::memory_allocator::global(),
                 &dir.attributes().allocator());
@@ -623,94 +623,94 @@ class index_test_case : public tests::index_test_base {
   void open_writer_check_lock() {
     {
       // open writer
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
       // can't open another writer at the same time on the same directory
-      ASSERT_THROW(irs::index_writer::make(dir(), codec(), irs::OM_CREATE),
+      ASSERT_THROW(irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE),
                    irs::lock_obtain_failed);
-      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_EQ(0, writer->BufferedDocs());
     }
 
     {
       // open writer
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(dir());
       // can't open another writer at the same time on the same directory
-      ASSERT_THROW(irs::index_writer::make(dir(), codec(), irs::OM_CREATE),
+      ASSERT_THROW(irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE),
                    irs::lock_obtain_failed);
-      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_EQ(0, writer->BufferedDocs());
     }
 
     {
       // open writer
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
-      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_EQ(0, writer->BufferedDocs());
     }
 
     {
       // open writer with NOLOCK hint
-      irs::index_writer::init_options options0;
+      irs::IndexWriter::InitOptions options0;
       options0.lock_repository = false;
       auto writer0 =
-        irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options0);
+        irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options0);
       ASSERT_NE(nullptr, writer0);
 
       // can open another writer at the same time on the same directory
-      irs::index_writer::init_options options1;
+      irs::IndexWriter::InitOptions options1;
       options1.lock_repository = false;
       auto writer1 =
-        irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options1);
+        irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options1);
       ASSERT_NE(nullptr, writer1);
 
-      ASSERT_EQ(0, writer0->buffered_docs());
-      ASSERT_EQ(0, writer1->buffered_docs());
+      ASSERT_EQ(0, writer0->BufferedDocs());
+      ASSERT_EQ(0, writer1->BufferedDocs());
     }
 
     {
       // open writer with NOLOCK hint
-      irs::index_writer::init_options options0;
+      irs::IndexWriter::InitOptions options0;
       options0.lock_repository = false;
       auto writer0 =
-        irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options0);
+        irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options0);
       ASSERT_NE(nullptr, writer0);
 
       // can open another writer at the same time on the same directory and
       // acquire lock
-      auto writer1 = irs::index_writer::make(dir(), codec(),
+      auto writer1 = irs::IndexWriter::make(dir(), codec(),
                                              irs::OM_CREATE | irs::OM_APPEND);
       ASSERT_NE(nullptr, writer1);
 
-      ASSERT_EQ(0, writer0->buffered_docs());
-      ASSERT_EQ(0, writer1->buffered_docs());
+      ASSERT_EQ(0, writer0->BufferedDocs());
+      ASSERT_EQ(0, writer1->BufferedDocs());
     }
 
     {
       // open writer with NOLOCK hint
-      irs::index_writer::init_options options0;
+      irs::IndexWriter::InitOptions options0;
       options0.lock_repository = false;
       auto writer0 =
-        irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options0);
+        irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options0);
       ASSERT_NE(nullptr, writer0);
-      writer0->commit();
+      writer0->Commit();
 
       // can open another writer at the same time on the same directory and
       // acquire lock
-      auto writer1 = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
+      auto writer1 = irs::IndexWriter::make(dir(), codec(), irs::OM_APPEND);
       ASSERT_NE(nullptr, writer1);
 
-      ASSERT_EQ(0, writer0->buffered_docs());
-      ASSERT_EQ(0, writer1->buffered_docs());
+      ASSERT_EQ(0, writer0->BufferedDocs());
+      ASSERT_EQ(0, writer1->BufferedDocs());
     }
   }
 
   void writer_check_open_modes() {
     // APPEND to nonexisting index, shoud fail
-    ASSERT_THROW(irs::index_writer::make(dir(), codec(), irs::OM_APPEND),
+    ASSERT_THROW(irs::IndexWriter::make(dir(), codec(), irs::OM_APPEND),
                  irs::file_not_found);
     // read index in empty directory, should fail
     ASSERT_THROW(irs::DirectoryReader::Open(dir(), codec()),
@@ -718,9 +718,9 @@ class index_test_case : public tests::index_test_base {
 
     // create empty index
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
-      writer->commit();
+      writer->Commit();
     }
 
     // read empty index, it should not fail
@@ -734,16 +734,16 @@ class index_test_case : public tests::index_test_base {
 
     // append to index
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_APPEND);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_APPEND);
       tests::json_doc_generator gen(resource("simple_sequential.json"),
                                     &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
-      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_EQ(0, writer->BufferedDocs());
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
-      ASSERT_EQ(1, writer->buffered_docs());
-      writer->commit();
-      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_EQ(1, writer->BufferedDocs());
+      writer->Commit();
+      ASSERT_EQ(0, writer->BufferedDocs());
     }
 
     // read index, it should not fail
@@ -757,17 +757,17 @@ class index_test_case : public tests::index_test_base {
 
     // append to index
     {
-      auto writer = irs::index_writer::make(dir(), codec(),
+      auto writer = irs::IndexWriter::make(dir(), codec(),
                                             irs::OM_APPEND | irs::OM_CREATE);
       tests::json_doc_generator gen(resource("simple_sequential.json"),
                                     &tests::generic_json_field_factory);
       tests::document const* doc1 = gen.next();
-      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_EQ(0, writer->BufferedDocs());
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
-      ASSERT_EQ(1, writer->buffered_docs());
-      writer->commit();
-      ASSERT_EQ(0, writer->buffered_docs());
+      ASSERT_EQ(1, writer->BufferedDocs());
+      writer->Commit();
+      ASSERT_EQ(0, writer->BufferedDocs());
     }
 
     // read index, it should not fail
@@ -792,20 +792,20 @@ class index_test_case : public tests::index_test_base {
     tests::document const* doc1 = gen.next();
     tests::document const* doc2 = gen.next();
 
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_EQ(1, writer->buffered_docs());
-    writer->begin();  // start transaction #1
-    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_EQ(1, writer->BufferedDocs());
+    writer->Begin();  // start transaction #1
+    ASSERT_EQ(0, writer->BufferedDocs());
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(),
                        doc2->stored.end()));  // add another document while
                                               // transaction in opened
-    ASSERT_EQ(1, writer->buffered_docs());
-    writer->commit();                       // finish transaction #1
-    ASSERT_EQ(1, writer->buffered_docs());  // still have 1 buffered document
+    ASSERT_EQ(1, writer->BufferedDocs());
+    writer->Commit();                       // finish transaction #1
+    ASSERT_EQ(1, writer->BufferedDocs());  // still have 1 buffered document
                                             // not included into transaction #1
 
     // check index, 1 document in 1 segment
@@ -817,8 +817,8 @@ class index_test_case : public tests::index_test_base {
       ASSERT_NE(reader.begin(), reader.end());
     }
 
-    writer->commit();  // transaction #2
-    ASSERT_EQ(0, writer->buffered_docs());
+    writer->Commit();  // transaction #2
+    ASSERT_EQ(0, writer->BufferedDocs());
     // check index, 2 documents in 2 segments
     {
       auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -885,24 +885,24 @@ class index_test_case : public tests::index_test_base {
     tests::document const* doc3 = gen.next();
 
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
-      writer->rollback();  // does nothing
-      ASSERT_EQ(1, writer->buffered_docs());
-      ASSERT_TRUE(writer->begin());
-      ASSERT_FALSE(writer->begin());  // try to begin already opened transaction
+      writer->Rollback();  // does nothing
+      ASSERT_EQ(1, writer->BufferedDocs());
+      ASSERT_TRUE(writer->Begin());
+      ASSERT_FALSE(writer->Begin());  // try to begin already opened transaction
 
       // index still does not exist
       ASSERT_THROW(irs::DirectoryReader::Open(dir(), codec()),
                    irs::index_not_found);
 
-      writer->rollback();  // rollback transaction
-      writer->rollback();  // does nothing
-      ASSERT_EQ(0, writer->buffered_docs());
+      writer->Rollback();  // rollback transaction
+      writer->Rollback();  // does nothing
+      ASSERT_EQ(0, writer->BufferedDocs());
 
-      writer->commit();  // commit
+      writer->Commit();  // commit
 
       // check index, it should be empty
       {
@@ -916,11 +916,11 @@ class index_test_case : public tests::index_test_base {
 
     // test rolled-back index can still be opened after directory cleaner run
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
-      ASSERT_TRUE(writer->begin());  // prepare for commit tx #1
-      writer->commit();              // commit tx #1
+      ASSERT_TRUE(writer->Begin());  // prepare for commit tx #1
+      writer->Commit();              // commit tx #1
       auto file_count = 0;
       auto dir_visitor = [&file_count](std::string_view) -> bool {
         ++file_count;
@@ -932,8 +932,8 @@ class index_test_case : public tests::index_test_base {
       auto file_count_before = file_count;
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
-      ASSERT_TRUE(writer->begin());  // prepare for commit tx #2
-      writer->rollback();            // rollback tx #2
+      ASSERT_TRUE(writer->Begin());  // prepare for commit tx #2
+      writer->Rollback();            // rollback tx #2
       irs::directory_utils::remove_all_unreferenced(dir());
       file_count = 0;
       dir().visit(dir_visitor);
@@ -974,7 +974,7 @@ class index_test_case : public tests::index_test_base {
                          doc->stored.begin(), doc->stored.end()));
       expected_docs.push_back(doc);
     }
-    writer->commit();
+    writer->Commit();
 
     auto reader = open_reader();
 
@@ -1080,14 +1080,14 @@ class index_test_case : public tests::index_test_base {
       csv_doc_template_t csv_doc_template;
       tests::csv_doc_generator gen(resource("simple_two_column.csv"),
                                    csv_doc_template);
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
       const tests::document* doc;
       while ((doc = gen.next())) {
         ASSERT_TRUE(insert(*writer, doc->indexed.end(), doc->indexed.end(),
                            doc->stored.begin(), doc->stored.end()));
       }
-      writer->commit();
+      writer->Commit();
     }
 
     auto reader = irs::DirectoryReader::Open(dir(), codec());
@@ -1360,7 +1360,7 @@ class index_test_case : public tests::index_test_base {
 
     // insert attributes
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
       {
@@ -1375,7 +1375,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_TRUE(doc);
       }
 
-      writer->commit();
+      writer->Commit();
     }
 
     // iterate over fields
@@ -1555,7 +1555,7 @@ class index_test_case : public tests::index_test_base {
 
     // insert attributes
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
       ASSERT_NE(nullptr, writer);
 
       {
@@ -1570,7 +1570,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_TRUE(doc);
       }
 
-      writer->commit();
+      writer->Commit();
     }
 
     // iterate over attributes
@@ -1757,7 +1757,7 @@ class index_test_case : public tests::index_test_base {
 
     // write docs with empty terms
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
       // doc0: empty, nullptr
       {
         std::vector<field> doc;
@@ -1773,7 +1773,7 @@ class index_test_case : public tests::index_test_base {
         doc.emplace_back(std::string("name"), std::string_view{});
         ASSERT_TRUE(tests::insert(*writer, doc.begin(), doc.end()));
       }
-      writer->commit();
+      writer->Commit();
     }
 
     // check fields with empty terms
@@ -1910,7 +1910,7 @@ class index_test_case : public tests::index_test_base {
     };  // stored_field
 
     // insert documents
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
     size_t i = 0;
     const size_t max = 8;
@@ -2015,9 +2015,9 @@ class index_test_case : public tests::index_test_base {
     ASSERT_TRUE(states[7]);   // successfully inserted
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
 
     // check index
     {
@@ -2074,9 +2074,9 @@ class index_test_case : public tests::index_test_base {
 
     // create empty index
     {
-      auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
-      writer->commit();
+      writer->Commit();
     }
 
     // error while commiting index (during sync in index_meta_writer)
@@ -2094,7 +2094,7 @@ class index_test_case : public tests::index_test_base {
       tests::document const* doc4 = gen.next();
 
       auto writer =
-        irs::index_writer::make(override_dir, codec(), irs::OM_APPEND);
+        irs::IndexWriter::make(override_dir, codec(), irs::OM_APPEND);
 
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
@@ -2104,7 +2104,7 @@ class index_test_case : public tests::index_test_base {
                          doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                          doc4->stored.begin(), doc4->stored.end()));
-      ASSERT_THROW(writer->commit(), irs::io_error);
+      ASSERT_THROW(writer->Commit(), irs::io_error);
     }
 
     // error while commiting index (during sync in index_writer)
@@ -2125,7 +2125,7 @@ class index_test_case : public tests::index_test_base {
       tests::document const* doc4 = gen.next();
 
       auto writer =
-        irs::index_writer::make(override_dir, codec(), irs::OM_APPEND);
+        irs::IndexWriter::make(override_dir, codec(), irs::OM_APPEND);
 
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
@@ -2135,7 +2135,7 @@ class index_test_case : public tests::index_test_base {
                          doc3->stored.begin(), doc3->stored.end()));
       ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                          doc4->stored.begin(), doc4->stored.end()));
-      ASSERT_THROW(writer->commit(), irs::io_error);
+      ASSERT_THROW(writer->Commit(), irs::io_error);
     }
 
     // check index, it should be empty
@@ -2170,7 +2170,7 @@ void index_test_case::docs_bit_union(irs::IndexFeatures features) {
       ASSERT_TRUE(docs.Insert().Insert<irs::Action::INDEX>(field));
     }
 
-    writer->commit();
+    writer->Commit();
   }
 
   auto reader = open_reader();
@@ -2392,14 +2392,14 @@ TEST_P(index_test_case, writer_begin_clear_empty_index) {
   tests::document const* doc1 = gen.next();
 
   {
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_EQ(1, writer->buffered_docs());
-    writer->clear();  // rollback started transaction and clear index
-    ASSERT_EQ(0, writer->buffered_docs());
-    ASSERT_FALSE(writer->begin());  // nothing to commit
+    ASSERT_EQ(1, writer->BufferedDocs());
+    writer->Clear();  // rollback started transaction and clear index
+    ASSERT_EQ(0, writer->BufferedDocs());
+    ASSERT_FALSE(writer->Begin());  // nothing to commit
 
     // check index, it should be empty
     {
@@ -2419,13 +2419,13 @@ TEST_P(index_test_case, writer_begin_clear) {
   tests::document const* doc1 = gen.next();
 
   {
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_EQ(1, writer->buffered_docs());
-    writer->commit();
-    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_EQ(1, writer->BufferedDocs());
+    writer->Commit();
+    ASSERT_EQ(0, writer->BufferedDocs());
 
     // check index, it should not be empty
     {
@@ -2438,13 +2438,13 @@ TEST_P(index_test_case, writer_begin_clear) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_EQ(1, writer->buffered_docs());
-    ASSERT_TRUE(writer->begin());  // start transaction
-    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_EQ(1, writer->BufferedDocs());
+    ASSERT_TRUE(writer->Begin());  // start transaction
+    ASSERT_EQ(0, writer->BufferedDocs());
 
-    writer->clear();  // rollback and clear index contents
-    ASSERT_EQ(0, writer->buffered_docs());
-    ASSERT_FALSE(writer->begin());  // nothing to commit
+    writer->Clear();  // rollback and clear index contents
+    ASSERT_EQ(0, writer->BufferedDocs());
+    ASSERT_FALSE(writer->Begin());  // nothing to commit
 
     // check index, it should be empty
     {
@@ -2467,11 +2467,11 @@ TEST_P(index_test_case, writer_commit_cleanup_interleaved) {
 
   {
     tests::callback_directory synced_dir(dir(), clean);
-    auto writer = irs::index_writer::make(synced_dir, codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(synced_dir, codec(), irs::OM_CREATE);
     const auto* doc1 = gen.next();
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->commit();
+    writer->Commit();
 
     // check index, it should contain expected number of docs
     auto reader = irs::DirectoryReader::Open(synced_dir, codec());
@@ -2488,13 +2488,13 @@ TEST_P(index_test_case, writer_commit_clear) {
   tests::document const* doc1 = gen.next();
 
   {
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_EQ(1, writer->buffered_docs());
-    writer->commit();
-    ASSERT_EQ(0, writer->buffered_docs());
+    ASSERT_EQ(1, writer->BufferedDocs());
+    writer->Commit();
+    ASSERT_EQ(0, writer->BufferedDocs());
 
     // check index, it should not be empty
     {
@@ -2505,9 +2505,9 @@ TEST_P(index_test_case, writer_commit_clear) {
       ASSERT_NE(reader.begin(), reader.end());
     }
 
-    writer->clear();  // clear index contents
-    ASSERT_EQ(0, writer->buffered_docs());
-    ASSERT_FALSE(writer->begin());  // nothing to commit
+    writer->Clear();  // clear index contents
+    ASSERT_EQ(0, writer->BufferedDocs());
+    ASSERT_FALSE(writer->Begin());  // nothing to commit
 
     // check index, it should be empty
     {
@@ -3052,7 +3052,7 @@ TEST_P(index_test_case, document_context) {
                 field_cond_lock,
                 std::chrono::milliseconds(10000)));  // verify commit() finishes
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // release ctx before join() in case of test failure
     thread1.join();
 
@@ -3121,7 +3121,7 @@ TEST_P(index_test_case, document_context) {
     //  FIXME TODO add once segment_context will not block flush_all()
     // ASSERT_TRUE(commit);
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // release ctx before join() in case of test failure
     thread1.join();
     // FIXME TODO add once segment_context will not block flush_all()
@@ -3196,7 +3196,7 @@ TEST_P(index_test_case, document_context) {
     //  flush_all()
     // ASSERT_TRUE(commit);
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // release ctx before join() in case of test failure
     thread1.join();
     // FIXME TODO add once segment_context will not block
@@ -3417,7 +3417,7 @@ TEST_P(index_test_case, document_context) {
 
   // rollback inserts split over multiple segment_writers
   {
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -3590,7 +3590,7 @@ TEST_P(index_test_case, document_context) {
   {
     auto query_doc1 = MakeByTerm("name", "A");
     auto query_doc2 = MakeByTerm("name", "B");
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -3778,7 +3778,7 @@ TEST_P(index_test_case, document_context) {
   {
     auto query_doc1 = MakeByTerm("name", "A");
     auto query_doc2 = MakeByTerm("name", "B");
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -3862,7 +3862,7 @@ TEST_P(index_test_case, document_context) {
 
   // segment flush due to memory bytes limit (same flush_context)
   {
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     options.segment_memory_max = 1;  // arbitaty size < 1 document (first doc
                                      // will always aquire a new segment_writer)
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -3937,7 +3937,7 @@ TEST_P(index_test_case, document_context) {
   // segment flush due to memory bytes limit (split over different
   // flush_contexts)
   {
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     options.segment_memory_max = 1;  // arbitaty size < 1 document (first doc
                                      // will always aquire a new segment_writer)
     auto writer = open_writer(irs::OM_CREATE, options);
@@ -4039,7 +4039,7 @@ TEST_P(index_test_case, document_context) {
 
   // segment flush due to document count limit (same flush_context)
   {
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -4113,7 +4113,7 @@ TEST_P(index_test_case, document_context) {
   // segment flush due to document count limit (split over different
   // flush_contexts)
   {
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     options.segment_docs_max = 1;  // each doc will have its own segment
     auto writer = open_writer(irs::OM_CREATE, options);
 
@@ -5530,7 +5530,7 @@ TEST_P(index_test_case, doc_update) {
     auto doc4 = gen.next();
     auto query_doc1 = MakeByTerm("name", "A");
 
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
 
     auto writer = open_writer(irs::OM_CREATE, opts);
     auto test_field0 = std::make_shared<test_field>();
@@ -5630,7 +5630,7 @@ TEST_P(index_test_case, import_reader) {
   {
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     writer->commit();  // ensure the writer has an initial completed
@@ -5647,7 +5647,7 @@ TEST_P(index_test_case, import_reader) {
       ASSERT_EQ(0, meta.counter());
     }
 
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir, codec())));
     writer->commit();
 
@@ -5676,7 +5676,7 @@ TEST_P(index_test_case, import_reader) {
     auto query_doc1 = MakeByTerm("name", "A");
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     writer->commit();  // ensure the writer has an initial completed
@@ -5695,9 +5695,9 @@ TEST_P(index_test_case, import_reader) {
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    data_writer->commit();
+    data_writer->Commit();
     data_writer->documents().Remove(std::move(query_doc1));
-    data_writer->commit();
+    data_writer->Commit();
     writer->commit();  // ensure the writer has an initial completed
                        // state
     ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir, codec())));
@@ -5727,14 +5727,14 @@ TEST_P(index_test_case, import_reader) {
   {
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir, codec())));
     writer->commit();
 
@@ -5769,7 +5769,7 @@ TEST_P(index_test_case, import_reader) {
     auto query_doc1 = MakeByTerm("name", "A");
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -5777,7 +5777,7 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     data_writer->documents().Remove(std::move(query_doc1));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir, codec())));
     writer->commit();
 
@@ -5807,19 +5807,19 @@ TEST_P(index_test_case, import_reader) {
   {
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(insert(*data_writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir, codec())));
     writer->commit();
 
@@ -5862,20 +5862,20 @@ TEST_P(index_test_case, import_reader) {
     auto query_doc2_doc3 = MakeOr({{"name", "B"}, {"name", "C"}});
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(insert(*data_writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     data_writer->documents().Remove(std::move(query_doc2_doc3));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir, codec())));
     writer->commit();
 
@@ -5910,20 +5910,20 @@ TEST_P(index_test_case, import_reader) {
     auto query_doc4 = MakeByTerm("name", "D");
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(insert(*data_writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     data_writer->documents().Remove(std::move(query_doc4));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(writer->import(irs::DirectoryReader::Open(data_dir, codec())));
     writer->commit();
 
@@ -5962,14 +5962,14 @@ TEST_P(index_test_case, import_reader) {
     auto query_doc2 = MakeByTerm("name", "B");
     irs::memory_directory data_dir;
     auto data_writer =
-      irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(data_dir, codec(), irs::OM_CREATE);
     auto writer = open_writer();
 
     ASSERT_TRUE(insert(*data_writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    data_writer->commit();
+    data_writer->Commit();
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->documents().Remove(
@@ -6427,7 +6427,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.features = features_with_norms();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
@@ -6486,8 +6486,8 @@ TEST_P(index_test_case, import_concurrent) {
   struct store {
     store(const irs::format::ptr& codec)
       : dir(std::make_unique<irs::memory_directory>()) {
-      writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE);
-      writer->commit();
+      writer = irs::IndexWriter::make(*dir, codec, irs::OM_CREATE);
+      writer->Commit();
       reader = irs::DirectoryReader::Open(*dir);
     }
 
@@ -6500,7 +6500,7 @@ TEST_P(index_test_case, import_concurrent) {
     store& operator=(const store&) = delete;
 
     std::unique_ptr<irs::memory_directory> dir;
-    irs::index_writer::ptr writer;
+    irs::IndexWriter::ptr writer;
     irs::DirectoryReader reader;
   };
 
@@ -6555,13 +6555,13 @@ TEST_P(index_test_case, import_concurrent) {
   };
 
   irs::memory_directory dir;
-  irs::index_writer::ptr writer =
-    irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+  irs::IndexWriter::ptr writer =
+    irs::IndexWriter::make(dir, codec(), irs::OM_CREATE);
 
   for (auto& store : stores) {
     workers.emplace_back([&wait_for_all, &writer, &store]() {
       wait_for_all();
-      writer->import(store.reader);
+      writer->Import(store.reader);
     });
   }
 
@@ -6577,7 +6577,7 @@ TEST_P(index_test_case, import_concurrent) {
     worker.join();
   }
 
-  writer->commit();  // commit changes
+  writer->Commit();  // commit changes
 
   auto reader = irs::DirectoryReader::Open(dir);
   ASSERT_EQ(workers.size(), reader.size());
@@ -12136,13 +12136,13 @@ TEST_P(index_test_case, consolidate_progress) {
   // test default progress (false)
   {
     irs::memory_directory dir;
-    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, get_codec(), irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->commit();  // create segment0
+    writer->Commit();  // create segment0
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->commit();  // create segment1
+    writer->Commit();  // create segment1
 
     auto reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -12152,8 +12152,8 @@ TEST_P(index_test_case, consolidate_progress) {
 
     irs::MergeWriter::FlushProgress progress;
 
-    ASSERT_TRUE(writer->consolidate(policy, get_codec(), progress));
-    writer->commit();  // write consolidated segment
+    ASSERT_TRUE(writer->Consolidate(policy, get_codec(), progress));
+    writer->Commit();  // write consolidated segment
 
     reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -12164,13 +12164,13 @@ TEST_P(index_test_case, consolidate_progress) {
   // test always-false progress
   {
     irs::memory_directory dir;
-    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, get_codec(), irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->commit();  // create segment0
+    writer->Commit();  // create segment0
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->commit();  // create segment1
+    writer->Commit();  // create segment1
 
     auto reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -12180,8 +12180,8 @@ TEST_P(index_test_case, consolidate_progress) {
 
     irs::MergeWriter::FlushProgress progress = []() -> bool { return false; };
 
-    ASSERT_FALSE(writer->consolidate(policy, get_codec(), progress));
-    writer->commit();  // write consolidated segment
+    ASSERT_FALSE(writer->Consolidate(policy, get_codec(), progress));
+    writer->Commit();  // write consolidated segment
 
     reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -12197,19 +12197,19 @@ TEST_P(index_test_case, consolidate_progress) {
   // test always-true progress
   {
     irs::memory_directory dir;
-    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, get_codec(), irs::OM_CREATE);
 
     for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
     }
-    writer->commit();  // create segment0
+    writer->Commit();  // create segment0
 
     for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
     }
-    writer->commit();  // create segment1
+    writer->Commit();  // create segment1
 
     auto reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -12223,8 +12223,8 @@ TEST_P(index_test_case, consolidate_progress) {
       return true;
     };
 
-    ASSERT_TRUE(writer->consolidate(policy, get_codec(), progress));
-    writer->commit();  // write consolidated segment
+    ASSERT_TRUE(writer->Consolidate(policy, get_codec(), progress));
+    writer->Commit();  // write consolidated segment
 
     reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -12240,18 +12240,18 @@ TEST_P(index_test_case, consolidate_progress) {
        ++i) {  // +1 for pre-decrement in 'progress'
     size_t call_count = i;
     irs::memory_directory dir;
-    auto writer = irs::index_writer::make(dir, get_codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, get_codec(), irs::OM_CREATE);
     for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
     }
-    writer->commit();  // create segment0
+    writer->Commit();  // create segment0
 
     for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
     }
-    writer->commit();  // create segment1
+    writer->Commit();  // create segment1
 
     auto reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -12263,8 +12263,8 @@ TEST_P(index_test_case, consolidate_progress) {
       return --call_count;
     };
 
-    ASSERT_FALSE(writer->consolidate(policy, get_codec(), progress));
-    writer->commit();  // write consolidated segment
+    ASSERT_FALSE(writer->Consolidate(policy, get_codec(), progress));
+    writer->Commit();  // write consolidated segment
 
     reader = irs::DirectoryReader::Open(dir, get_codec());
 
@@ -13708,7 +13708,7 @@ TEST_P(index_test_case, segment_options) {
                                                  doc1->stored.end()));
     }
 
-    irs::index_writer::SegmentOptions options;
+    irs::IndexWriter::SegmentOptions options;
     options.segment_count_max = 1;
     writer->options(options);
 
@@ -13737,7 +13737,7 @@ TEST_P(index_test_case, segment_options) {
     // ^^^ expecting timeout because pool should block indefinitely
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents(), i.e. ulock segment
     // ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, 1000ms));
     lock.unlock();
@@ -13784,7 +13784,7 @@ TEST_P(index_test_case, segment_options) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    irs::index_writer::SegmentOptions options;
+    irs::IndexWriter::SegmentOptions options;
     options.segment_docs_max = 1;
     writer->options(options);
 
@@ -13858,7 +13858,7 @@ TEST_P(index_test_case, segment_options) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    irs::index_writer::SegmentOptions options;
+    irs::IndexWriter::SegmentOptions options;
     options.segment_memory_max = 1;
     writer->options(options);
 
@@ -13932,7 +13932,7 @@ TEST_P(index_test_case, segment_options) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    irs::index_writer::SegmentOptions options;
+    irs::IndexWriter::SegmentOptions options;
     options.segment_docs_max = 1;
     writer->options(options);
 
@@ -14290,7 +14290,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   } empty;
 
   {
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.features = features_with_norms();
 
     auto writer = open_writer(irs::OM_CREATE, opts);
@@ -14547,7 +14547,7 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
   test_field field;
 
   {
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.features = [](irs::type_info::type_id id) {
       irs::feature_writer_factory_t handler{};
 
@@ -14798,7 +14798,7 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
 
   test_field field;
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.features = [](irs::type_info::type_id id) {
     irs::feature_writer_factory_t handler{};
 
@@ -15368,7 +15368,7 @@ TEST_P(index_test_case_10, commit_payload) {
   auto& directory = dir();
   auto* doc0 = gen.next();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15652,7 +15652,7 @@ TEST_P(index_test_case_11, consolidate_old_format) {
     }
   };
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   // 1st segment
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -15685,7 +15685,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   tests::document const* doc1 = gen.next();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload = static_cast<irs::bstring>(
     irs::ViewCast<irs::byte_type>(std::string_view("init")));
@@ -15731,7 +15731,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
 
   auto& directory = dir();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_calls_count{0};
   writer_options.meta_payload_provider = [&payload_calls_count](uint64_t,
                                                                 irs::bstring&) {
@@ -15762,7 +15762,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
 
   auto& directory = dir();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_calls_count{0};
   writer_options.meta_payload_provider = [&payload_calls_count](uint64_t,
                                                                 irs::bstring&) {
@@ -15789,7 +15789,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
 
   auto& directory = dir();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15830,7 +15830,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
 
   auto& directory = dir();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15867,7 +15867,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
 
   auto& directory = dir();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15906,7 +15906,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
 
   auto& directory = dir();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -15942,7 +15942,7 @@ TEST_P(index_test_case_11, commit_payload) {
   auto& directory = dir();
   auto* doc0 = gen.next();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   uint64_t payload_committed_tick{0};
   irs::bstring input_payload;
   uint64_t payload_calls_count{0};
@@ -16209,7 +16209,7 @@ TEST_P(index_test_case_11, testExternalGeneration) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->documents();
@@ -16254,7 +16254,7 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->documents();
@@ -16299,7 +16299,7 @@ TEST_P(index_test_case_11, testExternalGenerationRemoveBeforeInsert) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  irs::index_writer::init_options writer_options;
+  irs::IndexWriter::InitOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->documents();

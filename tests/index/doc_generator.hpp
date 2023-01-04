@@ -649,7 +649,7 @@ void normalized_string_json_field_factory(
   const json_doc_generator::json_value& data);
 
 template<typename Indexed>
-bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend) {
+bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend) {
   auto ctx = writer.documents();
   auto doc = ctx.Insert();
 
@@ -657,7 +657,7 @@ bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend) {
 }
 
 template<typename Indexed, typename Stored>
-bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
+bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend,
             Stored sbegin, Stored send) {
   auto ctx = writer.documents();
   auto doc = ctx.Insert();
@@ -667,7 +667,7 @@ bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
 }
 
 template<typename Indexed, typename Stored, typename Sorted>
-bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
+bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend,
             Stored sbegin, Stored send, Sorted sorted = nullptr) {
   auto ctx = writer.documents();
   auto doc = ctx.Insert();
@@ -681,7 +681,7 @@ bool insert(irs::index_writer& writer, Indexed ibegin, Indexed iend,
 }
 
 template<typename Doc>
-bool insert(irs::index_writer& writer, const Doc& doc, size_t count = 1,
+bool insert(irs::IndexWriter& writer, const Doc& doc, size_t count = 1,
             bool has_sort = false) {
   for (; count; --count) {
     if (!insert(writer, std::begin(doc.indexed), std::end(doc.indexed),
@@ -694,7 +694,7 @@ bool insert(irs::index_writer& writer, const Doc& doc, size_t count = 1,
 }
 
 template<typename Indexed>
-bool update(irs::index_writer& writer, const irs::filter& filter,
+bool update(irs::IndexWriter& writer, const irs::filter& filter,
             Indexed ibegin, Indexed iend) {
   auto ctx = writer.documents();
   auto doc = ctx.Replace(filter);
@@ -703,7 +703,7 @@ bool update(irs::index_writer& writer, const irs::filter& filter,
 }
 
 template<typename Indexed, typename Stored>
-bool update(irs::index_writer& writer, const irs::filter& filter,
+bool update(irs::IndexWriter& writer, const irs::filter& filter,
             Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.documents();
   auto doc = ctx.Replace(filter);
@@ -713,7 +713,7 @@ bool update(irs::index_writer& writer, const irs::filter& filter,
 }
 
 template<typename Indexed>
-bool update(irs::index_writer& writer, irs::filter::ptr&& filter,
+bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
             Indexed ibegin, Indexed iend) {
   auto ctx = writer.documents();
   auto doc = ctx.Replace(std::move(filter));
@@ -722,7 +722,7 @@ bool update(irs::index_writer& writer, irs::filter::ptr&& filter,
 }
 
 template<typename Indexed, typename Stored>
-bool update(irs::index_writer& writer, irs::filter::ptr&& filter,
+bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
             Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.documents();
   auto doc = ctx.Replace(std::move(filter));
@@ -732,7 +732,7 @@ bool update(irs::index_writer& writer, irs::filter::ptr&& filter,
 }
 
 template<typename Indexed>
-bool update(irs::index_writer& writer,
+bool update(irs::IndexWriter& writer,
             const std::shared_ptr<irs::filter>& filter, Indexed ibegin,
             Indexed iend) {
   auto ctx = writer.documents();
@@ -742,7 +742,7 @@ bool update(irs::index_writer& writer,
 }
 
 template<typename Indexed, typename Stored>
-bool update(irs::index_writer& writer,
+bool update(irs::IndexWriter& writer,
             const std::shared_ptr<irs::filter>& filter, Indexed ibegin,
             Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.documents();

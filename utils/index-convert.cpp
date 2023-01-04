@@ -80,10 +80,10 @@ int convert(const std::string& in, const std::string& out,
 
   auto reader = irs::DirectoryReader::Open(*in_dir);
   auto writer =
-    irs::index_writer::make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
+    irs::IndexWriter::make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
 
-  writer->import(*reader);
-  writer->commit();
+  writer->Import(*reader);
+  writer->Commit();
 
   return 0;
 }

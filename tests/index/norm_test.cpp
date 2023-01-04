@@ -427,7 +427,7 @@ TEST_P(Norm2TestCase, CheckNorms) {
   auto* doc2 = gen.next();  // name == 'C'
   auto* doc3 = gen.next();  // name == 'D'
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.features = Features();
 
   // Create actual index
@@ -539,7 +539,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.features = Features();
 
   // Create actual index
@@ -799,7 +799,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.features = Features();
 
   // Create actual index

@@ -549,7 +549,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
         }
       });
 
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.features = [](irs::type_info::type_id id) {
       const irs::column_info info{
         irs::type<irs::compression::lz4>::get(), {}, false};

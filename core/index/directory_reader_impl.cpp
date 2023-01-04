@@ -29,6 +29,13 @@
 #include <absl/strings/str_cat.h>
 
 namespace irs {
+
+struct DirectoryReaderImpl::Init {
+  FileRefs file_refs;
+  uint64_t docs_count;
+  uint64_t live_docs_count;
+};
+
 namespace {
 
 MSVC_ONLY(__pragma(warning(push)))
@@ -154,17 +161,46 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
+DirectoryReaderImpl::Init GetInit(const directory& dir,
+                                  const DirectoryMeta& meta) {
+  const bool has_segments_file = !meta.filename.empty();
+
+  DirectoryReaderImpl::Init init;
+  auto& [file_refs, docs_count, live_docs_count] = init;
+
+  file_refs.reserve(meta.index_meta.size() + size_t{has_segments_file});
+
+  auto& refs = dir.attributes().refs();
+  for (const auto& [filename, segment] : meta.index_meta.segments()) {
+    file_refs.emplace_back(refs.add(filename));
+    docs_count += segment.docs_count;
+    live_docs_count += segment.live_docs_count;
+  }
+
+  if (has_segments_file) {
+    file_refs.emplace_back(meta.filename);
+  }
+
+  return init;
+}
+
 }  // namespace
 
 DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
                                          const IndexReaderOptions& opts,
-                                         FileRefs&& file_refs,
                                          DirectoryMeta&& meta,
-                                         ReadersType&& readers,
-                                         uint64_t docs_count, uint64_t docs_max)
-  : CompositeReaderImpl{std::move(readers), docs_count, docs_max},
+                                         ReadersType&& readers)
+  : DirectoryReaderImpl{GetInit(dir, meta), dir, opts, std::move(meta),
+                        std::move(readers)} {}
+
+DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
+                                         const IndexReaderOptions& opts,
+                                         DirectoryMeta&& meta,
+                                         ReadersType&& readers)
+  : CompositeReaderImpl{std::move(readers), init.live_docs_count,
+                        init.docs_count},
     dir_{dir},
-    file_refs_{std::move(file_refs)},
+    file_refs_{std::move(init.file_refs)},
     meta_{std::move(meta)},
     opts_{opts} {}
 

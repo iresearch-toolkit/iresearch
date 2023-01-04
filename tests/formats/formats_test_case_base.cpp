@@ -133,7 +133,7 @@ void format_test_case::assert_no_directory_artifacts(
   std::vector<std::string> dir_files;
   auto visitor = [&dir_files](std::string_view file) {
     // ignore lock file present in fs_directory
-    if (irs::index_writer::kWriteLockName != file) {
+    if (irs::IndexWriter::kWriteLockName != file) {
       dir_files.emplace_back(file);
     }
     return true;
@@ -199,11 +199,11 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   // cleanup on refcount decrement (old files not in use)
   {
     // create writer to directory
-    auto writer = irs::index_writer::make(*dir, codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(*dir, codec(), irs::OM_CREATE);
 
     // initialize directory
     {
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -214,7 +214,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
                          doc1->stored.begin(), doc1->stored.end()));
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -223,7 +223,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -232,7 +232,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // file, remove old)
     {
       writer->documents().Remove(*query_doc1);
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -241,7 +241,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // remove old meta + unused segment)
     {
       writer->documents().Remove(*query_doc2);
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -250,7 +250,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // remove old meta + unused segment)
     {
       writer->documents().Remove(*query_doc2);
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -271,11 +271,11 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   // cleanup on refcount decrement (old files still in use)
   {
     // create writer to directory
-    auto writer = irs::index_writer::make(*dir, codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(*dir, codec(), irs::OM_CREATE);
 
     // initialize directory
     {
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -288,7 +288,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
                          doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -296,7 +296,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // delete record from first segment (creating new doc_mask file)
     {
       writer->documents().Remove(*query_doc1);
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -325,7 +325,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                          doc4->stored.begin(), doc4->stored.end()));
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -334,7 +334,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // old)
     {
       writer->documents().Remove(*(query_doc2));
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -343,7 +343,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // remove old meta but leave first segment)
     {
       writer->documents().Remove(*(query_doc3));
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -352,7 +352,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // remove old meta + unused segment)
     {
       writer->documents().Remove(*(query_doc4));
-      writer->commit();
+      writer->Commit();
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -381,19 +381,19 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
   {
     // fill directory
     {
-      auto writer = irs::index_writer::make(*dir, codec(), irs::OM_CREATE);
+      auto writer = irs::IndexWriter::make(*dir, codec(), irs::OM_CREATE);
 
-      writer->commit();  // initialize directory
+      writer->Commit();  // initialize directory
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
-      writer->commit();  // add first segment
+      writer->Commit();  // add first segment
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
-      writer->commit();  // add second segment
+      writer->Commit();  // add second segment
       writer->documents().Remove(*(query_doc1));
-      writer->commit();  // remove first segment
+      writer->Commit();  // remove first segment
     }
 
     // add invalid files
@@ -410,7 +410,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     ASSERT_TRUE(dir->exists(exists, "dummy.file.2") && exists);
 
     // open writer
-    auto writer = irs::index_writer::make(*dir, codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(*dir, codec(), irs::OM_CREATE);
 
     // if directory has files (for fs directory) then ensure only valid
     // meta+segments loaded
@@ -3547,13 +3547,13 @@ TEST_P(format_test_case_with_encryption, read_zero_block_encryption) {
 
   // write segment with format10
   {
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
   }
 
   // replace encryption
@@ -3646,13 +3646,13 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
   ASSERT_NE(nullptr, dir().attributes().encryption());
 
   {
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
   }
 
   // can't open encrypted index with wrong encryption
@@ -3674,13 +3674,13 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_non_encrypted) {
   ASSERT_NE(nullptr, dir().attributes().encryption());
 
   {
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
   }
 
   // remove encryption
@@ -3704,13 +3704,13 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
 
   // write segment with format11
   {
-    auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
   }
 
   // add cipher

@@ -150,7 +150,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
  public:
   proxy_filter_test_case() {
     auto codec = irs::formats::get("1_0");
-    auto writer = irs::index_writer::make(dir_, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir_, codec, irs::OM_CREATE);
     {  // make dummy document so we could have non-empty index
       auto ctx = writer->documents();
       for (size_t i = 0; i < GetParam(); ++i) {
@@ -159,7 +159,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
         doc.Insert<Action::INDEX>(*field);
       }
     }
-    writer->commit();
+    writer->Commit();
     index_ = irs::DirectoryReader::Open(dir_, codec);
   }
 

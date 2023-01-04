@@ -79,7 +79,7 @@ class index_column_test_case : public tests::index_test_base {};
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_sparse_variable_length) {
   // sparse_column<sparse_block>
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -109,7 +109,7 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -123,9 +123,9 @@ TEST_P(index_column_test_case,
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -1107,7 +1107,7 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_mask) {
   // sparse_column<dense_mask_block>
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -1131,7 +1131,7 @@ TEST_P(index_column_test_case,
     } field(column_name), gap("gap");
 
     irs::doc_id_t docs_count = 0;
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -1146,9 +1146,9 @@ TEST_P(index_column_test_case,
     } while (++docs_count < MAX_DOCS);  // insert BLOCK_SIZE documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -1894,7 +1894,7 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_variable_length) {
   // sparse_column<dense_block>
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::none>::get(),
                             irs::compression::options{}, true};
@@ -1927,7 +1927,7 @@ TEST_P(index_column_test_case,
       const std::string_view column_name;
     } field(column_name), gap("gap");
 
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -1943,9 +1943,9 @@ TEST_P(index_column_test_case,
     } while (++field.value <= MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -2943,7 +2943,7 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_fixed_offset) {
   // sparse_column<dense_fixed_length_block>
 
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::none>::get(),
                             irs::compression::options{}, false};
@@ -2994,7 +2994,7 @@ TEST_P(index_column_test_case,
     } field(column_name), gap("gap");
 
     auto writer =
-      irs::index_writer::make(this->dir(), this->codec(), irs::OM_CREATE);
+      irs::IndexWriter::make(this->dir(), this->codec(), irs::OM_CREATE);
     auto ctx = writer->documents();
 
     do {
@@ -3011,9 +3011,9 @@ TEST_P(index_column_test_case,
     } while (++field.value < (1 + MAX_DOCS));  // insert BLOCK_SIZE documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -3165,7 +3165,7 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_fixed_offset) {
   // dense_fixed_length_column<dense_fixed_length_block>
 
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -3209,7 +3209,7 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -3218,9 +3218,9 @@ TEST_P(index_column_test_case,
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -3362,7 +3362,7 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_dense_fixed_length) {
   // sparse_column<dense_fixed_length_block>
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, false};
@@ -3393,7 +3393,7 @@ TEST_P(index_column_test_case,
       const std::string_view column_name;
     } field(column_name), gap("gap");
 
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -3411,9 +3411,9 @@ TEST_P(index_column_test_case,
     } while (++field.value < (1 + MAX_DOCS));  // insert BLOCK_SIZE documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -4334,7 +4334,7 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_sparse_column_sparse_mask) {
   // sparse_column<sparse_mask_block>
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -4352,7 +4352,7 @@ TEST_P(index_column_test_case,
     } field;
 
     irs::doc_id_t docs_count = 0;
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -4365,9 +4365,9 @@ TEST_P(index_column_test_case,
     } while (++docs_count < MAX_DOCS);  // insert MAX_DOCS/2 documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -5136,7 +5136,7 @@ TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_mask) {
   // dense_fixed_length_column<dense_mask_block>
 
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -5155,7 +5155,7 @@ TEST_P(index_column_test_case,
     } field;
 
     irs::doc_id_t docs_count = 0;
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -5164,9 +5164,9 @@ TEST_P(index_column_test_case,
     } while (++docs_count < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -5753,7 +5753,7 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_fixed_length) {
   // dense_fixed_length_column<dense_fixed_length_block>
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -5778,7 +5778,7 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -5787,9 +5787,9 @@ TEST_P(index_column_test_case,
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -6545,7 +6545,7 @@ TEST_P(index_column_test_case,
 TEST_P(index_column_test_case,
        read_write_doc_attributes_dense_column_dense_variable_length) {
   // sparse_column<dense_block>
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -6574,7 +6574,7 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::index_writer::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
                                           irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
@@ -6583,9 +6583,9 @@ TEST_P(index_column_test_case,
     } while (++field.value < MAX_DOCS);  // insert MAX_DOCS documents
 
     {
-      irs::index_writer::Transaction(std::move(ctx));
+      irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -7456,7 +7456,7 @@ TEST_P(index_column_test_case,
 }
 
 TEST_P(index_column_test_case, read_write_doc_attributes_big) {
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -7489,7 +7489,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   // write attributes
   {
     auto writer =
-      irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
+      irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options);
 
     const tests::document* doc;
     while ((doc = gen.next())) {
@@ -7497,7 +7497,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
                          doc->stored.begin(), doc->stored.end()));
       ++docs_count;
     }
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -8020,7 +8020,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
 }
 
 TEST_P(index_column_test_case, read_write_doc_attributes) {
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -8036,7 +8036,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   // write documents
   {
     auto writer =
-      irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
+      irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options);
 
     // attributes only
     ASSERT_TRUE(insert(*writer, doc1->indexed.end(), doc1->indexed.end(),
@@ -8047,7 +8047,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.end(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    writer->commit();
+    writer->Commit();
   }
 
   // check inserted values:
@@ -8268,7 +8268,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
 }
 
 TEST_P(index_column_test_case, read_empty_doc_attributes) {
-  irs::index_writer::init_options options;
+  irs::IndexWriter::InitOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::column_info{irs::type<irs::compression::lz4>::get(),
                             irs::compression::options{}, true};
@@ -8284,14 +8284,14 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   // write documents without attributes
   {
     auto writer =
-      irs::index_writer::make(dir(), codec(), irs::OM_CREATE, options);
+      irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options);
 
     // fields only
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end()));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end()));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end()));
-    writer->commit();
+    writer->Commit();
   }
 
   auto reader = irs::DirectoryReader::Open(dir(), codec());

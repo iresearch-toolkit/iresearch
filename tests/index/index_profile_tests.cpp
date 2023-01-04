@@ -60,7 +60,7 @@ class index_profile_test_case : public tests::index_test_base {
  public:
   void profile_bulk_index(size_t num_insert_threads, size_t num_import_threads,
                           size_t num_update_threads, size_t batch_size,
-                          irs::index_writer::ptr writer = nullptr,
+                          irs::IndexWriter::ptr writer = nullptr,
                           std::atomic<size_t>* commit_count = nullptr) {
     struct csv_doc_template_t : public tests::csv_doc_generator::doc_template {
       std::vector<std::shared_ptr<tests::string_field>> fields;
@@ -108,7 +108,7 @@ class index_profile_test_case : public tests::index_test_base {
     std::mutex commit_mutex;
 
     if (!writer) {
-      irs::index_writer::init_options options;
+      irs::IndexWriter::InitOptions options;
       options.segment_count_max =
         8;  // match original implementation or may run out of file handles
             // (e.g. MacOS/Travis)
@@ -118,7 +118,7 @@ class index_profile_test_case : public tests::index_test_base {
     // initialize reader data source for import threads
     {
       auto import_writer =
-        irs::index_writer::make(import_dir, codec(), irs::OM_CREATE);
+        irs::IndexWriter::make(import_dir, codec(), irs::OM_CREATE);
 
       {
         REGISTER_TIMER_NAMED_DETAILED("init - setup");
@@ -135,7 +135,7 @@ class index_profile_test_case : public tests::index_test_base {
 
       {
         REGISTER_TIMER_NAMED_DETAILED("init - commit");
-        import_writer->commit();
+        import_writer->Commit();
       }
 
       REGISTER_TIMER_NAMED_DETAILED("init - open");
@@ -204,7 +204,7 @@ class index_profile_test_case : public tests::index_test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer->commit();
+                writer->Commit();
               }
 
               count = 0;
@@ -214,7 +214,7 @@ class index_profile_test_case : public tests::index_test_base {
 
           {
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer->commit();
+            writer->Commit();
           }
 
           ++writer_commit_count;
@@ -239,7 +239,7 @@ class index_profile_test_case : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("import");
-              writer->import(import_reader);
+              writer->Import(import_reader);
             }
 
             ++writer_import_count;
@@ -336,7 +336,7 @@ class index_profile_test_case : public tests::index_test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer->commit();
+                writer->Commit();
               }
 
               count = 0;
@@ -346,7 +346,7 @@ class index_profile_test_case : public tests::index_test_base {
 
           {
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer->commit();
+            writer->Commit();
           }
 
           ++writer_commit_count;
@@ -357,7 +357,7 @@ class index_profile_test_case : public tests::index_test_base {
     thread_pool.stop();
 
     // ensure all data have been commited
-    writer->commit();
+    writer->Commit();
 
     auto path = test_dir();
 
@@ -447,7 +447,7 @@ class index_profile_test_case : public tests::index_test_base {
   void profile_bulk_index_dedicated_commit(size_t insert_threads,
                                            size_t commit_threads,
                                            size_t commit_interval) {
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     std::atomic<bool> working(true);
     std::atomic<size_t> writer_commit_count(0);
 
@@ -464,7 +464,7 @@ class index_profile_test_case : public tests::index_test_base {
           while (working.load()) {
             {
               REGISTER_TIMER_NAMED_DETAILED("commit");
-              writer->commit();
+              writer->Commit();
             }
             ++writer_commit_count;
             std::this_thread::sleep_for(
@@ -486,7 +486,7 @@ class index_profile_test_case : public tests::index_test_base {
                                                 size_t consolidate_interval) {
     const auto policy = irs::index_utils::MakePolicy(
       irs::index_utils::ConsolidateCount());
-    irs::index_writer::init_options options;
+    irs::IndexWriter::InitOptions options;
     std::atomic<bool> working(true);
     irs::async_utils::thread_pool thread_pool(2, 2);
 
@@ -498,7 +498,7 @@ class index_profile_test_case : public tests::index_test_base {
     thread_pool.run(
       [consolidate_interval, &working, &writer, &policy]() -> void {
         while (working.load()) {
-          writer->consolidate(policy);
+          writer->Consolidate(policy);
           std::this_thread::sleep_for(
             std::chrono::milliseconds(consolidate_interval));
         }
@@ -510,11 +510,11 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     thread_pool.stop();
-    writer->commit();  // ensure there are no consolidation-pending segments
+    writer->Commit();  // ensure there are no consolidation-pending segments
                        // left in 'consolidating_segments_' before applying the
                        // final consolidation
-    ASSERT_TRUE(writer->consolidate(policy));
-    writer->commit();
+    ASSERT_TRUE(writer->Consolidate(policy));
+    writer->Commit();
 
     struct dummy_doc_template_t
       : public tests::csv_doc_generator::doc_template {

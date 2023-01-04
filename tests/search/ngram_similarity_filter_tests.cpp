@@ -1061,7 +1061,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
   {
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),
@@ -1084,7 +1084,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
   {
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),
@@ -1107,7 +1107,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
   {
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),
@@ -1130,7 +1130,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   {
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.features = features_with_norms();
 
     tests::json_doc_generator gen(resource("ngram_similarity.json"),

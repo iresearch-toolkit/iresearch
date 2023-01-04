@@ -66,7 +66,7 @@ TEST(directory_reader_test, open_empty_index) {
   ASSERT_NE(nullptr, codec);
 
   /* create empty index */
-  irs::index_writer::make(dir, codec, irs::OM_CREATE)->commit();
+  irs::IndexWriter::make(dir, codec, irs::OM_CREATE)->Commit();
 
   /* open reader */
   auto rdr = irs::DirectoryReader::Open(dir, codec);
@@ -202,7 +202,7 @@ TEST(directory_reader_test, open) {
   // create index
   {
     // open writer
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
 
     // add first segment
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -211,7 +211,7 @@ TEST(directory_reader_test, open) {
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    writer->commit();
+    writer->Commit();
 
     // add second segment
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
@@ -222,14 +222,14 @@ TEST(directory_reader_test, open) {
                        doc6->stored.begin(), doc6->stored.end()));
     ASSERT_TRUE(insert(*writer, doc7->indexed.begin(), doc7->indexed.end(),
                        doc7->stored.begin(), doc7->stored.end()));
-    writer->commit();
+    writer->Commit();
 
     // add third segment
     ASSERT_TRUE(insert(*writer, doc8->indexed.begin(), doc8->indexed.end(),
                        doc8->stored.begin(), doc8->stored.end()));
     ASSERT_TRUE(insert(*writer, doc9->indexed.begin(), doc9->indexed.end(),
                        doc9->stored.begin(), doc9->stored.end()));
-    writer->commit();
+    writer->Commit();
   }
 
   // open reader
@@ -462,7 +462,7 @@ TEST(segment_reader_test, open) {
   ASSERT_NE(nullptr, codec_ptr);
   {
     // open writer
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
 
     // add first segment
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -475,7 +475,7 @@ TEST(segment_reader_test, open) {
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
-    writer->commit();
+    writer->Commit();
   }
 
   // check segment

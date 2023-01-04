@@ -215,7 +215,7 @@ struct merge_writer_test_case
 };
 
 void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
-  auto insert_documents = [primary_sort](irs::index_writer::Transaction& ctx,
+  auto insert_documents = [primary_sort](irs::IndexWriter::Transaction& ctx,
                                          irs::doc_id_t seed,
                                          irs::doc_id_t count) {
     for (; seed < count; ++seed) {
@@ -235,13 +235,13 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   irs::memory_directory dir;
   binary_comparer test_comparer;
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   if (primary_sort) {
     opts.comparator = &test_comparer;
   }
   opts.column_info = default_column_info();
 
-  auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
+  auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
 
   {
@@ -253,7 +253,7 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
     insert_documents(segment2, 20, 30);
   }
 
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
 
   auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
   ASSERT_NE(nullptr, reader);
@@ -270,8 +270,8 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   // 2: 21..30
   const irs::index_utils::ConsolidateCount consolidate_all;
   ASSERT_TRUE(
-    writer->consolidate(irs::index_utils::MakePolicy(consolidate_all)));
-  ASSERT_TRUE(writer->commit());
+    writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+  ASSERT_TRUE(writer->Commit());
 
   reader = reader.Reopen();
   ASSERT_NE(nullptr, reader);
@@ -364,19 +364,19 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   // populate directory
   {
     irs::filter::ptr query_doc4 = MakeByTerm("doc_string", "string4_data");
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(),
                        doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
-    writer->commit();
+    writer->Commit();
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
-    writer->commit();
+    writer->Commit();
     writer->documents().Remove(std::move(query_doc4));
-    writer->commit();
+    writer->Commit();
   }
 
   const auto column_info = default_column_info();
@@ -773,17 +773,17 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
 
   // populate directory
   {
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(),
                        doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
-    writer->commit();
+    writer->Commit();
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.end(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
-    writer->commit();
+    writer->Commit();
   }
 
   const auto column_info = default_column_info();
@@ -1288,7 +1288,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   doc3.indexed.push_back(
     std::make_shared<tests::text_field<std::string_view>>("doc_text", text3));
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.features = [](irs::type_info::type_id id) {
     irs::feature_writer_factory_t writer_factory{};
     if (irs::type<irs::Norm>::id() == id) {
@@ -1311,20 +1311,20 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   // populate directory
   {
     irs::filter::ptr query_doc4 = MakeByTerm("doc_string", "string4_data");
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE, opts);
 
     ASSERT_TRUE(insert(*writer, doc1.indexed.begin(), doc1.indexed.end(),
                        doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
-    writer->commit();
+    writer->Commit();
     ASSERT_TRUE(insert(*writer, doc3.indexed.begin(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
-    writer->commit();
+    writer->Commit();
     writer->documents().Remove(std::move(query_doc4));
-    writer->commit();
+    writer->Commit();
   }
 
   auto docs_count = [](const irs::SubReader& segment,
@@ -2604,13 +2604,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
       docs.emplace_back(gen.next());
     }
 
-    auto writer = irs::index_writer::make(data_dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(data_dir, codec_ptr, irs::OM_CREATE);
 
     for (auto* doc : docs) {
       ASSERT_NE(nullptr, doc);
       ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
                          doc->stored.begin(), doc->stored.end()));
-      writer->commit();  // create segmentN
+      writer->Commit();  // create segmentN
     }
   }
 
@@ -2658,13 +2658,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
                                   &tests::generic_json_field_factory);
     auto* doc1 = gen.next();
     auto* doc2 = gen.next();
-    auto writer = irs::index_writer::make(data_dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(data_dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->commit();  // create segment0
+    writer->Commit();  // create segment0
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->commit();  // create segment1
+    writer->Commit();  // create segment1
   }
 
   auto reader = irs::DirectoryReader::Open(data_dir, codec_ptr);
@@ -2812,13 +2812,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
 
   // populate directory
   {
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1.indexed.begin(), doc1.indexed.end(),
                        doc1.stored.begin(), doc1.stored.end()));
-    writer->commit();
+    writer->Commit();
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
-    writer->commit();
+    writer->Commit();
   }
 
   auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
@@ -2899,21 +2899,21 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
 
   // populate directory
   {
-    irs::index_writer::init_options opts;
+    irs::IndexWriter::InitOptions opts;
     opts.comparator = &test_comparer;
     opts.column_info = default_column_info();
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE, opts);
     ASSERT_TRUE(insert(*writer, doc1.indexed.begin(), doc1.indexed.end(),
                        doc1.stored.begin(), doc1.stored.end(), doc1.sorted));
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end(), doc2.sorted));
-    writer->commit();
+    writer->Commit();
 
     ASSERT_TRUE(insert(*writer, doc3.indexed.begin(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end(), doc3.sorted));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end(), doc4.sorted));
-    writer->commit();
+    writer->Commit();
 
     // this missing doc will trigger sorting error in merge writer as it will be
     // mapped to eof and block all documents from same segment to be written in
@@ -2921,7 +2921,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     // docuemnt from first segment to maintain merged order
     irs::filter::ptr query = MakeByTerm(field, "A");
     writer->documents().Remove(std::move(query));
-    writer->commit();
+    writer->Commit();
   }
 
   auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
@@ -3188,7 +3188,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   doc3.indexed.push_back(std::make_shared<tests::text_field<std::string_view>>(
     "doc_text", text3, true));
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriter::InitOptions opts;
   opts.features = [](irs::type_info::type_id type) {
     irs::feature_writer_factory_t handler{};
     if (irs::type<irs::Norm>::id() == type) {
@@ -3211,20 +3211,20 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   // populate directory
   {
     auto query_doc4 = MakeByTerm("doc_string", "string4_data");
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE, opts);
 
     ASSERT_TRUE(insert(*writer, doc1.indexed.begin(), doc1.indexed.end(),
                        doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
-    writer->commit();
+    writer->Commit();
     ASSERT_TRUE(insert(*writer, doc3.indexed.begin(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
-    writer->commit();
+    writer->Commit();
     writer->documents().Remove(std::move(query_doc4));
-    writer->commit();
+    writer->Commit();
   }
 
   auto docs_count = [](const irs::SubReader& segment,

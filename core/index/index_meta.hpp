@@ -35,7 +35,7 @@
 namespace irs {
 
 class format;
-class index_writer;
+class IndexWriter;
 
 struct SegmentInfo {
   bool operator==(const SegmentInfo& other) const noexcept;
@@ -159,7 +159,7 @@ class IndexMeta {
   }
 
  private:
-  friend class index_writer;
+  friend class IndexWriter;
   friend struct index_meta_reader;
   friend struct index_meta_writer;
 
