@@ -1114,7 +1114,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
       pay_data_.resize(size);
 
       [[maybe_unused]] const auto read =
-        pay_in_->read_bytes(&(pay_data_[0]), size);
+        pay_in_->read_bytes(pay_data_.data(), size);
       IRS_ASSERT(read == size);
     }
 
@@ -1139,10 +1139,10 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
 
       if (pay_lengths_[i]) {
         const auto size = pay_lengths_[i];  // length of current payload
-        pay_data_.resize(pos + size);
+        pay_data_.resize(pos + size);  // FIXME(gnusi): use oversize from absl
 
         [[maybe_unused]] const auto read =
-          this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+          this->pos_in_->read_bytes(pay_data_.data() + pos, size);
         IRS_ASSERT(read == size);
 
         pos += size;
@@ -1238,7 +1238,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
       pay_data_.resize(size);
 
       [[maybe_unused]] const auto read =
-        pay_in_->read_bytes(&(pay_data_[0]), size);
+        pay_in_->read_bytes(pay_data_.data(), size);
       IRS_ASSERT(read == size);
     }
 
@@ -1263,10 +1263,10 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
 
       if (pay_lengths_[i]) {
         const auto size = pay_lengths_[i];  // current payload length
-        pay_data_.resize(pos + size);
+        pay_data_.resize(pos + size);  // FIXME(gnusi): use oversize from absl
 
         [[maybe_unused]] const auto read =
-          this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+          this->pos_in_->read_bytes(pay_data_.data() + pos, size);
         IRS_ASSERT(read == size);
 
         pos += size;

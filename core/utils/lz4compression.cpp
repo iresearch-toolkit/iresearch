@@ -73,8 +73,10 @@ bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
                        std::numeric_limits<int>::max()));  // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
 
-  // ensure we have enough space to store compressed data
-  out.resize(size_t(LZ4_COMPRESSBOUND(src_size)));
+  // Ensure we have enough space to store compressed data,
+  // but preserve original size
+  const uint32_t bound = LZ4_COMPRESSBOUND(src_size);
+  out.resize(std::max(out.size(), size_t{bound}));
 
   const auto* src_data = reinterpret_cast<const char*>(src);
   auto* buf = reinterpret_cast<char*>(&out[0]);
@@ -83,10 +85,11 @@ bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
     LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
-    throw index_error("while compressing, error: LZ4 returned negative size");
+    throw index_error{"While compressing, error: LZ4 returned negative size"};
   }
 
-  return bytes_view(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
+  return {reinterpret_cast<const byte_type*>(buf),
+          static_cast<size_t>(lz4_size)};
 }
 
 bytes_view lz4::lz4decompressor::decompress(const byte_type* src,

@@ -867,9 +867,9 @@ bool IndexWriter::FlushRequired(const segment_writer& segment) const noexcept {
   const auto docs = segment.docs_cached();
   const auto memory = segment.memory_active();
 
-  return (docs_max != 0 && docs_max > docs) ||         // too many docs
-         doc_limits::eof(docs)                         // segment is full
-         || (memory_max != 0 && memory_max > memory);  // too much memory
+  return (docs_max != 0 && docs_max <= docs) ||        // too many docs
+         (memory_max != 0 && memory_max <= memory) ||  // too much memory
+         doc_limits::eof(docs);                        // segment is full
 }
 
 IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
@@ -899,11 +899,12 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
   auto& segment = *(segment_.ctx());
   auto& writer = *segment.writer_;
 
-  if (IRS_UNLIKELY(!writer.initialized())) {
-    segment.Prepare();
-    assert(segment.writer_->initialized());
-  } else if (!disable_flush && writer_.FlushRequired(writer)) {
-    // force a flush of a full segment
+  if (IRS_LIKELY(writer.initialized())) {
+    if (disable_flush || !writer_.FlushRequired(writer)) {
+      return ctx;
+    }
+
+    // Force flush of a full segment
     IR_FRMT_TRACE(
       "Flushing segment '%s', docs=" IR_SIZE_T_SPECIFIER
       ", memory=" IR_SIZE_T_SPECIFIER ", docs limit=" IR_SIZE_T_SPECIFIER
@@ -925,6 +926,9 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
       throw;
     }
   }
+
+  segment.Prepare();
+  IRS_ASSERT(segment.writer_->initialized());
 
   return ctx;
 }

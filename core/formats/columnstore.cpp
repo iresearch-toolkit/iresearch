@@ -160,7 +160,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
   // compressor can only handle size of int32_t, so can use the negative flag as
   // a compression flag
   const bytes_view compressed =
-    compressor.compress(&data[0], data.size(), encode_buf);
+    compressor.compress(data.data(), data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
     IRS_ASSERT(compressed.size() <=
