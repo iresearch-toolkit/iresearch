@@ -118,7 +118,7 @@ filter::prepared::ptr by_term::prepare(const IndexReader& index,
   }
 
   bstring stats(ord.stats_size(), 0);
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
 
   term_stats.finish(stats_buf, 0, field_stats, index);
 

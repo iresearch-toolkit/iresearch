@@ -300,7 +300,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
 
   // finish stats
   bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
 
   FixedPhraseQuery::positions_t positions(phrase_size);
   auto pos_itr = positions.begin();
@@ -415,7 +415,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   // finish stats
   IRS_ASSERT(phrase_size == phrase_part_stats.size());
   bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
   auto collector = phrase_part_stats.begin();
 
   VariadicPhraseQuery::positions_t positions(phrase_size);

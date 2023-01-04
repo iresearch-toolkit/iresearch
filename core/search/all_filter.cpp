@@ -36,7 +36,7 @@ class all_query final : public filter::prepared {
     auto& rdr = ctx.segment;
 
     return memory::make_managed<AllIterator>(rdr, stats_.c_str(), ctx.scorers,
-                                              rdr.docs_count(), boost());
+                                             rdr.docs_count(), boost());
   }
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
@@ -56,7 +56,7 @@ filter::prepared::ptr all::prepare(const IndexReader& reader,
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
   bstring stats(order.stats_size(), 0);
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
 
   PrepareCollectors(order.buckets(), stats_buf, reader);
 

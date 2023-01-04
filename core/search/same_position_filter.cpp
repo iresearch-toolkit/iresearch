@@ -281,7 +281,7 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::stats_t stats(size);
   for (auto& stat : stats) {
     stat.resize(ord.stats_size());
-    auto* stats_buf = const_cast<byte_type*>(stat.data());
+    auto* stats_buf = stat.data();
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 

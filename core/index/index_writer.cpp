@@ -605,7 +605,7 @@ void IndexWriter::SyncContext::ExtractFiles(
 }
 
 IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
-  std::shared_ptr<SegmentContext> ctx, std::atomic<size_t>& segments_active,
+  std::shared_ptr<SegmentContext> ctx, std::atomic_size_t& segments_active,
   FlushContext* flush_ctx, size_t pending_segment_context_offset) noexcept
   : ctx_{std::move(ctx)},
     flush_ctx_{flush_ctx},
@@ -664,7 +664,7 @@ IndexWriter::ActiveSegmentContext& IndexWriter::ActiveSegmentContext::operator=(
     ctx_ = std::move(other.ctx_);
     flush_ctx_ = other.flush_ctx_;
     pending_segment_context_offset_ = other.pending_segment_context_offset_;
-    segments_active_->store(other.segments_active_->load());
+    segments_active_ = other.segments_active_;
   }
 
   return *this;
@@ -1136,7 +1136,7 @@ void IndexWriter::FlushContext::emplace(ActiveSegmentContext&& segment,
     segments_active.fetch_add(1);
     // reset before adding to freelist to garantee proper use_count() in
     // get_segment_context(...)
-    segment = ActiveSegmentContext();
+    segment = ActiveSegmentContext{};
     // add segment_context to free-list
     pending_segment_contexts_freelist_.push(*freelist_node);
   }

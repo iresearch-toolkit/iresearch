@@ -196,7 +196,7 @@ class IndexWriter : private util::noncopyable {
    public:
     ActiveSegmentContext() = default;
     ActiveSegmentContext(
-      std::shared_ptr<SegmentContext> ctx, std::atomic<size_t>& segments_active,
+      std::shared_ptr<SegmentContext> ctx, std::atomic_size_t& segments_active,
       // the flush_context the segment_context is currently registered with
       FlushContext* flush_ctx = nullptr,
       // the segment offset in flush_ctx_->pending_segments_
@@ -218,7 +218,7 @@ class IndexWriter : private util::noncopyable {
     // segment offset in flush_ctx_->pending_segment_contexts_
     size_t pending_segment_context_offset_{};
     // reference to index_writer::segments_active_
-    std::atomic<size_t>* segments_active_{};
+    std::atomic_size_t* segments_active_{};
   };
 
   static_assert(std::is_nothrow_move_constructible_v<ActiveSegmentContext>);
@@ -651,16 +651,16 @@ class IndexWriter : private util::noncopyable {
     // number of active in-progress
     // operations (insert/replace) (e.g.
     // document instances or replace(...))
-    std::atomic<size_t> active_count_;
+    std::atomic_size_t active_count_;
     // for use with index_writer::buffered_docs()
     // asynchronous call
-    std::atomic<size_t> buffered_docs_;
+    std::atomic_size_t buffered_docs_;
     // the codec to used for flushing a segment writer
     format::ptr codec_;
     // true if flush_all() started processing this segment (this
     // segment should not be used for any new operations), guarded by
     // the flush_context::flush_mutex_
-    std::atomic<bool> dirty_;
+    std::atomic_bool dirty_;
     // ref tracking for segment_writer to allow for easy ref removal on
     // segment_writer reset
     RefTrackingDirectory dir_;
@@ -738,11 +738,11 @@ class IndexWriter : private util::noncopyable {
 
   struct SegmentLimits {
     // see segment_options::max_segment_count
-    std::atomic<size_t> segment_count_max;
+    std::atomic_size_t segment_count_max;
     // see segment_options::max_segment_docs
-    std::atomic<size_t> segment_docs_max;
+    std::atomic_size_t segment_docs_max;
     // see segment_options::max_segment_memory
-    std::atomic<size_t> segment_memory_max;
+    std::atomic_size_t segment_memory_max;
 
     explicit SegmentLimits(const SegmentOptions& opts) noexcept
       : segment_count_max(opts.segment_count_max),
@@ -810,7 +810,7 @@ class IndexWriter : private util::noncopyable {
     };
 
     // current modification/update generation
-    std::atomic<size_t> generation_{0};
+    std::atomic_size_t generation_{0};
     // ref tracking directory used by this context (tracks all/only
     // refs for this context)
     RefTrackingDirectory::ptr dir_;

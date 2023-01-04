@@ -179,8 +179,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     irs::write_zvint(
       out, int32_t(0) - int32_t(data.size()));  // -ve to mark uncompressed
     if (cipher) {
-      cipher->encrypt(out.file_pointer(),
-                      const_cast<irs::byte_type*>(data.c_str()), data.size());
+      cipher->encrypt(out.file_pointer(), data.data(), data.size());
     }
     out.write_bytes(data.c_str(), data.size());
   }
@@ -205,12 +204,12 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
       buf_size);  // Ensure that we have enough space to store decompressed data
 
     [[maybe_unused]] const auto read =
-      in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
+      in.read_bytes(decode_buf.data(), buf_size);
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size,
-                      const_cast<byte_type*>(decode_buf.c_str()), buf_size);
+      cipher->decrypt(in.file_pointer() - buf_size, decode_buf.data(),
+                      buf_size);
     }
 
     return;
@@ -237,12 +236,12 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     encode_buf.resize(buf_size);
 
     [[maybe_unused]] const auto read =
-      in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+      in.read_bytes(encode_buf.data(), buf_size);
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size,
-                      const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+      cipher->decrypt(in.file_pointer() - buf_size, encode_buf.data(),
+                      buf_size);
     }
 
     buf = encode_buf.c_str();

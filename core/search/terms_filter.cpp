@@ -159,7 +159,7 @@ filter::prepared::ptr by_terms::prepare(const IndexReader& index,
   MultiTermQuery::Stats stats{size};
   for (size_t term_idx = 0; auto& stat : stats) {
     stat.resize(order.stats_size(), 0);
-    auto* stats_buf = const_cast<byte_type*>(stat.data());
+    auto* stats_buf = stat.data();
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 
