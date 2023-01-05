@@ -865,7 +865,7 @@ class IndexWriter : private util::noncopyable {
   class SyncContext : util::noncopyable {
    public:
     void ExtractFiles(std::vector<std::string_view>& files,
-                      const IndexMeta& meta) const;
+                      const DirectoryMeta& meta) const;
 
     void PushPartial(size_t i, std::string_view file) {
       files_.emplace_back(file);
@@ -922,7 +922,7 @@ class IndexWriter : private util::noncopyable {
       commit.reset();
     }
 
-    explicit operator bool() const noexcept { return ctx && commit; }
+    bool Valid() const noexcept { return ctx && commit; }
   };
 
   static_assert(std::is_nothrow_move_constructible_v<PendingState>);
@@ -948,12 +948,12 @@ class IndexWriter : private util::noncopyable {
   // Initialize new index meta
   void InitMeta(IndexMeta& meta, uint64_t tick) const;
 
-  // starts transaction
+  // Start transaction
   bool Start(ProgressReportCallback const& progress = nullptr);
-  // finishes transaction
+  // Finish transaction
   void Finish();
-  // aborts transaction
-  void Abort();
+  // Abort transaction
+  void Abort() noexcept;
 
   FeatureInfoProvider feature_info_;
   std::vector<std::string_view> files_to_sync_;

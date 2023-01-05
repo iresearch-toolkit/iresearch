@@ -2658,10 +2658,6 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
     format_utils::write_footer(*out);
   }  // important to close output here
 
-  if (const std::string_view sync_me{filename}; !dir.sync({&sync_me, 1})) {
-    throw io_error{absl::StrCat("Failed to sync file, path: ", filename)};
-  }
-
   // only noexcept operations below
   dir_ = &dir;
   pending_gen_ = meta.gen;

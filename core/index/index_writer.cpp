@@ -573,17 +573,21 @@ std::shared_ptr<const DirectoryReaderImpl> OpenReader(
 using namespace std::chrono_literals;
 
 void IndexWriter::SyncContext::ExtractFiles(
-  std::vector<std::string_view>& files_to_sync, const IndexMeta& meta) const {
+  std::vector<std::string_view>& files_to_sync,
+  const DirectoryMeta& meta) const {
+  IRS_ASSERT(!meta.filename.empty());
+
   // FIXME(gnusi): make format dependent
   constexpr size_t kFilesPerSegment = 9;
 
   files_to_sync.clear();
-  files_to_sync.reserve(files_.size() + segments_.size() * kFilesPerSegment);
+  // +1 for index meta
+  files_to_sync.reserve(1 + files_.size() +
+                        segments_.size() * kFilesPerSegment);
+  files_to_sync.emplace_back(meta.filename);
 
-  auto begin = files_.begin();
-
-  for (const auto& [idx, count] : segments_) {
-    const auto& segment = meta.segments[idx];
+  for (auto begin = files_.begin(); const auto& [idx, count] : segments_) {
+    const auto& segment = meta.index_meta.segments[idx];
 
     switch (count) {
       case kInvalid:
@@ -1387,7 +1391,7 @@ void IndexWriter::Clear(uint64_t tick) {
 
   auto& committed_meta = committed_reader_->Meta().index_meta;
 
-  if (!pending_state_ && committed_meta.segments.empty()) {
+  if (!pending_state_.Valid() && committed_meta.segments.empty()) {
     return;  // already empty
   }
 
@@ -1693,7 +1697,7 @@ ConsolidationResult IndexWriter::Consolidate(
       return {0, ConsolidationError::FAIL};
     }
 
-    if (pending_state_) {
+    if (pending_state_.Valid()) {
       // check that we haven't added to reader cache already absent readers
       // only if we have different index meta
       if (committed_reader != current_committed_reader) {
@@ -2589,7 +2593,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
 
   REGISTER_TIMER_DETAILED();
 
-  if (pending_state_) {
+  if (pending_state_.Valid()) {
     // begin has been already called
     // without corresponding call to commit
     return false;
@@ -2602,42 +2606,45 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
     return false;
   }
 
+  IRS_ASSERT(!pending_state_.ctx);
+
   DirectoryMeta pending_meta{.index_meta = std::move(to_commit.meta)};
 
   auto& dir = *to_commit.ctx->dir_;
 
-  // write 1st phase of index_meta transaction
+  // Write 1st phase of index_meta transaction
+  // FIXME(gnusi): don't sync file
   if (!writer_->prepare(dir, pending_meta.index_meta, pending_meta.filename)) {
     throw illegal_state{"Failed to write index metadata."};
   }
 
+  // 1st phase of the transaction successfully finished here,
+  // ensure we rollback changes if something goes wrong afterwards
   Finally update_generation = [this, &pending_meta]() noexcept {
+    if (IRS_UNLIKELY(!pending_state_.ctx)) {
+      writer_->rollback();  // Rollback failed transaction
+    }
+
     // Ensure writer's generation is updated
     last_gen_ = pending_meta.index_meta.gen;
   };
 
-  to_commit.to_sync.ExtractFiles(files_to_sync_, pending_meta.index_meta);
+  to_commit.to_sync.ExtractFiles(files_to_sync_, pending_meta);
+
   if (!dir.sync(files_to_sync_)) {  // sync all pending files
     throw io_error{"Failed to sync files."};
   }
 
-  try {
-    // 1st phase of the transaction successfully finished here,
-    // set to_commit as active flush context containing pending meta
-
-    // FIXME(gnusi): hold a reference to segments_ file also?
-    pending_state_.commit = std::make_shared<const DirectoryReaderImpl>(
-      dir, committed_reader_->Options(), std::move(pending_meta),
-      std::move(to_commit.readers));
-  } catch (...) {
-    writer_->rollback();  // rollback started transaction
-
-    throw;
-  }
+  // FIXME(gnusi): hold a reference to segments_ file also?
+  //               rename pending_segments_?
+  pending_state_.commit = std::make_shared<const DirectoryReaderImpl>(
+    dir, committed_reader_->Options(), std::move(pending_meta),
+    std::move(to_commit.readers));
 
   // only noexcept operations below
 
   pending_state_.ctx = std::move(to_commit.ctx);
+  IRS_ASSERT(pending_state_.Valid());
 
   return true;
 }
@@ -2647,51 +2654,45 @@ void IndexWriter::Finish() {
 
   REGISTER_TIMER_DETAILED();
 
-  if (!pending_state_) {
+  if (!pending_state_.Valid()) {
     return;
   }
 
-  Finally reset_state = [this]() noexcept {
+  bool res{false};
+
+  Finally reset_state = [this, &res]() noexcept {
+    if (IRS_UNLIKELY(!res)) {
+      Abort();  // Rollback failed transaction
+    }
+
     // Release reference to flush_context
     pending_state_.Reset();
   };
 
   // Lightweight 2nd phase of the transaction
 
-  try {
-    if (!writer_->commit()) {
-      throw illegal_state{"Failed to commit index metadata."};
-    }
+  res = writer_->commit();
 
-    std::atomic_store_explicit(&committed_reader_,
-                               std::move(pending_state_.commit),
-                               std::memory_order_relaxed);
-  } catch (...) {
-    Abort();  // rollback transaction
-
-    throw;
+  if (IRS_UNLIKELY(!res)) {
+    throw illegal_state{"Failed to commit index metadata."};
   }
 
   // after this line transaction is successfull (only noexcept operations below)
+  std::atomic_store_explicit(&committed_reader_,
+                             std::move(pending_state_.commit),
+                             std::memory_order_relaxed);
 }
 
-void IndexWriter::Abort() {
+void IndexWriter::Abort() noexcept {
   IRS_ASSERT(!commit_lock_.try_lock());  // already locked
 
-  if (!pending_state_) {
-    // there is no open transaction
+  if (!pending_state_.Valid()) {
+    // There is no open transaction
     return;
   }
 
-  // all functions below are noexcept
-
-  // guarded by commit_lock_
   writer_->rollback();
-  committed_reader_ = std::move(pending_state_.commit);
-  pending_state_.ctx.reset();
-
-  // reset actual meta, note that here we don't change
-  // segment counters since it can be changed from insert function
+  pending_state_.Reset();
 }
 
 }  // namespace irs
