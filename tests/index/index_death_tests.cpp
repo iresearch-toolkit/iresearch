@@ -286,7 +286,7 @@ void open_reader(
   failure_registerer(dir);
 
   while (!dir.no_failures()) {
-    ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
+    ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
   }
 
   // check data
@@ -3027,7 +3027,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     ASSERT_TRUE(dir.no_failures());
 
     // check data
-    auto reader = irs::DirectoryReader(dir);
+    auto reader = irs::DirectoryReader{dir};
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -3555,8 +3555,8 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
                        "_1.csi");  // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN,
                        "_1.csd");  // regiseter open failure in columnstore
-  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
-  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
 
   // check data
   auto reader = irs::DirectoryReader(dir);
@@ -3659,8 +3659,8 @@ TEST(index_death_test_formats_14, fails_in_dup) {
   dir.register_failure(failing_directory::Failure::OPEN, "_1.csi");
   // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN, "_1.csd");
-  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
-  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
 
   // check data
   auto reader = irs::DirectoryReader(dir);

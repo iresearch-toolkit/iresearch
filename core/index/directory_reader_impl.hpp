@@ -43,11 +43,12 @@ class DirectoryReaderImpl final
   // if codec == nullptr then use the latest file for all known codecs
   // if cached != nullptr then try to reuse its segments
   static std::shared_ptr<const DirectoryReaderImpl> Open(
-    const directory& dir, const IndexReaderOptions& opts, const format* codec,
+    const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
     const std::shared_ptr<const DirectoryReaderImpl>& cached);
 
-  DirectoryReaderImpl(const directory& dir, const IndexReaderOptions& opts,
-                      DirectoryMeta&& meta, ReadersType&& readers);
+  DirectoryReaderImpl(const directory& dir, format::ptr codec,
+                      const IndexReaderOptions& opts, DirectoryMeta&& meta,
+                      ReadersType&& readers);
 
   const directory& Dir() const noexcept { return dir_; }
 
@@ -55,16 +56,19 @@ class DirectoryReaderImpl final
 
   const IndexReaderOptions& Options() const noexcept { return opts_; }
 
+  const format::ptr& Codec() const noexcept { return codec_; }
+
  private:
   struct Init;
 
-  DirectoryReaderImpl(Init&& init, const directory& dir,
+  DirectoryReaderImpl(Init&& init, const directory& dir, format::ptr&& codec,
                       const IndexReaderOptions& opts, DirectoryMeta&& meta,
                       ReadersType&& readers);
 
   using FileRefs = std::vector<index_file_refs::ref_t>;
 
   const directory& dir_;
+  format::ptr codec_;
   FileRefs file_refs_;
   DirectoryMeta meta_;
   IndexReaderOptions opts_;

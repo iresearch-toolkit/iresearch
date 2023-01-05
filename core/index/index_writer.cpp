@@ -547,7 +547,8 @@ std::string ToString(ConsolidationView consolidation) {
 }
 
 std::shared_ptr<const DirectoryReaderImpl> OpenReader(
-  directory& dir, DirectoryMeta&& meta, const IndexReaderOptions& opts) {
+  directory& dir, format::ptr codec, DirectoryMeta&& meta,
+  const IndexReaderOptions& opts) {
   const auto& segments = meta.index_meta.segments;
 
   std::vector<SegmentReader> readers;
@@ -559,8 +560,8 @@ std::shared_ptr<const DirectoryReaderImpl> OpenReader(
     IRS_ASSERT(readers.back());
   }
 
-  return std::make_shared<const DirectoryReaderImpl>(dir, opts, std::move(meta),
-                                                     std::move(readers));
+  return std::make_shared<const DirectoryReaderImpl>(
+    dir, std::move(codec), opts, std::move(meta), std::move(readers));
 }
 
 }  // namespace
@@ -1417,8 +1418,8 @@ void IndexWriter::Clear(uint64_t tick) {
   // 1st phase of the transaction successfully finished here
   // ensure new generation reflected in 'meta_'
   pending_state_.ctx = std::move(ctx);  // retain flush context reference
-  pending_state_.commit =
-    OpenReader(dir, std::move(pending_commit), committed_reader_->Options());
+  pending_state_.commit = OpenReader(dir, codec_, std::move(pending_commit),
+                                     committed_reader_->Options());
 
   Finish();
 
@@ -1480,7 +1481,7 @@ IndexWriter::ptr IndexWriter::make(
     }
   }
 
-  auto reader = OpenReader(dir, std::move(meta), opts.reader_options);
+  auto reader = OpenReader(dir, codec, std::move(meta), opts.reader_options);
 
   auto writer = std::make_shared<IndexWriter>(
     ConstructToken{}, std::move(lock), std::move(lock_ref), dir,
@@ -2489,10 +2490,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         auto docs_mask = flush_segment_ctx.docs_mask_;
         auto& flushed_meta = flush_segment_ctx.segment_.meta;
 
-        // increment version for next run due to documents masked
-        // from this run, similar to write_document_mask(...)
-        ++flushed_meta.version;
-
         // add doc_ids before start of this flush_context to document_mask
         for (size_t doc_id = doc_limits::min(); doc_id < valid_doc_id_begin;
              ++doc_id) {
@@ -2643,7 +2640,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
   // FIXME(gnusi): hold a reference to segments_ file also?
   //               rename pending_segments_?
   pending_state_.commit = std::make_shared<const DirectoryReaderImpl>(
-    dir, committed_reader_->Options(), std::move(pending_meta),
+    dir, codec_, committed_reader_->Options(), std::move(pending_meta),
     std::move(to_commit.readers));
 
   // only noexcept operations below

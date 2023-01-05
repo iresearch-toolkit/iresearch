@@ -65,7 +65,7 @@ MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable : 4457)))  // variable hides function param
 index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
                                            const directory& dir,
-                                           const format* codec) noexcept {
+                                           format::ptr& codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -127,7 +127,7 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
 
   try {
     for (const std::string_view name : codecs) {
-      auto codec = formats::get(name);
+      codec = formats::get(name);
 
       if (!codec) {
         continue;  // try the next codec
@@ -186,25 +186,29 @@ MSVC_ONLY(__pragma(warning(pop)))
 }  // namespace
 
 DirectoryReaderImpl::DirectoryReaderImpl(const directory& dir,
+                                         format::ptr codec,
                                          const IndexReaderOptions& opts,
                                          DirectoryMeta&& meta,
                                          ReadersType&& readers)
-  : DirectoryReaderImpl{Init{dir, meta}, dir, opts, std::move(meta),
-                        std::move(readers)} {}
+  : DirectoryReaderImpl{Init{dir, meta},  dir,
+                        std::move(codec), opts,
+                        std::move(meta),  std::move(readers)} {}
 
 DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
+                                         format::ptr&& codec,
                                          const IndexReaderOptions& opts,
                                          DirectoryMeta&& meta,
                                          ReadersType&& readers)
   : CompositeReaderImpl{std::move(readers), init.live_docs_count,
                         init.docs_count},
     dir_{dir},
+    codec_{std::move(codec)},
     file_refs_{std::move(init.file_refs)},
     meta_{std::move(meta)},
     opts_{opts} {}
 
 /*static*/ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
-  const directory& dir, const IndexReaderOptions& opts, const format* codec,
+  const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
   const std::shared_ptr<const DirectoryReaderImpl>& cached) {
   IndexMeta meta;
   index_file_refs::ref_t meta_file_ref = LoadNewestIndexMeta(meta, dir, codec);
@@ -212,6 +216,8 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
   if (!meta_file_ref) {
     throw index_not_found{};
   }
+
+  IRS_ASSERT(codec);
 
   if (cached && cached->meta_.index_meta == meta) {
     return cached;  // no changes to refresh
@@ -260,7 +266,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
   }
 
   return std::make_shared<DirectoryReaderImpl>(
-    dir, opts,
+    dir, std::move(codec), opts,
     DirectoryMeta{.filename = *meta_file_ref, .index_meta = std::move(meta)},
     std::move(readers));
 }

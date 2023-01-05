@@ -38,8 +38,9 @@ class DirectoryReader final : public IndexReader {
   DirectoryReader() noexcept = default;
   // Create an index reader over the specified directory
   // if codec == nullptr then use the latest file for all known codecs
-  DirectoryReader(const directory& dir, format::ptr codec = nullptr,
-                  const IndexReaderOptions& opts = IndexReaderOptions{});
+  explicit DirectoryReader(
+    const directory& dir, format::ptr codec = nullptr,
+    const IndexReaderOptions& opts = IndexReaderOptions{});
   explicit DirectoryReader(
     std::shared_ptr<const DirectoryReaderImpl>&& impl) noexcept;
   DirectoryReader(const DirectoryReader& other) noexcept;
@@ -71,12 +72,9 @@ class DirectoryReader final : public IndexReader {
 
   size_t size() const final;
 
-  // FIXME(gnusi): remove codec arg
-  //
-  //  Open a new instance based on the latest file for the specified codec
-  //         this call will atempt to reuse segments from the existing reader
-  //         if codec == nullptr then use the latest file for all known codecs
-  DirectoryReader Reopen(format::ptr codec = nullptr) const;
+  // Open a new instance based on the latest file for the specified codec
+  // this call will atempt to reuse segments from the existing reader
+  DirectoryReader Reopen() const;
 
   std::shared_ptr<const DirectoryReaderImpl> GetImpl() const noexcept {
     return impl_;

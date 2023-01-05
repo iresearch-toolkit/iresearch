@@ -841,9 +841,7 @@ class IndexWriter : private util::noncopyable {
     // not change for use with
     // 'pending_segment_contexts_freelist_'
     std::deque<PendindSegmentContext> pending_segment_contexts_;
-    // entries from
-    // 'pending_segment_contexts_' that
-    // are available for reuse
+    // entries from 'pending_segment_contexts_' that are available for reuse
     Freelist pending_segment_contexts_freelist_;
     // set of segment names to be removed from the index upon commit
     absl::flat_hash_set<const SubReader*> segment_mask_;
