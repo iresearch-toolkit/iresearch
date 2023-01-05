@@ -28,7 +28,7 @@
 namespace irs {
 
 SegmentReader::SegmentReader(const SegmentReader& other) noexcept
-  : impl_{std::atomic_load(&other.impl_)} {}
+  : impl_{std::atomic_load_explicit(&other.impl_, std::memory_order_relaxed)} {}
 
 SegmentReader& SegmentReader::operator=(const SegmentReader& other) noexcept {
   if (this != &other) {
