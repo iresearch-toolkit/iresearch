@@ -2575,21 +2575,21 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 }
 
 struct index_meta_writer final : public irs::index_meta_writer {
-  static constexpr std::string_view FORMAT_NAME = "iresearch_10_index_meta";
-  static constexpr std::string_view FORMAT_PREFIX = "segments_";
-  static constexpr std::string_view FORMAT_PREFIX_TMP = "pending_segments_";
+  static constexpr std::string_view kFormatName = "iresearch_10_index_meta";
+  static constexpr std::string_view kFormatPrefix = "segments_";
+  static constexpr std::string_view kFormatPrefixTmp = "pending_segments_";
 
-  static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_MAX = 1;
+  static constexpr int32_t kFormatMin = 0;
+  static constexpr int32_t kFormatMax = 1;
 
-  enum { HAS_PAYLOAD = 1 };
+  enum { kHasPayload = 1 };
 
   static std::string FileName(uint64_t gen) {
-    return FileName(FORMAT_PREFIX, gen);
+    return FileName(kFormatPrefix, gen);
   }
 
   explicit index_meta_writer(int32_t version) noexcept : version_{version} {
-    IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
+    IRS_ASSERT(version_ >= kFormatMin && version <= kFormatMax);
   }
 
   bool prepare(directory& dir, IndexMeta& meta, std::string& filename) override;
@@ -2603,12 +2603,7 @@ struct index_meta_writer final : public irs::index_meta_writer {
   }
 
   static std::string PendingFileName(uint64_t gen) {
-    return FileName(FORMAT_PREFIX_TMP, gen);
-  }
-
-  static uint64_t NextGen(uint64_t gen) noexcept {
-    // FIXME(gnusi): make invalid gen == 0
-    return index_gen_limits::valid(gen) ? (gen + 1) : 1;
+    return FileName(kFormatPrefixTmp, gen);
   }
 
   directory* dir_{};
@@ -2623,8 +2618,7 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
     return false;
   }
 
-  // Prepare meta before generating filename
-  meta.gen = NextGen(meta.gen);
+  ++meta.gen;  // Increment generation before generating filename
   filename = PendingFileName(meta.gen);
 
   auto out = dir.create(filename);
@@ -2634,7 +2628,7 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
   }
 
   {
-    format_utils::write_header(*out, FORMAT_NAME, version_);
+    format_utils::write_header(*out, kFormatName, version_);
     out->write_vlong(meta.gen);
     out->write_long(meta.seg_counter);
     IRS_ASSERT(meta.segments.size() <= std::numeric_limits<uint32_t>::max());
@@ -2645,12 +2639,12 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
       write_string(*out, segment.meta.codec->type().name());
     }
 
-    if (version_ > FORMAT_MIN) {
+    if (version_ > kFormatMin) {
       const auto payload = GetPayload(meta);
-      const byte_type flags = IsNull(payload) ? 0 : HAS_PAYLOAD;
+      const byte_type flags = IsNull(payload) ? 0 : kHasPayload;
       out->write_byte(flags);
 
-      if (flags == HAS_PAYLOAD) {
+      if (flags == kHasPayload) {
         irs::write_string(*out, payload);
       }
     }
@@ -2716,15 +2710,16 @@ void index_meta_writer::rollback() noexcept {
   pending_gen_ = index_gen_limits::invalid();
 }
 
-uint64_t ParseGeneration(std::string_view segments_file) noexcept {
-  IRS_ASSERT(segments_file.starts_with(index_meta_writer::FORMAT_PREFIX));
+uint64_t ParseGeneration(std::string_view file) noexcept {
+  if (file.starts_with(index_meta_writer::kFormatPrefix)) {
+    constexpr size_t kPrefixLength = index_meta_writer::kFormatPrefix.size();
 
-  const char* gen_str =
-    segments_file.data() + index_meta_writer::FORMAT_PREFIX.size();
-  char* suffix;
-  auto gen = std::strtoull(gen_str, &suffix, 10);  // 10 for base-10
+    if (uint64_t gen; absl::SimpleAtoi(file.substr(kPrefixLength), &gen)) {
+      return gen;
+    }
+  }
 
-  return suffix[0] ? index_gen_limits::invalid() : gen;
+  return index_gen_limits::invalid();
 }
 
 struct index_meta_reader final : public irs::index_meta_reader {
@@ -2737,21 +2732,19 @@ struct index_meta_reader final : public irs::index_meta_reader {
 
 bool index_meta_reader::last_segments_file(const directory& dir,
                                            std::string& out) const {
-  uint64_t max_gen = 0;
+  uint64_t max_gen = index_gen_limits::invalid();
   directory::visitor_f visitor = [&out, &max_gen](std::string_view name) {
-    if (name.starts_with(index_meta_writer::FORMAT_PREFIX)) {
-      const uint64_t gen = ParseGeneration(name);
+    const uint64_t gen = ParseGeneration(name);
 
-      if (index_gen_limits::valid(gen) && gen > max_gen) {
-        out = std::move(name);
-        max_gen = gen;
-      }
+    if (gen > max_gen) {
+      out = std::move(name);
+      max_gen = gen;
     }
     return true;  // continue iteration
   };
 
   dir.visit(visitor);
-  return max_gen > 0;
+  return index_gen_limits::valid(max_gen);
 }
 
 void index_meta_reader::read(const directory& dir, IndexMeta& meta,
@@ -2773,8 +2766,8 @@ void index_meta_reader::read(const directory& dir, IndexMeta& meta,
 
   // check header
   const int32_t version = format_utils::check_header(
-    *in, index_meta_writer::FORMAT_NAME, index_meta_writer::FORMAT_MIN,
-    index_meta_writer::FORMAT_MAX);
+    *in, index_meta_writer::kFormatName, index_meta_writer::kFormatMin,
+    index_meta_writer::kFormatMax);
 
   // read data from segments file
   auto gen = in->read_vlong();
@@ -2795,8 +2788,8 @@ void index_meta_reader::read(const directory& dir, IndexMeta& meta,
 
   bool has_payload = false;
   bstring payload;
-  if (version > index_meta_writer::FORMAT_MIN) {
-    has_payload = (in->read_byte() & index_meta_writer::HAS_PAYLOAD);
+  if (version > index_meta_writer::kFormatMin) {
+    has_payload = (in->read_byte() & index_meta_writer::kHasPayload);
 
     if (has_payload) {
       payload = irs::read_string<bstring>(*in);
@@ -3489,7 +3482,7 @@ static const ::format10 FORMAT10_INSTANCE;
 
 index_meta_writer::ptr format10::get_index_meta_writer() const {
   return std::make_unique<::index_meta_writer>(
-    int32_t(::index_meta_writer::FORMAT_MIN));
+    int32_t(::index_meta_writer::kFormatMin));
 }
 
 index_meta_reader::ptr format10::get_index_meta_reader() const {
@@ -3588,7 +3581,7 @@ static const ::format11 FORMAT11_INSTANCE;
 
 index_meta_writer::ptr format11::get_index_meta_writer() const {
   return std::make_unique<::index_meta_writer>(
-    int32_t(::index_meta_writer::FORMAT_MAX));
+    int32_t(::index_meta_writer::kFormatMax));
 }
 
 field_writer::ptr format11::get_field_writer(bool consolidation) const {
