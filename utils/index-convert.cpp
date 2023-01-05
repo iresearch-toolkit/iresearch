@@ -78,7 +78,7 @@ int convert(const std::string& in, const std::string& out,
     return 1;
   }
 
-  auto reader = irs::DirectoryReader::Open(*in_dir);
+  auto reader = irs::DirectoryReader(*in_dir);
   auto writer =
     irs::IndexWriter::make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
 

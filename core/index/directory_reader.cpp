@@ -34,19 +34,25 @@
 namespace irs {
 
 DirectoryReader::DirectoryReader(
+  const directory& dir, format::ptr codec /*= nullptr*/,
+  const IndexReaderOptions& opts /*= directory_reader_options()*/)
+  : impl_{DirectoryReaderImpl::Open(dir, opts, codec.get(), nullptr)} {}
+
+DirectoryReader::DirectoryReader(
   std::shared_ptr<const DirectoryReaderImpl>&& impl) noexcept
   : impl_{std::move(impl)} {}
 
 DirectoryReader::DirectoryReader(const DirectoryReader& other) noexcept
-  : impl_{std::atomic_load(&other.impl_)} {}
+  : impl_{std::atomic_load_explicit(&other.impl_, std::memory_order_relaxed)} {}
 
 DirectoryReader& DirectoryReader::operator=(
   const DirectoryReader& other) noexcept {
   if (this != &other) {
     // make a copy
-    auto impl = std::atomic_load(&other.impl_);
+    auto impl =
+      std::atomic_load_explicit(&other.impl_, std::memory_order_relaxed);
 
-    std::atomic_store(&impl_, impl);
+    std::atomic_store_explicit(&impl_, impl, std::memory_order_relaxed);
   }
 
   return *this;
@@ -64,18 +70,7 @@ uint64_t DirectoryReader::live_docs_count() const {
 
 size_t DirectoryReader::size() const { return impl_->size(); }
 
-const DirectoryMeta& DirectoryReader::Meta() const {
-  auto impl = std::atomic_load(&impl_);  // make a copy
-
-  return impl->Meta();
-}
-
-/*static*/ DirectoryReader DirectoryReader::Open(
-  const directory& dir, format::ptr codec /*= nullptr*/,
-  const IndexReaderOptions& opts /*= directory_reader_options()*/) {
-  return DirectoryReader{
-    DirectoryReaderImpl::Open(dir, opts, codec.get(), nullptr)};
-}
+const DirectoryMeta& DirectoryReader::Meta() const { return impl_->Meta(); }
 
 DirectoryReader DirectoryReader::Reopen(format::ptr codec /*= nullptr*/) const {
   // make a copy

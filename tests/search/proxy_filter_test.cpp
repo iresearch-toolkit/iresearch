@@ -123,8 +123,7 @@ class doclist_test_filter final : public filter {
   doclist_test_filter() noexcept
     : filter(irs::type<doclist_test_filter>::get()) {}
 
-  filter::prepared::ptr prepare(const IndexReader&, const Order&,
-                                score_t boost,
+  filter::prepared::ptr prepare(const IndexReader&, const Order&, score_t boost,
                                 const attribute_provider*) const override {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);
@@ -160,7 +159,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
       }
     }
     writer->Commit();
-    index_ = irs::DirectoryReader::Open(dir_, codec);
+    index_ = irs::DirectoryReader(dir_, codec);
   }
 
  protected:

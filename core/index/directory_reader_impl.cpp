@@ -34,8 +34,8 @@ struct DirectoryReaderImpl::Init {
   Init(const directory& dir, const DirectoryMeta& meta);
 
   FileRefs file_refs;
-  uint64_t docs_count;
-  uint64_t live_docs_count;
+  uint64_t docs_count{};
+  uint64_t live_docs_count{};
 };
 
 DirectoryReaderImpl::Init::Init(const directory& dir,
@@ -247,7 +247,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
       *reader = (*cached)[it->second].Reopen(meta);
       reuse_candidates.erase(it);
     } else {
-      *reader = SegmentReader::Open(dir, meta, opts);
+      *reader = SegmentReader{dir, meta, opts};
     }
 
     if (!*reader) {

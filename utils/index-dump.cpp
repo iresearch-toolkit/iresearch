@@ -62,7 +62,7 @@ int dump(const std::string& path, const std::string& dir_type,
     return 1;
   }
 
-  auto reader = irs::DirectoryReader::Open(*dir);
+  auto reader = irs::DirectoryReader(*dir);
 
   stream << "Index"
          << " segmentsCount=" << reader.size()

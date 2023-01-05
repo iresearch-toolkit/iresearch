@@ -1137,7 +1137,7 @@ void assert_columnstore(irs::IndexReader::ptr actual_index,
 
 void assert_columnstore(const irs::directory& dir, irs::format::ptr codec,
                         const index_t& expected_index, size_t skip /*= 0*/) {
-  auto reader = irs::DirectoryReader::Open(dir, codec);
+  auto reader = irs::DirectoryReader(dir, codec);
   ASSERT_NE(nullptr, reader);
 
   assert_columnstore(reader.GetImpl(), expected_index, skip);
@@ -1229,7 +1229,7 @@ void assert_index(const irs::directory& dir, irs::format::ptr codec,
                   const index_t& expected_index, irs::IndexFeatures features,
                   size_t skip /*= 0*/,
                   irs::automaton_table_matcher* matcher /*= nullptr*/) {
-  auto reader = irs::DirectoryReader::Open(dir, codec);
+  auto reader = irs::DirectoryReader(dir, codec);
   ASSERT_NE(nullptr, reader);
 
   assert_index(reader.GetImpl(), expected_index, features, skip, matcher);

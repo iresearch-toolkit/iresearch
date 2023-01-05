@@ -2606,8 +2606,9 @@ struct index_meta_writer final : public irs::index_meta_writer {
     return FileName(FORMAT_PREFIX_TMP, gen);
   }
 
-  static void prepare(IndexMeta& meta) noexcept {
-    meta.gen = index_gen_limits::valid(meta.gen) ? (meta.gen + 1) : 1;
+  static uint64_t NextGen(uint64_t gen) noexcept {
+    // FIXME(gnusi): make invalid gen == 0
+    return index_gen_limits::valid(gen) ? (gen + 1) : 1;
   }
 
   directory* dir_{};
@@ -2623,8 +2624,7 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
   }
 
   // Prepare meta before generating filename
-  prepare(meta);
-
+  meta.gen = NextGen(meta.gen);
   filename = PendingFileName(meta.gen);
 
   auto out = dir.create(filename);

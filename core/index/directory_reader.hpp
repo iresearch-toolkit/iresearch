@@ -35,13 +35,13 @@ struct DirectoryMeta;
 // Interface for an index reader over a directory of segments
 class DirectoryReader final : public IndexReader {
  public:
+  DirectoryReader() noexcept = default;
   // Create an index reader over the specified directory
   // if codec == nullptr then use the latest file for all known codecs
-  static DirectoryReader Open(
-    const directory& dir, format::ptr codec = nullptr,
-    const IndexReaderOptions& opts = IndexReaderOptions{});
-
-  DirectoryReader() = default;  // allow creation of an uninitialized ptr
+  DirectoryReader(const directory& dir, format::ptr codec = nullptr,
+                  const IndexReaderOptions& opts = IndexReaderOptions{});
+  explicit DirectoryReader(
+    std::shared_ptr<const DirectoryReaderImpl>&& impl) noexcept;
   DirectoryReader(const DirectoryReader& other) noexcept;
   DirectoryReader& operator=(const DirectoryReader& other) noexcept;
 
@@ -83,9 +83,6 @@ class DirectoryReader final : public IndexReader {
   }
 
  private:
-  explicit DirectoryReader(
-    std::shared_ptr<const DirectoryReaderImpl>&& impl) noexcept;
-
   std::shared_ptr<const DirectoryReaderImpl> impl_;
 };
 

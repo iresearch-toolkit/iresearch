@@ -316,14 +316,14 @@ class index_test_case : public tests::index_test_base {
                            doc3->stored.end()));
         data_writer->Commit();
 
-        auto reader = irs::DirectoryReader::Open(data_dir);
+        auto reader = irs::DirectoryReader(data_dir);
         ASSERT_EQ(1, reader.size());
         ASSERT_EQ(3, reader.docs_count());
         ASSERT_EQ(3, reader.live_docs_count());
       }
 
       {
-        auto reader = irs::DirectoryReader::Open(dir(), codec());
+        auto reader = irs::DirectoryReader(dir(), codec());
         ASSERT_EQ(0, reader.size());
         ASSERT_EQ(0, reader.docs_count());
         ASSERT_EQ(0, reader.live_docs_count());
@@ -339,7 +339,7 @@ class index_test_case : public tests::index_test_base {
       }
 
       {
-        auto reader = irs::DirectoryReader::Open(dir(), codec());
+        auto reader = irs::DirectoryReader(dir(), codec());
         ASSERT_EQ(1, reader.size());
         ASSERT_EQ(2, reader.docs_count());
         ASSERT_EQ(2, reader.live_docs_count());
@@ -348,12 +348,12 @@ class index_test_case : public tests::index_test_base {
       // add insert/remove/import
       {
         auto query_doc4 = MakeByTerm("name", "D");
-        auto reader = irs::DirectoryReader::Open(data_dir);
+        auto reader = irs::DirectoryReader(data_dir);
 
         ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                            doc6->stored.begin(), doc6->stored.end()));
         writer->documents().Remove(std::move(query_doc4));
-        ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir)));
+        ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir)));
       }
 
       size_t file_count = 0;
@@ -369,7 +369,7 @@ class index_test_case : public tests::index_test_base {
 
       // should be empty after clear
       {
-        auto reader = irs::DirectoryReader::Open(dir(), codec());
+        auto reader = irs::DirectoryReader(dir(), codec());
         ASSERT_EQ(0, reader.size());
         ASSERT_EQ(0, reader.docs_count());
         ASSERT_EQ(0, reader.live_docs_count());
@@ -387,7 +387,7 @@ class index_test_case : public tests::index_test_base {
 
       // should be empty after commit (no new files or uncomited changes)
       {
-        auto reader = irs::DirectoryReader::Open(dir(), codec());
+        auto reader = irs::DirectoryReader(dir(), codec());
         ASSERT_EQ(0, reader.size());
         ASSERT_EQ(0, reader.docs_count());
         ASSERT_EQ(0, reader.live_docs_count());
@@ -406,7 +406,7 @@ class index_test_case : public tests::index_test_base {
     {
       irs::memory_directory dir;
       auto writer = irs::IndexWriter::make(dir, codec(), irs::OM_CREATE);
-      ASSERT_THROW(irs::DirectoryReader::Open(dir),
+      ASSERT_THROW(irs::DirectoryReader(dir),
                    irs::index_not_found);  // throws due to missing index
 
       {
@@ -431,7 +431,7 @@ class index_test_case : public tests::index_test_base {
         ASSERT_EQ(1, file_count);  // +1 file for new empty index meta
       }
 
-      auto reader = irs::DirectoryReader::Open(dir);
+      auto reader = irs::DirectoryReader(dir);
       ASSERT_EQ(0, reader.size());
       ASSERT_EQ(0, reader.docs_count());
       ASSERT_EQ(0, reader.live_docs_count());
@@ -482,7 +482,7 @@ class index_test_case : public tests::index_test_base {
     }
 
     auto& expected_index = index();
-    auto actual_reader = irs::DirectoryReader::Open(dir(), codec());
+    auto actual_reader = irs::DirectoryReader(dir(), codec());
     ASSERT_FALSE(!actual_reader);
     ASSERT_EQ(1, actual_reader.size());
     ASSERT_EQ(expected_index.size(), actual_reader.size());
@@ -775,8 +775,7 @@ class index_test_case : public tests::index_test_base {
     ASSERT_THROW(irs::IndexWriter::make(dir(), codec(), irs::OM_APPEND),
                  irs::file_not_found);
     // read index in empty directory, should fail
-    ASSERT_THROW(irs::DirectoryReader::Open(dir(), codec()),
-                 irs::index_not_found);
+    ASSERT_THROW(irs::DirectoryReader(dir(), codec()), irs::index_not_found);
 
     // create empty index
     {
@@ -787,7 +786,7 @@ class index_test_case : public tests::index_test_base {
 
     // read empty index, it should not fail
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(0, reader.live_docs_count());
       ASSERT_EQ(0, reader.docs_count());
       ASSERT_EQ(0, reader.size());
@@ -810,7 +809,7 @@ class index_test_case : public tests::index_test_base {
 
     // read index, it should not fail
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.live_docs_count());
       ASSERT_EQ(1, reader.docs_count());
       ASSERT_EQ(1, reader.size());
@@ -834,7 +833,7 @@ class index_test_case : public tests::index_test_base {
 
     // read index, it should not fail
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(2, reader.live_docs_count());
       ASSERT_EQ(2, reader.docs_count());
       ASSERT_EQ(2, reader.size());
@@ -872,7 +871,7 @@ class index_test_case : public tests::index_test_base {
 
     // check index, 1 document in 1 segment
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.live_docs_count());
       ASSERT_EQ(1, reader.docs_count());
       ASSERT_EQ(1, reader.size());
@@ -883,7 +882,7 @@ class index_test_case : public tests::index_test_base {
     ASSERT_EQ(0, writer->BufferedDocs());
     // check index, 2 documents in 2 segments
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(2, reader.live_docs_count());
       ASSERT_EQ(2, reader.docs_count());
       ASSERT_EQ(2, reader.size());
@@ -892,7 +891,7 @@ class index_test_case : public tests::index_test_base {
 
     // check documents
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
 
       // segment #1
       {
@@ -957,8 +956,7 @@ class index_test_case : public tests::index_test_base {
       ASSERT_FALSE(writer->Begin());  // try to begin already opened transaction
 
       // index still does not exist
-      ASSERT_THROW(irs::DirectoryReader::Open(dir(), codec()),
-                   irs::index_not_found);
+      ASSERT_THROW(irs::DirectoryReader(dir(), codec()), irs::index_not_found);
 
       writer->Rollback();  // rollback transaction
       writer->Rollback();  // does nothing
@@ -968,7 +966,7 @@ class index_test_case : public tests::index_test_base {
 
       // check index, it should be empty
       {
-        auto reader = irs::DirectoryReader::Open(dir(), codec());
+        auto reader = irs::DirectoryReader(dir(), codec());
         ASSERT_EQ(0, reader.live_docs_count());
         ASSERT_EQ(0, reader.docs_count());
         ASSERT_EQ(0, reader.size());
@@ -1002,7 +1000,7 @@ class index_test_case : public tests::index_test_base {
       ASSERT_EQ(file_count_before,
                 file_count);  // ensure rolled back file refs were released
 
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];  // assume 0 is id of first/only segment
       auto* column = segment.column("name");
@@ -1152,7 +1150,7 @@ class index_test_case : public tests::index_test_base {
       writer->Commit();
     }
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = *(reader.begin());
 
@@ -1442,7 +1440,7 @@ class index_test_case : public tests::index_test_base {
 
     // iterate over fields
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1459,7 +1457,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek over fields
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1489,7 +1487,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek before the first element
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1525,7 +1523,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek after the last element
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1545,7 +1543,7 @@ class index_test_case : public tests::index_test_base {
         {"D", names[13]}, {names[13], names[13]}, {names[12], names[13]},
         {"P", names[20]}, {"Z", names[27]}};
 
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1571,7 +1569,7 @@ class index_test_case : public tests::index_test_base {
       std::vector<std::pair<std::string_view, size_t>> seeks{
         {"0B", 1}, {"D", 13}, {"O", 19}, {"P", 20}, {"Z", 27}};
 
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1637,7 +1635,7 @@ class index_test_case : public tests::index_test_base {
 
     // iterate over attributes
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1654,7 +1652,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek over attributes
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1684,7 +1682,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek before the first element
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1720,7 +1718,7 @@ class index_test_case : public tests::index_test_base {
 
     // seek after the last element
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1740,7 +1738,7 @@ class index_test_case : public tests::index_test_base {
         {"D", names[13]}, {names[13], names[13]}, {names[12], names[13]},
         {"P", names[20]}, {"Z", names[27]}};
 
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1766,7 +1764,7 @@ class index_test_case : public tests::index_test_base {
       std::vector<std::pair<std::string_view, size_t>> seeks{
         {"0B", 1}, {"D", 13}, {"O", 19}, {"P", 20}, {"Z", 27}};
 
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = *(reader.begin());
 
@@ -1840,7 +1838,7 @@ class index_test_case : public tests::index_test_base {
 
     // check fields with empty terms
     {
-      auto reader = irs::DirectoryReader::Open(dir());
+      auto reader = irs::DirectoryReader(dir());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];
 
@@ -2083,7 +2081,7 @@ class index_test_case : public tests::index_test_base {
 
     // check index
     {
-      auto reader = irs::DirectoryReader::Open(dir());
+      auto reader = irs::DirectoryReader(dir());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];
       ASSERT_EQ(8, reader->docs_count());       // we have 8 documents in total
@@ -2202,7 +2200,7 @@ class index_test_case : public tests::index_test_base {
 
     // check index, it should be empty
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(0, reader.live_docs_count());
       ASSERT_EQ(0, reader.docs_count());
       ASSERT_EQ(0, reader.size());
@@ -2465,7 +2463,7 @@ TEST_P(index_test_case, writer_begin_clear_empty_index) {
 
     // check index, it should be empty
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(0, reader.live_docs_count());
       ASSERT_EQ(0, reader.docs_count());
       ASSERT_EQ(0, reader.size());
@@ -2491,7 +2489,7 @@ TEST_P(index_test_case, writer_begin_clear) {
 
     // check index, it should not be empty
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.live_docs_count());
       ASSERT_EQ(1, reader.docs_count());
       ASSERT_EQ(1, reader.size());
@@ -2510,7 +2508,7 @@ TEST_P(index_test_case, writer_begin_clear) {
 
     // check index, it should be empty
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(0, reader.live_docs_count());
       ASSERT_EQ(0, reader.docs_count());
       ASSERT_EQ(0, reader.size());
@@ -2534,7 +2532,7 @@ TEST_P(index_test_case, writer_commit_cleanup_interleaved) {
     writer->Commit();
 
     // check index, it should contain expected number of docs
-    auto reader = irs::DirectoryReader::Open(synced_dir, codec());
+    auto reader = irs::DirectoryReader(synced_dir, codec());
     ASSERT_EQ(1, reader.live_docs_count());
     ASSERT_EQ(1, reader.docs_count());
     ASSERT_NE(reader.begin(), reader.end());
@@ -2558,7 +2556,7 @@ TEST_P(index_test_case, writer_commit_clear) {
 
     // check index, it should not be empty
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.live_docs_count());
       ASSERT_EQ(1, reader.docs_count());
       ASSERT_EQ(1, reader.size());
@@ -2571,7 +2569,7 @@ TEST_P(index_test_case, writer_commit_clear) {
 
     // check index, it should be empty
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(0, reader.live_docs_count());
       ASSERT_EQ(0, reader.docs_count());
       ASSERT_EQ(0, reader.size());
@@ -2725,7 +2723,7 @@ TEST_P(index_test_case, concurrent_add_mt) {
     thread1.join();
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader.size() == 1 ||
                 reader.size() ==
                   2);  // can be 1 if thread0 finishes before thread1 starts
@@ -2788,7 +2786,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
       "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L",
       "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W",
       "X", "Y", "Z", "~", "!", "@", "#", "$", "%"};
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(
       reader.size() == 1 || reader.size() == 2 ||
       reader.size() ==
@@ -2899,7 +2897,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
 
     thread.join();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     /* FIXME TODO add once segment_context will not block flush_all()
     ASSERT_EQ(0, reader.docs_count());
     ASSERT_EQ(0, reader.live_docs_count());
@@ -2949,7 +2947,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     std::thread thread([&writer]() -> void { writer->Commit(); });
     thread.join();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.docs_count());
     ASSERT_EQ(2, reader.live_docs_count());
   }
@@ -3116,7 +3114,7 @@ TEST_P(index_test_case, document_context) {
     }  // release ctx before join() in case of test failure
     thread1.join();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3187,7 +3185,7 @@ TEST_P(index_test_case, document_context) {
     // FIXME TODO add once segment_context will not block flush_all()
     // writer->Commit(); // commit doc removal
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3262,7 +3260,7 @@ TEST_P(index_test_case, document_context) {
     // FIXME TODO add once segment_context will not block
     // flush_all() writer->Commit(); // commit doc replace
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3302,7 +3300,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3345,7 +3343,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3392,7 +3390,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3450,7 +3448,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3513,7 +3511,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -3576,7 +3574,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3621,7 +3619,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3688,7 +3686,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -3757,7 +3755,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3809,7 +3807,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -3874,7 +3872,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -3948,7 +3946,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4124,7 +4122,7 @@ TEST_P(index_test_case, document_context) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4285,7 +4283,7 @@ TEST_P(index_test_case, document_context) {
                             // attributes (reuse segment writer)
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4501,7 +4499,7 @@ TEST_P(index_test_case, doc_removal) {
                        doc1->stored.begin(), doc1->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4534,7 +4532,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().Remove(*(query_doc1.get()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4569,7 +4567,7 @@ TEST_P(index_test_case, doc_removal) {
       std::unique_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4605,7 +4603,7 @@ TEST_P(index_test_case, doc_removal) {
       std::shared_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4638,7 +4636,7 @@ TEST_P(index_test_case, doc_removal) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4675,7 +4673,7 @@ TEST_P(index_test_case, doc_removal) {
                        doc1->stored.begin(), doc1->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4713,7 +4711,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().Remove(std::move(query_doc2));
     writer->Commit();  // new document mask with 'doc2','doc3' created
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4749,7 +4747,7 @@ TEST_P(index_test_case, doc_removal) {
                        doc3->stored.begin(), doc3->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -4787,7 +4785,7 @@ TEST_P(index_test_case, doc_removal) {
       std::unique_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4852,7 +4850,7 @@ TEST_P(index_test_case, doc_removal) {
       std::shared_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -4941,7 +4939,7 @@ TEST_P(index_test_case, doc_removal) {
     writer->documents().Remove(std::move(query_doc2_doc6_doc9));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     {
@@ -5036,7 +5034,7 @@ TEST_P(index_test_case, doc_update) {
                        doc2->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5069,7 +5067,7 @@ TEST_P(index_test_case, doc_update) {
                        doc2->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5103,7 +5101,7 @@ TEST_P(index_test_case, doc_update) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5139,7 +5137,7 @@ TEST_P(index_test_case, doc_update) {
                        doc3->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -5205,7 +5203,7 @@ TEST_P(index_test_case, doc_update) {
                        doc4->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5249,7 +5247,7 @@ TEST_P(index_test_case, doc_update) {
                        doc4->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5283,7 +5281,7 @@ TEST_P(index_test_case, doc_update) {
                        doc2->stored.end()));  // non-existent document
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5319,7 +5317,7 @@ TEST_P(index_test_case, doc_update) {
     writer->documents().Remove(*(query_doc2));  // remove no longer existent
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5361,7 +5359,7 @@ TEST_P(index_test_case, doc_update) {
     writer->documents().Remove(*(query_doc2));  // remove no longer existent
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -5422,7 +5420,7 @@ TEST_P(index_test_case, doc_update) {
                        doc3->stored.end()));  // update no longer existent
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5460,7 +5458,7 @@ TEST_P(index_test_case, doc_update) {
                        doc3->stored.end()));  // update no longer existent
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5501,7 +5499,7 @@ TEST_P(index_test_case, doc_update) {
                        doc4->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5545,7 +5543,7 @@ TEST_P(index_test_case, doc_update) {
                        doc4->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5645,7 +5643,7 @@ TEST_P(index_test_case, doc_update) {
                         doc3->stored.end()));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -5708,10 +5706,10 @@ TEST_P(index_test_case, import_reader) {
     }
 
     data_writer->Commit();
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
     ASSERT_EQ(0, reader.docs_count());
 
@@ -5760,10 +5758,10 @@ TEST_P(index_test_case, import_reader) {
     data_writer->Commit();
     writer->Commit();  // ensure the writer has an initial completed
                        // state
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
     ASSERT_EQ(0, reader.docs_count());
 
@@ -5795,10 +5793,10 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_TRUE(insert(*data_writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     data_writer->Commit();
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
@@ -5838,10 +5836,10 @@ TEST_P(index_test_case, import_reader) {
                        doc2->stored.begin(), doc2->stored.end()));
     data_writer->documents().Remove(std::move(query_doc1));
     data_writer->Commit();
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());
@@ -5880,10 +5878,10 @@ TEST_P(index_test_case, import_reader) {
     ASSERT_TRUE(insert(*data_writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     data_writer->Commit();
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(4, segment.docs_count());
@@ -5936,10 +5934,10 @@ TEST_P(index_test_case, import_reader) {
                        doc4->stored.begin(), doc4->stored.end()));
     data_writer->documents().Remove(std::move(query_doc2_doc3));
     data_writer->Commit();
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());
@@ -5984,10 +5982,10 @@ TEST_P(index_test_case, import_reader) {
                        doc4->stored.begin(), doc4->stored.end()));
     data_writer->documents().Remove(std::move(query_doc4));
     data_writer->Commit();
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());
@@ -6034,10 +6032,10 @@ TEST_P(index_test_case, import_reader) {
                        doc3->stored.begin(), doc3->stored.end()));
     writer->documents().Remove(
       std::move(query_doc2));  // should not match any documents
-    ASSERT_TRUE(writer->Import(irs::DirectoryReader::Open(data_dir, codec())));
+    ASSERT_TRUE(writer->Import(irs::DirectoryReader(data_dir, codec())));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -6118,7 +6116,7 @@ TEST_P(index_test_case, refresh_reader) {
   }
 
   // refreshable reader
-  auto reader = irs::DirectoryReader::Open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
 
   // validate state
   {
@@ -6503,7 +6501,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   std::unordered_set<std::string_view> expectedName = {"A", "B"};
 
   // validate segment
-  auto reader = irs::DirectoryReader::Open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
   ASSERT_EQ(1, reader.size());
   auto& segment = reader[0];           // assume 0 is id of first/only segment
   ASSERT_EQ(3, segment.docs_count());  // total count of documents
@@ -6548,7 +6546,7 @@ TEST_P(index_test_case, import_concurrent) {
       : dir(std::make_unique<irs::memory_directory>()) {
       writer = irs::IndexWriter::make(*dir, codec, irs::OM_CREATE);
       writer->Commit();
-      reader = irs::DirectoryReader::Open(*dir);
+      reader = irs::DirectoryReader(*dir);
     }
 
     store(store&& rhs) noexcept
@@ -6599,7 +6597,7 @@ TEST_P(index_test_case, import_concurrent) {
                          doc->stored.end()));
     }
     store.writer->Commit();
-    store.reader = irs::DirectoryReader::Open(*store.dir);
+    store.reader = irs::DirectoryReader(*store.dir);
   }
 
   std::mutex mutex;
@@ -6639,7 +6637,7 @@ TEST_P(index_test_case, import_concurrent) {
 
   writer->Commit();  // commit changes
 
-  auto reader = irs::DirectoryReader::Open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_EQ(workers.size(), reader.size());
   ASSERT_EQ(names.size(), reader.docs_count());
   ASSERT_EQ(names.size(), reader.live_docs_count());
@@ -6762,7 +6760,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
 
   writer->Commit();
 
-  auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+  auto reader = irs::DirectoryReader(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -6899,7 +6897,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
 
   writer->Commit();
 
-  auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+  auto reader = irs::DirectoryReader(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -7038,7 +7036,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
 
   writer->Commit();
 
-  auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+  auto reader = irs::DirectoryReader(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -7165,7 +7163,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   writer->Commit();
   irs::directory_cleaner::clean(const_cast<irs::directory&>(dir));
 
-  auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+  auto reader = irs::DirectoryReader(this->dir(), codec());
   ASSERT_EQ(1, reader.size());
 
   ASSERT_EQ(names.size(), reader.docs_count());
@@ -7340,7 +7338,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
       3,
       irs::directory_cleaner::clean(
         dir()));  // segments_1 + stale segment meta + unused column store
-    ASSERT_EQ(1, irs::DirectoryReader::Open(this->dir(), codec()).size());
+    ASSERT_EQ(1, irs::DirectoryReader(this->dir(), codec()).size());
 
     // get number of files in 1st segment
     count = 0;
@@ -7363,7 +7361,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+    auto reader = irs::DirectoryReader(this->dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is 'merged' segment
@@ -7530,7 +7528,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().insert(*doc2);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+    auto reader = irs::DirectoryReader(this->dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     // assume 0 is 'segment 3'
@@ -7701,7 +7699,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().insert(*doc4);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+    auto reader = irs::DirectoryReader(this->dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     // assume 0 is 'segment 2'
@@ -7867,7 +7865,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().insert(*doc3);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+    auto reader = irs::DirectoryReader(this->dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is 'merged segment'
@@ -8030,7 +8028,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     expected.back().insert(*doc4);
     tests::assert_index(this->dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(this->dir(), codec());
+    auto reader = irs::DirectoryReader(this->dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is 'merged segment'
@@ -8155,7 +8153,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
       irs::index_utils::ConsolidateCount())));  // consolidate
     writer->Commit();                           // commit transaction
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -8184,7 +8182,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     writer->Clear();
     writer->Commit();  // commit transaction
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -8218,7 +8216,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
     writer->Commit();  // commit transaction
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -8247,7 +8245,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 
     writer->Commit();  // commit transaction
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 }
@@ -8348,7 +8346,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // assume 0 is merged segment
@@ -8439,7 +8437,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     // assume 0 is merged segment
@@ -8564,7 +8562,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -8717,7 +8715,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   }
   tests::assert_index(dir(), codec(), expected, all_features);
 
-  auto reader = irs::DirectoryReader::Open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
   ASSERT_EQ(SEGMENTS_COUNT / 2, reader.size());
 
   std::string expected_name = "A";
@@ -8861,7 +8859,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2, reader.live_docs_count());
 
@@ -8970,7 +8968,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc2);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(4, reader.live_docs_count());
 
@@ -9119,7 +9117,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(3, reader.size());
     ASSERT_EQ(6, reader.live_docs_count());
@@ -9287,7 +9285,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2, reader.live_docs_count());
@@ -9435,7 +9433,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2, reader.live_docs_count());
@@ -9581,7 +9579,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_TRUE(reader);
       ASSERT_EQ(1, reader.size());
       ASSERT_EQ(2, reader.live_docs_count());
@@ -9902,7 +9900,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc3);
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());  // should be one consolidated segment
     ASSERT_EQ(3, reader.live_docs_count());
@@ -9993,7 +9991,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(3, reader.live_docs_count());
@@ -10174,7 +10172,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(3, reader.live_docs_count());
@@ -10374,7 +10372,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc5);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(3, reader.live_docs_count());
@@ -12206,7 +12204,7 @@ TEST_P(index_test_case, consolidate_progress) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->Commit();  // create segment1
 
-    auto reader = irs::DirectoryReader::Open(dir, get_codec());
+    auto reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(1, reader[0].docs_count());
@@ -12217,7 +12215,7 @@ TEST_P(index_test_case, consolidate_progress) {
     ASSERT_TRUE(writer->Consolidate(policy, get_codec(), progress));
     writer->Commit();  // write consolidated segment
 
-    reader = irs::DirectoryReader::Open(dir, get_codec());
+    reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2, reader[0].docs_count());
@@ -12234,7 +12232,7 @@ TEST_P(index_test_case, consolidate_progress) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->Commit();  // create segment1
 
-    auto reader = irs::DirectoryReader::Open(dir, get_codec());
+    auto reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(1, reader[0].docs_count());
@@ -12245,7 +12243,7 @@ TEST_P(index_test_case, consolidate_progress) {
     ASSERT_FALSE(writer->Consolidate(policy, get_codec(), progress));
     writer->Commit();  // write consolidated segment
 
-    reader = irs::DirectoryReader::Open(dir, get_codec());
+    reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(1, reader[0].docs_count());
@@ -12273,7 +12271,7 @@ TEST_P(index_test_case, consolidate_progress) {
     }
     writer->Commit();  // create segment1
 
-    auto reader = irs::DirectoryReader::Open(dir, get_codec());
+    auto reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
@@ -12288,7 +12286,7 @@ TEST_P(index_test_case, consolidate_progress) {
     ASSERT_TRUE(writer->Consolidate(policy, get_codec(), progress));
     writer->Commit();  // write consolidated segment
 
-    reader = irs::DirectoryReader::Open(dir, get_codec());
+    reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2 * MAX_DOCS, reader[0].docs_count());
@@ -12315,7 +12313,7 @@ TEST_P(index_test_case, consolidate_progress) {
     }
     writer->Commit();  // create segment1
 
-    auto reader = irs::DirectoryReader::Open(dir, get_codec());
+    auto reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
@@ -12328,7 +12326,7 @@ TEST_P(index_test_case, consolidate_progress) {
     ASSERT_FALSE(writer->Consolidate(policy, get_codec(), progress));
     writer->Commit();  // write consolidated segment
 
-    reader = irs::DirectoryReader::Open(dir, get_codec());
+    reader = irs::DirectoryReader(dir, get_codec());
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
@@ -12369,7 +12367,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->documents().Remove(std::move(query_doc1));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -12384,7 +12382,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->documents().Remove(std::move(query_doc1));
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
   }
 
@@ -12412,7 +12410,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -12457,7 +12455,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
@@ -12503,7 +12501,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());  // total count of documents
@@ -12549,7 +12547,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc3);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(1, segment.docs_count());  // total count of documents
@@ -12598,7 +12596,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->Commit();
 
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];  // assume 0 is id of first/only segment
       ASSERT_EQ(1, segment.docs_count());  // total count of documents
@@ -12621,7 +12619,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->Commit();
 
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];  // assume 0 is id of first/only segment
       ASSERT_EQ(2, segment.docs_count());  // total count of documents
@@ -12632,7 +12630,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->Commit();
 
     {
-      auto reader = irs::DirectoryReader::Open(dir(), codec());
+      auto reader = irs::DirectoryReader(dir(), codec());
       ASSERT_EQ(1, reader.size());
       auto& segment = reader[0];  // assume 0 is id of first/only segment
       ASSERT_EQ(1, segment.docs_count());  // total count of documents
@@ -12665,7 +12663,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
@@ -12717,7 +12715,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
@@ -12770,7 +12768,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
@@ -12823,7 +12821,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(2, segment.docs_count());  // total count of documents
@@ -12883,7 +12881,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());  // total count of documents
@@ -12947,7 +12945,7 @@ TEST_P(index_test_case, segment_consolidate) {
     expected.back().insert(*doc6);
     tests::assert_index(dir(), codec(), expected, all_features);
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(3, segment.docs_count());  // total count of documents
@@ -13015,7 +13013,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->Commit();
 
     // validate merged segment
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count());  // total count of documents
@@ -13111,7 +13109,7 @@ TEST_P(index_test_case, segment_consolidate) {
     writer->Commit();
 
     // validate merged segment
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];           // assume 0 is id of first/only segment
     ASSERT_EQ(6, segment.docs_count());  // total count of documents
@@ -13212,7 +13210,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       irs::index_utils::MakePolicy(options)));  // value garanteeing merge
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());  // 1+(2|3)
 
     // check 1st segment
@@ -13292,7 +13290,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -13370,7 +13368,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     std::unordered_set<std::string_view> expectedName = {"A", "B"};
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(),
@@ -13412,7 +13410,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -13496,7 +13494,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     std::unordered_set<std::string_view> expectedName = {"A", "E"};
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(),
@@ -13547,7 +13545,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -13632,7 +13630,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     std::unordered_set<std::string_view> expectedName = {"A", "C"};
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(),
@@ -13681,7 +13679,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       irs::index_utils::MakePolicy(options)));  // value garanteeing non-merge
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
 
     {
@@ -13808,7 +13806,7 @@ TEST_P(index_test_case, segment_options) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
 
     // check only segment
@@ -13855,7 +13853,7 @@ TEST_P(index_test_case, segment_options) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());  // 1+2
 
     // check 1st segment
@@ -13929,7 +13927,7 @@ TEST_P(index_test_case, segment_options) {
 
     writer->Commit();
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());  // 1+2
 
     // check 1st segment
@@ -14011,7 +14009,7 @@ TEST_P(index_test_case, segment_options) {
 
     ASSERT_TRUE(writer->Commit());
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_NE(nullptr, reader);
     ASSERT_EQ(1, reader.size());
 
@@ -14235,7 +14233,7 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment) {
   writer->documents().Remove(*(query_doc2.get()));
   writer->Commit();
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
     // file removal should pass for all files (especially valid for
     // Microsoft Windows)
@@ -14297,7 +14295,7 @@ TEST_P(index_test_case, writer_remove_all_from_last_segment_consolidation) {
   writer->documents().Remove(*(query_doc2.get()));
   writer->Commit();
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
     // file removal should pass for all files (especially valid for
     // Microsoft Windows)
@@ -14388,7 +14386,7 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   }
 
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = (*reader)[0];
     ASSERT_EQ(3, segment.docs_count());
@@ -14705,7 +14703,7 @@ TEST_P(index_test_case_14, write_field_with_multiple_stored_features) {
   }
 
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = (*reader)[0];
     ASSERT_EQ(3, segment.docs_count());
@@ -14961,7 +14959,7 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
   }
 
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(3, reader.size());
 
     {
@@ -15276,7 +15274,7 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
   }
 
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = (*reader)[0];
     ASSERT_EQ(3, segment.docs_count());
@@ -15448,7 +15446,7 @@ TEST_P(index_test_case_10, commit_payload) {
 
   ASSERT_TRUE(writer->Begin());  // initial commit
   writer->Commit();
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   ASSERT_FALSE(writer->Begin());  // transaction hasn't been started, no changes
@@ -15707,7 +15705,7 @@ TEST_P(index_test_case_11, consolidate_old_format) {
   tests::document const* doc2 = gen.next();
 
   auto validate_codec = [&](auto codec, size_t size) {
-    auto reader = irs::DirectoryReader::Open(dir());
+    auto reader = irs::DirectoryReader(dir());
     ASSERT_NE(nullptr, reader);
     ASSERT_EQ(size, reader.size());
     ASSERT_EQ(size, reader.Meta().index_meta.segments.size());
@@ -15774,7 +15772,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   });
 
   {
-    auto reader = irs::DirectoryReader::Open(dir());
+    auto reader = irs::DirectoryReader(dir());
     ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
   }
   uint64_t expected_tick = 42;
@@ -15783,7 +15781,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
   payload_provider_result = true;
   writer->Clear(expected_tick);
   {
-    auto reader = irs::DirectoryReader::Open(dir());
+    auto reader = irs::DirectoryReader(dir());
     ASSERT_EQ(input_payload, irs::GetPayload(reader.Meta().index_meta));
     ASSERT_EQ(payload_committed_tick, expected_tick);
   }
@@ -15811,7 +15809,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_no_payload) {
   writer->Commit();
   ASSERT_EQ(0, payload_calls_count);
 
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   // no changes
@@ -15837,7 +15835,7 @@ TEST_P(index_test_case_11, initial_commit_no_payload) {
 
   writer->Commit();
 
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   // no changes
@@ -15879,7 +15877,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
   writer->Commit();
   ASSERT_EQ(0, payload_calls_count);
 
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   // no changes
@@ -15914,7 +15912,7 @@ TEST_P(index_test_case_11, initial_commit_payload_revert) {
   writer->Commit();
   ASSERT_EQ(0, payload_committed_tick);
 
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   payload_provider_result = true;
@@ -15955,7 +15953,7 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload) {
   writer->Commit();
   ASSERT_EQ(0, payload_calls_count);
 
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_EQ(input_payload, irs::GetPayload(reader.Meta().index_meta));
 
   // no changes
@@ -15989,7 +15987,7 @@ TEST_P(index_test_case_11, initial_commit_payload) {
   writer->Commit();
   ASSERT_EQ(0, payload_committed_tick);
 
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_EQ(input_payload, irs::GetPayload(reader.Meta().index_meta));
 
   // no changes
@@ -16024,7 +16022,7 @@ TEST_P(index_test_case_11, commit_payload) {
   payload_provider_result = false;
   ASSERT_TRUE(writer->Begin());  // initial commit
   writer->Commit();
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_TRUE(irs::IsNull(irs::GetPayload(reader.Meta().index_meta)));
 
   ASSERT_FALSE(writer->Begin());  // transaction hasn't been started, no changes
@@ -16303,7 +16301,7 @@ TEST_P(index_test_case_11, testExternalGeneration) {
   }
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
   ASSERT_EQ(2, segment.docs_count());
@@ -16348,7 +16346,7 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   }
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
   ASSERT_EQ(2, segment.docs_count());
@@ -16393,7 +16391,7 @@ TEST_P(index_test_case_11, testExternalGenerationRemoveBeforeInsert) {
   }
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
-  auto reader = irs::DirectoryReader::Open(directory);
+  auto reader = irs::DirectoryReader(directory);
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
   ASSERT_EQ(2, segment.docs_count());

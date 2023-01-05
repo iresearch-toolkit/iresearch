@@ -199,7 +199,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   }
 
   irs::DirectoryReader open_reader() const {
-    return irs::DirectoryReader::Open(*dir_, codec_);
+    return irs::DirectoryReader{*dir_, codec_};
   }
 
   void assert_index(irs::IndexFeatures features, size_t skip = 0,

@@ -240,9 +240,9 @@ irs::FeatureInfoProvider default_feature_info() {
   return [](irs::type_info::type_id) {
     return std::make_pair(
       irs::ColumnInfo{.compression = irs::type<irs::compression::none>::get(),
-                       .options = {},
-                       .encryption = true,
-                       .track_prev_doc = false},
+                      .options = {},
+                      .encryption = true,
+                      .track_prev_doc = false},
       irs::FeatureWriterFactory{});
   };
 }
@@ -286,11 +286,11 @@ void open_reader(
   failure_registerer(dir);
 
   while (!dir.no_failures()) {
-    ASSERT_THROW(irs::DirectoryReader::Open(dir), irs::io_error);
+    ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
   }
 
   // check data
-  auto reader = irs::DirectoryReader::Open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());
@@ -377,7 +377,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     ASSERT_FALSE(writer->Commit());
 
     // ensure no data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -416,7 +416,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -499,7 +499,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     ASSERT_FALSE(writer->Commit());
 
     // ensure no data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -554,7 +554,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -625,7 +625,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ASSERT_FALSE(writer->Commit());
 
     // ensure no data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -661,7 +661,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -726,7 +726,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // ensure no data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -759,7 +759,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -822,7 +822,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Begin());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -889,7 +889,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -1002,7 +1002,7 @@ TEST(index_death_test_formats_10,
     }
 
     // ensure no data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -1055,7 +1055,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -1144,7 +1144,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // ensure no data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -1201,7 +1201,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -1281,7 +1281,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // ensure no data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -1324,7 +1324,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -1420,7 +1420,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Begin());  // nothing to flush
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -1555,7 +1555,7 @@ TEST(index_death_test_formats_10,
       irs::io_error);  // start transaction to commit pending consolidation
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(4, reader->size());
     ASSERT_EQ(4, reader->docs_count());
@@ -1734,7 +1734,7 @@ TEST(index_death_test_formats_10,
     consolidation_thread.join();  // wait for the consolidation to complete
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(3, reader->size());
     ASSERT_EQ(3, reader->docs_count());
@@ -1872,7 +1872,7 @@ TEST(index_death_test_formats_10,
     ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(3, reader->size());
     ASSERT_EQ(3, reader->docs_count());
@@ -2014,7 +2014,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     }
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -2131,7 +2131,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     }
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -2219,7 +2219,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     ASSERT_TRUE(writer->Commit());
   }
 
-  auto src_index = irs::DirectoryReader::Open(src_dir);
+  auto src_index = irs::DirectoryReader(src_dir);
   ASSERT_TRUE(src_index);
 
   // file creation failures
@@ -2261,7 +2261,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     }
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2312,7 +2312,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2387,7 +2387,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     }
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2438,7 +2438,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2536,7 +2536,7 @@ TEST(index_death_test_formats_10,
     }
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2595,7 +2595,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2674,7 +2674,7 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2775,7 +2775,7 @@ TEST(index_death_test_formats_14,
     ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
 
     ASSERT_EQ(1, reader->size());
@@ -2852,7 +2852,7 @@ TEST(index_death_test_formats_10,
     ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2914,7 +2914,7 @@ TEST(index_death_test_formats_14,
     ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -3027,7 +3027,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     ASSERT_TRUE(dir.no_failures());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -3133,7 +3133,7 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     ASSERT_TRUE(dir.no_failures());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(4, reader->docs_count());
@@ -3277,7 +3277,7 @@ TEST(index_death_test_formats_14, fails_in_length) {
 
     {
       // check data
-      auto reader = irs::DirectoryReader::Open(dir);
+      auto reader = irs::DirectoryReader(dir);
       ASSERT_TRUE(reader);
       ASSERT_EQ(4, reader->size());
       ASSERT_EQ(4, reader->docs_count());
@@ -3315,7 +3315,7 @@ TEST(index_death_test_formats_14, fails_in_length) {
     ASSERT_TRUE(dir.no_failures());
 
     // check data
-    auto reader = irs::DirectoryReader::Open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(4, reader->docs_count());
@@ -3459,7 +3459,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   }
 
   // check data
-  auto reader = irs::DirectoryReader::Open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());
@@ -3555,11 +3555,11 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
                        "_1.csi");  // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN,
                        "_1.csd");  // regiseter open failure in columnstore
-  ASSERT_THROW(irs::DirectoryReader::Open(dir), irs::io_error);
-  ASSERT_THROW(irs::DirectoryReader::Open(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
 
   // check data
-  auto reader = irs::DirectoryReader::Open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());
@@ -3659,11 +3659,11 @@ TEST(index_death_test_formats_14, fails_in_dup) {
   dir.register_failure(failing_directory::Failure::OPEN, "_1.csi");
   // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN, "_1.csd");
-  ASSERT_THROW(irs::DirectoryReader::Open(dir), irs::io_error);
-  ASSERT_THROW(irs::DirectoryReader::Open(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader(dir), irs::io_error);
 
   // check data
-  auto reader = irs::DirectoryReader::Open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(4, reader->docs_count());
@@ -3774,7 +3774,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   }
 
   // check data
-  auto reader = irs::DirectoryReader::Open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());

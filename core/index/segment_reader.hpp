@@ -29,13 +29,14 @@ namespace irs {
 
 class SegmentReaderImpl;
 
-// Interface for a segment reader
+// Pimpl facade for segment reader
 class SegmentReader final : public SubReader {
  public:
-  static SegmentReader Open(const directory& dir, const SegmentMeta& meta,
-                            const IndexReaderOptions& opts);
-
-  SegmentReader() = default;
+  SegmentReader() noexcept = default;
+  SegmentReader(const directory& dir, const SegmentMeta& meta,
+                const IndexReaderOptions& opts);
+  explicit SegmentReader(std::shared_ptr<const SegmentReaderImpl> impl) noexcept
+    : impl_{std::move(impl)} {}
   SegmentReader(const SegmentReader& other) noexcept;
   SegmentReader& operator=(const SegmentReader& other) noexcept;
 
@@ -78,10 +79,6 @@ class SegmentReader final : public SubReader {
   }
 
   explicit operator bool() const noexcept { return nullptr != impl_; }
-
-  // FIXME(gnusi): make private
-  explicit SegmentReader(std::shared_ptr<const SegmentReaderImpl> impl) noexcept
-    : impl_{std::move(impl)} {}
 
  private:
   std::shared_ptr<const SegmentReaderImpl> impl_;

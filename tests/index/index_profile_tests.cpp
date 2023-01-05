@@ -139,7 +139,7 @@ class index_profile_test_case : public tests::index_test_base {
       }
 
       REGISTER_TIMER_NAMED_DETAILED("init - open");
-      import_reader = irs::DirectoryReader::Open(import_dir);
+      import_reader = irs::DirectoryReader(import_dir);
     }
 
     {
@@ -372,7 +372,7 @@ class index_profile_test_case : public tests::index_test_base {
     irs::file_utils::ensure_absolute(path);
     std::cout << "Path to timing log: " << path.string() << std::endl;
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(
       true,
       1 <= reader.size());  // not all commits might produce a new segment,
@@ -531,7 +531,7 @@ class index_profile_test_case : public tests::index_test_base {
       ++docs_count;
     }
 
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(docs_count, reader[0].docs_count());
   }

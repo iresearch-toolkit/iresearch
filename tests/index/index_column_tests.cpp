@@ -27,29 +27,6 @@
 #include "utils/lz4compression.hpp"
 
 namespace {
-bool visit1(
-  const irs::column_reader& reader,
-  const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
-  auto it = reader.iterator(irs::ColumnHint::kNormal);
-
-  irs::payload dummy;
-  auto* doc = irs::get<irs::document>(*it);
-  if (!doc) {
-    return false;
-  }
-  auto* payload = irs::get<irs::payload>(*it);
-  if (!payload) {
-    payload = &dummy;
-  }
-
-  while (it->next()) {
-    if (!visitor(doc->value, payload->value)) {
-      return false;
-    }
-  }
-
-  return true;
-}
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
@@ -82,7 +59,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
@@ -110,7 +87,7 @@ TEST_P(index_column_test_case,
     } field;
 
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -133,7 +110,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -263,7 +240,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -423,7 +400,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1110,7 +1087,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
@@ -1132,7 +1109,7 @@ TEST_P(index_column_test_case,
 
     irs::doc_id_t docs_count = 0;
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -1156,7 +1133,7 @@ TEST_P(index_column_test_case,
   // - not cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1276,7 +1253,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1421,7 +1398,7 @@ TEST_P(index_column_test_case,
   // - cached
   // - cached
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -1897,7 +1874,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::none>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
@@ -1928,7 +1905,7 @@ TEST_P(index_column_test_case,
     } field(column_name), gap("gap");
 
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -1953,7 +1930,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -2100,7 +2077,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -2282,7 +2259,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -2946,7 +2923,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::none>::get(),
-                            irs::compression::options{}, false};
+                           irs::compression::options{}, false};
   };
 
   // border case for sparse fixed offset columns, e.g.
@@ -3021,7 +2998,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3168,7 +3145,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   // border case for dense fixed offset columns, e.g.
@@ -3210,7 +3187,7 @@ TEST_P(index_column_test_case,
     } field;
 
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -3228,7 +3205,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3365,7 +3342,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, false};
+                           irs::compression::options{}, false};
   };
 
   static const irs::doc_id_t BLOCK_SIZE = 1024;
@@ -3394,7 +3371,7 @@ TEST_P(index_column_test_case,
     } field(column_name), gap("gap");
 
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -3421,7 +3398,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3553,7 +3530,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -3717,7 +3694,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -4337,7 +4314,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
@@ -4353,7 +4330,7 @@ TEST_P(index_column_test_case,
 
     irs::doc_id_t docs_count = 0;
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -4375,7 +4352,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -4480,7 +4457,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -4606,7 +4583,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5139,7 +5116,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1024 * 1024  // full index block
@@ -5156,7 +5133,7 @@ TEST_P(index_column_test_case,
 
     irs::doc_id_t docs_count = 0;
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -5174,7 +5151,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5276,7 +5253,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5394,7 +5371,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5756,7 +5733,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
@@ -5779,7 +5756,7 @@ TEST_P(index_column_test_case,
     } field;
 
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -5797,7 +5774,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -5911,7 +5888,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6049,7 +6026,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6548,7 +6525,7 @@ TEST_P(index_column_test_case,
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   static const irs::doc_id_t MAX_DOCS = 1500;
@@ -6575,7 +6552,7 @@ TEST_P(index_column_test_case,
     } field;
 
     auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
-                                          irs::OM_CREATE, options);
+                                         irs::OM_CREATE, options);
     auto ctx = writer->documents();
 
     do {
@@ -6593,7 +6570,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6721,7 +6698,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -6877,7 +6854,7 @@ TEST_P(index_column_test_case,
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(this->dir(), this->codec());
+    auto reader = irs::DirectoryReader(this->dir(), this->codec());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = *(reader.begin());
@@ -7459,7 +7436,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   struct csv_doc_template_t : public tests::csv_doc_generator::doc_template {
@@ -7505,7 +7482,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(dir());
+    auto reader = irs::DirectoryReader(dir());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = reader[0];
@@ -7731,7 +7708,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   // - visit (cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(dir());
+    auto reader = irs::DirectoryReader(dir());
     ASSERT_EQ(1, reader.size());
 
     auto& segment = reader[0];
@@ -8023,7 +8000,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   tests::json_doc_generator gen(resource("simple_sequential.json"),
@@ -8053,7 +8030,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   // check inserted values:
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = *(reader.begin());
 
@@ -8134,7 +8111,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   // - iterate (not cached)
   // - iterate (cached)
   {
-    auto reader = irs::DirectoryReader::Open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = *(reader.begin());
 
@@ -8271,7 +8248,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   irs::IndexWriterOptions options;
   options.column_info = [](const std::string_view&) {
     return irs::ColumnInfo{irs::type<irs::compression::lz4>::get(),
-                            irs::compression::options{}, true};
+                           irs::compression::options{}, true};
   };
 
   tests::json_doc_generator gen(resource("simple_sequential.json"),
@@ -8294,7 +8271,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
     writer->Commit();
   }
 
-  auto reader = irs::DirectoryReader::Open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
   ASSERT_EQ(1, reader.size());
   auto& segment = *(reader.begin());
 

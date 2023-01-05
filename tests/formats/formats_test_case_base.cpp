@@ -318,7 +318,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     }
 
     // create reader to directory
-    auto reader = irs::DirectoryReader::Open(*dir, codec());
+    auto reader = irs::DirectoryReader(*dir, codec());
     std::unordered_set<std::string> reader_files;
     {
       irs::IndexMeta index_meta;
@@ -3594,7 +3594,7 @@ TEST_P(format_test_case_with_encryption, read_zero_block_encryption) {
     irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(6)};
 
   // can't open encrypted index without encryption
-  ASSERT_THROW(irs::DirectoryReader::Open(dir()), irs::index_error);
+  ASSERT_THROW(irs::DirectoryReader(dir()), irs::index_error);
 }
 
 TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
@@ -3691,7 +3691,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
   // can't open encrypted index with wrong encryption
   dir().attributes() =
     irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(6)};
-  ASSERT_THROW(irs::DirectoryReader::Open(dir()), irs::index_error);
+  ASSERT_THROW(irs::DirectoryReader(dir()), irs::index_error);
 }
 
 TEST_P(format_test_case_with_encryption, open_ecnrypted_with_non_encrypted) {
@@ -3720,7 +3720,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_non_encrypted) {
   dir().attributes() = irs::directory_attributes{0, nullptr};
 
   // can't open encrypted index without encryption
-  ASSERT_THROW(irs::DirectoryReader::Open(dir()), irs::index_error);
+  ASSERT_THROW(irs::DirectoryReader(dir()), irs::index_error);
 }
 
 TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
@@ -3751,7 +3751,7 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
     irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(7)};
 
   // check index
-  auto index = irs::DirectoryReader::Open(dir());
+  auto index = irs::DirectoryReader(dir());
   ASSERT_TRUE(index);
   ASSERT_EQ(1, index->size());
   ASSERT_EQ(1, index->docs_count());

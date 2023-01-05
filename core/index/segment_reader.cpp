@@ -32,24 +32,22 @@ SegmentReader::SegmentReader(const SegmentReader& other) noexcept
 
 SegmentReader& SegmentReader::operator=(const SegmentReader& other) noexcept {
   if (this != &other) {
-    // make a copy
-    auto impl = std::atomic_load(&other.impl_);
+    auto impl =
+      std::atomic_load_explicit(&other.impl_, std::memory_order_relaxed);
 
-    std::atomic_store(&impl_, impl);
+    std::atomic_store_explicit(&impl_, impl, std::memory_order_relaxed);
   }
 
   return *this;
 }
 
-/*static*/ SegmentReader SegmentReader::Open(const directory& dir,
-                                             const SegmentMeta& meta,
-                                             const IndexReaderOptions& opts) {
-  return SegmentReader{SegmentReaderImpl::Open(dir, meta, opts)};
-}
+SegmentReader::SegmentReader(const directory& dir, const SegmentMeta& meta,
+                             const IndexReaderOptions& opts)
+  : impl_{SegmentReaderImpl::Open(dir, meta, opts)} {}
 
 SegmentReader SegmentReader::Reopen(const SegmentMeta& meta) const {
   // make a copy
-  auto impl = std::atomic_load(&impl_);
+  auto impl = std::atomic_load_explicit(&impl_, std::memory_order_relaxed);
 
   // reuse self if no changes to meta
   return SegmentReader{

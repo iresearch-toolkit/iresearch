@@ -422,6 +422,12 @@ class IndexWriter : private util::noncopyable {
 
   ~IndexWriter() noexcept;
 
+  // Returns current index snapshot
+  DirectoryReader GetSnapshot() const noexcept {
+    return DirectoryReader{
+      std::atomic_load_explicit(&committed_reader_, std::memory_order_relaxed)};
+  }
+
   // Returns overall number of buffered documents in a writer
   uint64_t BufferedDocs() const;
 

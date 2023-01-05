@@ -57,7 +57,7 @@ TEST(directory_reader_test, open_empty_directory) {
   ASSERT_NE(nullptr, codec);
 
   /* no index */
-  ASSERT_THROW(irs::DirectoryReader::Open(dir, codec), irs::index_not_found);
+  ASSERT_THROW(irs::DirectoryReader(dir, codec), irs::index_not_found);
 }
 
 TEST(directory_reader_test, open_empty_index) {
@@ -69,7 +69,7 @@ TEST(directory_reader_test, open_empty_index) {
   irs::IndexWriter::make(dir, codec, irs::OM_CREATE)->Commit();
 
   /* open reader */
-  auto rdr = irs::DirectoryReader::Open(dir, codec);
+  auto rdr = irs::DirectoryReader(dir, codec);
   ASSERT_FALSE(!rdr);
   ASSERT_EQ(0, rdr.docs_count());
   ASSERT_EQ(0, rdr.live_docs_count());
@@ -157,7 +157,7 @@ TEST(directory_reader_test, open_newest_index) {
   test_reader1.read_file.clear();
   test_reader0.segments_file = codec0_file0;
   test_reader1.segments_file = codec1_file1;
-  irs::DirectoryReader::Open(dir);
+  irs::DirectoryReader{dir};
   ASSERT_TRUE(test_reader0.read_file.empty());  // file not read from codec0
   ASSERT_EQ(codec1_file1,
             test_reader1.read_file);  // check file read from codec1
@@ -166,7 +166,7 @@ TEST(directory_reader_test, open_newest_index) {
   test_reader1.read_file.clear();
   test_reader0.segments_file = codec0_file1;
   test_reader1.segments_file = codec1_file0;
-  irs::DirectoryReader::Open(dir);
+  irs::DirectoryReader{dir};
   ASSERT_EQ(codec0_file1,
             test_reader0.read_file);            // check file read from codec0
   ASSERT_TRUE(test_reader1.read_file.empty());  // file not read from codec1
@@ -233,7 +233,7 @@ TEST(directory_reader_test, open) {
   }
 
   // open reader
-  auto rdr = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto rdr = irs::DirectoryReader(dir, codec_ptr);
   ASSERT_FALSE(!rdr);
   ASSERT_EQ(9, rdr.docs_count());
   ASSERT_EQ(9, rdr.live_docs_count());
@@ -443,7 +443,7 @@ TEST(segment_reader_test, open_invalid_segment) {
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(irs::SegmentReader::Open(dir, meta, irs::IndexReaderOptions{}),
+    ASSERT_THROW(irs::SegmentReader(dir, meta, irs::IndexReaderOptions{}),
                  irs::io_error);
   }
 }
@@ -487,7 +487,7 @@ TEST(segment_reader_test, open) {
     meta.name = "_1";
     meta.version = IRESEARCH_VERSION;
 
-    auto rdr = irs::SegmentReader::Open(dir, meta, irs::IndexReaderOptions{});
+    auto rdr = irs::SegmentReader(dir, meta, irs::IndexReaderOptions{});
     ASSERT_FALSE(!rdr);
     ASSERT_EQ(1, rdr.size());
     ASSERT_EQ(meta.docs_count, rdr.docs_count());

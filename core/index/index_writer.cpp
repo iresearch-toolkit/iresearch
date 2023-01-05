@@ -560,7 +560,7 @@ std::shared_ptr<const DirectoryReaderImpl> OpenReader(
 
   for (auto& segment : segments) {
     // Segment reader holds refs to all segment files
-    readers.emplace_back(SegmentReader::Open(dir, segment.meta, opts));
+    readers.emplace_back(dir, segment.meta, opts);
     IRS_ASSERT(readers.back());
   }
 
@@ -1548,7 +1548,8 @@ ConsolidationResult IndexWriter::Consolidate(
   // hold a reference to the last committed state to prevent files from being
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
-  auto committed_reader = std::atomic_load(&committed_reader_);
+  auto committed_reader =
+    std::atomic_load_explicit(&committed_reader_, std::memory_order_relaxed);
   IRS_ASSERT(committed_reader);
   if (IRS_UNLIKELY(!committed_reader)) {
     return {0, ConsolidationError::FAIL};
@@ -2624,6 +2625,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
     // 1st phase of the transaction successfully finished here,
     // set to_commit as active flush context containing pending meta
 
+    // FIXME(gnusi): hold a reference to segments_ file also?
     pending_state_.commit = std::make_shared<const DirectoryReaderImpl>(
       dir, committed_reader_->Options(), std::move(pending_meta),
       std::move(to_commit.readers));
@@ -2661,7 +2663,9 @@ void IndexWriter::Finish() {
       throw illegal_state{"Failed to commit index metadata."};
     }
 
-    std::atomic_store(&committed_reader_, std::move(pending_state_.commit));
+    std::atomic_store_explicit(&committed_reader_,
+                               std::move(pending_state_.commit),
+                               std::memory_order_relaxed);
   } catch (...) {
     Abort();  // rollback transaction
 

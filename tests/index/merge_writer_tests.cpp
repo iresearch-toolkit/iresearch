@@ -204,9 +204,9 @@ struct merge_writer_test_case
     return [](irs::type_info::type_id) {
       return std::make_pair(
         irs::ColumnInfo{.compression = irs::type<irs::compression::lz4>::get(),
-                         .options = {},
-                         .encryption = true,
-                         .track_prev_doc = false},
+                        .options = {},
+                        .encryption = true,
+                        .track_prev_doc = false},
         irs::FeatureWriterFactory{});
     };
   }
@@ -255,7 +255,7 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
 
   ASSERT_TRUE(writer->Commit());
 
-  auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto reader = irs::DirectoryReader(dir, codec_ptr);
   ASSERT_NE(nullptr, reader);
 
   ASSERT_EQ(3, reader.size());
@@ -384,7 +384,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   const auto feature_info = default_feature_info();
   ASSERT_TRUE(feature_info);
 
-  auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto reader = irs::DirectoryReader(dir, codec_ptr);
   irs::MergeWriter writer(dir, column_info, feature_info);
 
   ASSERT_EQ(2, reader.size());
@@ -625,8 +625,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   writer.flush(index_segment);
 
   {
-    auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                            irs::IndexReaderOptions{});
+    auto segment =
+      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
     ASSERT_EQ(3, segment.docs_count());
 
     auto columns = segment.columns();
@@ -791,7 +791,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   const auto feature_info = default_feature_info();
   ASSERT_TRUE(feature_info);
 
-  auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto reader = irs::DirectoryReader(dir, codec_ptr);
   irs::MergeWriter writer(dir, column_info, feature_info);
 
   ASSERT_EQ(2, reader.size());
@@ -993,8 +993,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   writer.flush(index_segment);
 
   {
-    auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                            irs::IndexReaderOptions{});
+    auto segment =
+      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
     ASSERT_EQ(4, segment.docs_count());
 
     auto columns = segment.columns();
@@ -1333,7 +1333,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     return reader ? reader->docs_count() : 0;
   };
 
-  auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto reader = irs::DirectoryReader(dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -2133,8 +2133,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   writer.add(reader[1]);
   ASSERT_TRUE(writer.flush(index_segment));
 
-  auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                          irs::IndexReaderOptions{});
+  auto segment =
+    irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
 
   ASSERT_EQ(3, segment.docs_count());  // doc4 removed during merge
 
@@ -2614,7 +2614,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
     }
   }
 
-  auto reader = irs::DirectoryReader::Open(data_dir, codec_ptr);
+  auto reader = irs::DirectoryReader(data_dir, codec_ptr);
 
   ASSERT_EQ(33, reader.size());
 
@@ -2637,8 +2637,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
     index_segment.meta.codec = codec_ptr;
     ASSERT_TRUE(writer.flush(index_segment));
 
-    auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                            irs::IndexReaderOptions{});
+    auto segment =
+      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
     ASSERT_EQ(33, segment.docs_count());
     ASSERT_EQ(33, segment.field("name")->docs_count());
     ASSERT_EQ(33, segment.field("seq")->docs_count());
@@ -2667,7 +2667,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     writer->Commit();  // create segment1
   }
 
-  auto reader = irs::DirectoryReader::Open(data_dir, codec_ptr);
+  auto reader = irs::DirectoryReader(data_dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(1, reader[0].docs_count());
@@ -2696,8 +2696,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.version);
     ASSERT_EQ(true, index_segment.meta.column_store);
 
-    auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                            irs::IndexReaderOptions{});
+    auto segment =
+      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
     ASSERT_EQ(2, segment.docs_count());
   }
 
@@ -2722,8 +2722,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.live_docs_count);
     ASSERT_EQ(0, index_segment.meta.size_in_bytes);
 
-    ASSERT_ANY_THROW(irs::SegmentReader::Open(dir, index_segment.meta,
-                                              irs::IndexReaderOptions{}));
+    ASSERT_ANY_THROW(
+      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{}));
   }
 
   size_t progress_call_count = 0;
@@ -2750,8 +2750,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.version);
     ASSERT_EQ(true, index_segment.meta.column_store);
 
-    auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                            irs::IndexReaderOptions{});
+    auto segment =
+      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
     ASSERT_EQ(2, segment.docs_count());
   }
 
@@ -2785,8 +2785,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.meta.live_docs_count);
     ASSERT_EQ(0, index_segment.meta.size_in_bytes);
 
-    ASSERT_ANY_THROW(irs::SegmentReader::Open(dir, index_segment.meta,
-                                              irs::IndexReaderOptions{}));
+    ASSERT_ANY_THROW(
+      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{}));
   }
 }
 
@@ -2821,7 +2821,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     writer->Commit();
   }
 
-  auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto reader = irs::DirectoryReader(dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(1, reader[0].docs_count());
@@ -2924,7 +2924,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     writer->Commit();
   }
 
-  auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto reader = irs::DirectoryReader(dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -2953,8 +2953,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
 
   ASSERT_TRUE(writer.flush(index_segment));
 
-  auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                          irs::IndexReaderOptions{});
+  auto segment =
+    irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
   ASSERT_EQ(3, segment.docs_count());
   ASSERT_EQ(3, segment.live_docs_count());
   auto docs = segment.docs_iterator();
@@ -3233,7 +3233,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     return reader ? reader->docs_count() : 0;
   };
 
-  auto reader = irs::DirectoryReader::Open(dir, codec_ptr);
+  auto reader = irs::DirectoryReader(dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -4091,8 +4091,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   writer.add(reader[1]);
   ASSERT_TRUE(writer.flush(index_segment));
 
-  auto segment = irs::SegmentReader::Open(dir, index_segment.meta,
-                                          irs::IndexReaderOptions{});
+  auto segment =
+    irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
 
   ASSERT_EQ(3, segment.docs_count());  // doc4 removed during merge
 
