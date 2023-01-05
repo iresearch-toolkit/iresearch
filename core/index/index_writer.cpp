@@ -2097,7 +2097,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   auto const& progress =
     (progress_callback != nullptr ? progress_callback : kNoProgress);
 
-  bool modified = !index_gen_limits::valid(last_gen_);
   SyncContext to_sync;
   IndexMeta pending_meta;
 
@@ -2127,6 +2126,9 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   const auto& committed_reader = *committed_reader_;
   const auto& committed_meta = committed_reader.Meta();
   const auto& reader_options = committed_reader.Options();
+
+  // If there is no index we shall initialize it
+  bool modified = committed_meta.filename.empty();
 
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
