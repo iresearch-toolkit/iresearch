@@ -153,10 +153,7 @@ bool RemoveFromImportedSegment(
   std::span<IndexWriter::ModificationContext> modifications,
   const SubReader& reader, SegmentInfo& meta, document_mask& docs_mask,
   size_t min_modification_generation = 0) {
-  if (modifications.empty()) {
-    return false;  // nothing new to flush
-  }
-
+  IRS_ASSERT(!modifications.empty());
   bool modified = false;
 
   for (auto& modification : modifications) {
@@ -207,9 +204,7 @@ bool RemoveFromImportedSegment(
 bool RemoveFromNewSegment(
   std::span<IndexWriter::ModificationContext> modifications,
   FlushSegmentContext& ctx) {
-  if (modifications.empty()) {
-    return false;  // nothing new to flush
-  }
+  IRS_ASSERT(!modifications.empty());
 
   auto& docs_mask = ctx.docs_mask_;
   bool modified = false;
@@ -2328,16 +2323,20 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         // modification_queries_ range
         // [flush_segment_context::modification_offset_begin_,
         // segment_context::uncomitted_modification_queries_)
-        auto modifications_begin = modifications.modification_offset_begin_;
-        auto modifications_end = modifications.modification_offset_end_;
+        auto begin = modifications.modification_offset_begin_;
+        auto end = modifications.modification_offset_end_;
 
-        IRS_ASSERT(modifications_begin <= modifications_end);
-        IRS_ASSERT(modifications_end <=
-                   modifications.segment_->modification_queries_.size());
+        IRS_ASSERT(begin <= end);
+        IRS_ASSERT(end <= modifications.segment_->modification_queries_.size());
+
+        const size_t size = end - begin;
+
+        if (!size) {
+          continue;  // Nothing to do
+        }
+
         const std::span modification_queries{
-          modifications.segment_->modification_queries_.data() +
-            modifications_begin,
-          modifications_end - modifications_begin};
+          modifications.segment_->modification_queries_.data() + begin, size};
 
         docs_mask_modified |= RemoveFromImportedSegment(
           modification_queries, *pending_reader, meta, pending_docs_mask,
@@ -2519,16 +2518,20 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         // mask documents matching filters from all flushed segment_contexts
         // (i.e. from new operations)
         for (auto& modifications : ctx->pending_segment_contexts_) {
-          auto modifications_begin = modifications.modification_offset_begin_;
-          auto modifications_end = modifications.modification_offset_end_;
+          const auto begin = modifications.modification_offset_begin_;
+          const auto end = modifications.modification_offset_end_;
 
-          IRS_ASSERT(modifications_begin <= modifications_end);
-          IRS_ASSERT(modifications_end <=
+          IRS_ASSERT(begin <= end);
+          IRS_ASSERT(end <=
                      modifications.segment_->modification_queries_.size());
+          const size_t size = end - begin;
+
+          if (!size) {
+            continue;  // Nothing to do
+          }
+
           const std::span modification_queries(
-            modifications.segment_->modification_queries_.data() +
-              modifications_begin,
-            modifications_end - modifications_begin);
+            modifications.segment_->modification_queries_.data() + begin, size);
 
           RemoveFromNewSegment(modification_queries, flush_segment_ctx);
         }
