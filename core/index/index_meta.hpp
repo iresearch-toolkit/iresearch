@@ -80,7 +80,6 @@ struct IndexMeta {
   bool operator==(const IndexMeta&) const = default;
 
   uint64_t gen{index_gen_limits::invalid()};
-  uint64_t last_gen{index_gen_limits::invalid()};
   uint64_t seg_counter{0};
   std::vector<IndexSegment> segments;
   std::optional<bstring> payload;

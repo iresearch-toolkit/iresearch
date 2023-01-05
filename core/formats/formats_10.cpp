@@ -2584,51 +2584,48 @@ struct index_meta_writer final : public irs::index_meta_writer {
 
   enum { HAS_PAYLOAD = 1 };
 
-  explicit index_meta_writer(int32_t version) noexcept : version_(version) {
+  static std::string FileName(uint64_t gen) {
+    return FileName(FORMAT_PREFIX, gen);
+  }
+
+  explicit index_meta_writer(int32_t version) noexcept : version_{version} {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
-  using irs::index_meta_writer::prepare;
   bool prepare(directory& dir, IndexMeta& meta, std::string& filename) override;
   bool commit() override;
   void rollback() noexcept override;
 
  private:
-  directory* dir_ = nullptr;
-  IndexMeta* meta_ = nullptr;
+  static std::string FileName(std::string_view prefix, uint64_t gen) {
+    IRS_ASSERT(index_gen_limits::valid(gen));
+    return irs::file_name(prefix, gen);
+  }
+
+  static std::string PendingFileName(uint64_t gen) {
+    return FileName(FORMAT_PREFIX_TMP, gen);
+  }
+
+  static void prepare(IndexMeta& meta) noexcept {
+    meta.gen = index_gen_limits::valid(meta.gen) ? (meta.gen + 1) : 1;
+  }
+
+  directory* dir_{};
+  uint64_t pending_gen_{index_gen_limits::invalid()};  // Generation to commit
   int32_t version_;
-};  // index_meta_writer
-
-template<>
-std::string file_name<irs::index_meta_writer, IndexMeta>(
-  const IndexMeta& meta) {
-  return irs::file_name(index_meta_writer::FORMAT_PREFIX_TMP, meta.gen);
-}
-
-struct index_meta_reader final : public irs::index_meta_reader {
-  bool last_segments_file(const directory& dir,
-                          std::string& name) const override;
-
-  void read(const directory& dir, IndexMeta& meta,
-            std::string_view filename = {}) override;  // null == use meta
-};                                                     // index_meta_reader
-
-template<>
-std::string file_name<irs::index_meta_reader, IndexMeta>(
-  const IndexMeta& meta) {
-  return irs::file_name(index_meta_writer::FORMAT_PREFIX, meta.gen);
-}
+};
 
 bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
                                 std::string& filename) {
-  if (meta_) {
+  if (index_gen_limits::valid(pending_gen_)) {
     // prepare() was already called with no corresponding call to commit()
     return false;
   }
 
-  prepare(meta);  // prepare meta before generating filename
+  // Prepare meta before generating filename
+  prepare(meta);
 
-  filename = file_name<irs::index_meta_writer>(meta);
+  filename = PendingFileName(meta.gen);
 
   auto out = dir.create(filename);
 
@@ -2659,27 +2656,26 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
     }
 
     format_utils::write_footer(*out);
-    // important to close output here
-  }
+  }  // important to close output here
 
-  if (std::string_view sync_me{filename}; !dir.sync({&sync_me, 1})) {
+  if (const std::string_view sync_me{filename}; !dir.sync({&sync_me, 1})) {
     throw io_error{absl::StrCat("Failed to sync file, path: ", filename)};
   }
 
   // only noexcept operations below
   dir_ = &dir;
-  meta_ = &meta;
+  pending_gen_ = meta.gen;
 
   return true;
 }
 
 bool index_meta_writer::commit() {
-  if (!meta_) {
+  if (!index_gen_limits::valid(pending_gen_)) {
     return false;
   }
 
-  const auto src = file_name<irs::index_meta_writer>(*meta_);
-  const auto dst = file_name<irs::index_meta_reader>(*meta_);
+  const auto src = PendingFileName(pending_gen_);
+  const auto dst = FileName(pending_gen_);
 
   if (!dir_->rename(src, dst)) {
     rollback();
@@ -2689,24 +2685,22 @@ bool index_meta_writer::commit() {
   }
 
   // only noexcept operations below
-  complete(*meta_);
-
   // clear pending state
-  meta_ = nullptr;
+  pending_gen_ = index_gen_limits::invalid();
   dir_ = nullptr;
 
   return true;
 }
 
 void index_meta_writer::rollback() noexcept {
-  if (!meta_) {
+  if (!index_gen_limits::valid(pending_gen_)) {
     return;
   }
 
   std::string seg_file;
 
   try {
-    seg_file = file_name<irs::index_meta_writer>(*meta_);
+    seg_file = PendingFileName(pending_gen_);
   } catch (const std::exception& e) {
     IR_FRMT_ERROR(
       "Caught error while generating file name for index meta, reason: %s",
@@ -2723,10 +2717,10 @@ void index_meta_writer::rollback() noexcept {
 
   // clear pending state
   dir_ = nullptr;
-  meta_ = nullptr;
+  pending_gen_ = index_gen_limits::invalid();
 }
 
-uint64_t parse_generation(std::string_view segments_file) {
+uint64_t ParseGeneration(std::string_view segments_file) noexcept {
   IRS_ASSERT(segments_file.starts_with(index_meta_writer::FORMAT_PREFIX));
 
   const char* gen_str =
@@ -2737,12 +2731,20 @@ uint64_t parse_generation(std::string_view segments_file) {
   return suffix[0] ? index_gen_limits::invalid() : gen;
 }
 
+struct index_meta_reader final : public irs::index_meta_reader {
+  bool last_segments_file(const directory& dir,
+                          std::string& name) const override;
+
+  void read(const directory& dir, IndexMeta& meta,
+            std::string_view filename) override;
+};
+
 bool index_meta_reader::last_segments_file(const directory& dir,
                                            std::string& out) const {
   uint64_t max_gen = 0;
   directory::visitor_f visitor = [&out, &max_gen](std::string_view name) {
     if (name.starts_with(index_meta_writer::FORMAT_PREFIX)) {
-      const uint64_t gen = parse_generation(name);
+      const uint64_t gen = ParseGeneration(name);
 
       if (index_gen_limits::valid(gen) && gen > max_gen) {
         out = std::move(name);
@@ -2757,16 +2759,18 @@ bool index_meta_reader::last_segments_file(const directory& dir,
 }
 
 void index_meta_reader::read(const directory& dir, IndexMeta& meta,
-                             std::string_view filename /*= {} */) {
-  const std::string meta_file = IsNull(filename)
-                                  ? file_name<irs::index_meta_reader>(meta)
-                                  : static_cast<std::string>(filename);
+                             std::string_view filename) {
+  std::string meta_file;
+  if (IsNull(filename)) {
+    meta_file = index_meta_writer::FileName(meta.gen);
+    filename = meta_file;
+  }
 
   auto in =
-    dir.open(meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
+    dir.open(filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
-    throw io_error{absl::StrCat("Failed to open file, path: ", meta_file)};
+    throw io_error{absl::StrCat("Failed to open file, path: ", filename)};
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2805,8 +2809,14 @@ void index_meta_reader::read(const directory& dir, IndexMeta& meta,
 
   format_utils::check_footer(*in, checksum);
 
-  complete(meta, gen, cnt, std::move(segments),
-           has_payload ? &payload : nullptr);
+  meta.gen = gen;
+  meta.seg_counter = cnt;
+  meta.segments = std::move(segments);
+  if (has_payload) {
+    meta.payload = std::move(payload);
+  } else {
+    meta.payload.reset();
+  }
 }
 
 struct segment_meta_writer final : public irs::segment_meta_writer {

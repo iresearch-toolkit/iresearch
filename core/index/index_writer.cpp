@@ -1347,7 +1347,7 @@ IndexWriter::IndexWriter(
     segment_writer_pool_{segment_pool_size},
     segments_active_{0},
     seg_counter_{committed_reader_->Meta().index_meta.seg_counter},
-    last_gen_{committed_reader_->Meta().index_meta.last_gen},
+    last_gen_{committed_reader_->Meta().index_meta.gen},
     writer_{codec_->get_index_meta_writer()},
     write_lock_{std::move(lock)},
     write_lock_file_ref_{std::move(lock_file_ref)} {
@@ -1378,7 +1378,7 @@ void IndexWriter::InitMeta(IndexMeta& meta, uint64_t tick) const {
     }
   }
   meta.seg_counter = CurrentSegmentId();  // Ensure counter() >= max(seg#)
-  meta.gen = meta.last_gen = last_gen_;   // Clone index metadata generation
+  meta.gen = last_gen_;                   // Clone index metadata generation
 }
 
 void IndexWriter::Clear(uint64_t tick) {
@@ -1387,8 +1387,7 @@ void IndexWriter::Clear(uint64_t tick) {
 
   auto& committed_meta = committed_reader_->Meta().index_meta;
 
-  if (!pending_state_ && committed_meta.segments.empty() &&
-      index_gen_limits::valid(committed_meta.last_gen)) {
+  if (!pending_state_ && committed_meta.segments.empty()) {
     return;  // already empty
   }
 
@@ -1469,7 +1468,6 @@ IndexWriter::ptr IndexWriter::make(
           reader->read(dir, meta.index_meta, meta.filename);
 
           auto& index_meta = meta.index_meta;
-          index_meta.last_gen = index_gen_limits::invalid();
           index_meta.payload.reset();
           index_meta.segments.clear();
         } catch (...) {

@@ -35,6 +35,7 @@ std::string file_name(std::string_view prefix, uint64_t gen) {
 
 void file_name(std::string& result, std::string_view name,
                std::string_view ext) {
+  result.clear();
   absl::StrAppend(&result, name, ".", ext);
 }
 

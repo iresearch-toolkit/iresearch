@@ -481,10 +481,6 @@ struct index_meta_writer {
                        std::string& filename) = 0;
   virtual bool commit() = 0;
   virtual void rollback() noexcept = 0;
-
- protected:
-  static void complete(IndexMeta& meta) noexcept;
-  static void prepare(IndexMeta& meta) noexcept;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -499,12 +495,7 @@ struct index_meta_reader {
                                   std::string& name) const = 0;
 
   virtual void read(const directory& dir, IndexMeta& meta,
-                    std::string_view filename = {}) = 0;  // null == use meta
-
- protected:
-  static void complete(IndexMeta& meta, uint64_t generation, uint64_t counter,
-                       std::vector<IndexSegment>&& segments,
-                       bstring* payload_buf);
+                    std::string_view filename) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
