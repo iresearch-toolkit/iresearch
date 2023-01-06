@@ -650,7 +650,7 @@ void normalized_string_json_field_factory(
 
 template<typename Indexed>
 bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Insert();
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend);
@@ -659,7 +659,7 @@ bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend) {
 template<typename Indexed, typename Stored>
 bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend,
             Stored sbegin, Stored send) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Insert();
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
@@ -669,7 +669,7 @@ bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend,
 template<typename Indexed, typename Stored, typename Sorted>
 bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend,
             Stored sbegin, Stored send, Sorted sorted = nullptr) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Insert();
 
   if (sorted && !doc.Insert<irs::Action::STORE_SORTED>(*sorted)) {
@@ -696,7 +696,7 @@ bool insert(irs::IndexWriter& writer, const Doc& doc, size_t count = 1,
 template<typename Indexed>
 bool update(irs::IndexWriter& writer, const irs::filter& filter,
             Indexed ibegin, Indexed iend) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend);
@@ -705,7 +705,7 @@ bool update(irs::IndexWriter& writer, const irs::filter& filter,
 template<typename Indexed, typename Stored>
 bool update(irs::IndexWriter& writer, const irs::filter& filter,
             Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
@@ -715,7 +715,7 @@ bool update(irs::IndexWriter& writer, const irs::filter& filter,
 template<typename Indexed>
 bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
             Indexed ibegin, Indexed iend) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(std::move(filter));
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend);
@@ -724,7 +724,7 @@ bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
 template<typename Indexed, typename Stored>
 bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
             Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(std::move(filter));
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&
@@ -735,7 +735,7 @@ template<typename Indexed>
 bool update(irs::IndexWriter& writer,
             const std::shared_ptr<irs::filter>& filter, Indexed ibegin,
             Indexed iend) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend);
@@ -745,7 +745,7 @@ template<typename Indexed, typename Stored>
 bool update(irs::IndexWriter& writer,
             const std::shared_ptr<irs::filter>& filter, Indexed ibegin,
             Indexed iend, Stored sbegin, Stored send) {
-  auto ctx = writer.documents();
+  auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
   return doc.Insert<irs::Action::INDEX>(ibegin, iend) &&

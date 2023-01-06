@@ -153,7 +153,7 @@ struct ConsolidationResult {
 // Options the the writer should use for segments
 struct SegmentOptions {
   // Segment acquisition requests will block and wait for free segments
-  // after this many segments have been acquired e.g. via documents()
+  // after this many segments have been acquired e.g. via GetBatch()
   // 0 == unlimited
   size_t segment_count_max{0};
 
@@ -498,7 +498,7 @@ class IndexWriter : private util::noncopyable {
   // Returns a context allowing index modification operations
   // All document insertions will be applied to the same segment on a
   // best effort basis, e.g. a flush_all() will cause a segment switch
-  Transaction documents() noexcept { return Transaction(*this); }
+  Transaction GetBatch() noexcept { return Transaction{*this}; }
 
   // Imports index from the specified index reader into new segment
   // Reader the index reader to import.
@@ -515,7 +515,7 @@ class IndexWriter : private util::noncopyable {
   // codec format that will be used for creating new index segments
   // mode specifies how to open a writer
   // options the configuration parameters for the writer
-  static IndexWriter::ptr make(directory& dir, format::ptr codec, OpenMode mode,
+  static IndexWriter::ptr Make(directory& dir, format::ptr codec, OpenMode mode,
                                const IndexWriterOptions& opts = {});
 
   // Modify the runtime segment options as per the specified values
@@ -648,36 +648,36 @@ class IndexWriter : private util::noncopyable {
   //
   // Note the segment flows through following stages
   //  1a) taken from pool (!busy_, !dirty) {Thread A}
-  //  2a) requested by documents() (!busy_, !dirty)
-  //  3a) documents() validates that active context is the same &&
+  //  2a) requested by GetBatch() (!busy_, !dirty)
+  //  3a) GetBatch() validates that active context is the same &&
   //  !dirty_
-  //  4a) documents() sets 'busy_', guarded by flush_context::flush_mutex_
-  //  5a) documents() starts operation
-  //  6a) documents() finishes operation
-  //  7a) documents() unsets 'busy_', guarded by flush_context::mutex_
+  //  4a) GetBatch() sets 'busy_', guarded by flush_context::flush_mutex_
+  //  5a) GetBatch() starts operation
+  //  6a) GetBatch() finishes operation
+  //  7a) GetBatch() unsets 'busy_', guarded by flush_context::mutex_
   //    (different mutex for cond notify)
-  //  8a) documents() notifies flush_context::pending_segment_context_cond_
+  //  8a) GetBatch() notifies flush_context::pending_segment_context_cond_
   //    ... after some time ...
-  // 10a) documents() validates that active context is the same && !dirty_
-  // 11a) documents() sets 'busy_', guarded by flush_context::flush_mutex_
-  // 12a) documents() starts operation
+  // 10a) GetBatch() validates that active context is the same && !dirty_
+  // 11a) GetBatch() sets 'busy_', guarded by flush_context::flush_mutex_
+  // 12a) GetBatch() starts operation
   // 13b) flush_all() switches active context {Thread B}
   // 14b) flush_all() sets 'dirty_', guarded by flush_context::mutex_
   // 15b) flush_all() checks 'busy_' and waits on flush_context::mutex_
   //    (different mutex for cond notify)
-  // 16a) documents() finishes operation {Thread A}
-  // 17a) documents() unsets 'busy_', guarded by flush_context::mutex_
+  // 16a) GetBatch() finishes operation {Thread A}
+  // 17a) GetBatch() unsets 'busy_', guarded by flush_context::mutex_
   //    (different mutex for cond notify)
-  // 18a) documents() notifies flush_context::pending_segment_context_cond_
+  // 18a) GetBatch() notifies flush_context::pending_segment_context_cond_
   // 19b) flush_all() checks 'busy_' and continues flush {Thread B}
   //    (different mutex for cond notify)  {scenario 1} ... after some time
-  //    reuse of same documents() {Thread A}
-  // 20a) documents() validates that active context is not the same
-  // 21a) documents() re-requests a new segment, i.e. continues
+  //    reuse of same GetBatch() {Thread A}
+  // 20a) GetBatch() validates that active context is not the same
+  // 21a) GetBatch() re-requests a new segment, i.e. continues
   //    to (1a) {scenario 2} ...  after some time reuse of same
-  //    documents() {Thread A}
-  // 20a) documents() validates that active context is the same && dirty_
-  // 21a) documents() re-requests a new segment, i.e. continues to (1a)
+  //    GetBatch() {Thread A}
+  // 20a) GetBatch() validates that active context is the same && dirty_
+  // 21a) GetBatch() re-requests a new segment, i.e. continues to (1a)
   // Note segment_writer::doc_contexts[...uncomitted_document_contexts_):
   //   generation == flush_context::generation
   // Note segment_writer::doc_contexts[uncomitted_document_contexts_...]:

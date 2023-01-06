@@ -86,9 +86,9 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       auto doc = ctx.Insert();
@@ -1108,9 +1108,9 @@ TEST_P(index_column_test_case,
     } field(column_name), gap("gap");
 
     irs::doc_id_t docs_count = 0;
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -1904,9 +1904,9 @@ TEST_P(index_column_test_case,
       const std::string_view column_name;
     } field(column_name), gap("gap");
 
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -2971,8 +2971,8 @@ TEST_P(index_column_test_case,
     } field(column_name), gap("gap");
 
     auto writer =
-      irs::IndexWriter::make(this->dir(), this->codec(), irs::OM_CREATE);
-    auto ctx = writer->documents();
+      irs::IndexWriter::Make(this->dir(), this->codec(), irs::OM_CREATE);
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -3186,9 +3186,9 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -3370,9 +3370,9 @@ TEST_P(index_column_test_case,
       const std::string_view column_name;
     } field(column_name), gap("gap");
 
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -4329,9 +4329,9 @@ TEST_P(index_column_test_case,
     } field;
 
     irs::doc_id_t docs_count = 0;
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       auto doc = ctx.Insert();
@@ -5132,9 +5132,9 @@ TEST_P(index_column_test_case,
     } field;
 
     irs::doc_id_t docs_count = 0;
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -5755,9 +5755,9 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -6551,9 +6551,9 @@ TEST_P(index_column_test_case,
       uint64_t value{};
     } field;
 
-    auto writer = irs::IndexWriter::make(this->dir(), this->codec(),
+    auto writer = irs::IndexWriter::Make(this->dir(), this->codec(),
                                          irs::OM_CREATE, options);
-    auto ctx = writer->documents();
+    auto ctx = writer->GetBatch();
 
     do {
       ctx.Insert().Insert<irs::Action::STORE>(field);
@@ -7466,7 +7466,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
   // write attributes
   {
     auto writer =
-      irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options);
+      irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE, options);
 
     const tests::document* doc;
     while ((doc = gen.next())) {
@@ -8013,7 +8013,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
   // write documents
   {
     auto writer =
-      irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options);
+      irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE, options);
 
     // attributes only
     ASSERT_TRUE(insert(*writer, doc1->indexed.end(), doc1->indexed.end(),
@@ -8261,7 +8261,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   // write documents without attributes
   {
     auto writer =
-      irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, options);
+      irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE, options);
 
     // fields only
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end()));

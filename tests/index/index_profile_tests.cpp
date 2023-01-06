@@ -118,7 +118,7 @@ class index_profile_test_case : public tests::index_test_base {
     // initialize reader data source for import threads
     {
       auto import_writer =
-        irs::IndexWriter::make(import_dir, codec(), irs::OM_CREATE);
+        irs::IndexWriter::Make(import_dir, codec(), irs::OM_CREATE);
 
       {
         REGISTER_TIMER_NAMED_DETAILED("init - setup");

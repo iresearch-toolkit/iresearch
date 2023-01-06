@@ -189,13 +189,13 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::IndexWriter::ptr open_writer(
     irs::directory& dir, irs::OpenMode mode = irs::OM_CREATE,
     const irs::IndexWriterOptions& options = {}) const {
-    return irs::IndexWriter::make(dir, codec_, mode, options);
+    return irs::IndexWriter::Make(dir, codec_, mode, options);
   }
 
   irs::IndexWriter::ptr open_writer(
     irs::OpenMode mode = irs::OM_CREATE,
     const irs::IndexWriterOptions& options = {}) const {
-    return irs::IndexWriter::make(*dir_, codec_, mode, options);
+    return irs::IndexWriter::Make(*dir_, codec_, mode, options);
   }
 
   irs::DirectoryReader open_reader() const {

@@ -1398,7 +1398,7 @@ void IndexWriter::Clear(uint64_t tick) {
   consolidating_segments_.clear();
 }
 
-IndexWriter::ptr IndexWriter::make(
+IndexWriter::ptr IndexWriter::Make(
   directory& dir, format::ptr codec, OpenMode mode,
   const IndexWriterOptions& opts /*= init_options()*/) {
   index_lock::ptr lock;
@@ -2007,7 +2007,7 @@ IndexWriter::FlushPending(FlushContext& ctx,
 
     // mark the 'segment_context' as dirty so that it will not be reused if this
     // 'flush_context' once again becomes the active context while the
-    // 'segment_context' handle is still held by documents()
+    // 'segment_context' handle is still held by GetBatch()
     segment->dirty_.store(true);
 
     // wait for the segment to no longer be active

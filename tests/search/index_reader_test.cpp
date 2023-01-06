@@ -47,17 +47,13 @@ irs::format::ptr get_codec1() {
 
 }  // namespace
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                           Composite index reader
-// ----------------------------------------------------------------------------
-
 TEST(directory_reader_test, open_empty_directory) {
   irs::memory_directory dir;
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
 
-  /* no index */
-  ASSERT_THROW(irs::DirectoryReader(dir, codec), irs::index_not_found);
+  // No index
+  ASSERT_THROW((irs::DirectoryReader{dir, codec}), irs::index_not_found);
 }
 
 TEST(directory_reader_test, open_empty_index) {
@@ -65,10 +61,9 @@ TEST(directory_reader_test, open_empty_index) {
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
 
-  /* create empty index */
-  irs::IndexWriter::make(dir, codec, irs::OM_CREATE)->Commit();
+  // Create empty index
+  irs::IndexWriter::Make(dir, codec, irs::OM_CREATE)->Commit();
 
-  /* open reader */
   auto rdr = irs::DirectoryReader(dir, codec);
   ASSERT_FALSE(!rdr);
   ASSERT_EQ(0, rdr.docs_count());
@@ -202,7 +197,7 @@ TEST(directory_reader_test, open) {
   // create index
   {
     // open writer
-    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec_ptr, irs::OM_CREATE);
 
     // add first segment
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -462,7 +457,7 @@ TEST(segment_reader_test, open) {
   ASSERT_NE(nullptr, codec_ptr);
   {
     // open writer
-    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec_ptr, irs::OM_CREATE);
 
     // add first segment
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),

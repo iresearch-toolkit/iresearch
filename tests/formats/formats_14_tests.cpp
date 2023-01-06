@@ -40,7 +40,7 @@ TEST_P(format_14_test_case, write_zero_block_encryption) {
   dir().attributes() =
     irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(0)};
 
-  auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE);
+  auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
 
   ASSERT_THROW(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),

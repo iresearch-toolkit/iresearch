@@ -259,7 +259,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // writer commit tracks files that are in active segments
   {
-    auto writer = irs::IndexWriter::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec_ptr, irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -275,7 +275,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_FALSE(files.empty());
     file_set.insert(files.begin(), files.end());
 
-    writer->documents().Remove(std::move(query_doc1));
+    writer->GetBatch().Remove(std::move(query_doc1));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->Commit();

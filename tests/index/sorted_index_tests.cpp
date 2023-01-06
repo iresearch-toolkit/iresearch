@@ -540,7 +540,7 @@ TEST_P(SortedIndexTestCase, reader_components) {
   opts.comparator = &comparer;
 
   auto query_doc1 = MakeByTerm("name", "A");
-  auto writer = irs::IndexWriter::make(dir(), codec(), irs::OM_CREATE, opts);
+  auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE, opts);
   ASSERT_TRUE(insert(*writer, *doc1, 1, true));
   ASSERT_TRUE(insert(*writer, *doc2, 1, true));
   ASSERT_TRUE(writer->Commit());
@@ -573,7 +573,7 @@ TEST_P(SortedIndexTestCase, reader_components) {
   check_reader(no_index_reader, 2, true, false);
   check_reader(empty_index_reader, 2, false, false);
 
-  writer->documents().Remove(*query_doc1);
+  writer->GetBatch().Remove(*query_doc1);
   ASSERT_TRUE(writer->Commit());
 
   default_reader = default_reader.Reopen();
@@ -1163,7 +1163,7 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
 
   // Write documents
   {
-    auto docs = writer->documents();
+    auto docs = writer->GetBatch();
 
     {
       auto doc = docs.Insert();
@@ -1557,7 +1557,7 @@ TEST_P(SortedIndexTestCase,
   // Remove document
   {
     auto query_doc1 = MakeByTerm("name", "C");
-    writer->documents().Remove(*query_doc1);
+    writer->GetBatch().Remove(*query_doc1);
     writer->Commit();
   }
 
@@ -1737,10 +1737,10 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
-    writer->documents().Remove(*(query_doc1));
+    writer->GetBatch().Remove(*(query_doc1));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-    writer->documents().Remove(*(query_doc2));
+    writer->GetBatch().Remove(*(query_doc2));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
     ASSERT_TRUE(writer->Commit());
@@ -2261,13 +2261,10 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(writer->Commit());
 
   // Remove docs from segment 1
-  writer->documents().Remove(
-    irs::filter::ptr{MakeByTerm("name", "B")});  // doc1
-  writer->documents().Remove(
-    irs::filter::ptr{MakeByTerm("name", "D")});  // doc3
+  writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "B")});  // doc1
+  writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "D")});  // doc3
   // Remove docs from segment 0
-  writer->documents().Remove(
-    irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
+  writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
   ASSERT_TRUE(writer->Commit());
 
   // Read documents
@@ -2498,13 +2495,13 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(writer->Commit());
 
   // Remove docs
-  writer->documents().Remove(*docs[2].second);
-  writer->documents().Remove(*docs[3].second);
+  writer->GetBatch().Remove(*docs[2].second);
+  writer->GetBatch().Remove(*docs[3].second);
 
-  writer->documents().Remove(*docs[4].second);
-  writer->documents().Remove(*docs[5].second);
+  writer->GetBatch().Remove(*docs[4].second);
+  writer->GetBatch().Remove(*docs[5].second);
 
-  writer->documents().Remove(*docs[9].second);
+  writer->GetBatch().Remove(*docs[9].second);
   ASSERT_TRUE(writer->Commit());
 
   {
@@ -2748,7 +2745,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
         ASSERT_EQ(&compare, writer->Comparator());
         for (size_t i = 0; i < kLen; ++i) {
           {
-            auto ctx = writer->documents();
+            auto ctx = writer->GetBatch();
             auto doc = ctx.Insert();
             ASSERT_TRUE(doc.Insert<irs::Action::STORE_SORTED>(
               *insert_docs[i].second->sorted));
@@ -2764,7 +2761,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
               in_store[insert_docs[i].first] = true;
             }
           }
-          writer->documents().Remove(*(remove_docs[i].second));
+          writer->GetBatch().Remove(*(remove_docs[i].second));
           in_store[remove_docs[i].first] = false;
         }
         writer->Commit();

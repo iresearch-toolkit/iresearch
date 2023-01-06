@@ -269,7 +269,7 @@ void open_reader(
 
   // write index
   {
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -278,7 +278,7 @@ void open_reader(
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().Remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
   }
@@ -363,7 +363,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
       "pending_segments_1");  // fail first phase of transaction
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -399,7 +399,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
       "pending_segments_1");  // fail first phase of transaction
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -476,7 +476,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
                          "_3.ti");  // unable to sync term index
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -521,7 +521,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
                          "_3.tm");  // unable to sync term index
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -611,7 +611,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
       "pending_segments_1");  // fail second phase of transaction
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -644,7 +644,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
       "pending_segments_1");  // fail second phase of transaction
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -713,7 +713,7 @@ TEST(index_death_test_formats_10,
                          "_1.cs");  // columnstore
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -744,7 +744,7 @@ TEST(index_death_test_formats_10,
                          "_1.cs");  // columnstore
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
@@ -804,7 +804,7 @@ TEST(index_death_test_formats_10,
                          "_2.cs");  // columnstore
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -867,7 +867,7 @@ TEST(index_death_test_formats_10,
                          "_2.cs");  // columnstore
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -981,7 +981,7 @@ TEST(index_death_test_formats_10,
                          "_7.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -995,7 +995,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().Remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
       ASSERT_THROW(writer->Begin(), irs::io_error);
       ASSERT_FALSE(writer->Begin());  // nothing to flush
@@ -1032,7 +1032,7 @@ TEST(index_death_test_formats_10,
                          "_7.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -1042,7 +1042,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().Remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
       ASSERT_THROW(writer->Begin(), irs::io_error);
     }
@@ -1124,7 +1124,7 @@ TEST(index_death_test_formats_10,
                          "_9.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -1134,7 +1134,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().Remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
       ASSERT_THROW(writer->Begin(), irs::io_error);
     }
@@ -1178,7 +1178,7 @@ TEST(index_death_test_formats_10,
                          "_9.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -1188,7 +1188,7 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().Remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
       ASSERT_THROW(writer->Begin(), irs::io_error);
     }
@@ -1261,7 +1261,7 @@ TEST(index_death_test_formats_10,
                          "_2.0.sm");  // fail at segment meta synchronization
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // creation issue
@@ -1301,7 +1301,7 @@ TEST(index_death_test_formats_10,
                          "_2.0.sm");  // fail at segment meta synchronization
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // creation issue
@@ -1384,7 +1384,7 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
@@ -1509,7 +1509,7 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
@@ -1695,7 +1695,7 @@ TEST(index_death_test_formats_10,
     tests::blocking_directory dir(failing_dir, "_3.cs");
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
@@ -1831,7 +1831,7 @@ TEST(index_death_test_formats_10,
     tests::blocking_directory dir(failing_dir, "_3.cs");
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
@@ -1977,7 +1977,7 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
@@ -2094,7 +2094,7 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
@@ -2210,7 +2210,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
   {
     // write index
-    auto writer = irs::IndexWriter::make(src_dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(src_dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2248,7 +2248,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2294,7 +2294,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2374,7 +2374,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2420,7 +2420,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2517,7 +2517,7 @@ TEST(index_death_test_formats_10,
     irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2570,7 +2570,7 @@ TEST(index_death_test_formats_10,
     irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2653,7 +2653,7 @@ TEST(index_death_test_formats_10,
     irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2732,7 +2732,7 @@ TEST(index_death_test_formats_14,
     irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     uint64_t length;
@@ -2830,7 +2830,7 @@ TEST(index_death_test_formats_10,
     irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2879,7 +2879,7 @@ TEST(index_death_test_formats_14,
     irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
@@ -2942,7 +2942,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     // write index
     irs::IndexWriterOptions opts;
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     dir.register_failure(failing_directory::Failure::CREATE,
@@ -3091,7 +3091,7 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     // write index
     irs::IndexWriterOptions opts;
 
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     dir.register_failure(failing_directory::Failure::EXISTS, "_1.csi");
@@ -3252,7 +3252,7 @@ TEST(index_death_test_formats_14, fails_in_length) {
     dir.register_failure(failing_directory::Failure::LENGTH, "_4.doc");
 
     // write index
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
@@ -3444,7 +3444,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 
   // write index
   {
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3453,7 +3453,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().Remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
   }
@@ -3537,7 +3537,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
 
   // write index
   {
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3546,7 +3546,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().Remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
   }
@@ -3640,7 +3640,7 @@ TEST(index_death_test_formats_14, fails_in_dup) {
 
   // write index
   {
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3759,7 +3759,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
   // write index
   {
-    auto writer = irs::IndexWriter::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3768,7 +3768,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().Remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
   }

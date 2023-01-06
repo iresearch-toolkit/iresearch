@@ -149,9 +149,9 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
  public:
   proxy_filter_test_case() {
     auto codec = irs::formats::get("1_0");
-    auto writer = irs::IndexWriter::make(dir_, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir_, codec, irs::OM_CREATE);
     {  // make dummy document so we could have non-empty index
-      auto ctx = writer->documents();
+      auto ctx = writer->GetBatch();
       for (size_t i = 0; i < GetParam(); ++i) {
         auto doc = ctx.Insert();
         auto field = std::make_shared<tests::string_field>("foo", "bar");

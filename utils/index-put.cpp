@@ -382,7 +382,7 @@ int put(const std::string& path, const std::string& dir_type,
     return std::make_pair(info, irs::FeatureWriterFactory{});
   };
 
-  auto writer = irs::IndexWriter::make(*dir, codec, irs::OM_CREATE, opts);
+  auto writer = irs::IndexWriter::Make(*dir, codec, irs::OM_CREATE, opts);
 
   irs::async_utils::thread_pool thread_pool(
     indexer_threads + consolidation_threads + 1);  // +1 for commiter thread
@@ -543,7 +543,7 @@ int put(const std::string& path, const std::string& dir_type,
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
-        auto ctx = writer->documents();
+        auto ctx = writer->GetBatch();
         size_t i = 0;
 
         do {

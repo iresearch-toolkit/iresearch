@@ -933,7 +933,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   // Remove document
   {
     auto query_doc3 = MakeByTerm("name", "D");
-    writer->documents().Remove(*query_doc3);
+    writer->GetBatch().Remove(*query_doc3);
     writer->Commit();
   }
 

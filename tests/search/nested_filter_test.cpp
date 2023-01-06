@@ -307,7 +307,7 @@ class NestedFilterTestCase : public tests::FilterTestCaseBase {
   }
 
   static void InsertOrder(irs::IndexWriter& writer, const Order& order) {
-    auto trx = writer.documents();
+    auto trx = writer.GetBatch();
     for (const auto& [item, price, count] : order.items) {
       InsertItemDocument(trx, item, price, count);
     }
