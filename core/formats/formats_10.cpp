@@ -2624,10 +2624,11 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
   pending_filename = PendingFileName(meta.gen);
   filename = FileName(meta.gen);
 
-  auto out = dir.create(filename);
+  auto out = dir.create(pending_filename);
 
   if (!out) {
-    throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
+    throw io_error{
+      absl::StrCat("Failed to create file, path: ", pending_filename)};
   }
 
   {

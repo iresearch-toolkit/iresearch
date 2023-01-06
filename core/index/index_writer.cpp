@@ -568,7 +568,7 @@ std::shared_ptr<const DirectoryReaderImpl> OpenReader(
 
 namespace detail {
 
-void SyncHelper::Sync(directory& dir, const DirectoryMeta& meta) {
+bool SyncHelper::Sync(directory& dir, const DirectoryMeta& meta) {
   IRS_ASSERT(!meta.filename.empty());
 
   // FIXME(gnusi): make format dependent?
@@ -601,10 +601,7 @@ void SyncHelper::Sync(directory& dir, const DirectoryMeta& meta) {
     }
   }
 
-  if (!dir.sync(files_to_sync)) {  // Sync all pending files
-    throw io_error{
-      absl::StrCat("Failed to sync files for '", meta.filename, "'.")};
-  }
+  return dir.sync(files_to_sync);
 }
 
 }  // namespace detail
@@ -1406,11 +1403,8 @@ void IndexWriter::Clear(uint64_t tick) {
   // cppcheck-suppress unreadVariable
   std::lock_guard ctx_lock{ctx->mutex_};
 
-  RefTrackingDirectory& dir = *ctx->dir_;
-
-  writer_->rollback();  // Rollback already opened transaction if any
-  pending_state_.commit = StartImpl(dir, std::move(pending_commit));
-  pending_state_.ctx = std::move(ctx);  // Retain flush context reference
+  writer_->rollback();  // Rollback any already opened transaction
+  StartImpl(std::move(ctx), std::move(pending_commit));
   Finish();
 
   // Clear consolidating segments
@@ -2573,34 +2567,46 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           .readers = std::move(readers)};
 }
 
-std::shared_ptr<const DirectoryReaderImpl> IndexWriter::StartImpl(
-  RefTrackingDirectory& dir, DirectoryMeta&& to_commit) {
+void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit) {
+  IRS_ASSERT(ctx);
+  IRS_ASSERT(ctx->dir_);
+  IRS_ASSERT(!pending_state_.Valid());
+
+  RefTrackingDirectory& dir = *ctx->dir_;
+
   std::string index_meta_file;
 
   // Execute 1st phase of index meta transaction
   if (!writer_->prepare(dir, to_commit.index_meta, to_commit.filename,
                         index_meta_file)) {
-    throw illegal_state{"Failed to write index metadata."};
+    throw illegal_state{absl::StrCat(
+      "Failed to write index metadata for segment '", index_meta_file, "'.")};
   }
 
   // The 1st phase of the transaction successfully finished here,
   // ensure we rollback changes if something goes wrong afterwards
-  Finally update_generation = [this, &to_commit]() noexcept {
-    if (IRS_UNLIKELY(!pending_state_.ctx)) {
+  Finally update_generation = [this,
+                               new_gen = to_commit.index_meta.gen]() noexcept {
+    if (IRS_UNLIKELY(!pending_state_.Valid())) {
       writer_->rollback();  // Rollback failed transaction
     }
 
     // Ensure writer's generation is updated
-    last_gen_ = to_commit.index_meta.gen;
+    last_gen_ = new_gen;
   };
 
-  sync_helper_.Sync(dir, to_commit);
+  if (!sync_helper_.Sync(dir, to_commit)) {
+    throw io_error{absl::StrCat("Failed to sync files for segment '",
+                                index_meta_file, "'.")};
+  }
 
   // Update file name so that directory reader holds a reference
   to_commit.filename = std::move(index_meta_file);
 
-  return OpenReader(dir, codec_, std::move(to_commit),
-                    committed_reader_->Options());
+  pending_state_.commit =
+    OpenReader(dir, codec_, std::move(to_commit), committed_reader_->Options());
+  pending_state_.ctx = std::move(ctx);  // Retain flush context reference
+  IRS_ASSERT(pending_state_.Valid());
 }
 
 bool IndexWriter::Start(ProgressReportCallback const& progress) {
@@ -2621,12 +2627,8 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
     return false;
   }
 
-  IRS_ASSERT(!pending_state_.ctx);
-  RefTrackingDirectory& dir = *to_commit.ctx->dir_;
-  pending_state_.commit =
-    StartImpl(dir, {.index_meta = std::move(to_commit.meta)});
-  pending_state_.ctx = std::move(to_commit.ctx);
-  IRS_ASSERT(pending_state_.Valid());
+  StartImpl(std::move(to_commit.ctx),
+            {.index_meta = std::move(to_commit.meta)});
 
   return true;
 }

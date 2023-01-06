@@ -52,7 +52,7 @@ namespace detail {
 
 class SyncHelper : util::noncopyable {
  public:
-  void Sync(directory& dir, const DirectoryMeta& meta);
+  bool Sync(directory& dir, const DirectoryMeta& meta);
 
   void PushPartial(size_t i, std::string_view file0, std::string_view file1) {
     files_.emplace_back(file0);
@@ -953,12 +953,11 @@ class IndexWriter : private util::noncopyable {
 
   // Start transaction
   bool Start(ProgressReportCallback const& progress = nullptr);
+  void StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit);
   // Finish transaction
   void Finish();
   // Abort transaction
   void Abort() noexcept;
-  std::shared_ptr<const DirectoryReaderImpl> StartImpl(
-    RefTrackingDirectory& dir, DirectoryMeta&& to_commit);
 
   detail::SyncHelper sync_helper_;
   FeatureInfoProvider feature_info_;
