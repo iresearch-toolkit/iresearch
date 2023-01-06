@@ -7454,12 +7454,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // retrieve total number of segment files
     dir.visit(get_number_of_files_in_segments);
 
-    dir.intermediate_commits_lock
-      .lock();  // acquire directory lock, and block consolidation
+    // acquire directory lock, and block consolidation
+    dir.intermediate_commits_lock.lock();
 
     std::thread consolidation_thread([&writer]() {
-      ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-        irs::index_utils::ConsolidateCount())));  // consolidate
+      // consolidate
+      ASSERT_TRUE(writer->Consolidate(
+        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount{})));
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
@@ -7469,15 +7470,21 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           ASSERT_EQ(expected_consolidating_segments.size(),
                     consolidating_segments.size());
           for (auto i : expected_consolidating_segments) {
-            auto& expected_consolidating_segment = reader[i];
-            ASSERT_TRUE(
-              consolidating_segments.end() !=
-              consolidating_segments.find(&expected_consolidating_segment));
+            const auto& expected_consolidating_segment = reader[i];
+            const auto it = std::find_if(
+              consolidating_segments.begin(), consolidating_segments.end(),
+              [&expected_consolidating_segment](auto* segment) {
+                const auto& expected_meta =
+                  expected_consolidating_segment.Meta();
+                const auto& current_meta = segment->Meta();
+                return current_meta.name == expected_meta.name &&
+                       current_meta.version == expected_meta.version;
+              });
+            ASSERT_NE(it, consolidating_segments.end());
           }
         };
-      ASSERT_TRUE(writer->Consolidate(
-        check_consolidating_segments));  // check segments registered for
-                                         // consolidation
+      // check segments registered for consolidation
+      ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
