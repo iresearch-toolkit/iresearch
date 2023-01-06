@@ -343,11 +343,11 @@ using CandidatesMapping = absl::flat_hash_map<
 std::pair<bool, size_t> map_candidates(CandidatesMapping& candidates_mapping,
                                        ConsolidationView candidates,
                                        const auto& index) {
-  size_t i = 0;
+  size_t num_candidates = 0;
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
       std::piecewise_construct, std::forward_as_tuple(candidate->Meta().name),
-      std::forward_as_tuple(nullptr, std::make_pair(candidate, i++)));
+      std::forward_as_tuple(nullptr, std::pair{candidate, num_candidates++}));
   }
 
   size_t found = 0;
@@ -371,13 +371,15 @@ std::pair<bool, size_t> map_candidates(CandidatesMapping& candidates_mapping,
       continue;
     }
 
-    ++found;
-
     IRS_ASSERT(mapping.second.first);
     mapping.first = &segment;
 
     // FIXME(gnusi): can't we just check pointers?
     has_removals |= (meta.version != it->second.second.first->Meta().version);
+
+    if (++found == num_candidates) {
+      break;
+    }
   }
 
   return std::make_pair(has_removals, found);
@@ -559,6 +561,8 @@ bool SyncHelper::Sync(directory& dir, const DirectoryMeta& meta) {
 
   // FIXME(gnusi): make format dependent?
   constexpr size_t kFilesPerSegment = 9;
+
+  Finally cleanup = [this]() noexcept { Clear(); };
 
   std::vector<std::string_view> files_to_sync;
   // +1 for index meta
@@ -1389,7 +1393,7 @@ void IndexWriter::Clear(uint64_t tick) {
   // cppcheck-suppress unreadVariable
   std::lock_guard ctx_lock{ctx->mutex_};
 
-  writer_->rollback();  // Rollback any already opened transaction
+  Abort();  // Abort any already opened transaction
   StartImpl(std::move(ctx), std::move(pending_commit));
   Finish();
 
@@ -1719,7 +1723,7 @@ ConsolidationResult IndexWriter::Consolidate(
       // persist segment meta
       index_utils::FlushIndexSegment(dir, consolidation_segment);
       segment_mask.reserve(segment_mask.size() + candidates.size());
-      ctx->pending_segments_.emplace_back(
+      const auto& pending_segment = ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
         0,              // removals must be applied to the consolidated segment
         dir.GetRefs(),  // do not forget to track refs
@@ -1727,7 +1731,6 @@ ConsolidationResult IndexWriter::Consolidate(
         std::move(committed_reader));  // consolidation context meta
 
       // filter out merged segments for the next commit
-      const auto& pending_segment = ctx->pending_segments_.back();
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
       const auto& consolidation_meta = pending_segment.segment.meta;
 
@@ -1801,7 +1804,7 @@ ConsolidationResult IndexWriter::Consolidate(
       // persist segment meta
       index_utils::FlushIndexSegment(dir, consolidation_segment);
       segment_mask.reserve(segment_mask.size() + candidates.size());
-      ctx->pending_segments_.emplace_back(
+      const auto& pending_segment = ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
         0,              // removals must be applied to the consolidated segment
         dir.GetRefs(),  // do not forget to track refs
@@ -1809,7 +1812,6 @@ ConsolidationResult IndexWriter::Consolidate(
         std::move(committed_reader));  // consolidation context meta
 
       // filter out merged segments for the next commit
-      const auto& pending_segment = ctx->pending_segments_.back();
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
       const auto& consolidation_meta = pending_segment.segment.meta;
 
