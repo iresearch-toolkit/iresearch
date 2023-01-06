@@ -1337,7 +1337,7 @@ MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
 }
 
-bool MergeWriter::flush(TrackingDirectory& dir, IndexSegment& segment,
+bool MergeWriter::flush(TrackingDirectory& dir, SegmentMeta& segment,
                         const FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
@@ -1395,9 +1395,9 @@ bool MergeWriter::flush(TrackingDirectory& dir, IndexSegment& segment,
   }
 
   // total number of doc_ids
-  segment.meta.docs_count = base_id - doc_limits::min();
+  segment.docs_count = base_id - doc_limits::min();
   // all merged documents are live
-  segment.meta.live_docs_count = segment.meta.docs_count;
+  segment.live_docs_count = segment.docs_count;
 
   if (!progress()) {
     return false;  // progress callback requested termination
@@ -1405,7 +1405,7 @@ bool MergeWriter::flush(TrackingDirectory& dir, IndexSegment& segment,
 
   // write merged segment data
   REGISTER_TIMER_DETAILED();
-  Columnstore cs(dir, segment.meta, progress);
+  Columnstore cs(dir, segment, progress);
 
   if (!cs.valid()) {
     return false;  // flush failure
@@ -1426,13 +1426,13 @@ bool MergeWriter::flush(TrackingDirectory& dir, IndexSegment& segment,
 
   flush_state state;
   state.dir = &dir;
-  state.doc_count = segment.meta.docs_count;
+  state.doc_count = segment.docs_count;
   state.features = &fields_features;
   state.index_features = index_features;
-  state.name = segment.meta.name;
+  state.name = segment.name;
 
   // write field meta and field term data
-  if (!write_fields(cs, remapping_itrs, state, segment.meta, *feature_info_,
+  if (!write_fields(cs, remapping_itrs, state, segment, *feature_info_,
                     fields_itr, progress)) {
     return false;  // flush failure
   }
@@ -1441,12 +1441,12 @@ bool MergeWriter::flush(TrackingDirectory& dir, IndexSegment& segment,
     return false;  // progress callback requested termination
   }
 
-  segment.meta.column_store = cs.flush(state);
+  segment.column_store = cs.flush(state);
 
   return true;
 }
 
-bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
+bool MergeWriter::flush_sorted(TrackingDirectory& dir, SegmentMeta& segment,
                                const FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
@@ -1492,7 +1492,7 @@ bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
     return true;
   };
 
-  segment.meta.docs_count = 0;
+  segment.docs_count = 0;
 
   // Init doc map for each reader
   for (auto& reader_ctx : readers_) {
@@ -1520,9 +1520,8 @@ bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
     columns_itr.add(reader, reader_ctx.doc_map);
 
     // count total number of documents in consolidated segment
-    if (!math::sum_check_overflow(segment.meta.docs_count,
-                                  reader.live_docs_count(),
-                                  segment.meta.docs_count)) {
+    if (!math::sum_check_overflow(segment.docs_count, reader.live_docs_count(),
+                                  segment.docs_count)) {
       return false;
     }
 
@@ -1548,7 +1547,7 @@ bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
     };
   }
 
-  if (segment.meta.docs_count >= doc_limits::eof()) {
+  if (segment.docs_count >= doc_limits::eof()) {
     // can't merge segments holding more than 'doc_limits::eof()-1' docs
     return false;
   }
@@ -1558,8 +1557,8 @@ bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
   }
 
   // Write new sorted column and fill doc maps for each reader
-  auto writer = segment.meta.codec->get_columnstore_writer(true);
-  writer->prepare(dir, segment.meta);
+  auto writer = segment.codec->get_columnstore_writer(true);
+  writer->prepare(dir, segment);
 
   // get column info for sorted column
   const auto info = (*column_info_)({});
@@ -1656,13 +1655,13 @@ bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
 
   flush_state state;
   state.dir = &dir;
-  state.doc_count = segment.meta.docs_count;
+  state.doc_count = segment.docs_count;
   state.index_features = index_features;
   state.features = &fields_features;
-  state.name = segment.meta.name;
+  state.name = segment.name;
 
   // write field meta and field term data
-  if (!write_fields(cs, sorting_doc_it, state, segment.meta, *feature_info_,
+  if (!write_fields(cs, sorting_doc_it, state, segment, *feature_info_,
                     fields_itr, progress)) {
     return false;  // flush failure
   }
@@ -1671,18 +1670,18 @@ bool MergeWriter::flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
     return false;  // progress callback requested termination
   }
 
-  segment.meta.column_store = cs.flush(state);  // flush columnstore
-  segment.meta.sort = column_id;                // set sort column identifier
+  segment.column_store = cs.flush(state);  // flush columnstore
+  segment.sort = column_id;                // set sort column identifier
   // all merged documents are live
-  segment.meta.live_docs_count = segment.meta.docs_count;
+  segment.live_docs_count = segment.docs_count;
 
   return true;
 }
 
-bool MergeWriter::flush(IndexSegment& segment,
+bool MergeWriter::flush(SegmentMeta& segment,
                         const FlushProgress& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
-  IRS_ASSERT(segment.meta.codec);  // must be set outside
+  IRS_ASSERT(segment.codec);  // must be set outside
 
   bool result = false;  // overall flush result
 
@@ -1693,15 +1692,13 @@ bool MergeWriter::flush(IndexSegment& segment,
     }
 
     // invalidate segment
-    segment.filename.clear();
-    auto& meta = segment.meta;
-    meta.name.clear();
-    meta.files.clear();
-    meta.column_store = false;
-    meta.docs_count = 0;
-    meta.live_docs_count = 0;
-    meta.size_in_bytes = 0;
-    meta.version = 0;
+    segment.name.clear();
+    segment.files.clear();
+    segment.column_store = false;
+    segment.docs_count = 0;
+    segment.live_docs_count = 0;
+    segment.size_in_bytes = 0;
+    segment.version = 0;
   };
 
   const auto& progress_callback = progress ? progress : kProgressNoop;
@@ -1711,7 +1708,7 @@ bool MergeWriter::flush(IndexSegment& segment,
   result = comparator_ ? flush_sorted(track_dir, segment, progress_callback)
                        : flush(track_dir, segment, progress_callback);
 
-  track_dir.flush_tracked(segment.meta.files);
+  track_dir.flush_tracked(segment.files);
 
   return result;
 }

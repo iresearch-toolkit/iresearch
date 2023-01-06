@@ -51,8 +51,7 @@ class MergeWriter : public util::noncopyable {
 
   MergeWriter() noexcept;
 
-  explicit MergeWriter(directory& dir,
-                       const ColumnInfoProvider& column_info,
+  explicit MergeWriter(directory& dir, const ColumnInfoProvider& column_info,
                        const FeatureInfoProvider& feature_info,
                        const Comparer* comparator = nullptr) noexcept
     : dir_(dir),
@@ -72,7 +71,7 @@ class MergeWriter : public util::noncopyable {
   // `segment` the segment that was flushed.
   // `progress` report flush progress (abort if 'progress' returns false).
   // Return merge successful.
-  bool flush(IndexSegment& segment, const FlushProgress& progress = {});
+  bool flush(SegmentMeta& segment, const FlushProgress& progress = {});
 
   const ReaderCtx& operator[](size_t i) const noexcept {
     IRS_ASSERT(i < readers_.size());
@@ -83,10 +82,10 @@ class MergeWriter : public util::noncopyable {
   void reserve(size_t size) { readers_.reserve(size); }
 
  private:
-  bool flush_sorted(TrackingDirectory& dir, IndexSegment& segment,
+  bool flush_sorted(TrackingDirectory& dir, SegmentMeta& segment,
                     const FlushProgress& progress);
 
-  bool flush(TrackingDirectory& dir, IndexSegment& segment,
+  bool flush(TrackingDirectory& dir, SegmentMeta& segment,
              const FlushProgress& progress);
 
   directory& dir_;

@@ -1645,7 +1645,7 @@ ConsolidationResult IndexWriter::Consolidate(
   }
 
   // we do not persist segment meta since some removals may come later
-  if (!merger.flush(consolidation_segment, progress)) {
+  if (!merger.flush(consolidation_segment.meta, progress)) {
     // nothing to consolidate or consolidation failure
     return result;
   }
@@ -1860,7 +1860,7 @@ bool IndexWriter::Import(const IndexReader& reader,
     codec = codec_;
   }
 
-  RefTrackingDirectory dir(dir_);  // track references
+  RefTrackingDirectory dir{dir_};  // track references
 
   IndexSegment segment;
   segment.meta.name = file_name(NextSegmentId());
@@ -1873,7 +1873,7 @@ bool IndexWriter::Import(const IndexReader& reader,
     merger.add(curr_segment);
   }
 
-  if (!merger.flush(segment, progress)) {
+  if (!merger.flush(segment.meta, progress)) {
     return false;  // import failure (no files created, nothing to clean up)
   }
 

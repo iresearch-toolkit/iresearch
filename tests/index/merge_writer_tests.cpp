@@ -621,14 +621,14 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   writer.add(reader[0]);
   writer.add(reader[1]);
 
-  irs::IndexSegment index_segment;
+  irs::SegmentMeta index_segment;
 
-  index_segment.meta.codec = codec_ptr;
+  index_segment.codec = codec_ptr;
   writer.flush(index_segment);
 
   {
     auto segment =
-      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+      irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
     ASSERT_EQ(3, segment.docs_count());
 
     auto columns = segment.columns();
@@ -989,14 +989,14 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   writer.add(reader[0]);
   writer.add(reader[1]);
 
-  irs::IndexSegment index_segment;
+  irs::SegmentMeta index_segment;
 
-  index_segment.meta.codec = codec_ptr;
+  index_segment.codec = codec_ptr;
   writer.flush(index_segment);
 
   {
     auto segment =
-      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+      irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
     ASSERT_EQ(4, segment.docs_count());
 
     auto columns = segment.columns();
@@ -2121,8 +2121,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     ASSERT_TRUE(expected_string.empty());
   }
 
-  irs::IndexSegment index_segment;
-  index_segment.meta.codec = codec_ptr;
+  irs::SegmentMeta index_segment;
+  index_segment.codec = codec_ptr;
 
   const auto column_info = default_column_info();
   ASSERT_TRUE(column_info);
@@ -2136,7 +2136,7 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   ASSERT_TRUE(writer.flush(index_segment));
 
   auto segment =
-    irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+    irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
 
   ASSERT_EQ(3, segment.docs_count());  // doc4 removed during merge
 
@@ -2629,18 +2629,18 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
     ASSERT_TRUE(feature_info);
 
     irs::memory_directory dir;
-    irs::IndexSegment index_segment;
+    irs::SegmentMeta index_segment;
     irs::MergeWriter writer(dir, column_info, feature_info);
 
     for (auto& sub_reader : reader) {
       writer.add(sub_reader);
     }
 
-    index_segment.meta.codec = codec_ptr;
+    index_segment.codec = codec_ptr;
     ASSERT_TRUE(writer.flush(index_segment));
 
     auto segment =
-      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+      irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
     ASSERT_EQ(33, segment.docs_count());
     ASSERT_EQ(33, segment.field("name")->docs_count());
     ASSERT_EQ(33, segment.field("seq")->docs_count());
@@ -2683,49 +2683,48 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
   // test default progress (false)
   {
     irs::memory_directory dir;
-    irs::IndexSegment index_segment;
+    irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress;
     irs::MergeWriter writer(dir, column_info, feature_info);
 
-    index_segment.meta.codec = codec_ptr;
+    index_segment.codec = codec_ptr;
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_TRUE(writer.flush(index_segment, progress));
 
-    ASSERT_FALSE(index_segment.meta.files.empty());
-    ASSERT_EQ(2, index_segment.meta.docs_count);
-    ASSERT_EQ(2, index_segment.meta.live_docs_count);
-    ASSERT_EQ(0, index_segment.meta.version);
-    ASSERT_EQ(true, index_segment.meta.column_store);
+    ASSERT_FALSE(index_segment.files.empty());
+    ASSERT_EQ(2, index_segment.docs_count);
+    ASSERT_EQ(2, index_segment.live_docs_count);
+    ASSERT_EQ(0, index_segment.version);
+    ASSERT_EQ(true, index_segment.column_store);
 
     auto segment =
-      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+      irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
     ASSERT_EQ(2, segment.docs_count());
   }
 
   // test always-false progress
   {
     irs::memory_directory dir;
-    irs::IndexSegment index_segment;
+    irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress = []() -> bool { return false; };
     irs::MergeWriter writer(dir, column_info, feature_info);
 
-    index_segment.meta.codec = codec_ptr;
+    index_segment.codec = codec_ptr;
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_FALSE(writer.flush(index_segment, progress));
 
-    ASSERT_TRUE(index_segment.filename.empty());
-    ASSERT_TRUE(index_segment.meta.name.empty());
-    ASSERT_TRUE(index_segment.meta.files.empty());
-    ASSERT_FALSE(index_segment.meta.column_store);
-    ASSERT_EQ(0, index_segment.meta.version);
-    ASSERT_EQ(0, index_segment.meta.docs_count);
-    ASSERT_EQ(0, index_segment.meta.live_docs_count);
-    ASSERT_EQ(0, index_segment.meta.size_in_bytes);
+    ASSERT_TRUE(index_segment.name.empty());
+    ASSERT_TRUE(index_segment.files.empty());
+    ASSERT_FALSE(index_segment.column_store);
+    ASSERT_EQ(0, index_segment.version);
+    ASSERT_EQ(0, index_segment.docs_count);
+    ASSERT_EQ(0, index_segment.live_docs_count);
+    ASSERT_EQ(0, index_segment.size_in_bytes);
 
     ASSERT_ANY_THROW(
-      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{}));
+      irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{}));
   }
 
   size_t progress_call_count = 0;
@@ -2733,7 +2732,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
   // test always-true progress
   {
     irs::memory_directory dir;
-    irs::IndexSegment index_segment;
+    irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress =
       [&progress_call_count]() -> bool {
       ++progress_call_count;
@@ -2741,19 +2740,19 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     };
     irs::MergeWriter writer(dir, column_info, feature_info);
 
-    index_segment.meta.codec = codec_ptr;
+    index_segment.codec = codec_ptr;
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_TRUE(writer.flush(index_segment, progress));
 
-    ASSERT_FALSE(index_segment.meta.files.empty());
-    ASSERT_EQ(2, index_segment.meta.docs_count);
-    ASSERT_EQ(2, index_segment.meta.live_docs_count);
-    ASSERT_EQ(0, index_segment.meta.version);
-    ASSERT_EQ(true, index_segment.meta.column_store);
+    ASSERT_FALSE(index_segment.files.empty());
+    ASSERT_EQ(2, index_segment.docs_count);
+    ASSERT_EQ(2, index_segment.live_docs_count);
+    ASSERT_EQ(0, index_segment.version);
+    ASSERT_EQ(true, index_segment.column_store);
 
     auto segment =
-      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+      irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
     ASSERT_EQ(2, segment.docs_count());
   }
 
@@ -2765,30 +2764,29 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
        ++i) {  // +1 for pre-decrement in 'progress'
     size_t call_count = i;
     irs::memory_directory dir;
-    irs::IndexSegment index_segment;
+    irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress = [&call_count]() -> bool {
       return --call_count;
     };
     irs::MergeWriter writer(dir, column_info, feature_info);
 
-    index_segment.meta.codec = codec_ptr;
-    index_segment.meta.name = "merged";
+    index_segment.codec = codec_ptr;
+    index_segment.name = "merged";
     writer.add(reader[0]);
     writer.add(reader[1]);
     ASSERT_FALSE(writer.flush(index_segment, progress));
     ASSERT_EQ(0, call_count);
 
-    ASSERT_TRUE(index_segment.filename.empty());
-    ASSERT_TRUE(index_segment.meta.name.empty());
-    ASSERT_TRUE(index_segment.meta.files.empty());
-    ASSERT_FALSE(index_segment.meta.column_store);
-    ASSERT_EQ(0, index_segment.meta.version);
-    ASSERT_EQ(0, index_segment.meta.docs_count);
-    ASSERT_EQ(0, index_segment.meta.live_docs_count);
-    ASSERT_EQ(0, index_segment.meta.size_in_bytes);
+    ASSERT_TRUE(index_segment.name.empty());
+    ASSERT_TRUE(index_segment.files.empty());
+    ASSERT_FALSE(index_segment.column_store);
+    ASSERT_EQ(0, index_segment.version);
+    ASSERT_EQ(0, index_segment.docs_count);
+    ASSERT_EQ(0, index_segment.live_docs_count);
+    ASSERT_EQ(0, index_segment.size_in_bytes);
 
     ASSERT_ANY_THROW(
-      irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{}));
+      irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{}));
   }
 }
 
@@ -2840,9 +2838,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     writer.add(reader[1]);  // assume 1 is segment with text field
     writer.add(reader[0]);  // assume 0 is segment with string field
 
-    irs::IndexSegment index_segment;
+    irs::SegmentMeta index_segment;
 
-    index_segment.meta.codec = codec_ptr;
+    index_segment.codec = codec_ptr;
     ASSERT_TRUE(writer.flush(index_segment));
   }
 
@@ -2852,9 +2850,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     writer.add(reader[0]);  // assume 0 is segment with text field
     writer.add(reader[1]);  // assume 1 is segment with string field
 
-    irs::IndexSegment index_segment;
+    irs::SegmentMeta index_segment;
 
-    index_segment.meta.codec = codec_ptr;
+    index_segment.codec = codec_ptr;
     ASSERT_FALSE(writer.flush(index_segment));
   }
 }
@@ -2943,9 +2941,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   writer.add(reader[0]);
   writer.add(reader[1]);
 
-  irs::IndexSegment index_segment;
+  irs::SegmentMeta index_segment;
 
-  index_segment.meta.codec = codec_ptr;
+  index_segment.codec = codec_ptr;
 
   if (codec()->type().name() == "1_0") {
     // primary sort is not supported in version 1_0
@@ -2956,7 +2954,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   ASSERT_TRUE(writer.flush(index_segment));
 
   auto segment =
-    irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+    irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
   ASSERT_EQ(3, segment.docs_count());
   ASSERT_EQ(3, segment.live_docs_count());
   auto docs = segment.docs_iterator();
@@ -4079,8 +4077,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     ASSERT_TRUE(expected_string.empty());
   }
 
-  irs::IndexSegment index_segment;
-  index_segment.meta.codec = codec_ptr;
+  irs::SegmentMeta index_segment;
+  index_segment.codec = codec_ptr;
 
   const auto column_info = default_column_info();
   ASSERT_TRUE(column_info);
@@ -4094,7 +4092,7 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   ASSERT_TRUE(writer.flush(index_segment));
 
   auto segment =
-    irs::SegmentReader(dir, index_segment.meta, irs::IndexReaderOptions{});
+    irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{});
 
   ASSERT_EQ(3, segment.docs_count());  // doc4 removed during merge
 
