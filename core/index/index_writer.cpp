@@ -566,17 +566,15 @@ std::shared_ptr<const DirectoryReaderImpl> OpenReader(
 
 }  // namespace
 
-using namespace std::chrono_literals;
+namespace detail {
 
-void IndexWriter::SyncContext::ExtractFiles(
-  std::vector<std::string_view>& files_to_sync,
-  const DirectoryMeta& meta) const {
+void SyncHelper::Sync(directory& dir, const DirectoryMeta& meta) {
   IRS_ASSERT(!meta.filename.empty());
 
-  // FIXME(gnusi): make format dependent
+  // FIXME(gnusi): make format dependent?
   constexpr size_t kFilesPerSegment = 9;
 
-  files_to_sync.clear();
+  std::vector<std::string_view> files_to_sync;
   // +1 for index meta
   files_to_sync.reserve(1 + files_.size() +
                         segments_.size() * kFilesPerSegment);
@@ -588,12 +586,12 @@ void IndexWriter::SyncContext::ExtractFiles(
     switch (count) {
       case kInvalid:
         // Only partial sync can be turned into invalid
-        ++begin;
+        begin += kPartial;
         break;
       case kPartial:
         IRS_ASSERT(begin <= files_.end());
         files_to_sync.emplace_back(*begin);
-        ++begin;
+        begin += kPartial;
         break;
       case kFull: {
         const auto& files = segment.meta.files;
@@ -602,7 +600,16 @@ void IndexWriter::SyncContext::ExtractFiles(
       } break;
     }
   }
+
+  if (!dir.sync(files_to_sync)) {  // Sync all pending files
+    throw io_error{
+      absl::StrCat("Failed to sync files for '", meta.filename, "'.")};
+  }
 }
+
+}  // namespace detail
+
+using namespace std::chrono_literals;
 
 IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
   std::shared_ptr<SegmentContext> ctx, std::atomic_size_t& segments_active,
@@ -1388,44 +1395,25 @@ void IndexWriter::Clear(uint64_t tick) {
   auto& committed_meta = committed_reader_->Meta().index_meta;
 
   if (!pending_state_.Valid() && committed_meta.segments.empty()) {
-    return;  // already empty
+    return;  // Already empty
   }
 
   DirectoryMeta pending_commit;
-  auto& pending_meta = pending_commit.index_meta;
-  InitMeta(pending_meta, tick);
+  InitMeta(pending_commit.index_meta, tick);
 
   auto ctx = GetFlushContext(false);
+  // Ensure there are no active struct update operations
   // cppcheck-suppress unreadVariable
-  // ensure there are no active struct update operations
   std::lock_guard ctx_lock{ctx->mutex_};
 
-  auto& dir = *ctx->dir_;
+  RefTrackingDirectory& dir = *ctx->dir_;
 
-  // rollback already opened transaction if any
-  writer_->rollback();
-
-  // write 1st phase of index_meta transaction
-  if (!writer_->prepare(dir, pending_meta, pending_commit.filename)) {
-    throw illegal_state{"Failed to write index metadata."};
-  }
-
-  Finally update_generation = [this, &pending_meta]() noexcept {
-    // Ensure writer's generation is updated
-    last_gen_ = pending_meta.gen;
-  };
-
-  // 1st phase of the transaction successfully finished here
-  // ensure new generation reflected in 'meta_'
-  pending_state_.ctx = std::move(ctx);  // retain flush context reference
-  pending_state_.commit = OpenReader(dir, codec_, std::move(pending_commit),
-                                     committed_reader_->Options());
-
+  writer_->rollback();  // Rollback already opened transaction if any
+  pending_state_.commit = StartImpl(dir, std::move(pending_commit));
+  pending_state_.ctx = std::move(ctx);  // Retain flush context reference
   Finish();
 
-  // all functions below are noexcept
-
-  // clear consolidating segments
+  // Clear consolidating segments
   // cppcheck-suppress unreadVariable
   std::lock_guard lock{consolidation_lock_};
   consolidating_segments_.clear();
@@ -2093,7 +2081,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   auto const& progress =
     (progress_callback != nullptr ? progress_callback : kNoProgress);
 
-  SyncContext to_sync;
+  sync_helper_.Clear();
   IndexMeta pending_meta;
 
   auto ctx = GetFlushContext(false);
@@ -2198,10 +2186,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
       const auto mask_file = WriteDocumentMask(dir, segment.meta, docs_mask);
 
-      const auto segment_id = readers.size();
-      to_sync.PushPartial(segment_id, mask_file);
       index_utils::FlushIndexSegment(dir, segment);  // write with new mask
-      to_sync.PushPartial(segment_id, segment.filename);
+      sync_helper_.PushPartial(readers.size(), mask_file, segment.filename);
 
       auto new_segment = std::make_shared<SegmentReaderImpl>(
         *existing_segment.GetImpl(), segment.meta, std::move(docs_mask));
@@ -2365,8 +2351,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       index_utils::FlushIndexSegment(dir, pending_segment.segment);
     }
 
-    // register full segment sync
-    to_sync.PushFull(readers.size());
+    sync_helper_.PushFull(readers.size());  // Register full segment sync
     readers.emplace_back(std::move(pending_reader));
     pending_meta.segments.emplace_back(std::move(pending_segment.segment));
   }
@@ -2383,7 +2368,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
     for (size_t i = 0, size = readers.size(); i < size; ++i) {
       if (const auto& segment = readers[i]; segment_mask.contains(&segment)) {
-        to_sync.Invalidate(i);
+        sync_helper_.Invalidate(i);
       } else {
         tmp_readers.emplace_back(std::move(segment));
         tmp_meta.segments.emplace_back(std::move(pending_meta.segments[i]));
@@ -2568,14 +2553,13 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           *segment_ctx.reader_, meta, std::move(docs_mask));
       }
 
-      // register full segment sync
-      to_sync.PushFull(readers.size());
+      sync_helper_.PushFull(readers.size());  // Register full segment sync
       readers.emplace_back(std::move(segment_ctx.reader_));
       pending_meta.segments.emplace_back(std::move(segment_ctx.segment_));
     }
   }
 
-  modified |= !to_sync.Empty();
+  modified |= !sync_helper_.Empty();
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
@@ -2584,10 +2568,39 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
   InitMeta(pending_meta, max_tick);
 
-  return {.ctx = std::move(ctx),            // retain flush context reference
-          .meta = std::move(pending_meta),  // retain meta pending flush
-          .readers = std::move(readers),
-          .to_sync = std::move(to_sync)};
+  return {.ctx = std::move(ctx),            // Retain flush context reference
+          .meta = std::move(pending_meta),  // Retain meta pending flush
+          .readers = std::move(readers)};
+}
+
+std::shared_ptr<const DirectoryReaderImpl> IndexWriter::StartImpl(
+  RefTrackingDirectory& dir, DirectoryMeta&& to_commit) {
+  std::string index_meta_file;
+
+  // Execute 1st phase of index meta transaction
+  if (!writer_->prepare(dir, to_commit.index_meta, to_commit.filename,
+                        index_meta_file)) {
+    throw illegal_state{"Failed to write index metadata."};
+  }
+
+  // The 1st phase of the transaction successfully finished here,
+  // ensure we rollback changes if something goes wrong afterwards
+  Finally update_generation = [this, &to_commit]() noexcept {
+    if (IRS_UNLIKELY(!pending_state_.ctx)) {
+      writer_->rollback();  // Rollback failed transaction
+    }
+
+    // Ensure writer's generation is updated
+    last_gen_ = to_commit.index_meta.gen;
+  };
+
+  sync_helper_.Sync(dir, to_commit);
+
+  // Update file name so that directory reader holds a reference
+  to_commit.filename = std::move(index_meta_file);
+
+  return OpenReader(dir, codec_, std::move(to_commit),
+                    committed_reader_->Options());
 }
 
 bool IndexWriter::Start(ProgressReportCallback const& progress) {
@@ -2609,42 +2622,9 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
   }
 
   IRS_ASSERT(!pending_state_.ctx);
-
-  DirectoryMeta pending_meta{.index_meta = std::move(to_commit.meta)};
-
-  auto& dir = *to_commit.ctx->dir_;
-
-  // Write 1st phase of index_meta transaction
-  // FIXME(gnusi): don't sync file
-  if (!writer_->prepare(dir, pending_meta.index_meta, pending_meta.filename)) {
-    throw illegal_state{"Failed to write index metadata."};
-  }
-
-  // 1st phase of the transaction successfully finished here,
-  // ensure we rollback changes if something goes wrong afterwards
-  Finally update_generation = [this, &pending_meta]() noexcept {
-    if (IRS_UNLIKELY(!pending_state_.ctx)) {
-      writer_->rollback();  // Rollback failed transaction
-    }
-
-    // Ensure writer's generation is updated
-    last_gen_ = pending_meta.index_meta.gen;
-  };
-
-  to_commit.to_sync.ExtractFiles(files_to_sync_, pending_meta);
-
-  if (!dir.sync(files_to_sync_)) {  // sync all pending files
-    throw io_error{"Failed to sync files."};
-  }
-
-  // FIXME(gnusi): hold a reference to segments_ file also?
-  //               rename pending_segments_?
-  pending_state_.commit = std::make_shared<const DirectoryReaderImpl>(
-    dir, codec_, committed_reader_->Options(), std::move(pending_meta),
-    std::move(to_commit.readers));
-
-  // only noexcept operations below
-
+  RefTrackingDirectory& dir = *to_commit.ctx->dir_;
+  pending_state_.commit =
+    StartImpl(dir, {.index_meta = std::move(to_commit.meta)});
   pending_state_.ctx = std::move(to_commit.ctx);
   IRS_ASSERT(pending_state_.Valid());
 

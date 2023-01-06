@@ -478,6 +478,7 @@ struct index_meta_writer {
 
   virtual ~index_meta_writer() = default;
   virtual bool prepare(directory& dir, IndexMeta& meta,
+                       std::string& pending_filename,
                        std::string& filename) = 0;
   virtual bool commit() = 0;
   virtual void rollback() noexcept = 0;

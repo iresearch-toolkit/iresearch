@@ -2592,7 +2592,8 @@ struct index_meta_writer final : public irs::index_meta_writer {
     IRS_ASSERT(version_ >= kFormatMin && version <= kFormatMax);
   }
 
-  bool prepare(directory& dir, IndexMeta& meta, std::string& filename) override;
+  bool prepare(directory& dir, IndexMeta& meta, std::string& pending_filename,
+               std::string& filename) override;
   bool commit() override;
   void rollback() noexcept override;
 
@@ -2612,6 +2613,7 @@ struct index_meta_writer final : public irs::index_meta_writer {
 };
 
 bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
+                                std::string& pending_filename,
                                 std::string& filename) {
   if (index_gen_limits::valid(pending_gen_)) {
     // prepare() was already called with no corresponding call to commit()
@@ -2619,7 +2621,8 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
   }
 
   ++meta.gen;  // Increment generation before generating filename
-  filename = PendingFileName(meta.gen);
+  pending_filename = PendingFileName(meta.gen);
+  filename = FileName(meta.gen);
 
   auto out = dir.create(filename);
 

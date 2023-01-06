@@ -48,6 +48,48 @@
 #include <absl/container/flat_hash_map.h>
 
 namespace irs {
+namespace detail {
+
+class SyncHelper : util::noncopyable {
+ public:
+  void Sync(directory& dir, const DirectoryMeta& meta);
+
+  void PushPartial(size_t i, std::string_view file0, std::string_view file1) {
+    files_.emplace_back(file0);
+    files_.emplace_back(file1);
+    segments_.emplace_back(i, kPartial);
+  }
+
+  void PushFull(size_t i) { segments_.emplace_back(i, kFull); }
+
+  void Invalidate(size_t i) noexcept {
+    IRS_ASSERT(i < segments_.size());
+    auto& [_, count] = segments_[i];
+    IRS_ASSERT(count != kFull && count != kInvalid);
+    count = kInvalid;
+  }
+
+  bool Empty() const noexcept { return segments_.empty(); };
+
+  void Clear() noexcept {
+    files_.clear();
+    segments_.clear();
+  }
+
+ private:
+  enum : size_t {
+    kFull = 0,
+    kPartial = 2,
+    kInvalid = std::numeric_limits<size_t>::max()
+  };
+
+  // Files to sync
+  std::vector<std::string> files_;
+  // Segments to sync (index within index meta)
+  std::vector<std::pair<size_t, size_t>> segments_;
+};
+
+}  // namespace detail
 
 class Comparer;
 struct directory;
@@ -860,39 +902,6 @@ class IndexWriter : private util::noncopyable {
     void reset() noexcept;
   };
 
-  class SyncContext : util::noncopyable {
-   public:
-    void ExtractFiles(std::vector<std::string_view>& files,
-                      const DirectoryMeta& meta) const;
-
-    void PushPartial(size_t i, std::string_view file) {
-      files_.emplace_back(file);
-      segments_.emplace_back(i, kPartial);
-    }
-
-    void PushFull(size_t i) { segments_.emplace_back(i, kFull); }
-
-    void Invalidate(size_t i) {
-      auto& [_, count] = segments_[i];
-      IRS_ASSERT(count == kPartial);
-      count = kInvalid;
-    }
-
-    bool Empty() const noexcept { return segments_.empty(); };
-
-   private:
-    enum Type : size_t {
-      kFull = 0,
-      kPartial = 1,
-      kInvalid = std::numeric_limits<size_t>::max()
-    };
-
-    // Files to sync
-    std::vector<std::string> files_;
-    // Segments to sync (index within index meta)
-    std::vector<std::pair<size_t, size_t>> segments_;
-  };
-
   struct PendingContext {
     // Reference to flush context held until end of commit
     FlushContextPtr ctx{nullptr, nullptr};
@@ -900,8 +909,6 @@ class IndexWriter : private util::noncopyable {
     IndexMeta meta;
     // Segment readers of the next commit
     std::vector<SegmentReader> readers;
-    // File names and segments to be synced during next commit
-    SyncContext to_sync;
 
     bool Empty() const noexcept { return !ctx; }
   };
@@ -933,8 +940,6 @@ class IndexWriter : private util::noncopyable {
 
   FlushContextPtr GetFlushContext(bool shared = true);
 
-  void Sync(directory& dir, const SyncContext& ctx, const IndexMeta& meta);
-
   // return a usable segment or a nullptr segment if
   // retry is required (e.g. no free segments available)
   ActiveSegmentContext GetSegmentContext(FlushContext& ctx);
@@ -952,9 +957,11 @@ class IndexWriter : private util::noncopyable {
   void Finish();
   // Abort transaction
   void Abort() noexcept;
+  std::shared_ptr<const DirectoryReaderImpl> StartImpl(
+    RefTrackingDirectory& dir, DirectoryMeta&& to_commit);
 
+  detail::SyncHelper sync_helper_;
   FeatureInfoProvider feature_info_;
-  std::vector<std::string_view> files_to_sync_;
   ColumnInfoProvider column_info_;
   // provides payload for new segments
   PayloadProvider meta_payload_provider_;
