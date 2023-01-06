@@ -484,6 +484,7 @@ TEST(segment_reader_test, open) {
     meta.codec = codec_ptr;
     meta.column_store = true;
     meta.docs_count = 5;
+    meta.live_docs_count = 5;
     meta.name = "_1";
     meta.version = IRESEARCH_VERSION;
 
@@ -491,7 +492,7 @@ TEST(segment_reader_test, open) {
     ASSERT_FALSE(!rdr);
     ASSERT_EQ(1, rdr.size());
     ASSERT_EQ(meta.docs_count, rdr.docs_count());
-    ASSERT_EQ(meta.docs_count, rdr.live_docs_count());
+    ASSERT_EQ(meta.live_docs_count, rdr.live_docs_count());
 
     auto& segment = *rdr.begin();
     const auto* column = segment.column("name");

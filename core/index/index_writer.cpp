@@ -1449,6 +1449,7 @@ IndexWriter::ptr IndexWriter::make(
         try {
           reader->read(dir, meta.index_meta, meta.filename);
 
+          meta.filename.clear();  // Empty index meta -> new index
           auto& index_meta = meta.index_meta;
           index_meta.payload.reset();
           index_meta.segments.clear();
@@ -1472,20 +1473,20 @@ IndexWriter::ptr IndexWriter::make(
     opts.features ? opts.features : kDefaultFeatureInfo,
     opts.meta_payload_provider, std::move(reader));
 
-  // remove non-index files from directory
+  // Remove non-index files from directory
   directory_utils::RemoveAllUnreferenced(dir);
 
   return writer;
 }
 
 IndexWriter::~IndexWriter() noexcept {
-  // failure may indicate a dangling 'document' instance
+  // Failure may indicate a dangling 'document' instance
   IRS_ASSERT(!segments_active_.load());
-  write_lock_.reset();  // reset write lock if any
-  // reset pending state (if any) before destroying flush contexts
+  write_lock_.reset();  // Reset write lock if any
+  // Reset pending state (if any) before destroying flush contexts
   pending_state_.Reset();
   flush_context_.store(nullptr);
-  // ensue all tracked segment_contexts are released before
+  // Ensue all tracked segment_contexts are released before
   // segment_writer_pool_ is deallocated
   flush_context_pool_.clear();
 }
@@ -2150,9 +2151,15 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
       IRS_ASSERT(begin <= end);
       IRS_ASSERT(end <= modifications.segment_->modification_queries_.size());
+
+      const size_t size = end - begin;
+
+      if (!size) {
+        continue;
+      }
+
       const std::span modification_queries{
-        modifications.segment_->modification_queries_.data() + begin,
-        end - begin};
+        modifications.segment_->modification_queries_.data() + begin, size};
 
       RemoveFromExistingSegment(deleted_docs, modification_queries,
                                 existing_segment);
@@ -2160,6 +2167,9 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
     // Write docs_mask if masks added
     if (const size_t num_removals = deleted_docs.size(); num_removals) {
+      // Ensure we clear accumulated removals
+      Finally cleanup = [&]() noexcept { deleted_docs.clear(); };
+
       // If all docs are masked then mask segment
       if (existing_segment.live_docs_count() == num_removals) {
         // It's important to mask empty segment to rollback
@@ -2187,8 +2197,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         *existing_segment.GetImpl(), segment.meta, std::move(docs_mask));
       readers.emplace_back(std::move(new_segment));
       pending_meta.segments.emplace_back(std::move(segment));
-
-      deleted_docs.clear();
     } else {
       readers.emplace_back(existing_segment.GetImpl());
       pending_meta.segments.emplace_back(
