@@ -39,7 +39,7 @@ struct IndexReader {
     using value_type = const SubReader;
     using pointer = value_type*;
     using reference = value_type&;
-    using difference_type = void;
+    using difference_type = ptrdiff_t;
 
     reference operator*() const {
       // can't mark noexcept because of virtual operator[]
@@ -63,6 +63,11 @@ struct IndexReader {
     bool operator==(const Iterator& rhs) const noexcept {
       IRS_ASSERT(reader_ == rhs.reader_);
       return i_ == rhs.i_;
+    }
+
+    difference_type operator-(const Iterator& rhs) const noexcept {
+      IRS_ASSERT(reader_ == rhs.reader_);
+      return i_ - rhs.i_;
     }
 
    private:

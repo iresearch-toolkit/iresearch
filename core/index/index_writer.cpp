@@ -1627,22 +1627,23 @@ ConsolidationResult IndexWriter::Consolidate(
   ConsolidationResult result{candidates.size(), ConsolidationError::FAIL};
 
   IndexSegment consolidation_segment;
-  consolidation_segment.meta.codec = codec;  // should use new codec
-  consolidation_segment.meta.version = 0;    // reset version for new segment
-  // increment active meta
+  consolidation_segment.meta.codec = codec;  // Should use new codec
+  consolidation_segment.meta.version = 0;    // Reset version for new segment
+  // Increment active meta
   consolidation_segment.meta.name = file_name(NextSegmentId());
 
-  RefTrackingDirectory dir{dir_};  // track references for new segment
-  MergeWriter merger{dir, column_info_, feature_info_, comparator_};
-  merger.PushBack(candidates);  // Add consolidated segments to the merge_writer
+  RefTrackingDirectory dir{dir_};  // Track references for new segment
 
-  // we do not persist segment meta since some removals may come later
+  MergeWriter merger{dir, column_info_, feature_info_, comparator_};
+  merger.Reset(candidates.begin(), candidates.end());
+
+  // We do not persist segment meta since some removals may come later
   if (!merger.Flush(consolidation_segment.meta, progress)) {
-    // nothing to consolidate or consolidation failure
+    // Nothing to consolidate or consolidation failure
     return result;
   }
 
-  // commit merge
+  // Commit merge
   {
     // ensure committed_state_ segments are not modified by concurrent
     // consolidate()/commit()
@@ -1845,28 +1846,24 @@ bool IndexWriter::Import(const IndexReader& reader,
                          format::ptr codec /*= nullptr*/,
                          const MergeWriter::FlushProgress& progress /*= {}*/) {
   if (!reader.live_docs_count()) {
-    return true;  // skip empty readers since no documents to import
+    return true;  // Skip empty readers since no documents to import
   }
 
   if (!codec) {
     codec = codec_;
   }
 
-  RefTrackingDirectory dir{dir_};  // track references
+  RefTrackingDirectory dir{dir_};  // Track references
 
   IndexSegment segment;
   segment.meta.name = file_name(NextSegmentId());
   segment.meta.codec = codec;
 
   MergeWriter merger(dir, column_info_, feature_info_, comparator_);
-
-  merger.Reserve(reader.size());
-  for (const auto& segment : reader) {
-    merger.PushBack(segment);
-  }
+  merger.Reset(reader.begin(), reader.end());
 
   if (!merger.Flush(segment.meta, progress)) {
-    return false;  // import failure (no files created, nothing to clean up)
+    return false;  // Import failure (no files created, nothing to clean up)
   }
 
   index_utils::FlushIndexSegment(dir, segment);

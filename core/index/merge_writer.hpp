@@ -43,6 +43,7 @@ class MergeWriter : public util::noncopyable {
 
   struct ReaderCtx {
     ReaderCtx(const SubReader* reader) noexcept;
+    ReaderCtx(const SubReader& reader) noexcept : ReaderCtx{&reader} {}
 
     const SubReader* reader;                    // segment reader
     std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
@@ -65,13 +66,10 @@ class MergeWriter : public util::noncopyable {
 
   operator bool() const noexcept;
 
-  // Reserve enough space to hold 'size' readers
-  void Reserve(size_t size) { readers_.reserve(size); }
-
-  void PushBack(std::span<const SubReader*> readers) {
-    readers_.insert(readers_.end(), readers.begin(), readers.end());
+  template<typename Iterator>
+  void Reset(Iterator begin, Iterator end) {
+    readers_.insert(readers_.end(), begin, end);
   }
-  void PushBack(const SubReader& reader) { readers_.emplace_back(&reader); }
 
   // Flush all of the added readers into a single segment.
   // `segment` the segment that was flushed.
