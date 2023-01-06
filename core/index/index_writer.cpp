@@ -552,6 +552,11 @@ std::shared_ptr<const DirectoryReaderImpl> OpenReader(
     dir, std::move(codec), opts, std::move(meta), std::move(readers));
 }
 
+bool IsInitialCommit(const DirectoryMeta& meta) noexcept {
+  // Initial commit is always for required for empty directory
+  return meta.filename.empty();
+}
+
 }  // namespace
 
 namespace detail {
@@ -1379,9 +1384,9 @@ void IndexWriter::Clear(uint64_t tick) {
   // cppcheck-suppress unreadVariable
   std::lock_guard commit_lock{commit_lock_};
 
-  auto& committed_meta = committed_reader_->Meta().index_meta;
-
-  if (!pending_state_.Valid() && committed_meta.segments.empty()) {
+  if (auto& committed_meta = committed_reader_->Meta();
+      !pending_state_.Valid() && committed_meta.index_meta.segments.empty() &&
+      !IsInitialCommit(committed_meta)) {
     return;  // Already empty
   }
 
@@ -2083,7 +2088,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   const auto& reader_options = committed_reader.Options();
 
   // If there is no index we shall initialize it
-  bool modified = committed_meta.filename.empty();
+  bool modified = IsInitialCommit(committed_meta);
 
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
