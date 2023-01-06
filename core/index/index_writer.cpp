@@ -305,7 +305,6 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
     meta.docs_count - static_cast<doc_id_t>(docs_mask.size());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
-  mask_writer->write(dir, meta, docs_mask);
 
   if (increment_version) {
     meta.files.erase(mask_writer->filename(meta));  // Current filename
@@ -324,6 +323,8 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
 
   const auto [file, _] =
     meta.files.emplace(mask_writer->filename(meta));  // new/expected filename
+
+  mask_writer->write(dir, meta, docs_mask);
 
   return *file;
 }
