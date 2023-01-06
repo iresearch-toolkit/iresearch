@@ -42,7 +42,7 @@ class MergeWriter : public util::noncopyable {
   using FlushProgress = std::function<bool()>;
 
   struct ReaderCtx {
-    explicit ReaderCtx(const SubReader* reader) noexcept;
+    ReaderCtx(const SubReader* reader) noexcept;
 
     const SubReader* reader;                    // segment reader
     std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
@@ -65,28 +65,31 @@ class MergeWriter : public util::noncopyable {
 
   operator bool() const noexcept;
 
-  void add(const SubReader& reader) { readers_.emplace_back(&reader); }
+  // Reserve enough space to hold 'size' readers
+  void Reserve(size_t size) { readers_.reserve(size); }
+
+  void PushBack(std::span<const SubReader*> readers) {
+    readers_.insert(readers_.end(), readers.begin(), readers.end());
+  }
+  void PushBack(const SubReader& reader) { readers_.emplace_back(&reader); }
 
   // Flush all of the added readers into a single segment.
   // `segment` the segment that was flushed.
   // `progress` report flush progress (abort if 'progress' returns false).
   // Return merge successful.
-  bool flush(SegmentMeta& segment, const FlushProgress& progress = {});
+  bool Flush(SegmentMeta& segment, const FlushProgress& progress = {});
 
   const ReaderCtx& operator[](size_t i) const noexcept {
     IRS_ASSERT(i < readers_.size());
     return readers_[i];
   }
 
-  // reserve enough space to hold 'size' readers
-  void reserve(size_t size) { readers_.reserve(size); }
-
  private:
-  bool flush_sorted(TrackingDirectory& dir, SegmentMeta& segment,
-                    const FlushProgress& progress);
+  bool FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
+                   const FlushProgress& progress);
 
-  bool flush(TrackingDirectory& dir, SegmentMeta& segment,
-             const FlushProgress& progress);
+  bool FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
+                     const FlushProgress& progress);
 
   directory& dir_;
   std::vector<ReaderCtx> readers_;

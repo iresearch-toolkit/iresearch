@@ -299,6 +299,11 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
   IRS_ASSERT(!docs_mask.empty());
   IRS_ASSERT(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
+  // Update live docs count
+  IRS_ASSERT(docs_mask.size() < meta.docs_count);
+  meta.live_docs_count =
+    meta.docs_count - static_cast<doc_id_t>(docs_mask.size());
+
   auto mask_writer = meta.codec->get_document_mask_writer();
   mask_writer->write(dir, meta, docs_mask);
 
@@ -319,11 +324,6 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
 
   const auto [file, _] =
     meta.files.emplace(mask_writer->filename(meta));  // new/expected filename
-
-  // Update live docs count
-  IRS_ASSERT(docs_mask.size() < meta.docs_count);
-  meta.live_docs_count =
-    meta.docs_count - static_cast<doc_id_t>(docs_mask.size());
 
   return *file;
 }
@@ -1634,18 +1634,10 @@ ConsolidationResult IndexWriter::Consolidate(
 
   RefTrackingDirectory dir{dir_};  // track references for new segment
   MergeWriter merger{dir, column_info_, feature_info_, comparator_};
-  merger.reserve(result.size);
-
-  // add consolidated segments to the merge_writer
-  for (const auto* segment : candidates) {
-    // already checked validity
-    IRS_ASSERT(segment);
-    // merge_writer holds a reference to reader
-    merger.add(*segment);
-  }
+  merger.PushBack(candidates);  // Add consolidated segments to the merge_writer
 
   // we do not persist segment meta since some removals may come later
-  if (!merger.flush(consolidation_segment.meta, progress)) {
+  if (!merger.Flush(consolidation_segment.meta, progress)) {
     // nothing to consolidate or consolidation failure
     return result;
   }
@@ -1867,13 +1859,13 @@ bool IndexWriter::Import(const IndexReader& reader,
   segment.meta.codec = codec;
 
   MergeWriter merger(dir, column_info_, feature_info_, comparator_);
-  merger.reserve(reader.size());
 
-  for (const auto& curr_segment : reader) {
-    merger.add(curr_segment);
+  merger.Reserve(reader.size());
+  for (const auto& segment : reader) {
+    merger.PushBack(segment);
   }
 
-  if (!merger.flush(segment.meta, progress)) {
+  if (!merger.Flush(segment.meta, progress)) {
     return false;  // import failure (no files created, nothing to clean up)
   }
 

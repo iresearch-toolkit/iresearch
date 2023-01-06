@@ -1337,8 +1337,8 @@ MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
 }
 
-bool MergeWriter::flush(TrackingDirectory& dir, SegmentMeta& segment,
-                        const FlushProgress& progress) {
+bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
+                                const FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
   IRS_ASSERT(!comparator_);
@@ -1446,8 +1446,8 @@ bool MergeWriter::flush(TrackingDirectory& dir, SegmentMeta& segment,
   return true;
 }
 
-bool MergeWriter::flush_sorted(TrackingDirectory& dir, SegmentMeta& segment,
-                               const FlushProgress& progress) {
+bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
+                              const FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(progress);
   IRS_ASSERT(comparator_);
@@ -1678,7 +1678,7 @@ bool MergeWriter::flush_sorted(TrackingDirectory& dir, SegmentMeta& segment,
   return true;
 }
 
-bool MergeWriter::flush(SegmentMeta& segment,
+bool MergeWriter::Flush(SegmentMeta& segment,
                         const FlushProgress& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(segment.codec);  // must be set outside
@@ -1705,8 +1705,8 @@ bool MergeWriter::flush(SegmentMeta& segment,
 
   TrackingDirectory track_dir(dir_);  // track writer created files
 
-  result = comparator_ ? flush_sorted(track_dir, segment, progress_callback)
-                       : flush(track_dir, segment, progress_callback);
+  result = comparator_ ? FlushSorted(track_dir, segment, progress_callback)
+                       : FlushUnsorted(track_dir, segment, progress_callback);
 
   track_dir.flush_tracked(segment.files);
 
