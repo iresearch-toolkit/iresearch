@@ -29,6 +29,8 @@
 #include "utils/index_utils.hpp"
 #include "utils/type_limits.hpp"
 
+#include <absl/strings/str_cat.h>
+
 namespace irs {
 namespace {
 
