@@ -2057,11 +2057,11 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   auto const& progress =
     (progress_callback != nullptr ? progress_callback : kNoProgress);
 
-  sync_helper_.Clear();
   IndexMeta pending_meta;
 
   auto ctx = GetFlushContext(false);
   auto& dir = *(ctx->dir_);
+
   // ensure there are no active struct update operations
   std::unique_lock lock{ctx->mutex_};
 
