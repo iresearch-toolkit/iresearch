@@ -7637,8 +7637,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     writer->Commit();
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir));  // segments_1
 
-    dir.intermediate_commits_lock
-      .lock();  // acquire directory lock, and block consolidation
+    // acquire directory lock, and block consolidation
+    dir.intermediate_commits_lock.lock();
 
     std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
@@ -7650,9 +7650,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
            const irs::ConsolidatingSegments& consolidating_segments) {
           ASSERT_TRUE(consolidating_segments.empty());
         };
-      ASSERT_TRUE(writer->Consolidate(
-        check_consolidating_segments));  // check segments registered for
-                                         // consolidation
+      // check segments registered for consolidation
+      ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -7816,20 +7815,26 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
         [&expected_consolidating_segments](
-          irs::Consolidation& /*candidates*/, const irs::IndexReader& meta,
+          irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
           const irs::ConsolidatingSegments& consolidating_segments) {
           ASSERT_EQ(expected_consolidating_segments.size(),
                     consolidating_segments.size());
           for (auto i : expected_consolidating_segments) {
-            auto& expected_consolidating_segment = meta[i];
-            ASSERT_TRUE(
-              consolidating_segments.end() !=
-              consolidating_segments.find(&expected_consolidating_segment));
+            const auto& expected_consolidating_segment = reader[i];
+            const auto it = std::find_if(
+              consolidating_segments.begin(), consolidating_segments.end(),
+              [&expected_consolidating_segment](auto* segment) {
+                const auto& expected_meta =
+                  expected_consolidating_segment.Meta();
+                const auto& current_meta = segment->Meta();
+                return current_meta.name == expected_meta.name &&
+                       current_meta.version == expected_meta.version;
+              });
+            ASSERT_NE(it, consolidating_segments.end());
           }
         };
-      ASSERT_TRUE(writer->Consolidate(
-        check_consolidating_segments));  // check segments registered for
-                                         // consolidation
+      // check segments registered for consolidation
+      ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -7981,15 +7986,21 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
           ASSERT_EQ(expected_consolidating_segments.size(),
                     consolidating_segments.size());
           for (auto i : expected_consolidating_segments) {
-            auto& expected_consolidating_segment = reader[i];
-            ASSERT_TRUE(
-              consolidating_segments.end() !=
-              consolidating_segments.find(&expected_consolidating_segment));
+            const auto& expected_consolidating_segment = reader[i];
+            const auto it = std::find_if(
+              consolidating_segments.begin(), consolidating_segments.end(),
+              [&expected_consolidating_segment](auto* segment) {
+                const auto& expected_meta =
+                  expected_consolidating_segment.Meta();
+                const auto& current_meta = segment->Meta();
+                return current_meta.name == expected_meta.name &&
+                       current_meta.version == expected_meta.version;
+              });
+            ASSERT_NE(it, consolidating_segments.end());
           }
         };
-      ASSERT_TRUE(writer->Consolidate(
-        check_consolidating_segments));  // check segments registered for
-                                         // consolidation
+      // check segments registered for consolidation
+      ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
     });
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
@@ -8114,10 +8125,16 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
-        auto& expected_consolidating_segment = reader[i];
-        ASSERT_TRUE(
-          consolidating_segments.end() !=
-          consolidating_segments.find(&expected_consolidating_segment));
+        const auto& expected_consolidating_segment = reader[i];
+        const auto it = std::find_if(
+          consolidating_segments.begin(), consolidating_segments.end(),
+          [&expected_consolidating_segment](auto* segment) {
+            const auto& expected_meta = expected_consolidating_segment.Meta();
+            const auto& current_meta = segment->Meta();
+            return current_meta.name == expected_meta.name &&
+                   current_meta.version == expected_meta.version;
+          });
+        ASSERT_NE(it, consolidating_segments.end());
       }
     };
 
@@ -8265,10 +8282,16 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
-        auto& expected_consolidating_segment = reader[i];
-        ASSERT_TRUE(
-          consolidating_segments.end() !=
-          consolidating_segments.find(&expected_consolidating_segment));
+        const auto& expected_consolidating_segment = reader[i];
+        const auto it = std::find_if(
+          consolidating_segments.begin(), consolidating_segments.end(),
+          [&expected_consolidating_segment](auto* segment) {
+            const auto& expected_meta = expected_consolidating_segment.Meta();
+            const auto& current_meta = segment->Meta();
+            return current_meta.name == expected_meta.name &&
+                   current_meta.version == expected_meta.version;
+          });
+        ASSERT_NE(it, consolidating_segments.end());
       }
     };
 
@@ -8686,9 +8709,16 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
       [](irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
          const irs::ConsolidatingSegments& consolidating_segments) {
         ASSERT_EQ(reader.size(), consolidating_segments.size());
-        for (auto& segment : reader) {
-          ASSERT_TRUE(consolidating_segments.end() !=
-                      consolidating_segments.find(&segment));
+        for (auto& expected_consolidating_segment : reader) {
+          const auto it = std::find_if(
+            consolidating_segments.begin(), consolidating_segments.end(),
+            [&expected_consolidating_segment](auto* segment) {
+              const auto& expected_meta = expected_consolidating_segment.Meta();
+              const auto& current_meta = segment->Meta();
+              return current_meta.name == expected_meta.name &&
+                     current_meta.version == expected_meta.version;
+            });
+          ASSERT_NE(it, consolidating_segments.end());
         }
       };
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
@@ -8765,10 +8795,16 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       ASSERT_EQ(expected_consolidating_segments.size(),
                 consolidating_segments.size());
       for (auto i : expected_consolidating_segments) {
-        auto& expected_consolidating_segment = reader[i];
-        ASSERT_TRUE(
-          consolidating_segments.end() !=
-          consolidating_segments.find(&expected_consolidating_segment));
+        const auto& expected_consolidating_segment = reader[i];
+        const auto it = std::find_if(
+          consolidating_segments.begin(), consolidating_segments.end(),
+          [&expected_consolidating_segment](auto* segment) {
+            const auto& expected_meta = expected_consolidating_segment.Meta();
+            const auto& current_meta = segment->Meta();
+            return current_meta.name == expected_meta.name &&
+                   current_meta.version == expected_meta.version;
+          });
+        ASSERT_NE(it, consolidating_segments.end());
       }
     };
 
