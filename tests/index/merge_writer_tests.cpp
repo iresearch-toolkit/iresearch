@@ -389,7 +389,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
+  ASSERT_EQ(2, reader[0].live_docs_count());
   ASSERT_EQ(2, reader[1].docs_count());
+  ASSERT_EQ(1, reader[1].live_docs_count());
 
   // check for columns segment 0
   {

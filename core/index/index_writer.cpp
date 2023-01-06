@@ -151,7 +151,7 @@ void RemoveFromExistingSegment(
 
 bool RemoveFromImportedSegment(
   std::span<IndexWriter::ModificationContext> modifications,
-  const SubReader& reader, SegmentInfo& meta, document_mask& docs_mask,
+  const SubReader& reader, document_mask& docs_mask,
   size_t min_modification_generation = 0) {
   IRS_ASSERT(!modifications.empty());
   bool modified = false;
@@ -188,10 +188,6 @@ bool RemoveFromImportedSegment(
     }
   }
 
-  // decrement count of live docs
-  IRS_ASSERT(docs_mask.size() <= meta.docs_count);
-  meta.live_docs_count = meta.docs_count - docs_mask.size();
-
   return modified;
 }
 
@@ -201,36 +197,34 @@ bool RemoveFromImportedSegment(
 // min_doc_id staring doc_id that should be considered
 // readers readers by segment name
 // Return if any new records were added (modification_queries_ modified).
-bool RemoveFromNewSegment(
+void RemoveFromNewSegment(
   std::span<IndexWriter::ModificationContext> modifications,
   FlushSegmentContext& ctx) {
   IRS_ASSERT(!modifications.empty());
-
-  auto& docs_mask = ctx.docs_mask_;
-  bool modified = false;
-
-  IRS_ASSERT(doc_limits::valid(ctx.doc_id_begin_));
+  IRS_ASSERT(ctx.reader_);
   IRS_ASSERT(ctx.doc_id_begin_ <= ctx.doc_id_end_);
   IRS_ASSERT(ctx.doc_id_end_ <=
              ctx.update_contexts_.size() + doc_limits::min());
-  IRS_ASSERT(ctx.reader_);
+  IRS_ASSERT(doc_limits::valid(ctx.doc_id_begin_));
 
   auto& reader = *ctx.reader_;
+  auto& docs_mask = ctx.docs_mask_;
+
   for (auto& modification : modifications) {
-    if (!modification.filter) {
-      continue;  // skip invalid or uncommitted modification queries
+    if (IRS_UNLIKELY(!modification.filter)) {
+      continue;  // Skip invalid or uncommitted modification queries
     }
 
     auto prepared = modification.filter->prepare(reader);
 
-    if (!prepared) {
-      continue;  // skip invalid prepared filters
+    if (IRS_UNLIKELY(!prepared)) {
+      continue;  // Skip invalid prepared filters
     }
 
     auto itr = prepared->execute(reader);
 
-    if (!itr) {
-      continue;  // skip invalid iterators
+    if (IRS_UNLIKELY(!itr)) {
+      continue;  // Skip invalid iterators
     }
 
     while (itr->next()) {
@@ -240,44 +234,37 @@ bool RemoveFromNewSegment(
         continue;  // doc_id is not part of the current flush_context
       }
 
-      // valid because of asserts above
+      // Valid because of asserts above
       const auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()];
 
-      // if the indexed doc_id was insert()ed after the request for modification
+      // If the indexed doc_id was insert()ed after the request for modification
       // or the indexed doc_id was already masked then it should be skipped
       if (modification.generation < doc_ctx.generation ||
           !docs_mask.insert(doc_id).second) {
         continue;  // the current modification query does not match any records
       }
 
-      // if an update modification and update-value record whose query was not
+      // If an update modification and update-value record whose query was not
       // seen (i.e. replacement value whose filter did not match any documents)
       // for every update request a replacement 'update-value' is optimistically
       // inserted
       if (modification.update && doc_ctx.update_id != kNonUpdateRecord &&
           !ctx.modification_contexts_[doc_ctx.update_id].seen) {
-        continue;  // the current modification matched a replacement document
-                   // which in turn did not match any records
+        // The current modification matched a replacement document
+        // which in turn did not match any records
+        continue;
       }
 
-      modified = true;
       modification.seen = true;
     }
   }
-
-  // decrement count of live docs
-  auto& meta = ctx.segment_.meta;
-  IRS_ASSERT(docs_mask.size() <= meta.docs_count);
-  meta.live_docs_count = meta.docs_count - docs_mask.size();
-
-  return modified;
 }
 
 // Mask documents created by updates which did not have any matches.
 // Return if any new records were added (modification_contexts_ modified).
-bool MaskUnusedUpdatesInNewSegment(FlushSegmentContext& ctx) {
+void MaskUnusedUpdatesInNewSegment(FlushSegmentContext& ctx) {
   if (ctx.modification_contexts_.empty()) {
-    return false;  // nothing new to add
+    return;  // nothing new to add
   }
   IRS_ASSERT(doc_limits::valid(ctx.doc_id_begin_));
   IRS_ASSERT(ctx.doc_id_begin_ <= ctx.doc_id_end_);
@@ -286,7 +273,6 @@ bool MaskUnusedUpdatesInNewSegment(FlushSegmentContext& ctx) {
 
   auto& docs_mask = ctx.docs_mask_;
 
-  doc_id_t count = 0;
   for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
     // valid because of asserts above
     const auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()];
@@ -297,34 +283,30 @@ bool MaskUnusedUpdatesInNewSegment(FlushSegmentContext& ctx) {
 
     IRS_ASSERT(ctx.modification_contexts_.size() > doc_ctx.update_id);
 
-    // if it's an update record placeholder who's query already match some
+    // If it's an update record placeholder who's query already match some
     // record
-    if (ctx.modification_contexts_[doc_ctx.update_id].seen ||
-        !docs_mask.insert(doc_id).second) {
-      continue;  // the current placeholder record is in-use and valid
+    if (!ctx.modification_contexts_[doc_ctx.update_id].seen) {
+      docs_mask.insert(doc_id);
     }
-
-    ++count;
   }
-
-  auto& meta = ctx.segment_.meta;
-  IRS_ASSERT(meta.live_docs_count);
-  meta.live_docs_count -= count;  // decrement count of live docs
-
-  return count;
 }
 
+// Write the specified document mask and adjust version and
+// live documents count of the specifed meta.
 std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
                                    const document_mask& docs_mask,
                                    bool increment_version = true) {
+  IRS_ASSERT(!docs_mask.empty());
   IRS_ASSERT(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
   auto mask_writer = meta.codec->get_document_mask_writer();
+  mask_writer->write(dir, meta, docs_mask);
 
   if (increment_version) {
-    meta.files.erase(mask_writer->filename(meta));  // current filename
-    ++meta.version;  // segment modified due to new document_mask
+    meta.files.erase(mask_writer->filename(meta));  // Current filename
+    ++meta.version;  // Segment modified due to new document_mask
 
+    // FIXME(gnusi): cosider removing this
     // a second time +1 to avoid overlap with version increment due to commit of
     // uncommitted segment tail which must mask committed segment head
     // NOTE0: +1 extra is enough since a segment can reside in at most 2
@@ -338,7 +320,10 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
   const auto [file, _] =
     meta.files.emplace(mask_writer->filename(meta));  // new/expected filename
 
-  mask_writer->write(dir, meta, docs_mask);
+  // Update live docs count
+  IRS_ASSERT(docs_mask.size() < meta.docs_count);
+  meta.live_docs_count =
+    meta.docs_count - static_cast<doc_id_t>(docs_mask.size());
 
   return *file;
 }
@@ -1815,7 +1800,6 @@ ConsolidationResult IndexWriter::Consolidate(
         }
 
         if (!docs_mask.empty()) {
-          consolidation_segment.meta.live_docs_count -= docs_mask.size();
           WriteDocumentMask(dir, consolidation_segment.meta, docs_mask, false);
         }
       }
@@ -2295,7 +2279,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         // We're done with removals for pending consolidation
         // they have been already applied to candidates above
         // and successfully remapped to consolidated segment
-        meta.live_docs_count = meta.docs_count - pending_docs_mask.size();
         docs_mask_modified |= true;
       }
 
@@ -2328,13 +2311,14 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           modifications.segment_->modification_queries_.data() + begin, size};
 
         docs_mask_modified |= RemoveFromImportedSegment(
-          modification_queries, *pending_reader, meta, pending_docs_mask,
+          modification_queries, *pending_reader, pending_docs_mask,
           pending_segment.generation);
       }
     }
 
     // skip empty segments
-    if (!meta.live_docs_count) {
+    if (meta.docs_count <= pending_docs_mask.size()) {
+      IRS_ASSERT(meta.docs_count == pending_docs_mask.size());
       modified = true;
       continue;
     }
@@ -2474,17 +2458,13 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
         // read document_mask as was originally flushed
         // could be due to truncated records due to rollback of uncommitted data
-        auto docs_mask = flush_segment_ctx.docs_mask_;
-        auto& flushed_meta = flush_segment_ctx.segment_.meta;
+        auto& docs_mask = flush_segment_ctx.docs_mask_;
 
         // add doc_ids before start of this flush_context to document_mask
         for (size_t doc_id = doc_limits::min(); doc_id < valid_doc_id_begin;
              ++doc_id) {
           IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
-          if (docs_mask.emplace(static_cast<doc_id_t>(doc_id)).second) {
-            // decrement count of live docs
-            --flushed_meta.live_docs_count;
-          }
+          docs_mask.emplace(static_cast<doc_id_t>(doc_id));
         }
 
         // add tail doc_ids not part of this flush_context to documents_mask
@@ -2493,10 +2473,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
                     doc_id_end = flushed.meta.docs_count + doc_limits::min();
              doc_id < doc_id_end; ++doc_id) {
           IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
-          if (docs_mask.emplace(static_cast<doc_id_t>(doc_id)).second) {
-            // decrement count of live docs
-            --flushed_meta.live_docs_count;
-          }
+          docs_mask.emplace(static_cast<doc_id_t>(doc_id));
         }
 
         // mask documents matching filters from all flushed segment_contexts
@@ -2536,15 +2513,15 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       // if they were seen
       MaskUnusedUpdatesInNewSegment(segment_ctx);
 
+      auto& docs_mask = segment_ctx.docs_mask_;
       auto& meta = segment_ctx.segment_.meta;
 
-      // after mismatched replaces here could be also empty segment
+      // After mismatched replaces here could be also empty segment
       // so masking is needed
-      if (!meta.live_docs_count) {
+      if (meta.docs_count <= docs_mask.size()) {
+        IRS_ASSERT(meta.docs_count == docs_mask.size());
         continue;
       }
-
-      auto& docs_mask = segment_ctx.docs_mask_;
 
       if (!docs_mask.empty()) {  // Write non-empty document mask
         WriteDocumentMask(dir, meta, docs_mask);

@@ -499,7 +499,6 @@ void FlushIndexSegment(directory& dir, IndexSegment& segment) {
 
   // estimate meta segment size
   uint64_t segment_size{};
-
   for (const auto& filename : segment.meta.files) {
     uint64_t size;
 
@@ -510,11 +509,10 @@ void FlushIndexSegment(directory& dir, IndexSegment& segment) {
 
     segment_size += size;
   }
+  segment.meta.size_in_bytes = segment_size;
 
   auto writer = segment.meta.codec->get_segment_meta_writer();
-
   writer->write(dir, segment.filename, segment.meta);
-  segment.meta.size_in_bytes = segment_size;
 }
 
 }  // namespace irs::index_utils
