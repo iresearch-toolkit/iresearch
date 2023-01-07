@@ -693,7 +693,8 @@ IndexWriter::Document::Document(FlushContext& ctx,
   const auto rollback_extra =
     writer_.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin;
   writer_.begin(update, rollback_extra);  // ensure reset() will be noexcept
-  segment_->buffered_docs_.store(writer_.docs_cached());
+  segment_->buffered_docs_.store(writer_.docs_cached(),
+                                 std::memory_order_relaxed);
 }
 
 IndexWriter::Document::~Document() noexcept {
@@ -831,7 +832,8 @@ void IndexWriter::Transaction::Reset() noexcept {
   if (!ctx->writer_) {
     IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() ==
                flushed_update_contexts.size());
-    ctx->buffered_docs_.store(flushed_update_contexts.size());
+    ctx->buffered_docs_.store(flushed_update_contexts.size(),
+                              std::memory_order_relaxed);
 
     return;  // nothing to reset
   }
@@ -845,7 +847,8 @@ void IndexWriter::Transaction::Reset() noexcept {
              flushed_update_contexts.size());
   IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() <=
              flushed_update_contexts.size() + writer_docs);
-  ctx->buffered_docs_.store(flushed_update_contexts.size() + writer_docs);
+  ctx->buffered_docs_.store(flushed_update_contexts.size() + writer_docs,
+                            std::memory_order_relaxed);
 
   // rollback document insertions
   // cannot segment_writer::reset(...) since documents_context::reset() noexcept
@@ -1304,7 +1307,7 @@ void IndexWriter::SegmentContext::Remove(filter::ptr&& filter) {
 
 void IndexWriter::SegmentContext::Reset(bool store_flushed) noexcept {
   active_count_.store(0);
-  buffered_docs_.store(0);
+  buffered_docs_.store(0, std::memory_order_relaxed);
   dirty_.store(false);
   // in some cases we need to store flushed segments for further commits
   if (!store_flushed) {
@@ -1497,7 +1500,8 @@ uint64_t IndexWriter::BufferedDocs() const {
   for (auto& entry : ctx->pending_segment_contexts_) {
     // reading segment_writer::docs_count() is not thread safe
     // cppcheck-suppress useStlAlgorithm
-    docs_in_ram += entry.segment_->buffered_docs_.load();
+    docs_in_ram +=
+      entry.segment_->buffered_docs_.load(std::memory_order_relaxed);
   }
 
   return docs_in_ram;
