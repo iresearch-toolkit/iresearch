@@ -28,7 +28,7 @@
 
 namespace irs {
 
-class SubReader;
+struct SubReader;
 struct SegmentMeta;
 
 // Generic interface for accessing an index
@@ -104,8 +104,7 @@ struct IndexReader {
 };
 
 // Generic interface for accessing an index segment
-class SubReader : public IndexReader {
- public:
+struct SubReader : public IndexReader {
   using ptr = std::shared_ptr<const SubReader>;
 
   static const SubReader& empty() noexcept;

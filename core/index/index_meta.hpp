@@ -25,6 +25,7 @@
 
 #include <optional>
 #include <span>
+#include <vector>
 
 #include "error/error.hpp"
 #include "utils/string.hpp"
