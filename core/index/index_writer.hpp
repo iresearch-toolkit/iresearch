@@ -50,43 +50,51 @@
 namespace irs {
 namespace detail {
 
-class SyncHelper : util::noncopyable {
+class SyncContext {
  public:
-  bool Sync(directory& dir, const DirectoryMeta& meta);
+  void GetFiles(std::vector<std::string_view>& files_to_sync,
+                const IndexMeta& meta) const;
+
+  size_t SizeApprox() const noexcept {
+    // FIXME(gnusi): make format dependent?
+    constexpr size_t kFilesPerSegment = 9;
+    return partial_sync_.size() * 2 + full_sync_.size() * kFilesPerSegment;
+  }
 
   void PushPartial(size_t i, std::string_view file0, std::string_view file1) {
-    files_.emplace_back(file0);
-    files_.emplace_back(file1);
-    segments_.emplace_back(i, kPartial);
+    partial_sync_.emplace_back(i, file0, file1);
   }
 
-  void PushFull(size_t i) { segments_.emplace_back(i, kFull); }
+  void PushFull(size_t i) { full_sync_.emplace_back(i); }
 
-  void Invalidate(size_t i) noexcept {
-    IRS_ASSERT(i < segments_.size());
-    auto& [_, count] = segments_[i];
-    IRS_ASSERT(count != kFull && count != kInvalid);
-    count = kInvalid;
+  void ErasePartial(size_t i) noexcept {
+    const auto it = std::find_if(partial_sync_.begin(), partial_sync_.end(),
+                                 [i](auto& value) { return i == value.i; });
+    IRS_ASSERT(it != partial_sync_.end());
+
+    if (it != partial_sync_.end()) {
+      irstd::swap_remove(partial_sync_, it);
+    }
   }
 
-  bool Empty() const noexcept { return segments_.empty(); };
-
-  void Clear() noexcept {
-    files_.clear();
-    segments_.clear();
-  }
-
- private:
-  enum : size_t {
-    kFull = 0,
-    kPartial = 2,
-    kInvalid = std::numeric_limits<size_t>::max()
+  bool Empty() const noexcept {
+    return partial_sync_.empty() && full_sync_.empty();
   };
 
-  // Files to sync
-  std::vector<std::string> files_;
-  // Segments to sync (index within index meta)
-  std::vector<std::pair<size_t, size_t>> segments_;
+ private:
+  using FullSync = size_t;  // Index within index meta
+
+  struct PartialSync {
+    PartialSync(size_t i, std::string_view file0, std::string_view file1)
+      : i{i}, file0{file0}, file1{file1} {}
+
+    size_t i;  // Index within index meta
+    std::string file0;
+    std::string file1;
+  };
+
+  std::vector<PartialSync> partial_sync_;  // Segments with partial sync
+  std::vector<FullSync> full_sync_;        // Segments with full sync
 };
 
 }  // namespace detail
@@ -911,6 +919,8 @@ class IndexWriter : private util::noncopyable {
     IndexMeta meta;
     // Segment readers of the next commit
     std::vector<SegmentReader> readers;
+    // Files to sync
+    detail::SyncContext sync_context;
 
     bool Empty() const noexcept { return !ctx; }
   };
@@ -955,13 +965,13 @@ class IndexWriter : private util::noncopyable {
 
   // Start transaction
   bool Start(ProgressReportCallback const& progress = nullptr);
-  void StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit);
+  void StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
+                 const detail::SyncContext* sync_ctx);
   // Finish transaction
   void Finish();
   // Abort transaction
   void Abort() noexcept;
 
-  detail::SyncHelper sync_helper_;
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
   // provides payload for new segments
