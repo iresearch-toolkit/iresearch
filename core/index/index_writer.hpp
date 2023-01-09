@@ -689,6 +689,8 @@ class IndexWriter : private util::noncopyable {
       explicit FlushedSegment(SegmentMeta&& meta) noexcept
         : IndexSegment{.meta = std::move(meta)} {}
 
+      // Flushed segment removals
+      document_mask docs_mask;
       // starting doc_id that should be added to docs_mask
       doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
     };

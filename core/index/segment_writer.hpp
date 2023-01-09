@@ -146,7 +146,7 @@ class segment_writer : util::noncopyable {
     valid_ = false;
   }
 
-  void flush(IndexSegment& segment);
+  void flush(IndexSegment& segment, document_mask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t docs_cached() const noexcept { return docs_context_.size(); }
@@ -360,7 +360,7 @@ class segment_writer : util::noncopyable {
   }
 
   // Flushes document mask to directory, returns number of masked documens
-  size_t flush_doc_mask(const SegmentMeta& meta, const doc_map& docmap);
+  document_mask get_doc_mask(const doc_map& docmap);
   // Flushes indexed fields to directory
   void flush_fields(const doc_map& docmap);
 

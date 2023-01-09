@@ -70,10 +70,10 @@ struct FlushSegmentContext {
   const size_t doc_id_begin_;
   // ending doc_id to consider in 'segment.meta' (exclusive)
   const size_t doc_id_end_;
-  // doc_ids masked in SegmentMeta
-  document_mask docs_mask_;
   // copy so that it can be moved into 'index_writer::pending_state_'
   IndexSegment segment_;
+  // doc_ids masked in SegmentMeta
+  document_mask docs_mask_;
   // modification contexts referenced by 'update_contexts_'
   std::span<const IndexWriter::ModificationContext> modification_contexts_;
   // update contexts for documents in SegmentMeta
@@ -81,13 +81,14 @@ struct FlushSegmentContext {
   std::shared_ptr<const SegmentReaderImpl> reader_;
 
   FlushSegmentContext(
-    std::shared_ptr<const SegmentReaderImpl>&& reader,
-    const IndexSegment& segment, size_t doc_id_begin, size_t doc_id_end,
+    std::shared_ptr<const SegmentReaderImpl>&& reader, IndexSegment&& segment,
+    document_mask&& docs_mask, size_t doc_id_begin, size_t doc_id_end,
     std::span<const segment_writer::update_context> update_contexts,
     std::span<const IndexWriter::ModificationContext> modification_contexts)
-    : doc_id_begin_(doc_id_begin),
-      doc_id_end_(doc_id_end),
-      segment_(segment),
+    : doc_id_begin_{doc_id_begin},
+      doc_id_end_{doc_id_end},
+      segment_{std::move(segment)},
+      docs_mask_{std::move(docs_mask)},
       modification_contexts_{modification_contexts},
       update_contexts_{update_contexts},
       reader_{std::move(reader)} {
@@ -1210,7 +1211,7 @@ uint64_t IndexWriter::SegmentContext::Flush() {
   auto& segment = flushed_.emplace_back(std::move(writer_meta_.meta));
 
   try {
-    writer_->flush(segment);
+    writer_->flush(segment, segment.docs_mask);
 
     const std::span ctxs{writer_->docs_context()};
     flushed_update_contexts_.insert(flushed_update_contexts_.end(),
@@ -2454,8 +2455,9 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         }
 
         auto& flush_segment_ctx = segment_ctxs.emplace_back(
-          std::move(reader), flushed, valid_doc_id_begin, valid_doc_id_end,
-          flush_update_contexts, segment->modification_queries_);
+          std::move(reader), std::move(flushed), std::move(flushed.docs_mask),
+          valid_doc_id_begin, valid_doc_id_end, flush_update_contexts,
+          segment->modification_queries_);
 
         // read document_mask as was originally flushed
         // could be due to truncated records due to rollback of uncommitted data

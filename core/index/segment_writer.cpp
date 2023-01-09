@@ -41,7 +41,7 @@ namespace irs {
 namespace {
 
 [[maybe_unused]] inline bool IsSubsetOf(const features_t& lhs,
-                                          const feature_map_t& rhs) noexcept {
+                                        const feature_map_t& rhs) noexcept {
   for (const irs::type_info::type_id type : lhs) {
     if (!rhs.contains(type)) {
       return false;
@@ -241,32 +241,38 @@ void segment_writer::flush_fields(const doc_map& docmap) {
   }
 }
 
-size_t segment_writer::flush_doc_mask(const SegmentMeta& meta,
-                                      const doc_map& docmap) {
+document_mask segment_writer::get_doc_mask(const doc_map& docmap) {
   document_mask docs_mask;
   docs_mask.reserve(docs_mask_.size());
 
-  for (size_t doc_id = 0, doc_id_end = docs_mask_.size(); doc_id < doc_id_end;
-       ++doc_id) {
-    if (docs_mask_.test(doc_id)) {
-      auto idx = doc_id + doc_limits::min();
-      IRS_ASSERT(idx < doc_limits::eof());
-      if (!docmap.empty()) {
-        idx = docmap[idx];
+  auto visit = [&](auto&& visitor) {
+    for (size_t doc_id = 0, doc_id_end = docs_mask_.size(); doc_id < doc_id_end;
+         ++doc_id) {
+      if (docs_mask_.test(doc_id)) {
+        const auto idx = doc_id + doc_limits::min();
         IRS_ASSERT(idx < doc_limits::eof());
+        visitor(idx);
       }
-      docs_mask.emplace(static_cast<doc_id_t>(idx));
     }
+  };
+
+  if (docmap.empty()) {
+    visit([&docs_mask](size_t doc) {
+      docs_mask.emplace(static_cast<doc_id_t>(doc));
+    });
+  } else {
+    visit([&docs_mask, &docmap](size_t doc) {
+      IRS_ASSERT(docmap[doc] < doc_limits::eof());
+      docs_mask.emplace(docmap[doc]);
+    });
   }
 
-  auto writer = meta.codec->get_document_mask_writer();
-  writer->write(dir_, meta, docs_mask);
-
-  return docs_mask.size();
+  return docs_mask;
 }
 
-void segment_writer::flush(IndexSegment& segment) {
+void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   REGISTER_TIMER_DETAILED();
+  IRS_ASSERT(docs_mask.empty());
 
   auto& meta = segment.meta;
 
@@ -307,20 +313,20 @@ void segment_writer::flush(IndexSegment& segment) {
     flush_fields(docmap);
   }
 
-  // write non-empty document mask
-  size_t docs_mask_count = 0;
+  // get non-empty document mask
   if (docs_mask_.any()) {
-    docs_mask_count = flush_doc_mask(meta, docmap);
+    docs_mask = get_doc_mask(docmap);
   }
 
   // update segment metadata
-  IRS_ASSERT(docs_cached() >= docs_mask_count);
+  IRS_ASSERT(docs_cached() >= docs_mask.size());
   meta.docs_count = docs_cached();
-  meta.live_docs_count = meta.docs_count - docs_mask_count;
+  meta.live_docs_count = meta.docs_count - docs_mask.size();
   meta.files.clear();  // prepare empy set to be swaped into dir_
   dir_.flush_tracked(meta.files);
 
-  // flush segment metadata
+  // We intentionally don't write document mask here as it might
+  // be changed by removals accumulated in IndexWriter.
   index_utils::FlushIndexSegment(dir_, segment);
 }
 

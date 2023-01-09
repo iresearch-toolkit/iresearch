@@ -50,9 +50,9 @@ class segment_writer_tests : public test_base {
     return [](irs::type_info::type_id) {
       return std::make_pair(
         irs::ColumnInfo{.compression = irs::type<irs::compression::lz4>::get(),
-                         .options = {},
-                         .encryption = true,
-                         .track_prev_doc = false},
+                        .options = {},
+                        .encryption = true,
+                        .track_prev_doc = false},
         irs::FeatureWriterFactory{});
     };
   }
@@ -597,8 +597,10 @@ TEST_F(segment_writer_tests, reorder) {
     // we don't count stored field without comparator
     ASSERT_GT(writer->memory_active(), 0);
     irs::IndexSegment index_segment;
+    irs::document_mask docs_mask;
     index_segment.meta.codec = default_codec();
-    writer->flush(index_segment);
+    writer->flush(index_segment, docs_mask);
+    ASSERT_TRUE(docs_mask.empty());
     auto docs_context = writer->docs_context();
     ASSERT_EQ(docs_context.size(), kLen);
     for (size_t i = 0; i < kLen; ++i) {

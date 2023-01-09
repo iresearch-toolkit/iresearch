@@ -5640,11 +5640,13 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_FALSE(update(*writer, *(query_doc1.get()), doc3->indexed.begin(),
                         doc3->indexed.end(), doc3->stored.begin(),
                         doc3->stored.end()));
-    writer->Commit();
+    ASSERT_TRUE(writer->Commit());
 
     auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
     auto& segment = reader[0];  // assume 0 is id of first/only segment
+    ASSERT_EQ(5, segment.docs_count());
+    ASSERT_EQ(2, segment.live_docs_count());
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -5664,6 +5666,7 @@ TEST_P(index_test_case, doc_update) {
     ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
     ASSERT_EQ("B", irs::to_string<std::string_view>(
                      actual_value->value.data()));  // 'name' value in doc2
+    ASSERT_FALSE(docsItr->next());
     ASSERT_FALSE(docsItr->next());
   }
 }
