@@ -169,6 +169,8 @@ std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
   // read document mask
   if (opts.doc_mask) {
     index_utils::ReadDocumentMask(reader->docs_mask_, dir, meta);
+  } else {
+    reader->info_.live_docs_count = reader->info_.docs_count;
   }
 
   auto& data = *reader->data_;
