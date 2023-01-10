@@ -1669,8 +1669,8 @@ ConsolidationResult IndexWriter::Consolidate(
     return result;
   }
 
-  auto pending_reader = SegmentReaderImpl::Open(dir, consolidation_segment.meta,
-                                                committed_reader->Options());
+  auto pending_reader = SegmentReaderImpl::Open(
+    dir_, consolidation_segment.meta, committed_reader->Options());
 
   if (!pending_reader) {
     throw index_error{
@@ -1921,7 +1921,7 @@ bool IndexWriter::Import(const IndexReader& reader,
     return false;  // Import failure (no files created, nothing to clean up)
   }
 
-  auto imported_reader = SegmentReaderImpl::Open(dir, segment.meta, *options);
+  auto imported_reader = SegmentReaderImpl::Open(dir_, segment.meta, *options);
 
   if (!imported_reader) {
     throw index_error{absl::StrCat(
