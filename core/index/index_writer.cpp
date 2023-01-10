@@ -2354,8 +2354,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     pending_meta.segments.emplace_back(std::move(pending_segment.segment));
   }
 
-  // for pending consolidation we need to filter out
-  // consolidation candidates after applying them
+  // For pending consolidation we need to filter out consolidation
+  // candidates after applying them
   if (pending_candidates_count) {
     IRS_ASSERT(pending_candidates_count <= readers.size());
     const size_t count = readers.size() - pending_candidates_count;
@@ -2369,12 +2369,13 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     for (size_t i = 0; i < partial_sync_threshold; ++i) {
       if (const auto& segment = readers[i];
           !segment_mask.contains(segment.GetImpl().get())) {
-        if (partial_sync_begin != partial_sync.end() &&
-            partial_sync_begin->i == i) {
+        partial_sync_begin =
+          std::find_if(partial_sync_begin, partial_sync.end(),
+                       [i](const auto& v) { return i == v.i; });
+        if (partial_sync_begin != partial_sync.end()) {
           tmp_partial_sync.emplace_back(tmp_readers.size(),
                                         std::move(partial_sync_begin->file0),
                                         std::move(partial_sync_begin->file1));
-          ++partial_sync_begin;
         }
         tmp_readers.emplace_back(std::move(segment));
         tmp_meta.segments.emplace_back(std::move(pending_meta.segments[i]));
@@ -2390,7 +2391,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
                               partial_sync_threshold),
       std::make_move_iterator(pending_meta.segments.end()));
 
-    partial_sync_threshold = partial_sync.size();
+    partial_sync_threshold = tmp_partial_sync.size();
     partial_sync = std::move(tmp_partial_sync);
     readers = std::move(tmp_readers);
     pending_meta = std::move(tmp_meta);

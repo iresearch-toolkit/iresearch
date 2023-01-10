@@ -69,8 +69,21 @@ ENABLE_BITMASK_ENUM(OpenMode);
 using Consolidation = std::vector<const SubReader*>;
 using ConsolidationView = std::span<const SubReader* const>;
 
+struct CandidateHash {
+  size_t operator()(const SubReader* segment) const noexcept {
+    return absl::HashOf(segment->Meta().name);
+  }
+};
+
+struct CandidateEqual {
+  bool operator()(const SubReader* lhs, const SubReader* rhs) const noexcept {
+    return lhs->Meta().name == rhs->Meta().name;
+  }
+};
+
 // segments that are under consolidation
-using ConsolidatingSegments = absl::flat_hash_set<const SubReader*>;
+using ConsolidatingSegments =
+  absl::flat_hash_set<const SubReader*, CandidateHash, CandidateEqual>;
 
 // Mark consolidation candidate segments matching the current policy
 // candidates the segments that should be consolidated
@@ -817,6 +830,8 @@ class IndexWriter : private util::noncopyable {
       }
     };
 
+    using SegmentMask = absl::flat_hash_set<const SubReader*>;
+
     // current modification/update generation
     std::atomic_size_t generation_{0};
     // ref tracking directory used by this context (tracks all/only
@@ -830,23 +845,19 @@ class IndexWriter : private util::noncopyable {
     std::mutex mutex_;
     // the next context to switch to
     FlushContext* next_context_;
-    // complete segments to be added during next commit
-    // (import)
+    // complete segments to be added during next commit (import)
     std::vector<ImportContext> pending_segments_;
-    // notified when a segment has been freed
-    // (guarded by mutex_)
+    // notified when a segment has been freed (guarded by mutex_)
     std::condition_variable pending_segment_context_cond_;
-    // segment writers with data pending for next
-    // commit (all segments that have been used by
-    // this flush_context) must be std::deque to
-    // garantee that element memory location does
-    // not change for use with
-    // 'pending_segment_contexts_freelist_'
+    // segment writers with data pending for next commit
+    // (all segments that have been used by this flush_context)
+    // must be std::deque to garantee that element memory location does
+    // not change for use with 'pending_segment_contexts_freelist_'
     std::deque<PendindSegmentContext> pending_segment_contexts_;
     // entries from 'pending_segment_contexts_' that are available for reuse
     Freelist pending_segment_contexts_freelist_;
     // set of segment names to be removed from the index upon commit
-    absl::flat_hash_set<const SubReader*> segment_mask_;
+    SegmentMask segment_mask_;
 
     FlushContext() = default;
 
