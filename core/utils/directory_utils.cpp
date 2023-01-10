@@ -135,8 +135,15 @@ bool TrackingDirectory::rename(std::string_view src,
 
 void TrackingDirectory::clear_tracked() noexcept { files_.clear(); }
 
-void TrackingDirectory::flush_tracked(file_set& other) noexcept {
-  other = std::move(files_);
+std::vector<std::string> TrackingDirectory::flush_tracked() {
+  std::vector<std::string> files(files_.size());
+  auto files_begin = files.begin();
+  for (auto begin = files_.begin(), end = files_.end(); begin != end;
+       ++files_begin) {
+    auto to_extract = begin++;
+    *files_begin = std::move(files_.extract(to_extract).value());
+  }
+  return files;
 }
 
 RefTrackingDirectory::RefTrackingDirectory(directory& impl,

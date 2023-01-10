@@ -240,9 +240,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
   {
     irs::memory_directory dir;
 
-    auto clean = [&dir]() {
-      irs::directory_utils::RemoveAllUnreferenced(dir);
-    };
+    auto clean = [&dir]() { irs::directory_utils::RemoveAllUnreferenced(dir); };
 
     callback_directory callback_dir{dir, clean};
     irs::RefTrackingDirectory track_dir(callback_dir, true);
@@ -411,8 +409,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     ASSERT_FALSE(!file1);
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
-    irs::TrackingDirectory::file_set files;
-    track_dir.flush_tracked(files);
+    auto files = track_dir.flush_tracked();
     ASSERT_EQ(0, files.size());
   }
 
@@ -424,10 +421,9 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     ASSERT_FALSE(!file1);
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
-    irs::TrackingDirectory::file_set files;
-    track_dir.flush_tracked(files);
+    auto files = track_dir.flush_tracked();
     ASSERT_EQ(1, files.size());
-    track_dir.flush_tracked(files);  // tracked files were cleared
+    files = track_dir.flush_tracked();  // tracked files were cleared
     ASSERT_EQ(0, files.size());
   }
 }

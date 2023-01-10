@@ -1708,7 +1708,7 @@ bool MergeWriter::Flush(SegmentMeta& segment,
   result = comparator_ ? FlushSorted(track_dir, segment, progress_callback)
                        : FlushUnsorted(track_dir, segment, progress_callback);
 
-  track_dir.flush_tracked(segment.files);
+  segment.files = track_dir.flush_tracked();
 
   return result;
 }

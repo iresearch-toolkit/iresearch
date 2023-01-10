@@ -67,6 +67,25 @@ using namespace irs;
 // name of the module holding different formats
 constexpr std::string_view MODULE_NAME = "10";
 
+void write_strings(data_output& out, std::span<const std::string> strings) {
+  write_size(out, strings.size());
+  for (const auto& s : strings) {
+    write_string<decltype(s)>(out, s);
+  }
+}
+
+std::vector<std::string> read_strings(data_input& in) {
+  const size_t size = read_size(in);
+
+  std::vector<std::string> strings(size);
+
+  for (auto begin = strings.begin(); begin != strings.end(); ++begin) {
+    *begin = read_string<std::string>(in);
+  }
+
+  return strings;
+}
+
 template<bool Wand, uint32_t PosMin>
 struct format_traits {
   using align_type = uint32_t;
@@ -2919,7 +2938,7 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
   if (version > segment_meta_writer::FORMAT_MIN) {
     sort = in->read_vlong() - 1;
   }
-  auto files = read_strings<decltype(meta.files)>(*in);
+  auto files = read_strings(*in);
 
   if (flags &
       ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {

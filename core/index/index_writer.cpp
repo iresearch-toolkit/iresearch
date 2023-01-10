@@ -307,8 +307,12 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
 
   auto mask_writer = meta.codec->get_document_mask_writer();
 
+  auto it = meta.files.end();
   if (increment_version) {
-    meta.files.erase(mask_writer->filename(meta));  // Current filename
+    // Current filename
+    it = std::find(meta.files.begin(), meta.files.end(),
+                   mask_writer->filename(meta));
+
     ++meta.version;  // Segment modified due to new document_mask
 
     // FIXME(gnusi): cosider removing this
@@ -322,12 +326,17 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
     ++meta.version;
   }
 
-  const auto [file, _] =
-    meta.files.emplace(mask_writer->filename(meta));  // new/expected filename
+  // new/expected filename
+  if (it != meta.files.end()) {
+    *it = mask_writer->filename(meta);
+  } else {
+    meta.files.emplace_back(mask_writer->filename(meta));
+    it = std::prev(meta.files.end());
+  }
 
   mask_writer->write(dir, meta, docs_mask);
 
-  return *file;
+  return *it;
 }
 
 // mapping: name -> { new segment, old segment }

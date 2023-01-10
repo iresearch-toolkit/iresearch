@@ -973,10 +973,10 @@ TEST_P(format_test_case, segment_meta_read_write) {
     meta.version = 100;
     meta.column_store = true;
 
-    meta.files.emplace("file1");
-    meta.files.emplace("index_file2");
-    meta.files.emplace("file3");
-    meta.files.emplace("stored_file4");
+    meta.files.emplace_back("file1");
+    meta.files.emplace_back("index_file2");
+    meta.files.emplace_back("file3");
+    meta.files.emplace_back("stored_file4");
 
     std::string filename;
 
@@ -1014,10 +1014,10 @@ TEST_P(format_test_case, segment_meta_read_write) {
     meta.size_in_bytes = 666;
     meta.version = 100;
 
-    meta.files.emplace("file1");
-    meta.files.emplace("index_file2");
-    meta.files.emplace("file3");
-    meta.files.emplace("stored_file4");
+    meta.files.emplace_back("file1");
+    meta.files.emplace_back("index_file2");
+    meta.files.emplace_back("file3");
+    meta.files.emplace_back("stored_file4");
 
     std::string filename;
 
@@ -1110,10 +1110,10 @@ TEST_P(format_test_case, segment_meta_read_write) {
     meta.size_in_bytes = 666;
     meta.version = 100;
 
-    meta.files.emplace("file1");
-    meta.files.emplace("index_file2");
-    meta.files.emplace("file3");
-    meta.files.emplace("stored_file4");
+    meta.files.emplace_back("file1");
+    meta.files.emplace_back("index_file2");
+    meta.files.emplace_back("file3");
+    meta.files.emplace_back("stored_file4");
 
     std::string filename;
 

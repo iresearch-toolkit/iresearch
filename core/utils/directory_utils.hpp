@@ -66,7 +66,7 @@ struct TrackingDirectory final : public directory {
     return impl_.exists(result, name);
   }
 
-  void flush_tracked(file_set& other) noexcept;
+  std::vector<std::string> flush_tracked();
 
   bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);

@@ -323,7 +323,7 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   meta.docs_count = docs_cached();
   meta.live_docs_count = meta.docs_count - docs_mask.size();
   meta.files.clear();  // prepare empy set to be swaped into dir_
-  dir_.flush_tracked(meta.files);
+  meta.files = dir_.flush_tracked();
 
   // We intentionally don't write document mask here as it might
   // be changed by removals accumulated in IndexWriter.

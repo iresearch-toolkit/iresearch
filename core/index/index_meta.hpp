@@ -54,7 +54,7 @@ static_assert(std::is_nothrow_move_assignable_v<SegmentInfo>);
 struct SegmentMeta : SegmentInfo {
   bool operator==(const SegmentMeta&) const = default;
 
-  absl::flat_hash_set<std::string> files;  // FIXME(gnusi): use std::vector
+  std::vector<std::string> files;
   std::shared_ptr<const format> codec;
   field_id sort{field_limits::invalid()};
   bool column_store{};
