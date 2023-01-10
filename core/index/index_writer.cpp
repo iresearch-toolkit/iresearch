@@ -2598,6 +2598,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     }
   }
 
+  // FIXME(gnusi): partial sync is the local variable
   auto files_to_sync =
     GetFilesToSync(pending_meta.segments, partial_sync, partial_sync_threshold);
 
