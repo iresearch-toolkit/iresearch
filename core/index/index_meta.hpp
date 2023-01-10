@@ -54,7 +54,7 @@ static_assert(std::is_nothrow_move_assignable_v<SegmentInfo>);
 struct SegmentMeta : SegmentInfo {
   bool operator==(const SegmentMeta&) const = default;
 
-  absl::flat_hash_set<std::string> files;
+  absl::flat_hash_set<std::string> files;  // FIXME(gnusi): use std::vector
   std::shared_ptr<const format> codec;
   field_id sort{field_limits::invalid()};
   bool column_store{};
@@ -89,5 +89,13 @@ struct IndexMeta {
 inline bytes_view GetPayload(const IndexMeta& meta) noexcept {
   return meta.payload ? *meta.payload : bytes_view{};
 }
+
+struct DirectoryMeta {
+  std::string filename;
+  IndexMeta index_meta;
+};
+
+static_assert(std::is_nothrow_move_constructible_v<DirectoryMeta>);
+static_assert(std::is_nothrow_move_assignable_v<DirectoryMeta>);
 
 }  // namespace irs

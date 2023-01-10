@@ -76,7 +76,7 @@ class DirectoryReader final : public IndexReader {
   // this call will atempt to reuse segments from the existing reader
   DirectoryReader Reopen() const;
 
-  std::shared_ptr<const DirectoryReaderImpl> GetImpl() const noexcept {
+  const std::shared_ptr<const DirectoryReaderImpl>& GetImpl() const noexcept {
     return impl_;
   }
 

@@ -30,12 +30,6 @@
 
 namespace irs {
 
-// Representation of the metadata of a directory_reader
-struct DirectoryMeta {
-  std::string filename;
-  IndexMeta index_meta;
-};
-
 class DirectoryReaderImpl final
   : public CompositeReaderImpl<std::vector<SegmentReader>> {
  public:

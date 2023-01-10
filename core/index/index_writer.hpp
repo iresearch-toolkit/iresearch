@@ -48,56 +48,6 @@
 #include <absl/container/flat_hash_map.h>
 
 namespace irs {
-namespace detail {
-
-class SyncContext {
- public:
-  void GetFiles(std::vector<std::string_view>& files_to_sync,
-                const IndexMeta& meta) const;
-
-  size_t SizeApprox() const noexcept {
-    // FIXME(gnusi): make format dependent?
-    constexpr size_t kFilesPerSegment = 9;
-    return partial_sync_.size() * 2 + full_sync_.size() * kFilesPerSegment;
-  }
-
-  void PushPartial(size_t i, std::string_view file0, std::string_view file1) {
-    partial_sync_.emplace_back(i, file0, file1);
-  }
-
-  void PushFull(size_t i) { full_sync_.emplace_back(i); }
-
-  void ErasePartial(size_t i) noexcept {
-    const auto it = std::find_if(partial_sync_.begin(), partial_sync_.end(),
-                                 [i](auto& value) { return i == value.i; });
-    IRS_ASSERT(it != partial_sync_.end());
-
-    if (it != partial_sync_.end()) {
-      irstd::swap_remove(partial_sync_, it);
-    }
-  }
-
-  bool Empty() const noexcept {
-    return partial_sync_.empty() && full_sync_.empty();
-  };
-
- private:
-  using FullSync = size_t;  // Index within index meta
-
-  struct PartialSync {
-    PartialSync(size_t i, std::string_view file0, std::string_view file1)
-      : i{i}, file0{file0}, file1{file1} {}
-
-    size_t i;  // Index within index meta
-    std::string file0;
-    std::string file1;
-  };
-
-  std::vector<PartialSync> partial_sync_;  // Segments with partial sync
-  std::vector<FullSync> full_sync_;        // Segments with full sync
-};
-
-}  // namespace detail
 
 class Comparer;
 struct directory;
@@ -920,7 +870,7 @@ class IndexWriter : private util::noncopyable {
     // Segment readers of the next commit
     std::vector<SegmentReader> readers;
     // Files to sync
-    detail::SyncContext sync_context;
+    std::vector<std::string_view> files_to_sync;
 
     bool Empty() const noexcept { return !ctx; }
   };
@@ -966,7 +916,7 @@ class IndexWriter : private util::noncopyable {
   // Start transaction
   bool Start(ProgressReportCallback const& progress = nullptr);
   void StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
-                 const detail::SyncContext* sync_ctx);
+                 std::vector<std::string_view> files_to_sync);
   // Finish transaction
   void Finish();
   // Abort transaction

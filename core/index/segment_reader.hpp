@@ -74,7 +74,7 @@ class SegmentReader final : public SubReader {
 
   const irs::column_reader* column(field_id field) const override;
 
-  std::shared_ptr<const SegmentReaderImpl> GetImpl() const noexcept {
+  const std::shared_ptr<const SegmentReaderImpl>& GetImpl() const noexcept {
     return impl_;
   }
 

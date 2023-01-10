@@ -373,7 +373,12 @@ std::pair<bool, size_t> map_candidates(CandidatesMapping& candidates_mapping,
     }
 
     IRS_ASSERT(mapping.second.first);
-    mapping.first = &segment;
+    if constexpr (std::is_same_v<SegmentReader,
+                                 std::decay_t<decltype(segment)>>) {
+      mapping.first = segment.GetImpl().get();
+    } else {
+      mapping.first = &segment;
+    }
 
     // FIXME(gnusi): can't we just check pointers?
     has_removals |= (meta.version != it->second.second.first->Meta().version);
@@ -558,43 +563,46 @@ bool IsInitialCommit(const DirectoryMeta& meta) noexcept {
   return meta.filename.empty();
 }
 
-bool Sync(directory& dir, const DirectoryMeta& meta,
-          const detail::SyncContext* sync_ctx) {
-  IRS_ASSERT(!meta.filename.empty());
+struct PartialSync {
+  PartialSync(size_t i, std::string_view file0, std::string_view file1)
+    : i{i}, file0{file0}, file1{file1} {}
 
-  if (sync_ctx && !sync_ctx->Empty()) {
-    std::vector<std::string_view> files_to_sync;
-    files_to_sync.reserve(1 + sync_ctx->SizeApprox());  // +1 for index meta
-    files_to_sync.emplace_back(meta.filename);
-    sync_ctx->GetFiles(files_to_sync, meta.index_meta);
+  size_t i;  // Index within index meta
+  std::string file0;
+  std::string file1;
+};
 
-    return dir.sync(files_to_sync);
-  }
+std::vector<std::string_view> GetFilesToSync(
+  std::span<const IndexSegment> segments,
+  std::span<const PartialSync> partial_sync, size_t partial_sync_threshold) {
+  // FIXME(gnusi): make format dependent?
+  constexpr size_t kFilesPerSegment = 9;
 
-  const std::string_view sync_me{meta.filename};
-  return dir.sync({&sync_me, 1});
-}
+  IRS_ASSERT(partial_sync_threshold <= segments.size());
+  const size_t full_sync_count = segments.size() - partial_sync_threshold;
 
-}  // namespace
+  std::vector<std::string_view> files_to_sync;
+  // +1 for index meta
+  files_to_sync.reserve(1 + partial_sync.size() * 2 +
+                        full_sync_count * kFilesPerSegment);
 
-namespace detail {
-
-void detail::SyncContext::GetFiles(std::vector<std::string_view>& files_to_sync,
-                                   const IndexMeta& meta) const {
-  for (const auto& sync : partial_sync_) {
+  for (const auto& sync : partial_sync) {
     files_to_sync.emplace_back(sync.file0);
     files_to_sync.emplace_back(sync.file1);
   }
 
-  for (size_t segment_idx : full_sync_) {
-    const auto& segment = meta.segments[segment_idx];
-    const auto& files = segment.meta.files;
-    files_to_sync.insert(files_to_sync.end(), files.begin(), files.end());
-    files_to_sync.emplace_back(segment.filename);
-  }
+  std::for_each(segments.begin() + partial_sync_threshold, segments.end(),
+                [&files_to_sync](const IndexSegment& segment) {
+                  files_to_sync.emplace_back(segment.filename);
+                  const auto& files = segment.meta.files;
+                  files_to_sync.insert(files_to_sync.end(), files.begin(),
+                                       files.end());
+                });
+
+  return files_to_sync;
 }
 
-}  // namespace detail
+}  // namespace
 
 using namespace std::chrono_literals;
 
@@ -1397,7 +1405,7 @@ void IndexWriter::Clear(uint64_t tick) {
   std::lock_guard ctx_lock{ctx->mutex_};
 
   Abort();  // Abort any already opened transaction
-  StartImpl(std::move(ctx), std::move(pending_commit), nullptr);
+  StartImpl(std::move(ctx), std::move(pending_commit), {});
   Finish();
 
   // Clear consolidating segments
@@ -2057,7 +2065,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     (progress_callback != nullptr ? progress_callback : kNoProgress);
 
   IndexMeta pending_meta;
-  detail::SyncContext sync_ctx;
+  std::vector<PartialSync> partial_sync;
 
   auto ctx = GetFlushContext(false);
   auto& dir = *(ctx->dir_);
@@ -2172,7 +2180,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       const auto mask_file = WriteDocumentMask(dir, segment.meta, docs_mask);
 
       index_utils::FlushIndexSegment(dir, segment);  // write with new mask
-      sync_ctx.PushPartial(readers.size(), mask_file, segment.filename);
+      partial_sync.emplace_back(readers.size(), mask_file, segment.filename);
 
       auto new_segment = std::make_shared<SegmentReaderImpl>(
         *existing_segment.GetImpl(), segment.meta, std::move(docs_mask));
@@ -2186,12 +2194,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   }
 
   // Stage 2
-  // add pending complete segments registered by import or consolidation
+  // Add pending complete segments registered by import or consolidation
 
-  // number of candidates that have been registered for
-  // pending consolidation
+  // Number of candidates that have been registered for pending consolidation
   size_t current_pending_segments_index = 0;
   size_t pending_candidates_count = 0;
+  size_t partial_sync_threshold = readers.size();
 
   for (auto& pending_segment : ctx->pending_segments_) {
     auto& meta = pending_segment.segment.meta;
@@ -2231,46 +2239,45 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         map_candidates(mappings, candidates, readers);
 
       if (count != candidates.size()) {
-        // at least one candidate is missing
-        // in pending meta can't finish consolidation
+        // At least one candidate is missing in pending meta can't finish
+        // consolidation
         IR_FRMT_DEBUG(
           "Failed to finish merge for segment '%s', found only "
           "'" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER
           "' candidates",
           meta.name.c_str(), count, candidates.size());
 
-        continue;  // skip this particular consolidation
+        continue;  // Skip this particular consolidation
       }
 
-      // mask mapped candidates
-      // segments from the to-be added new segment
+      // Mask mapped candidates segments from the to-be added new segment
       for (const auto& mapping : mappings) {
         const auto* reader = mapping.second.second.first;
         segment_mask.emplace(reader);
       }
 
-      // mask mapped (matched) segments
-      // segments from the currently ongoing commit
+      // Mask mapped (matched) segments from the currently ongoing commit
       for (const auto& segment : readers) {
         if (mappings.contains(segment.Meta().name)) {
-          segment_mask.emplace(&segment);
+          // Important to store the address of implementation
+          segment_mask.emplace(segment.GetImpl().get());
         }
       }
 
-      // have some changes, apply removals
+      // Have some changes, apply removals
       if (has_removals) {
         const auto success =
           map_removals(mappings, pending_segment.consolidation_ctx.merger,
                        pending_docs_mask);
 
         if (!success) {
-          // consolidated segment has docs missing from 'segments'
+          // Consolidated segment has docs missing from 'segments'
           IR_FRMT_WARN(
             "Failed to finish merge for segment '%s', due to removed documents "
             "still present the consolidation candidates",
             meta.name.c_str());
 
-          continue;  // skip this particular consolidation
+          continue;  // Skip this particular consolidation
         }
 
         // We're done with removals for pending consolidation
@@ -2283,7 +2290,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       // pending consolidation request
       pending_candidates_count += candidates.size();
     } else {
-      // during consolidation doc_mask could be already populated even for just
+      // During consolidation doc_mask could be already populated even for just
       // merged segment
       // pending already imported/consolidated segment, apply removals
       // mask documents matching filters from segment_contexts (i.e. from new
@@ -2313,28 +2320,27 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       }
     }
 
-    // skip empty segments
+    // Skip empty segments
     if (meta.docs_count <= pending_docs_mask.size()) {
       IRS_ASSERT(meta.docs_count == pending_docs_mask.size());
-      modified = true;
+      modified = true;  // FIXME(gnusi): looks strange
       continue;
     }
 
-    // write non-empty document mask
+    // Write non-empty document mask
     if (docs_mask_modified) {
       WriteDocumentMask(dir, meta, pending_docs_mask, !pending_consolidation);
 
-      // reopen modified reader
+      // Reopen modified reader
       pending_reader = std::make_shared<SegmentReaderImpl>(
         *pending_reader, meta, std::move(pending_docs_mask));
     }
 
-    // persist segment meta
+    // Persist segment meta
     if (docs_mask_modified || pending_consolidation) {
       index_utils::FlushIndexSegment(dir, pending_segment.segment);
     }
 
-    sync_ctx.PushFull(readers.size());  // Register full segment sync
     readers.emplace_back(std::move(pending_reader));
     pending_meta.segments.emplace_back(std::move(pending_segment.segment));
   }
@@ -2342,24 +2348,41 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   // for pending consolidation we need to filter out
   // consolidation candidates after applying them
   if (pending_candidates_count) {
+    IRS_ASSERT(pending_candidates_count <= readers.size());
     const size_t count = readers.size() - pending_candidates_count;
-
     std::vector<SegmentReader> tmp_readers;
     tmp_readers.reserve(count);
     IndexMeta tmp_meta;
     tmp_meta.segments.reserve(count);
+    std::vector<PartialSync> tmp_partial_sync;
 
-    for (size_t i = 0, size = readers.size(); i < size; ++i) {
-      if (const auto& segment = readers[i]; segment_mask.contains(&segment)) {
-        // ErasePartial because consolidation can mask only
-        // already existing segments.
-        sync_ctx.ErasePartial(i);
-      } else {
+    auto partial_sync_begin = partial_sync.begin();
+    for (size_t i = 0; i < partial_sync_threshold; ++i) {
+      if (const auto& segment = readers[i];
+          !segment_mask.contains(segment.GetImpl().get())) {
+        if (partial_sync_begin != partial_sync.end() &&
+            partial_sync_begin->i == i) {
+          tmp_partial_sync.emplace_back(tmp_readers.size(),
+                                        std::move(partial_sync_begin->file0),
+                                        std::move(partial_sync_begin->file1));
+          ++partial_sync_begin;
+        }
         tmp_readers.emplace_back(std::move(segment));
         tmp_meta.segments.emplace_back(std::move(pending_meta.segments[i]));
       }
     }
+    tmp_readers.insert(
+      tmp_readers.end(),
+      std::make_move_iterator(readers.begin() + partial_sync_threshold),
+      std::make_move_iterator(readers.end()));
+    tmp_meta.segments.insert(
+      tmp_meta.segments.end(),
+      std::make_move_iterator(pending_meta.segments.begin() +
+                              partial_sync_threshold),
+      std::make_move_iterator(pending_meta.segments.end()));
 
+    partial_sync_threshold = partial_sync.size();
+    partial_sync = std::move(tmp_partial_sync);
     readers = std::move(tmp_readers);
     pending_meta = std::move(tmp_meta);
   }
@@ -2532,13 +2555,15 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           *segment_ctx.reader_, meta, std::move(docs_mask));
       }
 
-      sync_ctx.PushFull(readers.size());  // Register full segment sync
       readers.emplace_back(std::move(segment_ctx.reader_));
       pending_meta.segments.emplace_back(std::move(segment_ctx.segment_));
     }
   }
 
-  modified |= !sync_ctx.Empty();
+  auto files_to_sync =
+    GetFilesToSync(pending_meta.segments, partial_sync, partial_sync_threshold);
+
+  modified |= !files_to_sync.empty();
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
@@ -2550,11 +2575,11 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   return {.ctx = std::move(ctx),            // Retain flush context reference
           .meta = std::move(pending_meta),  // Retain meta pending flush
           .readers = std::move(readers),
-          .sync_context = std::move(sync_ctx)};
+          .files_to_sync = std::move(files_to_sync)};
 }
 
 void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
-                            const detail::SyncContext* sync_ctx) {
+                            std::vector<std::string_view> files_to_sync) {
   IRS_ASSERT(ctx);
   IRS_ASSERT(ctx->dir_);
   IRS_ASSERT(!pending_state_.Valid());
@@ -2582,7 +2607,9 @@ void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
     last_gen_ = new_gen;
   };
 
-  if (!Sync(dir, to_commit, sync_ctx)) {
+  files_to_sync.emplace_back(to_commit.filename);
+
+  if (!dir.sync(files_to_sync)) {
     throw io_error{absl::StrCat("Failed to sync files for segment '",
                                 index_meta_file, "'.")};
   }
@@ -2615,7 +2642,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
   }
 
   StartImpl(std::move(to_commit.ctx), {.index_meta = std::move(to_commit.meta)},
-            &to_commit.sync_context);
+            std::move(to_commit.files_to_sync));
 
   return true;
 }
