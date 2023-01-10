@@ -8811,6 +8811,25 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       }
     };
 
+  auto check_consolidating_segments_name_only =
+    [&expected_consolidating_segments](
+      irs::Consolidation& /*candidates*/, const irs::IndexReader& reader,
+      const irs::ConsolidatingSegments& consolidating_segments) {
+      ASSERT_EQ(expected_consolidating_segments.size(),
+                consolidating_segments.size());
+      for (auto i : expected_consolidating_segments) {
+        const auto& expected_consolidating_segment = reader[i];
+        const auto it = std::find_if(
+          consolidating_segments.begin(), consolidating_segments.end(),
+          [&expected_consolidating_segment](auto* segment) {
+            const auto& expected_meta = expected_consolidating_segment.Meta();
+            const auto& current_meta = segment->Meta();
+            return current_meta.name == expected_meta.name;
+          });
+        ASSERT_NE(it, consolidating_segments.end());
+      }
+    };
+
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
     [](tests::document& doc, const std::string& name,
@@ -9318,7 +9337,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
+
+    // Check name only because of removals
+    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only));
 
     writer->Commit();         // commit pending merge
     ASSERT_EQ(count + 2 + 2,  // +2 for  segments_2 + stale segment 1 meta
@@ -9459,18 +9480,17 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
     writer->Commit();  // commit transaction (will commit removal)
-    ASSERT_EQ(4, irs::directory_cleaner::clean(
-                   dir()));  // segments_2 + stale segment 1 meta + stale
-                             // segment 2 meta + unused column store
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));  // unused column store
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
+    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only));
 
     writer->Commit();  // commit pending merge
-    ASSERT_EQ(count + 3, irs::directory_cleaner::clean(
-                           dir()));  // +1 for segments, +1 for segment 1
-                                     // doc mask, +1 for segment 2 doc mask
+
+    // segments_2 + stale segment 1 meta + stale segment 2 meta +1 for segments,
+    // +1 for segment 1 doc mask, +1 for segment 2 doc mask
+    ASSERT_EQ(count + 6, irs::directory_cleaner::clean(dir()));
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -9607,7 +9627,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
+    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only));
 
     // can't consolidate segments that are already marked for consolidation
     ASSERT_FALSE(writer->Consolidate(
@@ -9952,6 +9972,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected.back().insert(*doc3);
     expected.back().insert(*doc4);
     tests::assert_index(dir(), codec(), expected, all_features);
+
     auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());  // should be one consolidated segment
@@ -10015,18 +10036,17 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
     writer->Commit();  // commit transaction (will commit removal)
-    ASSERT_EQ(4, irs::directory_cleaner::clean(
-                   dir()));  // segments_2 + stale segment 1 meta + stale
-                             // segment 2 meta + unused column store
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));  //  unused column store
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
-    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
+    ASSERT_TRUE(writer->Consolidate(check_consolidating_segments_name_only));
 
     writer->Commit();  // commit pending merge
-    ASSERT_EQ(count + 3, irs::directory_cleaner::clean(
-                           dir()));  // +1 for segments, +1 for segment 1
-                                     // doc mask, +1 for segment 2 doc mask
+
+    // segments_2 + stale segment 1 meta + stale segment 2 meta +1 for segments,
+    // +1 for segment 1 doc mask, +1 for segment 2 doc mask
+    ASSERT_EQ(count + 6, irs::directory_cleaner::clean(dir()));
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -10194,8 +10214,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    writer->Commit();                                    // commit transaction
-    ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));  // segments_2
+    writer->Commit();  // commit transaction
+
+    // writer still holds a reference to segments_2
+    // because it's under consolidation
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));  // segments_2
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10203,11 +10226,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     writer->GetBatch().Remove(*query_doc1_doc4);
     writer->Commit();  // commit pending merge + removal
-    ASSERT_EQ(count + 6,
-              irs::directory_cleaner::clean(
-                dir()));  // +1 for segments, +1 for segment 1 doc mask, +1
-                          // for segment 1 meta, +1 for segment 2 doc mask,
-                          // +1 for segment 2 meta + unused column store
+
+    // +1 for segments, +1 for segment 1 doc mask, +1
+    // for segment 1 meta, +1 for segment 2 doc mask,
+    // +1 for segment 2 meta + unused column store, +1 for segments_2
+    ASSERT_EQ(count + 7, irs::directory_cleaner::clean(dir()));
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -10393,8 +10416,11 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
 
-    writer->Commit();                                    // commit transaction
-    ASSERT_EQ(1, irs::directory_cleaner::clean(dir()));  // segments_2
+    writer->Commit();  // commit transaction
+
+    // writer still holds a reference to segments_2
+    // because it's under consolidation
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));  // segments_2
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -10411,9 +10437,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     expected_consolidating_segments = {};
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
 
-    ASSERT_EQ(num_files_consolidation_segment + num_files_segment_2 + 2,
-              irs::directory_cleaner::clean(
-                dir()));  // +2 for segments_2 + unused column store
+    // +2 for segments_2 + unused column store, +1 for segments_2
+    ASSERT_EQ(num_files_consolidation_segment + num_files_segment_2 + 2 + 1,
+              irs::directory_cleaner::clean(dir()));
 
     // validate structure (doesn't take removals into account)
     tests::index_t expected;
