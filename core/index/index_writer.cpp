@@ -350,9 +350,9 @@ using CandidatesMapping = absl::flat_hash_map<
 // candidates candidates for mapping
 // segments map against a specified segments
 // Returns first - has removals, second - number of mapped candidates.
-std::pair<bool, size_t> map_candidates(CandidatesMapping& candidates_mapping,
-                                       ConsolidationView candidates,
-                                       const auto& index) {
+std::pair<bool, size_t> MapCandidates(CandidatesMapping& candidates_mapping,
+                                      ConsolidationView candidates,
+                                      const auto& index) {
   size_t num_candidates = 0;
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
@@ -400,8 +400,8 @@ std::pair<bool, size_t> map_candidates(CandidatesMapping& candidates_mapping,
   return std::make_pair(has_removals, found);
 }
 
-bool map_removals(const CandidatesMapping& candidates_mapping,
-                  const MergeWriter& merger, document_mask& docs_mask) {
+bool MapRemovals(const CandidatesMapping& candidates_mapping,
+                 const MergeWriter& merger, document_mask& docs_mask) {
   IRS_ASSERT(merger);
 
   for (auto& mapping : candidates_mapping) {
@@ -1786,7 +1786,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
       CandidatesMapping mappings;
       const auto [has_removals, count] =
-        map_candidates(mappings, candidates, *current_committed_reader);
+        MapCandidates(mappings, candidates, *current_committed_reader);
 
       if (count != candidates.size()) {
         // at least one candidate is missing
@@ -1805,7 +1805,7 @@ ConsolidationResult IndexWriter::Consolidate(
       if (has_removals) {
         document_mask docs_mask;
 
-        if (!map_removals(mappings, merger, docs_mask)) {
+        if (!MapRemovals(mappings, merger, docs_mask)) {
           // consolidated segment has docs missing from
           // current_committed_meta->segments()
           IR_FRMT_DEBUG(
@@ -2245,7 +2245,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       // Pending consolidation request
       CandidatesMapping mappings;
       const auto [has_removals, count] =
-        map_candidates(mappings, candidates, readers);
+        MapCandidates(mappings, candidates, readers);
 
       if (count != candidates.size()) {
         // At least one candidate is missing in pending meta can't finish
@@ -2276,8 +2276,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       // Have some changes, apply removals
       if (has_removals) {
         const auto success =
-          map_removals(mappings, pending_segment.consolidation_ctx.merger,
-                       pending_docs_mask);
+          MapRemovals(mappings, pending_segment.consolidation_ctx.merger,
+                      pending_docs_mask);
 
         if (!success) {
           // Consolidated segment has docs missing from 'segments'
