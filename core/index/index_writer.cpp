@@ -1669,6 +1669,15 @@ ConsolidationResult IndexWriter::Consolidate(
     return result;
   }
 
+  auto pending_reader = SegmentReaderImpl::Open(dir, consolidation_segment.meta,
+                                                committed_reader->Options());
+
+  if (!pending_reader) {
+    throw index_error{
+      absl::StrCat("Failed to open reader for consolidated segment '",
+                   consolidation_segment.meta.name, "'")};
+  }
+
   // Commit merge
   {
     // ensure committed_state_ segments are not modified by concurrent
@@ -1721,6 +1730,7 @@ ConsolidationResult IndexWriter::Consolidate(
                                              // candidates
         dir.GetRefs(),                       // do not forget to track refs
         std::move(candidates),               // consolidation context candidates
+        std::move(pending_reader),           // consolidated reader
         std::move(committed_reader),         // consolidation context meta
         std::move(merger));                  // merge context
 
@@ -1749,6 +1759,7 @@ ConsolidationResult IndexWriter::Consolidate(
         0,              // removals must be applied to the consolidated segment
         dir.GetRefs(),  // do not forget to track refs
         std::move(candidates),         // consolidation context candidates
+        std::move(pending_reader),     // consolidated reader
         std::move(committed_reader));  // consolidation context meta
 
       // filter out merged segments for the next commit
@@ -1819,6 +1830,10 @@ ConsolidationResult IndexWriter::Consolidate(
 
         if (!docs_mask.empty()) {
           WriteDocumentMask(dir, consolidation_segment.meta, docs_mask, false);
+
+          // Reopen modified reader
+          pending_reader = std::make_shared<SegmentReaderImpl>(
+            *pending_reader, consolidation_segment.meta, std::move(docs_mask));
         }
       }
 
@@ -1830,6 +1845,7 @@ ConsolidationResult IndexWriter::Consolidate(
         0,              // removals must be applied to the consolidated segment
         dir.GetRefs(),  // do not forget to track refs
         std::move(candidates),         // consolidation context candidates
+        std::move(pending_reader),     // consolidated reader
         std::move(committed_reader));  // consolidation context meta
 
       // filter out merged segments for the next commit
@@ -1877,6 +1893,21 @@ bool IndexWriter::Import(const IndexReader& reader,
     codec = codec_;
   }
 
+  auto options = [&]() -> std::optional<IndexReaderOptions> {
+    auto committed_reader =
+      std::atomic_load_explicit(&committed_reader_, std::memory_order_relaxed);
+    IRS_ASSERT(committed_reader);
+    if (IRS_UNLIKELY(!committed_reader)) {
+      return std::nullopt;
+    }
+
+    return committed_reader->Options();
+  }();
+
+  if (IRS_UNLIKELY(!options.has_value())) {
+    return false;
+  }
+
   RefTrackingDirectory dir{dir_};  // Track references
 
   IndexSegment segment;
@@ -1888,6 +1919,13 @@ bool IndexWriter::Import(const IndexReader& reader,
 
   if (!merger.Flush(segment.meta, progress)) {
     return false;  // Import failure (no files created, nothing to clean up)
+  }
+
+  auto imported_reader = SegmentReaderImpl::Open(dir, segment.meta, *options);
+
+  if (!imported_reader) {
+    throw index_error{absl::StrCat(
+      "Failed to open reader for imported segment '", segment.meta.name, "'")};
   }
 
   index_utils::FlushIndexSegment(dir, segment);
@@ -1902,7 +1940,8 @@ bool IndexWriter::Import(const IndexReader& reader,
   ctx->pending_segments_.emplace_back(
     std::move(segment),
     ctx->generation_.load(),  // current modification generation
-    std::move(refs));         // do not forget to track refs
+    std::move(refs),
+    std::move(imported_reader));  // do not forget to track refs
 
   return true;
 }
@@ -2211,21 +2250,10 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   size_t partial_sync_threshold = readers.size();
 
   for (auto& pending_segment : ctx->pending_segments_) {
+    IRS_ASSERT(pending_segment.reader);  // Ensured by Consolidation/Import
     auto& meta = pending_segment.segment.meta;
-
-    // FIXME(gnusi): move to consolidation in case if it's not pending
-    auto pending_reader = SegmentReaderImpl::Open(dir, meta, reader_options);
-
-    if (!pending_reader) {
-      throw index_error{
-        absl::StrCat("While adding document mask modified records "
-                     "to flush_segment_context of "
-                     "segment '",
-                     meta.name, "', error: failed to open segment")};
-    }
-
-    // Intenional copy
-    auto pending_docs_mask = *pending_reader->docs_mask();
+    auto& pending_reader = pending_segment.reader;
+    auto pending_docs_mask = *pending_reader->docs_mask();  // Intenional copy
 
     // Report progress
     progress("Stage 2: Handling consolidated/imported segments",

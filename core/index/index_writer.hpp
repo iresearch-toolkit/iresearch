@@ -564,11 +564,13 @@ class IndexWriter : private util::noncopyable {
     ImportContext(
       IndexSegment&& segment, size_t generation, FileRefs&& refs,
       Consolidation&& consolidation_candidates,
+      std::shared_ptr<const SegmentReaderImpl>&& reader,
       std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
       MergeWriter&& merger) noexcept
       : generation(generation),
         segment(std::move(segment)),
         refs(std::move(refs)),
+        reader{std::move(reader)},
         consolidation_ctx{
           .consolidation_reader = std::move(consolidation_reader),
           .candidates = std::move(consolidation_candidates),
@@ -576,30 +578,38 @@ class IndexWriter : private util::noncopyable {
 
     ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
                   Consolidation&& consolidation_candidates,
+                  std::shared_ptr<const SegmentReaderImpl>&& reader,
                   std::shared_ptr<const DirectoryReaderImpl>&&
                     consolidation_reader) noexcept
-      : generation(generation),
-        segment(std::move(segment)),
-        refs(std::move(refs)),
+      : generation{generation},
+        segment{std::move(segment)},
+        refs{std::move(refs)},
+        reader{std::move(reader)},
         consolidation_ctx{
           .consolidation_reader = std::move(consolidation_reader),
           .candidates = std::move(consolidation_candidates)} {}
 
     ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates) noexcept
-      : generation(generation),
-        segment(std::move(segment)),
-        refs(std::move(refs)),
+                  Consolidation&& consolidation_candidates,
+                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
+      : generation{generation},
+        segment{std::move(segment)},
+        refs{std::move(refs)},
+        reader{std::move(reader)},
         consolidation_ctx{.candidates = std::move(consolidation_candidates)} {}
 
-    ImportContext(IndexSegment&& segment, size_t generation,
-                  FileRefs&& refs) noexcept
-      : generation(generation),
-        segment(std::move(segment)),
-        refs(std::move(refs)) {}
+    ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
+      : generation{generation},
+        segment{std::move(segment)},
+        refs{std::move(refs)},
+        reader{std::move(reader)} {}
 
-    ImportContext(IndexSegment&& segment, size_t generation) noexcept
-      : generation(generation), segment(std::move(segment)) {}
+    ImportContext(IndexSegment&& segment, size_t generation,
+                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
+      : generation{generation},
+        segment{std::move(segment)},
+        reader{std::move(reader)} {}
 
     ImportContext(ImportContext&&) = default;
 
@@ -609,6 +619,7 @@ class IndexWriter : private util::noncopyable {
     const size_t generation;
     IndexSegment segment;
     FileRefs refs;
+    std::shared_ptr<const SegmentReaderImpl> reader;
     ConsolidationContext consolidation_ctx;
   };
 
