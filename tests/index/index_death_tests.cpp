@@ -3094,11 +3094,17 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
+    // Will force error during commit becuase of segment reader reopen.
     dir.register_failure(failing_directory::Failure::EXISTS, "_1.csi");
-    dir.register_failure(failing_directory::Failure::EXISTS, "_1.csd");
-
-    dir.register_failure(failing_directory::Failure::EXISTS, "_2.csi");
     dir.register_failure(failing_directory::Failure::EXISTS, "_2.csd");
+    dir.register_failure(failing_directory::Failure::EXISTS, "_3.csi");
+    dir.register_failure(failing_directory::Failure::EXISTS, "_4.csd");
+
+    while (!dir.no_failures()) {
+      ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                         doc1->stored.begin(), doc1->stored.end()));
+      ASSERT_THROW(writer->Commit(), irs::io_error);
+    }
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -3114,18 +3120,6 @@ TEST(index_death_test_formats_14, fails_in_exists) {
 
     const irs::index_utils::ConsolidateCount consolidate_all;
 
-    ASSERT_THROW(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-      irs::io_error);
-    ASSERT_THROW(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-      irs::io_error);
-    ASSERT_THROW(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-      irs::io_error);
-    ASSERT_THROW(
-      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-      irs::io_error);
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
@@ -3300,19 +3294,15 @@ TEST(index_death_test_formats_14, fails_in_length) {
 
     const irs::index_utils::ConsolidateCount consolidate_all;
 
-    while (!dir.no_failures()) {
-      ASSERT_THROW(
-        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
-        irs::io_error);
-    }
-
+    const auto num_failures_before = dir.num_failures();
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_EQ(num_failures_before, dir.num_failures());
 
     irs::directory_cleaner::clean(dir);
     ASSERT_TRUE(writer->Commit());
 
-    ASSERT_TRUE(dir.no_failures());
+    ASSERT_EQ(num_failures_before, dir.num_failures());
 
     // check data
     auto reader = irs::DirectoryReader(dir);
