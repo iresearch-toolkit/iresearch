@@ -62,7 +62,10 @@ TEST(directory_reader_test, open_empty_index) {
   ASSERT_NE(nullptr, codec);
 
   // Create empty index
-  irs::IndexWriter::Make(dir, codec, irs::OM_CREATE)->Commit();
+  {
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
+    ASSERT_TRUE(writer->Commit());
+  }
 
   auto rdr = irs::DirectoryReader(dir, codec);
   ASSERT_FALSE(!rdr);
@@ -207,6 +210,8 @@ TEST(directory_reader_test, open) {
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
 
     // add second segment
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
@@ -218,6 +223,8 @@ TEST(directory_reader_test, open) {
     ASSERT_TRUE(insert(*writer, doc7->indexed.begin(), doc7->indexed.end(),
                        doc7->stored.begin(), doc7->stored.end()));
     writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
 
     // add third segment
     ASSERT_TRUE(insert(*writer, doc8->indexed.begin(), doc8->indexed.end(),
@@ -225,6 +232,8 @@ TEST(directory_reader_test, open) {
     ASSERT_TRUE(insert(*writer, doc9->indexed.begin(), doc9->indexed.end(),
                        doc9->stored.begin(), doc9->stored.end()));
     writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
   }
 
   // open reader
@@ -455,6 +464,7 @@ TEST(segment_reader_test, open) {
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);
+  irs::DirectoryReader writer_snapshot;
   {
     // open writer
     auto writer = irs::IndexWriter::Make(dir, codec_ptr, irs::OM_CREATE);
@@ -471,6 +481,7 @@ TEST(segment_reader_test, open) {
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
     writer->Commit();
+    writer_snapshot = writer->GetSnapshot();
   }
 
   // check segment

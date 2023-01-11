@@ -47,6 +47,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
                        doc1->stored.begin(), doc1->stored.end()));
 
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check index
@@ -108,6 +109,7 @@ TEST_P(format_13_test_case, formats_10_13) {
                        doc1->stored.begin(), doc1->stored.end()));
 
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // write segment with format13
@@ -121,6 +123,7 @@ TEST_P(format_13_test_case, formats_10_13) {
                        doc2->stored.begin(), doc2->stored.end()));
 
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check index

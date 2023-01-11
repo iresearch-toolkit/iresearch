@@ -254,6 +254,8 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   }
 
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(writer->GetSnapshot(),
+                         irs::DirectoryReader(dir, codec_ptr));
 
   auto reader = irs::DirectoryReader(dir, codec_ptr);
   ASSERT_NE(nullptr, reader);
@@ -272,6 +274,8 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   ASSERT_TRUE(
     writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(writer->GetSnapshot(),
+                         irs::DirectoryReader(dir, codec_ptr));
 
   reader = reader.Reopen();
   ASSERT_NE(nullptr, reader);
@@ -370,13 +374,19 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     writer->GetBatch().Remove(std::move(query_doc4));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
   }
 
   const auto column_info = default_column_info();
@@ -780,11 +790,15 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     ASSERT_TRUE(insert(*writer, doc2.indexed.end(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.end(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
   }
 
   const auto column_info = default_column_info();
@@ -1318,13 +1332,19 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     ASSERT_TRUE(insert(*writer, doc3.indexed.begin(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     writer->GetBatch().Remove(std::move(query_doc4));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
   }
 
   auto docs_count = [](const irs::SubReader& segment,
@@ -2609,6 +2629,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
       ASSERT_TRUE(insert(*writer, doc->indexed.begin(), doc->indexed.end(),
                          doc->stored.begin(), doc->stored.end()));
       writer->Commit();  // create segmentN
+      AssertSnapshotEquality(writer->GetSnapshot(),
+                             irs::DirectoryReader(data_dir, codec_ptr));
     }
   }
 
@@ -2657,9 +2679,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     writer->Commit();  // create segment0
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(data_dir, codec_ptr));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->Commit();  // create segment1
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(data_dir, codec_ptr));
   }
 
   auto reader = irs::DirectoryReader(data_dir, codec_ptr);
@@ -2805,9 +2831,13 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     ASSERT_TRUE(insert(*writer, doc1.indexed.begin(), doc1.indexed.end(),
                        doc1.stored.begin(), doc1.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
   }
 
   auto reader = irs::DirectoryReader(dir, codec_ptr);
@@ -2903,12 +2933,16 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end(), doc2.sorted));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
 
     ASSERT_TRUE(insert(*writer, doc3.indexed.begin(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end(), doc3.sorted));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end(), doc4.sorted));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
 
     // this missing doc will trigger sorting error in merge writer as it will be
     // mapped to eof and block all documents from same segment to be written in
@@ -2917,6 +2951,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     irs::filter::ptr query = MakeByTerm(field, "A");
     writer->GetBatch().Remove(std::move(query));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
   }
 
   auto reader = irs::DirectoryReader(dir, codec_ptr);
@@ -3211,13 +3247,19 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     ASSERT_TRUE(insert(*writer, doc2.indexed.begin(), doc2.indexed.end(),
                        doc2.stored.begin(), doc2.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     ASSERT_TRUE(insert(*writer, doc3.indexed.begin(), doc3.indexed.end(),
                        doc3.stored.begin(), doc3.stored.end()));
     ASSERT_TRUE(insert(*writer, doc4.indexed.begin(), doc4.indexed.end(),
                        doc4.stored.begin(), doc4.stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
     writer->GetBatch().Remove(std::move(query_doc4));
     writer->Commit();
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, codec_ptr));
   }
 
   auto docs_count = [](const irs::SubReader& segment,

@@ -544,6 +544,7 @@ TEST_P(SortedIndexTestCase, reader_components) {
   ASSERT_TRUE(insert(*writer, *doc1, 1, true));
   ASSERT_TRUE(insert(*writer, *doc2, 1, true));
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   auto check_reader = [](irs::DirectoryReader reader, irs::doc_id_t live_docs,
                          bool has_columnstore, bool has_index) {
@@ -575,6 +576,7 @@ TEST_P(SortedIndexTestCase, reader_components) {
 
   writer->GetBatch().Remove(*query_doc1);
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   default_reader = default_reader.Reopen();
   no_cs_mask_reader = no_cs_mask_reader.Reopen();
@@ -797,6 +799,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
 
     // simulate consolidation
     index().clear();
@@ -1193,6 +1196,7 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
   }
 
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
@@ -1267,6 +1271,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -1274,6 +1279,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
@@ -1356,6 +1362,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
@@ -1469,6 +1476,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -1476,6 +1484,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
@@ -1559,6 +1568,7 @@ TEST_P(SortedIndexTestCase,
     auto query_doc1 = MakeByTerm("name", "C");
     writer->GetBatch().Remove(*query_doc1);
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Read documents
@@ -1640,6 +1650,7 @@ TEST_P(SortedIndexTestCase,
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
@@ -1744,6 +1755,7 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
     ASSERT_TRUE(writer->Commit());
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
@@ -1813,6 +1825,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -1820,6 +1833,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
@@ -1902,6 +1916,7 @@ TEST_P(SortedIndexTestCase,
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
@@ -2014,6 +2029,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end(), doc4->sorted));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2025,6 +2041,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
@@ -2118,6 +2135,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment:
@@ -2248,6 +2266,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end(), doc4->sorted));
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2259,6 +2278,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Remove docs from segment 1
   writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "B")});  // doc1
@@ -2266,6 +2286,7 @@ TEST_P(SortedIndexTestCase,
   // Remove docs from segment 0
   writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
@@ -2363,6 +2384,7 @@ TEST_P(SortedIndexTestCase,
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment:
@@ -2483,6 +2505,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, *docs[12].first, 2, false));
   ASSERT_TRUE(insert(*writer, *docs[13].first, 1, true));
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, *docs[6].first, 1, false));
@@ -2493,6 +2516,7 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, *docs[10].first, 8, false));
   ASSERT_TRUE(insert(*writer, *docs[11].first, 1, true));
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Remove docs
   writer->GetBatch().Remove(*docs[2].second);
@@ -2503,6 +2527,7 @@ TEST_P(SortedIndexTestCase,
 
   writer->GetBatch().Remove(*docs[9].second);
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   {
     auto reader = irs::DirectoryReader(dir(), codec());
@@ -2600,6 +2625,7 @@ TEST_P(SortedIndexTestCase,
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
@@ -2765,6 +2791,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
           in_store[remove_docs[i].first] = false;
         }
         writer->Commit();
+        AssertSnapshotEquality(*writer);
         writer = nullptr;
         // Check consolidated segment
         auto reader = irs::DirectoryReader(dir(), codec());

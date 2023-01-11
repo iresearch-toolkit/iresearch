@@ -362,6 +362,7 @@ void NestedFilterTestCase::InitDataSet() {
                          {"RAM", 5000, 2}}});
 
   ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   auto reader = open_reader();
   ASSERT_NE(nullptr, reader);

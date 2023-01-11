@@ -91,6 +91,8 @@ inline bytes_view GetPayload(const IndexMeta& meta) noexcept {
 }
 
 struct DirectoryMeta {
+  bool operator==(const DirectoryMeta&) const = default;
+
   std::string filename;
   IndexMeta index_meta;
 };

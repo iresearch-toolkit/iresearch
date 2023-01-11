@@ -103,6 +103,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -1126,6 +1127,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -1923,6 +1925,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -2991,6 +2994,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -3198,6 +3202,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -3391,6 +3396,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -4345,6 +4351,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -5144,6 +5151,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -5767,6 +5775,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -6563,6 +6572,7 @@ TEST_P(index_column_test_case,
       irs::IndexWriter::Transaction(std::move(ctx));
     }  // force flush of documents()
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -7475,6 +7485,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_big) {
       ++docs_count;
     }
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -8025,6 +8036,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.end(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check inserted values:
@@ -8269,6 +8281,7 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end()));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   auto reader = irs::DirectoryReader(dir(), codec());

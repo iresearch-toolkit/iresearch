@@ -160,6 +160,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
     }
     writer->Commit();
     index_ = irs::DirectoryReader(dir_, codec);
+    AssertSnapshotEquality(writer->GetSnapshot(), index_);
   }
 
  protected:

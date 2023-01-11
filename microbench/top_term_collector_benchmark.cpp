@@ -115,17 +115,19 @@ class seek_term_iterator final : public irs::seek_term_iterator {
 };
 
 struct SubReader final : irs::SubReader {
-  explicit SubReader(size_t num_docs) : num_docs(num_docs) {}
+  explicit SubReader(size_t num_docs)
+    : info{.docs_count = num_docs, .live_docs_count = num_docs} {}
+  const irs::SegmentInfo& Meta() const noexcept final { return info; }
   const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
+  const irs::document_mask* docs_mask() const noexcept final { return nullptr; }
   irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
   const irs::column_reader* column(irs::field_id) const override {
     return nullptr;
   }
-  uint64_t docs_count() const override { return 0; }
   irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
@@ -135,14 +137,9 @@ struct SubReader final : irs::SubReader {
   irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  uint64_t live_docs_count() const override { return 0; }
-  const irs::SubReader& operator[](size_t) const override {
-    throw std::out_of_range("index out of range");
-  }
-  size_t size() const override { return 0; }
   const irs::column_reader* sort() const override { return nullptr; }
 
-  size_t num_docs;
+  irs::SegmentInfo info;
 };
 
 struct state {

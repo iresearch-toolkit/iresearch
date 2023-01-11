@@ -165,6 +165,8 @@ struct format_info {
 
 typedef std::tuple<tests::dir_param_f, format_info> index_test_context;
 
+void AssertSnapshotEquality(irs::DirectoryReader lhs, irs::DirectoryReader rhs);
+
 class index_test_base : public virtual test_param_base<index_test_context> {
  public:
   static std::string to_string(
@@ -201,6 +203,8 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::DirectoryReader open_reader() const {
     return irs::DirectoryReader{*dir_, codec_};
   }
+
+  void AssertSnapshotEquality(const irs::IndexWriter& writer);
 
   void assert_index(irs::IndexFeatures features, size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {

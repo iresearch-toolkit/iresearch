@@ -595,6 +595,7 @@ TEST_P(bm25_test_case, test_query) {
         gen.next();  // skip 1 doc
       }
       writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     // add second segment (odd 'seq')
@@ -607,6 +608,7 @@ TEST_P(bm25_test_case, test_query) {
         gen.next();  // skip 1 doc
       }
       writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     auto reader = irs::DirectoryReader(dir(), codec());
@@ -687,6 +689,7 @@ TEST_P(bm25_test_case, test_query) {
         gen.next();  // skip 1 doc
       }
       writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     // add second segment (odd 'seq')
@@ -699,6 +702,7 @@ TEST_P(bm25_test_case, test_query) {
         gen.next();  // skip 1 doc
       }
       writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     auto reader = irs::DirectoryReader(dir(), codec());
@@ -789,6 +793,7 @@ TEST_P(bm25_test_case, test_query) {
         gen.next();  // skip 1 doc
       }
       writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     // add second segment (odd 'seq')
@@ -801,6 +806,7 @@ TEST_P(bm25_test_case, test_query) {
         gen.next();  // skip 1 doc
       }
       writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     auto reader = irs::DirectoryReader(dir(), codec());
@@ -1252,6 +1258,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
     }
 
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   auto reader = irs::DirectoryReader(dir(), codec());

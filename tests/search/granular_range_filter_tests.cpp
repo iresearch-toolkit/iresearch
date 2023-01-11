@@ -2079,6 +2079,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
       write_segment(*writer, segment, gen);
     }
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   auto rdr = open_reader();

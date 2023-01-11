@@ -442,6 +442,7 @@ TEST_P(Norm2TestCase, CheckNorms) {
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create expected index
   auto& expected_index = index();
@@ -554,6 +555,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end()));
   ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
@@ -561,6 +563,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create expected index
   auto& expected_index = index();
@@ -676,6 +679,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
 
     // Simulate consolidation
     index().clear();
@@ -814,6 +818,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end()));
   ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
@@ -821,6 +826,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create expected index
   auto& expected_index = index();
@@ -935,6 +941,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
     auto query_doc3 = MakeByTerm("name", "D");
     writer->GetBatch().Remove(*query_doc3);
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Consolidate segments
@@ -943,6 +950,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
 
     // Simulate consolidation
     index().clear();
@@ -1028,6 +1036,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end()));
   writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Consolidate segments
   {
@@ -1035,6 +1044,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   reader = open_reader();

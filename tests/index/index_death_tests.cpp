@@ -281,6 +281,8 @@ void open_reader(
     writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   failure_registerer(dir);
@@ -375,6 +377,8 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
     // successful attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
     auto reader = irs::DirectoryReader(dir);
@@ -417,6 +421,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // check data
     auto reader = irs::DirectoryReader(dir);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -500,6 +505,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // ensure no data
     auto reader = irs::DirectoryReader(dir);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -527,6 +533,8 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -555,6 +563,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // check data
     auto reader = irs::DirectoryReader(dir);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -619,10 +628,14 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     ASSERT_TRUE(writer->Begin());
     ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // second attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
     auto reader = irs::DirectoryReader(dir);
@@ -652,6 +665,8 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     ASSERT_TRUE(writer->Begin());
     ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -659,6 +674,8 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
     // second attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -724,6 +741,8 @@ TEST(index_death_test_formats_10,
     // successul attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
     auto reader = irs::DirectoryReader(dir);
@@ -757,6 +776,8 @@ TEST(index_death_test_formats_10,
     // successul attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -813,6 +834,8 @@ TEST(index_death_test_formats_10,
     // successul attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                         doc2->stored.begin(), doc2->stored.end()),
@@ -876,6 +899,8 @@ TEST(index_death_test_formats_10,
     // successul attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                         doc2->stored.begin(), doc2->stored.end()),
@@ -887,6 +912,8 @@ TEST(index_death_test_formats_10,
     // nothing to flush
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -987,6 +1014,8 @@ TEST(index_death_test_formats_10,
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment meta
     while (!dir.no_failures()) {
@@ -1053,6 +1082,8 @@ TEST(index_death_test_formats_10,
     // successul attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -1142,6 +1173,8 @@ TEST(index_death_test_formats_10,
     // successul attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
     auto reader = irs::DirectoryReader(dir);
@@ -1199,6 +1232,8 @@ TEST(index_death_test_formats_10,
     // successul attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -1279,6 +1314,8 @@ TEST(index_death_test_formats_10,
     // second attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
     auto reader = irs::DirectoryReader(dir);
@@ -1322,6 +1359,8 @@ TEST(index_death_test_formats_10,
     // second attempt
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -1391,11 +1430,15 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(
@@ -1516,11 +1559,15 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(
@@ -1539,6 +1586,8 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       consolidate_all)));            // register pending consolidation
     ASSERT_FALSE(writer->Commit());  // commit started transaction
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
     ASSERT_THROW(
       writer->Begin(),
       irs::io_error);  // start transaction to commit pending consolidation
@@ -1550,6 +1599,8 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       consolidate_all)));            // register pending consolidation
     ASSERT_FALSE(writer->Commit());  // commit started transaction
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
     ASSERT_THROW(
       writer->Begin(),
       irs::io_error);  // start transaction to commit pending consolidation
@@ -1702,11 +1753,15 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     failing_dir.register_failure(
@@ -1729,6 +1784,8 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
@@ -1838,11 +1895,15 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     failing_dir.register_failure(
@@ -1864,6 +1925,8 @@ TEST(index_death_test_formats_10,
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
@@ -1984,11 +2047,15 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE,
@@ -2101,11 +2168,15 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(failing_directory::Failure::SYNC,
@@ -2217,6 +2288,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                        doc1->stored.begin(), doc1->stored.end()));
 
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(src_dir));
   }
 
   auto src_index = irs::DirectoryReader(src_dir);
@@ -2254,6 +2327,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_THROW(writer->Import(*src_index), irs::io_error);
@@ -2300,6 +2375,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_THROW(writer->Import(*src_index), irs::io_error);
@@ -2310,6 +2387,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     ASSERT_TRUE(writer->Import(*src_index));
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -2380,6 +2459,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(writer->Import(*src_index));
@@ -2426,6 +2507,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(writer->Import(*src_index));
@@ -2436,6 +2519,8 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     ASSERT_TRUE(writer->Import(*src_index));
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -2523,6 +2608,8 @@ TEST(index_death_test_formats_10,
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2576,6 +2663,8 @@ TEST(index_death_test_formats_10,
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2593,6 +2682,8 @@ TEST(index_death_test_formats_10,
 
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -2659,6 +2750,8 @@ TEST(index_death_test_formats_10,
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2672,6 +2765,8 @@ TEST(index_death_test_formats_10,
 
     ASSERT_TRUE(writer->Begin());  // nothing to commit
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -2740,6 +2835,8 @@ TEST(index_death_test_formats_14,
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2773,6 +2870,8 @@ TEST(index_death_test_formats_14,
 
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
     auto reader = irs::DirectoryReader(dir);
@@ -2836,6 +2935,8 @@ TEST(index_death_test_formats_10,
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2885,6 +2986,8 @@ TEST(index_death_test_formats_14,
     // initial commit
     ASSERT_TRUE(writer->Begin());
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2953,9 +3056,13 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     dir.register_failure(failing_directory::Failure::RENAME,
                          "pending_segments_1");  //
     ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // now it is OK
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.register_failure(failing_directory::Failure::CREATE,
                          "_1.csd");  // columnstore data creation failure
@@ -2965,6 +3072,8 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
 
     // Nothing to commit
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2975,9 +3084,13 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     dir.register_failure(failing_directory::Failure::CREATE,
                          "_2.csi");  // columnstore index creation failure
     ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // Nothing to commit
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2985,6 +3098,8 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_3.csd");  // columnstore index creation failure
     ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
@@ -2992,22 +3107,30 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_4.csi");  // columnstore index creation failure
     ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // NOW IT IS OK
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     const irs::index_utils::ConsolidateCount consolidate_all;
 
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.register_failure(failing_directory::Failure::REMOVE,
                          "_2.csd");  // columnstore data deletion failure
@@ -3023,6 +3146,8 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
                          "_6.csd");  // columnstore data deletion failure
     irs::directory_cleaner::clean(dir);
     ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(dir.no_failures());
 
@@ -3104,6 +3229,8 @@ TEST(index_death_test_formats_14, fails_in_exists) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
       ASSERT_THROW(writer->Commit(), irs::io_error);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(dir));
     }
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3111,18 +3238,24 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     const irs::index_utils::ConsolidateCount consolidate_all;
 
     ASSERT_TRUE(
       writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(dir.no_failures());
 
@@ -3253,21 +3386,29 @@ TEST(index_death_test_formats_14, fails_in_length) {
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 2
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 3
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     {
       // check data
@@ -3301,6 +3442,8 @@ TEST(index_death_test_formats_14, fails_in_length) {
 
     irs::directory_cleaner::clean(dir);
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_EQ(num_failures_before, dir.num_failures());
 
@@ -3446,6 +3589,8 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
     writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   // check data
@@ -3539,6 +3684,8 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
     writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   dir.register_failure(failing_directory::Failure::OPEN,
@@ -3644,6 +3791,8 @@ TEST(index_death_test_formats_14, fails_in_dup) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end()));
 
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
   // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN, "_1.csi");
@@ -3761,6 +3910,8 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
     writer->GetBatch().Remove(*query_doc2);
 
     ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   // check data
