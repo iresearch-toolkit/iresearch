@@ -220,7 +220,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // initialize directory
     {
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -232,7 +233,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -242,7 +244,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -252,7 +255,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       writer->GetBatch().Remove(*query_doc1);
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -262,7 +266,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       writer->GetBatch().Remove(*query_doc2);
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -272,7 +277,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       writer->GetBatch().Remove(*query_doc2);
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -298,7 +304,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // initialize directory
     {
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -312,7 +319,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -321,7 +329,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       writer->GetBatch().Remove(*query_doc1);
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec());
     }
@@ -351,7 +360,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                          doc4->stored.begin(), doc4->stored.end()));
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -361,7 +371,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       writer->GetBatch().Remove(*(query_doc2));
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -371,7 +382,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       writer->GetBatch().Remove(*(query_doc3));
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -381,7 +393,8 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     {
       writer->GetBatch().Remove(*(query_doc4));
       writer->Commit();
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
       assert_no_directory_artifacts(*dir, *codec(), reader_files);
     }
@@ -413,20 +426,24 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       auto writer = irs::IndexWriter::Make(*dir, codec(), irs::OM_CREATE);
 
       writer->Commit();  // initialize directory
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
       writer->Commit();  // add first segment
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
       ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                          doc3->stored.begin(), doc3->stored.end()));
       writer->Commit();  // add second segment
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
       writer->GetBatch().Remove(*(query_doc1));
       writer->Commit();  // remove first segment
-      AssertSnapshotEquality(*writer);
+      tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                    irs::DirectoryReader(*dir));
     }
 
     // add invalid files
