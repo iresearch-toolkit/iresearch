@@ -2412,7 +2412,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         tmp_meta.segments.emplace_back(std::move(pending_meta.segments[i]));
       }
     }
-    partial_sync_threshold = tmp_readers.size();
+    const auto tmp_partial_sync_threshold = tmp_readers.size();
 
     tmp_readers.insert(
       tmp_readers.end(),
@@ -2424,6 +2424,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
                               partial_sync_threshold),
       std::make_move_iterator(pending_meta.segments.end()));
 
+    partial_sync_threshold = tmp_partial_sync_threshold;
     partial_sync = std::move(tmp_partial_sync);
     readers = std::move(tmp_readers);
     pending_meta = std::move(tmp_meta);
