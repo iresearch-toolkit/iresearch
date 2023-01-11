@@ -294,9 +294,10 @@ void MaskUnusedUpdatesInNewSegment(FlushSegmentContext& ctx) {
 
 // Write the specified document mask and adjust version and
 // live documents count of the specifed meta.
-std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
-                                   const document_mask& docs_mask,
-                                   bool increment_version = true) {
+// Return index of the mask file withing segment file list
+size_t WriteDocumentMask(directory& dir, SegmentMeta& meta,
+                         const document_mask& docs_mask,
+                         bool increment_version = true) {
   IRS_ASSERT(!docs_mask.empty());
   IRS_ASSERT(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
 
@@ -336,7 +337,8 @@ std::string_view WriteDocumentMask(directory& dir, SegmentMeta& meta,
 
   mask_writer->write(dir, meta, docs_mask);
 
-  return *it;
+  IRS_ASSERT(meta.files.begin() <= it);
+  return std::distance(meta.files.begin(), it);
 }
 
 // mapping: name -> { new segment, old segment }
@@ -573,12 +575,11 @@ bool IsInitialCommit(const DirectoryMeta& meta) noexcept {
 }
 
 struct PartialSync {
-  PartialSync(size_t i, std::string_view file0, std::string_view file1)
-    : i{i}, file0{file0}, file1{file1} {}
+  PartialSync(size_t segment_index, size_t file_index) noexcept
+    : segment_index{segment_index}, file_index{file_index} {}
 
-  size_t i;  // Index within index meta
-  std::string file0;
-  std::string file1;
+  size_t segment_index;  // Index of the segment within index meta
+  size_t file_index;     // Index of the file in segment file list
 };
 
 std::vector<std::string_view> GetFilesToSync(
@@ -595,9 +596,11 @@ std::vector<std::string_view> GetFilesToSync(
   files_to_sync.reserve(1 + partial_sync.size() * 2 +
                         full_sync_count * kFilesPerSegment);
 
-  for (const auto& sync : partial_sync) {
-    files_to_sync.emplace_back(sync.file0);
-    files_to_sync.emplace_back(sync.file1);
+  for (auto sync : partial_sync) {
+    IRS_ASSERT(sync.segment_index < partial_sync_threshold);
+    const auto& segment = segments[sync.segment_index];
+    files_to_sync.emplace_back(segment.filename);
+    files_to_sync.emplace_back(segment.meta.files[sync.file_index]);
   }
 
   std::for_each(segments.begin() + partial_sync_threshold, segments.end(),
@@ -2114,6 +2117,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
   IndexMeta pending_meta;
   std::vector<PartialSync> partial_sync;
+  std::vector<SegmentReader> readers;
 
   auto ctx = GetFlushContext(false);
   auto& dir = *(ctx->dir_);
@@ -2161,8 +2165,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
   size_t current_segment_index = 0;
   const size_t commited_reader_size = committed_reader.size();
 
-  std::vector<SegmentReader> readers;
   readers.reserve(commited_reader_size);
+  pending_meta.segments.reserve(commited_reader_size);
 
   for (std::vector<doc_id_t> deleted_docs;
        const auto& existing_segment : committed_reader.GetReaders()) {
@@ -2225,10 +2229,10 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       IndexSegment segment{
         .meta = committed_meta.index_meta.segments[current_segment_index].meta};
 
-      const auto mask_file = WriteDocumentMask(dir, segment.meta, docs_mask);
-
-      index_utils::FlushIndexSegment(dir, segment);  // write with new mask
-      partial_sync.emplace_back(readers.size(), mask_file, segment.filename);
+      const auto mask_file_index =
+        WriteDocumentMask(dir, segment.meta, docs_mask);
+      index_utils::FlushIndexSegment(dir, segment);  // Write with new mask
+      partial_sync.emplace_back(readers.size(), mask_file_index);
 
       auto new_segment = std::make_shared<SegmentReaderImpl>(
         *existing_segment.GetImpl(), segment.meta, std::move(docs_mask));
@@ -2399,16 +2403,17 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           !segment_mask.contains(segment.GetImpl().get())) {
         partial_sync_begin =
           std::find_if(partial_sync_begin, partial_sync.end(),
-                       [i](const auto& v) { return i == v.i; });
+                       [i](const auto& v) { return i == v.segment_index; });
         if (partial_sync_begin != partial_sync.end()) {
           tmp_partial_sync.emplace_back(tmp_readers.size(),
-                                        std::move(partial_sync_begin->file0),
-                                        std::move(partial_sync_begin->file1));
+                                        partial_sync_begin->file_index);
         }
         tmp_readers.emplace_back(std::move(segment));
         tmp_meta.segments.emplace_back(std::move(pending_meta.segments[i]));
       }
     }
+    partial_sync_threshold = tmp_readers.size();
+
     tmp_readers.insert(
       tmp_readers.end(),
       std::make_move_iterator(readers.begin() + partial_sync_threshold),
@@ -2419,7 +2424,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
                               partial_sync_threshold),
       std::make_move_iterator(pending_meta.segments.end()));
 
-    partial_sync_threshold = tmp_partial_sync.size();
     partial_sync = std::move(tmp_partial_sync);
     readers = std::move(tmp_readers);
     pending_meta = std::move(tmp_meta);
@@ -2598,7 +2602,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     }
   }
 
-  // FIXME(gnusi): partial sync is the local variable
   auto files_to_sync =
     GetFilesToSync(pending_meta.segments, partial_sync, partial_sync_threshold);
 
