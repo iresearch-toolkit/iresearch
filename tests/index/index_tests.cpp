@@ -7521,10 +7521,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
     dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
-    ASSERT_EQ(1, irs::directory_cleaner::clean(dir));  // segments_3
-    writer->Commit();                                  // commit consolidation
-    ASSERT_EQ(1 + count,
-              irs::directory_cleaner::clean(dir));  // +1 for segments_4
+
+    // finished consolidation holds a reference to segments_3
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+    writer->Commit();  // commit consolidation
+
+    // +1 for segments_4, +1 for segments_3
+    ASSERT_EQ(1 + 1 + count, irs::directory_cleaner::clean(dir));
 
     // validate structure
     tests::index_t expected;
@@ -7807,13 +7810,13 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     count = 0;
     dir.visit(get_number_of_files_in_segments);
 
-    dir.intermediate_commits_lock
-      .lock();  // acquire directory lock, and block consolidation
+    // acquire directory lock, and block consolidation
+    dir.intermediate_commits_lock.lock();
 
     std::thread consolidation_thread([&writer]() {
       // consolidation will fail because of
-      ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-        irs::index_utils::ConsolidateCount())));  // consolidate
+      ASSERT_TRUE(writer->Consolidate(
+        irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount())));
 
       const std::vector<size_t> expected_consolidating_segments{0, 1};
       auto check_consolidating_segments =
@@ -7830,8 +7833,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
                 const auto& expected_meta =
                   expected_consolidating_segment.Meta();
                 const auto& current_meta = segment->Meta();
-                return current_meta.name == expected_meta.name &&
-                       current_meta.version == expected_meta.version;
+                // Name only because of removal
+                return current_meta.name == expected_meta.name;
               });
             ASSERT_NE(it, consolidating_segments.end());
           }
@@ -7858,18 +7861,17 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // remove doc1 in background
     writer->GetBatch().Remove(*query_doc1);
     writer->Commit();  // commit transaction
-    ASSERT_EQ(1,
-              irs::directory_cleaner::clean(dir));  // unused column store
+    // unused column store
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir));
 
     dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
-    ASSERT_EQ(2, irs::directory_cleaner::clean(
-                   dir));  // segment_2 + stale segment 1 meta
-    writer->Commit();      // commit consolidation
-    ASSERT_EQ(
-      count + 2,
-      irs::directory_cleaner::clean(
-        dir));  // files from segments 1 (+1 for doc mask) and 2, segment_3
+    // Consolidation still holds a reference to the snapshot segment_2
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
+    writer->Commit();  // commit consolidation
+    // files from segments 1 (+1 for doc mask) and 2, segment_3
+    // segment_2 + stale segment 1 meta
+    ASSERT_EQ(count + 2 + 2, irs::directory_cleaner::clean(dir));
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
@@ -7996,8 +7998,8 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
                 const auto& expected_meta =
                   expected_consolidating_segment.Meta();
                 const auto& current_meta = segment->Meta();
-                return current_meta.name == expected_meta.name &&
-                       current_meta.version == expected_meta.version;
+                // Name only because of removals
+                return current_meta.name == expected_meta.name;
               });
             ASSERT_NE(it, consolidating_segments.end());
           }
@@ -8024,20 +8026,20 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     // remove doc1 in background
     writer->GetBatch().Remove(*query_doc1_doc4);
     writer->Commit();  // commit transaction
-    ASSERT_EQ(1,
-              irs::directory_cleaner::clean(dir));  //  unused column store
+    //  unused column store
+    ASSERT_EQ(1, irs::directory_cleaner::clean(dir));
 
     dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
-    ASSERT_EQ(
-      3,
-      irs::directory_cleaner::clean(
-        dir));  // segment_2 + stale segment 1 meta + stale segment 2 meta
+    // consolidation still holds a reference to the snapshot pointed by
+    // segments_2
+    ASSERT_EQ(0, irs::directory_cleaner::clean(dir));
     writer->Commit();  // commit consolidation
-    ASSERT_EQ(count + 3,
-              irs::directory_cleaner::clean(
-                dir));  // files from segments 1 (+1 for doc mask)
-                        // and 2 (+1 for doc mask), segment_3
+
+    // files from segments 1 (+1 for doc mask) and 2 (+1 for doc mask),
+    // segment_3
+    // segment_2 + stale segment 1 meta + stale segment 2 meta
+    ASSERT_EQ(count + 3 + 3, irs::directory_cleaner::clean(dir));
 
     // validate structure (does not take removals into account)
     tests::index_t expected;
