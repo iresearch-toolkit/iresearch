@@ -12633,16 +12633,17 @@ TEST_P(index_test_case, consolidate_progress) {
                          doc1->stored.begin(), doc1->stored.end()));
     }
     writer->Commit();
-    AssertSnapshotEquality(*writer);  // create segment0
+    AssertSnapshotEquality(
+      writer->GetSnapshot(),
+      irs::DirectoryReader(dir, get_codec()));  // create segment0
 
     for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
     }
     writer->Commit();
-    //   AssertSnapshotEquality(*writer);  // create segment1
-
     auto reader = irs::DirectoryReader(dir, get_codec());
+    AssertSnapshotEquality(writer->GetSnapshot(), reader);  // create segment1
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
@@ -12656,9 +12657,10 @@ TEST_P(index_test_case, consolidate_progress) {
 
     ASSERT_TRUE(writer->Consolidate(policy, get_codec(), progress));
     writer->Commit();
-    //  AssertSnapshotEquality(*writer);  // write consolidated segment
-
-    reader = irs::DirectoryReader(dir, get_codec());
+    reader = writer->GetSnapshot();
+    AssertSnapshotEquality(
+      reader,
+      irs::DirectoryReader(dir, get_codec()));  // write consolidated segment
 
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(2 * MAX_DOCS, reader[0].docs_count());
@@ -12677,17 +12679,17 @@ TEST_P(index_test_case, consolidate_progress) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
     }
-    writer->Commit();
-    //    AssertSnapshotEquality(*writer);  // create segment0
+    writer->Commit();  // create segment0
+    AssertSnapshotEquality(writer->GetSnapshot(),
+                           irs::DirectoryReader(dir, get_codec()));
 
     for (size_t size = 0; size < MAX_DOCS; ++size) {
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
     }
-    writer->Commit();
-    //   AssertSnapshotEquality(*writer);  // create segment1
-
+    writer->Commit();  // create segment0
     auto reader = irs::DirectoryReader(dir, get_codec());
+    AssertSnapshotEquality(writer->GetSnapshot(), reader);
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
@@ -12698,10 +12700,10 @@ TEST_P(index_test_case, consolidate_progress) {
     };
 
     ASSERT_FALSE(writer->Consolidate(policy, get_codec(), progress));
-    writer->Commit();
-    //  AssertSnapshotEquality(*writer);  // write consolidated segment
+    writer->Commit();  // write consolidated segment
 
     reader = irs::DirectoryReader(dir, get_codec());
+    AssertSnapshotEquality(writer->GetSnapshot(), reader);
 
     ASSERT_EQ(2, reader.size());
     ASSERT_EQ(MAX_DOCS, reader[0].docs_count());
