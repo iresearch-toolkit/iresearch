@@ -79,7 +79,7 @@ class SegmentReaderImpl final : public SubReader {
 
  private:
   using NamedColumns =
-    absl::flat_hash_map<hashed_string_view, const irs::column_reader*>;
+    absl::flat_hash_map<std::string_view, const irs::column_reader*>;
   using SortedNamedColumns =
     std::vector<std::reference_wrapper<const irs::column_reader>>;
 

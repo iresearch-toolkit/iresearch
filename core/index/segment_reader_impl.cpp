@@ -230,8 +230,7 @@ std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
       const auto name = column.name();
 
       if (!IsNull(name)) {
-        const auto [it, is_new] =
-          named_columns.emplace(hashed_string_view{name}, &column);
+        const auto [it, is_new] = named_columns.emplace(name, &column);
         IRS_IGNORE(it);
 
         if (IRS_UNLIKELY(!is_new)) {
@@ -280,7 +279,7 @@ SegmentReaderImpl::SegmentReaderImpl(const SegmentReaderImpl& rhs,
 const irs::column_reader* SegmentReaderImpl::column(
   std::string_view name) const {
   const auto& named_columns = data_->named_columns_;
-  const auto it = named_columns.find(hashed_string_view{name});
+  const auto it = named_columns.find(name);
   return it == named_columns.end() ? nullptr : it->second;
 }
 

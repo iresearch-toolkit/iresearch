@@ -99,6 +99,7 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
         "Caught exception while reading index meta with codec '%s', error "
         "'%s'",
         codec->type().name().data(), e.what());
+      return nullptr;
     } catch (...) {
       IR_FRMT_ERROR("Caught exception while reading index meta with codec '%s'",
                     codec->type().name().data());

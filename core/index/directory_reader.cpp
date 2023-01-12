@@ -76,8 +76,8 @@ DirectoryReader DirectoryReader::Reopen() const {
   // make a copy
   auto impl = std::atomic_load(&impl_);
 
-  return DirectoryReader{DirectoryReaderImpl::Open(impl->Dir(), impl->Options(),
-                                                   impl->Codec(), impl)};
+  return DirectoryReader{DirectoryReaderImpl::Open(
+    impl->Dir(), impl->Options(), impl->Codec(), std::move(impl))};
 }
 
 }  // namespace irs

@@ -2481,10 +2481,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
 
       if (decomp && !decomp->prepare(*stream)) {
         throw index_error{absl::StrCat("Failed to prepare compression '",
-                                       compression_id,
-                                       "' for "
-                                       "column id=",
-                                       i)};
+                                       compression_id, "' for column id=", i)};
       }
     } else {
       // we don't support encryption and custom

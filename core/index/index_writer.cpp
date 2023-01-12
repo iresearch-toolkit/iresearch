@@ -60,9 +60,8 @@ const ColumnInfoProvider kDefaultColumnInfo = [](std::string_view) {
 
 const FeatureInfoProvider kDefaultFeatureInfo = [](irs::type_info::type_id) {
   // no compression, no encryption
-  return std::make_pair(
-    ColumnInfo{irs::type<compression::none>::get(), {}, false},
-    FeatureWriterFactory{});
+  return std::pair{ColumnInfo{irs::type<compression::none>::get(), {}, false},
+                   FeatureWriterFactory{}};
 };
 
 struct FlushSegmentContext {
@@ -348,13 +347,18 @@ using CandidatesMapping = absl::flat_hash_map<
             std::pair<const SubReader*, size_t>>>;  // old segment + index
                                                     // within merge_writer
 
+struct MapCandidatesResult {
+  // Number of mapped candidates.
+  size_t count{0};
+  bool has_removals{false};
+};
+
 // candidates_mapping output mapping
 // candidates candidates for mapping
 // segments map against a specified segments
-// Returns first - has removals, second - number of mapped candidates.
-std::pair<bool, size_t> MapCandidates(CandidatesMapping& candidates_mapping,
-                                      ConsolidationView candidates,
-                                      const auto& index) {
+MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
+                                  ConsolidationView candidates,
+                                  const auto& index) {
   size_t num_candidates = 0;
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
@@ -392,14 +396,14 @@ std::pair<bool, size_t> MapCandidates(CandidatesMapping& candidates_mapping,
     }
 
     // FIXME(gnusi): can't we just check pointers?
-    has_removals |= (meta.version != it->second.second.first->Meta().version);
+    has_removals |= (meta.version != mapping.second.first->Meta().version);
 
     if (++found == num_candidates) {
       break;
     }
   }
 
-  return std::make_pair(has_removals, found);
+  return {found, has_removals};
 }
 
 bool MapRemovals(const CandidatesMapping& candidates_mapping,
@@ -1039,7 +1043,7 @@ void IndexWriter::FlushContext::emplace(ActiveSegmentContext&& segment,
       if (flush_ctx && this != flush_ctx) {
         pending_segment_contexts_.pop_back();
         freelist_node = nullptr;
-      }  // FIXME TODO remove this condition once col_writer tail is writteng
+      }  // FIXME TODO remove this condition once col_writer tail is written
          // correctly
     } else {
       // the segment is present in this flush_context
@@ -1070,7 +1074,7 @@ void IndexWriter::FlushContext::emplace(ActiveSegmentContext&& segment,
       if (flush_ctx && this != flush_ctx) {
         generation_base = flush_ctx->generation_ += modification_count;
       } else {
-        // FIXME remove this condition once col_writer tail is writteng
+        // FIXME remove this condition once col_writer tail is written
         // correctly
 
         // atomic increment to end of unique generation range
@@ -1799,7 +1803,7 @@ ConsolidationResult IndexWriter::Consolidate(
       auto& segment_mask = ctx->segment_mask_;
 
       CandidatesMapping mappings;
-      const auto [has_removals, count] =
+      const auto [count, has_removals] =
         MapCandidates(mappings, candidates, *current_committed_reader);
 
       if (count != candidates.size()) {
@@ -2276,7 +2280,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     if (pending_consolidation) {
       // Pending consolidation request
       CandidatesMapping mappings;
-      const auto [has_removals, count] =
+      const auto [count, has_removals] =
         MapCandidates(mappings, candidates, readers);
 
       if (count != candidates.size()) {

@@ -193,6 +193,7 @@ set(IResearch_core_headers
   ./index/file_names.hpp
   ./index/index_meta.hpp
   ./index/index_reader.hpp
+  ./index/index_reader_options.hpp
   ./index/iterators.hpp
   ./index/segment_reader.hpp
   ./index/segment_reader_impl.hpp

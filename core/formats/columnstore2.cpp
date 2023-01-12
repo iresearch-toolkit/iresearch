@@ -1697,10 +1697,7 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
 
     if (inflater && !inflater->prepare(*index_in)) {  // FIXME or data_in???
       throw index_error{absl::StrCat("Failed to prepare compression '",
-                                     compression_id,
-                                     "' for "
-                                     "column id=",
-                                     i)};
+                                     compression_id, "' for column id=", i)};
     }
 
     column_header hdr = read_header(*index_in);

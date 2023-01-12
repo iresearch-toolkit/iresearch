@@ -70,7 +70,7 @@ constexpr std::string_view MODULE_NAME = "10";
 void write_strings(data_output& out, std::span<const std::string> strings) {
   write_size(out, strings.size());
   for (const auto& s : strings) {
-    write_string<decltype(s)>(out, s);
+    write_string(out, s);
   }
 }
 
@@ -3165,10 +3165,7 @@ void postings_reader_base::prepare(index_input& in, const reader_state& state,
     throw index_error{
       absl::StrCat("while preparing postings_reader, error: "
                    "invalid block size '",
-                   block_size,
-                   "', "
-                   "expected '",
-                   block_size_, "'")};
+                   block_size, "', expected '", block_size_, "'")};
   }
 }
 

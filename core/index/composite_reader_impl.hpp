@@ -45,7 +45,7 @@ class CompositeReaderImpl : public IndexReader {
       docs_count_{docs_count} {}
 
   // Returns corresponding sub-reader
-  const ReaderType& operator[](size_t i) const noexcept override {
+  const ReaderType& operator[](size_t i) const noexcept final {
     IRS_ASSERT(i < readers_.size());
     return *(readers_[i]);
   }

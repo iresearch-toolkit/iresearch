@@ -24,9 +24,8 @@
 
 #include "utils/singleton.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 // Represents a query returning empty result set
 struct EmptyQuery final : public filter::prepared {
@@ -43,8 +42,6 @@ struct EmptyQuery final : public filter::prepared {
 const EmptyQuery kEmptyQuery;
 
 }  // namespace
-
-namespace irs {
 
 filter::filter(const type_info& type) noexcept
   : boost_{irs::kNoBoost}, type_{type.id()} {}
