@@ -2611,6 +2611,8 @@ struct index_meta_writer final : public irs::index_meta_writer {
     IRS_ASSERT(version_ >= kFormatMin && version <= kFormatMax);
   }
 
+  // FIXME(gnusi): Better to split prepare into 2 methods and pass meta by const
+  // reference
   bool prepare(directory& dir, IndexMeta& meta, std::string& pending_filename,
                std::string& filename) override;
   bool commit() override;
@@ -2670,12 +2672,15 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
       if (flags == kHasPayload) {
         irs::write_string(*out, payload);
       }
+    } else {
+      // Earliler versions don't support payload.
+      meta.payload.reset();
     }
 
     format_utils::write_footer(*out);
-  }  // important to close output here
+  }  // Important to close output here
 
-  // only noexcept operations below
+  // Only noexcept operations below
   dir_ = &dir;
   pending_gen_ = meta.gen;
 
@@ -2844,8 +2849,9 @@ struct segment_meta_writer final : public irs::segment_meta_writer {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
-  void write(directory& dir, std::string& filename,
-             const SegmentMeta& meta) override;
+  // FIXME(gnusi): Better to split write into 2 methods and pass meta by const
+  // reference
+  void write(directory& dir, std::string& filename, SegmentMeta& meta) override;
 
  private:
   int32_t version_;
@@ -2859,7 +2865,7 @@ std::string file_name<irs::segment_meta_writer, SegmentMeta>(
 }
 
 void segment_meta_writer::write(directory& dir, std::string& meta_file,
-                                const SegmentMeta& meta) {
+                                SegmentMeta& meta) {
   if (meta.docs_count < meta.live_docs_count) {
     throw index_error{absl::StrCat("Invalid segment meta '", meta.name,
                                    "' detected : docs_count=", meta.docs_count,
@@ -2891,7 +2897,9 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
     out->write_byte(flags);
     out->write_vlong(1 + meta.sort);  // max->0
   } else {
+    // Earlier versions don't support primary sort
     out->write_byte(flags);
+    meta.sort = field_limits::invalid();
   }
   write_strings(*out, meta.files);
   format_utils::write_footer(*out);

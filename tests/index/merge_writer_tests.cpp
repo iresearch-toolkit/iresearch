@@ -182,6 +182,15 @@ struct merge_writer_test_case
     return codec;
   }
 
+  bool supports_sort() const noexcept {
+    // old formats don't support primary sort
+    constexpr std::string_view kOldFormats[]{"1_0"};
+
+    const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
+                              codec()->type().name());
+    return std::end(kOldFormats) == it;
+  }
+
   static std::string to_string(
     const testing::TestParamInfo<std::tuple<tests::dir_param_f, std::string>>&
       info) {
@@ -271,50 +280,55 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   // 1: 11..20
   // 2: 21..30
   const irs::index_utils::ConsolidateCount consolidate_all;
-  ASSERT_TRUE(
-    writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
-  ASSERT_TRUE(writer->Commit());
+  ASSERT_EQ(supports_sort(),
+            writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+  ASSERT_EQ(supports_sort(), writer->Commit());
   AssertSnapshotEquality(writer->GetSnapshot(),
                          irs::DirectoryReader(dir, codec_ptr));
 
-  reader = reader.Reopen();
-  ASSERT_NE(nullptr, reader);
+  if (supports_sort()) {
+    reader = reader.Reopen();
+    ASSERT_NE(nullptr, reader);
 
-  ASSERT_EQ(1, reader.size());
-  auto& segment = reader[0];
-  ASSERT_EQ(30, segment.docs_count());
-  ASSERT_EQ(30, segment.live_docs_count());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = reader[0];
+    ASSERT_EQ(30, segment.docs_count());
+    ASSERT_EQ(30, segment.live_docs_count());
 
-  const auto docs_count = segment.docs_count();
-  auto* col = segment.column("seq");
-  ASSERT_NE(nullptr, col);
-  auto seq = col->iterator(irs::ColumnHint::kNormal);
-  ASSERT_NE(nullptr, seq);
-  auto* payload = irs::get<irs::payload>(*seq);
-  ASSERT_NE(nullptr, payload);
+    const auto docs_count = segment.docs_count();
+    auto* col = segment.column("seq");
+    ASSERT_NE(nullptr, col);
+    auto seq = col->iterator(irs::ColumnHint::kNormal);
+    ASSERT_NE(nullptr, seq);
+    auto* payload = irs::get<irs::payload>(*seq);
+    ASSERT_NE(nullptr, payload);
 
-  ptrdiff_t prev = -1;
-  for (irs::doc_id_t doc = 0; doc < docs_count; ++doc) {
-    ASSERT_TRUE(seq->next());
-    ASSERT_EQ(doc + irs::doc_limits::min(), seq->value());
+    ptrdiff_t prev = -1;
+    for (irs::doc_id_t doc = 0; doc < docs_count; ++doc) {
+      ASSERT_TRUE(seq->next());
+      ASSERT_EQ(doc + irs::doc_limits::min(), seq->value());
 
-    auto* p = payload->value.data();
-    auto len = irs::vread<uint32_t>(p);
+      auto* p = payload->value.data();
+      auto len = irs::vread<uint32_t>(p);
 
-    const auto str_seq =
-      static_cast<std::string>(irs::ViewCast<char>(irs::bytes_view{p, len}));
-    const auto seq = atoi(str_seq.data());
+      const auto str_seq =
+        static_cast<std::string>(irs::ViewCast<char>(irs::bytes_view{p, len}));
+      const auto seq = atoi(str_seq.data());
 
-    if (0 == (doc % 10)) {
-      ASSERT_EQ(0, seq % 10);
-    } else {
-      ASSERT_LT(prev, seq);
-      ASSERT_NE(0, seq % 10);
+      if (0 == (doc % 10)) {
+        ASSERT_EQ(0, seq % 10);
+      } else {
+        ASSERT_LT(prev, seq);
+        ASSERT_NE(0, seq % 10);
+      }
+
+      prev = seq;
     }
-
-    prev = seq;
+    ASSERT_FALSE(seq->next());
+  } else {
+    // Must not be changed
+    AssertSnapshotEquality(reader, irs::DirectoryReader(dir, codec_ptr));
   }
-  ASSERT_FALSE(seq->next());
 }
 
 TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {

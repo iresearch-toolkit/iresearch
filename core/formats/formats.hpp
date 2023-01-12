@@ -458,7 +458,7 @@ struct segment_meta_writer {
   virtual ~segment_meta_writer() = default;
 
   virtual void write(directory& dir, std::string& filename,
-                     const SegmentMeta& meta) = 0;
+                     SegmentMeta& meta) = 0;
 };
 
 struct segment_meta_reader {
