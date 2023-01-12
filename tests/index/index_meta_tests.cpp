@@ -56,6 +56,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   meta_orig.payload.emplace(payload);
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig, tmp_filename, filename));
+  ASSERT_FALSE(meta_orig.payload.has_value());  // 1_0 doesn't support payload
   ASSERT_EQ("segments_1", filename);
   ASSERT_EQ("pending_segments_1", tmp_filename);
 
@@ -88,8 +89,6 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   EXPECT_EQ(meta_orig.segments.size(), meta_read.segments.size());
   EXPECT_TRUE(irs::IsNull(irs::GetPayload(meta_read)));
 
-  EXPECT_NE(meta_orig, meta_read);
-  meta_orig.payload.reset();
   EXPECT_EQ(meta_orig, meta_read);
 }
 
@@ -120,6 +119,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
   meta_orig.payload.emplace(payload);
 
   ASSERT_TRUE(writer->prepare(dir, meta_orig, tmp_filename, filename));
+  ASSERT_TRUE(meta_orig.payload.has_value());
   ASSERT_EQ("segments_1", filename);
   ASSERT_EQ("pending_segments_1", tmp_filename);
 
@@ -147,10 +147,6 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
     reader->read(dir, meta_read, segments_file);
   }
 
-  EXPECT_EQ(meta_orig.seg_counter, meta_read.seg_counter);
-  EXPECT_EQ(meta_orig.gen, meta_read.gen);
-  EXPECT_EQ(meta_orig.segments.size(), meta_read.segments.size());
-  EXPECT_EQ(meta_orig.payload, meta_read.payload);
   EXPECT_EQ(meta_orig, meta_read);
 }
 

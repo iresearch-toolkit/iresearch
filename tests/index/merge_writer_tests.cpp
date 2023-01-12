@@ -280,13 +280,13 @@ void merge_writer_test_case::EnsureDocBlocksNotMixed(bool primary_sort) {
   // 1: 11..20
   // 2: 21..30
   const irs::index_utils::ConsolidateCount consolidate_all;
-  ASSERT_EQ(supports_sort(),
+  ASSERT_EQ(!primary_sort || supports_sort(),
             writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
-  ASSERT_EQ(supports_sort(), writer->Commit());
+  ASSERT_EQ(!primary_sort || supports_sort(), writer->Commit());
   AssertSnapshotEquality(writer->GetSnapshot(),
                          irs::DirectoryReader(dir, codec_ptr));
 
-  if (supports_sort()) {
+  if (!primary_sort || supports_sort()) {
     reader = reader.Reopen();
     ASSERT_NE(nullptr, reader);
 
