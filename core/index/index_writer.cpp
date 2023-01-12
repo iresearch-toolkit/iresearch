@@ -540,11 +540,11 @@ std::string ToString(ConsolidationView consolidation) {
     absl::StrAppend(&str, "Name='", meta.name,
                     "', docs_count=", meta.docs_count,
                     ", live_docs_count=", meta.live_docs_count,
-                    ", size=", meta.size_in_bytes, "\n");
+                    ", size=", meta.byte_size, "\n");
 
     total_docs_count += meta.docs_count;
     total_live_docs_count += meta.live_docs_count;
-    total_size += meta.size_in_bytes;
+    total_size += meta.byte_size;
   }
 
   absl::StrAppend(&str, "Total: segments=", consolidation.size(),
@@ -1503,7 +1503,7 @@ IndexWriter::~IndexWriter() noexcept {
   // Reset pending state (if any) before destroying flush contexts
   pending_state_.Reset();
   flush_context_.store(nullptr);
-  // Ensue all tracked segment_contexts are released before
+  // Ensure all tracked segment_contexts are released before
   // segment_writer_pool_ is deallocated
   flush_context_pool_.clear();
 }
@@ -1780,14 +1780,11 @@ ConsolidationResult IndexWriter::Consolidate(
 
       IR_FRMT_TRACE(
         "Consolidation id='" IR_SIZE_T_SPECIFIER
-        "' successfully finished: "
-        "Name='%s', docs_count=" IR_UINT64_T_SPECIFIER
-        ", "
-        "live_docs_count=" IR_UINT64_T_SPECIFIER
-        ", "
-        "size=" IR_SIZE_T_SPECIFIER "",
+        "' successfully finished: Name='%s', docs_count=" IR_UINT64_T_SPECIFIER
+        ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER
+        "",
         run_id, consolidation_meta.name.c_str(), consolidation_meta.docs_count,
-        consolidation_meta.live_docs_count, consolidation_meta.size_in_bytes);
+        consolidation_meta.live_docs_count, consolidation_meta.byte_size);
     } else {
       // before new transaction was started:
       // there was a commit(s) since consolidation was started,
@@ -1874,14 +1871,11 @@ ConsolidationResult IndexWriter::Consolidate(
 
       IR_FRMT_TRACE(
         "Consolidation id='" IR_SIZE_T_SPECIFIER
-        "' successfully finished:\nName='%s', "
-        "docs_count=" IR_UINT64_T_SPECIFIER
-        ", "
-        "live_docs_count=" IR_UINT64_T_SPECIFIER
-        ", "
-        "size=" IR_SIZE_T_SPECIFIER "",
+        "' successfully finished:\nName='%s', docs_count=" IR_UINT64_T_SPECIFIER
+        ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER
+        "",
         run_id, consolidation_meta.name.c_str(), consolidation_meta.docs_count,
-        consolidation_meta.live_docs_count, consolidation_meta.size_in_bytes);
+        consolidation_meta.live_docs_count, consolidation_meta.byte_size);
     }
   }
 

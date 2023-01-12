@@ -45,7 +45,7 @@ struct SegmentInfo {
   uint64_t docs_count{};       // Total number of documents in a segment
   uint64_t live_docs_count{};  // Total number of live documents in a segment
   uint64_t version{};
-  uint64_t size_in_bytes{};  // Size of a segment in bytes
+  uint64_t byte_size{};  // Size of a segment in bytes
 };
 
 static_assert(std::is_nothrow_move_constructible_v<SegmentInfo>);

@@ -71,7 +71,7 @@ class MaskDocIterator final : public doc_iterator {
   MaskDocIterator(doc_iterator::ptr&& it, const document_mask& mask) noexcept
     : mask_{mask}, it_{std::move(it)} {}
 
-  bool next() override {
+  bool next() final {
     while (it_->next()) {
       if (!mask_.contains(value())) {
         return true;
@@ -81,7 +81,7 @@ class MaskDocIterator final : public doc_iterator {
     return false;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     const auto doc = it_->seek(target);
 
     if (!mask_.contains(doc)) {
@@ -93,9 +93,9 @@ class MaskDocIterator final : public doc_iterator {
     return value();
   }
 
-  doc_id_t value() const override { return it_->value(); }
+  doc_id_t value() const final { return it_->value(); }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return it_->get_mutable(type);
   }
 

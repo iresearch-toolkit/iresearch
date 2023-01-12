@@ -37,7 +37,7 @@ inline double_t FillFactor(const irs::SegmentInfo& segment) noexcept {
 
 // Returns approximated size of a segment in the absence of removals
 inline size_t SizeWithoutRemovals(const irs::SegmentInfo& segment) noexcept {
-  return size_t(segment.size_in_bytes * FillFactor(segment));
+  return size_t(segment.byte_size * FillFactor(segment));
 }
 
 namespace tier {
@@ -142,7 +142,7 @@ double_t consolidation_score(const ConsolidationCandidate& consolidation,
   size_t size_after_consolidation = 0;
   size_t size_after_consolidation_floored = 0;
   for (auto& segment_stat : consolidation) {
-    size_before_consolidation += segment_stat.meta->size_in_bytes;
+    size_before_consolidation += segment_stat.meta->byte_size;
     size_after_consolidation += segment_stat.size;
     size_after_consolidation_floored +=
       std::max(segment_stat.size, floor_segment_bytes);
@@ -193,7 +193,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
 
     for (auto& segment : reader) {
       // cppcheck-suppress 	useStlAlgorithm
-      all_segment_bytes_size += segment.Meta().size_in_bytes;
+      all_segment_bytes_size += segment.Meta().byte_size;
     }
 
     auto threshold = std::max<float>(0, std::min<float>(1, byte_threshold));
@@ -203,7 +203,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes /
     // #segments)
     for (auto& segment : reader) {
-      const size_t segment_bytes_size = segment.Meta().size_in_bytes;
+      const size_t segment_bytes_size = segment.Meta().byte_size;
 
       if (threshold_bytes_avg >= segment_bytes_size) {
         candidates.emplace_back(&segment);
@@ -509,7 +509,7 @@ void FlushIndexSegment(directory& dir, IndexSegment& segment) {
 
     segment_size += size;
   }
-  segment.meta.size_in_bytes = segment_size;
+  segment.meta.byte_size = segment_size;
 
   auto writer = segment.meta.codec->get_segment_meta_writer();
   writer->write(dir, segment.filename, segment.meta);

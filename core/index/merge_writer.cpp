@@ -1697,7 +1697,7 @@ bool MergeWriter::Flush(SegmentMeta& segment,
     segment.column_store = false;
     segment.docs_count = 0;
     segment.live_docs_count = 0;
-    segment.size_in_bytes = 0;
+    segment.byte_size = 0;
     segment.version = 0;
   };
 

@@ -2752,7 +2752,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.version);
     ASSERT_EQ(0, index_segment.docs_count);
     ASSERT_EQ(0, index_segment.live_docs_count);
-    ASSERT_EQ(0, index_segment.size_in_bytes);
+    ASSERT_EQ(0, index_segment.byte_size);
 
     ASSERT_ANY_THROW(
       irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{}));
@@ -2812,7 +2812,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     ASSERT_EQ(0, index_segment.version);
     ASSERT_EQ(0, index_segment.docs_count);
     ASSERT_EQ(0, index_segment.live_docs_count);
-    ASSERT_EQ(0, index_segment.size_in_bytes);
+    ASSERT_EQ(0, index_segment.byte_size);
 
     ASSERT_ANY_THROW(
       irs::SegmentReader(dir, index_segment, irs::IndexReaderOptions{}));

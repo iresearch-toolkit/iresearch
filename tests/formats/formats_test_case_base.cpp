@@ -1003,7 +1003,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     meta.name = "meta_name";
     meta.docs_count = 453;
     meta.live_docs_count = 345;
-    meta.size_in_bytes = 666;
+    meta.byte_size = 666;
     meta.version = 100;
     meta.column_store = true;
 
@@ -1033,7 +1033,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
       ASSERT_EQ(meta.docs_count, read_meta.docs_count);
       ASSERT_EQ(meta.live_docs_count, read_meta.live_docs_count);
       ASSERT_EQ(meta.version, read_meta.version);
-      ASSERT_EQ(meta.size_in_bytes, read_meta.size_in_bytes);
+      ASSERT_EQ(meta.byte_size, read_meta.byte_size);
       ASSERT_EQ(meta.files, read_meta.files);
       ASSERT_EQ(meta.column_store, read_meta.column_store);
     }
@@ -1045,7 +1045,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     meta.name = "broken_meta_name";
     meta.docs_count = 453;
     meta.live_docs_count = 1345;
-    meta.size_in_bytes = 666;
+    meta.byte_size = 666;
     meta.version = 100;
 
     meta.files.emplace_back("file1");
@@ -1141,7 +1141,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     meta.name = "broken_meta_name";
     meta.docs_count = 1453;
     meta.live_docs_count = 1345;
-    meta.size_in_bytes = 666;
+    meta.byte_size = 666;
     meta.version = 100;
 
     meta.files.emplace_back("file1");

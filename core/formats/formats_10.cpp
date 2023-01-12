@@ -2887,7 +2887,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
   out->write_vlong(meta.live_docs_count);
   out->write_vlong(meta.docs_count -
                    meta.live_docs_count);  // docs_count >= live_docs_count
-  out->write_vlong(meta.size_in_bytes);
+  out->write_vlong(meta.byte_size);
   if (version_ > FORMAT_MIN) {
     // sorted indices are not supported in version 1.0
     if (field_limits::valid(meta.sort)) {
@@ -2979,7 +2979,7 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
   meta.sort = sort;
-  meta.size_in_bytes = size;
+  meta.byte_size = size;
   meta.files = std::move(files);
 }
 

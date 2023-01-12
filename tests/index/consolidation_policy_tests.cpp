@@ -36,9 +36,9 @@ namespace {
                     const irs::SubReader* rhs) const {
       auto& lhs_meta = lhs->Meta();
       auto& rhs_meta = rhs->Meta();
-      return lhs_meta.size_in_bytes == rhs_meta.size_in_bytes
+      return lhs_meta.byte_size == rhs_meta.byte_size
                ? lhs_meta.name < rhs_meta.name
-               : lhs_meta.size_in_bytes < rhs_meta.size_in_bytes;
+               : lhs_meta.byte_size < rhs_meta.byte_size;
     }
   };
   irs::Consolidation candidates;
@@ -59,7 +59,7 @@ namespace {
     std::cerr << "Consolidation " << i++ << ": ";
     for (auto* segment : sorted_candidates) {
       auto& meta = segment->Meta();
-      std::cerr << meta.size_in_bytes << " ("
+      std::cerr << meta.byte_size << " ("
                 << double_t(meta.live_docs_count) / meta.docs_count << "), ";
     }
     std::cerr << "\n";
@@ -180,7 +180,7 @@ void AddSegment(irs::IndexMeta& meta, std::string_view name,
   segment.name = name;
   segment.docs_count = docs_count;
   segment.live_docs_count = live_docs_count;
-  segment.size_in_bytes = size;
+  segment.byte_size = size;
 }
 
 }  // namespace
