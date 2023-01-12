@@ -396,6 +396,7 @@ MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
     }
 
     // FIXME(gnusi): can't we just check pointers?
+    IRS_ASSERT(mapping.second.first);
     has_removals |= (meta.version != mapping.second.first->Meta().version);
 
     if (++found == num_candidates) {
@@ -413,6 +414,7 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
   for (auto& mapping : candidates_mapping) {
     const auto& segment_mapping = mapping.second;
     const auto* new_segment = segment_mapping.first;
+    IRS_ASSERT(new_segment);
     const auto& new_meta = new_segment->Meta();
     const auto& old_meta = segment_mapping.second.first->Meta();
 
@@ -590,7 +592,7 @@ std::vector<std::string_view> GetFilesToSync(
   std::span<const IndexSegment> segments,
   std::span<const PartialSync> partial_sync, size_t partial_sync_threshold) {
   // FIXME(gnusi): make format dependent?
-  constexpr size_t kFilesPerSegment = 9;
+  static constexpr size_t kFilesPerSegment = 9;
 
   IRS_ASSERT(partial_sync_threshold <= segments.size());
   const size_t full_sync_count = segments.size() - partial_sync_threshold;
@@ -611,6 +613,7 @@ std::vector<std::string_view> GetFilesToSync(
                 [&files_to_sync](const IndexSegment& segment) {
                   files_to_sync.emplace_back(segment.filename);
                   const auto& files = segment.meta.files;
+                  IRS_ASSERT(files.size() <= kFilesPerSegment);
                   files_to_sync.insert(files_to_sync.end(), files.begin(),
                                        files.end());
                 });
@@ -1407,6 +1410,7 @@ void IndexWriter::Clear(uint64_t tick) {
   // cppcheck-suppress unreadVariable
   std::lock_guard commit_lock{commit_lock_};
 
+  IRS_ASSERT(committed_reader_);
   if (auto& committed_meta = committed_reader_->Meta();
       !pending_state_.Valid() && committed_meta.index_meta.segments.empty() &&
       !IsInitialCommit(committed_meta)) {
@@ -1457,23 +1461,17 @@ IndexWriter::ptr IndexWriter::Make(
 
     if (OM_CREATE == mode ||
         ((OM_CREATE | OM_APPEND) == mode && !index_exists)) {
-      // Try to read. It allows us to
-      // create writer against an index that's
-      // currently opened for searching
-
       // for OM_CREATE meta must be fully recreated, meta read only to get
       // last version
       if (index_exists) {
-        try {
-          reader->read(dir, meta.index_meta, meta.filename);
+        // Try to read. It allows us to create writer against an index that's
+        // currently opened for searching
+        reader->read(dir, meta.index_meta, meta.filename);
 
-          meta.filename.clear();  // Empty index meta -> new index
-          auto& index_meta = meta.index_meta;
-          index_meta.payload.reset();
-          index_meta.segments.clear();
-        } catch (...) {
-          meta = {};
-        }
+        meta.filename.clear();  // Empty index meta -> new index
+        auto& index_meta = meta.index_meta;
+        index_meta.payload.reset();
+        index_meta.segments.clear();
       }
     } else if (!index_exists) {
       throw file_not_found{meta.filename};  // no segments file found
@@ -1706,10 +1704,13 @@ ConsolidationResult IndexWriter::Consolidate(
 
         // pointers are different so check by name
         for (const auto* candidate : candidates) {
-          if (end == std::find_if(begin, end, [&candidate](const SubReader& s) {
-                // FIXME(gnusi): compare pointers?
-                return candidate->Meta().name == s.Meta().name;
-              })) {
+          if (end == std::find_if(
+                       begin, end,
+                       [candidate = std::string_view{candidate->Meta().name}](
+                         const SubReader& s) {
+                         // FIXME(gnusi): compare pointers?
+                         return candidate == s.Meta().name;
+                       })) {
             // not all candidates are valid
             IR_FRMT_DEBUG(
               "Failed to start consolidation for index generation "
