@@ -416,6 +416,7 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
     const auto* new_segment = segment_mapping.first;
     IRS_ASSERT(new_segment);
     const auto& new_meta = new_segment->Meta();
+    IRS_ASSERT(segment_mapping.second.first);
     const auto& old_meta = segment_mapping.second.first->Meta();
 
     if (new_meta.version != old_meta.version) {
