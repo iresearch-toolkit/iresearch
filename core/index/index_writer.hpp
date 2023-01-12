@@ -368,6 +368,7 @@ class IndexWriter : private util::noncopyable {
               segment_.ctx()->MakeUpdateContext(std::forward<Filter>(filter))};
     }
 
+    // FIXME(gnusi): Commit() should return committed index snapshot
     // Commit all accumulated modifications and release resources
     bool Commit() noexcept;
 
