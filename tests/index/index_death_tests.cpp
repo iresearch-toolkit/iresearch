@@ -615,9 +615,9 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
   {
     irs::memory_directory impl;
     failing_directory dir(impl);
-    dir.register_failure(
-      failing_directory::Failure::RENAME,
-      "pending_segments_1");  // fail second phase of transaction
+    // fail second phase of transaction
+    dir.register_failure(failing_directory::Failure::RENAME,
+                         "pending_segments_1");
 
     // write index
     auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
@@ -628,8 +628,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     ASSERT_TRUE(writer->Begin());
     ASSERT_THROW(writer->Commit(), irs::io_error);
-    tests::AssertSnapshotEquality(writer->GetSnapshot(),
-                                  irs::DirectoryReader(dir));
+    ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
 
     // second attempt
     ASSERT_TRUE(writer->Begin());
@@ -665,8 +664,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     ASSERT_TRUE(writer->Begin());
     ASSERT_THROW(writer->Commit(), irs::io_error);
-    tests::AssertSnapshotEquality(writer->GetSnapshot(),
-                                  irs::DirectoryReader(dir));
+    ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -3056,8 +3054,7 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     dir.register_failure(failing_directory::Failure::RENAME,
                          "pending_segments_1");  //
     ASSERT_THROW(writer->Commit(), irs::io_error);
-    tests::AssertSnapshotEquality(writer->GetSnapshot(),
-                                  irs::DirectoryReader(dir));
+    ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
 
     // now it is OK
     ASSERT_TRUE(writer->Commit());
@@ -3229,8 +3226,7 @@ TEST(index_death_test_formats_14, fails_in_exists) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
       ASSERT_THROW(writer->Commit(), irs::io_error);
-      tests::AssertSnapshotEquality(writer->GetSnapshot(),
-                                    irs::DirectoryReader(dir));
+      ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
     }
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
