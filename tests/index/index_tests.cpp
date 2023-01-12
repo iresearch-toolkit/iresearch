@@ -2458,6 +2458,9 @@ TEST_P(index_test_case, s2sequence) {
   }
 }
 
+TEST_P(index_test_case, reopen_reader_after_writer_is_closed) { /*FAIL();*/
+}
+
 TEST_P(index_test_case, arango_demo_docs) {
   {
     tests::json_doc_generator gen(resource("arango_demo.json"),

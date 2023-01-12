@@ -102,17 +102,12 @@ struct FlushSegmentContext {
 // docs_mask where to apply document removals to
 // readers readers by segment name
 // meta key used to get reader for the segment to evaluate
-// min_modification_generation smallest consider modification generation
 // Return if any new records were added (modification_queries_ modified).
 void RemoveFromExistingSegment(
   std::vector<doc_id_t>& deleted_docs,
   std::span<IndexWriter::ModificationContext> modifications,
-  const SubReader& reader, size_t min_modification_generation = 0) {
+  const SubReader& reader) {
   IRS_ASSERT(deleted_docs.empty());
-
-  if (modifications.empty()) {
-    return;  // nothing new to flush
-  }
 
   auto& docs_mask = *reader.docs_mask();
 
@@ -136,10 +131,8 @@ void RemoveFromExistingSegment(
     while (itr->next()) {
       const auto doc_id = itr->value();
 
-      // if the indexed doc_id was insert()ed after the request for modification
-      // or the indexed doc_id was already masked then it should be skipped
-      if (modification.generation < min_modification_generation ||
-          docs_mask.contains(doc_id)) {
+      // if the indexed doc_id was already masked then it should be skipped
+      if (docs_mask.contains(doc_id)) {
         continue;  // the current modification query does not match any records
       }
 
@@ -152,11 +145,16 @@ void RemoveFromExistingSegment(
 bool RemoveFromImportedSegment(
   std::span<IndexWriter::ModificationContext> modifications,
   const SubReader& reader, document_mask& docs_mask,
-  size_t min_modification_generation = 0) {
+  size_t min_modification_generation) {
   IRS_ASSERT(!modifications.empty());
   bool modified = false;
 
   for (auto& modification : modifications) {
+    // if the indexed doc_id was insert()ed after the request for modification
+    if (modification.generation < min_modification_generation) {
+      continue;  // the current modification query does not need to be applied
+    }
+
     if (IRS_UNLIKELY(!modification.filter)) {
       continue;  // skip invalid or uncommitted modification queries
     }
@@ -176,10 +174,8 @@ bool RemoveFromImportedSegment(
     while (itr->next()) {
       const auto doc_id = itr->value();
 
-      // if the indexed doc_id was insert()ed after the request for modification
-      // or the indexed doc_id was already masked then it should be skipped
-      if (modification.generation < min_modification_generation ||
-          !docs_mask.insert(doc_id).second) {
+      // if the indexed doc_id was already masked then it should be skipped
+      if (!docs_mask.insert(doc_id).second) {
         continue;  // the current modification query does not match any records
       }
 
@@ -1390,16 +1386,13 @@ IndexWriter::IndexWriter(
   flush_context_.store(flush_context_pool_.data());
 
   // setup round-robin chain
-  for (size_t i = 0, count = flush_context_pool_.size() - 1; i < count; ++i) {
-    auto* ctx = flush_context_pool_.data() + i;
+  auto* ctx = flush_context_pool_.data();
+  for (auto* last = ctx + flush_context_pool_.size() - 1; ctx != last; ++ctx) {
     ctx->dir_ = std::make_unique<RefTrackingDirectory>(dir);
     ctx->next_context_ = ctx + 1;
   }
-
-  // setup round-robin chain
-  auto& ctx = flush_context_pool_[flush_context_pool_.size() - 1];
-  ctx.dir_ = std::make_unique<RefTrackingDirectory>(dir);
-  ctx.next_context_ = flush_context_pool_.data();
+  ctx->dir_ = std::make_unique<RefTrackingDirectory>(dir);
+  ctx->next_context_ = flush_context_pool_.data();
 }
 
 void IndexWriter::InitMeta(IndexMeta& meta, uint64_t tick) const {
