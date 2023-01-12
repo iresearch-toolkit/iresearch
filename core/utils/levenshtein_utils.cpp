@@ -79,10 +79,6 @@ struct position {
            transpose == rhs.transpose;
   }
 
-  bool operator!=(const position& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   uint32_t offset{};      // parametric position offset
   byte_type distance{};   // parametric position distance
   bool transpose{false};  // position is introduced by transposition
@@ -161,10 +157,6 @@ class parametric_state {
 
   bool operator==(const parametric_state& rhs) const noexcept {
     return positions_ == rhs.positions_;
-  }
-
-  bool operator!=(const parametric_state& rhs) const noexcept {
-    return !(*this == rhs);
   }
 
  private:

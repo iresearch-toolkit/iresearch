@@ -89,9 +89,6 @@ struct column_meta {
   bool operator==(const column_meta& rhs) const noexcept {
     return name == rhs.name;
   }
-  bool operator!=(const column_meta& rhs) const noexcept {
-    return !(*this == rhs);
-  }
 
   std::string name;
   field_id id{field_limits::invalid()};
@@ -1060,10 +1057,6 @@ class sparse_block : util::noncopyable {
       return data_ == &rhs.data_;
     }
 
-    bool operator!=(const sparse_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
    private:
     irs::bytes_view* payload_{&kDummy};
     irs::doc_id_t value_{doc_limits::invalid()};
@@ -1165,10 +1158,6 @@ class dense_block : util::noncopyable {
 
     bool operator==(const dense_block& rhs) const noexcept {
       return data_ == &rhs.data_;
-    }
-
-    bool operator!=(const dense_block& rhs) const noexcept {
-      return !(*this == rhs);
     }
 
    private:
@@ -1298,10 +1287,6 @@ class dense_fixed_offset_block : util::noncopyable {
       return data_.data() == rhs.data_.c_str();
     }
 
-    bool operator!=(const dense_fixed_offset_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
    private:
     uint64_t avg_length_{};  // average value length
     bytes_view data_;
@@ -1387,10 +1372,6 @@ class sparse_mask_block : util::noncopyable {
 
     bool operator==(const sparse_mask_block& rhs) const noexcept {
       return end_ == (rhs.keys_ + rhs.size_);
-    }
-
-    bool operator!=(const sparse_mask_block& rhs) const noexcept {
-      return !(*this == rhs);
     }
 
    private:
@@ -1479,10 +1460,6 @@ class dense_mask_block {
 
     bool operator==(const dense_mask_block& rhs) const noexcept {
       return block_ == &rhs;
-    }
-
-    bool operator!=(const dense_mask_block& rhs) const noexcept {
-      return !(*this == rhs);
     }
 
    private:

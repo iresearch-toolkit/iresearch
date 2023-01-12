@@ -92,8 +92,6 @@ class filter {
 
   bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
 
-  bool operator!=(const filter& rhs) const noexcept { return !(*this == rhs); }
-
   // boost - external boost
   virtual filter::prepared::ptr prepare(
     const IndexReader& rdr, const Order& ord, score_t boost,

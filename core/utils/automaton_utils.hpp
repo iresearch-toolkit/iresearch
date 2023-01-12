@@ -213,10 +213,6 @@ class utf8_transitions_builder {
       return ilabel == rhs.ilabel && id == rhs.nextstate;
     }
 
-    bool operator!=(const automaton::Arc& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
     union {
       state* target;
       automaton::StateId id;

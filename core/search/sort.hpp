@@ -126,19 +126,11 @@ class ScoreFunction : util::noncopyable {
     return !static_cast<bool>(*this);
   }
 
-  bool operator!=(std::nullptr_t) const noexcept { return !(*this == nullptr); }
-
   bool operator==(const ScoreFunction& rhs) const noexcept {
     return ctx_ == rhs.ctx_ && func_ == rhs.func_;
   }
 
-  bool operator!=(const ScoreFunction& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   bool operator==(score_f rhs) const noexcept { return func_ == rhs; }
-
-  bool operator!=(score_f rhs) const noexcept { return !(*this == rhs); }
 
   explicit operator bool() const noexcept { return nullptr != func_; }
 
