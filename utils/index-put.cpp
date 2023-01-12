@@ -57,7 +57,6 @@
 #include "store/store_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 #include "utils/text_format.hpp"
 
 namespace {
@@ -579,8 +578,8 @@ int put(const std::string& path, const std::string& dir_type,
     // merge all segments into a single segment
     SCOPED_TIMER("Consolidating all time");
     std::cout << "Consolidating all segments:" << std::endl;
-    writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount()));
+    writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()));
     writer->Commit();
   }
 
