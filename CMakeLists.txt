@@ -231,9 +231,6 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
 endif ()
 
-# set sanitizers
-find_package(Sanitizers)
-
 find_package(BFD) # optional
 
 if (BFD_FOUND)
@@ -249,6 +246,10 @@ find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
 find_package(Snowball REQUIRED)
 find_package(Unwind) # optional
+
+# Important note, now we include it before everything except c libraries
+# I think it's better to before they to, but now it causing build issues
+include(Sanitize)
 
 if (Unwind_FOUND)
   add_definitions(-DUSE_LIBUNWIND)
