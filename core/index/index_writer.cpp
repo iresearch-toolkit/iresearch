@@ -781,8 +781,9 @@ bool IndexWriter::Transaction::Commit() noexcept {
 
   try {
     // FIXME move emplace into active_segment_context destructor commit segment
-    writer_.GetFlushContext()->emplace(std::move(segment_),
-                                       first_operation_tick_);
+    const auto& flush_ctx = writer_.GetFlushContext();
+    IRS_ASSERT(flush_ctx);
+    flush_ctx->emplace(std::move(segment_), first_operation_tick_);
     return true;
   } catch (...) {
     Reset();  // abort segment
@@ -2670,15 +2671,14 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
   REGISTER_TIMER_DETAILED();
 
   if (pending_state_.Valid()) {
-    // begin has been already called
-    // without corresponding call to commit
+    // Begin has been already called without corresponding call to commit
     return false;
   }
 
   auto to_commit = FlushAll(progress);
 
   if (to_commit.Empty()) {
-    // nothing to commit, no transaction started
+    // Nothing to commit, no transaction started
     return false;
   }
 
@@ -2689,7 +2689,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
 }
 
 void IndexWriter::Finish() {
-  IRS_ASSERT(!commit_lock_.try_lock());  // already locked
+  IRS_ASSERT(!commit_lock_.try_lock());  // Already locked
 
   REGISTER_TIMER_DETAILED();
 
