@@ -89,9 +89,8 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
         ref = directory_utils::Reference(const_cast<directory&>(dir), filename);
       }
 
-      if (ref) {
-        reader->read(dir, meta, *ref);
-      }
+      IRS_ASSERT(ref);
+      reader->read(dir, meta, *ref);
 
       return ref;
     } catch (const std::exception& e) {
