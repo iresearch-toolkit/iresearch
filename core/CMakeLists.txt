@@ -303,7 +303,6 @@ add_library(iresearch-static
   )
 
 set_ipo(iresearch-static)
-add_sanitizers(iresearch-static)
 
 # trigger generation of BUILD_IDENTIFIER if needed
 add_custom_command(

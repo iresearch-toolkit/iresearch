@@ -28,7 +28,6 @@ add_executable(iresearch-index-util
   ./main.cpp
   )
 
-add_sanitizers(iresearch-index-util)
 set_ipo(iresearch-index-util)
 
 target_link_libraries(iresearch-index-util
@@ -56,7 +55,6 @@ add_executable(iresearch-benchmarks
   ./main.cpp
   )
 
-add_sanitizers(iresearch-benchmarks)
 set_ipo(iresearch-benchmarks)
 
 add_dependencies(iresearch-benchmarks
@@ -86,7 +84,6 @@ add_executable(iresearch-pdd
   ./main.cpp
   )
 
-add_sanitizers(iresearch-pdd)
 set_ipo(iresearch-pdd)
 
 target_link_libraries(iresearch-pdd
