@@ -2458,7 +2458,63 @@ TEST_P(index_test_case, s2sequence) {
   }
 }
 
-TEST_P(index_test_case, reopen_reader_after_writer_is_closed) { /*FAIL();*/
+TEST_P(index_test_case, reopen_reader_after_writer_is_closed) {
+  tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                &tests::generic_json_field_factory);
+  tests::document const* doc1 = gen.next();
+  tests::document const* doc2 = gen.next();
+
+  irs::DirectoryReader reader0;
+  irs::DirectoryReader reader1;
+  irs::DirectoryReader reader2;
+  {
+    auto writer = open_writer();
+    ASSERT_NE(nullptr, writer);
+    reader0 = writer->GetSnapshot();
+    ASSERT_EQ(0, reader0.size());
+    ASSERT_EQ(irs::DirectoryMeta{}, reader0.Meta());
+    ASSERT_EQ(0, reader0.docs_count());
+    ASSERT_EQ(0, reader0.live_docs_count());
+
+    ASSERT_TRUE(tests::insert(*writer, *doc1));
+    ASSERT_TRUE(writer->Commit());
+    reader1 = writer->GetSnapshot();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader{dir()});
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader0->Reopen());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader1->Reopen());
+    ASSERT_EQ(1, reader1.size());
+    ASSERT_FALSE(reader1.Meta().filename.empty());
+    ASSERT_EQ(1, reader1.docs_count());
+    ASSERT_EQ(1, reader1.live_docs_count());
+
+    ASSERT_TRUE(tests::insert(*writer, *doc2));
+    ASSERT_TRUE(writer->Commit());
+    reader2 = writer->GetSnapshot();
+    ASSERT_EQ(2, reader2.size());
+    ASSERT_FALSE(reader2.Meta().filename.empty());
+    ASSERT_EQ(2, reader2.docs_count());
+    ASSERT_EQ(2, reader2.live_docs_count());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader{dir()});
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader0->Reopen());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader1->Reopen());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader2->Reopen());
+  }
+
+  // Check reader after the writer is closed
+  auto check_reader = [&](irs::DirectoryReader reader) {
+    reader = reader0->Reopen();
+    tests::AssertSnapshotEquality(reader, irs::DirectoryReader{dir()});
+    EXPECT_EQ(2, reader.size());
+    EXPECT_FALSE(reader.Meta().filename.empty());
+    EXPECT_EQ(2, reader.docs_count());
+    EXPECT_EQ(2, reader.live_docs_count());
+  };
+
+  check_reader(reader0);
+  check_reader(reader1);
+  check_reader(reader2);
 }
 
 TEST_P(index_test_case, arango_demo_docs) {
