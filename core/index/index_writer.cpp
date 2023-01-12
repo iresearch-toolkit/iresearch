@@ -326,10 +326,11 @@ size_t WriteDocumentMask(directory& dir, SegmentMeta& meta,
     ++meta.version;
   }
 
-  // new/expected filename
   if (it != meta.files.end()) {
+    // Replace existing mask file with the new one
     *it = mask_writer->filename(meta);
   } else {
+    // Add mask file to the list of files
     meta.files.emplace_back(mask_writer->filename(meta));
     it = std::prev(meta.files.end());
   }
@@ -337,15 +338,20 @@ size_t WriteDocumentMask(directory& dir, SegmentMeta& meta,
   mask_writer->write(dir, meta, docs_mask);
 
   IRS_ASSERT(meta.files.begin() <= it);
-  return std::distance(meta.files.begin(), it);
+  return static_cast<size_t>(it - meta.files.begin());
 }
 
+struct CandidateMapping {
+  const SubReader* new_segment{};
+  struct Old {
+    const SubReader* segment{};
+    size_t index{};  // within merge_writer
+  } old;
+};
+
 // mapping: name -> { new segment, old segment }
-using CandidatesMapping = absl::flat_hash_map<
-  std::string_view,
-  std::pair<const SubReader*,                       // new segment
-            std::pair<const SubReader*, size_t>>>;  // old segment + index
-                                                    // within merge_writer
+using CandidatesMapping =
+  absl::flat_hash_map<std::string_view, CandidateMapping>;
 
 struct MapCandidatesResult {
   // Number of mapped candidates.
@@ -363,7 +369,8 @@ MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
   for (const auto* candidate : candidates) {
     candidates_mapping.emplace(
       std::piecewise_construct, std::forward_as_tuple(candidate->Meta().name),
-      std::forward_as_tuple(nullptr, std::pair{candidate, num_candidates++}));
+      std::forward_as_tuple(
+        CandidateMapping{.old = {candidate, num_candidates++}}));
   }
 
   size_t found = 0;
@@ -380,24 +387,24 @@ MapCandidatesResult MapCandidates(CandidatesMapping& candidates_mapping,
     }
 
     auto& mapping = it->second;
-    const auto* new_segment = mapping.first;
+    const auto* new_segment = mapping.new_segment;
 
     if (new_segment && new_segment->Meta().version >= meta.version) {
       // mapping already has a newer segment version
       continue;
     }
 
-    IRS_ASSERT(mapping.second.first);
+    IRS_ASSERT(mapping.old.segment);
     if constexpr (std::is_same_v<SegmentReader,
                                  std::decay_t<decltype(segment)>>) {
-      mapping.first = segment.GetImpl().get();
+      mapping.new_segment = segment.GetImpl().get();
     } else {
-      mapping.first = &segment;
+      mapping.new_segment = &segment;
     }
 
     // FIXME(gnusi): can't we just check pointers?
-    IRS_ASSERT(mapping.second.first);
-    has_removals |= (meta.version != mapping.second.first->Meta().version);
+    IRS_ASSERT(mapping.old.segment);
+    has_removals |= (meta.version != mapping.old.segment->Meta().version);
 
     if (++found == num_candidates) {
       break;
@@ -413,14 +420,14 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
 
   for (auto& mapping : candidates_mapping) {
     const auto& segment_mapping = mapping.second;
-    const auto* new_segment = segment_mapping.first;
+    const auto* new_segment = segment_mapping.new_segment;
     IRS_ASSERT(new_segment);
     const auto& new_meta = new_segment->Meta();
-    IRS_ASSERT(segment_mapping.second.first);
-    const auto& old_meta = segment_mapping.second.first->Meta();
+    IRS_ASSERT(segment_mapping.old.segment);
+    const auto& old_meta = segment_mapping.old.segment->Meta();
 
     if (new_meta.version != old_meta.version) {
-      const auto& merge_ctx = merger[segment_mapping.second.second];
+      const auto& merge_ctx = merger[segment_mapping.old.index];
       auto merged_itr = merge_ctx.reader->docs_iterator();
       auto current_itr = new_segment->docs_iterator();
 
@@ -2294,7 +2301,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
       // Mask mapped candidates segments from the to-be added new segment
       for (const auto& mapping : mappings) {
-        const auto* reader = mapping.second.second.first;
+        const auto* reader = mapping.second.old.segment;
+        IRS_ASSERT(reader);
         segment_mask.emplace(reader);
       }
 
