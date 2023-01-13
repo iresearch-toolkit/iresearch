@@ -211,7 +211,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -251,7 +252,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -291,7 +293,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -330,7 +333,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -371,7 +375,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "1"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -410,7 +415,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
 
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 1.0f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -451,7 +457,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -491,7 +498,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "5", "6", "2"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -533,7 +541,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4", "5", "1"}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -571,7 +580,8 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
 
   irs::by_ngram_similarity filter = make_filter("field", {""}, 0.5f);
 
-  auto prepared_order = irs::Order::Prepare(tests::sort::custom_sort{});
+  tests::sort::custom_sort sort;
+  auto prepared_order = irs::Order::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
