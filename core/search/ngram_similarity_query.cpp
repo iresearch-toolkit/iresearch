@@ -23,6 +23,7 @@
 
 #include "ngram_similarity_query.hpp"
 
+#include "index/field_meta.hpp"
 #include "search/min_match_disjunction.hpp"
 #include "search/ngram_similarity_filter.hpp"
 
@@ -451,9 +452,9 @@ class NGramSimilarityDocIterator final : public doc_iterator,
   }
 
   NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
-                             const sub_reader& segment,
-                             const term_reader& field, score_t boost,
-                             const byte_type* stats, size_t total_terms_count,
+                             const SubReader& segment, const term_reader& field,
+                             score_t boost, const byte_type* stats,
+                             size_t total_terms_count,
                              size_t min_match_count = 1,
                              const Order& ord = Order::kUnordered)
     : NGramSimilarityDocIterator{std::move(itrs), total_terms_count,
@@ -570,7 +571,7 @@ doc_iterator::ptr NGramSimilarityQuery::execute(
 }
 
 doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
-  const sub_reader& rdr) const {
+  const SubReader& rdr) const {
   auto query_state = states_.find(rdr);
 
   if (!query_state) {

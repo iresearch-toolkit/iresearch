@@ -690,7 +690,7 @@ class term_reader final : public irs::basic_term_reader,
     {&field_data::add_term_random_access, &field_data::new_term_random_access}};
 
 field_data::field_data(std::string_view name, const features_t& features,
-                       const feature_info_provider_t& feature_columns,
+                       const FeatureInfoProvider& feature_columns,
                        std::deque<cached_column>& cached_features,
                        columnstore_writer& columns,
                        byte_block_pool::inserter& byte_writer,
@@ -1097,7 +1097,7 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 // --SECTION--                                        fields_data implementation
 // -----------------------------------------------------------------------------
 
-fields_data::fields_data(const feature_info_provider_t& feature_info,
+fields_data::fields_data(const FeatureInfoProvider& feature_info,
                          std::deque<cached_column>& cached_features,
                          const Comparer* comparator /*= nullptr*/)
   : comparator_(comparator),

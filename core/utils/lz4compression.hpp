@@ -28,8 +28,7 @@
 #include "noncopyable.hpp"
 #include "string.hpp"
 
-namespace irs {
-namespace compression {
+namespace irs::compression {
 
 struct LZ4_stream_deleter {
   void operator()(void* p) noexcept;
@@ -51,6 +50,10 @@ struct lz4 {
     return "iresearch::compression::lz4";
   }
 
+  static void init();
+  static compression::compressor::ptr compressor(const options& opts);
+  static compression::decompressor::ptr decompressor();
+
   class lz4compressor final : public compression::compressor {
    public:
     explicit lz4compressor(int acceleration = 0) noexcept
@@ -70,11 +73,6 @@ struct lz4 {
     bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
                           size_t dst_size) override IRS_ATTRIBUTE_NONNULL(2);
   };
+};
 
-  static void init();
-  static compression::compressor::ptr compressor(const options& opts);
-  static compression::decompressor::ptr decompressor();
-};  // lz4basic
-
-}  // namespace compression
-}  // namespace irs
+}  // namespace irs::compression

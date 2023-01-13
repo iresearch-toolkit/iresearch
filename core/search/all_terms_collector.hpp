@@ -43,7 +43,7 @@ class all_terms_collector : util::noncopyable {
   /// @param state state containing this scored term
   /// @param terms segment term-iterator positioned at the current term
   //////////////////////////////////////////////////////////////////////////////
-  void prepare(const sub_reader& segment, const term_reader& field,
+  void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
     field_stats_.collect(segment, field);
 
@@ -79,7 +79,7 @@ class all_terms_collector : util::noncopyable {
   /// @brief a representation of state of the collector
   //////////////////////////////////////////////////////////////////////////////
   struct collector_state {
-    const sub_reader* segment{};
+    const SubReader* segment{};
     const term_reader* field{};
     const seek_term_iterator* terms{};
     const uint32_t* docs_count{};

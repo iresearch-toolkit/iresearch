@@ -48,10 +48,6 @@ struct value {
            decompressor_factory_ == other.decompressor_factory_;
   }
 
-  bool operator!=(const value& other) const noexcept {
-    return !(*this == other);
-  }
-
   const irs::compression::compressor_factory_f compressor_factory_;
   const irs::compression::decompressor_factory_f decompressor_factory_;
 };

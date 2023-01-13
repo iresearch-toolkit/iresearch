@@ -30,7 +30,7 @@
 
 namespace irs {
 
-using NGramStates = states_cache<NGramState>;
+using NGramStates = StatesCache<NGramState>;
 
 // Prepared ngram similarity query implementation
 class NGramSimilarityQuery final : public filter::prepared {
@@ -50,14 +50,14 @@ class NGramSimilarityQuery final : public filter::prepared {
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+  void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const override {
     if (auto* state = states_.find(segment); state) {
       visitor.Visit(*this, *state, boost * this->boost());
     }
   }
 
-  doc_iterator::ptr ExecuteWithOffsets(const sub_reader& rdr) const;
+  doc_iterator::ptr ExecuteWithOffsets(const SubReader& rdr) const;
 
  private:
   size_t min_match_count_;

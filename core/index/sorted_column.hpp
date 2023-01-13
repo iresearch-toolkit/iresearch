@@ -38,7 +38,7 @@ class sorted_column final : public column_output, private util::noncopyable {
  public:
   using flush_buffer_t = std::vector<std::pair<doc_id_t, doc_id_t>>;
 
-  explicit sorted_column(const column_info& info) : info_{info} {}
+  explicit sorted_column(const ColumnInfo& info) : info_{info} {}
 
   void prepare(doc_id_t key) {
     IRS_ASSERT(index_.empty() || key >= index_.back().first);
@@ -94,7 +94,7 @@ class sorted_column final : public column_output, private util::noncopyable {
            index_.capacity() * sizeof(decltype(index_)::value_type);
   }
 
-  const column_info& info() const noexcept { return info_; }
+  const ColumnInfo& info() const noexcept { return info_; }
 
  private:
   bytes_view get_value(
@@ -130,7 +130,7 @@ class sorted_column final : public column_output, private util::noncopyable {
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
   // doc_id + offset in 'data_buf_'
   std::vector<std::pair<irs::doc_id_t, size_t>> index_;
-  column_info info_;
+  ColumnInfo info_;
 };
 
 }  // namespace irs

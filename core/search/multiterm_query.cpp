@@ -36,7 +36,7 @@ using namespace irs;
 class lazy_bitset_iterator final : public bitset_doc_iterator {
  public:
   lazy_bitset_iterator(
-    const sub_reader& segment, const term_reader& field,
+    const SubReader& segment, const term_reader& field,
     std::span<const MultiTermState::UnscoredTermState> states,
     cost::cost_t estimation) noexcept
     : bitset_doc_iterator(estimation),
@@ -58,7 +58,7 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
   score score_;
   std::unique_ptr<word_t[]> set_;
   const term_reader* field_;
-  const sub_reader* segment_;
+  const SubReader* segment_;
   std::span<const MultiTermState::UnscoredTermState> states_;
 };
 
@@ -104,7 +104,7 @@ bool lazy_bitset_iterator::refill(const word_t** begin, const word_t** end) {
 
 namespace irs {
 
-void MultiTermQuery::visit(const sub_reader& segment,
+void MultiTermQuery::visit(const SubReader& segment,
                            PreparedStateVisitor& visitor, score_t boost) const {
   if (auto state = states_.find(segment); state) {
     visitor.Visit(*this, *state, boost * this->boost());

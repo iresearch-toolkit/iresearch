@@ -31,9 +31,6 @@ class by_wildcard;
 struct filter_visitor;
 
 struct by_wildcard_filter_options {
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief search wildcard
-  //////////////////////////////////////////////////////////////////////////////
   bstring term;
 
   bool operator==(const by_wildcard_filter_options& rhs) const noexcept {
@@ -41,19 +38,14 @@ struct by_wildcard_filter_options {
   }
 
   size_t hash() const noexcept { return std::hash<bstring>()(term); }
-};  // by_wildcard_filter_options
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct by_prefix_options
-/// @brief options for wildcard filter
-////////////////////////////////////////////////////////////////////////////////
+// Options for wildcard filter
 struct by_wildcard_options : by_wildcard_filter_options {
   using filter_type = by_wildcard;
   using filter_options = by_wildcard_filter_options;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
+  // The maximum number of most frequent terms to consider for scoring
   size_t scored_terms_limit{1024};
 
   bool operator==(const by_wildcard_options& rhs) const noexcept {
@@ -64,17 +56,14 @@ struct by_wildcard_options : by_wildcard_filter_options {
   size_t hash() const noexcept {
     return hash_combine(filter_options::hash(), scored_terms_limit);
   }
-};  // by_wildcard_options
+};
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class by_wildcard
-/// @brief user-side wildcard filter
-//////////////////////////////////////////////////////////////////////////////
+// User-side wildcard filter
 class by_wildcard final : public filter_base<by_wildcard_options> {
  public:
   static ptr make();
 
-  static prepared::ptr prepare(const index_reader& index, const Order& order,
+  static prepared::ptr prepare(const IndexReader& index, const Order& order,
                                score_t boost, std::string_view field,
                                bytes_view term, size_t scored_terms_limit);
 
@@ -83,12 +72,12 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
   using filter::prepare;
 
   filter::prepared::ptr prepare(
-    const index_reader& index, const Order& order, score_t boost,
+    const IndexReader& index, const Order& order, score_t boost,
     const attribute_provider* /*ctx*/) const override {
     return prepare(index, order, this->boost() * boost, field(), options().term,
                    options().scored_terms_limit);
   }
-};  // by_wildcard
+};
 
 }  // namespace irs
 

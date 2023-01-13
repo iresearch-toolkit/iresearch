@@ -40,8 +40,8 @@
 namespace irs {
 namespace {
 
-[[maybe_unused]] inline bool is_subset_of(const features_t& lhs,
-                                          const feature_map_t& rhs) noexcept {
+[[maybe_unused]] inline bool IsSubsetOf(const features_t& lhs,
+                                        const feature_map_t& rhs) noexcept {
   for (const irs::type_info::type_id type : lhs) {
     if (!rhs.contains(type)) {
       return false;
@@ -67,7 +67,7 @@ void reorder(std::vector<segment_writer::update_context>& ctxs,
 
 segment_writer::stored_column::stored_column(
   const hashed_string_view& name, columnstore_writer& columnstore,
-  const column_info_provider_t& column_info,
+  const ColumnInfoProvider& column_info,
   std::deque<cached_column>& cached_columns, bool cache)
   : name(name.data(), name.size()), name_hash(name.hash()) {
   const auto info = column_info(static_cast<const std::string_view&>(name));
@@ -113,8 +113,8 @@ doc_id_t segment_writer::begin(const update_context& ctx,
 }
 
 std::unique_ptr<segment_writer> segment_writer::make(
-  directory& dir, const column_info_provider_t& column_info,
-  const feature_info_provider_t& feature_info, const Comparer* comparator) {
+  directory& dir, const ColumnInfoProvider& column_info,
+  const FeatureInfoProvider& feature_info, const Comparer* comparator) {
   return std::make_unique<segment_writer>(ConstructToken{}, dir, column_info,
                                           feature_info, comparator);
 }
@@ -178,8 +178,8 @@ bool segment_writer::remove(doc_id_t doc_id) {
 }
 
 segment_writer::segment_writer(ConstructToken, directory& dir,
-                               const column_info_provider_t& column_info,
-                               const feature_info_provider_t& feature_info,
+                               const ColumnInfoProvider& column_info,
+                               const FeatureInfoProvider& feature_info,
                                const Comparer* comparator) noexcept
   : sort_(column_info, {}),
     fields_(feature_info, cached_columns_, comparator),
@@ -196,8 +196,8 @@ bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
   // invert only if new field index features are a subset of slot index features
-  IRS_ASSERT(is_subset_of(features, slot->meta().features));
-  if (is_subset_of(index_features, slot->requested_features()) &&
+  IRS_ASSERT(IsSubsetOf(features, slot->meta().features));
+  if (IsSubsetOf(index_features, slot->requested_features()) &&
       slot->invert(tokens, doc)) {
     if (!slot->seen() && slot->has_features()) {
       doc_.emplace_back(slot);
@@ -241,32 +241,38 @@ void segment_writer::flush_fields(const doc_map& docmap) {
   }
 }
 
-size_t segment_writer::flush_doc_mask(const segment_meta& meta,
-                                      const doc_map& docmap) {
+document_mask segment_writer::get_doc_mask(const doc_map& docmap) {
   document_mask docs_mask;
   docs_mask.reserve(docs_mask_.size());
 
-  for (size_t doc_id = 0, doc_id_end = docs_mask_.size(); doc_id < doc_id_end;
-       ++doc_id) {
-    if (docs_mask_.test(doc_id)) {
-      auto idx = doc_id + doc_limits::min();
-      IRS_ASSERT(idx < doc_limits::eof());
-      if (!docmap.empty()) {
-        idx = docmap[idx];
+  auto visit = [&](auto&& visitor) {
+    for (size_t doc_id = 0, doc_id_end = docs_mask_.size(); doc_id < doc_id_end;
+         ++doc_id) {
+      if (docs_mask_.test(doc_id)) {
+        const auto idx = doc_id + doc_limits::min();
         IRS_ASSERT(idx < doc_limits::eof());
+        visitor(idx);
       }
-      docs_mask.emplace(static_cast<doc_id_t>(idx));
     }
+  };
+
+  if (docmap.empty()) {
+    visit([&docs_mask](size_t doc) {
+      docs_mask.emplace(static_cast<doc_id_t>(doc));
+    });
+  } else {
+    visit([&docs_mask, &docmap](size_t doc) {
+      IRS_ASSERT(docmap[doc] < doc_limits::eof());
+      docs_mask.emplace(docmap[doc]);
+    });
   }
 
-  auto writer = meta.codec->get_document_mask_writer();
-  writer->write(dir_, meta, docs_mask);
-
-  return docs_mask.size();
+  return docs_mask;
 }
 
-void segment_writer::flush(index_meta::index_segment_t& segment) {
+void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   REGISTER_TIMER_DETAILED();
+  IRS_ASSERT(docs_mask.empty());
 
   auto& meta = segment.meta;
 
@@ -307,21 +313,20 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
     flush_fields(docmap);
   }
 
-  // write non-empty document mask
-  size_t docs_mask_count = 0;
+  // get non-empty document mask
   if (docs_mask_.any()) {
-    docs_mask_count = flush_doc_mask(meta, docmap);
+    docs_mask = get_doc_mask(docmap);
   }
 
   // update segment metadata
-  IRS_ASSERT(docs_cached() >= docs_mask_count);
+  IRS_ASSERT(docs_cached() >= docs_mask.size());
   meta.docs_count = docs_cached();
-  meta.live_docs_count = meta.docs_count - docs_mask_count;
-  meta.files.clear();  // prepare empy set to be swaped into dir_
-  dir_.flush_tracked(meta.files);
+  meta.live_docs_count = meta.docs_count - docs_mask.size();
+  meta.files = dir_.flush_tracked();
 
-  // flush segment metadata
-  index_utils::flush_index_segment(dir_, segment);
+  // We intentionally don't write document mask here as it might
+  // be changed by removals accumulated in IndexWriter.
+  index_utils::FlushIndexSegment(dir_, segment);
 }
 
 void segment_writer::reset() noexcept {
@@ -340,7 +345,7 @@ void segment_writer::reset() noexcept {
   }
 }
 
-void segment_writer::reset(const segment_meta& meta) {
+void segment_writer::reset(const SegmentMeta& meta) {
   reset();
 
   seg_name_ = meta.name;

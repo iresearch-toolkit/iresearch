@@ -731,18 +731,18 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
         ++collector_collect_field_count;
       };
       sort.collector_collect_term = [&collector_collect_term_count](
-                                      const irs::sub_reader&,
+                                      const irs::SubReader&,
                                       const irs::term_reader&,
                                       const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
       sort.collectors_collect_ = [&collector_finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
         ++collector_finish_count;
@@ -822,18 +822,18 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
         ++collector_collect_field_count;
       };
       sort.collector_collect_term = [&collector_collect_term_count](
-                                      const irs::sub_reader&,
+                                      const irs::SubReader&,
                                       const irs::term_reader&,
                                       const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
       sort.collectors_collect_ = [&collector_finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
         ++collector_finish_count;
@@ -912,18 +912,18 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       tests::sort::custom_sort sort;
 
       sort.collector_collect_field = [&collector_collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
         ++collector_collect_field_count;
       };
       sort.collector_collect_term = [&collector_collect_term_count](
-                                      const irs::sub_reader&,
+                                      const irs::SubReader&,
                                       const irs::term_reader&,
                                       const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
       sort.collectors_collect_ = [&collector_finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
         ++collector_finish_count;
@@ -1433,8 +1433,8 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
   auto max_doc_id = with_fields[std::size(with_fields) - 1];
   {
     pattern_doc_generator gen("all_docs", target, max_doc_id, with_fields);
-    irs::index_writer::init_options opts;
-    opts.column_info = [target](std::string_view name) -> irs::column_info {
+    irs::IndexWriterOptions opts;
+    opts.column_info = [target](std::string_view name) -> irs::ColumnInfo {
       // std::string to avoid ambigous comparison operator
       if (std::string(target) == name) {
         return {.compression = irs::type<irs::compression::lz4>::id()(),

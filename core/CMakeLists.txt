@@ -92,10 +92,10 @@ set(IResearch_core_sources
   ./formats/skip_list.cpp
   ./formats/sparse_bitmap.cpp
   ./index/directory_reader.cpp
+  ./index/directory_reader_impl.cpp
   ./index/field_data.cpp
   ./index/field_meta.cpp
   ./index/file_names.cpp
-  ./index/index_meta.cpp
   ./index/index_writer.cpp
   ./index/index_reader.cpp
   ./index/iterators.cpp
@@ -103,6 +103,7 @@ set(IResearch_core_sources
   ./index/norm.cpp
   ./index/postings.cpp
   ./index/segment_reader.cpp
+  ./index/segment_reader_impl.cpp
   ./index/segment_writer.cpp
   ./index/sorted_column.cpp
   ./search/all_docs_provider.cpp
@@ -186,13 +187,16 @@ set(IResearch_core_headers
   ./formats/format_utils.hpp
   ./formats/skip_list.hpp
   ./index/directory_reader.hpp
+  ./index/directory_reader_impl.hpp
   ./index/field_data.hpp
   ./index/field_meta.hpp
   ./index/file_names.hpp
   ./index/index_meta.hpp
   ./index/index_reader.hpp
+  ./index/index_reader_options.hpp
   ./index/iterators.hpp
   ./index/segment_reader.hpp
+  ./index/segment_reader_impl.hpp
   ./index/segment_writer.hpp
   ./index/index_writer.hpp
   ./search/all_filter.hpp
@@ -200,6 +204,7 @@ set(IResearch_core_headers
   ./search/boost_sort.hpp
   ./search/granular_range_filter.hpp
   ./search/scorers.hpp
+  ./search/states_cache.hpp
   ./search/sort.hpp
   ./search/cost.hpp
   ./search/filter.hpp
@@ -233,6 +238,7 @@ set(IResearch_core_headers
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp
   ./utils/compression.hpp
+  ./utils/directory_utils.hpp
   ./utils/lz4compression.hpp
   ./utils/file_utils.hpp
   ./utils/fstext/fst_builder.hpp
@@ -300,7 +306,6 @@ add_library(iresearch-static
   )
 
 set_ipo(iresearch-static)
-add_sanitizers(iresearch-static)
 
 # trigger generation of BUILD_IDENTIFIER if needed
 add_custom_command(

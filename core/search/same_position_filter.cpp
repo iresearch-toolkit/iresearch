@@ -105,7 +105,7 @@ class same_position_iterator final : public Conjunction {
 class same_position_query final : public filter::prepared {
  public:
   typedef std::vector<TermState> terms_states_t;
-  typedef states_cache<terms_states_t> states_t;
+  typedef StatesCache<terms_states_t> states_t;
   typedef std::vector<bstring> stats_t;
 
   explicit same_position_query(states_t&& states, stats_t&& stats,
@@ -114,7 +114,7 @@ class same_position_query final : public filter::prepared {
 
   using filter::prepared::execute;
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
     // FIXME(gnusi): implement
   }
 
@@ -195,7 +195,7 @@ class same_position_query final : public filter::prepared {
 namespace irs {
 
 filter::prepared::ptr by_same_position::prepare(
-  const index_reader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Order& ord, score_t boost,
   const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
   const auto size = terms.size();
@@ -206,7 +206,7 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   // per segment query state
-  same_position_query::states_t query_states(index);
+  same_position_query::states_t query_states{index.size()};
 
   // per segment terms states
   same_position_query::states_t::state_type term_states;
@@ -281,7 +281,7 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::stats_t stats(size);
   for (auto& stat : stats) {
     stat.resize(ord.stats_size());
-    auto* stats_buf = const_cast<byte_type*>(stat.data());
+    auto* stats_buf = stat.data();
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 

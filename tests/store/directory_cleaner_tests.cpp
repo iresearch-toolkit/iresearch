@@ -46,6 +46,22 @@ auto MakeByTerm(std::string_view name, std::string_view value) {
   return filter;
 }
 
+template<typename Visitor>
+bool VisitFiles(const IndexMeta& meta, Visitor&& visitor) {
+  for (auto& curr_segment : meta.segments) {
+    if (!visitor(curr_segment.filename)) {
+      return false;
+    }
+
+    for (auto& file : curr_segment.meta.files) {
+      if (!visitor(file)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
   const directory& dir, const format& codec) {
   const auto acceptor = [](std::string_view filename,
@@ -53,7 +69,7 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
     return !retain.contains(filename);
   };
 
-  index_meta meta;
+  IndexMeta meta;
   auto reader = codec.get_index_meta_reader();
 
   std::string segment_file;
@@ -67,9 +83,8 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
   reader->read(dir, meta, segment_file);
 
   absl::flat_hash_set<std::string> retain;
-  retain.reserve(meta.size());
 
-  meta.visit_files([&retain](std::string_view file) {
+  VisitFiles(meta, [&retain](std::string_view file) {
     retain.emplace(file);
     return true;
   });
@@ -244,11 +259,13 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
   // writer commit tracks files that are in active segments
   {
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec_ptr, irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    writer->commit();
+    writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
 
     std::vector<std::string> files;
     auto list_files = [&files](std::string_view name) {
@@ -260,10 +277,12 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_FALSE(files.empty());
     file_set.insert(files.begin(), files.end());
 
-    writer->documents().remove(std::move(query_doc1));
+    writer->GetBatch().Remove(std::move(query_doc1));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    writer->commit();
+    writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
 
     irs::directory_cleaner::clean(
       dir, remove_except_current_segments(dir, *codec_ptr));
@@ -283,7 +302,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   {
     std::string segments_file;
 
-    irs::index_meta index_meta;
+    irs::IndexMeta index_meta;
     auto meta_reader = codec_ptr->get_index_meta_reader();
     const auto index_exists =
       meta_reader->last_segments_file(dir, segments_file);
@@ -293,8 +312,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
     file_set.insert(segments_file);
 
-    index_meta.visit_files([&file_set](std::string& file) {
-      file_set.emplace(std::move(file));
+    VisitFiles(index_meta, [&file_set](std::string_view file) {
+      file_set.emplace(file);
       return true;
     });
   }
@@ -324,7 +343,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
   {
     std::string segments_file;
 
-    irs::index_meta index_meta;
+    irs::IndexMeta index_meta;
     auto meta_reader = codec_ptr->get_index_meta_reader();
     const auto index_exists =
       meta_reader->last_segments_file(dir, segments_file);
@@ -334,8 +353,8 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
 
     file_set.insert(segments_file);
 
-    index_meta.visit_files([&file_set](std::string& file) {
-      file_set.emplace(std::move(file));
+    VisitFiles(index_meta, [&file_set](std::string_view file) {
+      file_set.emplace(file);
       return true;
     });
   }
@@ -348,7 +367,7 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
       return true;
     };
     std::unordered_set<std::string> current_files(file_set);
-    auto reader = irs::directory_reader::open(dir, codec_ptr);
+    auto reader = irs::DirectoryReader{dir, codec_ptr};
     irs::directory_cleaner::clean(dir);
     ASSERT_TRUE(dir.visit(list_files));
     ASSERT_FALSE(files.empty());

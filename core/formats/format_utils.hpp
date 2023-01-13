@@ -21,10 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
 #include "index/field_meta.hpp"
-#include "store/store_utils.hpp"
-#include "utils/string_utils.hpp"
+#include "store/data_input.hpp"
+#include "store/data_output.hpp"
+
+#include <absl/strings/str_cat.h>
 
 namespace irs {
 
@@ -32,11 +33,9 @@ void validate_footer(index_input& in);
 
 namespace format_utils {
 
-const int32_t FORMAT_MAGIC = 0x3fd76c17;
-
-const int32_t FOOTER_MAGIC = -FORMAT_MAGIC;
-
-const uint32_t FOOTER_LEN = 2 * sizeof(int32_t) + sizeof(int64_t);
+constexpr int32_t kFormatMagic = 0x3fd76c17;
+constexpr int32_t kFooterMagic = -kFormatMagic;
+constexpr uint32_t kFooterLen = 2 * sizeof(int32_t) + sizeof(int64_t);
 
 void write_header(index_output& out, std::string_view format, int32_t ver);
 
@@ -48,7 +47,7 @@ int32_t check_header(index_input& in, std::string_view format, int32_t min_ver,
                      int32_t max_ver);
 
 inline int64_t read_checksum(index_input& in) {
-  in.seek(in.length() - FOOTER_LEN);
+  in.seek(in.length() - kFooterLen);
   validate_footer(in);
   return in.read_long();
 }
@@ -57,10 +56,8 @@ inline int64_t check_footer(index_input& in, int64_t checksum) {
   validate_footer(in);
 
   if (checksum != in.read_long()) {
-    throw index_error(string_utils::to_string(
-      "while checking footer, error: invalid checksum '" IR_UINT64_T_SPECIFIER
-      "'",
-      checksum));
+    throw index_error{absl::StrCat(
+      "while checking footer, error: invalid checksum '", checksum, "'")};
   }
 
   return checksum;

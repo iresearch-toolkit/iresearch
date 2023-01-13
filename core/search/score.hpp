@@ -48,7 +48,7 @@ using Scorers = SmallVector<ScoreFunction, 2>;
 
 // Prepare scorer for each of the bucket.
 Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const sub_reader& segment, const term_reader& field,
+                       const SubReader& segment, const term_reader& field,
                        const byte_type* stats, const attribute_provider& doc,
                        score_t boost);
 
@@ -64,6 +64,6 @@ ScoreFunction CompileScore(Args&&... args) {
 // buckets without explicitly collecting field or term statistics,
 // e.g. for 'all' filter.
 void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
-                       const index_reader& index);
+                       const IndexReader& index);
 
 }  // namespace irs

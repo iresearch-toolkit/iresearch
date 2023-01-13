@@ -42,7 +42,6 @@
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
-#include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
 // ----------------------------------------------------------------------------
@@ -89,9 +88,6 @@ struct column_meta {
 
   bool operator==(const column_meta& rhs) const noexcept {
     return name == rhs.name;
-  }
-  bool operator!=(const column_meta& rhs) const noexcept {
-    return !(*this == rhs);
   }
 
   std::string name;
@@ -161,7 +157,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
   // compressor can only handle size of int32_t, so can use the negative flag as
   // a compression flag
   const bytes_view compressed =
-    compressor.compress(&data[0], data.size(), encode_buf);
+    compressor.compress(data.data(), data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
     IRS_ASSERT(compressed.size() <=
@@ -180,8 +176,7 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     irs::write_zvint(
       out, int32_t(0) - int32_t(data.size()));  // -ve to mark uncompressed
     if (cipher) {
-      cipher->encrypt(out.file_pointer(),
-                      const_cast<irs::byte_type*>(data.c_str()), data.size());
+      cipher->encrypt(out.file_pointer(), data.data(), data.size());
     }
     out.write_bytes(data.c_str(), data.size());
   }
@@ -206,22 +201,22 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
       buf_size);  // Ensure that we have enough space to store decompressed data
 
     [[maybe_unused]] const auto read =
-      in.read_bytes(const_cast<byte_type*>(decode_buf.c_str()), buf_size);
+      in.read_bytes(decode_buf.data(), buf_size);
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size,
-                      const_cast<byte_type*>(decode_buf.c_str()), buf_size);
+      cipher->decrypt(in.file_pointer() - buf_size, decode_buf.data(),
+                      buf_size);
     }
 
     return;
   }
 
   if (IRS_UNLIKELY(!decompressor)) {
-    throw irs::index_error(
-      string_utils::to_string("while reading compact, error: can't decompress "
-                              "block of size %d for whithout decompressor",
-                              size));
+    throw irs::index_error{
+      absl::StrCat("While reading compact, error: can't decompress "
+                   "block of size",
+                   size, "for whithout decompressor")};
   }
 
   // Try direct buffer access
@@ -235,15 +230,15 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     const byte_type* ptr = buf + buf_size;
     buff_size = zvread<uint64_t>(ptr);
   } else {
-    irs::string_utils::oversize(encode_buf, buf_size);
+    encode_buf.resize(buf_size);
 
     [[maybe_unused]] const auto read =
-      in.read_bytes(const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+      in.read_bytes(encode_buf.data(), buf_size);
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size,
-                      const_cast<byte_type*>(encode_buf.c_str()), buf_size);
+      cipher->decrypt(in.file_pointer() - buf_size, encode_buf.data(),
+                      buf_size);
     }
 
     buf = encode_buf.c_str();
@@ -308,8 +303,7 @@ void meta_writer::prepare(directory& dir, std::string_view segment) {
   out_ = dir.create(filename);
 
   if (!out_) {
-    throw io_error(string_utils::to_string("Failed to create file, path: %s",
-                                           filename.c_str()));
+    throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
   format_utils::write_header(*out_, FORMAT_NAME,
@@ -357,7 +351,7 @@ void meta_writer::flush() {
 
 class meta_reader final {
  public:
-  bool prepare(const directory& dir, const segment_meta& meta, size_t& count,
+  bool prepare(const directory& dir, const SegmentMeta& meta, size_t& count,
                field_id& max_id);
   bool read(column_meta& column);
 
@@ -368,15 +362,15 @@ class meta_reader final {
   field_id max_id_{0};
 };  // meta_writer
 
-bool meta_reader::prepare(const directory& dir, const segment_meta& meta,
+bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
                           size_t& count, field_id& max_id) {
   const auto filename = irs::file_name(meta.name, meta_writer::FORMAT_EXT);
 
   bool exists;
 
   if (!dir.exists(exists, filename)) {
-    throw io_error(string_utils::to_string(
-      "failed to check existence of file, path: %s", filename.c_str()));
+    throw io_error{
+      absl::StrCat("Failed to check existence of file, path: ", filename)};
   }
 
   if (!exists) {
@@ -387,24 +381,22 @@ bool meta_reader::prepare(const directory& dir, const segment_meta& meta,
   in_ = dir.open(filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in_) {
-    throw io_error(string_utils::to_string("failed to open file, path: %s",
-                                           filename.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", filename)};
   }
 
   const auto checksum = format_utils::checksum(*in_);
 
   constexpr size_t kFooterLength = sizeof(uint64_t)    // count
                                    + sizeof(uint64_t)  // max id
-                                   + format_utils::FOOTER_LEN;
+                                   + format_utils::kFooterLen;
 
   const size_t length = in_->length();
 
   if (length < kFooterLength) {
-    throw index_error(
-      string_utils::to_string("invalid column id: " IR_UINT64_T_SPECIFIER
-                              " footer length, "
-                              "got " IR_UINT64_T_SPECIFIER ", path: %s",
-                              max_id, length, filename.c_str()));
+    throw index_error{absl::StrCat("Invalid column id: ", max_id,
+                                   " footer length, "
+                                   "got ",
+                                   length, ", path: ", filename)};
   }
 
   // seek to start of meta footer (before count and max_id)
@@ -413,9 +405,8 @@ bool meta_reader::prepare(const directory& dir, const segment_meta& meta,
   max_id = in_->read_long();  // read highest column id written
 
   if (max_id >= std::numeric_limits<size_t>::max()) {
-    throw index_error(string_utils::to_string(
-      "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s", max_id,
-      filename.c_str()));
+    throw index_error{
+      absl::StrCat("Invalid max column id: ", max_id, ", path: %s", filename)};
   }
 
   format_utils::check_footer(*in_, checksum);
@@ -606,9 +597,9 @@ class writer final : public irs::columnstore_writer {
     IRS_ASSERT(version >= Version::MIN && version <= Version::MAX);
   }
 
-  void prepare(directory& dir, const segment_meta& meta) override;
+  void prepare(directory& dir, const SegmentMeta& meta) override;
   // Current implmentation doesn't support column headers
-  column_t push_column(const column_info& info,
+  column_t push_column(const ColumnInfo& info,
                        column_finalizer_f /*writer*/) override;
   bool commit(const flush_state& state) override;
   void rollback() noexcept override;
@@ -823,15 +814,14 @@ class writer final : public irs::columnstore_writer {
   Version version_;
 };  // writer
 
-void writer::prepare(directory& dir, const segment_meta& meta) {
+void writer::prepare(directory& dir, const SegmentMeta& meta) {
   columns_.clear();
 
   auto filename = file_name(meta.name, writer::FORMAT_EXT);
   auto data_out = dir.create(filename);
 
   if (!data_out) {
-    throw io_error(string_utils::to_string("Failed to create file, path: %s",
-                                           filename.c_str()));
+    throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
   format_utils::write_header(*data_out, FORMAT_NAME,
@@ -857,7 +847,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   filename_ = std::move(filename);
 }
 
-columnstore_writer::column_t writer::push_column(const column_info& info,
+columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
                                                  column_finalizer_f finalizer) {
   encryption::stream* cipher;
   irs::type_info compression;
@@ -1067,10 +1057,6 @@ class sparse_block : util::noncopyable {
       return data_ == &rhs.data_;
     }
 
-    bool operator!=(const sparse_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
    private:
     irs::bytes_view* payload_{&kDummy};
     irs::doc_id_t value_{doc_limits::invalid()};
@@ -1174,10 +1160,6 @@ class dense_block : util::noncopyable {
       return data_ == &rhs.data_;
     }
 
-    bool operator!=(const dense_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
    private:
     // note that function increments 'it_'
     void next_value() noexcept {
@@ -1210,9 +1192,9 @@ class dense_block : util::noncopyable {
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
-      throw index_error(string_utils::to_string(
-        "Invalid RL encoding in 'dense_block', base_key=%du, avg_delta=%du",
-        base_, avg));
+      throw index_error{
+        absl::StrCat("Invalid RL encoding in 'dense_block', base_key=", base_,
+                     " avg_delta=", avg)};
     }
 
     // read data offsets
@@ -1305,10 +1287,6 @@ class dense_fixed_offset_block : util::noncopyable {
       return data_.data() == rhs.data_.c_str();
     }
 
-    bool operator!=(const dense_fixed_offset_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
    private:
     uint64_t avg_length_{};  // average value length
     bytes_view data_;
@@ -1332,18 +1310,16 @@ class dense_fixed_offset_block : util::noncopyable {
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
-      throw index_error(string_utils::to_string(
-        "Invalid RL encoding in 'dense_fixed_offset_block', base_key=%du, "
-        "avg_delta=%du",
-        base_key_, avg));
+      throw index_error{absl::StrCat(
+        "Invalid RL encoding in 'dense_fixed_offset_block', base_key=",
+        base_key_, "avg_delta=", avg)};
     }
 
     // fixed length block must be encoded with RL encoding
     if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
-      throw index_error(string_utils::to_string(
-        "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=%du, "
-        "avg_length=%du",
-        base_key_, avg_length_));
+      throw index_error{absl::StrCat(
+        "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=",
+        base_key_, "avg_length=", avg_length_)};
     }
 
     // read data
@@ -1396,10 +1372,6 @@ class sparse_mask_block : util::noncopyable {
 
     bool operator==(const sparse_mask_block& rhs) const noexcept {
       return end_ == (rhs.keys_ + rhs.size_);
-    }
-
-    bool operator!=(const sparse_mask_block& rhs) const noexcept {
-      return !(*this == rhs);
     }
 
    private:
@@ -1490,10 +1462,6 @@ class dense_mask_block {
       return block_ == &rhs;
     }
 
-    bool operator!=(const dense_mask_block& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
    private:
     const dense_mask_block* block_{};
     doc_id_t value_{doc_limits::invalid()};
@@ -1515,15 +1483,15 @@ class dense_mask_block {
     // dense block must be encoded with RL encoding, avg must be equal to 1
     uint32_t avg;
     if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
-      throw index_error(
-        string_utils::to_string("Invalid RL encoding in 'dense_mask_block', "
-                                "base_key=%du, avg_delta=%du",
-                                min_, avg));
+      throw index_error{
+        absl::StrCat("Invalid RL encoding in 'dense_mask_block', "
+                     "base_key=",
+                     min_, " avg_delta=", avg)};
     }
 
     // mask block has no data, so all offsets should be equal to 0
     if (!encode::avg::check_block_rl64(in, 0)) {
-      throw index_error("'dense_mask_block' expected to contain no data");
+      throw index_error{"'dense_mask_block' expected to contain no data"};
     }
 
     max_ = min_ + size;
@@ -2336,7 +2304,7 @@ class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
-  bool prepare(const directory& dir, const segment_meta& meta,
+  bool prepare(const directory& dir, const SegmentMeta& meta,
                const options& opts = options{}) override;
 
   const column_reader* column(field_id field) const override;
@@ -2346,7 +2314,7 @@ class reader final : public columnstore_reader, public context_provider {
   size_t size() const noexcept override { return columns_.size(); }
 
  private:
-  static bool read_meta(const directory& dir, const segment_meta& meta,
+  static bool read_meta(const directory& dir, const SegmentMeta& meta,
                         std::vector<column::ptr>& columns,
                         std::vector<const class column*>& sorted_columns);
 
@@ -2354,7 +2322,7 @@ class reader final : public columnstore_reader, public context_provider {
   std::vector<const class column*> sorted_columns_;
 };  // reader
 
-bool reader::read_meta(const directory& dir, const segment_meta& meta,
+bool reader::read_meta(const directory& dir, const SegmentMeta& meta,
                        std::vector<column::ptr>& columns,
                        std::vector<const class column*>& sorted_columns) {
   size_t count{};
@@ -2369,9 +2337,8 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
   sorted_columns.reserve(columns.size());
   for (column_meta col_meta; reader.read(col_meta);) {
     if (col_meta.id >= columns.size()) {
-      throw irs::index_error(
-        irs::string_utils::to_string("invalid column '%s' id in segment '%s'",
-                                     col_meta.name.c_str(), meta.name.c_str()));
+      throw index_error{absl::StrCat("Invalid column '", col_meta.name,
+                                     "' id in segment '", meta.name, "'")};
     }
 
     IRS_ASSERT(col_meta.id == columns[col_meta.id]->id());
@@ -2392,14 +2359,14 @@ bool reader::read_meta(const directory& dir, const segment_meta& meta,
   return true;
 }
 
-bool reader::prepare(const directory& dir, const segment_meta& meta,
+bool reader::prepare(const directory& dir, const SegmentMeta& meta,
                      const columnstore_reader::options&) {
   const auto filename = file_name(meta.name, writer::FORMAT_EXT);
   bool exists;
 
   if (!dir.exists(exists, filename)) {
-    throw io_error(string_utils::to_string(
-      "failed to check existence of file, path: %s", filename.c_str()));
+    throw io_error{
+      absl::StrCat("Failed to check existence of file, path: ", filename)};
   }
 
   if (!exists) {
@@ -2411,8 +2378,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
   auto stream = dir.open(filename, irs::IOAdvice::RANDOM);
 
   if (!stream) {
-    throw io_error(string_utils::to_string("Failed to open file, path: %s",
-                                           filename.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", filename)};
   }
 
   // check header
@@ -2437,14 +2403,14 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
   format_utils::read_checksum(*stream);
 
   // seek to data start
-  stream->seek(stream->length() - format_utils::FOOTER_LEN - sizeof(uint64_t));
+  stream->seek(stream->length() - format_utils::kFooterLen - sizeof(uint64_t));
   stream->seek(stream->read_long());  // seek to blocks index
 
   const size_t count = stream->read_vlong();
 
   if (count >= field_limits::invalid()) {
-    throw index_error(string_utils::to_string(
-      "Too many columns in the columnstore (" IR_SIZE_T_SPECIFIER ")", count));
+    throw index_error{
+      absl::StrCat("Too many columns in the columnstore (", count, ")")};
   }
 
   uint64_t buf[INDEX_BLOCK_SIZE];  // temporary buffer for bit packing
@@ -2456,30 +2422,27 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
     const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
 
     if (factory_id >= std::size(COLUMN_FACTORIES)) {
-      throw index_error(
-        string_utils::to_string("Failed to load column id=" IR_SIZE_T_SPECIFIER
-                                ", got invalid properties=%d",
-                                i, static_cast<uint32_t>(props)));
+      throw index_error{absl::StrCat(
+        "Failed to load column id=", i,
+        ", got invalid properties=", static_cast<uint32_t>(props))};
     }
 
     // create column
     const auto& factory = COLUMN_FACTORIES[factory_id];
 
     if (!factory) {
-      static_assert(std::is_same<std::underlying_type<ColumnProperty>::type,
-                                 uint32_t>::value,
-                    "Enum 'ColumnProperty' has different underlying type");
+      static_assert(
+        std::is_same_v<std::underlying_type_t<ColumnProperty>, uint32_t>);
 
-      throw index_error(string_utils::to_string(
-        "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d", i,
-        static_cast<uint32_t>(props)));
+      throw index_error{
+        absl::StrCat("Failed to open column id=", static_cast<uint32_t>(props),
+                     ", properties=", i)};
     }
 
     column::ptr column = factory(*this, i, props);
 
     if (!column) {
-      throw index_error(string_utils::to_string(
-        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER "", i));
+      throw index_error{absl::StrCat("Factory failed to create column id=", i)};
     }
 
     compression::decompressor::ptr decomp;
@@ -2489,17 +2452,13 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
       decomp = compression::get_decompressor(compression_id);
 
       if (!decomp && !compression::exists(compression_id)) {
-        throw index_error(string_utils::to_string(
-          "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER
-          "",
-          compression_id.c_str(), i));
+        throw index_error{absl::StrCat("Failed to load compression '",
+                                       compression_id, "' for column id=", i)};
       }
 
       if (decomp && !decomp->prepare(*stream)) {
-        throw index_error(
-          string_utils::to_string("Failed to prepare compression '%s' for "
-                                  "column id=" IR_SIZE_T_SPECIFIER "",
-                                  compression_id.c_str(), i));
+        throw index_error{absl::StrCat("Failed to prepare compression '",
+                                       compression_id, "' for column id=", i)};
       }
     } else {
       // we don't support encryption and custom

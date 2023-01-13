@@ -27,14 +27,14 @@ namespace {
 using namespace irs;
 
 struct noop_field_collector final : sort::field_collector {
-  void collect(const sub_reader&, const term_reader&) override {}
+  void collect(const SubReader&, const term_reader&) override {}
   void reset() override {}
   void collect(bytes_view) override {}
   void write(data_output&) const override {}
 };
 
 struct noop_term_collector final : sort::term_collector {
-  void collect(const sub_reader&, const term_reader&,
+  void collect(const SubReader&, const term_reader&,
                const attribute_provider&) override {}
   void reset() override {}
   void collect(bytes_view) override {}
@@ -48,18 +48,10 @@ static noop_term_collector NOOP_TERM_STATS;
 
 namespace irs {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           field_collector_wrapper
-// -----------------------------------------------------------------------------
-
 /*static*/ field_collector_wrapper::collector_type&
 field_collector_wrapper::noop() noexcept {
   return NOOP_FIELD_STATS;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  field_collectors
-// -----------------------------------------------------------------------------
 
 field_collectors::field_collectors(const Order& order)
   : collectors_base<field_collector_wrapper>(order.buckets().size(), order) {
@@ -72,7 +64,7 @@ field_collectors::field_collectors(const Order& order)
   IRS_ASSERT(collectors == collectors_.end());
 }
 
-void field_collectors::collect(const sub_reader& segment,
+void field_collectors::collect(const SubReader& segment,
                                const term_reader& field) const {
   switch (collectors_.size()) {
     case 0:
@@ -92,7 +84,7 @@ void field_collectors::collect(const sub_reader& segment,
 }
 
 void field_collectors::finish(byte_type* stats_buf,
-                              const index_reader& index) const {
+                              const IndexReader& index) const {
   // special case where term statistics collection is not applicable
   // e.g. by_column_existence filter
   IRS_ASSERT(buckets_.size() == collectors_.size());
@@ -107,18 +99,10 @@ void field_collectors::finish(byte_type* stats_buf,
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                            term_collector_wrapper
-// -----------------------------------------------------------------------------
-
 /*static*/ term_collector_wrapper::collector_type&
 term_collector_wrapper::noop() noexcept {
   return NOOP_TERM_STATS;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   term_collectors
-// -----------------------------------------------------------------------------
 
 term_collectors::term_collectors(const Order& buckets, size_t size)
   : collectors_base<term_collector_wrapper>(buckets.buckets().size() * size,
@@ -141,7 +125,7 @@ term_collectors::term_collectors(const Order& buckets, size_t size)
   IRS_ASSERT(begin == collectors_.end());
 }
 
-void term_collectors::collect(const sub_reader& segment,
+void term_collectors::collect(const SubReader& segment,
                               const term_reader& field, size_t term_idx,
                               const attribute_provider& attrs) const {
   const size_t count = buckets_.size();
@@ -218,7 +202,7 @@ size_t term_collectors::push_back() {
 
 void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
                              const field_collectors& field_collectors,
-                             const index_reader& index) const {
+                             const IndexReader& index) const {
   const auto bucket_count = buckets_.size();
 
   switch (bucket_count) {

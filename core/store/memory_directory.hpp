@@ -286,7 +286,9 @@ class memory_directory final : public directory {
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::string_view name) noexcept override;
+  bool sync(std::span<const std::string_view>) noexcept override {
+    return true;
+  }
 
   bool visit(const visitor_f& visitor) const override;
 

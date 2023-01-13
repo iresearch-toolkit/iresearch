@@ -45,19 +45,20 @@ TEST_P(format_12_test_case, open_10_with_12) {
   {
     auto codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, codec);
-    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check index
   auto codec = irs::formats::get("1_2", "1_0");
   ASSERT_NE(nullptr, codec);
-  auto index = irs::directory_reader::open(dir(), codec);
+  auto index = irs::DirectoryReader(dir(), codec);
   ASSERT_TRUE(index);
   ASSERT_EQ(1, index->size());
   ASSERT_EQ(1, index->docs_count());
@@ -106,30 +107,32 @@ TEST_P(format_12_test_case, formats_10_12) {
   {
     auto codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, codec);
-    auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // write segment with format11
   {
     auto codec = irs::formats::get("1_2", "1_0");
     ASSERT_NE(nullptr, codec);
-    auto writer = irs::index_writer::make(dir(), codec, irs::OM_APPEND);
+    auto writer = irs::IndexWriter::Make(dir(), codec, irs::OM_APPEND);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // check index
-  auto index = irs::directory_reader::open(dir());
+  auto index = irs::DirectoryReader(dir());
   ASSERT_TRUE(index);
   ASSERT_EQ(2, index->size());
   ASSERT_EQ(2, index->docs_count());
@@ -209,7 +212,7 @@ TEST_P(format_12_test_case, write_zero_block_encryption) {
   dir().attributes() =
     irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(0)};
 
-  auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE);
+  auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
 
   ASSERT_THROW(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),

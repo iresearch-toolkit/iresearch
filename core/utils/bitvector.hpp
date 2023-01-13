@@ -47,10 +47,6 @@ class bitvector final {
     return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
   }
 
-  bool operator!=(const bitvector& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   operator const bitset&() const { return set_; }
 
   bitvector& operator=(const bitvector& other) {

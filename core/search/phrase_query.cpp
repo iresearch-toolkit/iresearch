@@ -22,6 +22,7 @@
 
 #include "phrase_query.hpp"
 
+#include "index/field_meta.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/phrase_iterator.hpp"
 
@@ -113,7 +114,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
 }
 
 doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
-  const irs::sub_reader& rdr) const {
+  const SubReader& rdr) const {
   using FixedPhraseIterator =
     PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
                    PhrasePosition<FixedPhraseFrequency<true, false>>>;
@@ -296,7 +297,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
 }
 
 doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
-  const irs::sub_reader& rdr) const {
+  const irs::SubReader& rdr) const {
   using Adapter = VariadicPhraseOffsetAdapter;
   using FixedPhraseIterator = PhraseIterator<
     conjunction<doc_iterator::ptr, NoopAggregator>,

@@ -26,19 +26,18 @@
 
 #include "error/error.hpp"
 #include "shared.hpp"
-#include "store/store_utils.hpp"
 #include "utils/misc.hpp"
-#include "utils/string_utils.hpp"
 #include "utils/type_limits.hpp"
 
+namespace irs {
 namespace {
 
 // can reuse stateless instances
-irs::compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
-irs::compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
+compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
+compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
 
-inline int acceleration(const irs::compression::options::Hint hint) noexcept {
-  static const int FACTORS[]{0, 2, 0};
+inline int acceleration(const compression::options::Hint hint) noexcept {
+  static constexpr int FACTORS[]{0, 2, 0};
   IRS_ASSERT(static_cast<size_t>(hint) < std::size(FACTORS));
 
   return FACTORS[static_cast<size_t>(hint)];
@@ -46,10 +45,7 @@ inline int acceleration(const irs::compression::options::Hint hint) noexcept {
 
 }  // namespace
 
-namespace irs {
-
-static_assert(sizeof(char) == sizeof(byte_type),
-              "sizeof(char) != sizeof(byte_type)");
+static_assert(sizeof(char) == sizeof(byte_type));
 
 namespace compression {
 
@@ -71,18 +67,16 @@ lz4stream_decode lz4_make_stream_decode() {
   return lz4stream_decode(LZ4_createStreamDecode());
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   lz4 compression
-// -----------------------------------------------------------------------------
-
 bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
                                         bstring& out) {
   IRS_ASSERT(size <= static_cast<unsigned>(
                        std::numeric_limits<int>::max()));  // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
 
-  // ensure we have enough space to store compressed data
-  string_utils::oversize(out, size_t(LZ4_COMPRESSBOUND(src_size)));
+  // Ensure we have enough space to store compressed data,
+  // but preserve original size
+  const uint32_t bound = LZ4_COMPRESSBOUND(src_size);
+  out.resize(std::max(out.size(), size_t{bound}));
 
   const auto* src_data = reinterpret_cast<const char*>(src);
   auto* buf = reinterpret_cast<char*>(&out[0]);
@@ -91,10 +85,11 @@ bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
     LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
 
   if (IRS_UNLIKELY(lz4_size < 0)) {
-    throw index_error("while compressing, error: LZ4 returned negative size");
+    throw index_error{"While compressing, error: LZ4 returned negative size"};
   }
 
-  return bytes_view(reinterpret_cast<const byte_type*>(buf), size_t(lz4_size));
+  return {reinterpret_cast<const byte_type*>(buf),
+          static_cast<size_t>(lz4_size)};
 }
 
 bytes_view lz4::lz4decompressor::decompress(const byte_type* src,
@@ -120,7 +115,7 @@ bytes_view lz4::lz4decompressor::decompress(const byte_type* src,
 }
 
 compressor::ptr lz4::compressor(const options& opts) {
-  const auto acceleration = ::acceleration(opts.hint);
+  const auto acceleration = irs::acceleration(opts.hint);
 
   if (0 == acceleration) {
     return memory::to_managed<lz4compressor, false>(&LZ4_BASIC_COMPRESSOR);

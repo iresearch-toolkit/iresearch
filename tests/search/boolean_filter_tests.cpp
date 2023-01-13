@@ -85,7 +85,7 @@ struct basic_sort : irs::sort {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::ScoreFunction prepare_scorer(const irs::sub_reader&,
+    virtual irs::ScoreFunction prepare_scorer(const irs::SubReader&,
                                               const irs::term_reader&,
                                               const irs::byte_type*,
                                               const irs::attribute_provider&,
@@ -137,7 +137,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
       IRS_ASSERT(stats_);
 
       scorers_ =
-        irs::PrepareScorers(ord.buckets(), irs::sub_reader::empty(),
+        irs::PrepareScorers(ord.buckets(), irs::SubReader::empty(),
                             irs::empty_term_reader{0}, stats_, *this, boost);
 
       score_.Reset(this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
@@ -263,7 +263,7 @@ struct boosted : public irs::filter {
         docs.begin(), docs.end(), stats.c_str(), ctx.scorers, boost());
     }
 
-    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&,
+    void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
                irs::score_t) const override {
       // No terms to visit
     }
@@ -273,7 +273,7 @@ struct boosted : public irs::filter {
   };  // prepared
 
   irs::filter::prepared::ptr prepare(
-    const irs::index_reader&, const irs::Order&, irs::score_t boost,
+    const irs::IndexReader&, const irs::Order&, irs::score_t boost,
     const irs::attribute_provider* /*ctx*/) const override {
     return irs::memory::make_managed<boosted::prepared>(docs,
                                                         this->boost() * boost);
@@ -334,9 +334,9 @@ TEST(boolean_query_boost, hierarchy) {
       sub.boost(value);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
 
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
@@ -418,9 +418,9 @@ TEST(boolean_query_boost, hierarchy) {
       node.docs = {1, 2, 3};
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
 
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
@@ -513,9 +513,9 @@ TEST(boolean_query_boost, hierarchy) {
       node.docs = {1, 2, 3};
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
 
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
@@ -560,7 +560,7 @@ TEST(boolean_query_boost, and_filter) {
   {
     irs::And root;
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -572,7 +572,7 @@ TEST(boolean_query_boost, and_filter) {
     irs::And root;
     root.boost(value);
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -590,9 +590,9 @@ TEST(boolean_query_boost, and_filter) {
       node.boost(value);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
 
     auto* scr = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!scr);
@@ -617,9 +617,9 @@ TEST(boolean_query_boost, and_filter) {
     }
     root.boost(value);
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
@@ -654,9 +654,9 @@ TEST(boolean_query_boost, and_filter) {
     }
     root.boost(value);
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
@@ -703,8 +703,8 @@ TEST(boolean_query_boost, and_filter) {
       node.boost(value);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -749,8 +749,8 @@ TEST(boolean_query_boost, and_filter) {
       node.boost(value);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -793,8 +793,8 @@ TEST(boolean_query_boost, and_filter) {
       node.boost(0.f);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -817,7 +817,7 @@ TEST(boolean_query_boost, or_filter) {
   {
     irs::Or root;
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -829,7 +829,7 @@ TEST(boolean_query_boost, or_filter) {
     irs::Or root;
     root.boost(value);
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -847,8 +847,8 @@ TEST(boolean_query_boost, or_filter) {
     }
     root.boost(value);
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -878,9 +878,9 @@ TEST(boolean_query_boost, or_filter) {
     }
     root.boost(value);
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -915,8 +915,8 @@ TEST(boolean_query_boost, or_filter) {
     }
     root.boost(value);
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -976,8 +976,8 @@ TEST(boolean_query_boost, or_filter) {
       node.boost(value);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -1035,8 +1035,8 @@ TEST(boolean_query_boost, or_filter) {
       node.boost(value);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -1091,8 +1091,8 @@ TEST(boolean_query_boost, or_filter) {
       node.boost(0.f);
     }
 
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
-    auto docs = prep->execute(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
+    auto docs = prep->execute(irs::SubReader::empty(), pord);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
 
@@ -1152,13 +1152,13 @@ struct unestimated : public irs::filter {
       const irs::ExecutionContext&) const override {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
-    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&,
+    void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
                irs::score_t) const override {
       // No terms to visit
     }
   };  // prepared
 
-  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+  filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
                                 const irs::attribute_provider*) const override {
     return irs::memory::make_managed<unestimated::prepared>();
@@ -1206,7 +1206,7 @@ struct estimated : public irs::filter {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
 
-    void visit(const irs::sub_reader&, irs::PreparedStateVisitor&,
+    void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
                irs::score_t) const override {
       // No terms to visit
     }
@@ -1215,7 +1215,7 @@ struct estimated : public irs::filter {
     irs::cost::cost_t est;
   };  // prepared
 
-  filter::prepared::ptr prepare(const irs::index_reader&, const irs::Order&,
+  filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
                                 const irs::attribute_provider*) const override {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
@@ -1239,9 +1239,9 @@ TEST(boolean_query_estimation, or_filter) {
     root.add<detail::estimated>().est = 1;
     root.add<detail::estimated>().est = 100;
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
 
     // check that subqueries were not estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
@@ -1264,9 +1264,9 @@ TEST(boolean_query_estimation, or_filter) {
     root.add<detail::unestimated>();
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
   }
 
@@ -1282,9 +1282,9 @@ TEST(boolean_query_estimation, or_filter) {
     root.add<detail::estimated>().est = 100;
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
 
     /* check that subqueries were not estimated */
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
@@ -1326,9 +1326,9 @@ TEST(boolean_query_estimation, or_filter) {
     const irs::sort* sort{&impl};
 
     auto pord = irs::Order::Prepare(std::span{&sort, 1});
-    auto prep = root.prepare(irs::sub_reader::empty(), pord);
+    auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
 
     // check that subqueries were not estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
@@ -1353,9 +1353,9 @@ TEST(boolean_query_estimation, or_filter) {
   {
     irs::Or root;
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
   }
 }
@@ -1370,9 +1370,9 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<detail::estimated>().est = 1;
     root.add<detail::estimated>().est = 100;
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
@@ -1393,9 +1393,9 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<detail::unestimated>();
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
@@ -1421,9 +1421,9 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<detail::estimated>().est = 100;
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
@@ -1451,9 +1451,9 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<irs::Not>().filter<detail::estimated>().est = 0;
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
@@ -1469,9 +1469,9 @@ TEST(boolean_query_estimation, and_filter) {
   // empty case
   {
     irs::And root;
-    auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-    auto docs = prep->execute(irs::sub_reader::empty());
+    auto docs = prep->execute(irs::SubReader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
   }
 }
@@ -15188,19 +15188,22 @@ TEST_P(boolean_filter_test_case, or_sequential_multiple_segments) {
                        doc3->stored.begin(), doc3->stored.end()));  // C
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));  // D
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));  // E
     ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                        doc6->stored.begin(), doc6->stored.end()));  // F
     ASSERT_TRUE(insert(*writer, doc7->indexed.begin(), doc7->indexed.end(),
                        doc7->stored.begin(), doc7->stored.end()));  // G
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
     ASSERT_TRUE(insert(*writer, doc8->indexed.begin(), doc8->indexed.end(),
                        doc8->stored.begin(), doc8->stored.end()));  // H
     ASSERT_TRUE(insert(*writer, doc9->indexed.begin(), doc9->indexed.end(),
                        doc9->stored.begin(), doc9->stored.end()));  // I
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   auto rdr = open_reader();
@@ -15584,18 +15587,18 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
     sort::custom_sort sort;
 
     sort.collector_collect_field = [&collector_collect_field_count](
-                                     const irs::sub_reader&,
+                                     const irs::SubReader&,
                                      const irs::term_reader&) -> void {
       ++collector_collect_field_count;
     };
     sort.collector_collect_term = [&collector_collect_term_count](
-                                    const irs::sub_reader&,
+                                    const irs::SubReader&,
                                     const irs::term_reader&,
                                     const irs::attribute_provider&) -> void {
       ++collector_collect_term_count;
     };
     sort.collectors_collect_ = [&collector_finish_count](
-                                 irs::byte_type*, const irs::index_reader&,
+                                 irs::byte_type*, const irs::IndexReader&,
                                  const irs::sort::field_collector*,
                                  const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
@@ -15676,18 +15679,18 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
     sort::custom_sort sort;
 
     sort.collector_collect_field = [&collector_collect_field_count](
-                                     const irs::sub_reader&,
+                                     const irs::SubReader&,
                                      const irs::term_reader&) -> void {
       ++collector_collect_field_count;
     };
     sort.collector_collect_term = [&collector_collect_term_count](
-                                    const irs::sub_reader&,
+                                    const irs::SubReader&,
                                     const irs::term_reader&,
                                     const irs::attribute_provider&) -> void {
       ++collector_collect_term_count;
     };
     sort.collectors_collect_ = [&collector_finish_count](
-                                 irs::byte_type*, const irs::index_reader&,
+                                 irs::byte_type*, const irs::IndexReader&,
                                  const irs::sort::field_collector*,
                                  const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
@@ -16287,13 +16290,13 @@ TEST(And_test, optimize_double_negation) {
   root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
     make_filter<irs::by_term>("test_field", "test_term");
 
-  auto prepared = root.prepare(irs::sub_reader::empty());
+  auto prepared = root.prepare(irs::SubReader::empty());
   ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
 }
 
 TEST(And_test, prepare_empty_filter) {
   irs::And root;
-  auto prepared = root.prepare(irs::sub_reader::empty());
+  auto prepared = root.prepare(irs::SubReader::empty());
   ASSERT_NE(nullptr, prepared);
   ASSERT_EQ(typeid(irs::filter::prepared::empty().get()),
             typeid(prepared.get()));
@@ -16305,7 +16308,7 @@ TEST(And_test, optimize_single_node) {
     irs::And root;
     append<irs::by_term>(root, "test_field", "test_term");
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    auto prepared = root.prepare(irs::SubReader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 
@@ -16315,7 +16318,7 @@ TEST(And_test, optimize_single_node) {
     root.add<irs::And>().add<irs::And>().add<irs::by_term>() =
       make_filter<irs::by_term>("test_field", "test_term");
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    auto prepared = root.prepare(irs::SubReader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 }
@@ -16326,8 +16329,8 @@ TEST(And_test, optimize_all_filters) {
     irs::And root;
     root.add<irs::all>().boost(5.f);
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(typeid(irs::all().prepare(irs::sub_reader::empty()).get()),
+    auto prepared = root.prepare(irs::SubReader::empty());
+    ASSERT_EQ(typeid(irs::all().prepare(irs::SubReader::empty()).get()),
               typeid(prepared.get()));
     ASSERT_EQ(5.f, prepared->boost());
   }
@@ -16339,8 +16342,8 @@ TEST(And_test, optimize_all_filters) {
     root.add<irs::all>().boost(2.f);
     root.add<irs::all>().boost(3.f);
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(typeid(irs::all().prepare(irs::sub_reader::empty()).get()),
+    auto prepared = root.prepare(irs::SubReader::empty());
+    ASSERT_EQ(typeid(irs::all().prepare(irs::SubReader::empty()).get()),
               typeid(prepared.get()));
     ASSERT_EQ(10.f, prepared->boost());
   }
@@ -16353,7 +16356,7 @@ TEST(And_test, optimize_all_filters) {
     append<irs::by_term>(root, "test_field", "test_term");
 
     auto pord = irs::Order::Prepare(tests::sort::boost{});
-    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
+    auto prepared = root.prepare(irs::SubReader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
     ASSERT_EQ(8.f, prepared->boost());
   }
@@ -16364,7 +16367,7 @@ TEST(And_test, optimize_all_filters) {
     append<irs::by_term>(root, "test_field", "test_term");
     root.add<irs::all>().boost(5.f);
     auto pord = irs::Order::Prepare(tests::sort::boost{});
-    auto prepared = root.prepare(irs::sub_reader::empty(), pord);
+    auto prepared = root.prepare(irs::SubReader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
     ASSERT_EQ(6.f, prepared->boost());
   }
@@ -16384,8 +16387,8 @@ TEST(And_test, not_boosted) {
     node.docs = {1};
     node.boost(5);
   }
-  auto prep = root.prepare(irs::sub_reader::empty(), pord);
-  auto docs = prep->execute(irs::sub_reader::empty(), pord);
+  auto prep = root.prepare(irs::SubReader::empty(), pord);
+  auto docs = prep->execute(irs::SubReader::empty(), pord);
   auto* scr = irs::get<irs::score>(*docs);
   ASSERT_FALSE(!scr);
   auto* doc = irs::get<irs::document>(*docs);
@@ -16471,7 +16474,7 @@ TEST(Or_test, optimize_double_negation) {
   auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
     make_filter<irs::by_term>("test_field", "test_term");
 
-  auto prepared = root.prepare(irs::sub_reader::empty());
+  auto prepared = root.prepare(irs::SubReader::empty());
   ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
 }
 
@@ -16481,7 +16484,7 @@ TEST(Or_test, optimize_single_node) {
     irs::Or root;
     append<irs::by_term>(root, "test_field", "test_term");
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    auto prepared = root.prepare(irs::SubReader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 
@@ -16491,7 +16494,7 @@ TEST(Or_test, optimize_single_node) {
     root.add<irs::Or>().add<irs::Or>().add<irs::by_term>() =
       make_filter<irs::by_term>("test_field", "test_term");
 
-    auto prepared = root.prepare(irs::sub_reader::empty());
+    auto prepared = root.prepare(irs::SubReader::empty());
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
   }
 }
@@ -16516,9 +16519,9 @@ TEST(Or_test, optimize_all_unscored) {
   root.add<irs::all>();
   root.add<irs::empty>();
 
-  auto prep = root.prepare(irs::sub_reader::empty(), irs::Order::kUnordered);
+  auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
 
-  prep->execute(irs::sub_reader::empty());
+  prep->execute(irs::SubReader::empty());
   ASSERT_EQ(
     0, detail::boosted::execute_count);  // specific filters should be opt out
 }
@@ -16543,9 +16546,9 @@ TEST(Or_test, optimize_all_scored) {
   root.add<irs::all>();
   root.add<irs::empty>();
   auto pord = irs::Order::Prepare(tests::sort::boost{});
-  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+  auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-  prep->execute(irs::sub_reader::empty());
+  prep->execute(irs::SubReader::empty());
   ASSERT_EQ(3, detail::boosted::execute_count);  // specific filters should
                                                  // executed as score needs them
 }
@@ -16557,9 +16560,9 @@ TEST(Or_test, optimize_only_all_boosted) {
   root.add<irs::all>().boost(3);
   root.add<irs::all>().boost(5);
 
-  auto prep = root.prepare(irs::sub_reader::empty(), pord);
+  auto prep = root.prepare(irs::SubReader::empty(), pord);
 
-  prep->execute(irs::sub_reader::empty());
+  prep->execute(irs::SubReader::empty());
   ASSERT_EQ(16, prep->boost());
 }
 
@@ -16577,8 +16580,8 @@ TEST(Or_test, boosted_not) {
     node.docs = {1};
     node.boost(5);
   }
-  auto prep = root.prepare(irs::sub_reader::empty(), pord);
-  auto docs = prep->execute(irs::sub_reader::empty(), pord);
+  auto prep = root.prepare(irs::SubReader::empty(), pord);
+  auto docs = prep->execute(irs::SubReader::empty(), pord);
   auto* scr = irs::get<irs::score>(*docs);
   ASSERT_FALSE(!scr);
   auto* doc = irs::get<irs::document>(*docs);

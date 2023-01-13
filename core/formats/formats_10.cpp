@@ -67,6 +67,25 @@ using namespace irs;
 // name of the module holding different formats
 constexpr std::string_view MODULE_NAME = "10";
 
+void write_strings(data_output& out, std::span<const std::string> strings) {
+  write_size(out, strings.size());
+  for (const auto& s : strings) {
+    write_string(out, s);
+  }
+}
+
+std::vector<std::string> read_strings(data_input& in) {
+  const size_t size = read_size(in);
+
+  std::vector<std::string> strings(size);
+
+  for (auto begin = strings.begin(); begin != strings.end(); ++begin) {
+    *begin = read_string<std::string>(in);
+  }
+
+  return strings;
+}
+
 template<bool Wand, uint32_t PosMin>
 struct format_traits {
   using align_type = uint32_t;
@@ -144,8 +163,7 @@ void prepare_output(std::string& str, index_output::ptr& out,
   out = state.dir->create(str);
 
   if (!out) {
-    throw io_error(
-      string_utils::to_string("failed to create file, path: %s", str.c_str()));
+    throw io_error{absl::StrCat("Failed to create file, path: ", str)};
   }
 
   format_utils::write_header(*out, format, version);
@@ -160,8 +178,7 @@ void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
   in = state.dir->open(str, advice);
 
   if (!in) {
-    throw io_error(
-      string_utils::to_string("failed to open file, path: %s", str.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", str)};
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -825,10 +842,10 @@ void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
     pos_.last = FormatTraits::pos_min();
     pay_.last = 0;
   } else {
-    throw index_error(
-      string_utils::to_string("while beginning doc_ in postings_writer, error: "
-                              "docs out of order '%d' < '%d'",
-                              id, doc_.last));
+    throw index_error{
+      absl::StrCat("While beginning doc_ in postings_writer, error: "
+                   "docs out of order '",
+                   id, "' < '", doc_.last, "'")};
   }
 }
 
@@ -1113,10 +1130,10 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
     const uint32_t size = pay_in_->read_vint();
     if (size) {
       IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
-      string_utils::oversize(pay_data_, size);
+      pay_data_.resize(size);
 
       [[maybe_unused]] const auto read =
-        pay_in_->read_bytes(&(pay_data_[0]), size);
+        pay_in_->read_bytes(pay_data_.data(), size);
       IRS_ASSERT(read == size);
     }
 
@@ -1141,11 +1158,10 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
 
       if (pay_lengths_[i]) {
         const auto size = pay_lengths_[i];  // length of current payload
-
-        string_utils::oversize(pay_data_, pos + size);
+        pay_data_.resize(pos + size);  // FIXME(gnusi): use oversize from absl
 
         [[maybe_unused]] const auto read =
-          this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+          this->pos_in_->read_bytes(pay_data_.data() + pos, size);
         IRS_ASSERT(read == size);
 
         pos += size;
@@ -1238,10 +1254,10 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
     const uint32_t size = pay_in_->read_vint();
     if (size) {
       IteratorTraits::read_block(*pay_in_, this->enc_buf_, pay_lengths_);
-      string_utils::oversize(pay_data_, size);
+      pay_data_.resize(size);
 
       [[maybe_unused]] const auto read =
-        pay_in_->read_bytes(&(pay_data_[0]), size);
+        pay_in_->read_bytes(pay_data_.data(), size);
       IRS_ASSERT(read == size);
     }
 
@@ -1266,11 +1282,10 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
 
       if (pay_lengths_[i]) {
         const auto size = pay_lengths_[i];  // current payload length
-
-        string_utils::oversize(pay_data_, pos + size);
+        pay_data_.resize(pos + size);  // FIXME(gnusi): use oversize from absl
 
         [[maybe_unused]] const auto read =
-          this->pos_in_->read_bytes(&(pay_data_[0]) + pos, size);
+          this->pos_in_->read_bytes(pay_data_.data() + pos, size);
         IRS_ASSERT(read == size);
 
         pos += size;
@@ -2213,9 +2228,9 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     goto seek_after_initialization;
   } else {
     IRS_ASSERT(false);
-    throw index_error{string_utils::to_string(
-      "Invalid number of skip levels %u, must be in range of [1, %u].",
-      num_levels, postings_writer_base::kMaxSkipLevels)};
+    throw index_error{absl::StrCat("Invalid number of skip levels ", num_levels,
+                                   ", must be in range of [1, ",
+                                   postings_writer_base::kMaxSkipLevels, "].")};
   }
 }
 
@@ -2487,9 +2502,9 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
                         std::get<score_threshold>(attrs_));
   } else {
     IRS_ASSERT(false);
-    throw index_error{string_utils::to_string(
-      "Invalid number of skip levels %u, must be in range of [1, %u].",
-      num_levels, postings_writer_base::kMaxSkipLevels)};
+    throw index_error{absl::StrCat("Invalid number of skip levels ", num_levels,
+                                   ", must be in range of [1, ",
+                                   postings_writer_base::kMaxSkipLevels, "].")};
   }
 }
 
@@ -2579,145 +2594,131 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 }
 
 struct index_meta_writer final : public irs::index_meta_writer {
-  static constexpr std::string_view FORMAT_NAME = "iresearch_10_index_meta";
-  static constexpr std::string_view FORMAT_PREFIX = "segments_";
-  static constexpr std::string_view FORMAT_PREFIX_TMP = "pending_segments_";
+  static constexpr std::string_view kFormatName = "iresearch_10_index_meta";
+  static constexpr std::string_view kFormatPrefix = "segments_";
+  static constexpr std::string_view kFormatPrefixTmp = "pending_segments_";
 
-  static constexpr int32_t FORMAT_MIN = 0;
-  static constexpr int32_t FORMAT_MAX = 1;
+  static constexpr int32_t kFormatMin = 0;
+  static constexpr int32_t kFormatMax = 1;
 
-  enum { HAS_PAYLOAD = 1 };
+  enum { kHasPayload = 1 };
 
-  explicit index_meta_writer(int32_t version) noexcept : version_(version) {
-    IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
+  static std::string FileName(uint64_t gen) {
+    return FileName(kFormatPrefix, gen);
   }
 
-  std::string filename(const index_meta& meta) const override;
-  using irs::index_meta_writer::prepare;
-  bool prepare(directory& dir, index_meta& meta) override;
+  explicit index_meta_writer(int32_t version) noexcept : version_{version} {
+    IRS_ASSERT(version_ >= kFormatMin && version <= kFormatMax);
+  }
+
+  // FIXME(gnusi): Better to split prepare into 2 methods and pass meta by const
+  // reference
+  bool prepare(directory& dir, IndexMeta& meta, std::string& pending_filename,
+               std::string& filename) override;
   bool commit() override;
   void rollback() noexcept override;
 
  private:
-  directory* dir_ = nullptr;
-  index_meta* meta_ = nullptr;
+  static std::string FileName(std::string_view prefix, uint64_t gen) {
+    IRS_ASSERT(index_gen_limits::valid(gen));
+    return irs::file_name(prefix, gen);
+  }
+
+  static std::string PendingFileName(uint64_t gen) {
+    return FileName(kFormatPrefixTmp, gen);
+  }
+
+  directory* dir_{};
+  uint64_t pending_gen_{index_gen_limits::invalid()};  // Generation to commit
   int32_t version_;
-};  // index_meta_writer
+};
 
-template<>
-std::string file_name<irs::index_meta_writer, index_meta>(
-  const index_meta& meta) {
-  return irs::file_name(index_meta_writer::FORMAT_PREFIX_TMP,
-                        meta.generation());
-}
-
-struct index_meta_reader final : public irs::index_meta_reader {
-  bool last_segments_file(const directory& dir,
-                          std::string& name) const override;
-
-  void read(const directory& dir, index_meta& meta,
-            std::string_view filename = {}) override;  // null == use meta
-};                                                     // index_meta_reader
-
-template<>
-std::string file_name<irs::index_meta_reader, index_meta>(
-  const index_meta& meta) {
-  return irs::file_name(index_meta_writer::FORMAT_PREFIX, meta.generation());
-}
-
-std::string index_meta_writer::filename(const index_meta& meta) const {
-  return file_name<irs::index_meta_reader>(meta);
-}
-
-bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
-  if (meta_) {
+bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
+                                std::string& pending_filename,
+                                std::string& filename) {
+  if (index_gen_limits::valid(pending_gen_)) {
     // prepare() was already called with no corresponding call to commit()
     return false;
   }
 
-  prepare(meta);  // prepare meta before generating filename
+  ++meta.gen;  // Increment generation before generating filename
+  pending_filename = PendingFileName(meta.gen);
+  filename = FileName(meta.gen);
 
-  const auto seg_file = file_name<irs::index_meta_writer>(meta);
-
-  auto out = dir.create(seg_file);
+  auto out = dir.create(pending_filename);
 
   if (!out) {
-    throw io_error(string_utils::to_string("Failed to create file, path: %s",
-                                           seg_file.c_str()));
+    throw io_error{
+      absl::StrCat("Failed to create file, path: ", pending_filename)};
   }
 
   {
-    format_utils::write_header(*out, FORMAT_NAME, version_);
-    out->write_vlong(meta.generation());
-    out->write_long(meta.counter());
-    IRS_ASSERT(meta.size() <= std::numeric_limits<uint32_t>::max());
-    out->write_vint(uint32_t(meta.size()));
+    format_utils::write_header(*out, kFormatName, version_);
+    out->write_vlong(meta.gen);
+    out->write_long(meta.seg_counter);
+    IRS_ASSERT(meta.segments.size() <= std::numeric_limits<uint32_t>::max());
+    out->write_vint(uint32_t(meta.segments.size()));
 
-    for (auto& segment : meta) {
+    for (const auto& segment : meta.segments) {
       write_string(*out, segment.filename);
       write_string(*out, segment.meta.codec->type().name());
     }
 
-    if (version_ > FORMAT_MIN) {
-      const byte_type flags = IsNull(meta.payload()) ? 0 : HAS_PAYLOAD;
+    if (version_ > kFormatMin) {
+      const auto payload = GetPayload(meta);
+      const byte_type flags = IsNull(payload) ? 0 : kHasPayload;
       out->write_byte(flags);
 
-      if (flags == HAS_PAYLOAD) {
-        irs::write_string(*out, meta.payload());
+      if (flags == kHasPayload) {
+        irs::write_string(*out, payload);
       }
+    } else {
+      // Earliler versions don't support payload.
+      meta.payload.reset();
     }
 
     format_utils::write_footer(*out);
-    // important to close output here
-  }
+  }  // Important to close output here
 
-  if (!dir.sync(seg_file)) {
-    throw io_error(string_utils::to_string("failed to sync file, path: %s",
-                                           seg_file.c_str()));
-  }
-
-  // only noexcept operations below
+  // Only noexcept operations below
   dir_ = &dir;
-  meta_ = &meta;
+  pending_gen_ = meta.gen;
 
   return true;
 }
 
 bool index_meta_writer::commit() {
-  if (!meta_) {
+  if (!index_gen_limits::valid(pending_gen_)) {
     return false;
   }
 
-  const auto src = file_name<irs::index_meta_writer>(*meta_);
-  const auto dst = file_name<irs::index_meta_reader>(*meta_);
+  const auto src = PendingFileName(pending_gen_);
+  const auto dst = FileName(pending_gen_);
 
   if (!dir_->rename(src, dst)) {
     rollback();
 
-    throw io_error(string_utils::to_string(
-      "failed to rename file, src path: '%s' dst path: '%s'", src.c_str(),
-      dst.c_str()));
+    throw io_error{absl::StrCat("Failed to rename file, src path: '", src,
+                                "' dst path: '", dst, "'")};
   }
 
   // only noexcept operations below
-  complete(*meta_);
-
   // clear pending state
-  meta_ = nullptr;
+  pending_gen_ = index_gen_limits::invalid();
   dir_ = nullptr;
 
   return true;
 }
 
 void index_meta_writer::rollback() noexcept {
-  if (!meta_) {
+  if (!index_gen_limits::valid(pending_gen_)) {
     return;
   }
 
   std::string seg_file;
 
   try {
-    seg_file = file_name<irs::index_meta_writer>(*meta_);
+    seg_file = PendingFileName(pending_gen_);
   } catch (const std::exception& e) {
     IR_FRMT_ERROR(
       "Caught error while generating file name for index meta, reason: %s",
@@ -2734,65 +2735,73 @@ void index_meta_writer::rollback() noexcept {
 
   // clear pending state
   dir_ = nullptr;
-  meta_ = nullptr;
+  pending_gen_ = index_gen_limits::invalid();
 }
 
-uint64_t parse_generation(std::string_view segments_file) {
-  IRS_ASSERT(segments_file.starts_with(index_meta_writer::FORMAT_PREFIX));
+uint64_t ParseGeneration(std::string_view file) noexcept {
+  if (file.starts_with(index_meta_writer::kFormatPrefix)) {
+    constexpr size_t kPrefixLength = index_meta_writer::kFormatPrefix.size();
 
-  const char* gen_str =
-    segments_file.data() + index_meta_writer::FORMAT_PREFIX.size();
-  char* suffix;
-  auto gen = std::strtoull(gen_str, &suffix, 10);  // 10 for base-10
+    if (uint64_t gen; absl::SimpleAtoi(file.substr(kPrefixLength), &gen)) {
+      return gen;
+    }
+  }
 
-  return suffix[0] ? index_gen_limits::invalid() : gen;
+  return index_gen_limits::invalid();
 }
+
+struct index_meta_reader final : public irs::index_meta_reader {
+  bool last_segments_file(const directory& dir,
+                          std::string& name) const override;
+
+  void read(const directory& dir, IndexMeta& meta,
+            std::string_view filename) override;
+};
 
 bool index_meta_reader::last_segments_file(const directory& dir,
                                            std::string& out) const {
-  uint64_t max_gen = 0;
+  uint64_t max_gen = index_gen_limits::invalid();
   directory::visitor_f visitor = [&out, &max_gen](std::string_view name) {
-    if (name.starts_with(index_meta_writer::FORMAT_PREFIX)) {
-      const uint64_t gen = parse_generation(name);
+    const uint64_t gen = ParseGeneration(name);
 
-      if (index_gen_limits::valid(gen) && gen > max_gen) {
-        out = std::move(name);
-        max_gen = gen;
-      }
+    if (gen > max_gen) {
+      out = std::move(name);
+      max_gen = gen;
     }
     return true;  // continue iteration
   };
 
   dir.visit(visitor);
-  return max_gen > 0;
+  return index_gen_limits::valid(max_gen);
 }
 
-void index_meta_reader::read(const directory& dir, index_meta& meta,
-                             std::string_view filename /*= {} */) {
-  const std::string meta_file = IsNull(filename)
-                                  ? file_name<irs::index_meta_reader>(meta)
-                                  : static_cast<std::string>(filename);
+void index_meta_reader::read(const directory& dir, IndexMeta& meta,
+                             std::string_view filename) {
+  std::string meta_file;
+  if (IsNull(filename)) {
+    meta_file = index_meta_writer::FileName(meta.gen);
+    filename = meta_file;
+  }
 
   auto in =
-    dir.open(meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
+    dir.open(filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
-    throw io_error(string_utils::to_string("failed to open file, path: %s",
-                                           meta_file.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", filename)};
   }
 
   const auto checksum = format_utils::checksum(*in);
 
   // check header
   const int32_t version = format_utils::check_header(
-    *in, index_meta_writer::FORMAT_NAME, index_meta_writer::FORMAT_MIN,
-    index_meta_writer::FORMAT_MAX);
+    *in, index_meta_writer::kFormatName, index_meta_writer::kFormatMin,
+    index_meta_writer::kFormatMax);
 
   // read data from segments file
   auto gen = in->read_vlong();
   auto cnt = in->read_long();
   auto seg_count = in->read_vint();
-  index_meta::index_segments_t segments(seg_count);
+  std::vector<IndexSegment> segments(seg_count);
 
   for (size_t i = 0, count = segments.size(); i < count; ++i) {
     auto& segment = segments[i];
@@ -2807,8 +2816,8 @@ void index_meta_reader::read(const directory& dir, index_meta& meta,
 
   bool has_payload = false;
   bstring payload;
-  if (version > index_meta_writer::FORMAT_MIN) {
-    has_payload = (in->read_byte() & index_meta_writer::HAS_PAYLOAD);
+  if (version > index_meta_writer::kFormatMin) {
+    has_payload = (in->read_byte() & index_meta_writer::kHasPayload);
 
     if (has_payload) {
       payload = irs::read_string<bstring>(*in);
@@ -2817,8 +2826,14 @@ void index_meta_reader::read(const directory& dir, index_meta& meta,
 
   format_utils::check_footer(*in, checksum);
 
-  complete(meta, gen, cnt, std::move(segments),
-           has_payload ? &payload : nullptr);
+  meta.gen = gen;
+  meta.seg_counter = cnt;
+  meta.segments = std::move(segments);
+  if (has_payload) {
+    meta.payload = std::move(payload);
+  } else {
+    meta.payload.reset();
+  }
 }
 
 struct segment_meta_writer final : public irs::segment_meta_writer {
@@ -2834,35 +2849,34 @@ struct segment_meta_writer final : public irs::segment_meta_writer {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
-  void write(directory& dir, std::string& filename,
-             const segment_meta& meta) override;
+  // FIXME(gnusi): Better to split write into 2 methods and pass meta by const
+  // reference
+  void write(directory& dir, std::string& filename, SegmentMeta& meta) override;
 
  private:
   int32_t version_;
-};  // segment_meta_writer
+};
 
 template<>
-std::string file_name<irs::segment_meta_writer, segment_meta>(
-  const segment_meta& meta) {
+std::string file_name<irs::segment_meta_writer, SegmentMeta>(
+  const SegmentMeta& meta) {
   return irs::file_name(meta.name, meta.version,
                         segment_meta_writer::FORMAT_EXT);
 }
 
 void segment_meta_writer::write(directory& dir, std::string& meta_file,
-                                const segment_meta& meta) {
+                                SegmentMeta& meta) {
   if (meta.docs_count < meta.live_docs_count) {
-    throw index_error(string_utils::to_string(
-      "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER
-      ", live_docs_count=" IR_SIZE_T_SPECIFIER "",
-      meta.name.c_str(), meta.docs_count, meta.live_docs_count));
+    throw index_error{absl::StrCat("Invalid segment meta '", meta.name,
+                                   "' detected : docs_count=", meta.docs_count,
+                                   ", live_docs_count=", meta.live_docs_count)};
   }
 
   meta_file = file_name<irs::segment_meta_writer>(meta);
   auto out = dir.create(meta_file);
 
   if (!out) {
-    throw io_error(string_utils::to_string("failed to create file, path: %s",
-                                           meta_file.c_str()));
+    throw io_error{absl::StrCat("failed to create file, path: ", meta_file)};
   }
 
   byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
@@ -2873,7 +2887,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
   out->write_vlong(meta.live_docs_count);
   out->write_vlong(meta.docs_count -
                    meta.live_docs_count);  // docs_count >= live_docs_count
-  out->write_vlong(meta.size);
+  out->write_vlong(meta.byte_size);
   if (version_ > FORMAT_MIN) {
     // sorted indices are not supported in version 1.0
     if (field_limits::valid(meta.sort)) {
@@ -2883,29 +2897,30 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
     out->write_byte(flags);
     out->write_vlong(1 + meta.sort);  // max->0
   } else {
+    // Earlier versions don't support primary sort
     out->write_byte(flags);
+    meta.sort = field_limits::invalid();
   }
   write_strings(*out, meta.files);
   format_utils::write_footer(*out);
 }
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
-  void read(const directory& dir, segment_meta& meta,
+  void read(const directory& dir, SegmentMeta& meta,
             std::string_view filename = {}) override;  // null == use meta
 };
 
-void segment_meta_reader::read(const directory& dir, segment_meta& meta,
+void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
                                std::string_view filename /*= {} */) {
   const std::string meta_file = IsNull(filename)
                                   ? file_name<irs::segment_meta_writer>(meta)
-                                  : static_cast<std::string>(filename);
+                                  : std::string{filename};
 
   auto in =
     dir.open(meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
-    throw io_error(string_utils::to_string("failed to open file, path: %s",
-                                           meta_file.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", meta_file)};
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2920,10 +2935,9 @@ void segment_meta_reader::read(const directory& dir, segment_meta& meta,
   const auto docs_count = in->read_vlong() + live_docs_count;
 
   if (docs_count < live_docs_count) {
-    throw index_error(std::string("while reader segment meta '") + name +
-                      "', error: docs_count(" + std::to_string(docs_count) +
-                      ") < live_docs_count(" + std::to_string(live_docs_count) +
-                      ")");
+    throw index_error{
+      absl::StrCat("While reader segment meta '", name, "', error: docs_count(",
+                   docs_count, ") < live_docs_count(", live_docs_count, ")")};
   }
 
   const auto size = in->read_vlong();
@@ -2932,27 +2946,25 @@ void segment_meta_reader::read(const directory& dir, segment_meta& meta,
   if (version > segment_meta_writer::FORMAT_MIN) {
     sort = in->read_vlong() - 1;
   }
-  auto files = read_strings<segment_meta::file_set>(*in);
+  auto files = read_strings(*in);
 
   if (flags &
       ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
-    throw index_error(string_utils::to_string(
-      "while reading segment meta '%s', error: use of unsupported flags '%u'",
-      name.c_str(), flags));
+    throw index_error{absl::StrCat("While reading segment meta '", name,
+                                   "', error: use of unsupported flags '",
+                                   flags, "'")};
   }
 
   const auto sorted = bool(flags & segment_meta_writer::SORTED);
 
   if ((!field_limits::valid(sort)) && sorted) {
-    throw index_error(string_utils::to_string(
-      "while reading segment meta '%s', error: incorrectly marked as sorted",
-      name.c_str()));
+    throw index_error{absl::StrCat("While reading segment meta '", name,
+                                   "', error: incorrectly marked as sorted")};
   }
 
   if ((field_limits::valid(sort)) && !sorted) {
-    throw index_error(string_utils::to_string(
-      "while reading segment meta '%s', error: incorrectly marked as unsorted",
-      name.c_str()));
+    throw index_error{absl::StrCat("While reading segment meta '", name,
+                                   "', error: incorrectly marked as unsorted")};
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2967,7 +2979,7 @@ void segment_meta_reader::read(const directory& dir, segment_meta& meta,
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
   meta.sort = sort;
-  meta.size = size;
+  meta.byte_size = size;
   meta.files = std::move(files);
 }
 
@@ -2981,31 +2993,30 @@ class document_mask_writer final : public irs::document_mask_writer {
 
   virtual ~document_mask_writer() = default;
 
-  std::string filename(const segment_meta& meta) const override;
+  std::string filename(const SegmentMeta& meta) const override;
 
-  void write(directory& dir, const segment_meta& meta,
+  void write(directory& dir, const SegmentMeta& meta,
              const document_mask& docs_mask) override;
 };  // document_mask_writer
 
 template<>
-std::string file_name<irs::document_mask_writer, segment_meta>(
-  const segment_meta& meta) {
+std::string file_name<irs::document_mask_writer, SegmentMeta>(
+  const SegmentMeta& meta) {
   return irs::file_name(meta.name, meta.version,
                         document_mask_writer::FORMAT_EXT);
 }
 
-std::string document_mask_writer::filename(const segment_meta& meta) const {
+std::string document_mask_writer::filename(const SegmentMeta& meta) const {
   return file_name<irs::document_mask_writer>(meta);
 }
 
-void document_mask_writer::write(directory& dir, const segment_meta& meta,
+void document_mask_writer::write(directory& dir, const SegmentMeta& meta,
                                  const document_mask& docs_mask) {
   const auto filename = file_name<irs::document_mask_writer>(meta);
   auto out = dir.create(filename);
 
   if (!out) {
-    throw io_error(string_utils::to_string("Failed to create file, path: %s",
-                                           filename.c_str()));
+    throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
   // segment can't have more than std::numeric_limits<uint32_t>::max() documents
@@ -3026,19 +3037,19 @@ class document_mask_reader final : public irs::document_mask_reader {
  public:
   virtual ~document_mask_reader() = default;
 
-  bool read(const directory& dir, const segment_meta& meta,
+  bool read(const directory& dir, const SegmentMeta& meta,
             document_mask& docs_mask) override;
 };  // document_mask_reader
 
-bool document_mask_reader::read(const directory& dir, const segment_meta& meta,
+bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
                                 document_mask& docs_mask) {
   const auto in_name = file_name<irs::document_mask_writer>(meta);
 
   bool exists;
 
   if (!dir.exists(exists, in_name)) {
-    throw io_error(string_utils::to_string(
-      "failed to check existence of file, path: %s", in_name.c_str()));
+    throw io_error{
+      absl::StrCat("failed to check existence of file, path: ", in_name)};
   }
 
   if (!exists) {
@@ -3050,8 +3061,7 @@ bool document_mask_reader::read(const directory& dir, const segment_meta& meta,
     dir.open(in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
-    throw io_error(string_utils::to_string("failed to open file, path: %s",
-                                           in_name.c_str()));
+    throw io_error{absl::StrCat("failed to open file, path: ", in_name)};
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -3152,11 +3162,10 @@ void postings_reader_base::prepare(index_input& in, const reader_state& state,
   const uint64_t block_size = in.read_vint();
 
   if (block_size != block_size_) {
-    throw index_error(
-      string_utils::to_string("while preparing postings_reader, error: "
-                              "invalid block size '" IR_UINT64_T_SPECIFIER "', "
-                              "expected '" IR_UINT64_T_SPECIFIER "'",
-                              block_size, block_size_));
+    throw index_error{
+      absl::StrCat("while preparing postings_reader, error: "
+                   "invalid block size '",
+                   block_size, "', expected '", block_size_, "'")};
   }
 }
 
@@ -3501,7 +3510,7 @@ static const ::format10 FORMAT10_INSTANCE;
 
 index_meta_writer::ptr format10::get_index_meta_writer() const {
   return std::make_unique<::index_meta_writer>(
-    int32_t(::index_meta_writer::FORMAT_MIN));
+    int32_t(::index_meta_writer::kFormatMin));
 }
 
 index_meta_reader::ptr format10::get_index_meta_reader() const {
@@ -3600,7 +3609,7 @@ static const ::format11 FORMAT11_INSTANCE;
 
 index_meta_writer::ptr format11::get_index_meta_writer() const {
   return std::make_unique<::index_meta_writer>(
-    int32_t(::index_meta_writer::FORMAT_MAX));
+    int32_t(::index_meta_writer::kFormatMax));
 }
 
 field_writer::ptr format11::get_field_writer(bool consolidation) const {

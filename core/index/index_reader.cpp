@@ -22,27 +22,21 @@
 
 #include "index_reader.hpp"
 
-#include "index_meta.hpp"
-#include "segment_reader.hpp"
-#include "shared.hpp"
-#include "utils/directory_utils.hpp"
-#include "utils/singleton.hpp"
-#include "utils/type_limits.hpp"
-
+namespace irs {
 namespace {
 
-struct empty_sub_reader final : irs::singleton<empty_sub_reader>,
-                                irs::sub_reader {
-  irs::column_iterator::ptr columns() const override {
+const SegmentInfo kEmptyInfo;
+
+struct EmptySubReader final : SubReader {
+  column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
-  const irs::column_reader* column(irs::field_id) const override {
+  const column_reader* column(field_id) const override { return nullptr; }
+  const column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  const irs::column_reader* column(std::string_view) const override {
-    return nullptr;
-  }
-  uint64_t docs_count() const override { return 0; }
+  const SegmentInfo& Meta() const override { return kEmptyInfo; }
+  const irs::document_mask* docs_mask() const override { return nullptr; }
   irs::doc_iterator::ptr docs_iterator() const override {
     return irs::doc_iterator::empty();
   }
@@ -52,24 +46,13 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>,
   irs::field_iterator::ptr fields() const override {
     return irs::field_iterator::empty();
   }
-  uint64_t live_docs_count() const override { return 0; }
-  const irs::sub_reader& operator[](size_t) const override {
-    throw std::out_of_range("index out of range");
-  }
-  size_t size() const override { return 0; }
   const irs::column_reader* sort() const override { return nullptr; }
-};  // index_reader
+};
+
+const EmptySubReader kEmpty;
 
 }  // namespace
 
-namespace irs {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         sub_reader implementation
-// -----------------------------------------------------------------------------
-
-/*static*/ const sub_reader& sub_reader::empty() noexcept {
-  return empty_sub_reader::instance();
-}
+/*static*/ const SubReader& SubReader::empty() noexcept { return kEmpty; }
 
 }  // namespace irs

@@ -29,10 +29,7 @@
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////
-/// @class collector_wrapper
-/// @brief a convinience base class for collector wrappers
-////////////////////////////////////////////////////////////////////////////
+// A convinience base class for collector wrappers
 template<typename Wrapper, typename Collector>
 class collector_wrapper {
  public:
@@ -96,10 +93,7 @@ class collector_wrapper {
   collector_ptr collector_;
 };
 
-////////////////////////////////////////////////////////////////////////////
-/// @class collectors_base
-/// @brief a convinience base class for collectors
-////////////////////////////////////////////////////////////////////////////
+// A convinience base class for collectors
 template<typename Collector>
 class collectors_base {
  public:
@@ -141,13 +135,10 @@ class collectors_base {
  protected:
   std::vector<Collector> collectors_;
   std::span<const OrderBucket> buckets_;
-};  // collectors_base
+};
 
-////////////////////////////////////////////////////////////////////////////
-/// @class field_collector_wrapper
-/// @brief wrapper around sort::field_collector which guarantees collector
-///        is not nullptr
-////////////////////////////////////////////////////////////////////////////
+// Wrapper around sort::field_collector which guarantees collector
+// is not nullptr
 class field_collector_wrapper
   : public collector_wrapper<field_collector_wrapper, sort::field_collector> {
  public:
@@ -165,16 +156,13 @@ class field_collector_wrapper
     base_type::operator=(collector.release());
     return *this;
   }
-};  // field_collector_wrapper
+};
 
 static_assert(std::is_nothrow_move_constructible_v<field_collector_wrapper>);
 static_assert(std::is_nothrow_move_assignable_v<field_collector_wrapper>);
 
-////////////////////////////////////////////////////////////////////////////
-/// @class field_collectors
-/// @brief create an field level index statistics compound collector for
-///        all buckets
-////////////////////////////////////////////////////////////////////////////
+// Create an field level index statistics compound collector for
+// all buckets
 class field_collectors : public collectors_base<field_collector_wrapper> {
  public:
   explicit field_collectors(const Order& buckets);
@@ -183,37 +171,30 @@ class field_collectors : public collectors_base<field_collector_wrapper> {
 
   size_t size() const noexcept { return collectors_.size(); }
 
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief collect field related statistics, i.e. field used in the filter
-  /// @param segment the segment being processed (e.g. for columnstore)
-  /// @param field the field matched by the filter in the 'segment'
-  /// @note called once for every field matched by a filter per each segment
-  /// @note always called on each matched 'field' irrespective of if it
-  ///       contains a matching 'term'
-  //////////////////////////////////////////////////////////////////////////
-  void collect(const sub_reader& segment, const term_reader& field) const;
+  // Collect field related statistics, i.e. field used in the filter
+  // segment the segment being processed (e.g. for columnstore)
+  // field the field matched by the filter in the 'segment'
+  // Note called once for every field matched by a filter per each segment
+  // Note always called on each matched 'field' irrespective of if it
+  // contains a matching 'term'
+  void collect(const SubReader& segment, const term_reader& field) const;
 
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief store collected index statistics into 'stats' of the
-  ///        current 'filter'
-  /// @param stats out-parameter to store statistics for later use in
-  ///        calls to score(...)
-  /// @param index the full index to collect statistics on
-  /// @note called once on the 'index' for every term matched by a filter
-  ///       calling collect(...) on each of its segments
-  /// @note if not matched terms then called exactly once
-  //////////////////////////////////////////////////////////////////////////
-  void finish(byte_type* stats_buf, const index_reader& index) const;
-};  // field_collectors
+  // Store collected index statistics into 'stats' of the
+  // current 'filter'
+  // stats out-parameter to store statistics for later use in
+  // calls to score(...)
+  // index the full index to collect statistics on
+  // Note called once on the 'index' for every term matched by a filter
+  //       calling collect(...) on each of its segments
+  // Note if not matched terms then called exactly once
+  void finish(byte_type* stats_buf, const IndexReader& index) const;
+};
 
 static_assert(std::is_nothrow_move_constructible_v<field_collectors>);
 static_assert(std::is_nothrow_move_assignable_v<field_collectors>);
 
-////////////////////////////////////////////////////////////////////////////
-/// @class term_collector_wrapper
-/// @brief wrapper around sort::term_collector which guarantees collector
-///         is not nullptr
-////////////////////////////////////////////////////////////////////////////
+// Wrapper around sort::term_collector which guarantees collector
+// is not nullptr
 class term_collector_wrapper
   : public collector_wrapper<term_collector_wrapper, sort::term_collector> {
  public:
@@ -231,17 +212,13 @@ class term_collector_wrapper
     base_type::operator=(collector.release());
     return *this;
   }
-};  // term_collector_wrapper
+};
 
 static_assert(std::is_nothrow_move_constructible_v<term_collector_wrapper>);
 static_assert(std::is_nothrow_move_assignable_v<term_collector_wrapper>);
 
-////////////////////////////////////////////////////////////////////////////
-/// @class term_collectors
-/// @brief create an term level index statistics compound collector for
-///        all buckets
-/// @param terms_count number of term_collectors to allocate
-////////////////////////////////////////////////////////////////////////////
+// Create an term level index statistics compound collector for
+// all buckets
 class term_collectors : public collectors_base<term_collector_wrapper> {
  public:
   term_collectors(const Order& buckets, size_t size);
@@ -252,39 +229,32 @@ class term_collectors : public collectors_base<term_collector_wrapper> {
     return buckets_.size() ? collectors_.size() / buckets_.size() : 0;
   }
 
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief add collectors for another term
-  /// @return term_offset
-  //////////////////////////////////////////////////////////////////////////
+  // Add collectors for another term and return term_offset
   size_t push_back();
 
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief collect term related statistics, i.e. term used in the filter
-  /// @param segment the segment being processed (e.g. for columnstore)
-  /// @param field the field matched by the filter in the 'segment'
-  /// @param term_index index of term, value < constructor 'terms_count'
-  /// @param term_attributes the attributes of the matched term in the field
-  /// @note called once for every term matched by a filter in the 'field'
-  ///       per each segment
-  /// @note only called on a matched 'term' in the 'field' in the 'segment'
-  //////////////////////////////////////////////////////////////////////////
-  void collect(const sub_reader& segment, const term_reader& field,
+  // Collect term related statistics, i.e. term used in the filter
+  // segment the segment being processed (e.g. for columnstore)
+  // field the field matched by the filter in the 'segment'
+  // term_index index of term, value < constructor 'terms_count'
+  // term_attributes the attributes of the matched term in the field
+  // Note called once for every term matched by a filter in the 'field'
+  //       per each segment
+  // Note only called on a matched 'term' in the 'field' in the 'segment'
+  void collect(const SubReader& segment, const term_reader& field,
                size_t term_idx, const attribute_provider& attrs) const;
 
-  //////////////////////////////////////////////////////////////////////////
-  /// @brief store collected index statistics into 'stats' of the
-  ///        current 'filter'
-  /// @param stats out-parameter to store statistics for later use in
-  ///        calls to score(...)
-  /// @param term_index index of term, value < constructor 'terms_count'
-  /// @param index the full index to collect statistics on
-  /// @note called once on the 'index' for every term matched by a filter
-  ///       calling collect(...) on each of its segments
-  /// @note if not matched terms then called exactly once
-  //////////////////////////////////////////////////////////////////////////
+  // Store collected index statistics into 'stats' of the
+  // current 'filter'
+  // stats - out-parameter to store statistics for later use in
+  // calls to score(...)
+  // term_index - index of term, value < constructor 'terms_count'
+  // index - the full index to collect statistics on
+  // Note called once on the 'index' for every term matched by a filter
+  //       calling collect(...) on each of its segments
+  // Note if not matched terms then called exactly once
   void finish(byte_type* stats_buf, size_t term_idx,
               const field_collectors& field_collectors,
-              const index_reader& index) const;
+              const IndexReader& index) const;
 };
 
 static_assert(std::is_nothrow_move_constructible_v<term_collectors>);

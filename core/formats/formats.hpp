@@ -30,6 +30,7 @@
 #include "index/column_info.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
+#include "index/index_reader_options.hpp"
 #include "index/iterators.hpp"
 #include "shared.hpp"
 #include "store/data_output.hpp"
@@ -44,7 +45,7 @@
 
 namespace irs {
 
-struct segment_meta;
+struct SegmentMeta;
 struct field_meta;
 struct flush_state;
 struct reader_state;
@@ -56,8 +57,6 @@ struct postings_writer;
 using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
-// should never throw as may be used in dtors
-using memory_accounting_f = fu2::function<bool(int64_t) noexcept>;
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
@@ -308,7 +307,7 @@ struct field_reader {
 
   virtual ~field_reader() = default;
 
-  virtual void prepare(const directory& dir, const segment_meta& meta,
+  virtual void prepare(const directory& dir, const SegmentMeta& meta,
                        const document_mask& mask) = 0;
 
   virtual const term_reader* field(std::string_view field) const = 0;
@@ -342,8 +341,8 @@ struct columnstore_writer {
 
   virtual ~columnstore_writer() = default;
 
-  virtual void prepare(directory& dir, const segment_meta& meta) = 0;
-  virtual column_t push_column(const column_info& info,
+  virtual void prepare(directory& dir, const SegmentMeta& meta) = 0;
+  virtual column_t push_column(const ColumnInfo& info,
                                column_finalizer_f header_writer) = 0;
   virtual void rollback() noexcept = 0;
   virtual bool commit(
@@ -401,14 +400,14 @@ struct columnstore_reader {
     // allows to select "hot" columns
     column_visitor_f warmup_column;
     // allows to restrict "hot" columns memory usage
-    memory_accounting_f pinned_memory;
+    MemoryAccountingFunc pinned_memory;
   };
 
   virtual ~columnstore_reader() = default;
 
   // Returns true if conlumnstore is present in a segment, false - otherwise.
   // May throw `io_error` or `index_error`.
-  virtual bool prepare(const directory& dir, const segment_meta& meta,
+  virtual bool prepare(const directory& dir, const SegmentMeta& meta,
                        const options& opts = options{}) = 0;
 
   virtual bool visit(const column_visitor_f& visitor) const = 0;
@@ -431,9 +430,9 @@ struct document_mask_writer {
 
   virtual ~document_mask_writer() = default;
 
-  virtual std::string filename(const segment_meta& meta) const = 0;
+  virtual std::string filename(const SegmentMeta& meta) const = 0;
 
-  virtual void write(directory& dir, const segment_meta& meta,
+  virtual void write(directory& dir, const SegmentMeta& meta,
                      const document_mask& docs_mask) = 0;
 };
 
@@ -449,33 +448,27 @@ struct document_mask_reader {
   ///          false - otherwise
   /// @throws io_error
   /// @throws index_error
-  virtual bool read(const directory& dir, const segment_meta& meta,
+  virtual bool read(const directory& dir, const SegmentMeta& meta,
                     document_mask& docs_mask) = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct segment_meta_writer
-////////////////////////////////////////////////////////////////////////////////
 struct segment_meta_writer {
   using ptr = memory::managed_ptr<segment_meta_writer>;
 
   virtual ~segment_meta_writer() = default;
 
   virtual void write(directory& dir, std::string& filename,
-                     const segment_meta& meta) = 0;
+                     SegmentMeta& meta) = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct segment_meta_reader
-////////////////////////////////////////////////////////////////////////////////
 struct segment_meta_reader {
   using ptr = memory::managed_ptr<segment_meta_reader>;
 
   virtual ~segment_meta_reader() = default;
 
-  virtual void read(const directory& dir, segment_meta& meta,
+  virtual void read(const directory& dir, SegmentMeta& meta,
                     std::string_view filename = {}) = 0;  // null == use meta
-};                                                        // segment_meta_reader
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_writer
@@ -484,14 +477,11 @@ struct index_meta_writer {
   using ptr = std::unique_ptr<index_meta_writer>;
 
   virtual ~index_meta_writer() = default;
-  virtual std::string filename(const index_meta& meta) const = 0;
-  virtual bool prepare(directory& dir, index_meta& meta) = 0;
+  virtual bool prepare(directory& dir, IndexMeta& meta,
+                       std::string& pending_filename,
+                       std::string& filename) = 0;
   virtual bool commit() = 0;
   virtual void rollback() noexcept = 0;
-
- protected:
-  static void complete(index_meta& meta) noexcept;
-  static void prepare(index_meta& meta) noexcept;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,13 +495,8 @@ struct index_meta_reader {
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const = 0;
 
-  virtual void read(const directory& dir, index_meta& meta,
-                    std::string_view filename = {}) = 0;  // null == use meta
-
- protected:
-  static void complete(index_meta& meta, uint64_t generation, uint64_t counter,
-                       index_meta::index_segments_t&& segments,
-                       bstring* payload_buf);
+  virtual void read(const directory& dir, IndexMeta& meta,
+                    std::string_view filename) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -561,7 +546,7 @@ struct flush_state {
 
 struct reader_state {
   const directory* dir;
-  const segment_meta* meta;
+  const SegmentMeta* meta;
 };
 
 class formats {

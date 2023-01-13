@@ -34,81 +34,68 @@
 
 namespace irs {
 
-struct tracking_directory;
+struct TrackingDirectory;
 class Comparer;
 
-class merge_writer : public util::noncopyable {
+class MergeWriter : public util::noncopyable {
  public:
-  using flush_progress_t = std::function<bool()>;
+  using FlushProgress = std::function<bool()>;
 
-  struct reader_ctx {
-    explicit reader_ctx(sub_reader::ptr reader) noexcept;
+  struct ReaderCtx {
+    ReaderCtx(const SubReader* reader) noexcept;
+    ReaderCtx(const SubReader& reader) noexcept : ReaderCtx{&reader} {}
 
-    sub_reader::ptr reader;                     // segment reader
+    const SubReader* reader;                    // segment reader
     std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 
-  merge_writer() noexcept;
+  MergeWriter() noexcept;
 
-  explicit merge_writer(directory& dir,
-                        const column_info_provider_t& column_info,
-                        const feature_info_provider_t& feature_info,
-                        const Comparer* comparator = nullptr) noexcept
+  explicit MergeWriter(directory& dir, const ColumnInfoProvider& column_info,
+                       const FeatureInfoProvider& feature_info,
+                       const Comparer* comparator = nullptr) noexcept
     : dir_(dir),
       column_info_(&column_info),
       feature_info_(&feature_info),
       comparator_(comparator) {
     IRS_ASSERT(column_info);
   }
-  merge_writer(merge_writer&&) = default;
-  merge_writer& operator=(merge_writer&&) = delete;
+  MergeWriter(MergeWriter&&) = default;
+  MergeWriter& operator=(MergeWriter&&) = delete;
 
   operator bool() const noexcept;
 
-  void add(const sub_reader& reader) {
-    // add reference, noexcept aliasing ctor
-    readers_.emplace_back(sub_reader::ptr{sub_reader::ptr{}, &reader});
-  }
-
-  void add(sub_reader::ptr reader) {
-    // add shared pointer
-    IRS_ASSERT(reader);
-    if (reader) {
-      readers_.emplace_back(std::move(reader));
-    }
+  template<typename Iterator>
+  void Reset(Iterator begin, Iterator end) {
+    readers_.insert(readers_.end(), begin, end);
   }
 
   // Flush all of the added readers into a single segment.
   // `segment` the segment that was flushed.
   // `progress` report flush progress (abort if 'progress' returns false).
   // Return merge successful.
-  bool flush(index_meta::index_segment_t& segment,
-             const flush_progress_t& progress = {});
+  bool Flush(SegmentMeta& segment, const FlushProgress& progress = {});
 
-  const reader_ctx& operator[](size_t i) const noexcept {
+  const ReaderCtx& operator[](size_t i) const noexcept {
     IRS_ASSERT(i < readers_.size());
     return readers_[i];
   }
 
-  // reserve enough space to hold 'size' readers
-  void reserve(size_t size) { readers_.reserve(size); }
-
  private:
-  bool flush_sorted(tracking_directory& dir,
-                    index_meta::index_segment_t& segment,
-                    const flush_progress_t& progress);
+  bool FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
+                   const FlushProgress& progress);
 
-  bool flush(tracking_directory& dir, index_meta::index_segment_t& segment,
-             const flush_progress_t& progress);
+  bool FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
+                     const FlushProgress& progress);
 
   directory& dir_;
-  std::vector<reader_ctx> readers_;
-  const column_info_provider_t* column_info_;
-  const feature_info_provider_t* feature_info_;
+  std::vector<ReaderCtx> readers_;
+  const ColumnInfoProvider* column_info_;
+  const FeatureInfoProvider* feature_info_;
   const Comparer* comparator_;
 };
 
-static_assert(std::is_nothrow_move_constructible_v<merge_writer>);
+static_assert(std::is_nothrow_move_constructible_v<MergeWriter>);
 
 }  // namespace irs

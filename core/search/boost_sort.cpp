@@ -46,7 +46,7 @@ struct prepared final : PreparedSortBase<void> {
     return IndexFeatures::NONE;
   }
 
-  ScoreFunction prepare_scorer(const sub_reader&, const term_reader&,
+  ScoreFunction prepare_scorer(const SubReader&, const term_reader&,
                                const byte_type*,
                                const irs::attribute_provider& attrs,
                                irs::score_t boost) const override {

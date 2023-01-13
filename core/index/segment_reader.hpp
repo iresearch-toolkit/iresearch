@@ -24,90 +24,66 @@
 #pragma once
 
 #include "index_reader.hpp"
-#include "utils/object_pool.hpp"
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief interface for a segment reader
-////////////////////////////////////////////////////////////////////////////////
-class segment_reader final : public sub_reader {
+class SegmentReaderImpl;
+
+// Pimpl facade for segment reader
+class SegmentReader final : public SubReader {
  public:
-  static segment_reader open(const directory& dir, const segment_meta& meta,
-                             const index_reader_options& opts);
+  SegmentReader() noexcept = default;
+  SegmentReader(SegmentReader&&) noexcept = default;
+  SegmentReader& operator=(SegmentReader&&) noexcept = default;
+  SegmentReader(const directory& dir, const SegmentMeta& meta,
+                const IndexReaderOptions& opts);
+  explicit SegmentReader(std::shared_ptr<const SegmentReaderImpl> impl) noexcept
+    : impl_{std::move(impl)} {}
+  SegmentReader(const SegmentReader& other) noexcept;
+  SegmentReader& operator=(const SegmentReader& other) noexcept;
 
-  segment_reader() = default;  // required for context<segment_reader>
-  segment_reader(const segment_reader& other) noexcept;
-  segment_reader& operator=(const segment_reader& other) noexcept;
-
-  explicit operator bool() const noexcept { return bool(impl_); }
-
-  bool operator==(const segment_reader& rhs) const noexcept {
+  bool operator==(const SegmentReader& rhs) const noexcept {
     return impl_ == rhs.impl_;
   }
 
-  bool operator!=(const segment_reader& rhs) const noexcept {
-    return !(*this == rhs);
-  }
+  bool operator==(std::nullptr_t) const noexcept { return !impl_; }
 
-  segment_reader& operator*() noexcept { return *this; }
-  const segment_reader& operator*() const noexcept { return *this; }
-  segment_reader* operator->() noexcept { return this; }
-  const segment_reader* operator->() const noexcept { return this; }
+  SegmentReader& operator*() noexcept { return *this; }
+  const SegmentReader& operator*() const noexcept { return *this; }
+  SegmentReader* operator->() noexcept { return this; }
+  const SegmentReader* operator->() const noexcept { return this; }
 
-  const sub_reader& operator[](size_t i) const noexcept override {
-    IRS_ASSERT(!i);
-    IRS_IGNORE(i);
-    return *this;
-  }
+  const SegmentInfo& Meta() const override;
 
-  column_iterator::ptr columns() const override { return impl_->columns(); }
+  column_iterator::ptr columns() const override;
 
-  using sub_reader::docs_count;
-  uint64_t docs_count() const override { return impl_->docs_count(); }
+  doc_iterator::ptr docs_iterator() const override;
 
-  doc_iterator::ptr docs_iterator() const override {
-    return impl_->docs_iterator();
-  }
+  const document_mask* docs_mask() const override;
 
   // FIXME find a better way to mask documents
-  doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
-    return impl_->mask(std::move(it));
+  doc_iterator::ptr mask(doc_iterator::ptr&& it) const override;
+
+  const term_reader* field(std::string_view name) const override;
+
+  field_iterator::ptr fields() const override;
+
+  SegmentReader Reopen(const SegmentMeta& meta) const;
+
+  const irs::column_reader* sort() const override;
+
+  const irs::column_reader* column(std::string_view name) const final;
+
+  const irs::column_reader* column(field_id field) const override;
+
+  const std::shared_ptr<const SegmentReaderImpl>& GetImpl() const noexcept {
+    return impl_;
   }
 
-  const term_reader* field(std::string_view name) const override {
-    return impl_->field(name);
-  }
-
-  field_iterator::ptr fields() const override { return impl_->fields(); }
-
-  uint64_t live_docs_count() const override { return impl_->live_docs_count(); }
-
-  segment_reader reopen(const segment_meta& meta) const;
-
-  void reset() noexcept { impl_.reset(); }
-
-  size_t size() const override { return impl_->size(); }
-
-  const irs::column_reader* sort() const override { return impl_->sort(); }
-
-  const irs::column_reader* column(std::string_view name) const final {
-    return impl_->column(name);
-  }
-
-  const irs::column_reader* column(field_id field) const override {
-    return impl_->column(field);
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief converts current 'segment_reader' to 'sub_reader::ptr'
-  ////////////////////////////////////////////////////////////////////////////////
-  explicit operator sub_reader::ptr() const noexcept { return impl_; }
+  explicit operator bool() const noexcept { return nullptr != impl_; }
 
  private:
-  std::shared_ptr<const sub_reader> impl_;
-
-  segment_reader(std::shared_ptr<const sub_reader> impl) noexcept;
+  std::shared_ptr<const SegmentReaderImpl> impl_;
 };
 
 }  // namespace irs

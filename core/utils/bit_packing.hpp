@@ -239,10 +239,6 @@ class iterator {
     return i_ == rhs.i_;
   }
 
-  bool operator!=(const iterator& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   bool operator<(const iterator& rhs) const noexcept {
     IRS_ASSERT(packed_ == rhs.packed_);  // compatibility
     return i_ < rhs.i_;

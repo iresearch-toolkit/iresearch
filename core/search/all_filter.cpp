@@ -35,11 +35,11 @@ class all_query final : public filter::prepared {
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     auto& rdr = ctx.segment;
 
-    return memory::make_managed<all_iterator>(rdr, stats_.c_str(), ctx.scorers,
-                                              rdr.docs_count(), boost());
+    return memory::make_managed<AllIterator>(rdr, stats_.c_str(), ctx.scorers,
+                                             rdr.docs_count(), boost());
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 
@@ -49,14 +49,14 @@ class all_query final : public filter::prepared {
 
 all::all() noexcept : filter(irs::type<all>::get()) {}
 
-filter::prepared::ptr all::prepare(const index_reader& reader,
+filter::prepared::ptr all::prepare(const IndexReader& reader,
                                    const Order& order, score_t filter_boost,
                                    const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
   bstring stats(order.stats_size(), 0);
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
 
   PrepareCollectors(order.buckets(), stats_buf, reader);
 

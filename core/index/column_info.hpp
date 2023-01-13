@@ -29,7 +29,7 @@
 
 namespace irs {
 
-struct column_info {
+struct ColumnInfo {
   // Column compression
   type_info compression{irs::type<irs::compression::none>::get()};
   // Column compression options
@@ -41,7 +41,7 @@ struct column_info {
   bool track_prev_doc{false};
 };
 
-using column_info_provider_t =
-  std::function<column_info(const std::string_view)>;
+using ColumnInfoProvider =
+  std::function<ColumnInfo(const std::string_view)>;
 
 }  // namespace irs

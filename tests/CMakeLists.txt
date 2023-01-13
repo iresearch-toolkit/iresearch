@@ -161,7 +161,6 @@ add_executable(iresearch-tests-static
   )
 
 set_ipo(iresearch-tests-static)
-add_sanitizers(iresearch-tests-static)
 
 add_dependencies(iresearch-tests-static
   iresearch-analyzer-delimiter-static

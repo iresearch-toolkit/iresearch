@@ -26,7 +26,6 @@
 #include "utils/crc.hpp"
 #include "utils/memory.hpp"
 #include "utils/std.hpp"
-#include "utils/string_utils.hpp"
 
 namespace irs {
 

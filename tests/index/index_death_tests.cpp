@@ -198,12 +198,15 @@ class failing_directory : public tests::directory_mock {
 
     return tests::directory_mock::rename(src, dst);
   }
-  bool sync(std::string_view name) noexcept override {
-    if (should_fail(Failure::SYNC, name)) {
-      return false;
-    }
+  bool sync(std::span<const std::string_view> files) noexcept override {
+    return std::all_of(std::begin(files), std::end(files),
+                       [this](std::string_view name) mutable noexcept {
+                         if (should_fail(Failure::SYNC, name)) {
+                           return false;
+                         }
 
-    return tests::directory_mock::sync(name);
+                         return tests::directory_mock::sync({&name, 1});
+                       });
   }
 
  private:
@@ -233,14 +236,14 @@ class failing_directory : public tests::directory_mock {
   mutable std::set<fail_t, fail_less> failures_;
 };  // failing_directory
 
-irs::feature_info_provider_t default_feature_info() {
+irs::FeatureInfoProvider default_feature_info() {
   return [](irs::type_info::type_id) {
     return std::make_pair(
-      irs::column_info{.compression = irs::type<irs::compression::none>::get(),
-                       .options = {},
-                       .encryption = true,
-                       .track_prev_doc = false},
-      irs::feature_writer_factory_t{});
+      irs::ColumnInfo{.compression = irs::type<irs::compression::none>::get(),
+                      .options = {},
+                      .encryption = true,
+                      .track_prev_doc = false},
+      irs::FeatureWriterFactory{});
   };
 }
 
@@ -266,7 +269,7 @@ void open_reader(
 
   // write index
   {
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -275,19 +278,21 @@ void open_reader(
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   failure_registerer(dir);
 
   while (!dir.no_failures()) {
-    ASSERT_THROW(irs::directory_reader::open(dir), irs::io_error);
+    ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
   }
 
   // check data
-  auto reader = irs::directory_reader::open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());
@@ -298,8 +303,7 @@ void open_reader(
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   // validate columnstore
   auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -361,21 +365,23 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
       "pending_segments_1");  // fail first phase of transaction
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // creation failure
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // creation failure
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
 
     // successful attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -397,24 +403,25 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
       "pending_segments_1");  // fail first phase of transaction
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // creation failure
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // creation failure
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // successful attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -422,10 +429,9 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -475,30 +481,31 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
                          "_3.ti");  // unable to sync term index
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
 
     // successful attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
 
     // ensure no data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -520,40 +527,43 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
                          "_3.tm");  // unable to sync term index
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
-    ASSERT_FALSE(writer->begin());                 // nothing to flush
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
+    ASSERT_FALSE(writer->Begin());                 // nothing to flush
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
-    ASSERT_FALSE(writer->begin());                 // nothing to flush
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
+    ASSERT_FALSE(writer->Begin());                 // nothing to flush
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);  // synchronization failure
-    ASSERT_FALSE(writer->begin());                 // nothing to flush
+    ASSERT_THROW(writer->Begin(), irs::io_error);  // synchronization failure
+    ASSERT_FALSE(writer->Begin());                 // nothing to flush
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // successful attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(), reader);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -561,10 +571,9 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -606,26 +615,29 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
   {
     irs::memory_directory impl;
     failing_directory dir(impl);
-    dir.register_failure(
-      failing_directory::Failure::RENAME,
-      "pending_segments_1");  // fail second phase of transaction
+    // fail second phase of transaction
+    dir.register_failure(failing_directory::Failure::RENAME,
+                         "pending_segments_1");
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_TRUE(writer->begin());
-    ASSERT_THROW(writer->commit(), irs::io_error);
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_THROW(writer->Commit(), irs::io_error);
+    ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
 
     // second attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -644,24 +656,27 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
       "pending_segments_1");  // fail second phase of transaction
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_TRUE(writer->begin());
-    ASSERT_THROW(writer->commit(), irs::io_error);
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_THROW(writer->Commit(), irs::io_error);
+    ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // second attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -669,10 +684,9 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -714,7 +728,7 @@ TEST(index_death_test_formats_10,
                          "_1.cs");  // columnstore
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -723,11 +737,13 @@ TEST(index_death_test_formats_10,
                  irs::io_error);
 
     // successul attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -745,7 +761,7 @@ TEST(index_death_test_formats_10,
                          "_1.cs");  // columnstore
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
@@ -756,11 +772,13 @@ TEST(index_death_test_formats_10,
                        doc1->stored.begin(), doc1->stored.end()));
 
     // successul attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -768,10 +786,9 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -806,25 +823,27 @@ TEST(index_death_test_formats_10,
                          "_2.cs");  // columnstore
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // successul attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                         doc2->stored.begin(), doc2->stored.end()),
                  irs::io_error);
 
     // nothing to flush
-    ASSERT_FALSE(writer->begin());
+    ASSERT_FALSE(writer->Begin());
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -832,10 +851,9 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -870,15 +888,17 @@ TEST(index_death_test_formats_10,
                          "_2.cs");  // columnstore
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // successul attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                         doc2->stored.begin(), doc2->stored.end()),
@@ -888,11 +908,13 @@ TEST(index_death_test_formats_10,
                        doc2->stored.begin(), doc2->stored.end()));
 
     // nothing to flush
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -900,12 +922,11 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -985,12 +1006,14 @@ TEST(index_death_test_formats_10,
                          "_7.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment meta
     while (!dir.no_failures()) {
@@ -999,14 +1022,14 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
-      ASSERT_THROW(writer->begin(), irs::io_error);
-      ASSERT_FALSE(writer->begin());  // nothing to flush
+      ASSERT_THROW(writer->Begin(), irs::io_error);
+      ASSERT_FALSE(writer->Begin());  // nothing to flush
     }
 
     // ensure no data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -1036,7 +1059,7 @@ TEST(index_death_test_formats_10,
                          "_7.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -1046,20 +1069,22 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
-      ASSERT_THROW(writer->begin(), irs::io_error);
+      ASSERT_THROW(writer->Begin(), irs::io_error);
     }
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // successul attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -1067,10 +1092,9 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -1129,7 +1153,7 @@ TEST(index_death_test_formats_10,
                          "_9.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -1139,17 +1163,19 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
-      ASSERT_THROW(writer->begin(), irs::io_error);
+      ASSERT_THROW(writer->Begin(), irs::io_error);
     }
 
     // successul attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -1183,7 +1209,7 @@ TEST(index_death_test_formats_10,
                          "_9.pay");  // postings list (offset + payload)
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment meta
@@ -1193,20 +1219,22 @@ TEST(index_death_test_formats_10,
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
 
-      writer->documents().remove(*query_doc2);
+      writer->GetBatch().Remove(*query_doc2);
 
-      ASSERT_THROW(writer->begin(), irs::io_error);
+      ASSERT_THROW(writer->Begin(), irs::io_error);
     }
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // successul attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -1214,11 +1242,10 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
 
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -1267,27 +1294,29 @@ TEST(index_death_test_formats_10,
                          "_2.0.sm");  // fail at segment meta synchronization
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // creation issue
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // synchornization issue
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // second attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // ensure no data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -1307,30 +1336,32 @@ TEST(index_death_test_formats_10,
                          "_2.0.sm");  // fail at segment meta synchronization
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // creation issue
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // synchornization issue
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     // second attempt
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -1338,10 +1369,9 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -1391,18 +1421,22 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(
@@ -1412,22 +1446,22 @@ TEST(index_death_test_formats_10,
       failing_directory::Failure::SYNC,
       "_4.0.sm");  // fail at segment meta synchronization on consolidation
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     // segment meta creation failure
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_FALSE(writer->begin());  // nothing to flush
+    ASSERT_THROW(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+      irs::io_error);
+    ASSERT_FALSE(writer->Begin());  // nothing to flush
 
     // segment meta synchronization failure
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    ASSERT_THROW(writer->begin(), irs::io_error);
-    ASSERT_FALSE(writer->begin());  // nothing to flush
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_THROW(writer->Begin(), irs::io_error);
+    ASSERT_FALSE(writer->Begin());  // nothing to flush
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -1435,12 +1469,11 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1517,18 +1550,22 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(
@@ -1538,32 +1575,36 @@ TEST(index_death_test_formats_10,
       failing_directory::Failure::SYNC,
       "_6.0.sm");  // fail at segment meta synchronization on consolidation
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     // segment meta creation failure
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    ASSERT_TRUE(writer->begin());  // start transaction
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
+    ASSERT_TRUE(writer->Begin());  // start transaction
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       consolidate_all)));            // register pending consolidation
-    ASSERT_FALSE(writer->commit());  // commit started transaction
+    ASSERT_FALSE(writer->Commit());  // commit started transaction
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
     ASSERT_THROW(
-      writer->begin(),
+      writer->Begin(),
       irs::io_error);  // start transaction to commit pending consolidation
 
     // segment meta synchronization failure
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    ASSERT_TRUE(writer->begin());  // start transaction
-    ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
+    ASSERT_TRUE(writer->Begin());  // start transaction
+    ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       consolidate_all)));            // register pending consolidation
-    ASSERT_FALSE(writer->commit());  // commit started transaction
+    ASSERT_FALSE(writer->Commit());  // commit started transaction
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
     ASSERT_THROW(
-      writer->begin(),
+      writer->Begin(),
       irs::io_error);  // start transaction to commit pending consolidation
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(4, reader->size());
     ASSERT_EQ(4, reader->docs_count());
@@ -1571,16 +1612,15 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc2);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc3);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc4);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1704,18 +1744,22 @@ TEST(index_death_test_formats_10,
     tests::blocking_directory dir(failing_dir, "_3.cs");
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     failing_dir.register_failure(
@@ -1726,10 +1770,10 @@ TEST(index_death_test_formats_10,
       .lock();  // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer]() {
-      const irs::index_utils::consolidate_count consolidate_all;
-      ASSERT_THROW(writer->consolidate(
-                     irs::index_utils::consolidation_policy(consolidate_all)),
-                   irs::io_error);  // consolidate
+      const irs::index_utils::ConsolidateCount consolidate_all;
+      ASSERT_THROW(
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        irs::io_error);  // consolidate
     });
 
     dir.wait_for_blocker();
@@ -1737,13 +1781,15 @@ TEST(index_death_test_formats_10,
     // add another segment
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(3, reader->size());
     ASSERT_EQ(3, reader->docs_count());
@@ -1751,14 +1797,13 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc2);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc3);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1841,18 +1886,22 @@ TEST(index_death_test_formats_10,
     tests::blocking_directory dir(failing_dir, "_3.cs");
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     failing_dir.register_failure(
@@ -1863,9 +1912,9 @@ TEST(index_death_test_formats_10,
       .lock();  // acquire directory lock, and block consolidation
 
     std::thread consolidation_thread([&writer]() {
-      const irs::index_utils::consolidate_count consolidate_all;
-      ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(
-        consolidate_all)));  // consolidate
+      const irs::index_utils::ConsolidateCount consolidate_all;
+      ASSERT_TRUE(writer->Consolidate(
+        irs::index_utils::MakePolicy(consolidate_all)));  // consolidate
     });
 
     dir.wait_for_blocker();
@@ -1873,16 +1922,18 @@ TEST(index_death_test_formats_10,
     // add another segment
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
 
     // commit consolidation
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(3, reader->size());
     ASSERT_EQ(3, reader->docs_count());
@@ -1890,14 +1941,13 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc2);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc3);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -1988,18 +2038,22 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE,
@@ -2015,17 +2069,17 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
     dir.register_failure(failing_directory::Failure::CREATE,
                          "_8.pay");  // postings list (offset + payload)
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     while (!dir.no_failures()) {
-      ASSERT_THROW(writer->consolidate(
-                     irs::index_utils::consolidation_policy(consolidate_all)),
-                   irs::io_error);
-      ASSERT_FALSE(writer->begin());  // nothing to flush
+      ASSERT_THROW(
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)),
+        irs::io_error);
+      ASSERT_FALSE(writer->Begin());  // nothing to flush
     }
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -2033,12 +2087,11 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2106,18 +2159,22 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     failing_directory dir(impl);
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // register failures
     dir.register_failure(failing_directory::Failure::SYNC,
@@ -2133,17 +2190,17 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_8.pay");  // postings list (offset + payload)
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
     while (!dir.no_failures()) {
-      ASSERT_TRUE(writer->consolidate(
-        irs::index_utils::consolidation_policy(consolidate_all)));
-      ASSERT_THROW(writer->begin(), irs::io_error);  // nothing to flush
-      ASSERT_FALSE(writer->begin());
+      ASSERT_TRUE(
+        writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+      ASSERT_THROW(writer->Begin(), irs::io_error);  // nothing to flush
+      ASSERT_FALSE(writer->Begin());
     }
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -2151,12 +2208,11 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2223,16 +2279,18 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
   {
     // write index
-    auto writer = irs::index_writer::make(src_dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(src_dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(src_dir));
   }
 
-  auto src_index = irs::directory_reader::open(src_dir);
+  auto src_index = irs::DirectoryReader(src_dir);
   ASSERT_TRUE(src_index);
 
   // file creation failures
@@ -2261,20 +2319,22 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
-      ASSERT_THROW(writer->import(*src_index), irs::io_error);
-      ASSERT_FALSE(writer->begin());  // nothing to commit
+      ASSERT_THROW(writer->Import(*src_index), irs::io_error);
+      ASSERT_FALSE(writer->Begin());  // nothing to commit
     }
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2307,25 +2367,29 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
-      ASSERT_THROW(writer->import(*src_index), irs::io_error);
-      ASSERT_FALSE(writer->begin());  // nothing to commit
+      ASSERT_THROW(writer->Import(*src_index), irs::io_error);
+      ASSERT_FALSE(writer->Begin());  // nothing to commit
     }
 
     // successful commit
-    ASSERT_TRUE(writer->import(*src_index));
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Import(*src_index));
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2333,10 +2397,9 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2388,20 +2451,22 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
-      ASSERT_TRUE(writer->import(*src_index));
-      ASSERT_THROW(writer->begin(), irs::io_error);  // nothing to commit
+      ASSERT_TRUE(writer->Import(*src_index));
+      ASSERT_THROW(writer->Begin(), irs::io_error);  // nothing to commit
     }
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2434,25 +2499,29 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
                          "_9.0.sm");  // segment meta
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
-      ASSERT_TRUE(writer->import(*src_index));
-      ASSERT_THROW(writer->begin(), irs::io_error);  // nothing to commit
+      ASSERT_TRUE(writer->Import(*src_index));
+      ASSERT_THROW(writer->Begin(), irs::io_error);  // nothing to commit
     }
 
     // successful commit
-    ASSERT_TRUE(writer->import(*src_index));
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Import(*src_index));
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2460,10 +2529,9 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -2529,15 +2597,17 @@ TEST(index_death_test_formats_10,
                          "_8.0.sm");  // segment meta
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2547,11 +2617,11 @@ TEST(index_death_test_formats_10,
                           doc2->stored.begin(), doc2->stored.end()),
                    irs::io_error);
 
-      ASSERT_FALSE(writer->begin());  // nothing to commit
+      ASSERT_FALSE(writer->Begin());  // nothing to commit
     }
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2582,15 +2652,17 @@ TEST(index_death_test_formats_10,
                          "_8.0.sm");  // segment meta
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2600,17 +2672,19 @@ TEST(index_death_test_formats_10,
                           doc2->stored.begin(), doc2->stored.end()),
                    irs::io_error);
 
-      ASSERT_FALSE(writer->begin());  // nothing to commit
+      ASSERT_FALSE(writer->Begin());  // nothing to commit
     }
 
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
 
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2618,10 +2692,9 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc3);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -2666,15 +2739,17 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2686,11 +2761,13 @@ TEST(index_death_test_formats_10,
                         doc2->stored.begin(), doc2->stored.end()),
                  irs::io_error);
 
-    ASSERT_TRUE(writer->begin());  // nothing to commit
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());  // nothing to commit
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(1, reader->docs_count());
@@ -2698,10 +2775,9 @@ TEST(index_death_test_formats_10,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -2746,17 +2822,19 @@ TEST(index_death_test_formats_14,
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     uint64_t length;
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2788,11 +2866,13 @@ TEST(index_death_test_formats_14,
     dir.length(length, "_3.csd");
     ASSERT_GT(length, 0);
 
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
 
     ASSERT_EQ(1, reader->size());
@@ -2801,10 +2881,9 @@ TEST(index_death_test_formats_14,
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -2845,15 +2924,17 @@ TEST(index_death_test_formats_10,
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2867,10 +2948,10 @@ TEST(index_death_test_formats_10,
                         doc2->stored.begin(), doc2->stored.end()),
                  irs::io_error);
 
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2894,15 +2975,17 @@ TEST(index_death_test_formats_14,
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.segment_docs_max = 1;  // flush every 2nd document
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     // initial commit
-    ASSERT_TRUE(writer->begin());
-    ASSERT_FALSE(writer->commit());
+    ASSERT_TRUE(writer->Begin());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2915,24 +2998,24 @@ TEST(index_death_test_formats_14,
 
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_1.csd");  // columnstore data sync failure
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
     dir.register_failure(failing_directory::Failure::CREATE,
                          "_3.csi");  // columnstore index creation failure
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_4.csi");  // columnstore index sync failure
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(0, reader->size());
     ASSERT_EQ(0, reader->docs_count());
@@ -2958,22 +3041,25 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
     dir.register_failure(failing_directory::Failure::CREATE,
                          "pending_segments_1");  //
     // initial commit fails
-    ASSERT_THROW(writer->begin(), irs::io_error);
+    ASSERT_THROW(writer->Begin(), irs::io_error);
 
     dir.register_failure(failing_directory::Failure::RENAME,
                          "pending_segments_1");  //
-    ASSERT_THROW(writer->commit(), irs::io_error);
+    ASSERT_THROW(writer->Commit(), irs::io_error);
+    ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
 
     // now it is OK
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.register_failure(failing_directory::Failure::CREATE,
                          "_1.csd");  // columnstore data creation failure
@@ -2982,7 +3068,9 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
                  irs::io_error);
 
     // Nothing to commit
-    ASSERT_FALSE(writer->commit());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
@@ -2992,40 +3080,54 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
 
     dir.register_failure(failing_directory::Failure::CREATE,
                          "_2.csi");  // columnstore index creation failure
-    ASSERT_THROW(writer->commit(), irs::io_error);
+    ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // Nothing to commit
-    ASSERT_FALSE(writer->commit());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
 
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_3.csd");  // columnstore index creation failure
-    ASSERT_THROW(writer->commit(), irs::io_error);
+    ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
     dir.register_failure(failing_directory::Failure::SYNC,
                          "_4.csi");  // columnstore index creation failure
-    ASSERT_THROW(writer->commit(), irs::io_error);
+    ASSERT_THROW(writer->Commit(), irs::io_error);
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // NOW IT IS OK
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     dir.register_failure(failing_directory::Failure::REMOVE,
                          "_2.csd");  // columnstore data deletion failure
@@ -3040,12 +3142,14 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
     dir.register_failure(failing_directory::Failure::REMOVE,
                          "_6.csd");  // columnstore data deletion failure
     irs::directory_cleaner::clean(dir);
-    ASSERT_FALSE(writer->commit());
+    ASSERT_FALSE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(dir.no_failures());
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader{dir};
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(2, reader->docs_count());
@@ -3053,11 +3157,10 @@ TEST(index_death_test_formats_14, fails_in_consolidate_with_removals) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
     expected_index.back().insert(*doc2);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -3108,51 +3211,52 @@ TEST(index_death_test_formats_14, fails_in_exists) {
     failing_directory dir(impl);
 
     // write index
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
 
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE, opts);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
 
+    // Will force error during commit becuase of segment reader reopen.
     dir.register_failure(failing_directory::Failure::EXISTS, "_1.csi");
-    dir.register_failure(failing_directory::Failure::EXISTS, "_1.csd");
-
-    dir.register_failure(failing_directory::Failure::EXISTS, "_2.csi");
     dir.register_failure(failing_directory::Failure::EXISTS, "_2.csd");
+    dir.register_failure(failing_directory::Failure::EXISTS, "_3.csi");
+    dir.register_failure(failing_directory::Failure::EXISTS, "_4.csd");
+
+    while (!dir.no_failures()) {
+      ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                         doc1->stored.begin(), doc1->stored.end()));
+      ASSERT_THROW(writer->Commit(), irs::io_error);
+      ASSERT_THROW((irs::DirectoryReader{dir}), irs::index_not_found);
+    }
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_THROW(writer->consolidate(
-                   irs::index_utils::consolidation_policy(consolidate_all)),
-                 irs::io_error);
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     ASSERT_TRUE(dir.no_failures());
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(4, reader->docs_count());
@@ -3160,13 +3264,12 @@ TEST(index_death_test_formats_14, fails_in_exists) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
     expected_index.back().insert(*doc2);
     expected_index.back().insert(*doc3);
     expected_index.back().insert(*doc4);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore
     auto& segment = reader[0];  // assume 0 is id of first/only segment
@@ -3272,32 +3375,40 @@ TEST(index_death_test_formats_14, fails_in_length) {
     dir.register_failure(failing_directory::Failure::LENGTH, "_4.doc");
 
     // write index
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     // segment 0
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 1
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 2
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     // segment 3
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
     {
       // check data
-      auto reader = irs::directory_reader::open(dir);
+      auto reader = irs::DirectoryReader(dir);
       ASSERT_TRUE(reader);
       ASSERT_EQ(4, reader->size());
       ASSERT_EQ(4, reader->docs_count());
@@ -3318,24 +3429,22 @@ TEST(index_death_test_formats_14, fails_in_length) {
     dir.register_failure(failing_directory::Failure::EXISTS, "_4.csd");
     dir.register_failure(failing_directory::Failure::EXISTS, "_4.csi");
 
-    const irs::index_utils::consolidate_count consolidate_all;
+    const irs::index_utils::ConsolidateCount consolidate_all;
 
-    while (!dir.no_failures()) {
-      ASSERT_THROW(writer->consolidate(
-                     irs::index_utils::consolidation_policy(consolidate_all)),
-                   irs::io_error);
-    }
-
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
+    const auto num_failures_before = dir.num_failures();
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_EQ(num_failures_before, dir.num_failures());
 
     irs::directory_cleaner::clean(dir);
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
 
-    ASSERT_TRUE(dir.no_failures());
+    ASSERT_EQ(num_failures_before, dir.num_failures());
 
     // check data
-    auto reader = irs::directory_reader::open(dir);
+    auto reader = irs::DirectoryReader(dir);
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader->size());
     ASSERT_EQ(4, reader->docs_count());
@@ -3343,13 +3452,12 @@ TEST(index_death_test_formats_14, fails_in_length) {
 
     // validate index
     tests::index_t expected_index;
-    expected_index.emplace_back(writer->feature_info());
+    expected_index.emplace_back(writer->FeatureInfo());
     expected_index.back().insert(*doc1);
     expected_index.back().insert(*doc2);
     expected_index.back().insert(*doc3);
     expected_index.back().insert(*doc4);
-    tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                        expected_index, all_features);
+    tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
     // validate columnstore (segment 0)
     {
@@ -3465,7 +3573,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 
   // write index
   {
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3474,13 +3582,15 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   // check data
-  auto reader = irs::directory_reader::open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());
@@ -3491,8 +3601,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   // regiseter reopen failure in columnstore
   dir.register_failure(failing_directory::Failure::REOPEN, "_1.cs");
@@ -3559,7 +3668,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
 
   // write index
   {
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3568,20 +3677,22 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   dir.register_failure(failing_directory::Failure::OPEN,
                        "_1.csi");  // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN,
                        "_1.csd");  // regiseter open failure in columnstore
-  ASSERT_THROW(irs::directory_reader::open(dir), irs::io_error);
-  ASSERT_THROW(irs::directory_reader::open(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
 
   // check data
-  auto reader = irs::directory_reader::open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());
@@ -3592,8 +3703,7 @@ TEST(index_death_test_formats_14, columnstore_reopen_fail) {
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   dir.register_failure(failing_directory::Failure::REOPEN,
                        "_1.csd");  // regiseter reopen failure in columnstore
@@ -3663,7 +3773,7 @@ TEST(index_death_test_formats_14, fails_in_dup) {
 
   // write index
   {
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3676,17 +3786,19 @@ TEST(index_death_test_formats_14, fails_in_dup) {
 
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end()));
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
   // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN, "_1.csi");
   // regiseter open failure in columnstore
   dir.register_failure(failing_directory::Failure::OPEN, "_1.csd");
-  ASSERT_THROW(irs::directory_reader::open(dir), irs::io_error);
-  ASSERT_THROW(irs::directory_reader::open(dir), irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
+  ASSERT_THROW(irs::DirectoryReader{dir}, irs::io_error);
 
   // check data
-  auto reader = irs::directory_reader::open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(4, reader->docs_count());
@@ -3699,8 +3811,7 @@ TEST(index_death_test_formats_14, fails_in_dup) {
   expected_index.back().insert(*doc2);
   expected_index.back().insert(*doc3);
   expected_index.back().insert(*doc4);
-  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
   // regiseter dup failure in columnstore
   dir.register_failure(failing_directory::Failure::DUP, "_1.csd");
   // regiseter dup failure in columnstore
@@ -3783,7 +3894,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
   // write index
   {
-    auto writer = irs::index_writer::make(dir, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -3792,13 +3903,15 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
 
-    writer->documents().remove(*query_doc2);
+    writer->GetBatch().Remove(*query_doc2);
 
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir));
   }
 
   // check data
-  auto reader = irs::directory_reader::open(dir);
+  auto reader = irs::DirectoryReader(dir);
   ASSERT_TRUE(reader);
   ASSERT_EQ(1, reader->size());
   ASSERT_EQ(2, reader->docs_count());
@@ -3809,8 +3922,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   expected_index.emplace_back(::default_feature_info());
   expected_index.back().insert(*doc1);
   expected_index.back().insert(*doc2);
-  tests::assert_index(static_cast<irs::index_reader::ptr>(reader),
-                      expected_index, all_features);
+  tests::assert_index(reader.GetImpl(), expected_index, all_features);
 
   // validate columnstore
   auto& segment = reader[0];  // assume 0 is id of first/only segment

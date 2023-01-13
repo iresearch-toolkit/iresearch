@@ -170,7 +170,7 @@ struct CustomFeature {
     size_t count{0};
   };
 
-  struct writer : irs::feature_writer {
+  struct writer : irs::FeatureWriter {
     explicit writer(std::span<const irs::bytes_view> headers) noexcept
       : hdr{{}} {
       if (!headers.empty()) {
@@ -211,7 +211,7 @@ struct CustomFeature {
     std::optional<size_t> expected_count;
   };
 
-  static irs::feature_writer::ptr make_writer(
+  static irs::FeatureWriter::ptr make_writer(
     std::span<const irs::bytes_view> payload) {
     return irs::memory::make_managed<writer>(payload);
   }
@@ -231,31 +231,31 @@ class SortedIndexTestCase : public tests::index_test_base {
                                               codec()->type().name());
   }
 
-  irs::feature_info_provider_t features() {
+  irs::FeatureInfoProvider features() {
     return [this](irs::type_info::type_id id) {
       if (id == irs::type<irs::Norm>::id()) {
         return std::make_pair(
-          irs::column_info{irs::type<irs::compression::lz4>::get(), {}, false},
+          irs::ColumnInfo{irs::type<irs::compression::lz4>::get(), {}, false},
           &irs::Norm::MakeWriter);
       }
 
       if (supports_pluggable_features()) {
         if (irs::type<irs::Norm2>::id() == id) {
           return std::make_pair(
-            irs::column_info{
+            irs::ColumnInfo{
               irs::type<irs::compression::none>::get(), {}, false},
             &irs::Norm2::MakeWriter);
         } else if (irs::type<CustomFeature>::id() == id) {
           return std::make_pair(
-            irs::column_info{
+            irs::ColumnInfo{
               irs::type<irs::compression::none>::get(), {}, false},
             &CustomFeature::make_writer);
         }
       }
 
       return std::make_pair(
-        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-        irs::feature_writer_factory_t{});
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        irs::FeatureWriterFactory{});
     };
   }
 
@@ -293,7 +293,7 @@ class SortedIndexTestCase : public tests::index_test_base {
     index_test_base::assert_columnstore();
   }
 
-  void check_feature_header(const irs::sub_reader& segment,
+  void check_feature_header(const irs::SubReader& segment,
                             const irs::field_meta& field,
                             irs::type_info::type_id type,
                             irs::bytes_view header) {
@@ -307,7 +307,7 @@ class SortedIndexTestCase : public tests::index_test_base {
     ASSERT_EQ(header, column->payload());
   }
 
-  void check_empty_feature(const irs::sub_reader& segment,
+  void check_empty_feature(const irs::SubReader& segment,
                            const irs::field_meta& field,
                            irs::type_info::type_id type) {
     ASSERT_TRUE(supports_pluggable_features());
@@ -318,7 +318,7 @@ class SortedIndexTestCase : public tests::index_test_base {
     ASSERT_EQ(nullptr, column);
   }
 
-  void check_features(const irs::sub_reader& segment,
+  void check_features(const irs::SubReader& segment,
                       std::string_view field_name, size_t count,
                       bool after_consolidation) {
     auto* field_reader = segment.field(field_name);
@@ -381,7 +381,7 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
   StringComparer compare;
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
@@ -392,7 +392,7 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
   // Check columns
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -536,16 +536,17 @@ TEST_P(SortedIndexTestCase, reader_components) {
   tests::document const* doc1 = gen.next();
   tests::document const* doc2 = gen.next();
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
 
   auto query_doc1 = MakeByTerm("name", "A");
-  auto writer = irs::index_writer::make(dir(), codec(), irs::OM_CREATE, opts);
+  auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE, opts);
   ASSERT_TRUE(insert(*writer, *doc1, 1, true));
   ASSERT_TRUE(insert(*writer, *doc2, 1, true));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
-  auto check_reader = [](irs::directory_reader reader, irs::doc_id_t live_docs,
+  auto check_reader = [](irs::DirectoryReader reader, irs::doc_id_t live_docs,
                          bool has_columnstore, bool has_index) {
     ASSERT_EQ(1, reader.size());
 
@@ -557,15 +558,15 @@ TEST_P(SortedIndexTestCase, reader_components) {
     ASSERT_EQ(has_columnstore, nullptr != segment.sort());
   };
 
-  auto default_reader = irs::directory_reader::open(dir(), codec());
-  auto no_cs_mask_reader = irs::directory_reader::open(
+  auto default_reader = irs::DirectoryReader(dir(), codec());
+  auto no_cs_mask_reader = irs::DirectoryReader(
     dir(), codec(),
-    irs::index_reader_options{.columnstore = false, .doc_mask = false});
-  auto no_index_reader = irs::directory_reader::open(
-    dir(), codec(), irs::index_reader_options{.index = false});
-  auto empty_index_reader = irs::directory_reader::open(
+    irs::IndexReaderOptions{.columnstore = false, .doc_mask = false});
+  auto no_index_reader = irs::DirectoryReader(
+    dir(), codec(), irs::IndexReaderOptions{.index = false});
+  auto empty_index_reader = irs::DirectoryReader(
     dir(), codec(),
-    irs::index_reader_options{
+    irs::IndexReaderOptions{
       .index = false, .columnstore = false, .doc_mask = false});
 
   check_reader(default_reader, 2, true, true);
@@ -573,13 +574,14 @@ TEST_P(SortedIndexTestCase, reader_components) {
   check_reader(no_index_reader, 2, true, false);
   check_reader(empty_index_reader, 2, false, false);
 
-  writer->documents().remove(*query_doc1);
-  ASSERT_TRUE(writer->commit());
+  writer->GetBatch().Remove(*query_doc1);
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
-  default_reader = default_reader.reopen();
-  no_cs_mask_reader = no_cs_mask_reader.reopen();
-  no_index_reader = no_index_reader.reopen();
-  empty_index_reader = empty_index_reader.reopen();
+  default_reader = default_reader.Reopen();
+  no_cs_mask_reader = no_cs_mask_reader.Reopen();
+  no_index_reader = no_index_reader.Reopen();
+  empty_index_reader = empty_index_reader.Reopen();
 
   check_reader(default_reader, 1, true, true);
   check_reader(no_cs_mask_reader, 2, false, true);
@@ -617,13 +619,13 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   StringComparer compare;
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&compare, writer->comparator());
+  ASSERT_EQ(&compare, writer->Comparator());
 
   // Add segment 0
   {
@@ -640,7 +642,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   // Check columns
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -793,14 +795,15 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
 
     // simulate consolidation
     index().clear();
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
 
     gen.reset();
@@ -812,15 +815,15 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
       column.rewrite();
     }
 
-    ASSERT_NE(nullptr, writer->comparator());
-    segment.sort(*writer->comparator());
+    ASSERT_NE(nullptr, writer->Comparator());
+    segment.sort(*writer->Comparator());
   }
 
   assert_index();
 
   // Check columns in consolidated segment
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -981,7 +984,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
     });
 
   LongComparer comparer;
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -991,7 +994,7 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
 
   // Check columns
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -1128,7 +1131,7 @@ TEST_P(SortedIndexTestCase, europarl) {
 
   LongComparer comparer;
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
@@ -1153,50 +1156,51 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
 
   // Open writer
   StringComparer comparer;
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&comparer, writer->comparator());
+  ASSERT_EQ(&comparer, writer->Comparator());
 
   // Write documents
   {
-    auto docs = writer->documents();
+    auto docs = writer->GetBatch();
 
     {
-      auto doc = docs.insert();
+      auto doc = docs.Insert();
 
       // Compound sorted field
       field.value = "A";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
       field.value = "B";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
 
       // Indexed field
-      doc.insert<irs::Action::INDEX>(same);
+      doc.Insert<irs::Action::INDEX>(same);
     }
 
     {
-      auto doc = docs.insert();
+      auto doc = docs.Insert();
 
       // Compound sorted field
       field.value = "C";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
       field.value = "D";
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.Insert<irs::Action::STORE_SORTED>(field);
 
       // Indexed field
-      doc.insert<irs::Action::INDEX>(same);
+      doc.Insert<irs::Action::INDEX>(same);
     }
   }
 
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 
@@ -1253,31 +1257,33 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   StringComparer comparer;
 
   // open writer
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&comparer, writer->comparator());
+  ASSERT_EQ(&comparer, writer->Comparator());
 
   // Segment 0
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1352,15 +1358,16 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -1410,7 +1417,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
                  doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
@@ -1419,7 +1426,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
                  doc1->stored.begin(), doc1->stored.end(), doc1->sorted.get());
   segment.insert(doc3->indexed.begin(), doc3->indexed.end(),
                  doc3->stored.begin(), doc3->stored.end(), doc3->sorted.get());
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
@@ -1456,30 +1463,32 @@ TEST_P(SortedIndexTestCase,
   StringComparer comparer;
 
   // open writer
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&comparer, writer->comparator());
+  ASSERT_EQ(&comparer, writer->Comparator());
 
   // segment 0
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1557,13 +1566,14 @@ TEST_P(SortedIndexTestCase,
   // Remove document
   {
     auto query_doc1 = MakeByTerm("name", "C");
-    writer->documents().remove(*query_doc1);
-    writer->commit();
+    writer->GetBatch().Remove(*query_doc1);
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Read documents
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1636,15 +1646,16 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -1691,7 +1702,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
                  doc0->stored.begin(), doc0->stored.end(), doc0->sorted.get());
   segment.insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -1701,7 +1712,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -1728,27 +1739,28 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
     StringComparer comparer;
 
     // open writer
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.comparator = &comparer;
     opts.features = features();
     auto writer = open_writer(irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
-    ASSERT_EQ(&comparer, writer->comparator());
+    ASSERT_EQ(&comparer, writer->Comparator());
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
-    writer->documents().remove(*(query_doc1));
+    writer->GetBatch().Remove(*(query_doc1));
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end(), doc2->sorted));
-    writer->documents().remove(*(query_doc2));
+    writer->GetBatch().Remove(*(query_doc2));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end(), doc3->sorted));
-    ASSERT_TRUE(writer->commit());
+    ASSERT_TRUE(writer->Commit());
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(3, reader->docs_count());
@@ -1799,31 +1811,33 @@ TEST_P(SortedIndexTestCase,
   auto* doc3 = gen.next();  // name == 'D'
 
   StringComparer comparer;
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -1898,15 +1912,16 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -1956,7 +1971,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
                  doc2->stored.begin(), doc2->stored.end(), &kEmpty);
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
@@ -1968,7 +1983,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -1998,13 +2013,13 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   auto* doc6 = gen.next();  // name == 'G'
 
   StringComparer comparer;
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
@@ -2013,7 +2028,8 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end(), doc4->sorted));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2024,11 +2040,12 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
                      doc5->stored.begin(), doc5->stored.end(), doc5->sorted));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -2114,16 +2131,17 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment:
   // <empty> - F - E - B - <empty> - A - <empty>
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -2183,7 +2201,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
                  doc2->stored.begin(), doc2->stored.end(), &kEmpty);
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
@@ -2201,7 +2219,7 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -2232,13 +2250,13 @@ TEST_P(SortedIndexTestCase,
   auto* doc6 = gen.next();  // name == 'G'
 
   StringComparer compare;
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
@@ -2247,7 +2265,8 @@ TEST_P(SortedIndexTestCase,
                      doc0->stored.begin(), doc0->stored.end(), doc0->sorted));
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end(), doc4->sorted));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -2258,21 +2277,20 @@ TEST_P(SortedIndexTestCase,
                      doc5->stored.begin(), doc5->stored.end(), doc5->sorted));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Remove docs from segment 1
-  writer->documents().remove(
-    irs::filter::ptr{MakeByTerm("name", "B")});  // doc1
-  writer->documents().remove(
-    irs::filter::ptr{MakeByTerm("name", "D")});  // doc3
+  writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "B")});  // doc1
+  writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "D")});  // doc3
   // Remove docs from segment 0
-  writer->documents().remove(
-    irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
-  ASSERT_TRUE(writer->commit());
+  writer->GetBatch().Remove(irs::filter::ptr{MakeByTerm("name", "E")});  // doc4
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Read documents
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -2362,16 +2380,17 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    ASSERT_TRUE(writer->commit());
+    irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_TRUE(writer->Commit());
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment:
   // F - <empty> - A - <empty>
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -2421,7 +2440,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(doc2->indexed.begin(), doc2->indexed.end(),
                  doc2->stored.begin(), doc2->stored.end(), &kEmpty);
   segment.insert(doc0->indexed.begin(), doc0->indexed.end(),
@@ -2433,7 +2452,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -2470,13 +2489,13 @@ TEST_P(SortedIndexTestCase,
   }
 
   StringComparer compare;
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.comparator = &compare;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_NE(nullptr, writer->comparator());
+  ASSERT_NE(nullptr, writer->Comparator());
 
   // Create segment 0
   ASSERT_TRUE(insert(*writer, *docs[0].first, 5, false));
@@ -2485,7 +2504,8 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, *docs[3].first, 1, true));
   ASSERT_TRUE(insert(*writer, *docs[12].first, 2, false));
   ASSERT_TRUE(insert(*writer, *docs[13].first, 1, true));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Create segment 1
   ASSERT_TRUE(insert(*writer, *docs[6].first, 1, false));
@@ -2495,20 +2515,22 @@ TEST_P(SortedIndexTestCase,
   ASSERT_TRUE(insert(*writer, *docs[5].first, 1, true));
   ASSERT_TRUE(insert(*writer, *docs[10].first, 8, false));
   ASSERT_TRUE(insert(*writer, *docs[11].first, 1, true));
-  ASSERT_TRUE(writer->commit());
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   // Remove docs
-  writer->documents().remove(*docs[2].second);
-  writer->documents().remove(*docs[3].second);
+  writer->GetBatch().Remove(*docs[2].second);
+  writer->GetBatch().Remove(*docs[3].second);
 
-  writer->documents().remove(*docs[4].second);
-  writer->documents().remove(*docs[5].second);
+  writer->GetBatch().Remove(*docs[4].second);
+  writer->GetBatch().Remove(*docs[5].second);
 
-  writer->documents().remove(*docs[9].second);
-  ASSERT_TRUE(writer->commit());
+  writer->GetBatch().Remove(*docs[9].second);
+  ASSERT_TRUE(writer->Commit());
+  AssertSnapshotEquality(*writer);
 
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(2, reader.size());
 
@@ -2599,15 +2621,16 @@ TEST_P(SortedIndexTestCase,
 
   // Consolidate segments
   {
-    irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    ASSERT_TRUE(writer->commit());
+    irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    ASSERT_TRUE(writer->Commit());
+    AssertSnapshotEquality(*writer);
   }
 
   // Check consolidated segment
   {
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(reader->live_docs_count(), reader->docs_count());
@@ -2659,7 +2682,7 @@ TEST_P(SortedIndexTestCase,
 
   // Create expected index
   auto& expected_index = index();
-  auto& segment = expected_index.emplace_back(writer->feature_info());
+  auto& segment = expected_index.emplace_back(writer->FeatureInfo());
   segment.insert(*docs[0].first, 5, false);
   segment.insert(*docs[1].first, 1, true);
   segment.insert(*docs[12].first, 2, false);
@@ -2671,7 +2694,7 @@ TEST_P(SortedIndexTestCase,
   for (auto& column : segment.columns()) {
     column.rewrite();
   }
-  segment.sort(*writer->comparator());
+  segment.sort(*writer->Comparator());
   assert_index();
 }
 
@@ -2740,37 +2763,38 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
         in_store.fill(false);
         // open writer
         StringComparer compare;
-        irs::index_writer::init_options opts;
+        irs::IndexWriterOptions opts;
         opts.comparator = &compare;
         opts.features = features();
         auto writer = open_writer(irs::OM_CREATE, opts);
         ASSERT_NE(nullptr, writer);
-        ASSERT_EQ(&compare, writer->comparator());
+        ASSERT_EQ(&compare, writer->Comparator());
         for (size_t i = 0; i < kLen; ++i) {
           {
-            auto ctx = writer->documents();
-            auto doc = ctx.insert();
-            ASSERT_TRUE(doc.insert<irs::Action::STORE_SORTED>(
+            auto ctx = writer->GetBatch();
+            auto doc = ctx.Insert();
+            ASSERT_TRUE(doc.Insert<irs::Action::STORE_SORTED>(
               *insert_docs[i].second->sorted));
-            ASSERT_TRUE(doc.insert<irs::Action::INDEX>(
+            ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(
               insert_docs[i].second->indexed.begin(),
               insert_docs[i].second->indexed.end()));
-            ASSERT_TRUE(doc.insert<irs::Action::STORE>(
+            ASSERT_TRUE(doc.Insert<irs::Action::STORE>(
               insert_docs[i].second->stored.begin(),
               insert_docs[i].second->stored.end()));
             if (((reset >> i) & 1U) == 1U) {
-              ctx.reset();
+              ctx.Reset();
             } else {
               in_store[insert_docs[i].first] = true;
             }
           }
-          writer->documents().remove(*(remove_docs[i].second));
+          writer->GetBatch().Remove(*(remove_docs[i].second));
           in_store[remove_docs[i].first] = false;
         }
-        writer->commit();
+        writer->Commit();
+        AssertSnapshotEquality(*writer);
         writer = nullptr;
         // Check consolidated segment
-        auto reader = irs::directory_reader::open(dir(), codec());
+        auto reader = irs::DirectoryReader(dir(), codec());
         ASSERT_TRUE(reader);
         size_t in_store_count = 0;
         for (auto v : in_store) {

@@ -33,7 +33,7 @@ class all : public filter {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const index_reader& reader, const Order& order,
+  filter::prepared::ptr prepare(const IndexReader& reader, const Order& order,
                                 score_t filter_boost,
                                 const attribute_provider* ctx) const override;
 };

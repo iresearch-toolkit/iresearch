@@ -27,8 +27,8 @@
 #include "utils/crc.hpp"
 #include "utils/file_utils.hpp"
 #include "utils/memory.hpp"
-#include "utils/mmap_utils.hpp"
-#include "utils/string_utils.hpp"
+
+#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -120,8 +120,8 @@ void uring::reg_buffer(byte_type* b, size_t size) {
 void uring::submit() {
   int ret = io_uring_submit(&ring);
   if (ret < 0) {
-    throw io_error(string_utils::to_string(
-      "failed to submit write request, error %d", -ret));
+    throw io_error{
+      absl::StrCat("failed to submit write request, error ", -ret)};
   }
 }
 
@@ -132,16 +132,15 @@ bool uring::deque(bool wait, uint64_t* data) {
 
   if (ret < 0) {
     if (ret != -EAGAIN) {
-      throw io_error(
-        string_utils::to_string("failed to peek a request, error %d", -ret));
+      throw io_error{absl::StrCat("Failed to peek a request, error ", -ret)};
     }
 
     return false;
   }
 
   if (cqe->res < 0) {
-    throw io_error(string_utils::to_string(
-      "async i/o operation failed, error %d", -cqe->res));
+    throw io_error{
+      absl::StrCat("Async i/o operation failed, error ", -cqe->res)};
   }
 
   *data = cqe->user_data;

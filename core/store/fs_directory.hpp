@@ -61,11 +61,13 @@ class FSDirectory : public directory {
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::string_view name) noexcept override;
+  bool sync(std::span<const std::string_view> files) noexcept override;
 
   bool visit(const visitor_f& visitor) const override;
 
  private:
+  bool sync(std::string_view name) noexcept;
+
   directory_attributes attrs_;
   std::filesystem::path dir_;
   size_t fd_pool_size_;

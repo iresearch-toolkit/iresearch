@@ -1029,17 +1029,17 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       auto& scorer = static_cast<tests::sort::custom_sort&>(*sort);
 
       scorer.collector_collect_field = [&collect_field_count](
-                                         const irs::sub_reader&,
+                                         const irs::SubReader&,
                                          const irs::term_reader&) -> void {
         ++collect_field_count;
       };
       scorer.collector_collect_term =
-        [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+        [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
       scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::index_reader&,
+                                     irs::byte_type*, const irs::IndexReader&,
                                      const irs::sort::field_collector*,
                                      const irs::sort::term_collector*) -> void {
         ++finish_count;
@@ -1233,7 +1233,7 @@ TEST(by_range_test, boost) {
       irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -1251,7 +1251,7 @@ TEST(by_range_test, boost) {
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(boost, prepared->boost());
   }
 }

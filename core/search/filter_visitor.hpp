@@ -26,7 +26,7 @@
 
 namespace irs {
 
-struct sub_reader;
+struct SubReader;
 struct term_reader;
 struct seek_term_iterator;
 
@@ -40,7 +40,7 @@ struct filter_visitor {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief makes preparations for a visitor
   //////////////////////////////////////////////////////////////////////////////
-  virtual void prepare(const sub_reader& segment, const term_reader& field,
+  virtual void prepare(const SubReader& segment, const term_reader& field,
                        const seek_term_iterator& terms) = 0;
 
   //////////////////////////////////////////////////////////////////////////////

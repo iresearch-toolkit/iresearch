@@ -40,7 +40,7 @@
 namespace irs {
 
 class Comparer;
-struct segment_meta;
+struct SegmentMeta;
 
 // Defines how the inserting field should be processed
 enum class Action {
@@ -76,8 +76,8 @@ class segment_writer : util::noncopyable {
   };
 
   static std::unique_ptr<segment_writer> make(
-    directory& dir, const column_info_provider_t& column_info,
-    const feature_info_provider_t& feature_info, const Comparer* comparator);
+    directory& dir, const ColumnInfoProvider& column_info,
+    const FeatureInfoProvider& feature_info, const Comparer* comparator);
 
   // begin document-write transaction
   // Return doc_id_t as per doc_limits
@@ -146,21 +146,21 @@ class segment_writer : util::noncopyable {
     valid_ = false;
   }
 
-  void flush(index_meta::index_segment_t& segment);
+  void flush(IndexSegment& segment, document_mask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t docs_cached() const noexcept { return docs_context_.size(); }
   bool initialized() const noexcept { return initialized_; }
   bool valid() const noexcept { return valid_; }
   void reset() noexcept;
-  void reset(const segment_meta& meta);
+  void reset(const SegmentMeta& meta);
 
   void tick(uint64_t tick) noexcept { tick_ = tick; }
   uint64_t tick() const noexcept { return tick_; }
 
   segment_writer(ConstructToken, directory& dir,
-                 const column_info_provider_t& column_info,
-                 const feature_info_provider_t& feature_info,
+                 const ColumnInfoProvider& column_info,
+                 const FeatureInfoProvider& feature_info,
                  const Comparer* comparator) noexcept;
 
  private:
@@ -198,7 +198,7 @@ class segment_writer : util::noncopyable {
 
     stored_column(const hashed_string_view& name,
                   columnstore_writer& columnstore,
-                  const column_info_provider_t& column_info,
+                  const ColumnInfoProvider& column_info,
                   std::deque<cached_column>& cached_columns, bool cache);
 
     std::string name;
@@ -215,7 +215,7 @@ class segment_writer : util::noncopyable {
 
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
-      const column_info_provider_t& column_info,
+      const ColumnInfoProvider& column_info,
       columnstore_writer::column_finalizer_f finalizer) noexcept
       : stream(column_info({})),  // compression for sorted column
         finalizer{std::move(finalizer)} {}
@@ -360,7 +360,7 @@ class segment_writer : util::noncopyable {
   }
 
   // Flushes document mask to directory, returns number of masked documens
-  size_t flush_doc_mask(const segment_meta& meta, const doc_map& docmap);
+  document_mask get_doc_mask(const doc_map& docmap);
   // Flushes indexed fields to directory
   void flush_fields(const doc_map& docmap);
 
@@ -375,9 +375,9 @@ class segment_writer : util::noncopyable {
   std::vector<const field_data*> doc_;  // document fields
   std::string seg_name_;
   field_writer::ptr field_writer_;
-  const column_info_provider_t* column_info_;
+  const ColumnInfoProvider* column_info_;
   columnstore_writer::ptr col_writer_;
-  tracking_directory dir_;
+  TrackingDirectory dir_;
   uint64_t tick_{0};
   bool initialized_;
   bool valid_{true};  // current state

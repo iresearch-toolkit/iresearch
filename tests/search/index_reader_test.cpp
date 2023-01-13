@@ -47,17 +47,13 @@ irs::format::ptr get_codec1() {
 
 }  // namespace
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                           Composite index reader
-// ----------------------------------------------------------------------------
-
 TEST(directory_reader_test, open_empty_directory) {
   irs::memory_directory dir;
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
 
-  /* no index */
-  ASSERT_THROW(irs::directory_reader::open(dir, codec), irs::index_not_found);
+  // No index
+  ASSERT_THROW((irs::DirectoryReader{dir, codec}), irs::index_not_found);
 }
 
 TEST(directory_reader_test, open_empty_index) {
@@ -65,11 +61,13 @@ TEST(directory_reader_test, open_empty_index) {
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
 
-  /* create empty index */
-  irs::index_writer::make(dir, codec, irs::OM_CREATE)->commit();
+  // Create empty index
+  {
+    auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
+    ASSERT_TRUE(writer->Commit());
+  }
 
-  /* open reader */
-  auto rdr = irs::directory_reader::open(dir, codec);
+  auto rdr = irs::DirectoryReader(dir, codec);
   ASSERT_FALSE(!rdr);
   ASSERT_EQ(0, rdr.docs_count());
   ASSERT_EQ(0, rdr.live_docs_count());
@@ -84,7 +82,7 @@ TEST(directory_reader_test, open_newest_index) {
       out = segments_file;
       return true;
     }
-    void read(const irs::directory& /*dir*/, irs::index_meta& /*meta*/,
+    void read(const irs::directory& /*dir*/, irs::IndexMeta& /*meta*/,
               std::string_view filename = std::string_view{}) override {
       read_file.assign(filename.data(), filename.size());
     };
@@ -157,7 +155,7 @@ TEST(directory_reader_test, open_newest_index) {
   test_reader1.read_file.clear();
   test_reader0.segments_file = codec0_file0;
   test_reader1.segments_file = codec1_file1;
-  irs::directory_reader::open(dir);
+  irs::DirectoryReader{dir};
   ASSERT_TRUE(test_reader0.read_file.empty());  // file not read from codec0
   ASSERT_EQ(codec1_file1,
             test_reader1.read_file);  // check file read from codec1
@@ -166,7 +164,7 @@ TEST(directory_reader_test, open_newest_index) {
   test_reader1.read_file.clear();
   test_reader0.segments_file = codec0_file1;
   test_reader1.segments_file = codec1_file0;
-  irs::directory_reader::open(dir);
+  irs::DirectoryReader{dir};
   ASSERT_EQ(codec0_file1,
             test_reader0.read_file);            // check file read from codec0
   ASSERT_TRUE(test_reader1.read_file.empty());  // file not read from codec1
@@ -202,7 +200,7 @@ TEST(directory_reader_test, open) {
   // create index
   {
     // open writer
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec_ptr, irs::OM_CREATE);
 
     // add first segment
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -211,7 +209,9 @@ TEST(directory_reader_test, open) {
                        doc2->stored.begin(), doc2->stored.end()));
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
-    writer->commit();
+    writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
 
     // add second segment
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
@@ -222,24 +222,28 @@ TEST(directory_reader_test, open) {
                        doc6->stored.begin(), doc6->stored.end()));
     ASSERT_TRUE(insert(*writer, doc7->indexed.begin(), doc7->indexed.end(),
                        doc7->stored.begin(), doc7->stored.end()));
-    writer->commit();
+    writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
 
     // add third segment
     ASSERT_TRUE(insert(*writer, doc8->indexed.begin(), doc8->indexed.end(),
                        doc8->stored.begin(), doc8->stored.end()));
     ASSERT_TRUE(insert(*writer, doc9->indexed.begin(), doc9->indexed.end(),
                        doc9->stored.begin(), doc9->stored.end()));
-    writer->commit();
+    writer->Commit();
+    tests::AssertSnapshotEquality(writer->GetSnapshot(),
+                                  irs::DirectoryReader(dir, codec_ptr));
   }
 
   // open reader
-  auto rdr = irs::directory_reader::open(dir, codec_ptr);
+  auto rdr = irs::DirectoryReader(dir, codec_ptr);
   ASSERT_FALSE(!rdr);
   ASSERT_EQ(9, rdr.docs_count());
   ASSERT_EQ(9, rdr.live_docs_count());
   ASSERT_EQ(3, rdr.size());
-  ASSERT_EQ("segments_3", rdr.meta().filename);
-  ASSERT_EQ(rdr.size(), rdr.meta().meta.size());
+  ASSERT_EQ("segments_3", rdr.Meta().filename);
+  ASSERT_EQ(rdr.size(), rdr.Meta().index_meta.segments.size());
 
   // check subreaders
   auto sub = rdr.begin();
@@ -352,17 +356,17 @@ TEST(segment_reader_test, segment_reader_has) {
     irs::memory_directory dir;
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(meta.column_store);
-    ASSERT_FALSE(irs::has_removals(meta));
+    ASSERT_FALSE(irs::HasRemovals(meta));
   }
 
   // has column store
@@ -370,18 +374,18 @@ TEST(segment_reader_test, segment_reader_has) {
     irs::memory_directory dir;
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     expected.column_store = true;
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(meta.column_store);
-    ASSERT_FALSE(irs::has_removals(meta));
+    ASSERT_FALSE(irs::HasRemovals(meta));
   }
 
   // has document mask
@@ -390,7 +394,7 @@ TEST(segment_reader_test, segment_reader_has) {
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
     auto docs_mask_writer = codec->get_document_mask_writer();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     expected.docs_count = 43;
     expected.live_docs_count = 42;
@@ -398,13 +402,13 @@ TEST(segment_reader_test, segment_reader_has) {
     docs_mask_writer->write(dir, expected, {0});
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_FALSE(meta.column_store);
-    ASSERT_TRUE(irs::has_removals(meta));
+    ASSERT_TRUE(irs::HasRemovals(meta));
   }
 
   // has all
@@ -413,7 +417,7 @@ TEST(segment_reader_test, segment_reader_has) {
     auto writer = codec->get_segment_meta_writer();
     auto reader = codec->get_segment_meta_reader();
     auto docs_mask_writer = codec->get_document_mask_writer();
-    irs::segment_meta expected;
+    irs::SegmentMeta expected;
 
     expected.docs_count = 43;
     expected.live_docs_count = 42;
@@ -422,13 +426,13 @@ TEST(segment_reader_test, segment_reader_has) {
     docs_mask_writer->write(dir, expected, {0});
     writer->write(dir, filename, expected);
 
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
 
     reader->read(dir, meta, filename);
 
     ASSERT_EQ(expected, meta);
     ASSERT_TRUE(meta.column_store);
-    ASSERT_TRUE(irs::has_removals(meta));
+    ASSERT_TRUE(irs::HasRemovals(meta));
   }
 }
 
@@ -439,13 +443,12 @@ TEST(segment_reader_test, open_invalid_segment) {
 
   /* open invalid segment */
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.codec = codec_ptr;
     meta.name = "invalid_segment_name";
 
-    ASSERT_THROW(
-      irs::segment_reader::open(dir, meta, irs::index_reader_options{}),
-      irs::io_error);
+    ASSERT_THROW(irs::SegmentReader(dir, meta, irs::IndexReaderOptions{}),
+                 irs::io_error);
   }
 }
 
@@ -461,9 +464,10 @@ TEST(segment_reader_test, open) {
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec_ptr);
+  irs::DirectoryReader writer_snapshot;
   {
     // open writer
-    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir, codec_ptr, irs::OM_CREATE);
 
     // add first segment
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -476,24 +480,25 @@ TEST(segment_reader_test, open) {
                        doc4->stored.begin(), doc4->stored.end()));
     ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                        doc5->stored.begin(), doc5->stored.end()));
-    writer->commit();
+    writer->Commit();
+    writer_snapshot = writer->GetSnapshot();
   }
 
   // check segment
   {
-    irs::segment_meta meta;
+    irs::SegmentMeta meta;
     meta.codec = codec_ptr;
     meta.column_store = true;
     meta.docs_count = 5;
+    meta.live_docs_count = 5;
     meta.name = "_1";
     meta.version = IRESEARCH_VERSION;
 
-    auto rdr =
-      irs::segment_reader::open(dir, meta, irs::index_reader_options{});
+    auto rdr = irs::SegmentReader(dir, meta, irs::IndexReaderOptions{});
     ASSERT_FALSE(!rdr);
     ASSERT_EQ(1, rdr.size());
     ASSERT_EQ(meta.docs_count, rdr.docs_count());
-    ASSERT_EQ(meta.docs_count, rdr.live_docs_count());
+    ASSERT_EQ(meta.live_docs_count, rdr.live_docs_count());
 
     auto& segment = *rdr.begin();
     const auto* column = segment.column("name");

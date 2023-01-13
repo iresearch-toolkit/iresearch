@@ -29,6 +29,7 @@
 #include "assert_format.hpp"
 #include "doc_generator.hpp"
 #include "index/directory_reader.hpp"
+#include "index/directory_reader_impl.hpp"
 #include "index/index_writer.hpp"
 #include "tests_param.hpp"
 #include "tests_shared.hpp"
@@ -88,8 +89,8 @@ class directory_mock : public irs::directory {
     return impl_.rename(src, dst);
   }
 
-  bool sync(std::string_view name) noexcept override {
-    return impl_.sync(name);
+  bool sync(std::span<const std::string_view> files) noexcept override {
+    return impl_.sync(files);
   }
 
   bool visit(const irs::directory::visitor_f& visitor) const override {
@@ -164,6 +165,8 @@ struct format_info {
 
 typedef std::tuple<tests::dir_param_f, format_info> index_test_context;
 
+void AssertSnapshotEquality(irs::DirectoryReader lhs, irs::DirectoryReader rhs);
+
 class index_test_base : public virtual test_param_base<index_test_context> {
  public:
   static std::string to_string(
@@ -185,31 +188,32 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     }
   }
 
-  irs::index_writer::ptr open_writer(
+  irs::IndexWriter::ptr open_writer(
     irs::directory& dir, irs::OpenMode mode = irs::OM_CREATE,
-    const irs::index_writer::init_options& options = {}) const {
-    return irs::index_writer::make(dir, codec_, mode, options);
+    const irs::IndexWriterOptions& options = {}) const {
+    return irs::IndexWriter::Make(dir, codec_, mode, options);
   }
 
-  irs::index_writer::ptr open_writer(
+  irs::IndexWriter::ptr open_writer(
     irs::OpenMode mode = irs::OM_CREATE,
-    const irs::index_writer::init_options& options = {}) const {
-    return irs::index_writer::make(*dir_, codec_, mode, options);
+    const irs::IndexWriterOptions& options = {}) const {
+    return irs::IndexWriter::Make(*dir_, codec_, mode, options);
   }
 
-  irs::directory_reader open_reader() const {
-    return irs::directory_reader::open(*dir_, codec_);
+  irs::DirectoryReader open_reader() const {
+    return irs::DirectoryReader{*dir_, codec_};
   }
+
+  void AssertSnapshotEquality(const irs::IndexWriter& writer);
 
   void assert_index(irs::IndexFeatures features, size_t skip = 0,
                     irs::automaton_table_matcher* matcher = nullptr) const {
-    tests::assert_index(static_cast<irs::index_reader::ptr>(open_reader()),
-                        index(), features, skip, matcher);
+    tests::assert_index(open_reader().GetImpl(), index(), features, skip,
+                        matcher);
   }
 
   void assert_columnstore(size_t skip = 0) const {
-    tests::assert_columnstore(
-      static_cast<irs::index_reader::ptr>(open_reader()), index(), skip);
+    tests::assert_columnstore(open_reader().GetImpl(), index(), skip);
   }
 
   void SetUp() override {
@@ -231,17 +235,17 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     irs::timer_utils::init_stats();  // disable profile state tracking
   }
 
-  void write_segment(irs::index_writer& writer, tests::index_segment& segment,
+  void write_segment(irs::IndexWriter& writer, tests::index_segment& segment,
                      tests::doc_generator_base& gen);
 
-  void add_segment(irs::index_writer& writer, tests::doc_generator_base& gen);
+  void add_segment(irs::IndexWriter& writer, tests::doc_generator_base& gen);
 
-  void add_segments(irs::index_writer& writer,
+  void add_segments(irs::IndexWriter& writer,
                     std::vector<doc_generator_base::ptr>& gens);
 
   void add_segment(tests::doc_generator_base& gen,
                    irs::OpenMode mode = irs::OM_CREATE,
-                   const irs::index_writer::init_options& opts = {});
+                   const irs::IndexWriterOptions& opts = {});
 
  private:
   index_t index_;

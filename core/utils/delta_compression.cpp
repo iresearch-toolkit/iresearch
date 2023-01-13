@@ -46,7 +46,7 @@ bytes_view delta_compressor::compress(byte_type* src, size_t size,
   buf.resize(size_t(std::distance(begin, end)) *
              bytes_io<uint64_t>::const_max_vsize);
 
-  auto* out = const_cast<byte_type*>(buf.data());
+  auto* out = buf.data();
   for (; begin != end; ++begin) {
     vwrite(out, zig_zag_encode64(int64_t(*begin)));
   }

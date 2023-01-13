@@ -23,14 +23,14 @@
 #pragma once
 
 #include "analysis/token_attributes.hpp"
-#include "shared.hpp"
+#include "index/field_meta.hpp"
 #include "store/store_utils.hpp"
 #include "utils/lz4compression.hpp"
 
 namespace irs {
 
 struct NormReaderContext {
-  bool Reset(const sub_reader& segment, field_id column, const document& doc);
+  bool Reset(const SubReader& segment, field_id column, const document& doc);
   bool Valid() const noexcept { return doc != nullptr; }
 
   bytes_view header;
@@ -51,7 +51,7 @@ class Norm : public attribute {
 
   IRS_FORCE_INLINE static constexpr float_t DEFAULT() noexcept { return 1.f; }
 
-  static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
+  static FeatureWriter::ptr MakeWriter(std::span<const bytes_view> payload);
 
   static auto MakeReader(Context&& ctx) {
     IRS_ASSERT(ctx.it);
@@ -124,7 +124,7 @@ class Norm2Header final {
 };
 
 template<typename T>
-class Norm2Writer final : public feature_writer {
+class Norm2Writer final : public FeatureWriter {
  public:
   static_assert(std::is_same_v<T, byte_type> || std::is_same_v<T, uint16_t> ||
                 std::is_same_v<T, uint32_t>);
@@ -184,7 +184,7 @@ class Norm2Writer final : public feature_writer {
 };
 
 struct Norm2ReaderContext : NormReaderContext {
-  bool Reset(const sub_reader& segment, field_id column, const document& doc);
+  bool Reset(const SubReader& segment, field_id column, const document& doc);
   bool Valid() const noexcept {
     return NormReaderContext::Valid() && num_bytes;
   }
@@ -203,7 +203,7 @@ class Norm2 : public attribute {
     return "iresearch::norm2";
   }
 
-  static feature_writer::ptr MakeWriter(std::span<const bytes_view> payload);
+  static FeatureWriter::ptr MakeWriter(std::span<const bytes_view> payload);
 
   template<typename T>
   static auto MakeReader(Context&& ctx) {

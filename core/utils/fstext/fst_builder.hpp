@@ -230,8 +230,6 @@ class fst_builder : util::noncopyable {
       return label == rhs.ilabel && id == rhs.nextstate && out == rhs.weight;
     }
 
-    bool operator!=(const arc_t& rhs) const noexcept { return !(*this == rhs); }
-
     union {
       state* target;
       stateid_t id;

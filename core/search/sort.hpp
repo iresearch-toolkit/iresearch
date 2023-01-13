@@ -35,8 +35,8 @@ namespace irs {
 struct collector;
 struct data_output;
 struct OrderBucket;
-struct index_reader;
-struct sub_reader;
+struct IndexReader;
+struct SubReader;
 struct term_reader;
 
 // Represents no boost value.
@@ -126,19 +126,11 @@ class ScoreFunction : util::noncopyable {
     return !static_cast<bool>(*this);
   }
 
-  bool operator!=(std::nullptr_t) const noexcept { return !(*this == nullptr); }
-
   bool operator==(const ScoreFunction& rhs) const noexcept {
     return ctx_ == rhs.ctx_ && func_ == rhs.func_;
   }
 
-  bool operator!=(const ScoreFunction& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   bool operator==(score_f rhs) const noexcept { return func_ == rhs; }
-
-  bool operator!=(score_f rhs) const noexcept { return !(*this == rhs); }
 
   explicit operator bool() const noexcept { return nullptr != func_; }
 
@@ -169,7 +161,7 @@ class sort {
     // Called once for every field matched by a filter per each segment.
     // Always called on each matched 'field' irrespective of if it
     // contains a matching 'term'.
-    virtual void collect(const sub_reader& segment,
+    virtual void collect(const SubReader& segment,
                          const term_reader& field) = 0;
 
     // Clear collected stats
@@ -199,7 +191,7 @@ class sort {
     // Called once for every term matched by a filter in the 'field'
     // per each segment.
     // Only called on a matched 'term' in the 'field' in the 'segment'.
-    virtual void collect(const sub_reader& segment, const term_reader& field,
+    virtual void collect(const SubReader& segment, const term_reader& field,
                          const attribute_provider& term_attrs) = 0;
 
     // Clear collected stats
@@ -251,7 +243,7 @@ class sort {
     // Called exactly once if field/term collection is not applicable,
     // e.g. collecting statistics over the columnstore.
     // Called after all calls to collector::collect(...) on each segment.
-    virtual void collect(byte_type* stats, const index_reader& index,
+    virtual void collect(byte_type* stats, const IndexReader& index,
                          const field_collector* field,
                          const term_collector* term) const = 0;
 
@@ -264,7 +256,7 @@ class sort {
     virtual field_collector::ptr prepare_field_collector() const = 0;
 
     // Create a stateful scorer used for computation of document scores
-    virtual ScoreFunction prepare_scorer(const sub_reader& segment,
+    virtual ScoreFunction prepare_scorer(const SubReader& segment,
                                          const term_reader& field,
                                          const byte_type* stats,
                                          const attribute_provider& doc_attrs,
@@ -514,7 +506,7 @@ class PreparedSortBase<void> : public sort::prepared {
     return nullptr;
   }
 
-  void collect(byte_type*, const index_reader&, const sort::field_collector*,
+  void collect(byte_type*, const IndexReader&, const sort::field_collector*,
                const sort::term_collector*) const override {
     // NOOP
   }

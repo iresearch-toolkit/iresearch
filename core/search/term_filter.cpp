@@ -37,7 +37,7 @@ class term_visitor : private util::noncopyable {
   term_visitor(const term_collectors& term_stats, TermQuery::States& states)
     : term_stats_(term_stats), states_(states) {}
 
-  void prepare(const sub_reader& segment, const term_reader& field,
+  void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept {
     segment_ = &segment;
     reader_ = &field;
@@ -60,13 +60,13 @@ class term_visitor : private util::noncopyable {
  private:
   const term_collectors& term_stats_;
   TermQuery::States& states_;
-  const sub_reader* segment_{};
+  const SubReader* segment_{};
   const term_reader* reader_{};
   const seek_term_iterator* terms_{};
 };
 
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& field, bytes_view term,
+void visit(const SubReader& segment, const term_reader& field, bytes_view term,
            Visitor& visitor) {
   // find term
   auto terms = field.iterator(SeekMode::RANDOM_ONLY);
@@ -87,16 +87,16 @@ void visit(const sub_reader& segment, const term_reader& field, bytes_view term,
 
 namespace irs {
 
-void by_term::visit(const sub_reader& segment, const term_reader& field,
+void by_term::visit(const SubReader& segment, const term_reader& field,
                     bytes_view term, filter_visitor& visitor) {
   ::visit(segment, field, term, visitor);
 }
 
-filter::prepared::ptr by_term::prepare(const index_reader& index,
+filter::prepared::ptr by_term::prepare(const IndexReader& index,
                                        const Order& ord, score_t boost,
                                        std::string_view field,
                                        bytes_view term) {
-  TermQuery::States states(index);
+  TermQuery::States states(index.size());
   field_collectors field_stats(ord);
   term_collectors term_stats(ord, 1);
 
@@ -118,7 +118,7 @@ filter::prepared::ptr by_term::prepare(const index_reader& index,
   }
 
   bstring stats(ord.stats_size(), 0);
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
 
   term_stats.finish(stats_buf, 0, field_stats, index);
 
