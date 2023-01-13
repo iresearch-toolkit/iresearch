@@ -31,7 +31,7 @@
 
 namespace irs {
 
-class IndexMeta;
+struct IndexMeta;
 struct SegmentMeta;
 
 namespace directory_utils {

@@ -204,6 +204,7 @@ set(IResearch_core_headers
   ./search/boost_sort.hpp
   ./search/granular_range_filter.hpp
   ./search/scorers.hpp
+  ./search/states_cache.hpp
   ./search/sort.hpp
   ./search/cost.hpp
   ./search/filter.hpp
@@ -226,6 +227,7 @@ set(IResearch_core_headers
   ./store/data_input.hpp
   ./store/data_output.hpp
   ./store/directory.hpp
+  ./store/directory_utils.hpp
   ./store/fs_directory.hpp
   ./store/memory_directory.hpp
   ./store/store_utils.hpp

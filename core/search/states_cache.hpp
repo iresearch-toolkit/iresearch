@@ -29,7 +29,7 @@
 
 namespace irs {
 
-class SubReader;
+struct SubReader;
 
 // Generic cache for cached query states
 // TODO: consider changing an API so that a sub_reader is indexable by an
