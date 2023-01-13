@@ -227,7 +227,6 @@ set(IResearch_core_headers
   ./store/data_input.hpp
   ./store/data_output.hpp
   ./store/directory.hpp
-  ./store/directory_utils.hpp
   ./store/fs_directory.hpp
   ./store/memory_directory.hpp
   ./store/store_utils.hpp
@@ -239,6 +238,7 @@ set(IResearch_core_headers
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp
   ./utils/compression.hpp
+  ./utils/directory_utils.hpp
   ./utils/lz4compression.hpp
   ./utils/file_utils.hpp
   ./utils/fstext/fst_builder.hpp
