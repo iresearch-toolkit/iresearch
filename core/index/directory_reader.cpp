@@ -43,16 +43,16 @@ DirectoryReader::DirectoryReader(
   : impl_{std::move(impl)} {}
 
 DirectoryReader::DirectoryReader(const DirectoryReader& other) noexcept
-  : impl_{std::atomic_load_explicit(&other.impl_, std::memory_order_relaxed)} {}
+  : impl_{std::atomic_load_explicit(&other.impl_, std::memory_order_acquire)} {}
 
 DirectoryReader& DirectoryReader::operator=(
   const DirectoryReader& other) noexcept {
   if (this != &other) {
     // make a copy
     auto impl =
-      std::atomic_load_explicit(&other.impl_, std::memory_order_relaxed);
+      std::atomic_load_explicit(&other.impl_, std::memory_order_acquire);
 
-    std::atomic_store_explicit(&impl_, impl, std::memory_order_relaxed);
+    std::atomic_store_explicit(&impl_, impl, std::memory_order_release);
   }
 
   return *this;
@@ -74,7 +74,7 @@ const DirectoryMeta& DirectoryReader::Meta() const { return impl_->Meta(); }
 
 DirectoryReader DirectoryReader::Reopen() const {
   // make a copy
-  auto impl = std::atomic_load(&impl_);
+  auto impl = std::atomic_load_explicit(&impl_, std::memory_order_acquire);
 
   return DirectoryReader{DirectoryReaderImpl::Open(
     impl->Dir(), impl->Options(), impl->Codec(), std::move(impl))};

@@ -36,6 +36,9 @@ struct DirectoryMeta;
 class DirectoryReader final : public IndexReader {
  public:
   DirectoryReader() noexcept = default;
+  DirectoryReader(DirectoryReader&&) noexcept = default;
+  DirectoryReader& operator=(DirectoryReader&&) noexcept = default;
+
   // Create an index reader over the specified directory
   // if codec == nullptr then use the latest file for all known codecs
   explicit DirectoryReader(

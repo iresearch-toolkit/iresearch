@@ -107,8 +107,6 @@ void RemoveFromExistingSegment(
   std::vector<doc_id_t>& deleted_docs,
   std::span<IndexWriter::ModificationContext> modifications,
   const SubReader& reader) {
-  IRS_ASSERT(deleted_docs.empty());
-
   auto& docs_mask = *reader.docs_mask();
 
   for (auto& modification : modifications) {
@@ -1550,7 +1548,7 @@ ConsolidationResult IndexWriter::Consolidate(
   // deleted by a cleaner during the upcoming consolidation
   // use atomic_load(...) since finish() may modify the pointer
   auto committed_reader =
-    std::atomic_load_explicit(&committed_reader_, std::memory_order_relaxed);
+    std::atomic_load_explicit(&committed_reader_, std::memory_order_acquire);
   IRS_ASSERT(committed_reader);
   if (IRS_UNLIKELY(!committed_reader)) {
     return {0, ConsolidationError::FAIL};
@@ -1899,7 +1897,7 @@ bool IndexWriter::Import(const IndexReader& reader,
 
   auto options = [&]() -> std::optional<IndexReaderOptions> {
     auto committed_reader =
-      std::atomic_load_explicit(&committed_reader_, std::memory_order_relaxed);
+      std::atomic_load_explicit(&committed_reader_, std::memory_order_acquire);
     IRS_ASSERT(committed_reader);
     if (IRS_UNLIKELY(!committed_reader)) {
       return std::nullopt;
@@ -2181,6 +2179,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     if (segment_mask.contains(&existing_segment)) {
       continue;
     }
+
+    IRS_ASSERT(deleted_docs.empty());
 
     // mask documents matching filters from segment_contexts (i.e. from new
     // operations)
@@ -2722,7 +2722,7 @@ void IndexWriter::Finish() {
   // after this line transaction is successfull (only noexcept operations below)
   std::atomic_store_explicit(&committed_reader_,
                              std::move(pending_state_.commit),
-                             std::memory_order_relaxed);
+                             std::memory_order_release);
 }
 
 void IndexWriter::Abort() noexcept {

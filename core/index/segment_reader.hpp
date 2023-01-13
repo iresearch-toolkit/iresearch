@@ -33,6 +33,8 @@ class SegmentReaderImpl;
 class SegmentReader final : public SubReader {
  public:
   SegmentReader() noexcept = default;
+  SegmentReader(SegmentReader&&) noexcept = default;
+  SegmentReader& operator=(SegmentReader&&) noexcept = default;
   SegmentReader(const directory& dir, const SegmentMeta& meta,
                 const IndexReaderOptions& opts);
   explicit SegmentReader(std::shared_ptr<const SegmentReaderImpl> impl) noexcept
