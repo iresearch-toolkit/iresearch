@@ -30,27 +30,25 @@
 namespace {
 
 #if defined(_MSC_VER)
-__pragma(warning(push)) __pragma(warning(
-  disable : 4127))  // constexp conditionals are intended to be optimized out
-  __pragma(warning(disable : 4293))  // all negative shifts are masked by
-                                     // constexpr conditionals
-  __pragma(
-    warning(disable : 4724))  // all X % zero are masked by constexpr
-                              // conditionals (must disable outside of fn body)
+MSVC_ONLY(__pragma(warning(push)))
+// constexp conditionals are intended to be optimized out
+MSVC_ONLY(__pragma(warning(disable : 4127)))
+// all negative shifts are masked by constexpr conditionals
+MSVC_ONLY(__pragma(warning(disable : 4293)))
+// all X % zero are masked by constexpr conditionals
+// (must disable outside offn body)
+MSVC_ONLY(__pragma(warning(disable : 4724)))
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
-#if (__GNUC__ >= 5)
-#pragma GCC diagnostic ignored \
-  "-Wshift-count-negative"  // all negative shifts are masked by constexpr
-                            // conditionals
-#endif
+// all negative shifts are masked by constexpr conditionals
+#pragma GCC diagnostic ignored "-Wshift-count-negative"
 #endif
 
-  template<int N>
-  void fastpack(const uint32_t* IRS_RESTRICT in,
-                uint32_t* IRS_RESTRICT out) noexcept {
+template<int N>
+void fastpack(const uint32_t* IRS_RESTRICT in,
+              uint32_t* IRS_RESTRICT out) noexcept {
   // 32 == sizeof(uint32_t) * 8
-  static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
+  static_assert(0 < N && N < 32);
   // ensure all computations are constexr, i.e. no conditional jumps, no loops,
   // no variable increment/decrement
   *out |= ((*in) % (1U << N)) << (N * 0) % 32;
@@ -252,7 +250,7 @@ template<int N>
 void fastpack(const uint64_t* IRS_RESTRICT in,
               uint64_t* IRS_RESTRICT out) noexcept {
   // 64 == sizeof(uint64_t) * 8
-  static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
+  static_assert(0 < N && N < 64);
   // ensure all computations are constexr, i.e. no conditional jumps, no loops,
   // no variable increment/decrement
   *out |= ((*in) % (1ULL << N)) << (N * 0) % 64;
@@ -646,7 +644,7 @@ template<int N>
 void fastunpack(const uint32_t* IRS_RESTRICT in,
                 uint32_t* IRS_RESTRICT out) noexcept {
   // 32 == sizeof(uint32_t) * 8
-  static_assert(N > 0 && N <= 32, "N <= 0 || N > 32");
+  static_assert(0 < N && N < 32);
   *out = ((*in) >> (N * 0) % 32) % (1U << N);
   if constexpr (((N * 1) % 32) < ((N * 0) % 32)) {
     ++in;
@@ -846,7 +844,7 @@ template<int N>
 void fastunpack(const uint64_t* IRS_RESTRICT in,
                 uint64_t* IRS_RESTRICT out) noexcept {
   // 64 == sizeof(uint32_t) * 8
-  static_assert(N > 0 && N <= 64, "N <= 0 || N > 64");
+  static_assert(0 < N && N < 64);
   *out = ((*in) >> (N * 0) % 64) % (1ULL << N);
   if constexpr (((N * 1) % 64) < ((N * 0) % 64)) {
     ++in;
@@ -1240,11 +1238,11 @@ MSVC_ONLY(__pragma(warning(disable : 4702)))  // unreachable code
 template<int N, int I>
 IRS_FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
   // 32 == sizeof(uint32_t) * 8
-  static_assert(N > 0 && N < 32, "N <= 0 || N > 32");
-  static_assert(I >= 0 && I < 32, "I < 0 || I >= 32");
+  static_assert(0 < N && N < 32);
+  static_assert(0 <= I && I < 32);
 
-  // ensure all computations are constexr, i.e. no conditional jumps, no loops,
-  // no variable increment/decrement
+  // ensure all computations are constexpr,
+  // i.e. no conditional jumps, no loops, no variable increment/decrement
 
   if constexpr ((N * (I + 1) % 32) < ((N * I) % 32)) {
     return ((in[N * I / 32] >> (N * I % 32)) % (1U << N)) |
@@ -1258,8 +1256,8 @@ IRS_FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
 template<int N, int I>
 IRS_FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
   // 64 == sizeof(uint64_t) * 8
-  static_assert(N > 0 && N < 64, "N <= 0 || N > 64");
-  static_assert(I >= 0 && I < 64, "I < 0 || I >= 64");
+  static_assert(0 < N && N < 64);
+  static_assert(0 <= I && I < 64);
 
   // ensure all computations are constexr, i.e. no conditional jumps, no loops,
   // no variable increment/decrement
@@ -1273,8 +1271,8 @@ IRS_FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
   return ((in[N * I / 64] >> (N * I % 64)) % (1ULL << N));
 }
 
-MSVC_ONLY(
-  __pragma(warning(disable : 4715)))  // not all control paths return a value
+// not all control paths return a value
+MSVC_ONLY(__pragma(warning(disable : 4715)))
 
 template<int N>
 uint32_t fastpack_at(const uint32_t* in, const size_t i) noexcept {
