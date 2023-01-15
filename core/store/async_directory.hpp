@@ -24,42 +24,38 @@
 
 #include <memory>
 
-#include "liburing.h"
 #include "store/mmap_directory.hpp"
 #include "utils/object_pool.hpp"
 
 namespace irs {
 
-class async_file;
+class AsyncFile;
 
-struct async_file_deleter {
-  void operator()(async_file*) noexcept;
+struct AsyncFileDeleter {
+  void operator()(AsyncFile* file) noexcept;
 };
 
-struct async_file_builder {
-  using ptr = std::unique_ptr<async_file, async_file_deleter>;
+struct AsyncFileBuilder {
+  using ptr = std::unique_ptr<AsyncFile, AsyncFileDeleter>;
 
   static ptr make(size_t queue_size, unsigned flags);
 };
 
-using async_file_pool = unbounded_object_pool<async_file_builder>;
-using async_file_ptr = async_file_pool::ptr;
+using AsyncFilePool = unbounded_object_pool<AsyncFileBuilder>;
+using AsyncFilePtr = AsyncFilePool::ptr;
 
-class AsyncDirectory : public MMapDirectory {
+class AsyncDirectory final : public MMapDirectory {
  public:
   explicit AsyncDirectory(std::filesystem::path dir,
                           directory_attributes attrs = directory_attributes{},
                           size_t pool_size = 16, size_t queue_size = 1024,
                           unsigned flags = 0);
 
-  index_output::ptr create(std::string_view name) noexcept override;
-  bool sync(std::span<std::string_view> names) noexcept override;
-
-  // bool sync(std::string_view name) noexcept;
-  using MMapDirectory::sync;
+  index_output::ptr create(std::string_view name) noexcept final;
+  bool sync(std::span<const std::string_view> names) noexcept final;
 
  private:
-  async_file_pool async_pool_;
+  AsyncFilePool async_pool_;
   size_t queue_size_;
   unsigned flags_;
 };
