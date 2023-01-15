@@ -150,12 +150,12 @@ class filter_with_options : public filter {
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
 
-  size_t hash() const noexcept final {
+  size_t hash() const noexcept override {
     return hash_combine(filter::hash(), options_.hash());
   }
 
  protected:
-  bool equals(const filter& rhs) const noexcept final {
+  bool equals(const filter& rhs) const noexcept override {
     return filter::equals(rhs) &&
            options_ == down_cast<filter_type>(rhs).options_;
   }

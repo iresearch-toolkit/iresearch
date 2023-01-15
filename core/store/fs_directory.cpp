@@ -253,7 +253,7 @@ class fs_index_input : public buffered_index_input {
     return crc.checksum();
   }
 
-  ptr dup() const final { return ptr(new fs_index_input(*this)); }
+  ptr dup() const override { return ptr(new fs_index_input(*this)); }
 
   static index_input::ptr open(const file_path_t name, size_t pool_size,
                                IOAdvice advice) noexcept {
@@ -296,14 +296,13 @@ class fs_index_input : public buffered_index_input {
     try {
       return ptr(new fs_index_input(std::move(handle), pool_size));
     } catch (...) {
+      return nullptr;
     }
-
-    return nullptr;
   }
 
   size_t length() const final { return handle_->size; }
 
-  ptr reopen() const final;
+  ptr reopen() const override;
 
  protected:
   void seek_internal(size_t pos) final {

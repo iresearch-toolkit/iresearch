@@ -36,7 +36,7 @@ class MMapDirectory : public FSDirectory {
                          directory_attributes attrs = directory_attributes{});
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept final;
+                        IOAdvice advice) const noexcept override;
 };
 
 class CachingMMapDirectory

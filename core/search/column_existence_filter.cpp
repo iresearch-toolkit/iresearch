@@ -34,7 +34,7 @@ class column_existence_query : public irs::filter::prepared {
   column_existence_query(std::string_view field, bstring&& stats, score_t boost)
     : filter::prepared(boost), field_{field}, stats_(std::move(stats)) {}
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
     const auto& segment = ctx.segment;
     const auto* column = segment.column(field_);
 

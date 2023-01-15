@@ -55,7 +55,7 @@ enum class ErrorCode : uint32_t {
 //////////////////////////////////////////////////////////////////////////////
 struct error_base : std::exception {
   virtual ErrorCode code() const noexcept { return ErrorCode::undefined_error; }
-  const char* what() const noexcept final;
+  const char* what() const noexcept override;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -70,7 +70,7 @@ class detailed_error_base : public error_base {
   explicit detailed_error_base(std::string&& error) noexcept
     : error_(std::move(error)) {}
 
-  const char* what() const noexcept final { return error_.c_str(); }
+  const char* what() const noexcept override { return error_.c_str(); }
 
  private:
   std::string error_;

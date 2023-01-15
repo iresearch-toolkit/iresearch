@@ -67,7 +67,7 @@ class boolean_filter : public filter, public AllDocsProvider {
 
   filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const final;
+                                const attribute_provider* ctx) const override;
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;

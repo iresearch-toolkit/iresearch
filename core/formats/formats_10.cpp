@@ -3481,24 +3481,25 @@ class format10 : public irs::version10::format {
 
   format10() noexcept : format10(irs::type<format10>::get()) {}
 
-  index_meta_writer::ptr get_index_meta_writer() const final;
+  index_meta_writer::ptr get_index_meta_writer() const override;
   index_meta_reader::ptr get_index_meta_reader() const final;
 
-  segment_meta_writer::ptr get_segment_meta_writer() const final;
+  segment_meta_writer::ptr get_segment_meta_writer() const override;
   segment_meta_reader::ptr get_segment_meta_reader() const final;
 
   document_mask_writer::ptr get_document_mask_writer() const final;
   document_mask_reader::ptr get_document_mask_reader() const final;
 
-  field_writer::ptr get_field_writer(bool consolidation) const final;
+  field_writer::ptr get_field_writer(bool consolidation) const override;
   field_reader::ptr get_field_reader() const final;
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation) const final;
-  columnstore_reader::ptr get_columnstore_reader() const final;
+    bool consolidation) const override;
+  columnstore_reader::ptr get_columnstore_reader() const override;
 
-  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
-  irs::postings_reader::ptr get_postings_reader() const final;
+  irs::postings_writer::ptr get_postings_writer(
+    bool consolidation) const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format10(const irs::type_info& type) noexcept
@@ -3593,12 +3594,12 @@ class format11 : public format10 {
 
   index_meta_writer::ptr get_index_meta_writer() const final;
 
-  field_writer::ptr get_field_writer(bool consolidation) const final;
+  field_writer::ptr get_field_writer(bool consolidation) const override;
 
   segment_meta_writer::ptr get_segment_meta_writer() const final;
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/) const final;
+    bool /*consolidation*/) const override;
 
  protected:
   explicit format11(const irs::type_info& type) noexcept : format10(type) {}
@@ -3645,7 +3646,7 @@ class format12 : public format11 {
   format12() noexcept : format11(irs::type<format12>::get()) {}
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/) const final;
+    bool /*consolidation*/) const override;
 
  protected:
   explicit format12(const irs::type_info& type) noexcept : format11(type) {}
@@ -3675,8 +3676,9 @@ class format13 : public format12 {
 
   format13() noexcept : format12(irs::type<format13>::get()) {}
 
-  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
-  irs::postings_reader::ptr get_postings_reader() const final;
+  irs::postings_writer::ptr get_postings_writer(
+    bool consolidation) const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format13(const irs::type_info& type) noexcept : format12(type) {}
@@ -3858,8 +3860,9 @@ class format13simd : public format13 {
 
   format13simd() noexcept : format13(irs::type<format13simd>::get()) {}
 
-  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
-  irs::postings_reader::ptr get_postings_reader() const final;
+  irs::postings_writer::ptr get_postings_writer(
+    bool consolidation) const override;
+  irs::postings_reader::ptr get_postings_reader() const override;
 
  protected:
   explicit format13simd(const irs::type_info& type) noexcept : format13(type) {}

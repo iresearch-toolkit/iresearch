@@ -37,8 +37,8 @@ namespace map_utils {
 ////////////////////////////////////////////////////////////////////////////
 template<typename Container, typename KeyGenerator, typename Key,
          typename... Args,
-         typename =
-           std::enable_if_t<std::is_same_v<typename Container::key_type, Key>>>
+         typename =  // TODO(MBkkt) enable_if_t fix compilation
+         std::enable_if<std::is_same_v<typename Container::key_type, Key>>>
 inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
   Container& container, const KeyGenerator& generator, Key&& key,
   Args&&... args) {

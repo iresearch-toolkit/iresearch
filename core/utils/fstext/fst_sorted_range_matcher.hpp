@@ -35,7 +35,7 @@ namespace fst {
 // actual epsilon transitions. If match_type == MATCH_OUTPUT, then
 // Arc(0, kNoLabel, Weight::One(), current_state) is instead matched.
 template<class F, fst::MatchType MatchType = MATCH_INPUT>
-class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
+class SortedRangeExplicitMatcher final : public MatcherBase<typename F::Arc> {
  public:
   using FST = F;
   using Arc = typename FST::Arc;

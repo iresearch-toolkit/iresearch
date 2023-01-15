@@ -43,24 +43,24 @@ class FSDirectory : public directory {
   using directory::attributes;
   directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view name) noexcept final;
+  index_output::ptr create(std::string_view name) noexcept override;
 
-  bool exists(bool& result, std::string_view name) const noexcept final;
+  bool exists(bool& result, std::string_view name) const noexcept override;
 
-  bool length(uint64_t& result, std::string_view name) const noexcept final;
+  bool length(uint64_t& result, std::string_view name) const noexcept override;
 
   index_lock::ptr make_lock(std::string_view name) noexcept final;
 
   bool mtime(std::time_t& result, std::string_view name) const noexcept final;
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept final;
+                        IOAdvice advice) const noexcept override;
 
-  bool remove(std::string_view name) noexcept final;
+  bool remove(std::string_view name) noexcept override;
 
-  bool rename(std::string_view src, std::string_view dst) noexcept final;
+  bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::span<const std::string_view> files) noexcept final;
+  bool sync(std::span<const std::string_view> files) noexcept override;
 
   bool visit(const visitor_f& visitor) const final;
 

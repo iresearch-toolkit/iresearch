@@ -211,11 +211,11 @@ class memory_index_output : public index_output {
 
   // index_output
 
-  void flush() final;  // deprecated
+  void flush() override;  // deprecated
 
   size_t file_pointer() const final;
 
-  int64_t checksum() const final;
+  int64_t checksum() const override;
 
   void operator>>(data_output& out);
 
@@ -264,7 +264,7 @@ class memory_directory final : public directory {
   explicit memory_directory(
     directory_attributes attributes = directory_attributes{});
 
-  virtual ~memory_directory() noexcept;
+  ~memory_directory() noexcept final;
 
   directory_attributes& attributes() noexcept final { return attrs_; }
 
