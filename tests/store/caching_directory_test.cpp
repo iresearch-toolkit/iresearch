@@ -37,18 +37,18 @@ class DirectoryProxy : public Impl {
   explicit DirectoryProxy(Args&&... args) noexcept
     : Impl{std::forward<Args>(args)...} {}
 
-  bool exists(bool& result, std::string_view name) const noexcept final {
+  bool exists(bool& result, std::string_view name) const noexcept override {
     EXPECT_TRUE(expect_call_);
     return Impl::exists(result, name);
   }
 
-  bool length(uint64_t& result, std::string_view name) const noexcept final {
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
     EXPECT_TRUE(expect_call_);
     return Impl::length(result, name);
   }
 
   irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept final {
+                             irs::IOAdvice advice) const noexcept override {
     EXPECT_TRUE(expect_call_);
     return Impl::open(name, advice);
   }

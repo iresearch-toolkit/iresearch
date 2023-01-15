@@ -55,40 +55,41 @@ class directory_mock : public irs::directory {
     return impl_.attributes();
   }
 
-  irs::index_output::ptr create(std::string_view name) noexcept final {
+  irs::index_output::ptr create(std::string_view name) noexcept override {
     return impl_.create(name);
   }
 
-  bool exists(bool& result, std::string_view name) const noexcept final {
+  bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  bool length(uint64_t& result, std::string_view name) const noexcept final {
+  bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
   }
 
-  irs::index_lock::ptr make_lock(std::string_view name) noexcept final {
+  irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
     return impl_.make_lock(name);
   }
 
-  bool mtime(std::time_t& result, std::string_view name) const noexcept final {
+  bool mtime(std::time_t& result,
+             std::string_view name) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept final {
+                             irs::IOAdvice advice) const noexcept override {
     return impl_.open(name, advice);
   }
 
-  bool remove(std::string_view name) noexcept final {
+  bool remove(std::string_view name) noexcept override {
     return impl_.remove(name);
   }
 
-  bool rename(std::string_view src, std::string_view dst) noexcept final {
+  bool rename(std::string_view src, std::string_view dst) noexcept override {
     return impl_.rename(src, dst);
   }
 
-  bool sync(std::span<const std::string_view> files) noexcept final {
+  bool sync(std::span<const std::string_view> files) noexcept override {
     return impl_.sync(files);
   }
 
@@ -104,7 +105,7 @@ struct blocking_directory : directory_mock {
   explicit blocking_directory(irs::directory& impl, const std::string& blocker)
     : tests::directory_mock(impl), blocker(blocker) {}
 
-  irs::index_output::ptr create(std::string_view name) noexcept {
+  irs::index_output::ptr create(std::string_view name) noexcept final {
     auto stream = tests::directory_mock::create(name);
 
     if (name == blocker) {

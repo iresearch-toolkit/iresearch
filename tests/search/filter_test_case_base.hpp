@@ -184,7 +184,7 @@ struct custom_sort : public irs::sort {
       return std::make_unique<field_collector>(sort_);
     }
 
-    virtual irs::ScoreFunction prepare_scorer(
+    irs::ScoreFunction prepare_scorer(
       const irs::SubReader& segment_reader, const irs::term_reader& term_reader,
       const irs::byte_type* filter_node_attrs,
       const irs::attribute_provider& document_attrs,

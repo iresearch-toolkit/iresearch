@@ -49,7 +49,7 @@ class ctr_encryption : public encryption {
 
   explicit ctr_encryption(const cipher& cipher) noexcept : cipher_(&cipher) {}
 
-  size_t header_length() noexcept final { return DEFAULT_HEADER_LENGTH; }
+  size_t header_length() noexcept override { return DEFAULT_HEADER_LENGTH; }
 
   bool create_header(std::string_view filename, byte_type* header) final;
 

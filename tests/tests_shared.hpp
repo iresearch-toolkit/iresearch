@@ -83,7 +83,7 @@ class test_base : public test_env, public ::testing::Test {
 
  protected:
   test_base() = default;
-  void SetUp() final;
+  void SetUp() override;
 
  private:
   std::filesystem::path test_dir_;       // res_dir_/<test-name>
