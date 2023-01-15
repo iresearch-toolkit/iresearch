@@ -552,7 +552,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       }
     }
   }
-};  // same_position_filter_test_case
+};
 
 TEST_P(same_position_filter_test_case, by_same_position) {
   sub_objects_ordered();

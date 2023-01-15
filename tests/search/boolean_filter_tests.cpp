@@ -196,7 +196,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
   const irs::byte_type* stats_;
   irs::score score_;
   irs::document doc_;
-};  // basic_doc_iterator
+};
 
 std::vector<irs::doc_id_t> union_all(
   const std::vector<std::vector<irs::doc_id_t>>& docs) {
@@ -270,7 +270,7 @@ struct boosted : public irs::filter {
 
     basic_doc_iterator::docids_t docs;
     irs::bstring stats;
-  };  // prepared
+  };
 
   irs::filter::prepared::ptr prepare(
     const irs::IndexReader&, const irs::Order&, irs::score_t boost,
@@ -283,7 +283,7 @@ struct boosted : public irs::filter {
 
   basic_doc_iterator::docids_t docs;
   static unsigned execute_count;
-};  // boosted
+};
 
 unsigned boosted::execute_count{0};
 
@@ -1145,7 +1145,7 @@ struct unestimated : public irs::filter {
     }
 
     irs::document doc;
-  };  // doc_iterator
+  };
 
   struct prepared : public irs::filter::prepared {
     irs::doc_iterator::ptr execute(
@@ -1156,7 +1156,7 @@ struct unestimated : public irs::filter {
                irs::score_t) const override {
       // No terms to visit
     }
-  };  // prepared
+  };
 
   filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
@@ -1165,7 +1165,7 @@ struct unestimated : public irs::filter {
   }
 
   unestimated() : filter(irs::type<unestimated>::get()) {}
-};  // unestimated
+};
 
 struct estimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
@@ -1195,7 +1195,7 @@ struct estimated : public irs::filter {
 
     irs::document doc;
     irs::cost cost;
-  };  // doc_iterator
+  };
 
   struct prepared : public irs::filter::prepared {
     explicit prepared(irs::cost::cost_t est, bool* evaluated)
@@ -1213,7 +1213,7 @@ struct estimated : public irs::filter {
 
     bool* evaluated;
     irs::cost::cost_t est;
-  };  // prepared
+  };
 
   filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
@@ -1225,7 +1225,7 @@ struct estimated : public irs::filter {
 
   mutable bool evaluated = false;
   irs::cost::cost_t est{};
-};  // estimated
+};
 
 }  // namespace detail
 

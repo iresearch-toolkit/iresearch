@@ -50,7 +50,7 @@ enum class BufferHint {
   ///        in memory while underlying stream is open
   //////////////////////////////////////////////////////////////////////////////
   PERSISTENT
-};  // BufferHint
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct data_input
@@ -107,7 +107,7 @@ struct data_input {
   byte_type operator*() { return read_byte(); }
   data_input& operator++() noexcept { return *this; }
   data_input& operator++(int) noexcept { return *this; }
-};  // data_input
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_input
@@ -147,7 +147,7 @@ struct index_input : public data_input {
 
  private:
   index_input& operator=(const index_input&) = delete;
-};  // index_input
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class input_buf
@@ -173,7 +173,7 @@ class input_buf final : public std::streambuf, util::noncopyable {
 
  private:
   index_input* in_;
-};  // input_buf
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class buffered_index_input

@@ -75,7 +75,7 @@ class collation_token_stream final : public analyzer,
   attributes attrs_;
   std::unique_ptr<state_t, state_deleter_t> state_;
   bool term_eof_;
-};  // collation_token_stream
+};
 
 }  // namespace analysis
 }  // namespace irs

@@ -32,14 +32,14 @@ namespace compression {
 class delta_compressor : public compressor, private util::noncopyable {
  public:
   bytes_view compress(byte_type* src, size_t size, bstring& out) final;
-};  // delta_compressor
+};
 
 class delta_decompressor : public decompressor, private util::noncopyable {
  public:
   /// @returns bytes_view::NIL in case of error
   bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
                         size_t dst_size) final;
-};  // delta_decompressor
+};
 
 struct delta {
   // DO NOT CHANGE NAME
@@ -50,7 +50,7 @@ struct delta {
   static void init();
   static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
-};  // delta
+};
 
 }  // namespace compression
 }  // namespace irs

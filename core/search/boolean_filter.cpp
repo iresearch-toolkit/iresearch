@@ -247,7 +247,7 @@ class OrQuery final : public BooleanQuery {
                             iterator end) const override {
     return ::make_disjunction(ctx, merge_type(), begin, end);
   }
-};  // or_query
+};
 
 // Represent a set of queries joint by "Or" with the specified
 // minimum number of clauses that should satisfy criteria

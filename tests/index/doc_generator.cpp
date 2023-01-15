@@ -460,7 +460,7 @@ class parse_json_handler : irs::util::noncopyable {
   std::vector<std::string> path_;
   size_t level_{};
   json_doc_generator::json_value val_;
-};  // parse_json_handler
+};
 
 json_doc_generator::json_doc_generator(
   const std::filesystem::path& file,

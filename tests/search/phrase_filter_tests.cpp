@@ -40,7 +40,7 @@ void analyzed_json_field_factory(
    public:
     string_field(const std::string& name, const std::string_view& value)
       : tests::string_field(name, value, irs::IndexFeatures::FREQ) {}
-  };  // string_field
+  };
 
   if (data.is_string()) {
     // analyzed field

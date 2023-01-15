@@ -231,7 +231,7 @@ class format_test_case : public index_test_base {
     docs_type docs_;
     Iterator next_;
     Iterator end_;
-  };  // terms
+  };
 
   void assert_frequency_and_positions(irs::doc_iterator& expected,
                                       irs::doc_iterator& actual);

@@ -156,12 +156,9 @@ class ptr_iterator
   //////////////////////////////////////////////////////////////////////////////
   template<typename T>
   typename adjust_const<T>::pointer safe_as() const {
-    typedef
-      typename std::enable_if<std::is_base_of<base_element_type, T>::value,
-                              T>::type type;
-
+    static_assert(std::is_base_of_v<base_element_type, T>);
     reference it = dereference();
-    return dynamic_cast<typename adjust_const<type>::pointer>(&it);
+    return dynamic_cast<typename adjust_const<T>::pointer>(&it);
   }
 
  private:

@@ -54,7 +54,7 @@ class by_phrase_options {
   // Returns reference to the inserted phrase part.
   template<typename PhrasePart>
   PhrasePart& insert(size_t pos) {
-    is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value;
+    is_simple_term_only_ &= std::is_same_v<PhrasePart, by_term_options>;
 
     return std::get<PhrasePart>(phrase_[pos]);
   }
@@ -63,7 +63,7 @@ class by_phrase_options {
   // Returns reference to the inserted phrase part
   template<typename PhrasePart>
   PhrasePart& insert(PhrasePart&& t, size_t pos) {
-    is_simple_term_only_ &= std::is_same<PhrasePart, by_term_options>::value;
+    is_simple_term_only_ &= std::is_same_v<PhrasePart, by_term_options>;
     auto& part = (phrase_[pos] = std::forward<PhrasePart>(t));
 
     return std::get<std::decay_t<PhrasePart>>(part);

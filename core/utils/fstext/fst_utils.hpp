@@ -47,7 +47,7 @@ struct EmptyLabel {
                                             EmptyLabel) noexcept {
     return strm;
   }
-};  // EmptyLabel
+};
 
 template<typename Label, typename T>
 constexpr bool operator==(EmptyLabel<Label>, const T&) noexcept {
@@ -83,7 +83,7 @@ struct EmptyWeight {
     Weight().Read(strm);
     return strm;
   }
-};  // EmptyWeight
+};
 
 template<typename W, typename L = int32_t>
 struct ILabelArc {
@@ -115,7 +115,7 @@ struct ILabelArc {
   // satisfy openfst API
   constexpr ILabelArc(Label ilabel, Label, StateId nextstate)
     : ilabel(ilabel), nextstate(nextstate) {}
-};  // ILabelArc
+};
 
 }  // namespace fstext
 }  // namespace fst

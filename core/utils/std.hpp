@@ -163,7 +163,7 @@ class back_emplace_iterator {
 
  private:
   Container* cont_;
-};  // back_emplace_iterator
+};
 
 template<typename Container>
 inline back_emplace_iterator<Container> back_emplacer(Container& cont) {
@@ -228,7 +228,7 @@ class input_stream_iterator {
 
  private:
   Stream* strm_;
-};  // input_stream_iterator
+};
 
 template<typename Stream>
 input_stream_iterator<Stream> make_istream_iterator(Stream& strm) {

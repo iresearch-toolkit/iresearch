@@ -222,7 +222,7 @@ class fs_index_output : public buffered_index_output {
   byte_type buf_[1024];
   file_utils::handle_t handle;
   crc32c crc;
-};  // fs_index_output
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_index_input
@@ -354,7 +354,7 @@ class fs_index_input : public buffered_index_input {
     size_t size{};               /* file size */
     size_t pos{};                /* current file position*/
     IOAdvice io_advice{IOAdvice::NORMAL};
-  };  // file_handle
+  };
 
   fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
     : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
@@ -400,7 +400,7 @@ class pooled_fs_index_input final : public fs_index_input {
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
   file_handle::ptr reopen(const file_handle& src) const;
-};  // pooled_fs_index_input
+};
 
 index_input::ptr fs_index_input::reopen() const {
   return std::make_unique<pooled_fs_index_input>(*this);

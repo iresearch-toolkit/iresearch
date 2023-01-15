@@ -1135,7 +1135,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
      private:
       irs::directory& dir_;
       irs::SegmentMeta& meta_;
-    };  // directory_mock
+    };
 
     irs::SegmentMeta meta;
     meta.name = "broken_meta_name";

@@ -64,7 +64,7 @@ struct by_granular_range_options {
   size_t hash() const noexcept {
     return hash_combine(scored_terms_limit, range.hash());
   }
-};  // by_granular_range_options
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief convenient helper for setting granular term at a specified range
@@ -115,6 +115,6 @@ class by_granular_range : public filter_base<by_granular_range_options> {
     return prepare(index, ord, this->boost() * boost, field(), options().range,
                    options().scored_terms_limit);
   }
-};  // by_granular_range
+};
 
 }  // namespace irs

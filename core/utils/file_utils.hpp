@@ -100,7 +100,7 @@ namespace irs::file_utils {
 
 struct lock_file_deleter {
   void operator()(void* handle) const;
-};  // lock_file_deleter
+};
 
 typedef std::unique_ptr<void, lock_file_deleter> lock_handle_t;
 
@@ -131,7 +131,7 @@ ENABLE_BITMASK_ENUM(OpenMode);
 
 struct file_deleter {
   void operator()(void* f) const noexcept;
-};  // file_deleter
+};
 
 typedef std::unique_ptr<void, file_deleter> handle_t;
 

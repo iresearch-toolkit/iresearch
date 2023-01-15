@@ -122,7 +122,7 @@ struct numeric_traits<int32_t> {
     return encode32(value, out, offset);
   }
   static integral_t decode(const byte_type* in) { return decode32(in); }
-};  // numeric_traits
+};
 
 template<>
 struct numeric_traits<uint32_t> {
@@ -154,7 +154,7 @@ struct numeric_traits<int64_t> {
     return encode64(value, out, offset);
   }
   static integral_t decode(const byte_type* in) { return decode64(in); }
-};  // numeric_traits
+};
 
 template<>
 struct numeric_traits<uint64_t> {
@@ -198,7 +198,7 @@ struct numeric_traits<float> {
     return encodef32(value, out, offset);
   }
   static float_t decode(const byte_type* in) { return floating(decodef32(in)); }
-};  // numeric_traits
+};
 
 template<>
 struct numeric_traits<double> {
@@ -216,7 +216,7 @@ struct numeric_traits<double> {
   static double_t decode(const byte_type* in) {
     return floating(decoded64(in));
   }
-};  // numeric_traits
+};
 
 template<>
 struct numeric_traits<long double> {};  // numeric_traits

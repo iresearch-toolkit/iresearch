@@ -521,7 +521,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
   frequency freq_;
   attributes attrs_;
-};  // sorting_doc_iterator
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
@@ -638,7 +638,7 @@ class term_iterator : public irs::term_iterator {
   const doc_map* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
-};  // term_iterator
+};
 
 /*static*/ const term_iterator::postings_f term_iterator::POSTINGS[2]{
   &term_iterator::postings, &term_iterator::sort_postings};
@@ -673,7 +673,7 @@ class term_reader final : public irs::basic_term_reader,
   mutable detail::term_iterator it_;
   const irs::bytes_view min_{};
   const irs::bytes_view max_{};
-};  // term_reader
+};
 
 }  // namespace detail
 

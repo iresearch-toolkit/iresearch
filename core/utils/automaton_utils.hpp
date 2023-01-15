@@ -130,7 +130,7 @@ class automaton_term_iterator final : public seek_term_iterator {
   fst::SortedRangeExplicitMatcher<automaton> matcher_;
   seek_term_iterator::ptr it_;
   const bytes_view* value_;
-};  // automaton_term_iterator
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief add a new transition to "to" state denoted by "label" or expands
@@ -217,7 +217,7 @@ class utf8_transitions_builder {
       state* target;
       automaton::StateId id;
     };
-  };  // arc
+  };
 
   struct state : private util::noncopyable {
     void clear() noexcept {
@@ -241,7 +241,7 @@ class utf8_transitions_builder {
 
     automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
-  };  // state
+  };
 
   static_assert(std::is_nothrow_move_constructible_v<state>);
 
@@ -280,7 +280,7 @@ class utf8_transitions_builder {
 
       return hash;
     }
-  };  // state_hash
+  };
 
   struct state_equal {
     bool operator()(const state& lhs, automaton::StateId rhs,
@@ -307,7 +307,7 @@ class utf8_transitions_builder {
 
       return true;
     }
-  };  // state_equal
+  };
 
   class state_emplace {
    public:
@@ -331,7 +331,7 @@ class utf8_transitions_builder {
 
    private:
     const automaton::Weight* weight_;
-  };  // state_emplace
+  };
 
   using automaton_states_map =
     fst_states_map<automaton, state, state_emplace, state_hash, state_equal,
@@ -350,7 +350,7 @@ class utf8_transitions_builder {
   state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1];  // +1 for root state
   automaton_states_map states_map_;
   bytes_view last_;
-};  // utf8_automaton_builder
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief validate a specified automaton and print message on error

@@ -576,7 +576,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     // address to the [SDD-179]
     CheckQuery(make_filter("Name", "Product"), Docs{32}, rdr);
   }
-};  // term_filter_test_case
+};
 
 TEST_P(term_filter_test_case, by_term) {
   by_term_sequential();

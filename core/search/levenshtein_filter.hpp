@@ -100,7 +100,7 @@ struct by_edit_distance_options : by_edit_distance_filter_options {
   size_t hash() const noexcept {
     return hash_combine(filter_options::hash(), max_terms);
   }
-};  // by_edit_distance_options
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_edit_distance
@@ -129,7 +129,7 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
                    options().provider, options().with_transpositions,
                    options().prefix);
   }
-};  // by_edit_distance
+};
 
 }  // namespace irs
 

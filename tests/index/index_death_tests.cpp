@@ -112,7 +112,7 @@ class failing_directory : public tests::directory_mock {
     index_input::ptr impl_;
     const failing_directory* dir_;
     std::string name_;
-  };  // failing_index_input
+  };
 
  public:
   explicit failing_directory(irs::directory& impl) noexcept
@@ -234,7 +234,7 @@ class failing_directory : public tests::directory_mock {
   };
 
   mutable std::set<fail_t, fail_less> failures_;
-};  // failing_directory
+};
 
 irs::FeatureInfoProvider default_feature_info() {
   return [](irs::type_info::type_id) {

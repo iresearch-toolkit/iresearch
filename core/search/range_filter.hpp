@@ -44,7 +44,7 @@ struct by_range_filter_options {
   }
 
   size_t hash() const noexcept { return range.hash(); }
-};  // by_range_filter_options
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
@@ -69,7 +69,7 @@ struct by_range_options : by_range_filter_options {
       filter_options::hash(),
       std::hash<decltype(scored_terms_limit)>()(scored_terms_limit));
   }
-};  // by_range_options
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
@@ -94,7 +94,7 @@ class by_range : public filter_base<by_range_options> {
     return prepare(index, ord, this->boost() * boost, field(), options().range,
                    options().scored_terms_limit);
   }
-};  // by_range
+};
 
 }  // namespace irs
 

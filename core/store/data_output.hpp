@@ -65,7 +65,7 @@ struct data_output {
   data_output& operator*() noexcept { return *this; }
   data_output& operator++() noexcept { return *this; }
   data_output& operator++(int) noexcept { return *this; }
-};  // data_output
+};
 
 class index_output : public data_output {
  public:
@@ -115,7 +115,7 @@ class output_buf final : public std::streambuf, util::noncopyable {
 
  private:
   index_output* out_;
-};  // output_buf
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class buffered_index_output
@@ -171,6 +171,6 @@ class buffered_index_output : public index_output, util::noncopyable {
   byte_type* end_{};
   size_t start_{};  // position of buffer in a file
   size_t buf_size_{};
-};  // buffered_index_output
+};
 
 }  // namespace irs

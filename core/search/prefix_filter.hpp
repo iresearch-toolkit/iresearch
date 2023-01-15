@@ -41,7 +41,7 @@ struct by_prefix_filter_options {
   }
 
   size_t hash() const noexcept { return hash_utils::Hash(term); }
-};  // by_prefix_options
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct by_prefix_options
@@ -64,7 +64,7 @@ struct by_prefix_options : by_prefix_filter_options {
   size_t hash() const noexcept {
     return hash_combine(filter_options::hash(), scored_terms_limit);
   }
-};  // by_prefix_options
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class by_prefix
@@ -87,7 +87,7 @@ class by_prefix : public filter_base<by_prefix_options> {
     return prepare(index, ord, this->boost() * boost, field(), options().term,
                    options().scored_terms_limit);
   }
-};  // by_prefix
+};
 
 }  // namespace irs
 

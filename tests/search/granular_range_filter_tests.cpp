@@ -1673,7 +1673,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       CheckQuery(query, Docs{}, Costs{0}, rdr);
     }
   }
-};  // granular_range_filter_test_case
+};
 
 TEST(by_granular_range_test, options) {
   irs::by_granular_range_options opts;

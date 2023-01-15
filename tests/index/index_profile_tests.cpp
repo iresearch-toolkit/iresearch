@@ -535,7 +535,7 @@ class index_profile_test_case : public tests::index_test_base {
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(docs_count, reader[0].docs_count());
   }
-};  // index_profile_test_case
+};
 
 TEST_P(index_profile_test_case, profile_bulk_index_singlethread_full_mt) {
   profile_bulk_index(0, 0, 0, 0);

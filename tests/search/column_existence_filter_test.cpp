@@ -986,7 +986,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
   }
-};  // column_existence_filter_test_case
+};
 
 TEST_P(column_existence_filter_test_case, mask_column) {
   simple_sequential_mask();

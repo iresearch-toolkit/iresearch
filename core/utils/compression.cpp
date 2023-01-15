@@ -78,7 +78,7 @@ struct identity_compressor final : irs::compression::compressor {
   }
 
   void flush(irs::data_output& /*out*/) override {}
-};  // identity_compressor
+};
 
 identity_compressor kIdentityCompressor;
 

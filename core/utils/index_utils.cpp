@@ -73,7 +73,7 @@ struct SegmentStats {
   const irs::SegmentInfo* meta;
   size_t size;  // approximate size of segment without removals
   double_t fill_factor;
-};  // segment_stat
+};
 
 struct ConsolidationCandidate {
   using iterator_t = std::vector<SegmentStats>::const_iterator;

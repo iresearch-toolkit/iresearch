@@ -71,14 +71,14 @@ struct boost : public irs::sort {
                 *res = state.boost_;
               }};
     }
-  };  // sort::boost::prepared
+  };
 
   typedef irs::score_t score_t;
   boost() : sort(irs::type<boost>::get()) {}
   virtual sort::prepared::ptr prepare() const {
     return std::make_unique<boost::prepared>();
   }
-};  // sort::boost
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief expose sort functionality through overidable lambdas
@@ -337,7 +337,7 @@ struct frequency_sort : public irs::sort {
   virtual prepared::ptr prepare() const {
     return std::make_unique<frequency_sort::prepared>();
   }
-};  // sort::frequency_sort
+};
 
 }  // namespace sort
 
@@ -444,7 +444,7 @@ struct empty_term_reader : irs::singleton<empty_term_reader>, irs::term_reader {
 
   // most significant term
   virtual irs::bytes_view(max)() const { return {}; }
-};  // empty_term_reader
+};
 
 class empty_filter_visitor : public irs::filter_visitor {
  public:

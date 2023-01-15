@@ -48,6 +48,6 @@ class ImmutableFastText : public FastText {
     const std::set<std::string>& banSet) const {
     return FastText::getNN(wordVectors, queryVec, k, banSet);
   }
-};  // ImmutableFastText
+};
 
 }  // namespace fasttext

@@ -1853,7 +1853,7 @@ class index_test_case : public tests::index_test_base {
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       std::string_view value_;
-    };  // field
+    };
 
     // write docs with empty terms
     {
@@ -1958,7 +1958,7 @@ class index_test_case : public tests::index_test_base {
       std::string_view value_;
       irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
       bool stored_valid_;
-    };  // indexed_and_stored_field
+    };
 
     class indexed_field {
      public:
@@ -1989,7 +1989,7 @@ class index_test_case : public tests::index_test_base {
       std::string name_;
       std::string_view value_;
       irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
-    };  // indexed_field
+    };
 
     struct stored_field {
       stored_field(const std::string_view& name, const std::string_view& value,
@@ -2008,7 +2008,7 @@ class index_test_case : public tests::index_test_base {
       std::string_view name_;
       std::string_view value_;
       bool valid_;
-    };  // stored_field
+    };
 
     // insert documents
     auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
@@ -2172,7 +2172,7 @@ class index_test_case : public tests::index_test_base {
       }
 
       sync_f sync_;
-    };  // invalid_sync_directory
+    };
 
     // create empty index
     {
@@ -2252,7 +2252,7 @@ class index_test_case : public tests::index_test_base {
   }
 
   void docs_bit_union(irs::IndexFeatures features);
-};  // index_test_case
+};
 
 void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   tests::string_view_field field("0", features);

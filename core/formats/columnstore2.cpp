@@ -858,7 +858,7 @@ class fixed_length_column final : public column_base {
    private:
     const column_block* blocks_;
     uint64_t len_;
-  };  // payload_reader
+  };
 
   template<bool encrypted>
   bool make_buffered_data(

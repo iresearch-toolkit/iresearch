@@ -373,7 +373,7 @@ TEST_P(tfidf_test_case, test_phrase) {
           : tests::string_field(name, value) {
           this->index_features_ = irs::IndexFeatures::FREQ;
         }
-      };  // string_field
+      };
 
       if (data.is_string()) {
         // analyzed field

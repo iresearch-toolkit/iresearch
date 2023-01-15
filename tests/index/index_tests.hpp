@@ -99,7 +99,7 @@ class directory_mock : public irs::directory {
 
  private:
   irs::directory& impl_;
-};  // directory_mock
+};
 
 struct blocking_directory : directory_mock {
   explicit blocking_directory(irs::directory& impl, const std::string& blocker)
@@ -137,7 +137,7 @@ struct blocking_directory : directory_mock {
   std::mutex policy_lock;
   std::condition_variable policy_applied;
   std::mutex intermediate_commits_lock;
-};  // blocking_directory
+};
 
 struct callback_directory : directory_mock {
   typedef std::function<void()> AfterCallback;
@@ -152,7 +152,7 @@ struct callback_directory : directory_mock {
   }
 
   AfterCallback after;
-};  // callback_directory
+};
 
 struct format_info {
   constexpr format_info(const char* codec = "",
@@ -251,6 +251,6 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   index_t index_;
   std::shared_ptr<irs::directory> dir_;
   irs::format::ptr codec_;
-};  // index_test_base
+};
 
 }  // namespace tests

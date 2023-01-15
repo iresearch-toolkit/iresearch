@@ -44,7 +44,7 @@ class segmentation_token_stream final : public analyzer,
       ALL,      // All UAX29 words are reported
       GRAPHIC,  // Report only words with graphic characters
       ALPHA
-    };  // Report only words with alphanumeric characters
+    };
 
     // lowercase tokens, match default values in text analyzer
     case_convert_t case_convert{case_convert_t::LOWER};

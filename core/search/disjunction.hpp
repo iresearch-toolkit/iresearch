@@ -117,7 +117,7 @@ class score_buffer {
   size_t bucket_size_;
   size_t buf_size_;
   std::unique_ptr<byte_type[]> buf_;
-};  // score_buffer
+};
 
 struct empty_score_buffer {
   explicit empty_score_buffer(size_t, size_t) noexcept {}
@@ -171,7 +171,7 @@ class unary_disjunction final : public compound_doc_iterator<Adapter> {
 
  private:
   doc_iterator_t it_;
-};  // unary_disjunction
+};
 
 // Disjunction optimized for two iterators.
 template<typename DocIterator, typename Merger,
@@ -830,7 +830,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
   doc_iterators_t itrs_;
   heap_container heap_;
   attributes attrs_;
-};  // disjunction
+};
 
 enum class MatchType { kMatch, kMinMatchFast, kMinMatch };
 
@@ -1290,7 +1290,7 @@ class block_disjunction final : public doc_iterator,
   IRS_NO_UNIQUE_ADDRESS score_buffer_type score_buf_;
   IRS_NO_UNIQUE_ADDRESS min_match_buffer_type match_buf_;
   const score_t* score_value_{score_buf_.data()};
-};  // block_disjunction
+};
 
 template<typename DocIterator, typename Merger,
          typename Adapter = score_iterator_adapter<DocIterator>>

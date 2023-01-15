@@ -35,10 +35,10 @@ namespace map_utils {
 /// @brief helper to update key after insertion of value
 ///  Note: use with caution since new hash and key must == old hash and key
 ////////////////////////////////////////////////////////////////////////////
-template<
-  typename Container, typename KeyGenerator, typename Key, typename... Args,
-  typename =
-    std::enable_if<std::is_same<typename Container::key_type, Key>::value>>
+template<typename Container, typename KeyGenerator, typename Key,
+         typename... Args,
+         typename =
+           std::enable_if_t<std::is_same_v<typename Container::key_type, Key>>>
 inline std::pair<typename Container::iterator, bool> try_emplace_update_key(
   Container& container, const KeyGenerator& generator, Key&& key,
   Args&&... args) {

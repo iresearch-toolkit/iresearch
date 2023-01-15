@@ -129,7 +129,7 @@ class ngram_token_stream : public ngram_token_stream_base {
 
  private:
   inline bool next_symbol(const byte_type*& it) const noexcept;
-};  // ngram_token_stream
+};
 
 }  // namespace analysis
 

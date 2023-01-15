@@ -37,7 +37,7 @@ struct cipher {
   virtual bool encrypt(byte_type* data) const = 0;
 
   virtual bool decrypt(byte_type* data) const = 0;
-};  // cipher
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_encryption
@@ -58,6 +58,6 @@ class ctr_encryption : public encryption {
 
  private:
   const cipher* cipher_;
-};  // ctr_encryption
+};
 
 }  // namespace irs

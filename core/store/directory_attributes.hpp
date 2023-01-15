@@ -35,7 +35,7 @@ class memory_allocator final {
   struct buffer {
     using ptr = std::unique_ptr<byte_type[]>;
     static ptr make(size_t size);
-  };  // buffer
+  };
 
  public:
   using ptr = memory::managed_ptr<memory_allocator>;
@@ -56,7 +56,7 @@ class memory_allocator final {
 
  private:
   allocator_type allocator_;
-};  // memory_allocator
+};
 
 // Directory encryption provider
 struct encryption {

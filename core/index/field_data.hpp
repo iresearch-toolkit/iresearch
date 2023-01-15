@@ -159,7 +159,7 @@ class field_data : util::noncopyable {
   uint32_t offs_;
   uint32_t last_start_offs_;
   bool seen_{false};
-};  // field_data
+};
 
 class fields_data : util::noncopyable {
  private:
@@ -218,6 +218,6 @@ class fields_data : util::noncopyable {
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_;  // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
-};  // fields_data
+};
 
 }  // namespace irs

@@ -249,7 +249,7 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
 
     CheckQuery(make_filter("Name", "Addr"), Docs{1, 2, 77, 78}, rdr);
   }
-};  // prefix_filter_test_case
+};
 
 TEST(by_prefix_test, options) {
   irs::by_prefix_options opts;

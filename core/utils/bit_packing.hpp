@@ -257,7 +257,7 @@ class iterator {
   const_pointer packed_;
   size_t i_;
   uint32_t bits_;
-};  // iterator
+};
 
 typedef iterator<uint32_t> iterator32;
 typedef iterator<uint64_t> iterator64;

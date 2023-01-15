@@ -97,6 +97,6 @@ class exclusion final : public doc_iterator {
   doc_iterator::ptr excl_;
   const document* incl_doc_;
   const document* excl_doc_;
-};  // exclusion
+};
 
 }  // namespace irs

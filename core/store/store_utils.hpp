@@ -86,32 +86,23 @@ StringType to_string(const byte_type* begin) {
 struct enum_hash {
   template<typename T>
   size_t operator()(T value) const {
-    typedef
-      typename std::enable_if<std::is_enum<T>::value,
-                              typename std::underlying_type<T>::type>::type
-        underlying_type_t;
-
-    return static_cast<underlying_type_t>(value);
+    static_assert(std::is_enum_v<T>);
+    return static_cast<std::underlying_type_t<T>>(value);
   }
 };
 
 template<typename T>
 void write_enum(data_output& out, T value) {
-  typedef typename std::enable_if<std::is_enum<T>::value,
-                                  typename std::underlying_type<T>::type>::type
-    underlying_type_t;
-
-  detail::read_write_helper<underlying_type_t>::write(
-    out, static_cast<underlying_type_t>(value));
+  static_assert(std::is_enum_v<T>);
+  detail::read_write_helper<std::underlying_type_t<T>>::write(
+    out, static_cast<std::underlying_type_t<T>>(value));
 }
 
 template<typename T>
 T read_enum(data_input& in) {
-  typedef typename std::enable_if<std::is_enum<T>::value,
-                                  typename std::underlying_type<T>::type>::type
-    underlying_type_t;
-
-  return static_cast<T>(detail::read_write_helper<underlying_type_t>::read(in));
+  static_assert(std::is_enum_v<T>);
+  return static_cast<T>(
+    detail::read_write_helper<std::underlying_type_t<T>>::read(in));
 }
 
 inline void write_size(data_output& out, size_t size) {
@@ -293,7 +284,7 @@ class bytes_output : public data_output {
 
  private:
   bstring* buf_;
-};  // bytes_output
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_view_input
@@ -387,7 +378,7 @@ class bytes_view_input : public index_input {
  private:
   bytes_view data_;
   const byte_type* pos_{data_.data()};
-};  // bytes_view_input
+};
 
 // same as bytes_view_input but with support of adress remapping
 // usable when original data offses needs to be persistent
@@ -437,7 +428,7 @@ class remapped_bytes_view_input : public bytes_view_input {
   size_t src_to_internal(size_t t) const noexcept;
 
   mapping mapping_;
-};  // remapped_bytes_view_input
+};
 
 namespace encode {
 

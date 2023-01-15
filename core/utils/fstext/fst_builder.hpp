@@ -236,7 +236,7 @@ class fst_builder : util::noncopyable {
     };
     label_t label;
     weight_t out{weight_t::One()};
-  };  // arc
+  };
 
   struct state : private util::noncopyable {
     explicit state(bool final = false) : final(final) {}
@@ -253,10 +253,9 @@ class fst_builder : util::noncopyable {
     std::vector<arc> arcs;
     weight_t out{weight_t::One()};
     bool final{false};
-  };  // state
+  };
 
-  static_assert(std::is_nothrow_move_constructible<state>::value,
-                "default move constructor expected");
+  static_assert(std::is_nothrow_move_constructible_v<state>);
 
   struct state_equal {
     bool operator()(const state& lhs, stateid_t rhs, const fst_t& fst) const {
@@ -365,6 +364,6 @@ class fst_builder : util::noncopyable {
   weight_t start_out_;         // output for "empty" input
   key_t last_;
   fst_t& fst_;
-};  // fst_builder
+};
 
 }  // namespace irs

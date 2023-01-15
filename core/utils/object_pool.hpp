@@ -107,7 +107,7 @@ class concurrent_stack : private util::noncopyable {
 
     uintptr_t version;  // avoid aba problem
     node_type* node;
-  };  // concurrent_node
+  };
 
   static_assert(kCmpXChg16Align == alignof(concurrent_node),
                 "invalid alignment");
@@ -320,7 +320,7 @@ class unbounded_object_pool_base : private util::noncopyable {
  private:
   struct slot : util::noncopyable {
     pointer value{};
-  };  // slot
+  };
 
  public:
   size_t size() const noexcept { return pool_.size(); }

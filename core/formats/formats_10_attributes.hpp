@@ -39,7 +39,7 @@ struct documents final : attribute {
   documents() = default;
 
   bitset value;
-};  // documents
+};
 
 struct term_meta : irs::term_meta {
   term_meta() noexcept
@@ -61,7 +61,7 @@ struct term_meta : irs::term_meta {
     doc_id_t e_single_doc;  // singleton document id delta
     uint64_t e_skip_start;  // pointer where skip data starts (after doc_start)
   };
-};  // term_meta
+};
 
 }  // namespace version10
 

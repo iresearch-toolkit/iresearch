@@ -78,7 +78,7 @@ class terms_visitor {
 
  private:
   Collector& collector_;
-};  // terms_visitor
+};
 
 template<typename Collector>
 void collect_terms(const IndexReader& index, std::string_view field,

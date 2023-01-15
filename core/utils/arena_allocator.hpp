@@ -144,18 +144,12 @@ class arena_allocator {
   arena_allocator& operator=(const arena_allocator&) = delete;
 
   arena_t* arena_;
-};  // arena_allocator
-
-template<class T, typename A1, class U, typename A2>
-inline bool operator!=(const arena_allocator<T, A1>& lhs,
-                       const arena_allocator<U, A2>& rhs) noexcept {
-  return !(lhs == rhs);
-}
+};
 
 template<typename T1, typename U, typename A1, typename A2>
 inline bool operator==(const arena_allocator<T1, A1>& lhs,
                        const arena_allocator<U, A2>& rhs) noexcept {
-  return std::is_same<A1, A2>::value &&
+  return std::is_same_v<A1, A2> &&
          lhs.arena_ == reinterpret_cast<const void*>(rhs.arena_);
 }
 

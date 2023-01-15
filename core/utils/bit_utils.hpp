@@ -144,29 +144,27 @@ constexpr int64_t zig_zag_decode64(uint64_t v) noexcept {
 
 template<typename T>
 struct enum_bitwise_traits {
-  typedef typename std::enable_if<std::is_enum<T>::value,
-                                  typename std::underlying_type<T>::type>::type
-    underlying_type_t;
+  static_assert(std::is_enum_v<T>);
 
   static constexpr T Or(T lhs, T rhs) noexcept {
-    return static_cast<T>(static_cast<underlying_type_t>(lhs) |
-                          static_cast<underlying_type_t>(rhs));
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(lhs) |
+                          static_cast<std::underlying_type_t<T>>(rhs));
   }
 
   static constexpr T Xor(T lhs, T rhs) noexcept {
-    return static_cast<T>(static_cast<underlying_type_t>(lhs) ^
-                          static_cast<underlying_type_t>(rhs));
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(lhs) ^
+                          static_cast<std::underlying_type_t<T>>(rhs));
   }
 
   static constexpr T And(T lhs, T rhs) noexcept {
-    return static_cast<T>(static_cast<underlying_type_t>(lhs) &
-                          static_cast<underlying_type_t>(rhs));
+    return static_cast<T>(static_cast<std::underlying_type_t<T>>(lhs) &
+                          static_cast<std::underlying_type_t<T>>(rhs));
   }
 
   static constexpr T Not(T v) noexcept {
-    return static_cast<T>(~static_cast<underlying_type_t>(v));
+    return static_cast<T>(~static_cast<std::underlying_type_t<T>>(v));
   }
-};  // enum_bitwise_traits
+};
 
 template<typename T>
 inline constexpr T enum_bitwise_or(T lhs, T rhs) noexcept {

@@ -1125,7 +1125,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }
   }
-};  // range_filter_test_case
+};
 
 TEST(by_range_test, options) {
   irs::by_range_options opts;

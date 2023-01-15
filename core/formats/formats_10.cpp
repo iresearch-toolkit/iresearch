@@ -315,7 +315,7 @@ class score_buffer {
 
  private:
   value_type freq_{};
-};  // score_buffer
+};
 
 enum class TermsFormat : int32_t { MIN = 0, MAX = MIN };
 
@@ -472,7 +472,7 @@ class postings_writer_base : public irs::postings_writer {
   IndexFeatures features_;           // features supported by current field
   const PostingsFormat postings_format_version_;
   const TermsFormat terms_format_version_;
-};  // postings_writer_base
+};
 
 void postings_writer_base::write_skip(size_t level,
                                       memory_index_output& out) const {
@@ -818,7 +818,7 @@ class postings_writer final : public postings_writer_base {
   } encbuf_;
   score_buffer score_levels_[kMaxSkipLevels];
   bool volatile_attributes_;
-};  // postings_writer
+};
 
 template<typename FormatTraits>
 void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
@@ -1646,7 +1646,7 @@ class position final : public irs::position,
     }
     clear();
   }
-};  // position
+};
 
 // Empty iterator over positions
 template<typename IteratorTraits, typename FieldTraits>
@@ -1659,7 +1659,7 @@ struct position<IteratorTraits, FieldTraits, false> : attribute {
   void prepare(SkipState&) {}
   void notify(uint32_t) {}
   void clear() {}
-};  // position
+};
 
 struct empty {};
 
@@ -2021,7 +2021,7 @@ class doc_iterator final
   uint64_t skip_offs_{};
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
-};  // doc_iterator
+};
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
@@ -2336,7 +2336,7 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
-};  // wanderator
+};
 
 template<typename IteratorTraits, typename FieldTraits>
 void wanderator<IteratorTraits, FieldTraits>::ReadSkip::EnsureSorted()
@@ -2997,7 +2997,7 @@ class document_mask_writer final : public irs::document_mask_writer {
 
   size_t write(directory& dir, const SegmentMeta& meta,
                const document_mask& docs_mask) override;
-};  // document_mask_writer
+};
 
 template<>
 std::string file_name<irs::document_mask_writer, SegmentMeta>(
@@ -3040,7 +3040,7 @@ class document_mask_reader final : public irs::document_mask_reader {
 
   bool read(const directory& dir, const SegmentMeta& meta,
             document_mask& docs_mask) override;
-};  // document_mask_reader
+};
 
 bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
                                 document_mask& docs_mask) {
@@ -3102,7 +3102,7 @@ class postings_reader_base : public irs::postings_reader {
   index_input::ptr doc_in_;
   index_input::ptr pos_in_;
   index_input::ptr pay_in_;
-};  // postings_reader
+};
 
 void postings_reader_base::prepare(index_input& in, const reader_state& state,
                                    IndexFeatures features) {
@@ -3291,7 +3291,7 @@ class postings_reader final : public postings_reader_base {
   irs::doc_iterator::ptr iterator_impl(IndexFeatures field_features,
                                        IndexFeatures required_features,
                                        Factory&& factory);
-};  // postings_reader
+};
 
 #if defined(_MSC_VER)
 #elif defined(__GNUC__)
@@ -3505,7 +3505,7 @@ class format10 : public irs::version10::format {
  protected:
   explicit format10(const irs::type_info& type) noexcept
     : version10::format(type) {}
-};  // format10
+};
 
 static const ::format10 FORMAT10_INSTANCE;
 
@@ -3604,7 +3604,7 @@ class format11 : public format10 {
 
  protected:
   explicit format11(const irs::type_info& type) noexcept : format10(type) {}
-};  // format11
+};
 
 static const ::format11 FORMAT11_INSTANCE;
 
@@ -3651,7 +3651,7 @@ class format12 : public format11 {
 
  protected:
   explicit format12(const irs::type_info& type) noexcept : format11(type) {}
-};  // format12
+};
 
 static const ::format12 FORMAT12_INSTANCE;
 
@@ -3818,7 +3818,7 @@ struct format_traits_sse4 {
   IRS_FORCE_INLINE static void skip_block(index_input& in) {
     bitpack::skip_block32(in, block_size());
   }
-};  // format_traits_sse
+};
 
 class format12simd final : public format12 {
  public:
@@ -3833,7 +3833,7 @@ class format12simd final : public format12 {
   irs::postings_writer::ptr get_postings_writer(
     bool consolidation) const override;
   irs::postings_reader::ptr get_postings_reader() const override;
-};  // format12simd
+};
 
 static const ::format12simd FORMAT12SIMD_INSTANCE;
 
@@ -3869,7 +3869,7 @@ class format13simd : public format13 {
 
  protected:
   explicit format13simd(const irs::type_info& type) noexcept : format13(type) {}
-};  // format13simd
+};
 
 static const ::format13simd FORMAT13SIMD_INSTANCE;
 

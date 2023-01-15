@@ -47,7 +47,7 @@ class basic_token_stream : public analysis::analyzer {
 
  protected:
   std::tuple<term_attribute, increment> attrs_;
-};  // basic_token_stream
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
@@ -86,7 +86,7 @@ class boolean_token_stream final : public basic_token_stream,
 
   bool in_use_;
   bool value_;
-};  // boolean_token_stream
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class string_token_stream
@@ -122,7 +122,7 @@ class string_token_stream : public analysis::analyzer,
   std::tuple<offset, increment, term_attribute> attrs_;
   bytes_view value_;
   bool in_use_;
-};  // string_token_stream
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class numeric_token_stream
@@ -257,10 +257,10 @@ class numeric_token_stream final : public basic_token_stream,
     NumericType type_;
     uint32_t step_;
     uint32_t shift_;
-  };  // numeric_term
+  };
 
   numeric_term num_;
-};  // numeric_token_stream
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
@@ -289,6 +289,6 @@ class null_token_stream final : public basic_token_stream,
   using basic_token_stream::reset;
 
   bool in_use_{false};
-};  // null_token_stream
+};
 
 }  // namespace irs

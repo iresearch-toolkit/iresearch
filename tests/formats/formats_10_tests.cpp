@@ -284,8 +284,7 @@ class format_10_test_case : public tests::format_test_case {
       ASSERT_EQ(begin, in_data.data() + in_data.size());
     }
   }
-
-};  // format_10_test_case
+};
 
 TEST_P(format_10_test_case, postings_read_write_single_doc) {
   irs::field_meta field;

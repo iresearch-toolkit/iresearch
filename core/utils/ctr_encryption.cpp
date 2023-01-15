@@ -65,7 +65,7 @@ class ctr_cipher_stream : public encryption::stream {
   const cipher* cipher_;
   bstring iv_;
   uint64_t counter_base_;
-};  // ctr_cipher_stream
+};
 
 bool ctr_cipher_stream::encrypt(uint64_t offset, byte_type* data, size_t size) {
   const auto block_size = this->block_size();

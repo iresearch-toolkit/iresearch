@@ -217,7 +217,7 @@ struct RangeLabel : RangeLabelType {
     strm << '[' << l.min << ".." << l.max << ']';
     return strm;
   }
-};  // RangeLabel
+};
 
 template<typename W = BooleanWeight>
 struct Transition : RangeLabel {

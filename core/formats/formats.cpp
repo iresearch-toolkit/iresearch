@@ -70,7 +70,7 @@ class format_register
 
     return filename;
   }
-};  // format_register
+};
 
 }  // namespace
 

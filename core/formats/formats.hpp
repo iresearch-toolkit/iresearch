@@ -100,7 +100,7 @@ struct postings_writer : attribute_provider {
 
    private:
     postings_writer* owner_;
-  };  // releaser
+  };
 
   typedef std::unique_ptr<term_meta, releaser> state;
 

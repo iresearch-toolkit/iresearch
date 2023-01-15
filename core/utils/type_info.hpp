@@ -83,7 +83,7 @@ class type_info {
 
   type_id id_;
   std::string_view name_;
-};  // type_info
+};
 
 }  // namespace irs
 

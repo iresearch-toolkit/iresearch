@@ -62,7 +62,7 @@ class PYRESEARCH_API doc_iterator {
   doc_iterator(irs::doc_iterator::ptr it) SWIG_noexcept : it_(it) {}
 
   irs::doc_iterator::ptr it_;
-};  // doc_iterator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
@@ -95,7 +95,7 @@ class PYRESEARCH_API term_iterator {
     : it_(irs::memory::make_shared(std::move(it))) {}
 
   std::shared_ptr<irs::seek_term_iterator> it_;
-};  // term_iterator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class column_meta
@@ -114,7 +114,7 @@ class PYRESEARCH_API column_meta {
   column_meta(const irs::column_meta* meta) SWIG_noexcept : meta_(meta) {}
 
   const irs::column_meta* meta_;
-};  // column_meta
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class column_iterator
@@ -135,7 +135,7 @@ class PYRESEARCH_API column_iterator {
     : it_(it.release(), std::move(it.get_deleter())) {}
 
   std::shared_ptr<irs::column_iterator> it_;
-};  // column_iterator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class column_reader
@@ -159,7 +159,7 @@ class PYRESEARCH_API column_reader {
     SWIG_noexcept : reader_(reader) {}
 
   const irs::columnstore_reader::column_reader* reader_;
-};  // column_reader
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class field_reader
@@ -207,7 +207,7 @@ class PYRESEARCH_API field_reader {
   field_reader(const irs::term_reader* field) SWIG_noexcept : field_(field) {}
 
   const irs::term_reader* field_;
-};  // field_reader
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class field_iterator
@@ -228,7 +228,7 @@ class PYRESEARCH_API field_iterator {
     : it_(it.release(), std::move(it.get_deleter())) {}
 
   std::shared_ptr<irs::field_iterator> it_;
-};  // field_iterator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class segment_reader
@@ -263,7 +263,7 @@ class PYRESEARCH_API segment_reader {
     : reader_(std::move(reader)) {}
 
   irs::sub_reader::ptr reader_;
-};  // segment_reader
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class segment_iterator
@@ -293,7 +293,7 @@ class PYRESEARCH_API segment_iterator {
 
   iterator_t begin_;
   iterator_t end_;
-};  // segment_iterator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class index_reader
@@ -319,4 +319,4 @@ class PYRESEARCH_API index_reader {
 
   irs::index_reader::ptr reader_;
   std::vector<const irs::sub_reader*> segments_;
-};  // index_reader
+};

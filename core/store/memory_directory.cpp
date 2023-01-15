@@ -83,7 +83,7 @@ class single_instance_lock : public index_lock {
  private:
   std::string name;
   memory_directory* parent;
-};  // single_instance_lock
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                 memory_index_input implementation
@@ -304,7 +304,7 @@ class checksum_memory_index_output final : public memory_index_output {
  private:
   mutable byte_type* crc_begin_;
   mutable crc32c crc_;
-};  // checksum_memory_index_output
+};
 
 memory_index_output::memory_index_output(memory_file& file) noexcept
   : file_(file) {

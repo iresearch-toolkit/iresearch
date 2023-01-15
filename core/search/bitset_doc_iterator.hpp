@@ -68,6 +68,6 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
   const word_t* next_;
   word_t word_;
   doc_id_t base_;
-};  // bitset_doc_iterator
+};
 
 }  // namespace irs

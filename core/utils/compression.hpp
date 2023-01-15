@@ -199,7 +199,7 @@ struct none {
   }
 
   static compression::decompressor::ptr decompressor() { return nullptr; }
-};  // raw
+};
 
 }  // namespace compression
 }  // namespace irs

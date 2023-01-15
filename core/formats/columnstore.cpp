@@ -117,7 +117,7 @@ struct format_traits {
     IRS_ASSERT(size);
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   }
-};  // format_traits
+};
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                 Format constants
@@ -293,7 +293,7 @@ class meta_writer final {
   field_id max_id_{};  // The highest column id written (optimization for vector
                        // resize on read to highest id)
   ColumnMetaVersion version_;
-};  // meta_writer
+};
 
 void meta_writer::prepare(directory& dir, std::string_view segment) {
   auto filename = irs::file_name(segment, meta_writer::FORMAT_EXT);
@@ -360,7 +360,7 @@ class meta_reader final {
   index_input::ptr in_;
   size_t count_{0};
   field_id max_id_{0};
-};  // meta_writer
+};
 
 bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
                           size_t& count, field_id& max_id) {
@@ -798,7 +798,7 @@ class writer final : public irs::columnstore_writer {
                           // into account since it may skew distribution)
     doc_id_t max_{doc_limits::invalid()};  // max key (among flushed blocks)
     std::string_view name_;
-  };  // column
+  };
 
   void flush_meta(const flush_state& meta);
 
@@ -812,7 +812,7 @@ class writer final : public irs::columnstore_writer {
   directory* dir_;
   encryption::stream::ptr data_out_cipher_;
   Version version_;
-};  // writer
+};
 
 void writer::prepare(directory& dir, const SegmentMeta& meta) {
   columns_.clear();
@@ -1064,7 +1064,7 @@ class sparse_block : util::noncopyable {
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
     const bstring* data_{};
-  };  // iterator
+  };
 
   void load(index_input& in, compression::decompressor* decomp,
             encryption::stream* cipher, bstring& buf) {
@@ -1107,7 +1107,7 @@ class sparse_block : util::noncopyable {
   ref index_[INDEX_BLOCK_SIZE];
   bstring data_;
   const ref* end_{std::end(index_)};
-};  // sparse_block
+};
 
 // cppcheck-suppress noConstructor
 class dense_block : util::noncopyable {
@@ -1179,7 +1179,7 @@ class dense_block : util::noncopyable {
     const uint32_t* end_{};
     const bstring* data_{};
     doc_id_t base_{};
-  };  // iterator
+  };
 
   void load(index_input& in, compression::decompressor* decomp,
             encryption::stream* cipher, bstring& buf) {
@@ -1223,7 +1223,7 @@ class dense_block : util::noncopyable {
   bstring data_;
   uint32_t* end_{index_};
   doc_id_t base_{0};
-};  // dense_block
+};
 
 class dense_fixed_offset_block : util::noncopyable {
  public:
@@ -1332,7 +1332,7 @@ class dense_fixed_offset_block : util::noncopyable {
   uint32_t avg_length_{};   // entry length
   doc_id_t size_{};         // total number of entries
   bstring data_;
-};  // dense_fixed_offset_block
+};
 
 class sparse_mask_block : util::noncopyable {
  public:
@@ -1379,7 +1379,7 @@ class sparse_mask_block : util::noncopyable {
     const doc_id_t* it_{};
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
-  };  // iterator
+  };
 
   sparse_mask_block() noexcept {
     std::fill(std::begin(keys_), std::end(keys_), doc_limits::eof());
@@ -1467,7 +1467,7 @@ class dense_mask_block {
     doc_id_t value_{doc_limits::invalid()};
     doc_id_t doc_{doc_limits::invalid()};
     doc_id_t max_{doc_limits::invalid()};
-  };  // iterator
+  };
 
   dense_mask_block() noexcept
     : min_(doc_limits::invalid()), max_(doc_limits::invalid()) {}
@@ -1500,7 +1500,7 @@ class dense_mask_block {
  private:
   doc_id_t min_;
   doc_id_t max_;
-};  // dense_mask_block
+};
 
 template<typename Allocator = std::allocator<sparse_block>>
 class read_context
@@ -1609,7 +1609,7 @@ class context_provider : private util::noncopyable {
   mutable bounded_object_pool<read_context_t> pool_;
   encryption::stream::ptr cipher_;
   index_input::ptr stream_;
-};  // context_provider
+};
 
 // in case of success caches block pointed
 // instance, nullptr otherwise
@@ -1836,7 +1836,7 @@ class column_iterator final : public irs::doc_iterator {
   const column_t* column_;
   block_t cached_block_;
   bool cache_;
-};  // column_iterator
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Columns
@@ -2092,7 +2092,7 @@ class dense_fixed_offset_column final : public column {
     uint64_t offset;  // need to store base offset since blocks may not be
                       // located sequentially
     mutable std::atomic<const block_t*> pblock;
-  };  // block_ref
+  };
 
   typedef std::vector<block_ref> refs_t;
 
@@ -2251,7 +2251,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     attributes attrs_;
     doc_id_t min_{doc_limits::invalid()};
     doc_id_t max_{doc_limits::invalid()};
-  };  // column_iterator
+  };
 
   doc_id_t min_{};  // min key (less than any key in column)
 };                  // dense_fixed_offset_column
@@ -2320,7 +2320,7 @@ class reader final : public columnstore_reader, public context_provider {
 
   std::vector<column::ptr> columns_;
   std::vector<const class column*> sorted_columns_;
-};  // reader
+};
 
 bool reader::read_meta(const directory& dir, const SegmentMeta& meta,
                        std::vector<column::ptr>& columns,

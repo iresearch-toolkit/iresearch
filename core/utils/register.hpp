@@ -178,7 +178,7 @@ class generic_register : public singleton<RegisterType> {
   mutable mutex_t mutex_;
   register_map_t reg_map_;
   std::vector<std::unique_ptr<void, std::function<void(void*)>>> so_handles_;
-};  // generic_register
+};
 
 // A generic_registrar capable of storing an associated tag for each entry
 template<typename KeyType, typename EntryType, typename TagType,

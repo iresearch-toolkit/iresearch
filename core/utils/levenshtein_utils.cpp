@@ -161,7 +161,7 @@ class parametric_state {
 
  private:
   std::vector<position> positions_;
-};  // parametric_state
+};
 
 static_assert(std::is_nothrow_move_constructible_v<parametric_state>);
 static_assert(std::is_nothrow_move_assignable_v<parametric_state>);
@@ -222,7 +222,7 @@ class parametric_states {
   absl::flat_hash_map<parametric_state, uint32_t, parametric_state_hash>
     states_;
   std::vector<const parametric_state*> states_by_id_;
-};  // parametric_states
+};
 
 const void* parametric_states::parametric_state_hash::SEED =
   &parametric_states::parametric_state_hash::SEED;

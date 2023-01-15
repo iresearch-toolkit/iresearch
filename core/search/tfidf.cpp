@@ -463,7 +463,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
  private:
   bool normalize_;
   bool boost_as_score_;
-};  // sort
+};
 
 }  // namespace tfidf
 

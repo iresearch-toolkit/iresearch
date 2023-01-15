@@ -312,7 +312,7 @@ struct stats final {
   float_t norm_length;
   // precomputed 1/(k*(1-b+b*|doc|/avgDL)) for |doc| E [0..255]
   float_t norm_cache[256];
-};  // stats
+};
 
 struct BM15Context : public irs::score_ctx {
   BM15Context(float_t k, irs::score_t boost, const bm25::stats& stats,

@@ -137,7 +137,7 @@ class memory_file
 
   meta meta_;
   size_t len_{};
-};  // memory_file
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_index_input
@@ -253,7 +253,7 @@ class memory_index_output : public index_output {
  private:
   memory_file& file_;  // underlying file
   byte_type* end_;
-};  // memory_index_output
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class memory_directory
@@ -327,6 +327,6 @@ struct memory_output {
 
   memory_file file;
   memory_index_output stream{file};
-};  // memory_output
+};
 
 }  // namespace irs

@@ -206,7 +206,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   iterator_type begin_;
   iterator_type end_;
   iterator_type cookie_ptr_;
-};  // term_iterator
+};
 
 struct sub_reader final : irs::SubReader {
   explicit sub_reader(size_t num_docs) {
@@ -238,7 +238,7 @@ struct sub_reader final : irs::SubReader {
   const irs::column_reader* sort() const override { return nullptr; }
 
   irs::SegmentInfo info;
-};  // index_reader
+};
 
 struct state {
   struct segment_state {

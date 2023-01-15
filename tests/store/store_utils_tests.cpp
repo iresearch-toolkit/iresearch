@@ -92,7 +92,7 @@ class bytes_input final : public data_input, public bytes_view {
  private:
   bstring buf_;
   const byte_type* pos_{buf_.c_str()};
-};  // bytes_input
+};
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                       bytes_input implementation

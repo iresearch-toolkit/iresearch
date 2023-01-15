@@ -119,7 +119,7 @@ class NoopDirectory : public directory {
   NoopDirectory() = default;
 
   directory_attributes attrs_{0, nullptr};
-};  // noop_directory
+};
 
 class ProgressTracker {
  public:
@@ -150,7 +150,7 @@ class ProgressTracker {
   const size_t count_;  // call progress callback each `count_` hits
   size_t hits_{0};      // current number of hits
   bool valid_{true};
-};  // progress_tracker
+};
 
 class RemappingDocIterator final : public doc_iterator {
  public:
@@ -356,12 +356,12 @@ class SortingCompoundDocIterator final : public doc_iterator {
     }
 
     CompoundDocIterator::iterators_t* itrs_;
-  };  // min_heap_context
+  };
 
   CompoundDocIterator* doc_it_;
   ExternalHeapIterator<min_heap_context> heap_it_;
   CompoundDocIterator::doc_iterator_t* lead_{};
-};  // sorting_compound_doc_iterator
+};
 
 bool SortingCompoundDocIterator::next() {
   auto& iterators = doc_it_->iterators_;
@@ -598,7 +598,7 @@ class CompoundTermIterator final : public term_iterator {
   mutable SortingCompoundDocIterator sorting_doc_itr_{doc_itr_};
   SortingCompoundDocIterator* psorting_doc_itr_;
   ProgressTracker progress_;
-};  // compound_term_iterator
+};
 
 void CompoundTermIterator::add(const term_reader& reader,
                                const doc_map_f& doc_id_map) {

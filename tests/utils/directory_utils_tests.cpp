@@ -82,7 +82,7 @@ class directory_utils_tests : public ::testing::Test {
 
    private:
     irs::directory_attributes attrs_{};
-  };  // directory_mock
+  };
 
   struct callback_directory : tests::directory_mock {
     typedef std::function<void()> AfterCallback;
@@ -98,7 +98,7 @@ class directory_utils_tests : public ::testing::Test {
     }
 
     AfterCallback after;
-  };  // callback_directory
+  };
 };
 
 }  // namespace

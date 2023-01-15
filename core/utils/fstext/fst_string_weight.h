@@ -54,7 +54,7 @@ struct StringLeftWeightTraits {
   inline static const StringLeftWeight<Label>& NoWeight();
 
   inline static bool Member(const StringLeftWeight<Label>& weight);
-};  // StringLeftWeightTraits
+};
 
 // String semiring: (longest_common_prefix/suffix, ., Infinity, Epsilon)
 template<typename Label>
@@ -182,7 +182,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 
  private:
   str_t str_;
-};  // StringLeftWeight
+};
 
 template<typename Label>
 /*static*/ const StringLeftWeight<Label>&
@@ -381,7 +381,7 @@ struct StringLeftWeightTraits<irs::byte_type> {
     // always member
     return true;
   }
-};  // StringLeftWeightTraits
+};
 
 inline std::ostream& operator<<(
   std::ostream& strm, const StringLeftWeight<irs::byte_type>& weight) {
