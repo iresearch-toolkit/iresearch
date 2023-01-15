@@ -119,8 +119,7 @@ struct field : public irs::field_meta {
 
 class column_values {
  public:
-  explicit column_values(irs::field_id id,
-                         irs::FeatureWriterFactory factory,
+  explicit column_values(irs::field_id id, irs::FeatureWriterFactory factory,
                          irs::FeatureWriter* writer)
     : id_{id}, factory_{factory}, writer_{writer} {}
 

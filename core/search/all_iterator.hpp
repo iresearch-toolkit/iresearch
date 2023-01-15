@@ -35,7 +35,7 @@ namespace irs {
 class AllIterator final : public doc_iterator {
  public:
   AllIterator(const irs::SubReader& reader, const byte_type* query_stats,
-               const irs::Order& order, uint64_t docs_count, score_t boost);
+              const irs::Order& order, uint64_t docs_count, score_t boost);
 
   attribute* get_mutable(irs::type_info::type_id id) noexcept override {
     return irs::get_mutable(attrs_, id);

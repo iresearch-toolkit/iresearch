@@ -1557,10 +1557,9 @@ TEST_P(tfidf_test_case_14, test_query_norms) {
   test_query_norms(irs::type<irs::Norm2>::id(), &irs::Norm2::MakeWriter);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  tfidf_test_14, tfidf_test_case_14,
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+INSTANTIATE_TEST_SUITE_P(tfidf_test_14, tfidf_test_case_14,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
                                             ::testing::Values("1_4", "1_5")),
-  tfidf_test_case_14::to_string);
+                         tfidf_test_case_14::to_string);
 
 }  // namespace

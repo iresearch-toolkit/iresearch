@@ -117,8 +117,8 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 
   // term query
   {
-    auto lhs = make_filter<irs::by_term>("foo", "foo%")
-                 .prepare(irs::SubReader::empty());
+    auto lhs =
+      make_filter<irs::by_term>("foo", "foo%").prepare(irs::SubReader::empty());
     auto rhs = make_filter("foo", "foo\\%").prepare(irs::SubReader::empty());
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
@@ -141,8 +141,8 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 
   // term query
   {
-    auto lhs = make_filter<irs::by_term>("foo", "bar%")
-                 .prepare(irs::SubReader::empty());
+    auto lhs =
+      make_filter<irs::by_term>("foo", "bar%").prepare(irs::SubReader::empty());
     auto rhs = make_filter("foo", "bar\\%").prepare(irs::SubReader::empty());
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }

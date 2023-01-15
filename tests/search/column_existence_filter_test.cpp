@@ -1523,6 +1523,6 @@ INSTANTIATE_TEST_SUITE_P(column_existence_long_filter_test,
                          ::testing::Combine(::testing::ValuesIn(kTestDirs),
                                             ::testing::Values("1_4",
                                                               "1_4simd")),
-  column_existence_long_filter_test_case::to_string);
+                         column_existence_long_filter_test_case::to_string);
 
 }  // namespace

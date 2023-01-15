@@ -694,8 +694,8 @@ bool insert(irs::IndexWriter& writer, const Doc& doc, size_t count = 1,
 }
 
 template<typename Indexed>
-bool update(irs::IndexWriter& writer, const irs::filter& filter,
-            Indexed ibegin, Indexed iend) {
+bool update(irs::IndexWriter& writer, const irs::filter& filter, Indexed ibegin,
+            Indexed iend) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
@@ -703,8 +703,8 @@ bool update(irs::IndexWriter& writer, const irs::filter& filter,
 }
 
 template<typename Indexed, typename Stored>
-bool update(irs::IndexWriter& writer, const irs::filter& filter,
-            Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
+bool update(irs::IndexWriter& writer, const irs::filter& filter, Indexed ibegin,
+            Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
@@ -713,8 +713,8 @@ bool update(irs::IndexWriter& writer, const irs::filter& filter,
 }
 
 template<typename Indexed>
-bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
-            Indexed ibegin, Indexed iend) {
+bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter, Indexed ibegin,
+            Indexed iend) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(std::move(filter));
 
@@ -722,8 +722,8 @@ bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
 }
 
 template<typename Indexed, typename Stored>
-bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
-            Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
+bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter, Indexed ibegin,
+            Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(std::move(filter));
 

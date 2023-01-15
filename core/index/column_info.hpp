@@ -41,7 +41,6 @@ struct ColumnInfo {
   bool track_prev_doc{false};
 };
 
-using ColumnInfoProvider =
-  std::function<ColumnInfo(const std::string_view)>;
+using ColumnInfoProvider = std::function<ColumnInfo(const std::string_view)>;
 
 }  // namespace irs
