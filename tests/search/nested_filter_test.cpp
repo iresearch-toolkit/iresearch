@@ -1265,10 +1265,9 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
   }
 }
 
-const auto kDirectories =
-  ::testing::Values(&tests::directory<&tests::memory_directory>,
-                    &tests::directory<&tests::fs_directory>,
-                    &tests::directory<&tests::mmap_directory>);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+static const auto kDirectories = ::testing::ValuesIn(kTestDirs);
 
 INSTANTIATE_TEST_SUITE_P(
   NestedFilterTest, NestedFilterTestCase,

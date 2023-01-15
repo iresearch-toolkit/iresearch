@@ -575,11 +575,10 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  encryption_test, encryption_test_case,
-  ::testing::Values(&tests::directory<&tests::memory_directory>,
-                    &tests::directory<&tests::fs_directory>,
-                    &tests::directory<&tests::mmap_directory>),
-  tests::directory_test_case_base<>::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(encryption_test, encryption_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs)),
+                         tests::directory_test_case_base<>::to_string);
 
 }  // namespace

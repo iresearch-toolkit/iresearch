@@ -435,17 +435,14 @@ void Format15TestCase::PostingsWandSeek(
   }
 }
 
-const auto kTestValues = ::testing::Combine(
-  ::testing::Values(&tests::directory<&tests::memory_directory>,
-                    &tests::directory<&tests::fs_directory>,
-                    &tests::directory<&tests::mmap_directory>,
-                    &tests::rot13_directory<&tests::fs_directory, 16>,
-                    &tests::rot13_directory<&tests::mmap_directory, 16>,
-                    &tests::rot13_directory<&tests::memory_directory, 7>,
-                    &tests::rot13_directory<&tests::fs_directory, 7>,
-                    &tests::rot13_directory<&tests::mmap_directory, 7>),
-  ::testing::Values(tests::format_info{"1_5", "1_0"},
-                    tests::format_info{"1_5simd", "1_0"}));
+static constexpr auto kTestDirs =
+  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
+                        tests::kTypesRot13_7>();
+
+static const auto kTestValues =
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_5", "1_0"},
+                                       tests::format_info{"1_5simd", "1_0"}));
 
 // Generic tests
 using tests::format_test_case;

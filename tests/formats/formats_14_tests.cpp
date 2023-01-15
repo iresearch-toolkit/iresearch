@@ -48,21 +48,16 @@ TEST_P(format_14_test_case, write_zero_block_encryption) {
                irs::index_error);
 }
 
-const auto kDirectoriesWithEncryption =
-  ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
-                    &tests::rot13_directory<&tests::fs_directory, 16>,
-                    &tests::rot13_directory<&tests::mmap_directory, 16>,
-                    &tests::rot13_directory<&tests::memory_directory, 7>,
-                    &tests::rot13_directory<&tests::fs_directory, 7>,
-                    &tests::rot13_directory<&tests::mmap_directory, 7>);
+static constexpr auto kTestDirsWithEncryption =
+  tests::getDirectories<tests::kTypesRot13_16 | tests::kTypesRot13_7>();
+static const auto kDirectoriesWithEncryption =
+  ::testing::ValuesIn(kTestDirsWithEncryption);
 
-const auto kDirectories =
-  ::testing::Values(&tests::directory<&tests::memory_directory>,
-                    &tests::directory<&tests::fs_directory>,
-                    &tests::directory<&tests::mmap_directory>);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+static const auto kDirectories = ::testing::ValuesIn(kTestDirs);
 
-const auto kFormats = ::testing::Values(tests::format_info{"1_4", "1_0"},
-                                        tests::format_info{"1_4simd", "1_0"});
+static const auto kFormats = ::testing::Values(
+  tests::format_info{"1_4", "1_0"}, tests::format_info{"1_4simd", "1_0"});
 
 // 1.4 specific tests
 INSTANTIATE_TEST_SUITE_P(format_14_test, format_14_test_case,

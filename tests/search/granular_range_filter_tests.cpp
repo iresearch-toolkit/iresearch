@@ -2406,13 +2406,12 @@ TEST_P(granular_range_filter_test_case, visit) {
   visitor.reset();
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  granular_range_filter_test, granular_range_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  granular_range_filter_test_case::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(granular_range_filter_test,
+                         granular_range_filter_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_0")),
+                         granular_range_filter_test_case::to_string);
 
 }  // namespace

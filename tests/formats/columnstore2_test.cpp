@@ -2923,17 +2923,16 @@ TEST_P(columnstore2_test_case, empty_columns) {
   ASSERT_EQ(0, count);
 }
 
+static constexpr auto kTestDirs =
+  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16>();
+
 INSTANTIATE_TEST_SUITE_P(
   columnstore2_test, columnstore2_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>,
-                      &tests::rot13_directory<&tests::memory_directory, 16>,
-                      &tests::rot13_directory<&tests::fs_directory, 16>,
-                      &tests::rot13_directory<&tests::mmap_directory, 16>),
-    ::testing::Values(irs::ColumnHint::kNormal, irs::ColumnHint::kConsolidation,
-                      irs::ColumnHint::kMask, irs::ColumnHint::kPrevDoc),
-    ::testing::Values(irs::columnstore2::Version::kMin),
-    ::testing::Values(true, false)),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(irs::ColumnHint::kNormal,
+                                       irs::ColumnHint::kConsolidation,
+                                       irs::ColumnHint::kMask,
+                                       irs::ColumnHint::kPrevDoc),
+                     ::testing::Values(irs::columnstore2::Version::kMin),
+                     ::testing::Values(true, false)),
   &columnstore2_test_case::to_string);

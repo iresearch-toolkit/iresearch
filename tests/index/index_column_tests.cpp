@@ -8292,13 +8292,12 @@ TEST_P(index_column_test_case, read_empty_doc_attributes) {
   ASSERT_EQ(nullptr, column);
 }
 
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
 INSTANTIATE_TEST_SUITE_P(
   index_column_test, index_column_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"})),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_0"},
+                                       tests::format_info{"1_1", "1_0"},
+                                       tests::format_info{"1_2", "1_0"})),
   index_column_test_case::to_string);

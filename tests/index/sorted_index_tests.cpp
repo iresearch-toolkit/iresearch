@@ -2713,14 +2713,12 @@ const auto kSortedIndexTestCaseValues = ::testing::Values(
   tests::format_info{"1_5", "1_0"});
 #endif
 
-INSTANTIATE_TEST_SUITE_P(
-  SortedIndexTest, SortedIndexTestCase,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    kSortedIndexTestCaseValues),
-  SortedIndexTestCase::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(SortedIndexTest, SortedIndexTestCase,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            kSortedIndexTestCaseValues),
+                         SortedIndexTestCase::to_string);
 
 struct SortedIndexStressTestCase : SortedIndexTestCase {};
 

@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <array>
+#include <bit>
 #include <memory>
 
 #include "store/caching_directory.hpp"
@@ -137,6 +139,48 @@ std::pair<std::shared_ptr<irs::directory>, std::string> rot13_directory(
 
 using dir_param_f =
   std::pair<std::shared_ptr<irs::directory>, std::string> (*)(const test_base*);
+
+enum Types : uint64_t {
+  kTypesDefault = 1 << 0,
+  kTypesRot13_16 = 1 << 2,
+  kTypesRot13_7 = 1 << 3,
+};
+
+template<uint64_t Type>
+constexpr auto getDirectories() {
+  constexpr auto kCount = std::popcount(Type);
+#ifdef IRESEARCH_URING
+  std::array<dir_param_f, kCount * 4> data;
+#else
+  std::array<dir_param_f, kCount * 3> data;
+#endif
+  auto* p = data.data();
+  if constexpr (Type & kTypesDefault) {
+    *p++ = &tests::directory<&tests::memory_directory>;
+#ifdef IRESEARCH_URING
+    *p++ = &tests::directory<&tests::async_directory>;
+#endif
+    *p++ = &tests::directory<&tests::mmap_directory>;
+    *p++ = &tests::directory<&tests::fs_directory>;
+  }
+  if constexpr (Type & kTypesRot13_16) {
+    *p++ = &tests::rot13_directory<&tests::memory_directory, 16>;
+#ifdef IRESEARCH_URING
+    *p++ = &tests::rot13_directory<&tests::async_directory, 16>;
+#endif
+    *p++ = &tests::rot13_directory<&tests::mmap_directory, 16>;
+    *p++ = &tests::rot13_directory<&tests::fs_directory, 16>;
+  }
+  if constexpr (Type & kTypesRot13_7) {
+    *p++ = &tests::rot13_directory<&tests::memory_directory, 7>;
+#ifdef IRESEARCH_URING
+    *p++ = &tests::rot13_directory<&tests::async_directory, 7>;
+#endif
+    *p++ = &tests::rot13_directory<&tests::mmap_directory, 7>;
+    *p++ = &tests::rot13_directory<&tests::fs_directory, 7>;
+  }
+  return data;
+}
 
 template<typename... Args>
 class directory_test_case_base

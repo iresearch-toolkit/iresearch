@@ -288,15 +288,14 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   CheckQuery(proxy, Docs{1, 2, 33, 34}, rdr);
 }
 
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
 INSTANTIATE_TEST_SUITE_P(
   proxy_filter_real_filter, proxy_filter_real_filter,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"},
-                      tests::format_info{"1_3", "1_0"},
-                      tests::format_info{"1_4", "1_4simd"})));
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_0"},
+                                       tests::format_info{"1_1", "1_0"},
+                                       tests::format_info{"1_2", "1_0"},
+                                       tests::format_info{"1_3", "1_0"},
+                                       tests::format_info{"1_4", "1_4simd"})));
 }  // namespace

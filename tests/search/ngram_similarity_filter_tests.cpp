@@ -1245,14 +1245,13 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
 
 #endif
 
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
 INSTANTIATE_TEST_SUITE_P(
   ngram_similarity_test, ngram_similarity_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_3", "1_0"})),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_0"},
+                                       tests::format_info{"1_3", "1_0"})),
   ngram_similarity_filter_test_case::to_string);
 
 }  // namespace tests

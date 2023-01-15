@@ -1117,13 +1117,11 @@ const auto kNorm2TestCaseValues =
   ::testing::Values(tests::format_info{"1_4", "1_0"});
 #endif
 
-INSTANTIATE_TEST_SUITE_P(
-  Norm2Test, Norm2TestCase,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    kNorm2TestCaseValues),
-  Norm2TestCase::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(Norm2Test, Norm2TestCase,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            kNorm2TestCaseValues),
+                         Norm2TestCase::to_string);
 
 }  // namespace

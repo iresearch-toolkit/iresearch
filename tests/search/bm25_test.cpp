@@ -1582,14 +1582,12 @@ TEST_P(bm25_test_case, test_order) {
 
 #endif  // IRESEARCH_DLL
 
-INSTANTIATE_TEST_SUITE_P(
-  bm25_test, bm25_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  bm25_test_case::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(bm25_test, bm25_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_0")),
+                         bm25_test_case::to_string);
 
 class bm25_test_case_14 : public bm25_test_case {};
 
@@ -1597,13 +1595,9 @@ TEST_P(bm25_test_case_14, test_query_norms) {
   test_query_norms(irs::type<irs::Norm2>::id(), &irs::Norm2::MakeWriter);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  bm25_test_14, bm25_test_case_14,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_4", "1_5")),
-  bm25_test_case_14::to_string);
+INSTANTIATE_TEST_SUITE_P(bm25_test_14, bm25_test_case_14,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_4", "1_5")),
+                         bm25_test_case_14::to_string);
 
 }  // namespace
