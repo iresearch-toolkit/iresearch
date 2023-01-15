@@ -1397,7 +1397,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
         some_docs_field_{some_docs_field},
         with_field_{with_field},
         max_doc_id_(total_docs + 1) {}
-    const tests::document* next() override {
+    const tests::document* next() final {
       if (produced_docs_ >= max_doc_id_) {
         return nullptr;
       }
@@ -1414,7 +1414,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
       }
       return &doc_;
     }
-    void reset() override {
+    void reset() final {
       produced_docs_ = 0;
       span_index_ = 0;
     }

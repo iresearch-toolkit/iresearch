@@ -4427,7 +4427,7 @@ class fs_directory_test : public test_base {
  public:
   fs_directory_test() : name_("directory") {}
 
-  void SetUp() override {
+  void SetUp() final {
     test_base::SetUp();
     path_ = test_case_dir() / name_;
 
@@ -4435,7 +4435,7 @@ class fs_directory_test : public test_base {
     dir_ = std::make_shared<FSDirectory>(path_);
   }
 
-  void TearDown() override {
+  void TearDown() final {
     dir_ = nullptr;
     irs::file_utils::remove(path_.c_str());
     test_base::TearDown();

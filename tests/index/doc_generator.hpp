@@ -72,15 +72,15 @@ class field_base : public ifield {
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
 
-  irs::features_t features() const noexcept override {
+  irs::features_t features() const noexcept final {
     return {features_.data(), features_.size()};
   }
 
-  irs::IndexFeatures index_features() const noexcept override {
+  irs::IndexFeatures index_features() const noexcept final {
     return index_features_;
   }
 
-  std::string_view name() const noexcept override { return name_; }
+  std::string_view name() const noexcept final { return name_; }
 
   void name(std::string name) noexcept { name_ = std::move(name); }
 
@@ -99,10 +99,10 @@ class long_field : public field_base {
 
   long_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
@@ -127,10 +127,10 @@ class int_field : public field_base {
   }
   int_field(int_field&& other) = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable std::shared_ptr<irs::numeric_token_stream> stream_;
@@ -147,10 +147,10 @@ class double_field : public field_base {
 
   double_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
@@ -167,10 +167,10 @@ class float_field : public field_base {
 
   float_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
@@ -185,7 +185,7 @@ class binary_field : public field_base {
  public:
   binary_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   const irs::bstring& value() const { return value_; }
   void value(irs::bytes_view value) { value_ = value; }
   void value(irs::bstring&& value) { value_ = std::move(value); }
@@ -195,7 +195,7 @@ class binary_field : public field_base {
     value_ = bytes(first, last);
   }
 
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;
@@ -307,7 +307,7 @@ class limiting_doc_generator : public doc_generator_base {
   limiting_doc_generator(doc_generator_base& gen, size_t offset, size_t limit)
     : gen_(&gen), begin_(offset), end_(offset + limit) {}
 
-  const tests::document* next() override {
+  const tests::document* next() final {
     while (pos_ < begin_) {
       if (!gen_->next()) {
         // exhausted
@@ -332,7 +332,7 @@ class limiting_doc_generator : public doc_generator_base {
     return nullptr;
   }
 
-  void reset() override {
+  void reset() final {
     pos_ = 0;
     gen_->reset();
   }
@@ -359,8 +359,8 @@ class delim_doc_generator : public doc_generator_base {
   delim_doc_generator(const std::filesystem::path& file, doc_template& doc,
                       uint32_t delim = 0x0009);
 
-  const tests::document* next() override;
-  void reset() override;
+  const tests::document* next() final;
+  void reset() final;
 
  private:
   std::string str_;
@@ -380,8 +380,8 @@ class csv_doc_generator : public doc_generator_base {
   };
 
   csv_doc_generator(const std::filesystem::path& file, doc_template& doc);
-  const tests::document* next() override;
-  void reset() override;
+  const tests::document* next() final;
+  void reset() final;
   bool skip();  // skip a single document, return if anything was skiped, false
                 // == EOF
 
@@ -491,8 +491,8 @@ class json_doc_generator : public doc_generator_base {
 
   json_doc_generator(json_doc_generator&& rhs) noexcept;
 
-  const tests::document* next() override;
-  void reset() override;
+  const tests::document* next() final;
+  void reset() final;
 
  private:
   json_doc_generator(const json_doc_generator&) = delete;
@@ -591,8 +591,8 @@ class string_field : public tests::field_base {
   void value(std::string_view str);
   std::string_view value() const { return value_; }
 
-  irs::token_stream& get_tokens() const override;
-  bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const final;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;
@@ -614,8 +614,8 @@ class string_view_field : public tests::field_base {
   void value(std::string_view str);
   std::string_view value() const { return value_; }
 
-  irs::token_stream& get_tokens() const override;
-  bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const final;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;

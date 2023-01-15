@@ -81,7 +81,7 @@ struct basic_sort : irs::sort {
   struct prepared_sort final : irs::PreparedSortBase<void> {
     explicit prepared_sort(size_t idx) : idx(idx) {}
 
-    irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const final {
       return irs::IndexFeatures::NONE;
     }
 
@@ -89,7 +89,7 @@ struct basic_sort : irs::sort {
                                               const irs::term_reader&,
                                               const irs::byte_type*,
                                               const irs::attribute_provider&,
-                                              irs::score_t) const override {
+                                              irs::score_t) const final {
       return {std::unique_ptr<irs::score_ctx>(new basic_scorer(idx)),
               [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
                 ASSERT_NE(nullptr, res);
@@ -102,7 +102,7 @@ struct basic_sort : irs::sort {
     size_t idx;
   };
 
-  irs::sort::prepared::ptr prepare() const override {
+  irs::sort::prepared::ptr prepare() const final {
     return irs::sort::prepared::ptr(new prepared_sort(idx));
   }
 
@@ -157,9 +157,9 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
 #pragma GCC diagnostic pop
 #endif
 
-  irs::doc_id_t value() const override { return doc_.value; }
+  irs::doc_id_t value() const final { return doc_.value; }
 
-  bool next() override {
+  bool next() final {
     if (first_ == last_) {
       doc_.value = irs::doc_limits::eof();
       return false;
@@ -170,12 +170,12 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
     return true;
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }
 
-  irs::doc_id_t seek(irs::doc_id_t doc) override {
+  irs::doc_id_t seek(irs::doc_id_t doc) final {
     if (irs::doc_limits::eof(doc_.value) || doc <= doc_.value) {
       return doc_.value;
     }
@@ -257,14 +257,14 @@ struct boosted : public irs::filter {
       : irs::filter::prepared(boost), docs(docs) {}
 
     irs::doc_iterator::ptr execute(
-      const irs::ExecutionContext& ctx) const override {
+      const irs::ExecutionContext& ctx) const final {
       boosted::execute_count++;
       return irs::memory::make_managed<basic_doc_iterator>(
         docs.begin(), docs.end(), stats.c_str(), ctx.scorers, boost());
     }
 
     void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
-               irs::score_t) const override {
+               irs::score_t) const final {
       // No terms to visit
     }
 
@@ -274,7 +274,7 @@ struct boosted : public irs::filter {
 
   irs::filter::prepared::ptr prepare(
     const irs::IndexReader&, const irs::Order&, irs::score_t boost,
-    const irs::attribute_provider* /*ctx*/) const override {
+    const irs::attribute_provider* /*ctx*/) const final {
     return irs::memory::make_managed<boosted::prepared>(docs,
                                                         this->boost() * boost);
   }
@@ -1130,17 +1130,16 @@ namespace detail {
 
 struct unestimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
-    irs::doc_id_t value() const override {
+    irs::doc_id_t value() const final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    bool next() override { return false; }
-    irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() final { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       return type == irs::type<irs::document>::id() ? &doc : nullptr;
     }
 
@@ -1148,19 +1147,18 @@ struct unestimated : public irs::filter {
   };
 
   struct prepared : public irs::filter::prepared {
-    irs::doc_iterator::ptr execute(
-      const irs::ExecutionContext&) const override {
+    irs::doc_iterator::ptr execute(const irs::ExecutionContext&) const final {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
     void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
-               irs::score_t) const override {
+               irs::score_t) const final {
       // No terms to visit
     }
   };
 
   filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
-                                const irs::attribute_provider*) const override {
+                                const irs::attribute_provider*) const final {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
@@ -1175,17 +1173,16 @@ struct estimated : public irs::filter {
         return est;
       });
     }
-    irs::doc_id_t value() const override {
+    irs::doc_id_t value() const final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    bool next() override { return false; }
-    irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() final { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       if (type == irs::type<irs::cost>::id()) {
         return &cost;
       }
@@ -1201,13 +1198,12 @@ struct estimated : public irs::filter {
     explicit prepared(irs::cost::cost_t est, bool* evaluated)
       : evaluated(evaluated), est(est) {}
 
-    irs::doc_iterator::ptr execute(
-      const irs::ExecutionContext&) const override {
+    irs::doc_iterator::ptr execute(const irs::ExecutionContext&) const final {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
 
     void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
-               irs::score_t) const override {
+               irs::score_t) const final {
       // No terms to visit
     }
 
@@ -1217,7 +1213,7 @@ struct estimated : public irs::filter {
 
   filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
-                                const irs::attribute_provider*) const override {
+                                const irs::attribute_provider*) const final {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
   }
 

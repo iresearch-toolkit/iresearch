@@ -59,15 +59,15 @@ class bytes_input final : public data_input, public bytes_view {
     pos_ = this->data() + pos;
   }
 
-  size_t file_pointer() const override {
+  size_t file_pointer() const final {
     return std::distance(this->data(), pos_);
   }
 
-  size_t length() const override { return this->size(); }
+  size_t length() const final { return this->size(); }
 
-  bool eof() const override { return pos_ >= (this->data() + this->size()); }
+  bool eof() const final { return pos_ >= (this->data() + this->size()); }
 
-  const byte_type* read_buffer(size_t /*count*/, BufferHint /*hint*/) override {
+  const byte_type* read_buffer(size_t /*count*/, BufferHint /*hint*/) final {
     return nullptr;
   }
 

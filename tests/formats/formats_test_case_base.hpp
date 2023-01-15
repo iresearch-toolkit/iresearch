@@ -51,7 +51,7 @@ class format_test_case : public index_test_base {
       }
     }
 
-    attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       if (irs::type<irs::offset>::id() == type) {
         return poffs_;
       }
@@ -63,7 +63,7 @@ class format_test_case : public index_test_base {
       return nullptr;
     }
 
-    bool next() override {
+    bool next() final {
       if (value_ == end_) {
         value_ = irs::pos_limits::eof();
 
@@ -87,7 +87,7 @@ class format_test_case : public index_test_base {
       offs_.clear();
     }
 
-    void reset() override {
+    void reset() final {
       IRS_ASSERT(false);  // unsupported
     }
 
@@ -121,7 +121,7 @@ class format_test_case : public index_test_base {
       }
     }
 
-    bool next() override {
+    bool next() final {
       if (!irs::doc_limits::valid(doc_.value)) {
         callback_(*this);
       }
@@ -143,15 +143,14 @@ class format_test_case : public index_test_base {
       return true;
     }
 
-    irs::doc_id_t value() const override { return doc_.value; }
+    irs::doc_id_t value() const final { return doc_.value; }
 
-    irs::doc_id_t seek(irs::doc_id_t target) override {
+    irs::doc_id_t seek(irs::doc_id_t target) final {
       irs::seek(*this, target);
       return value();
     }
 
-    irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       const auto it = attrs_.find(type);
       return it == attrs_.end() ? nullptr : it->second;
     }
@@ -203,7 +202,7 @@ class format_test_case : public index_test_base {
           docs_type::const_iterator doc_end)
       : docs_(doc_begin, doc_end), next_(begin), end_(end) {}
 
-    bool next() override {
+    bool next() final {
       if (next_ == end_) {
         return false;
       }
@@ -213,16 +212,16 @@ class format_test_case : public index_test_base {
       return true;
     }
 
-    irs::bytes_view value() const override { return val_; }
+    irs::bytes_view value() const final { return val_; }
 
     irs::doc_iterator::ptr postings(
-      irs::IndexFeatures /*features*/) const override {
+      irs::IndexFeatures /*features*/) const final {
       return irs::memory::make_managed<format_test_case::postings>(docs_);
     }
 
-    void read() override {}
+    void read() final {}
 
-    irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
       return nullptr;
     }
 

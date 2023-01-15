@@ -460,7 +460,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
       buffered_index_output::reset(buf_, sizeof buf_);
     }
 
-    int64_t checksum() const override { return out_->checksum(); }
+    int64_t checksum() const final { return out_->checksum(); }
 
     const index_output& stream() const { return *out_; }
 
@@ -469,7 +469,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     size_t last_written_size() const noexcept { return last_written_size_; }
 
    protected:
-    void flush_buffer(const irs::byte_type* b, size_t size) override {
+    void flush_buffer(const irs::byte_type* b, size_t size) final {
       last_written_size_ = size;
       out_->write_bytes(b, size);
     }
@@ -487,13 +487,13 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
 
     const index_input& stream() { return *in_; }
 
-    size_t length() const override { return in_->length(); }
+    size_t length() const final { return in_->length(); }
 
-    index_input::ptr dup() const override { throw irs::not_impl_error(); }
+    index_input::ptr dup() const final { throw irs::not_impl_error(); }
 
-    index_input::ptr reopen() const override { throw irs::not_impl_error(); }
+    index_input::ptr reopen() const final { throw irs::not_impl_error(); }
 
-    int64_t checksum(size_t offset) const override {
+    int64_t checksum(size_t offset) const final {
       return in_->checksum(offset);
     }
 
@@ -502,9 +502,9 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     size_t last_read_size() const noexcept { return last_read_size_; }
 
    protected:
-    void seek_internal(size_t pos) override { in_->seek(pos); }
+    void seek_internal(size_t pos) final { in_->seek(pos); }
 
-    size_t read_internal(irs::byte_type* b, size_t size) override {
+    size_t read_internal(irs::byte_type* b, size_t size) final {
       last_read_size_ = size;
       return in_->read_bytes(b, size);
     }

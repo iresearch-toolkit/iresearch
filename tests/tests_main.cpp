@@ -94,7 +94,7 @@ irs::mmap_utils::mmap_handle icu_data;
 struct IterationTracker final : ::testing::Environment {
   static uint32_t sIteration;
 
-  void SetUp() override { ++sIteration; }
+  void SetUp() final { ++sIteration; }
 };
 
 uint32_t IterationTracker::sIteration = (std::numeric_limits<uint32_t>::max)();

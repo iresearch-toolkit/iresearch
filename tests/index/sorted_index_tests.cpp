@@ -31,27 +31,27 @@
 namespace {
 
 struct EmptyField : tests::ifield {
-  std::string_view name() const override {
+  std::string_view name() const final {
     EXPECT_FALSE(true);
     throw irs::not_impl_error{};
   }
 
-  irs::token_stream& get_tokens() const override {
+  irs::token_stream& get_tokens() const final {
     EXPECT_FALSE(true);
     throw irs::not_impl_error{};
   }
 
-  irs::features_t features() const override {
+  irs::features_t features() const final {
     EXPECT_FALSE(true);
     throw irs::not_impl_error{};
   }
 
-  irs::IndexFeatures index_features() const override {
+  irs::IndexFeatures index_features() const final {
     EXPECT_FALSE(true);
     throw irs::not_impl_error{};
   }
 
-  bool write(irs::data_output&) const override { return false; }
+  bool write(irs::data_output&) const final { return false; }
 
   mutable irs::null_token_stream stream_;
 };
@@ -71,7 +71,7 @@ class SortedEuroparlDocTemplate : public tests::europarl_doc_template {
     std::string field, std::vector<irs::type_info::type_id> field_features)
     : field_{std::move(field)}, field_features_{std::move(field_features)} {}
 
-  void init() override {
+  void init() final {
     indexed.push_back(std::make_shared<tests::string_field>(
       "title", irs::IndexFeatures::ALL, field_features_));
     indexed.push_back(

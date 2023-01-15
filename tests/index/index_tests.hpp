@@ -51,49 +51,48 @@ class directory_mock : public irs::directory {
 
   using directory::attributes;
 
-  irs::directory_attributes& attributes() noexcept override {
+  irs::directory_attributes& attributes() noexcept final {
     return impl_.attributes();
   }
 
-  irs::index_output::ptr create(std::string_view name) noexcept override {
+  irs::index_output::ptr create(std::string_view name) noexcept final {
     return impl_.create(name);
   }
 
-  bool exists(bool& result, std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept final {
     return impl_.exists(result, name);
   }
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept final {
     return impl_.length(result, name);
   }
 
-  irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
+  irs::index_lock::ptr make_lock(std::string_view name) noexcept final {
     return impl_.make_lock(name);
   }
 
-  bool mtime(std::time_t& result,
-             std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result, std::string_view name) const noexcept final {
     return impl_.mtime(result, name);
   }
 
   irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept override {
+                             irs::IOAdvice advice) const noexcept final {
     return impl_.open(name, advice);
   }
 
-  bool remove(std::string_view name) noexcept override {
+  bool remove(std::string_view name) noexcept final {
     return impl_.remove(name);
   }
 
-  bool rename(std::string_view src, std::string_view dst) noexcept override {
+  bool rename(std::string_view src, std::string_view dst) noexcept final {
     return impl_.rename(src, dst);
   }
 
-  bool sync(std::span<const std::string_view> files) noexcept override {
+  bool sync(std::span<const std::string_view> files) noexcept final {
     return impl_.sync(files);
   }
 
-  bool visit(const irs::directory::visitor_f& visitor) const override {
+  bool visit(const irs::directory::visitor_f& visitor) const final {
     return impl_.visit(visitor);
   }
 
@@ -145,7 +144,7 @@ struct callback_directory : directory_mock {
   explicit callback_directory(irs::directory& impl, AfterCallback&& p)
     : tests::directory_mock(impl), after(p) {}
 
-  irs::index_output::ptr create(std::string_view name) noexcept override {
+  irs::index_output::ptr create(std::string_view name) noexcept final {
     auto stream = tests::directory_mock::create(name);
     after();
     return stream;
@@ -216,7 +215,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     tests::assert_columnstore(open_reader().GetImpl(), index(), skip);
   }
 
-  void SetUp() override {
+  void SetUp() final {
     test_base::SetUp();
 
     // set directory
@@ -228,7 +227,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     ASSERT_NE(nullptr, codec_);
   }
 
-  void TearDown() override {
+  void TearDown() final {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();

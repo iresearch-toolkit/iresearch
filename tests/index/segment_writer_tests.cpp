@@ -63,11 +63,11 @@ class segment_writer_tests : public test_base {
 struct token_stream_mock final : public irs::token_stream {
   std::map<irs::type_info::type_id, irs::attribute*> attrs;
   size_t token_count;
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     const auto it = attrs.find(type);
     return it == attrs.end() ? nullptr : it->second;
   }
-  bool next() override { return --token_count; }
+  bool next() final { return --token_count; }
 };
 
 }  // namespace

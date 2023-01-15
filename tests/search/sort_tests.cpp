@@ -62,21 +62,19 @@ struct aligned_scorer : public irs::sort {
                       bool empty_scorer) noexcept
       : empty_scorer_(empty_scorer), index_features_(index_features) {}
 
-    field_collector::ptr prepare_field_collector() const override {
+    field_collector::ptr prepare_field_collector() const final {
       return nullptr;
     }
-    term_collector::ptr prepare_term_collector() const override {
-      return nullptr;
-    }
+    term_collector::ptr prepare_term_collector() const final { return nullptr; }
     void collect(irs::byte_type*, const irs::IndexReader&,
-                 const field_collector*, const term_collector*) const override {
+                 const field_collector*, const term_collector*) const final {
       // NOOP
     }
     virtual irs::ScoreFunction prepare_scorer(
       const irs::SubReader& /*segment*/, const irs::term_reader& /*field*/,
       const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
-      irs::score_t /*boost*/) const override {
+      irs::score_t /*boost*/) const final {
       if (empty_scorer_) {
         return {nullptr, nullptr};
       }
@@ -84,7 +82,7 @@ struct aligned_scorer : public irs::sort {
       return {nullptr, [](irs::score_ctx*, irs::score_t*) noexcept {}};
     }
 
-    irs::IndexFeatures features() const override { return index_features_; }
+    irs::IndexFeatures features() const final { return index_features_; }
 
     irs::IndexFeatures index_features_;
     bool empty_scorer_;
@@ -102,7 +100,7 @@ struct aligned_scorer : public irs::sort {
       index_features_(index_features_),
       empty_scorer_(empty_scorer) {}
 
-  irs::sort::prepared::ptr prepare() const override {
+  irs::sort::prepared::ptr prepare() const final {
     return std::make_unique<aligned_scorer<StatsType>::prepared>(
       index_features_, empty_scorer_);
   }
@@ -113,7 +111,7 @@ struct aligned_scorer : public irs::sort {
 
 struct dummy_scorer0 : public irs::sort {
   dummy_scorer0() : irs::sort(irs::type<dummy_scorer0>::get()) {}
-  prepared::ptr prepare() const override { return nullptr; }
+  prepared::ptr prepare() const final { return nullptr; }
 };
 
 }  // namespace

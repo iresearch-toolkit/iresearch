@@ -39,46 +39,42 @@ class directory_utils_tests : public ::testing::Test {
 
     using directory::attributes;
 
-    irs::directory_attributes& attributes() noexcept override { return attrs_; }
+    irs::directory_attributes& attributes() noexcept final { return attrs_; }
 
-    irs::index_output::ptr create(std::string_view) noexcept override {
+    irs::index_output::ptr create(std::string_view) noexcept final {
       return nullptr;
     }
 
-    bool exists(bool&, std::string_view) const noexcept override {
+    bool exists(bool&, std::string_view) const noexcept final { return false; }
+
+    bool length(uint64_t&, std::string_view) const noexcept final {
       return false;
     }
 
-    bool length(uint64_t&, std::string_view) const noexcept override {
-      return false;
-    }
-
-    irs::index_lock::ptr make_lock(std::string_view) noexcept override {
+    irs::index_lock::ptr make_lock(std::string_view) noexcept final {
       return nullptr;
     }
 
-    bool mtime(std::time_t&, std::string_view) const noexcept override {
+    bool mtime(std::time_t&, std::string_view) const noexcept final {
       return false;
     }
 
     irs::index_input::ptr open(std::string_view,
-                               irs::IOAdvice) const noexcept override {
+                               irs::IOAdvice) const noexcept final {
       return nullptr;
     }
 
-    bool remove(std::string_view) noexcept override { return false; }
+    bool remove(std::string_view) noexcept final { return false; }
 
-    bool rename(std::string_view, std::string_view) noexcept override {
+    bool rename(std::string_view, std::string_view) noexcept final {
       return false;
     }
 
-    bool sync(std::span<const std::string_view>) noexcept override {
+    bool sync(std::span<const std::string_view>) noexcept final {
       return false;
     }
 
-    bool visit(const irs::directory::visitor_f&) const override {
-      return false;
-    }
+    bool visit(const irs::directory::visitor_f&) const final { return false; }
 
    private:
     irs::directory_attributes attrs_{};
@@ -91,7 +87,7 @@ class directory_utils_tests : public ::testing::Test {
       : tests::directory_mock(impl), after(p) {}
 
     irs::index_input::ptr open(std::string_view name,
-                               irs::IOAdvice advice) const noexcept override {
+                               irs::IOAdvice advice) const noexcept final {
       auto stream = tests::directory_mock::open(name, advice);
       after();
       return stream;
@@ -286,32 +282,30 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
   struct error_directory : public irs::directory {
     irs::directory_attributes attrs{};
-    irs::directory_attributes& attributes() noexcept override { return attrs; }
-    irs::index_output::ptr create(std::string_view) noexcept override {
+    irs::directory_attributes& attributes() noexcept final { return attrs; }
+    irs::index_output::ptr create(std::string_view) noexcept final {
       return nullptr;
     }
-    bool exists(bool&, std::string_view) const noexcept override {
+    bool exists(bool&, std::string_view) const noexcept final { return false; }
+    bool length(uint64_t&, std::string_view) const noexcept final {
       return false;
     }
-    bool length(uint64_t&, std::string_view) const noexcept override {
-      return false;
-    }
-    bool visit(const visitor_f&) const override { return false; }
-    irs::index_lock::ptr make_lock(std::string_view) noexcept override {
+    bool visit(const visitor_f&) const final { return false; }
+    irs::index_lock::ptr make_lock(std::string_view) noexcept final {
       return nullptr;
     }
-    bool mtime(std::time_t&, std::string_view) const noexcept override {
+    bool mtime(std::time_t&, std::string_view) const noexcept final {
       return false;
     }
     irs::index_input::ptr open(std::string_view,
-                               irs::IOAdvice) const noexcept override {
+                               irs::IOAdvice) const noexcept final {
       return nullptr;
     }
-    bool remove(std::string_view) noexcept override { return false; }
-    bool rename(std::string_view, std::string_view) noexcept override {
+    bool remove(std::string_view) noexcept final { return false; }
+    bool rename(std::string_view, std::string_view) noexcept final {
       return false;
     }
-    bool sync(std::span<const std::string_view>) noexcept override {
+    bool sync(std::span<const std::string_view>) noexcept final {
       return false;
     }
   } error_dir;

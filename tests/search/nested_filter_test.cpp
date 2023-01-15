@@ -84,15 +84,13 @@ class PrevDocWrapper : public irs::doc_iterator {
                     nullptr);
   }
 
-  irs::doc_id_t value() const override { return it_->value(); }
+  irs::doc_id_t value() const final { return it_->value(); }
 
-  irs::doc_id_t seek(irs::doc_id_t target) override {
-    return it_->seek(target);
-  }
+  irs::doc_id_t seek(irs::doc_id_t target) final { return it_->seek(target); }
 
-  bool next() override { return it_->next(); }
+  bool next() final { return it_->next(); }
 
-  irs::attribute* get_mutable(irs::type_info::type_id id) override {
+  irs::attribute* get_mutable(irs::type_info::type_id id) final {
     if (irs::type<irs::prev_doc>::id() == id) {
       return &prev_doc_;
     }
@@ -109,7 +107,7 @@ struct DocIdScorer : irs::sort {
   DocIdScorer() : irs::sort(irs::type<DocIdScorer>::get()) {}
 
   struct Prepared final : irs::PreparedSortBase<void> {
-    irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const final {
       return irs::IndexFeatures::NONE;
     }
 
@@ -117,7 +115,7 @@ struct DocIdScorer : irs::sort {
                                       const irs::term_reader&,
                                       const irs::byte_type*,
                                       const irs::attribute_provider& attrs,
-                                      irs::score_t) const override {
+                                      irs::score_t) const final {
       struct ScorerContext final : irs::score_ctx {
         explicit ScorerContext(const irs::document* doc) noexcept : doc{doc} {}
 
@@ -137,7 +135,7 @@ struct DocIdScorer : irs::sort {
     }
   };
 
-  irs::sort::prepared::ptr prepare() const override {
+  irs::sort::prepared::ptr prepare() const final {
     return std::make_unique<Prepared>();
   }
 };

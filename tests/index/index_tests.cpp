@@ -2156,7 +2156,7 @@ class index_test_case : public tests::index_test_base {
       override_sync_directory(irs::directory& impl, sync_f&& sync)
         : directory_mock(impl), sync_(std::move(sync)) {}
 
-      bool sync(std::span<const std::string_view> files) noexcept override {
+      bool sync(std::span<const std::string_view> files) noexcept final {
         return std::all_of(std::begin(files), std::end(files),
                            [this](std::string_view name) mutable noexcept {
                              try {
@@ -5748,11 +5748,11 @@ TEST_P(index_test_case, doc_update) {
      public:
       irs::string_token_stream tokens_;
       bool write_result_;
-      bool write(irs::data_output& out) const override {
+      bool write(irs::data_output& out) const final {
         out.write_byte(1);
         return write_result_;
       }
-      irs::token_stream& get_tokens() const override {
+      irs::token_stream& get_tokens() const final {
         return const_cast<test_field*>(this)->tokens_;
       }
     };

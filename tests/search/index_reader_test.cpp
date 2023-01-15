@@ -78,12 +78,12 @@ TEST(directory_reader_test, open_empty_index) {
 TEST(directory_reader_test, open_newest_index) {
   struct test_index_meta_reader : public irs::index_meta_reader {
     bool last_segments_file(const irs::directory&,
-                            std::string& out) const override {
+                            std::string& out) const final {
       out = segments_file;
       return true;
     }
     void read(const irs::directory& /*dir*/, irs::IndexMeta& /*meta*/,
-              std::string_view filename = std::string_view{}) override {
+              std::string_view filename = std::string_view{}) final {
       read_file.assign(filename.data(), filename.size());
     };
     std::string segments_file;
@@ -93,33 +93,33 @@ TEST(directory_reader_test, open_newest_index) {
    public:
     mutable test_index_meta_reader index_meta_reader;
     test_format(const irs::type_info& type) : irs::format(type) {}
-    irs::index_meta_writer::ptr get_index_meta_writer() const override {
+    irs::index_meta_writer::ptr get_index_meta_writer() const final {
       return nullptr;
     }
-    irs::index_meta_reader::ptr get_index_meta_reader() const override {
+    irs::index_meta_reader::ptr get_index_meta_reader() const final {
       return irs::memory::to_managed<irs::index_meta_reader, false>(
         &index_meta_reader);
     }
-    irs::segment_meta_writer::ptr get_segment_meta_writer() const override {
+    irs::segment_meta_writer::ptr get_segment_meta_writer() const final {
       return nullptr;
     }
-    irs::segment_meta_reader::ptr get_segment_meta_reader() const override {
+    irs::segment_meta_reader::ptr get_segment_meta_reader() const final {
       return nullptr;
     }
-    irs::document_mask_writer::ptr get_document_mask_writer() const override {
+    irs::document_mask_writer::ptr get_document_mask_writer() const final {
       return nullptr;
     }
-    irs::document_mask_reader::ptr get_document_mask_reader() const override {
+    irs::document_mask_reader::ptr get_document_mask_reader() const final {
       return nullptr;
     }
-    irs::field_writer::ptr get_field_writer(bool) const override {
+    irs::field_writer::ptr get_field_writer(bool) const final {
       return nullptr;
     }
-    irs::field_reader::ptr get_field_reader() const override { return nullptr; }
-    irs::columnstore_writer::ptr get_columnstore_writer(bool) const override {
+    irs::field_reader::ptr get_field_reader() const final { return nullptr; }
+    irs::columnstore_writer::ptr get_columnstore_writer(bool) const final {
       return nullptr;
     }
-    irs::columnstore_reader::ptr get_columnstore_reader() const override {
+    irs::columnstore_reader::ptr get_columnstore_reader() const final {
       return nullptr;
     }
   };

@@ -44,7 +44,7 @@ class doclist_test_iterator final : public doc_iterator,
     reset();
   }
 
-  bool next() override {
+  bool next() final {
     if (resetted_) {
       resetted_ = false;
       current_ = begin_;
@@ -60,7 +60,7 @@ class doclist_test_iterator final : public doc_iterator,
     return false;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     while (doc_.value < target && next()) {
     }
     return doc_.value;
@@ -68,7 +68,7 @@ class doclist_test_iterator final : public doc_iterator,
 
   doc_id_t value() const noexcept final { return doc_.value; }
 
-  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     if (irs::type<irs::document>::id() == id) {
       return &doc_;
     }
@@ -98,12 +98,12 @@ class doclist_test_query final : public filter::prepared {
   doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
     : documents_(documents){};
 
-  doc_iterator::ptr execute(const ExecutionContext&) const override {
+  doc_iterator::ptr execute(const ExecutionContext&) const final {
     ++executes_;
     return memory::make_managed<doclist_test_iterator>(documents_);
   }
 
-  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
 
@@ -124,7 +124,7 @@ class doclist_test_filter final : public filter {
     : filter(irs::type<doclist_test_filter>::get()) {}
 
   filter::prepared::ptr prepare(const IndexReader&, const Order&, score_t boost,
-                                const attribute_provider*) const override {
+                                const attribute_provider*) const final {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);
   }
@@ -164,7 +164,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
   }
 
  protected:
-  void SetUp() override {
+  void SetUp() final {
     doclist_test_query::reset_execs();
     doclist_test_filter::reset_prepares();
   }

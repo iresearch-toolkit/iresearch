@@ -37,18 +37,18 @@ class DirectoryProxy : public Impl {
   explicit DirectoryProxy(Args&&... args) noexcept
     : Impl{std::forward<Args>(args)...} {}
 
-  bool exists(bool& result, std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept final {
     EXPECT_TRUE(expect_call_);
     return Impl::exists(result, name);
   }
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept final {
     EXPECT_TRUE(expect_call_);
     return Impl::length(result, name);
   }
 
   irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept override {
+                             irs::IOAdvice advice) const noexcept final {
     EXPECT_TRUE(expect_call_);
     return Impl::open(name, advice);
   }
@@ -74,7 +74,7 @@ class CachingDirectory
     : irs::CachingDirectoryBase<Impl, irs::index_input::ptr>{
         std::forward<Args>(args)...} {}
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept final {
     if (this->cache_.Visit(name, [&](auto& stream) noexcept {
           result = stream->length();
           return true;
@@ -86,7 +86,7 @@ class CachingDirectory
   }
 
   irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept override {
+                             irs::IOAdvice advice) const noexcept final {
     if (bool(advice & (irs::IOAdvice::READONCE | irs::IOAdvice::DIRECT_READ))) {
       return Impl::open(name, advice);
     }
@@ -115,13 +115,13 @@ class CachingDirectory
 template<typename Directory>
 class CachingDirectoryTestCase : public test_base {
  protected:
-  void SetUp() override {
+  void SetUp() final {
     test_base::SetUp();
     dir_ = std::static_pointer_cast<Directory>(MakePhysicalDirectory<Directory>(
       this, irs::directory_attributes{}, size_t{1}));
   }
 
-  void TearDown() override {
+  void TearDown() final {
     ASSERT_NE(nullptr, dir_);
     dir_->Cache().Clear();
     dir_ = nullptr;
