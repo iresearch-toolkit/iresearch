@@ -41,29 +41,28 @@ class FSDirectory : public directory {
   const std::filesystem::path& directory() const noexcept;
 
   using directory::attributes;
-  directory_attributes& attributes() noexcept override { return attrs_; }
+  directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view name) noexcept override;
+  index_output::ptr create(std::string_view name) noexcept final;
 
-  bool exists(bool& result, std::string_view name) const noexcept override;
+  bool exists(bool& result, std::string_view name) const noexcept final;
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override;
+  bool length(uint64_t& result, std::string_view name) const noexcept final;
 
-  index_lock::ptr make_lock(std::string_view name) noexcept override;
+  index_lock::ptr make_lock(std::string_view name) noexcept final;
 
-  bool mtime(std::time_t& result,
-             std::string_view name) const noexcept override;
+  bool mtime(std::time_t& result, std::string_view name) const noexcept final;
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+                        IOAdvice advice) const noexcept final;
 
-  bool remove(std::string_view name) noexcept override;
+  bool remove(std::string_view name) noexcept final;
 
-  bool rename(std::string_view src, std::string_view dst) noexcept override;
+  bool rename(std::string_view src, std::string_view dst) noexcept final;
 
-  bool sync(std::span<const std::string_view> files) noexcept override;
+  bool sync(std::span<const std::string_view> files) noexcept final;
 
-  bool visit(const visitor_f& visitor) const override;
+  bool visit(const visitor_f& visitor) const final;
 
  private:
   bool sync(std::string_view name) noexcept;
@@ -77,10 +76,10 @@ class CachingFSDirectory : public CachingDirectoryBase<FSDirectory, uint64_t> {
  public:
   using CachingDirectoryBase::CachingDirectoryBase;
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override;
+  bool length(uint64_t& result, std::string_view name) const noexcept final;
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+                        IOAdvice advice) const noexcept final;
 };
 
 }  // namespace irs

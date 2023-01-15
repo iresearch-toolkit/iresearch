@@ -35,10 +35,10 @@ namespace {
 struct empty_doc_iterator final : irs::doc_iterator {
   empty_doc_iterator() noexcept : cost(0), doc{irs::doc_limits::eof()} {}
 
-  irs::doc_id_t value() const override { return irs::doc_limits::eof(); }
-  bool next() override { return false; }
-  irs::doc_id_t seek(irs::doc_id_t) override { return irs::doc_limits::eof(); }
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::doc_id_t value() const final { return irs::doc_limits::eof(); }
+  bool next() final { return false; }
+  irs::doc_id_t seek(irs::doc_id_t) final { return irs::doc_limits::eof(); }
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (irs::type<irs::document>::id() == type) {
       return &doc;
     }
@@ -78,11 +78,11 @@ struct empty_seek_term_iterator final : irs::seek_term_iterator {
   irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
-  irs::SeekResult seek_ge(irs::bytes_view) noexcept override {
+  irs::SeekResult seek_ge(irs::bytes_view) noexcept final {
     return irs::SeekResult::END;
   }
-  bool seek(irs::bytes_view) noexcept override { return false; }
-  irs::seek_cookie::ptr cookie() const noexcept override { return nullptr; }
+  bool seek(irs::bytes_view) noexcept final { return false; }
+  irs::seek_cookie::ptr cookie() const noexcept final { return nullptr; }
 };
 
 empty_seek_term_iterator kEmptySeekIterator;
@@ -92,45 +92,43 @@ const irs::empty_term_reader kEmptyTermReader{0};
 
 // Represents a reader with no fields
 struct empty_field_iterator final : irs::field_iterator {
-  const irs::term_reader& value() const override { return kEmptyTermReader; }
+  const irs::term_reader& value() const final { return kEmptyTermReader; }
 
-  bool seek(std::string_view) override { return false; }
+  bool seek(std::string_view) final { return false; }
 
-  bool next() override { return false; }
+  bool next() final { return false; }
 };
 
 empty_field_iterator kEmptyFieldIterator;
 
 struct empty_column_reader final : irs::column_reader {
-  irs::field_id id() const override { return irs::field_limits::invalid(); }
+  irs::field_id id() const final { return irs::field_limits::invalid(); }
 
   // Returns optional column name.
-  std::string_view name() const override { return {}; }
+  std::string_view name() const final { return {}; }
 
   // Returns column header.
-  irs::bytes_view payload() const override { return {}; }
+  irs::bytes_view payload() const final { return {}; }
 
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  irs::doc_iterator::ptr iterator(irs::ColumnHint /*hint*/) const override {
+  irs::doc_iterator::ptr iterator(irs::ColumnHint /*hint*/) const final {
     return irs::doc_iterator::empty();
   }
 
-  irs::doc_id_t size() const override { return 0; }
+  irs::doc_id_t size() const final { return 0; }
 };
 
 const empty_column_reader kEmptyColumnReader;
 
 // Represents a reader with no columns
 struct empty_column_iterator final : irs::column_iterator {
-  const irs::column_reader& value() const override {
-    return kEmptyColumnReader;
-  }
+  const irs::column_reader& value() const final { return kEmptyColumnReader; }
 
-  bool seek(std::string_view) override { return false; }
+  bool seek(std::string_view) final { return false; }
 
-  bool next() override { return false; }
+  bool next() final { return false; }
 };
 
 empty_column_iterator kEmptyColumnIterator;

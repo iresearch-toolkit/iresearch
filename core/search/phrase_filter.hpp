@@ -150,7 +150,7 @@ class by_phrase : public filter_base<by_phrase_options> {
 
   filter::prepared::ptr prepare(const IndexReader& index, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 
  private:
   filter::prepared::ptr fixed_prepare_collect(const IndexReader& index,

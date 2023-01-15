@@ -42,10 +42,10 @@ class MultiTermQuery final : public filter::prepared {
       merge_type_{merge_type},
       min_match_{min_match} {}
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override;
+             score_t boost) const final;
 
  private:
   States states_;

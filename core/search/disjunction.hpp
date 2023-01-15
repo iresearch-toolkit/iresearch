@@ -153,17 +153,17 @@ class unary_disjunction final : public compound_doc_iterator<Adapter> {
 
   unary_disjunction(doc_iterator_t&& it) : it_(std::move(it)) {}
 
-  attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return it_->get_mutable(type);
   }
 
-  doc_id_t value() const noexcept override { return it_.doc->value; }
+  doc_id_t value() const noexcept final { return it_.doc->value; }
 
-  bool next() override { return it_->next(); }
+  bool next() final { return it_->next(); }
 
-  doc_id_t seek(doc_id_t target) override { return it_->seek(target); }
+  doc_id_t seek(doc_id_t target) final { return it_->seek(target); }
 
-  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) final {
     IRS_ASSERT(ctx);
     IRS_ASSERT(visitor);
     visitor(ctx, it_);
@@ -198,11 +198,11 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() override {
+  bool next() final {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
 
@@ -210,7 +210,7 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
     return !doc_limits::eof(doc.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto& doc = std::get<document>(attrs_);
 
     if (target <= doc.value) {
@@ -224,7 +224,7 @@ class basic_disjunction final : public compound_doc_iterator<Adapter>,
     return (doc.value = std::min(lhs_.value(), rhs_.value()));
   }
 
-  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) final {
     IRS_ASSERT(ctx);
     IRS_ASSERT(visitor);
 
@@ -368,7 +368,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
@@ -385,7 +385,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return true;
   }
 
-  bool next() override {
+  bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -415,7 +415,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return true;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -452,7 +452,7 @@ class small_disjunction final : public compound_doc_iterator<Adapter>,
     return (doc.value = min);
   }
 
-  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) final {
     IRS_ASSERT(ctx);
     IRS_ASSERT(visitor);
     auto& doc = std::get<document>(attrs_);
@@ -613,11 +613,11 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() override {
+  bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -642,7 +642,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     return true;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
@@ -662,7 +662,7 @@ class disjunction final : public compound_doc_iterator<Adapter>,
     return doc.value = lead().value();
   }
 
-  void visit(void* ctx, IteratorVisitor<Adapter> visitor) override {
+  void visit(void* ctx, IteratorVisitor<Adapter> visitor) final {
     IRS_ASSERT(ctx);
     IRS_ASSERT(visitor);
     if (heap_.empty()) {
@@ -902,11 +902,11 @@ class block_disjunction final : public doc_iterator,
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() override {
+  bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     do {
@@ -955,7 +955,7 @@ class block_disjunction final : public doc_iterator,
     return true;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto& doc = std::get<document>(attrs_);
 
     if (target <= doc.value) {

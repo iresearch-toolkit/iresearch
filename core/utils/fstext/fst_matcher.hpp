@@ -57,40 +57,40 @@ class explicit_matcher final
   explicit_matcher(const explicit_matcher& rhs, bool safe = false)
     : matcher_(rhs.matcher_, safe), match_type_(rhs.match_type_) {}
 
-  explicit_matcher* Copy(bool safe = false) const override {
+  explicit_matcher* Copy(bool safe = false) const final {
     return new explicit_matcher(*this, safe);
   }
 
-  MatchType Type(bool test) const override { return matcher_.Type(test); }
+  MatchType Type(bool test) const final { return matcher_.Type(test); }
 
-  void SetState(StateId s) override { matcher_.SetState(s); }
+  void SetState(StateId s) final { matcher_.SetState(s); }
 
-  bool Find(Label match_label) override {
+  bool Find(Label match_label) final {
     matcher_.Find(match_label);
     CheckArc();
     return !Done();
   }
 
-  bool Done() const override { return matcher_.Done(); }
+  bool Done() const final { return matcher_.Done(); }
 
-  const Arc& Value() const override { return matcher_.Value(); }
+  const Arc& Value() const final { return matcher_.Value(); }
 
-  void Next() override {
+  void Next() final {
     matcher_.Next();
     CheckArc();
   }
 
-  Weight Final(StateId s) const override { return matcher_.Final(s); }
+  Weight Final(StateId s) const final { return matcher_.Final(s); }
 
-  ssize_t Priority(StateId s) override { return matcher_.Priority(s); }
+  ssize_t Priority(StateId s) final { return matcher_.Priority(s); }
 
-  const FST& GetFst() const override { return matcher_.GetFst(); }
+  const FST& GetFst() const final { return matcher_.GetFst(); }
 
-  std::uint64_t Properties(std::uint64_t inprops) const override {
+  std::uint64_t Properties(std::uint64_t inprops) const final {
     return matcher_.Properties(inprops);
   }
 
-  std::uint32_t Flags() const override { return matcher_.Flags(); }
+  std::uint32_t Flags() const final { return matcher_.Flags(); }
 
  private:
   // Checks current arc if available and explicit. If not available, stops. If

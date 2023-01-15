@@ -43,7 +43,7 @@ class basic_token_stream : public analysis::analyzer {
     return irs::get_mutable(attrs_, type);
   }
 
-  bool reset(std::string_view) override { return false; }
+  bool reset(std::string_view) final { return false; }
 
  protected:
   std::tuple<term_attribute, increment> attrs_;
@@ -70,7 +70,7 @@ class boolean_token_stream final : public basic_token_stream,
 
   explicit boolean_token_stream(bool value = false) noexcept;
 
-  bool next() noexcept override;
+  bool next() noexcept final;
 
   void reset(bool value) noexcept {
     value_ = value;
@@ -139,7 +139,7 @@ class numeric_token_stream final : public basic_token_stream,
   static constexpr uint32_t PRECISION_STEP_DEF = 16;
   static constexpr uint32_t PRECISION_STEP_32 = 8;
 
-  bool next() override;
+  bool next() final;
 
   void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
   void reset(int64_t value, uint32_t step = PRECISION_STEP_DEF);
@@ -277,7 +277,7 @@ class null_token_stream final : public basic_token_stream,
     return {"\x00", 0};
   }
 
-  bool next() noexcept override;
+  bool next() noexcept final;
 
   void reset() noexcept { in_use_ = false; }
 

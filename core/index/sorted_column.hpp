@@ -48,13 +48,13 @@ class sorted_column final : public column_output, private util::noncopyable {
     }
   }
 
-  void write_byte(byte_type b) override { data_buf_ += b; }
+  void write_byte(byte_type b) final { data_buf_ += b; }
 
-  void write_bytes(const byte_type* b, size_t size) override {
+  void write_bytes(const byte_type* b, size_t size) final {
     data_buf_.append(b, size);
   }
 
-  void reset() override {
+  void reset() final {
     if (index_.empty()) {
       return;
     }

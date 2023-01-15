@@ -254,19 +254,19 @@ class AsyncIndexOutput final : public index_output {
   static index_output::ptr open(const file_path_t name,
                                 AsyncFilePtr&& async) noexcept;
 
-  void write_int(int32_t value) override;
-  void write_long(int64_t value) override;
-  void write_vint(uint32_t v) override;
-  void write_vlong(uint64_t v) override;
-  void write_byte(byte_type b) override;
-  void write_bytes(const byte_type* b, size_t length) override;
-  size_t file_pointer() const override {
+  void write_int(int32_t value) final;
+  void write_long(int64_t value) final;
+  void write_vint(uint32_t v) final;
+  void write_vlong(uint64_t v) final;
+  void write_byte(byte_type b) final;
+  void write_bytes(const byte_type* b, size_t length) final;
+  size_t file_pointer() const final {
     IRS_ASSERT(buf_->value <= pos_);
     return start_ + static_cast<size_t>(std::distance(buf_->value, pos_));
   }
-  void flush() override;
+  void flush() final;
 
-  void close() override {
+  void close() final {
     Finally reset = [this]() noexcept {
       async_->release_buffer(*buf_);
       handle_.reset(nullptr);
@@ -279,7 +279,7 @@ class AsyncIndexOutput final : public index_output {
     async_->drain(true);
   }
 
-  int64_t checksum() const override {
+  int64_t checksum() const final {
     const_cast<AsyncIndexOutput*>(this)->flush();
     return crc_.checksum();
   }

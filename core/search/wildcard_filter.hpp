@@ -71,9 +71,9 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(
-    const IndexReader& index, const Order& order, score_t boost,
-    const attribute_provider* /*ctx*/) const override {
+  filter::prepared::ptr prepare(const IndexReader& index, const Order& order,
+                                score_t boost,
+                                const attribute_provider* /*ctx*/) const final {
     return prepare(index, order, this->boost() * boost, field(), options().term,
                    options().scored_terms_limit);
   }

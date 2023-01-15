@@ -42,9 +42,9 @@ class exclusion final : public doc_iterator {
     IRS_ASSERT(excl_doc_);
   }
 
-  doc_id_t value() const override { return incl_doc_->value; }
+  doc_id_t value() const final { return incl_doc_->value; }
 
-  bool next() override {
+  bool next() final {
     if (!incl_->next()) {
       return false;
     }
@@ -52,7 +52,7 @@ class exclusion final : public doc_iterator {
     return !doc_limits::eof(next(incl_doc_->value));
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     if (!doc_limits::valid(target)) {
       return incl_doc_->value;
     }
@@ -64,7 +64,7 @@ class exclusion final : public doc_iterator {
     return next(target);
   }
 
-  attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return incl_->get_mutable(type);
   }
 

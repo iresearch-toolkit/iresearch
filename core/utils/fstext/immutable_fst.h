@@ -206,7 +206,7 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
     : ImplToExpandedFst<Impl>(fst) {}
 
   // Gets a copy of this ConstFst. See Fst<>::Copy() for further doc.
-  ImmutableFst<A>* Copy(bool safe = false) const override {
+  ImmutableFst<A>* Copy(bool safe = false) const final {
     return new ImmutableFst<A>(*this, safe);
   }
 
@@ -227,11 +227,11 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
   template<typename FST, typename Stats>
   static bool Write(const FST& fst, irs::data_output& strm, const Stats& stats);
 
-  void InitStateIterator(StateIteratorData<Arc>* data) const override {
+  void InitStateIterator(StateIteratorData<Arc>* data) const final {
     GetImpl()->InitStateIterator(data);
   }
 
-  void InitArcIterator(StateId s, ArcIteratorData<Arc>* data) const override {
+  void InitArcIterator(StateId s, ArcIteratorData<Arc>* data) const final {
     GetImpl()->InitArcIterator(s, data);
   }
 

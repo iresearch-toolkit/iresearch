@@ -147,7 +147,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
   doc_id_t value() const final { return front_doc_->value; }
 
-  bool next() override {
+  bool next() final {
     if (!front_->next()) {
       return false;
     }
@@ -155,7 +155,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     return !doc_limits::eof(converge(front_doc_->value));
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     if (doc_limits::eof(target = front_->seek(target))) {
       return doc_limits::eof();
     }

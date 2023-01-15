@@ -77,13 +77,13 @@ class column final : public irs::column_output {
     IRS_ASSERT(field_limits::valid(id_));
   }
 
-  void write_byte(byte_type b) override { data_.stream.write_byte(b); }
+  void write_byte(byte_type b) final { data_.stream.write_byte(b); }
 
-  void write_bytes(const byte_type* b, size_t size) override {
+  void write_bytes(const byte_type* b, size_t size) final {
     data_.stream.write_bytes(b, size);
   }
 
-  void reset() override;
+  void reset() final;
 
  private:
   friend class writer;
@@ -191,11 +191,11 @@ class writer final : public columnstore_writer {
 
   writer(Version version, bool consolidation);
 
-  void prepare(directory& dir, const SegmentMeta& meta) override;
+  void prepare(directory& dir, const SegmentMeta& meta) final;
   column_t push_column(const ColumnInfo& info,
-                       column_finalizer_f finalizer) override;
-  bool commit(const flush_state& state) override;
-  void rollback() noexcept override;
+                       column_finalizer_f finalizer) final;
+  bool commit(const flush_state& state) final;
+  void rollback() noexcept final;
 
  private:
   directory* dir_;
@@ -268,15 +268,15 @@ class reader final : public columnstore_reader {
 
   const column_header* header(field_id field) const;
 
-  const column_reader* column(field_id field) const override {
+  const column_reader* column(field_id field) const final {
     return field >= columns_.size()
              ? nullptr  // can't find column with the specified identifier
              : columns_[field];
   }
 
-  bool visit(const column_visitor_f& visitor) const override;
+  bool visit(const column_visitor_f& visitor) const final;
 
-  size_t size() const override { return columns_.size(); }
+  size_t size() const final { return columns_.size(); }
 
  private:
   using column_ptr = std::unique_ptr<column_reader>;

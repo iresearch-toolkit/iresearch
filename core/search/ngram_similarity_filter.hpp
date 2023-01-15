@@ -55,7 +55,7 @@ class by_ngram_similarity : public filter_base<by_ngram_similarity_options> {
 
   filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 };
 
 }  // namespace irs

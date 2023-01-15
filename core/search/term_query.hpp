@@ -35,10 +35,10 @@ class TermQuery final : public filter::prepared {
 
   explicit TermQuery(States&& states, bstring&& stats, score_t boost);
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override;
+             score_t boost) const final;
 
  private:
   States states_;

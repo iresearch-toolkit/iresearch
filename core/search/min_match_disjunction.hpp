@@ -92,13 +92,13 @@ class min_match_disjunction : public doc_iterator,
     }
   }
 
-  attribute* get_mutable(type_info::type_id id) noexcept override {
+  attribute* get_mutable(type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
-  doc_id_t value() const override { return std::get<document>(attrs_).value; }
+  doc_id_t value() const final { return std::get<document>(attrs_).value; }
 
-  bool next() override {
+  bool next() final {
     auto& doc_ = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc_.value)) {
@@ -142,7 +142,7 @@ class min_match_disjunction : public doc_iterator,
     return false;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto& doc_ = std::get<document>(attrs_);
 
     if (target <= doc_.value) {

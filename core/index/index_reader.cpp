@@ -28,25 +28,23 @@ namespace {
 const SegmentInfo kEmptyInfo;
 
 struct EmptySubReader final : SubReader {
-  column_iterator::ptr columns() const override {
+  column_iterator::ptr columns() const final {
     return irs::column_iterator::empty();
   }
-  const column_reader* column(field_id) const override { return nullptr; }
-  const column_reader* column(std::string_view) const override {
-    return nullptr;
-  }
-  const SegmentInfo& Meta() const override { return kEmptyInfo; }
-  const irs::document_mask* docs_mask() const override { return nullptr; }
-  irs::doc_iterator::ptr docs_iterator() const override {
+  const column_reader* column(field_id) const final { return nullptr; }
+  const column_reader* column(std::string_view) const final { return nullptr; }
+  const SegmentInfo& Meta() const final { return kEmptyInfo; }
+  const irs::document_mask* docs_mask() const final { return nullptr; }
+  irs::doc_iterator::ptr docs_iterator() const final {
     return irs::doc_iterator::empty();
   }
-  const irs::term_reader* field(std::string_view) const override {
+  const irs::term_reader* field(std::string_view) const final {
     return nullptr;
   }
-  irs::field_iterator::ptr fields() const override {
+  irs::field_iterator::ptr fields() const final {
     return irs::field_iterator::empty();
   }
-  const irs::column_reader* sort() const override { return nullptr; }
+  const irs::column_reader* sort() const final { return nullptr; }
 };
 
 const EmptySubReader kEmpty;

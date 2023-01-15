@@ -677,7 +677,7 @@ inline int32_t prepare_input(std::string& str, index_input::ptr& in,
 struct cookie final : seek_cookie {
   explicit cookie(const version10::term_meta& meta) noexcept : meta(meta) {}
 
-  attribute* get_mutable(irs::type_info::type_id type) override {
+  attribute* get_mutable(irs::type_info::type_id type) final {
     if (IRS_LIKELY(type == irs::type<term_meta>::id())) {
       return &meta;
     }
@@ -685,14 +685,14 @@ struct cookie final : seek_cookie {
     return nullptr;
   }
 
-  bool IsEqual(const irs::seek_cookie& rhs) const noexcept override {
+  bool IsEqual(const irs::seek_cookie& rhs) const noexcept final {
     // We intentionally don't check `rhs` cookie type.
     const auto& rhs_meta = down_cast<cookie>(rhs).meta;
     return meta.doc_start == rhs_meta.doc_start &&
            meta.pos_start == rhs_meta.pos_start;
   }
 
-  size_t Hash() const noexcept override {
+  size_t Hash() const noexcept final {
     return hash_combine(std::hash<size_t>{}(meta.doc_start),
                         std::hash<size_t>{}(meta.pos_start));
   }
@@ -834,14 +834,14 @@ class field_writer final : public irs::field_writer {
                uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
                uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
 
-  ~field_writer() override;
+  ~field_writer() final;
 
-  void prepare(const irs::flush_state& state) override;
+  void prepare(const irs::flush_state& state) final;
 
-  void end() override;
+  void end() final;
 
   void write(std::string_view name, IndexFeatures index_features,
-             const irs::feature_map_t& features, term_iterator& terms) override;
+             const irs::feature_map_t& features, term_iterator& terms) final;
 
  private:
   static constexpr size_t DEFAULT_SIZE = 8;
@@ -2083,18 +2083,18 @@ class term_iterator final : public term_iterator_base {
       matcher_(&fst, fst::MATCH_INPUT) {  // pass pointer to avoid copying FST
   }
 
-  bool next() override;
-  SeekResult seek_ge(bytes_view term) override;
-  bool seek(bytes_view term) override {
+  bool next() final;
+  SeekResult seek_ge(bytes_view term) final;
+  bool seek(bytes_view term) final {
     return SeekResult::FOUND == seek_equal(term, true);
   }
 
-  void read() override {
+  void read() final {
     IRS_ASSERT(cur_block_);
     read_impl(*cur_block_);
   }
 
-  doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const final {
     return postings_impl(cur_block_, features);
   }
 
@@ -2468,7 +2468,7 @@ class single_term_iterator final : public seek_term_iterator {
     IRS_ASSERT(terms_in_);
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) override {
+  attribute* get_mutable(irs::type_info::type_id type) final {
     if (type == irs::type<term_meta>::id()) {
       return &meta_;
     }
@@ -2476,22 +2476,22 @@ class single_term_iterator final : public seek_term_iterator {
     return type == irs::type<term_attribute>::id() ? &value_ : nullptr;
   }
 
-  bytes_view value() const override { return value_.value; }
+  bytes_view value() const final { return value_.value; }
 
-  bool next() override { throw not_supported(); }
+  bool next() final { throw not_supported(); }
 
-  SeekResult seek_ge(bytes_view) override { throw not_supported(); }
+  SeekResult seek_ge(bytes_view) final { throw not_supported(); }
 
-  bool seek(bytes_view term) override;
+  bool seek(bytes_view term) final;
 
-  seek_cookie::ptr cookie() const override {
+  seek_cookie::ptr cookie() const final {
     return std::make_unique<::cookie>(meta_);
   }
 
-  void read() override { /*NOOP*/
+  void read() final { /*NOOP*/
   }
 
-  doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const final {
     return postings_->iterator(field_->index_features, features, meta_);
   }
 
@@ -2644,9 +2644,9 @@ class automaton_term_iterator final : public term_iterator_base {
     payload_.value = {&payload_value_, sizeof(payload_value_)};
   }
 
-  bool next() override;
+  bool next() final;
 
-  SeekResult seek_ge(bytes_view term) override {
+  SeekResult seek_ge(bytes_view term) final {
     if (!irs::seek(*this, term)) {
       return SeekResult::END;
     }
@@ -2654,16 +2654,16 @@ class automaton_term_iterator final : public term_iterator_base {
     return value() == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
   }
 
-  bool seek(bytes_view term) override {
+  bool seek(bytes_view term) final {
     return SeekResult::FOUND == seek_ge(term);
   }
 
-  void read() override {
+  void read() final {
     IRS_ASSERT(cur_block_);
     read_impl(*cur_block_);
   }
 
-  doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const final {
     return postings_impl(cur_block_, features);
   }
 
@@ -2979,11 +2979,11 @@ class field_reader final : public irs::field_reader {
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
   void prepare(const directory& dir, const SegmentMeta& meta,
-               const document_mask& mask) override;
+               const document_mask& mask) final;
 
-  const irs::term_reader* field(std::string_view field) const override;
-  irs::field_iterator::ptr iterator() const override;
-  size_t size() const noexcept override { return name_to_field_.size(); }
+  const irs::term_reader* field(std::string_view field) const final;
+  irs::field_iterator::ptr iterator() const final;
+  size_t size() const noexcept final { return name_to_field_.size(); }
 
  private:
   template<typename FST>
@@ -2994,7 +2994,7 @@ class field_reader final : public irs::field_reader {
     term_reader& operator=(term_reader&& rhs) = delete;
 
     void prepare(burst_trie::Version version, index_input& in,
-                 const feature_map_t& features) override {
+                 const feature_map_t& features) final {
       term_reader_base::prepare(version, in, features);
 
       // read FST
@@ -3008,7 +3008,7 @@ class field_reader final : public irs::field_reader {
       }
     }
 
-    seek_term_iterator::ptr iterator(SeekMode mode) const override {
+    seek_term_iterator::ptr iterator(SeekMode mode) const final {
       if (mode == SeekMode::RANDOM_ONLY) {
         auto terms_in =
           owner_->terms_in_->reopen();  // reopen thread-safe stream
@@ -3030,7 +3030,7 @@ class field_reader final : public irs::field_reader {
         owner_->terms_in_cipher_.get(), *fst_);
     }
 
-    term_meta term(bytes_view term) const override {
+    term_meta term(bytes_view term) const final {
       single_term_iterator it{meta(), *owner_->pr_, owner_->terms_in_->reopen(),
                               owner_->terms_in_cipher_.get(), *fst_};
 
@@ -3039,7 +3039,7 @@ class field_reader final : public irs::field_reader {
     }
 
     size_t read_documents(bytes_view term,
-                          std::span<doc_id_t> docs) const override {
+                          std::span<doc_id_t> docs) const final {
       if (IRS_UNLIKELY(docs.empty())) {
         return 0;
       }
@@ -3078,8 +3078,7 @@ class field_reader final : public irs::field_reader {
       return std::distance(docs.begin(), begin);
     }
 
-    size_t bit_union(const cookie_provider& provider,
-                     size_t* set) const override {
+    size_t bit_union(const cookie_provider& provider, size_t* set) const final {
       auto term_provider = [&provider]() mutable -> const term_meta* {
         if (auto* cookie = provider()) {
           return &down_cast<::cookie>(*cookie).meta;
@@ -3092,7 +3091,7 @@ class field_reader final : public irs::field_reader {
     }
 
     seek_term_iterator::ptr iterator(
-      automaton_table_matcher& matcher) const override {
+      automaton_table_matcher& matcher) const final {
       auto& acceptor = matcher.GetFst();
 
       const auto start = acceptor.Start();
@@ -3125,13 +3124,13 @@ class field_reader final : public irs::field_reader {
     }
 
     doc_iterator::ptr postings(const seek_cookie& cookie,
-                               IndexFeatures features) const override {
+                               IndexFeatures features) const final {
       return owner_->pr_->iterator(meta().index_features, features,
                                    down_cast<::cookie>(cookie).meta);
     }
 
     doc_iterator::ptr wanderator(const seek_cookie& cookie,
-                                 IndexFeatures features) const override {
+                                 IndexFeatures features) const final {
       return owner_->pr_->wanderator(meta().index_features, features,
                                      down_cast<::cookie>(cookie).meta);
     }

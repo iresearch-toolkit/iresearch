@@ -46,13 +46,13 @@ class lazy_bitset_iterator final : public bitset_doc_iterator {
     IRS_ASSERT(!states_.empty());
   }
 
-  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::type<score>::id() == id ? &score_
                                         : bitset_doc_iterator::get_mutable(id);
   }
 
  protected:
-  bool refill(const word_t** begin, const word_t** end) override;
+  bool refill(const word_t** begin, const word_t** end) final;
 
  private:
   score score_;

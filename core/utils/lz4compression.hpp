@@ -61,7 +61,7 @@ struct lz4 {
 
     int acceleration() const noexcept { return acceleration_; }
 
-    bytes_view compress(byte_type* src, size_t size, bstring& out) override
+    bytes_view compress(byte_type* src, size_t size, bstring& out) final
       IRS_ATTRIBUTE_NONNULL(2);
 
    private:
@@ -71,7 +71,7 @@ struct lz4 {
   class lz4decompressor final : public compression::decompressor {
    public:
     bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
-                          size_t dst_size) override IRS_ATTRIBUTE_NONNULL(2);
+                          size_t dst_size) final IRS_ATTRIBUTE_NONNULL(2);
   };
 };
 

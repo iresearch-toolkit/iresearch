@@ -147,30 +147,30 @@ class memory_index_input final : public index_input {
  public:
   explicit memory_index_input(const memory_file& file) noexcept;
 
-  index_input::ptr dup() const override;
-  int64_t checksum(size_t offset) const override;
-  bool eof() const override;
-  byte_type read_byte() override;
-  const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override;
+  index_input::ptr dup() const final;
+  int64_t checksum(size_t offset) const final;
+  bool eof() const final;
+  byte_type read_byte() final;
+  const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
   const byte_type* read_buffer(size_t offset, size_t size,
-                               BufferHint hint) noexcept override;
-  size_t read_bytes(byte_type* b, size_t len) override;
-  size_t read_bytes(size_t offset, byte_type* b, size_t len) override {
+                               BufferHint hint) noexcept final;
+  size_t read_bytes(byte_type* b, size_t len) final;
+  size_t read_bytes(size_t offset, byte_type* b, size_t len) final {
     seek(offset);
     return read_bytes(b, len);
   }
-  index_input::ptr reopen() const override;
-  size_t length() const override;
+  index_input::ptr reopen() const final;
+  size_t length() const final;
 
-  size_t file_pointer() const override;
+  size_t file_pointer() const final;
 
-  void seek(size_t pos) override;
+  void seek(size_t pos) final;
 
-  int16_t read_short() override;
-  int32_t read_int() override;
-  int64_t read_long() override;
-  uint32_t read_vint() override;
-  uint64_t read_vlong() override;
+  int16_t read_short() final;
+  int32_t read_int() final;
+  int64_t read_long() final;
+  uint32_t read_vint() final;
+  uint64_t read_vlong() final;
 
   byte_type operator*() { return read_byte(); }
   memory_index_input& operator++() noexcept { return *this; }
@@ -211,11 +211,11 @@ class memory_index_output : public index_output {
 
   // index_output
 
-  void flush() override;  // deprecated
+  void flush() final;  // deprecated
 
   size_t file_pointer() const final;
 
-  int64_t checksum() const override;
+  int64_t checksum() const final;
 
   void operator>>(data_output& out);
 
@@ -266,31 +266,28 @@ class memory_directory final : public directory {
 
   virtual ~memory_directory() noexcept;
 
-  directory_attributes& attributes() noexcept override { return attrs_; }
+  directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view name) noexcept override;
+  index_output::ptr create(std::string_view name) noexcept final;
 
-  bool exists(bool& result, std::string_view name) const noexcept override;
+  bool exists(bool& result, std::string_view name) const noexcept final;
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override;
+  bool length(uint64_t& result, std::string_view name) const noexcept final;
 
-  index_lock::ptr make_lock(std::string_view name) noexcept override;
+  index_lock::ptr make_lock(std::string_view name) noexcept final;
 
-  bool mtime(std::time_t& result,
-             std::string_view name) const noexcept override;
+  bool mtime(std::time_t& result, std::string_view name) const noexcept final;
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+                        IOAdvice advice) const noexcept final;
 
-  bool remove(std::string_view name) noexcept override;
+  bool remove(std::string_view name) noexcept final;
 
-  bool rename(std::string_view src, std::string_view dst) noexcept override;
+  bool rename(std::string_view src, std::string_view dst) noexcept final;
 
-  bool sync(std::span<const std::string_view>) noexcept override {
-    return true;
-  }
+  bool sync(std::span<const std::string_view>) noexcept final { return true; }
 
-  bool visit(const visitor_f& visitor) const override;
+  bool visit(const visitor_f& visitor) const final;
 
  private:
   friend class single_instance_lock;

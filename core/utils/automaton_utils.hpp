@@ -85,15 +85,15 @@ class automaton_term_iterator final : public seek_term_iterator {
     value_ = &term->value;
   }
 
-  bytes_view value() const noexcept override { return *value_; }
+  bytes_view value() const noexcept final { return *value_; }
 
-  doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const final {
     return it_->postings(features);
   }
 
-  void read() override { it_->read(); }
+  void read() final { it_->read(); }
 
-  bool next() override {
+  bool next() final {
     bool next = it_->next();
 
     while (next && !accept()) {
@@ -103,11 +103,11 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next;
   }
 
-  attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return it_->get_mutable(type);
   }
 
-  SeekResult seek_ge(bytes_view target) override {
+  SeekResult seek_ge(bytes_view target) final {
     it_->seek_ge(target);
 
     if (accept()) {
@@ -117,11 +117,11 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next() ? SeekResult::NOT_FOUND : SeekResult::END;
   }
 
-  bool seek(bytes_view target) override {
+  bool seek(bytes_view target) final {
     return SeekResult::FOUND == seek_ge(target);
   }
 
-  seek_cookie::ptr cookie() const override { return it_->cookie(); }
+  seek_cookie::ptr cookie() const final { return it_->cookie(); }
 
  private:
   bool accept() { return irs::match(matcher_, *value_); }

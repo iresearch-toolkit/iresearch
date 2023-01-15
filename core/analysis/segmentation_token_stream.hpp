@@ -55,8 +55,8 @@ class segmentation_token_stream final : public analyzer,
     return irs::get_mutable(attrs_, type);
   }
   explicit segmentation_token_stream(options_t&& opts);
-  bool next() override;
-  bool reset(std::string_view data) override;
+  bool next() final;
+  bool reset(std::string_view data) final;
 
  private:
   using attributes = std::tuple<increment, offset, term_attribute>;

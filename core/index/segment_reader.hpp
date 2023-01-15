@@ -53,28 +53,28 @@ class SegmentReader final : public SubReader {
   SegmentReader* operator->() noexcept { return this; }
   const SegmentReader* operator->() const noexcept { return this; }
 
-  const SegmentInfo& Meta() const override;
+  const SegmentInfo& Meta() const final;
 
-  column_iterator::ptr columns() const override;
+  column_iterator::ptr columns() const final;
 
-  doc_iterator::ptr docs_iterator() const override;
+  doc_iterator::ptr docs_iterator() const final;
 
-  const document_mask* docs_mask() const override;
+  const document_mask* docs_mask() const final;
 
   // FIXME find a better way to mask documents
-  doc_iterator::ptr mask(doc_iterator::ptr&& it) const override;
+  doc_iterator::ptr mask(doc_iterator::ptr&& it) const final;
 
-  const term_reader* field(std::string_view name) const override;
+  const term_reader* field(std::string_view name) const final;
 
-  field_iterator::ptr fields() const override;
+  field_iterator::ptr fields() const final;
 
   SegmentReader Reopen(const SegmentMeta& meta) const;
 
-  const irs::column_reader* sort() const override;
+  const irs::column_reader* sort() const final;
 
   const irs::column_reader* column(std::string_view name) const final;
 
-  const irs::column_reader* column(field_id field) const override;
+  const irs::column_reader* column(field_id field) const final;
 
   const std::shared_ptr<const SegmentReaderImpl>& GetImpl() const noexcept {
     return impl_;

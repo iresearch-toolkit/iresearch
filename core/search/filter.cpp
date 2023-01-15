@@ -30,11 +30,11 @@ namespace {
 // Represents a query returning empty result set
 struct EmptyQuery final : public filter::prepared {
  public:
-  doc_iterator::ptr execute(const ExecutionContext&) const override {
+  doc_iterator::ptr execute(const ExecutionContext&) const final {
     return irs::doc_iterator::empty();
   }
 
-  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
 };

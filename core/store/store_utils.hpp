@@ -300,12 +300,12 @@ class bytes_view_input : public index_input {
     pos_ += size;
   }
 
-  void seek(size_t pos) noexcept override {
+  void seek(size_t pos) noexcept final {
     IRS_ASSERT(data_.data() + pos <= data_.data() + data_.size());
     pos_ = data_.data() + pos;
   }
 
-  size_t file_pointer() const noexcept override {
+  size_t file_pointer() const noexcept final {
     return std::distance(data_.data(), pos_);
   }
 
@@ -321,7 +321,7 @@ class bytes_view_input : public index_input {
   }
 
   const byte_type* read_buffer(size_t offset, size_t size,
-                               BufferHint /*hint*/) noexcept override {
+                               BufferHint /*hint*/) noexcept final {
     const auto begin = data_.data() + offset;
     const auto end = begin + size;
 
@@ -347,7 +347,7 @@ class bytes_view_input : public index_input {
 
   size_t read_bytes(byte_type* b, size_t size) noexcept final;
 
-  size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept override;
+  size_t read_bytes(size_t offset, byte_type* b, size_t size) noexcept final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
@@ -359,9 +359,9 @@ class bytes_view_input : public index_input {
 
   void reset(bytes_view ref) noexcept { reset(ref.data(), ref.size()); }
 
-  ptr dup() const override { return std::make_unique<bytes_view_input>(*this); }
+  ptr dup() const final { return std::make_unique<bytes_view_input>(*this); }
 
-  ptr reopen() const override { return dup(); }
+  ptr reopen() const final { return dup(); }
 
   int16_t read_short() noexcept final { return irs::read<uint16_t>(pos_); }
 
@@ -373,7 +373,7 @@ class bytes_view_input : public index_input {
 
   uint32_t read_vint() noexcept final { return irs::vread<uint32_t>(pos_); }
 
-  int64_t checksum(size_t offset) const override;
+  int64_t checksum(size_t offset) const final;
 
  private:
   bytes_view data_;
@@ -408,12 +408,12 @@ class remapped_bytes_view_input : public bytes_view_input {
 
   size_t file_pointer() const noexcept final;
 
-  ptr dup() const override {
+  ptr dup() const final {
     return std::make_unique<remapped_bytes_view_input>(*this);
   }
 
   const byte_type* read_buffer(size_t offset, size_t size,
-                               BufferHint hint) noexcept override {
+                               BufferHint hint) noexcept final {
     return bytes_view_input::read_buffer(src_to_internal(offset), size, hint);
   }
 

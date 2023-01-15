@@ -36,7 +36,7 @@ class PhrasePosition final : public position, public Frequency {
     std::tie(start_, end_) = self().GetOffsets();
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (irs::type<offset>::id() == type) {
       return &offset_;
     }
@@ -44,7 +44,7 @@ class PhrasePosition final : public position, public Frequency {
     return nullptr;
   }
 
-  bool next() override {
+  bool next() final {
     if (!left_) {
       // At least 1 position is always approved by the phrase,
       // and calling next() on exhausted iterator is UB.
@@ -59,7 +59,7 @@ class PhrasePosition final : public position, public Frequency {
     return true;
   }
 
-  void reset() override { throw not_impl_error{}; }
+  void reset() final { throw not_impl_error{}; }
 
  private:
   Frequency& self() noexcept { return static_cast<Frequency&>(*this); }
@@ -571,7 +571,7 @@ class PhraseIterator : public doc_iterator {
     }
   }
 
-  attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     if (type == irs::type<irs::position>::id()) {
       if constexpr (HasPosition<Frequency>::value) {
         return &freq_;
@@ -588,7 +588,7 @@ class PhraseIterator : public doc_iterator {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  bool next() override {
+  bool next() final {
     bool next = false;
     while ((next = approx_.next()) && !freq_.EvaluateFreq()) {
     }
@@ -596,7 +596,7 @@ class PhraseIterator : public doc_iterator {
     return next;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto* pdoc = std::get<attribute_ptr<document>>(attrs_).ptr;
 
     // important to call freq_.EvaluateFreq() in order

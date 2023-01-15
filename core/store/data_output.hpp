@@ -107,9 +107,9 @@ class output_buf final : public std::streambuf, util::noncopyable {
 
   explicit output_buf(index_output* out);
 
-  std::streamsize xsputn(const char_type* c, std::streamsize size) override;
+  std::streamsize xsputn(const char_type* c, std::streamsize size) final;
 
-  int_type overflow(int_type c) override;
+  int_type overflow(int_type c) final;
 
   index_output* internal() const { return out_; }
 
@@ -122,9 +122,9 @@ class output_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class buffered_index_output : public index_output, util::noncopyable {
  public:
-  void flush() override;
+  void flush() final;
 
-  size_t file_pointer() const override;
+  size_t file_pointer() const final;
 
   void write_byte(byte_type b) final;
 
@@ -154,7 +154,7 @@ class buffered_index_output : public index_output, util::noncopyable {
     buf_size_ = size;
   }
 
-  size_t CloseImpl() override;
+  size_t CloseImpl() final;
 
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 

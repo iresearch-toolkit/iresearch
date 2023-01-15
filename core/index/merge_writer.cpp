@@ -79,41 +79,35 @@ class NoopDirectory : public directory {
     return INSTANCE;
   }
 
-  directory_attributes& attributes() noexcept override { return attrs_; }
+  directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view) noexcept override {
+  index_output::ptr create(std::string_view) noexcept final { return nullptr; }
+
+  bool exists(bool&, std::string_view) const noexcept final { return false; }
+
+  bool length(uint64_t&, std::string_view) const noexcept final {
+    return false;
+  }
+
+  index_lock::ptr make_lock(std::string_view) noexcept final { return nullptr; }
+
+  bool mtime(std::time_t&, std::string_view) const noexcept final {
+    return false;
+  }
+
+  index_input::ptr open(std::string_view, IOAdvice) const noexcept final {
     return nullptr;
   }
 
-  bool exists(bool&, std::string_view) const noexcept override { return false; }
+  bool remove(std::string_view) noexcept final { return false; }
 
-  bool length(uint64_t&, std::string_view) const noexcept override {
+  bool rename(std::string_view, std::string_view) noexcept final {
     return false;
   }
 
-  index_lock::ptr make_lock(std::string_view) noexcept override {
-    return nullptr;
-  }
+  bool sync(std::span<const std::string_view>) noexcept final { return false; }
 
-  bool mtime(std::time_t&, std::string_view) const noexcept override {
-    return false;
-  }
-
-  index_input::ptr open(std::string_view, IOAdvice) const noexcept override {
-    return nullptr;
-  }
-
-  bool remove(std::string_view) noexcept override { return false; }
-
-  bool rename(std::string_view, std::string_view) noexcept override {
-    return false;
-  }
-
-  bool sync(std::span<const std::string_view>) noexcept override {
-    return false;
-  }
-
-  bool visit(const directory::visitor_f&) const override { return false; }
+  bool visit(const directory::visitor_f&) const final { return false; }
 
  private:
   NoopDirectory() = default;
@@ -159,16 +153,16 @@ class RemappingDocIterator final : public doc_iterator {
     IRS_ASSERT(it_ && src_);
   }
 
-  bool next() override;
+  bool next() final;
 
-  doc_id_t value() const noexcept override { return doc_.value; }
+  doc_id_t value() const noexcept final { return doc_.value; }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     irs::seek(*this, target);
     return value();
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<irs::document>::id() == type ? &doc_
                                                   : it_->get_mutable(type);
   }
@@ -233,7 +227,7 @@ class CompoundDocIterator : public doc_iterator {
              : nullptr;
   }
 
-  bool next() override;
+  bool next() final;
 
   doc_id_t seek(doc_id_t target) final {
     irs::seek(*this, target);
@@ -311,18 +305,18 @@ class SortingCompoundDocIterator final : public doc_iterator {
     return true;
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return doc_it_->get_mutable(type);
   }
 
-  bool next() override;
+  bool next() final;
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     irs::seek(*this, target);
     return value();
   }
 
-  doc_id_t value() const noexcept override { return doc_it_->value(); }
+  doc_id_t value() const noexcept final { return doc_it_->value(); }
 
  private:
   class min_heap_context {
@@ -556,22 +550,22 @@ class CompoundTermIterator final : public term_iterator {
 
   const field_meta& meta() const noexcept { return *meta_; }
   void add(const term_reader& reader, const doc_map_f& doc_map);
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     // no way to merge attributes for the same term spread over multiple
     // iterators would require API change for attributes
     IRS_ASSERT(false);
     return nullptr;
   }
-  bool next() override;
-  doc_iterator::ptr postings(IndexFeatures features) const override;
-  void read() override {
+  bool next() final;
+  doc_iterator::ptr postings(IndexFeatures features) const final;
+  void read() final {
     for (auto& itr_id : term_iterator_mask_) {
       if (term_iterators_[itr_id].first) {
         term_iterators_[itr_id].first->read();
       }
     }
   }
-  bytes_view value() const override { return current_term_; }
+  bytes_view value() const final { return current_term_; }
 
  private:
   struct TermIterator {
@@ -722,20 +716,20 @@ class CompoundFiledIterator final : public basic_term_reader {
     return true;
   }
 
-  const field_meta& meta() const noexcept override {
+  const field_meta& meta() const noexcept final {
     IRS_ASSERT(current_meta_);
     return *current_meta_;
   }
 
-  bytes_view(min)() const noexcept override { return min_; }
+  bytes_view(min)() const noexcept final { return min_; }
 
-  bytes_view(max)() const noexcept override { return max_; }
+  bytes_view(max)() const noexcept final { return max_; }
 
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 
-  term_iterator::ptr iterator() const override;
+  term_iterator::ptr iterator() const final;
 
   bool aborted() const {
     return !static_cast<bool>(progress_) || term_itr_.aborted();

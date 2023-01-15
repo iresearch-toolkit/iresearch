@@ -84,7 +84,7 @@ class fs_lock : public index_lock {
   fs_lock(const std::filesystem::path& dir, std::string_view file)
     : dir_{dir}, file_{file} {}
 
-  bool lock() override {
+  bool lock() final {
     if (handle_) {
       // don't allow self obtaining
       return false;
@@ -119,7 +119,7 @@ class fs_lock : public index_lock {
     return handle_ != nullptr;
   }
 
-  bool is_locked(bool& result) const noexcept override {
+  bool is_locked(bool& result) const noexcept final {
     if (handle_ != nullptr) {
       result = true;
       return true;
@@ -136,7 +136,7 @@ class fs_lock : public index_lock {
     return false;
   }
 
-  bool unlock() noexcept override {
+  bool unlock() noexcept final {
     if (handle_ != nullptr) {
       handle_ = nullptr;
 #ifdef _WIN32
@@ -188,19 +188,19 @@ class fs_index_output : public buffered_index_output {
     return nullptr;
   }
 
-  int64_t checksum() const override {
+  int64_t checksum() const final {
     const_cast<fs_index_output*>(this)->flush();
     return crc.checksum();
   }
 
  protected:
-  size_t CloseImpl() override {
+  size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
     handle.reset(nullptr);
     return size;
   }
 
-  void flush_buffer(const byte_type* b, size_t len) override {
+  void flush_buffer(const byte_type* b, size_t len) final {
     IRS_ASSERT(handle);
 
     const auto len_written =
@@ -253,7 +253,7 @@ class fs_index_input : public buffered_index_input {
     return crc.checksum();
   }
 
-  ptr dup() const override { return ptr(new fs_index_input(*this)); }
+  ptr dup() const final { return ptr(new fs_index_input(*this)); }
 
   static index_input::ptr open(const file_path_t name, size_t pool_size,
                                IOAdvice advice) noexcept {
@@ -301,9 +301,9 @@ class fs_index_input : public buffered_index_input {
     return nullptr;
   }
 
-  size_t length() const override { return handle_->size; }
+  size_t length() const final { return handle_->size; }
 
-  ptr reopen() const override;
+  ptr reopen() const final;
 
  protected:
   void seek_internal(size_t pos) final {
@@ -381,10 +381,10 @@ class pooled_fs_index_input final : public fs_index_input {
  public:
   explicit pooled_fs_index_input(const fs_index_input& in);
   virtual ~pooled_fs_index_input() noexcept;
-  index_input::ptr dup() const override {
+  index_input::ptr dup() const final {
     return ptr(new pooled_fs_index_input(*this));
   }
-  index_input::ptr reopen() const override;
+  index_input::ptr reopen() const final;
 
  private:
   struct builder {

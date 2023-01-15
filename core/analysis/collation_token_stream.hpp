@@ -55,12 +55,12 @@ class collation_token_stream final : public analyzer,
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
-  bool next() noexcept override {
+  bool next() noexcept final {
     const auto eof = !term_eof_;
     term_eof_ = true;
     return eof;
   }
-  bool reset(std::string_view data) override;
+  bool reset(std::string_view data) final;
 
  private:
   struct state_t;

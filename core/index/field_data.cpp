@@ -175,7 +175,7 @@ class pos_iterator final : public irs::position {
     return irs::get_mutable(attrs_, id);
   }
 
-  bool next() override {
+  bool next() final {
     IRS_ASSERT(freq_);
 
     if (pos_ == freq_->value) {
@@ -206,7 +206,7 @@ class pos_iterator final : public irs::position {
     return true;
   }
 
-  void reset() override {
+  void reset() final {
     IRS_ASSERT(false);  // unsupported
   }
 
@@ -282,16 +282,16 @@ class doc_iterator final : public irs::doc_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t doc) override {
+  doc_id_t seek(doc_id_t doc) final {
     irs::seek(*this, doc);
     return value();
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() override {
+  bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     if (freq_in_.eof()) {
@@ -408,16 +408,16 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t doc) noexcept override {
+  doc_id_t seek(doc_id_t doc) noexcept final {
     irs::seek(*this, doc);
     return value();
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     // cppcheck-suppress shadowFunction
     auto& value = std::get<document>(attrs_);
 
@@ -552,27 +552,27 @@ class term_iterator : public irs::term_iterator {
     }
   }
 
-  bytes_view value() const noexcept override {
+  bytes_view value() const noexcept final {
     IRS_ASSERT(it_ != end_);
     return (*it_)->term;
   }
 
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 
-  void read() noexcept override {
+  void read() noexcept final {
     // Does nothing now
   }
 
-  irs::doc_iterator::ptr postings(IndexFeatures /*features*/) const override {
+  irs::doc_iterator::ptr postings(IndexFeatures /*features*/) const final {
     REGISTER_TIMER_DETAILED();
     IRS_ASSERT(it_ != end_);
 
     return (this->*POSTINGS[size_t(field_->prox_random_access())])(**it_);
   }
 
-  bool next() override {
+  bool next() final {
     if (next_ == end_) {
       return false;
     }
@@ -655,17 +655,17 @@ class term_reader final : public irs::basic_term_reader,
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
 
-  irs::bytes_view(min)() const noexcept override { return min_; }
+  irs::bytes_view(min)() const noexcept final { return min_; }
 
-  irs::bytes_view(max)() const noexcept override { return max_; }
+  irs::bytes_view(max)() const noexcept final { return max_; }
 
-  const irs::field_meta& meta() const noexcept override { return it_.meta(); }
+  const irs::field_meta& meta() const noexcept final { return it_.meta(); }
 
-  irs::term_iterator::ptr iterator() const noexcept override {
+  irs::term_iterator::ptr iterator() const noexcept final {
     return memory::to_managed<irs::term_iterator, false>(&it_);
   }
 
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 

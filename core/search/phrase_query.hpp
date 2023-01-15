@@ -81,7 +81,7 @@ class FixedPhraseQuery final : public PhraseQuery<FixedPhraseState> {
 
   using filter::prepared::execute;
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   doc_iterator::ptr ExecuteWithOffsets(const SubReader& segment) const;
 };
@@ -95,7 +95,7 @@ class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
 
   using filter::prepared::execute;
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   doc_iterator::ptr ExecuteWithOffsets(const SubReader& segment) const;
 };

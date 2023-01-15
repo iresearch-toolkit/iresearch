@@ -39,7 +39,7 @@ class AllIterator final : public doc_iterator {
   explicit AllIterator(doc_id_t docs_count) noexcept
     : max_doc_{doc_limits::min() + docs_count - 1} {}
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     if (doc_.value < max_doc_) {
       ++doc_.value;
       return true;
@@ -49,15 +49,15 @@ class AllIterator final : public doc_iterator {
     }
   }
 
-  doc_id_t seek(doc_id_t target) noexcept override {
+  doc_id_t seek(doc_id_t target) noexcept final {
     doc_.value = target <= max_doc_ ? target : doc_limits::eof();
 
     return doc_.value;
   }
 
-  doc_id_t value() const noexcept override { return doc_.value; }
+  doc_id_t value() const noexcept final { return doc_.value; }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<document>::id() == type ? &doc_ : nullptr;
   }
 
@@ -110,7 +110,7 @@ class MaskedDocIterator final : public doc_iterator, private util::noncopyable {
                     const document_mask& docs_mask) noexcept
     : docs_mask_{docs_mask}, end_{end}, next_{begin} {}
 
-  bool next() override {
+  bool next() final {
     while (next_ < end_) {
       current_.value = next_++;
 
@@ -124,18 +124,18 @@ class MaskedDocIterator final : public doc_iterator, private util::noncopyable {
     return false;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     next_ = target;
     next();
 
     return value();
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<document>::id() == type ? &current_ : nullptr;
   }
 
-  doc_id_t value() const override { return current_.value; }
+  doc_id_t value() const final { return current_.value; }
 
  private:
   const document_mask& docs_mask_;

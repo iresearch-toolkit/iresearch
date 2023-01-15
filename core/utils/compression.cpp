@@ -58,7 +58,7 @@ class compression_register
   : public irs::tagged_generic_register<
       std::string_view, value, std::string_view, compression_register> {
  protected:
-  std::string key_to_filename(const key_type& key) const override {
+  std::string key_to_filename(const key_type& key) const final {
     std::string filename(kFileNamePrefix.size() + key.size(), 0);
 
     std::memcpy(filename.data(), kFileNamePrefix.data(),
@@ -73,11 +73,11 @@ class compression_register
 
 struct identity_compressor final : irs::compression::compressor {
   irs::bytes_view compress(irs::byte_type* in, size_t size,
-                           irs::bstring& /*buf*/) override {
+                           irs::bstring& /*buf*/) final {
     return {in, size};
   }
 
-  void flush(irs::data_output& /*out*/) override {}
+  void flush(irs::data_output& /*out*/) final {}
 };
 
 identity_compressor kIdentityCompressor;

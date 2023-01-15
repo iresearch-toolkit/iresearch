@@ -150,12 +150,12 @@ class filter_with_options : public filter {
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
 
-  size_t hash() const noexcept override {
+  size_t hash() const noexcept final {
     return hash_combine(filter::hash(), options_.hash());
   }
 
  protected:
-  bool equals(const filter& rhs) const noexcept override {
+  bool equals(const filter& rhs) const noexcept final {
     return filter::equals(rhs) &&
            options_ == down_cast<filter_type>(rhs).options_;
   }
@@ -174,13 +174,13 @@ class filter_base : public filter_with_options<Options> {
   std::string_view field() const noexcept { return field_; }
   std::string* mutable_field() noexcept { return &field_; }
 
-  size_t hash() const noexcept override {
+  size_t hash() const noexcept final {
     return hash_combine(hash_utils::Hash(field_),
                         filter_with_options<options_type>::hash());
   }
 
  protected:
-  bool equals(const filter& rhs) const noexcept override {
+  bool equals(const filter& rhs) const noexcept final {
     return filter_with_options<options_type>::equals(rhs) &&
            field_ == down_cast<filter_type>(rhs).field_;
   }
@@ -196,7 +196,7 @@ class empty final : public filter {
 
   filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 };
 
 struct filter_visitor;

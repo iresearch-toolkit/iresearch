@@ -159,13 +159,13 @@ class input_buf final : public std::streambuf, util::noncopyable {
 
   explicit input_buf(index_input* in);
 
-  std::streamsize showmanyc() override;
+  std::streamsize showmanyc() final;
 
-  std::streamsize xsgetn(char_type* s, std::streamsize size) override;
+  std::streamsize xsgetn(char_type* s, std::streamsize size) final;
 
-  int_type uflow() override;
+  int_type uflow() final;
 
-  int_type underflow() override;
+  int_type underflow() final;
 
   operator index_input&() { return *in_; }  // cppcheck-suppress syntaxError
 

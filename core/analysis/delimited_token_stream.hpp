@@ -42,11 +42,11 @@ class delimited_token_stream final : public analyzer,
   static ptr make(std::string_view delimiter);
 
   explicit delimited_token_stream(std::string_view delimiter);
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
-  bool next() override;
-  bool reset(std::string_view data) override;
+  bool next() final;
+  bool reset(std::string_view data) final;
 
  private:
   using attributes = std::tuple<increment,

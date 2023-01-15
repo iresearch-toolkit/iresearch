@@ -197,9 +197,9 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     transitions_begin_ = transitions_.data();
   }
 
-  TableMatcher* Copy(bool) const override { return new TableMatcher(*this); }
+  TableMatcher* Copy(bool) const final { return new TableMatcher(*this); }
 
-  MatchType Type(bool test) const override {
+  MatchType Type(bool test) const final {
     if constexpr (MATCH_TYPE == MATCH_NONE) {
       return MATCH_TYPE;
     }
@@ -305,9 +305,9 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   ssize_t Priority(StateId s) final { return MatcherBase<Arc>::Priority(s); }
 
-  const FST& GetFst() const noexcept override { return *fst_; }
+  const FST& GetFst() const noexcept final { return *fst_; }
 
-  std::uint64_t Properties(std::uint64_t inprops) const noexcept override {
+  std::uint64_t Properties(std::uint64_t inprops) const noexcept final {
     return inprops | (error_ ? kError : 0);
   }
 

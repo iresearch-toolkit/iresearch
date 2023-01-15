@@ -137,7 +137,7 @@ class BooleanQuery : public filter::prepared {
 
   BooleanQuery() noexcept : excl_{0} {}
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     if (empty()) {
       return doc_iterator::empty();
     }
@@ -167,7 +167,7 @@ class BooleanQuery : public filter::prepared {
   }
 
   void visit(const irs::SubReader& segment, irs::PreparedStateVisitor& visitor,
-             score_t boost) const override {
+             score_t boost) const final {
     boost *= this->boost();
 
     if (!visitor.Visit(*this, boost)) {
@@ -235,7 +235,7 @@ class BooleanQuery : public filter::prepared {
 class AndQuery final : public BooleanQuery {
  public:
   doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
-                            iterator end) const override {
+                            iterator end) const final {
     return ::make_conjunction(ctx, merge_type(), begin, end);
   }
 };
@@ -244,7 +244,7 @@ class AndQuery final : public BooleanQuery {
 class OrQuery final : public BooleanQuery {
  public:
   doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
-                            iterator end) const override {
+                            iterator end) const final {
     return ::make_disjunction(ctx, merge_type(), begin, end);
   }
 };
@@ -259,7 +259,7 @@ class MinMatchQuery final : public BooleanQuery {
   }
 
   doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
-                            iterator end) const override {
+                            iterator end) const final {
     IRS_ASSERT(std::distance(begin, end) >= 0);
     const size_t size = size_t(std::distance(begin, end));
 

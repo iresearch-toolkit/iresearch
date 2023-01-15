@@ -209,7 +209,7 @@ struct field_collector final : public irs::sort::field_collector {
   uint64_t total_term_freq = 0;
 
   void collect(const irs::SubReader& /*segment*/,
-               const irs::term_reader& field) override {
+               const irs::term_reader& field) final {
     docs_with_field += field.docs_count();
 
     auto* freq = irs::get<irs::frequency>(field);
@@ -219,12 +219,12 @@ struct field_collector final : public irs::sort::field_collector {
     }
   }
 
-  void reset() noexcept override {
+  void reset() noexcept final {
     docs_with_field = 0;
     total_term_freq = 0;
   }
 
-  void collect(irs::bytes_view in) override {
+  void collect(irs::bytes_view in) final {
     byte_ref_iterator itr(in);
     auto docs_with_field_value = irs::vread<uint64_t>(itr);
     auto total_term_freq_value = irs::vread<uint64_t>(itr);
@@ -237,7 +237,7 @@ struct field_collector final : public irs::sort::field_collector {
     total_term_freq += total_term_freq_value;
   }
 
-  void write(irs::data_output& out) const override {
+  void write(irs::data_output& out) const final {
     out.write_vlong(docs_with_field);
     out.write_vlong(total_term_freq);
   }
@@ -249,7 +249,7 @@ struct term_collector final : public irs::sort::term_collector {
 
   void collect(const irs::SubReader& /*segment*/,
                const irs::term_reader& /*field*/,
-               const irs::attribute_provider& term_attrs) override {
+               const irs::attribute_provider& term_attrs) final {
     auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
@@ -257,9 +257,9 @@ struct term_collector final : public irs::sort::term_collector {
     }
   }
 
-  void reset() noexcept override { docs_with_term = 0; }
+  void reset() noexcept final { docs_with_term = 0; }
 
-  void collect(irs::bytes_view in) override {
+  void collect(irs::bytes_view in) final {
     byte_ref_iterator itr(in);
     auto docs_with_term_value = irs::vread<uint64_t>(itr);
 
@@ -270,7 +270,7 @@ struct term_collector final : public irs::sort::term_collector {
     docs_with_term += docs_with_term_value;
   }
 
-  void write(irs::data_output& out) const override {
+  void write(irs::data_output& out) const final {
     out.write_vlong(docs_with_term);
   }
 };
@@ -478,7 +478,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
   void collect(byte_type* stats_buf, const irs::IndexReader& /*index*/,
                const irs::sort::field_collector* field,
-               const irs::sort::term_collector* term) const override {
+               const irs::sort::term_collector* term) const final {
     auto& stats = stats_cast(stats_buf);
 
     const auto* field_ptr = down_cast<field_collector>(field);
@@ -519,11 +519,9 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     }
   }
 
-  IndexFeatures features() const noexcept override {
-    return IndexFeatures::FREQ;
-  }
+  IndexFeatures features() const noexcept final { return IndexFeatures::FREQ; }
 
-  field_collector::ptr prepare_field_collector() const override {
+  field_collector::ptr prepare_field_collector() const final {
     return std::make_unique<field_collector>();
   }
 
@@ -531,7 +529,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
                                        const term_reader& field,
                                        const byte_type* query_stats,
                                        const attribute_provider& doc_attrs,
-                                       score_t boost) const override {
+                                       score_t boost) const final {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
@@ -597,7 +595,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, stats, freq);
   }
 
-  term_collector::ptr prepare_term_collector() const override {
+  term_collector::ptr prepare_term_collector() const final {
     return std::make_unique<term_collector>();
   }
 

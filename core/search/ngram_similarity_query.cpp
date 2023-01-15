@@ -465,13 +465,13 @@ class NGramSimilarityDocIterator final : public doc_iterator,
     }
   }
 
-  attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     auto* attr = irs::get_mutable(attrs_, type);
 
     return attr ? attr : checker_.GetMutable(type);
   }
 
-  bool next() override {
+  bool next() final {
     bool next = false;
     while ((next = approx_.next()) &&
            !checker_.Check(approx_.match_count(), value())) {
@@ -479,11 +479,11 @@ class NGramSimilarityDocIterator final : public doc_iterator,
     return next;
   }
 
-  doc_id_t value() const override {
+  doc_id_t value() const final {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
 
     if (doc_->value >= target) {

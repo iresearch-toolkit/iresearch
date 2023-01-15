@@ -498,16 +498,16 @@ class PreparedSortBase : public sort::prepared {
 template<>
 class PreparedSortBase<void> : public sort::prepared {
  public:
-  sort::field_collector::ptr prepare_field_collector() const override {
+  sort::field_collector::ptr prepare_field_collector() const final {
     return nullptr;
   }
 
-  sort::term_collector::ptr prepare_term_collector() const override {
+  sort::term_collector::ptr prepare_term_collector() const final {
     return nullptr;
   }
 
   void collect(byte_type*, const IndexReader&, const sort::field_collector*,
-               const sort::term_collector*) const override {
+               const sort::term_collector*) const final {
     // NOOP
   }
 

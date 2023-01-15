@@ -42,14 +42,12 @@ struct volatile_boost_score_ctx : score_ctx {
 };
 
 struct prepared final : PreparedSortBase<void> {
-  IndexFeatures features() const noexcept override {
-    return IndexFeatures::NONE;
-  }
+  IndexFeatures features() const noexcept final { return IndexFeatures::NONE; }
 
   ScoreFunction prepare_scorer(const SubReader&, const term_reader&,
                                const byte_type*,
                                const irs::attribute_provider& attrs,
-                               irs::score_t boost) const override {
+                               irs::score_t boost) const final {
     auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (!volatile_boost) {

@@ -81,9 +81,9 @@ class by_prefix : public filter_base<by_prefix_options> {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(
-    const IndexReader& index, const Order& ord, score_t boost,
-    const attribute_provider* /*ctx*/) const override {
+  filter::prepared::ptr prepare(const IndexReader& index, const Order& ord,
+                                score_t boost,
+                                const attribute_provider* /*ctx*/) const final {
     return prepare(index, ord, this->boost() * boost, field(), options().term,
                    options().scored_terms_limit);
   }

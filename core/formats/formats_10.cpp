@@ -784,7 +784,7 @@ class postings_writer final : public postings_writer_base {
                   : pos_limits::min()) == FormatTraits::pos_min());
   }
 
-  irs::postings_writer::state write(irs::doc_iterator& docs) override;
+  irs::postings_writer::state write(irs::doc_iterator& docs) final;
 
  private:
   void add_position(uint32_t pos);
@@ -1538,11 +1538,11 @@ class position final : public irs::position,
  public:
   using impl = position_impl<IteratorTraits, FieldTraits>;
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) final {
     return impl::attribute(type);
   }
 
-  value_t seek(value_t target) override {
+  value_t seek(value_t target) final {
     const uint32_t freq = *this->freq_;
     if (this->pend_pos_ > freq) {
       skip(this->pend_pos_ - freq);
@@ -1569,7 +1569,7 @@ class position final : public irs::position,
     return value_;
   }
 
-  bool next() override {
+  bool next() final {
     if (0 == this->pend_pos_) {
       value_ = pos_limits::eof();
 
@@ -1599,7 +1599,7 @@ class position final : public irs::position,
     return true;
   }
 
-  void reset() override {
+  void reset() final {
     value_ = pos_limits::invalid();
     impl::reset();
   }
@@ -1896,11 +1896,11 @@ class doc_iterator final
                [[maybe_unused]] const index_input* pos_in,
                [[maybe_unused]] const index_input* pay_in);
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t target) override;
+  doc_id_t seek(doc_id_t target) final;
 
   doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
@@ -1913,7 +1913,7 @@ class doc_iterator final
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-  bool next() override {
+  bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     if (this->begin_ == std::end(this->buf_.docs)) {
@@ -2269,17 +2269,17 @@ class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
                [[maybe_unused]] const index_input* pos_in,
                [[maybe_unused]] const index_input* pay_in);
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t target) override;
+  doc_id_t seek(doc_id_t target) final;
 
   doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() override { return !doc_limits::eof(seek(value() + 1)); }
+  bool next() final { return !doc_limits::eof(seek(value() + 1)); }
 
  private:
   class ReadSkip {
@@ -2614,9 +2614,9 @@ struct index_meta_writer final : public irs::index_meta_writer {
   // FIXME(gnusi): Better to split prepare into 2 methods and pass meta by const
   // reference
   bool prepare(directory& dir, IndexMeta& meta, std::string& pending_filename,
-               std::string& filename) override;
-  bool commit() override;
-  void rollback() noexcept override;
+               std::string& filename) final;
+  bool commit() final;
+  void rollback() noexcept final;
 
  private:
   static std::string FileName(std::string_view prefix, uint64_t gen) {
@@ -2751,11 +2751,10 @@ uint64_t ParseGeneration(std::string_view file) noexcept {
 }
 
 struct index_meta_reader final : public irs::index_meta_reader {
-  bool last_segments_file(const directory& dir,
-                          std::string& name) const override;
+  bool last_segments_file(const directory& dir, std::string& name) const final;
 
   void read(const directory& dir, IndexMeta& meta,
-            std::string_view filename) override;
+            std::string_view filename) final;
 };
 
 bool index_meta_reader::last_segments_file(const directory& dir,
@@ -2851,7 +2850,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer {
 
   // FIXME(gnusi): Better to split write into 2 methods and pass meta by const
   // reference
-  void write(directory& dir, std::string& filename, SegmentMeta& meta) override;
+  void write(directory& dir, std::string& filename, SegmentMeta& meta) final;
 
  private:
   int32_t version_;
@@ -2907,7 +2906,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
 
 struct segment_meta_reader final : public irs::segment_meta_reader {
   void read(const directory& dir, SegmentMeta& meta,
-            std::string_view filename = {}) override;  // null == use meta
+            std::string_view filename = {}) final;  // null == use meta
 };
 
 void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
@@ -2993,10 +2992,10 @@ class document_mask_writer final : public irs::document_mask_writer {
 
   virtual ~document_mask_writer() = default;
 
-  std::string filename(const SegmentMeta& meta) const override;
+  std::string filename(const SegmentMeta& meta) const final;
 
   size_t write(directory& dir, const SegmentMeta& meta,
-               const document_mask& docs_mask) override;
+               const document_mask& docs_mask) final;
 };
 
 template<>
@@ -3039,7 +3038,7 @@ class document_mask_reader final : public irs::document_mask_reader {
   virtual ~document_mask_reader() = default;
 
   bool read(const directory& dir, const SegmentMeta& meta,
-            document_mask& docs_mask) override;
+            document_mask& docs_mask) final;
 };
 
 bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
@@ -3224,7 +3223,7 @@ class postings_reader final : public postings_reader_base {
 
   irs::doc_iterator::ptr iterator(IndexFeatures field_features,
                                   IndexFeatures required_features,
-                                  const term_meta& meta) override {
+                                  const term_meta& meta) final {
     if (const auto docs_count = meta.docs_count; docs_count > 1) {
       return iterator_impl(
         field_features, required_features,
@@ -3254,7 +3253,7 @@ class postings_reader final : public postings_reader_base {
 
   irs::doc_iterator::ptr wanderator(IndexFeatures field_features,
                                     IndexFeatures required_features,
-                                    const term_meta& meta) override {
+                                    const term_meta& meta) final {
     if constexpr (FormatTraits::wand()) {
       if (meta.docs_count <= FormatTraits::block_size() ||
           IndexFeatures::NONE == (field_features & IndexFeatures::FREQ)) {
@@ -3280,7 +3279,7 @@ class postings_reader final : public postings_reader_base {
   }
 
   size_t bit_union(IndexFeatures field, const term_provider_f& provider,
-                   size_t* set) override;
+                   size_t* set) final;
 
  private:
   template<typename FieldTraits, typename Factory>
@@ -3482,25 +3481,24 @@ class format10 : public irs::version10::format {
 
   format10() noexcept : format10(irs::type<format10>::get()) {}
 
-  index_meta_writer::ptr get_index_meta_writer() const override;
+  index_meta_writer::ptr get_index_meta_writer() const final;
   index_meta_reader::ptr get_index_meta_reader() const final;
 
-  segment_meta_writer::ptr get_segment_meta_writer() const override;
+  segment_meta_writer::ptr get_segment_meta_writer() const final;
   segment_meta_reader::ptr get_segment_meta_reader() const final;
 
   document_mask_writer::ptr get_document_mask_writer() const final;
   document_mask_reader::ptr get_document_mask_reader() const final;
 
-  field_writer::ptr get_field_writer(bool consolidation) const override;
+  field_writer::ptr get_field_writer(bool consolidation) const final;
   field_reader::ptr get_field_reader() const final;
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation) const override;
-  columnstore_reader::ptr get_columnstore_reader() const override;
+    bool consolidation) const final;
+  columnstore_reader::ptr get_columnstore_reader() const final;
 
-  irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
-  irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_reader::ptr get_postings_reader() const final;
 
  protected:
   explicit format10(const irs::type_info& type) noexcept
@@ -3595,12 +3593,12 @@ class format11 : public format10 {
 
   index_meta_writer::ptr get_index_meta_writer() const final;
 
-  field_writer::ptr get_field_writer(bool consolidation) const override;
+  field_writer::ptr get_field_writer(bool consolidation) const final;
 
   segment_meta_writer::ptr get_segment_meta_writer() const final;
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/) const override;
+    bool /*consolidation*/) const final;
 
  protected:
   explicit format11(const irs::type_info& type) noexcept : format10(type) {}
@@ -3647,7 +3645,7 @@ class format12 : public format11 {
   format12() noexcept : format11(irs::type<format12>::get()) {}
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/) const override;
+    bool /*consolidation*/) const final;
 
  protected:
   explicit format12(const irs::type_info& type) noexcept : format11(type) {}
@@ -3677,9 +3675,8 @@ class format13 : public format12 {
 
   format13() noexcept : format12(irs::type<format13>::get()) {}
 
-  irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
-  irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_reader::ptr get_postings_reader() const final;
 
  protected:
   explicit format13(const irs::type_info& type) noexcept : format12(type) {}
@@ -3713,11 +3710,11 @@ class format14 : public format13 {
 
   format14() noexcept : format13(irs::type<format14>::get()) {}
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const override;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
 
   irs::columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation) const override;
-  irs::columnstore_reader::ptr get_columnstore_reader() const override;
+    bool consolidation) const final;
+  irs::columnstore_reader::ptr get_columnstore_reader() const final;
 
  protected:
   explicit format14(const irs::type_info& type) noexcept : format13(type) {}
@@ -3756,9 +3753,8 @@ class format15 : public format14 {
 
   format15() noexcept : format14(irs::type<format15>::get()) {}
 
-  irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
-  irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_reader::ptr get_postings_reader() const final;
 
  protected:
   explicit format15(const irs::type_info& type) noexcept : format14(type) {}
@@ -3830,9 +3826,8 @@ class format12simd final : public format12 {
 
   format12simd() noexcept : format12(irs::type<format12simd>::get()) {}
 
-  irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
-  irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_reader::ptr get_postings_reader() const final;
 };
 
 static const ::format12simd FORMAT12SIMD_INSTANCE;
@@ -3863,9 +3858,8 @@ class format13simd : public format13 {
 
   format13simd() noexcept : format13(irs::type<format13simd>::get()) {}
 
-  irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
-  irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_reader::ptr get_postings_reader() const final;
 
  protected:
   explicit format13simd(const irs::type_info& type) noexcept : format13(type) {}
@@ -3900,10 +3894,10 @@ class format14simd : public format13simd {
   format14simd() noexcept : format13simd(irs::type<format14simd>::get()) {}
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation) const override;
-  columnstore_reader::ptr get_columnstore_reader() const override;
+    bool consolidation) const final;
+  columnstore_reader::ptr get_columnstore_reader() const final;
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const override;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
 
  protected:
   explicit format14simd(const irs::type_info& type) noexcept
@@ -3944,9 +3938,8 @@ class format15simd : public format14simd {
 
   format15simd() noexcept : format14simd(irs::type<format15simd>::get()) {}
 
-  irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
-  irs::postings_reader::ptr get_postings_reader() const override;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_reader::ptr get_postings_reader() const final;
 
  protected:
   explicit format15simd(const irs::type_info& type) noexcept

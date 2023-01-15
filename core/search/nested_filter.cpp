@@ -80,7 +80,7 @@ class ScorerWrapper final : public doc_iterator {
 
   bool next() final { return it_->next(); }
 
-  attribute* get_mutable(irs::type_info::type_id id) override {
+  attribute* get_mutable(irs::type_info::type_id id) final {
     if (irs::type<score>::id() == id) {
       return &score_;
     }
@@ -122,15 +122,15 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
     }
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  attribute* get_mutable(irs::type_info::type_id id) override {
+  attribute* get_mutable(irs::type_info::type_id id) final {
     return irs::get_mutable(attrs_, id);
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     const auto& doc = *std::get<attribute_ptr<document>>(attrs_).ptr;
 
     if (IRS_UNLIKELY(target <= doc.value)) {
@@ -146,7 +146,7 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
     return SeekInternal(parent);
   }
 
-  bool next() override {
+  bool next() final {
     if (IRS_LIKELY(parent_->next())) {
       return !doc_limits::eof(SeekInternal(value()));
     }
@@ -596,10 +596,10 @@ class ByNestedQuery final : public filter::prepared {
   }
 
   using filter::prepared::execute;
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override {
+             score_t boost) const final {
     boost *= this->boost();
 
     if (!visitor.Visit(*this, boost)) {

@@ -50,13 +50,13 @@ class single_instance_lock : public index_lock {
     IRS_ASSERT(parent);
   }
 
-  bool lock() override {
+  bool lock() final {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{parent->llock_};
     return parent->locks_.insert(name).second;
   }
 
-  bool is_locked(bool& result) const noexcept override {
+  bool is_locked(bool& result) const noexcept final {
     try {
       std::lock_guard lock{parent->llock_};
 
@@ -69,7 +69,7 @@ class single_instance_lock : public index_lock {
     return false;
   }
 
-  bool unlock() noexcept override {
+  bool unlock() noexcept final {
     try {
       std::lock_guard lock{parent->llock_};
 
@@ -282,20 +282,20 @@ class checksum_memory_index_output final : public memory_index_output {
     crc_begin_ = pos_;
   }
 
-  void flush() override {
+  void flush() final {
     crc_.process_block(crc_begin_, pos_);
     crc_begin_ = pos_;
     memory_index_output::flush();
   }
 
-  int64_t checksum() const noexcept override {
+  int64_t checksum() const noexcept final {
     crc_.process_block(crc_begin_, pos_);
     crc_begin_ = pos_;
     return crc_.checksum();
   }
 
  protected:
-  void switch_buffer() override {
+  void switch_buffer() final {
     crc_.process_block(crc_begin_, pos_);
     memory_index_output::switch_buffer();
     crc_begin_ = pos_;

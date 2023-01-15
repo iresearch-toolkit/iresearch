@@ -48,10 +48,10 @@ class NGramSimilarityQuery final : public filter::prepared {
 
   using filter::prepared::execute;
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override {
+             score_t boost) const final {
     if (auto* state = states_.find(segment); state) {
       visitor.Visit(*this, *state, boost * this->boost());
     }

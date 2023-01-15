@@ -59,7 +59,7 @@ class bm25_sort : public sort {
   // returns 'true' if current scorer is 'bm15'
   bool bm15() const noexcept { return b_ == 0.f; }
 
-  sort::prepared::ptr prepare() const override;
+  sort::prepared::ptr prepare() const final;
 
  private:
   float_t k_;  // [1.2 .. 2.0]
