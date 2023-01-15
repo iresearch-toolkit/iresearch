@@ -49,8 +49,8 @@ void fastpack(const uint32_t* IRS_RESTRICT in,
               uint32_t* IRS_RESTRICT out) noexcept {
   // 32 == sizeof(uint32_t) * 8
   static_assert(0 < N && N < 32);
-  // ensure all computations are constexr, i.e. no conditional jumps, no loops,
-  // no variable increment/decrement
+  // ensure all computations are constexpr,
+  // i.e. no conditional jumps, no loops, no variable increment/decrement
   *out |= ((*in) % (1U << N)) << (N * 0) % 32;
   if constexpr (((N * 1) % 32) < ((N * 0) % 32)) {
     ++out;
@@ -251,8 +251,8 @@ void fastpack(const uint64_t* IRS_RESTRICT in,
               uint64_t* IRS_RESTRICT out) noexcept {
   // 64 == sizeof(uint64_t) * 8
   static_assert(0 < N && N < 64);
-  // ensure all computations are constexr, i.e. no conditional jumps, no loops,
-  // no variable increment/decrement
+  // ensure all computations are constexpr,
+  // i.e. no conditional jumps, no loops, no variable increment/decrement
   *out |= ((*in) % (1ULL << N)) << (N * 0) % 64;
   if constexpr (((N * 1) % 64) < ((N * 0) % 64)) {
     ++out;
@@ -1235,40 +1235,28 @@ IRS_FORCE_INLINE void fastunpack<64>(const uint64_t* IRS_RESTRICT in,
 // cppcheck-suppress unknownMacro
 MSVC_ONLY(__pragma(warning(disable : 4702)))  // unreachable code
 
-template<int N, int I>
-IRS_FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
-  // 32 == sizeof(uint32_t) * 8
-  static_assert(0 < N && N < 32);
-  static_assert(0 <= I && I < 32);
+template<int N, int I, typename T>
+IRS_FORCE_INLINE T fastpack_at(const T* in) noexcept {
+  static constexpr int kBits = sizeof(T) * 8;
+  static_assert(0 < N && N < kBits);
+  static_assert(0 <= I && I < kBits);
 
   // ensure all computations are constexpr,
   // i.e. no conditional jumps, no loops, no variable increment/decrement
 
-  if constexpr ((N * (I + 1) % 32) < ((N * I) % 32)) {
-    return ((in[N * I / 32] >> (N * I % 32)) % (1U << N)) |
-           ((in[1 + N * I / 32] % (1U << (N * (I + 1)) % 32))
-            << (N - ((N * (I + 1)) % 32)));
+  if constexpr ((N * (I + 1) % kBits) < (N * I) % kBits &&
+                (1 + N * I / kBits) < N) {
+    T data[2];
+    static_assert(sizeof(data) == sizeof(T) * 2);
+    std::memcpy(data, in + N * I / kBits, sizeof(data));
+    return ((data[0] >> (N * I % kBits)) % (T{1} << N)) |
+           ((data[1] % (T{1} << (N * (I + 1)) % kBits))
+            << (N - ((N * (I + 1)) % kBits)));
+  } else {
+    T data;
+    std::memcpy(&data, in + N * I / kBits, sizeof(data));
+    return ((data >> (N * I % kBits)) % (T{1} << N));
   }
-
-  return ((in[N * I / 32] >> (N * I % 32)) % (1U << N));
-}
-
-template<int N, int I>
-IRS_FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
-  // 64 == sizeof(uint64_t) * 8
-  static_assert(0 < N && N < 64);
-  static_assert(0 <= I && I < 64);
-
-  // ensure all computations are constexr, i.e. no conditional jumps, no loops,
-  // no variable increment/decrement
-
-  if constexpr ((N * (I + 1) % 64) < ((N * I) % 64)) {
-    return ((in[N * I / 64] >> (N * I % 64)) % (1ULL << N)) |
-           ((in[1 + N * I / 64] % (1ULL << (N * (I + 1)) % 64))
-            << (N - ((N * (I + 1)) % 64)));
-  }
-
-  return ((in[N * I / 64] >> (N * I % 64)) % (1ULL << N));
 }
 
 // not all control paths return a value
@@ -1510,8 +1498,7 @@ __pragma(warning(pop))
 
 }  // namespace
 
-namespace irs {
-namespace packed {
+namespace irs::packed {
 
 void pack_block(const uint32_t* IRS_RESTRICT in, uint32_t* IRS_RESTRICT out,
                 const uint32_t bit) noexcept {
@@ -2339,5 +2326,4 @@ uint64_t fastpack_at(const uint64_t* in, const size_t i,
   }
 }
 
-}  // namespace packed
-}  // namespace irs
+}  // namespace irs::packed
