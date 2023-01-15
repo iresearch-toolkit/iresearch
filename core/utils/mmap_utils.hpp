@@ -44,30 +44,6 @@
 #include <sys/mman.h>
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a wrapper for MAP_ANONYMOUS / MAP_ANON
-///
-///               MAP_ANON  MAP_ANONYMOUS
-///    OpenBSD         Y         Y(*)
-///    Linux           Y(*)      Y
-///    FreeBSD         Y         Y
-///    NetBSD          Y         N
-///    OSX             Y         N
-///    Solaris         Y         N
-///    HP-UX           N         Y
-///    AIX             N         Y
-///    IRIX            N         N
-///    (*) synonym to other
-///
-////////////////////////////////////////////////////////////////////////////////
-#ifndef MAP_ANON
-#ifdef MAP_ANONYMOUS
-#define MAP_ANON MAP_ANONYMOUS
-#else
-#error "System does not support mapping anonymous pages?"
-#endif
-#endif  // MAP_ANON
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief constants for madvice
 ////////////////////////////////////////////////////////////////////////////////
 #define IR_MADVICE_NORMAL MADV_NORMAL
@@ -76,15 +52,9 @@
 #define IR_MADVICE_WILLNEED MADV_WILLNEED
 #define IR_MADVICE_DONTNEED MADV_DONTNEED
 
-#endif  // _MSC_VER
+#endif
 
-namespace irs {
-namespace mmap_utils {
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief flushes changes made in memory back to disk
-//////////////////////////////////////////////////////////////////////////////
-int flush(int fd, void* addr, size_t size, int flags) noexcept;
+namespace irs::mmap_utils {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class mmap_handle
@@ -104,10 +74,6 @@ class mmap_handle : private util::noncopyable {
   size_t size() const noexcept { return size_; }
   ptrdiff_t fd() const noexcept { return fd_; }
 
-  bool flush(int flags) noexcept {
-    return !mmap_utils::flush(static_cast<int>(fd_), addr_, size_, flags);
-  }
-
   bool advise(int advice) noexcept {
     return 0 == ::madvise(addr_, size_, advice);
   }
@@ -121,7 +87,6 @@ class mmap_handle : private util::noncopyable {
   size_t size_;    // file size
   ptrdiff_t fd_;   // file descriptor
   bool dontneed_;  // request to free pages on close
-};                 // mmap_handle
+};
 
-}  // namespace mmap_utils
-}  // namespace irs
+}  // namespace irs::mmap_utils
