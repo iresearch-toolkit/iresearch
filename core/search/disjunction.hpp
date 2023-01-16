@@ -1345,8 +1345,7 @@ doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
     if constexpr (Disjunction::kEnableUnary) {
       using UnaryDisjunction = typename RebindIterator<Disjunction>::Unary;
 
-      return memory::make_managed<doc_iterator, UnaryDisjunction>(
-        std::move(itrs.front()));
+      return memory::make_managed<UnaryDisjunction>(std::move(itrs.front()));
     }
 
     return std::move(itrs.front());
@@ -1356,7 +1355,7 @@ doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
     // 2-way disjunction
     using BasicDisjunction = typename RebindIterator<Disjunction>::Basic;
 
-    return memory::make_managed<doc_iterator, BasicDisjunction>(
+    return memory::make_managed<BasicDisjunction>(
       std::move(itrs.front()), std::move(itrs.back()),
       std::forward<Merger>(merger), std::forward<Args>(args)...);
   }
@@ -1365,13 +1364,13 @@ doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
     if (size <= Disjunction::kSmallDisjunctionUpperBound) {
       using SmallDisjunction = typename RebindIterator<Disjunction>::Small;
 
-      return memory::make_managed<doc_iterator, SmallDisjunction>(
+      return memory::make_managed<SmallDisjunction>(
         std::move(itrs), std::forward<Merger>(merger),
         std::forward<Args>(args)...);
     }
   }
 
-  return memory::make_managed<doc_iterator, Disjunction>(
+  return memory::make_managed<Disjunction>(
     std::move(itrs), std::forward<Merger>(merger), std::forward<Args>(args)...);
 }
 
@@ -1405,16 +1404,16 @@ doc_iterator::ptr MakeWeakDisjunction(
     IRS_ASSERT(min_match == size);
     using Conjunction = typename RebindIterator<WeakConjunction>::Conjunction;
 
-    return memory::make_managed<doc_iterator, Conjunction>(
+    return memory::make_managed<Conjunction>(
       typename Conjunction::doc_iterators_t{
         std::make_move_iterator(std::begin(itrs)),
         std::make_move_iterator(std::end(itrs))},
       std::forward<Merger>(merger));
   }
 
-  return memory::make_managed<doc_iterator, WeakConjunction>(
-    std::move(itrs), min_match, std::forward<Merger>(merger),
-    std::forward<Args>(args)...);
+  return memory::make_managed<WeakConjunction>(std::move(itrs), min_match,
+                                               std::forward<Merger>(merger),
+                                               std::forward<Args>(args)...);
 }
 
 }  // namespace irs

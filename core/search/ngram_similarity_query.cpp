@@ -564,7 +564,7 @@ doc_iterator::ptr NGramSimilarityQuery::execute(
   }
 
   return memory::make_managed<
-    doc_iterator, NGramSimilarityDocIterator<SerialPositionsChecker<Dummy>>>(
+    NGramSimilarityDocIterator<SerialPositionsChecker<Dummy>>>(
     std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
     query_state->terms.size(), min_match_count_, ord);
 }
@@ -585,7 +585,6 @@ doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
   }
 
   return memory::make_managed<
-    doc_iterator,
     NGramSimilarityDocIterator<SerialPositionsChecker<NGramPosition>>>(
     std::move(itrs), query_state->terms.size(), min_match_count_, true);
 }

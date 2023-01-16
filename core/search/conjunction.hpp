@@ -286,7 +286,7 @@ doc_iterator::ptr MakeConjunction(typename Conjunction::doc_iterators_t&& itrs,
   }
 
   // conjunction
-  return memory::make_managed<doc_iterator, Conjunction>(
+  return memory::make_managed<Conjunction>(
     std::move(itrs), std::forward<Merger>(merger), std::forward<Args>(args)...);
 }
 

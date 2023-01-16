@@ -703,7 +703,7 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
             }
           }
 
-          return memory::make_managed<irs::doc_iterator, ChildToParentJoin<M>>(
+          return memory::make_managed<ChildToParentJoin<M>>(
             std::move(parent), *prev, std::move(child),
             std::forward<Head>(head), std::forward<Tail>(tail)...);
         });
