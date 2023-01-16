@@ -43,7 +43,7 @@ class segmentation_token_stream final : public analyzer,
     enum class word_break_t {
       ALL,      // All UAX29 words are reported
       GRAPHIC,  // Report only words with graphic characters
-      ALPHA
+      ALPHA     // Report only words with alphanumeric characters
     };
 
     // lowercase tokens, match default values in text analyzer
