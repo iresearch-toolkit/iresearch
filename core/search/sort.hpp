@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include <bit>
 #include <cstring>
 #include <utility>
 
@@ -33,6 +32,8 @@
 #include "utils/iterator.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/small_vector.hpp"
+
+#include <absl/base/casts.h>
 
 namespace irs {
 
@@ -78,14 +79,14 @@ class ScoreFunction : util::noncopyable {
  public:
   static void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
     IRS_ASSERT(res != nullptr);
-    const auto size = std::bit_cast<size_t>(ctx);
+    const auto size = absl::bit_cast<size_t>(ctx);
     std::memset(res, 0, size);
   }
 
   // Returns default scoring function setting `size` score buckets to 0.
   static ScoreFunction Default(size_t count) noexcept {
     // write byte size instead of count to avoid multiply in DefaultScore call
-    return {std::bit_cast<score_ctx*>(sizeof(score_t) * count), &DefaultScore,
+    return {absl::bit_cast<score_ctx*>(sizeof(score_t) * count), &DefaultScore,
             &Noop};
   }
 
