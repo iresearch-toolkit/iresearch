@@ -34,8 +34,7 @@ namespace {
 using namespace tests;
 using namespace irs;
 
-class doclist_test_iterator final : public doc_iterator,
-                                    private util::noncopyable {
+class doclist_test_iterator : public doc_iterator, private util::noncopyable {
  public:
   doclist_test_iterator(const std::vector<doc_id_t>& documents)
     : begin_(documents.begin()),
@@ -93,7 +92,7 @@ class doclist_test_iterator final : public doc_iterator,
   bool resetted_;
 };
 
-class doclist_test_query final : public filter::prepared {
+class doclist_test_query : public filter::prepared {
  public:
   doclist_test_query(const std::vector<doc_id_t>& documents, score_t)
     : documents_(documents){};
@@ -118,7 +117,7 @@ class doclist_test_query final : public filter::prepared {
 
 size_t doclist_test_query::executes_{0};
 
-class doclist_test_filter final : public filter {
+class doclist_test_filter : public filter {
  public:
   doclist_test_filter() noexcept
     : filter(irs::type<doclist_test_filter>::get()) {}

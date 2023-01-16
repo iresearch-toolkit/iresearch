@@ -54,7 +54,7 @@ struct lz4 {
   static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
 
-  class lz4compressor final : public compression::compressor {
+  class lz4compressor : public compression::compressor {
    public:
     explicit lz4compressor(int acceleration = 0) noexcept
       : acceleration_(acceleration) {}
@@ -68,7 +68,7 @@ struct lz4 {
     const int acceleration_{0};  // 0 - default acceleration
   };
 
-  class lz4decompressor final : public compression::decompressor {
+  class lz4decompressor : public compression::decompressor {
    public:
     bytes_view decompress(const byte_type* src, size_t src_size, byte_type* dst,
                           size_t dst_size) final IRS_ATTRIBUTE_NONNULL(2);

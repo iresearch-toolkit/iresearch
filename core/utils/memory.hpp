@@ -255,81 +255,61 @@ class allocator_array_deleter {
   size_t size_;
 };
 
-struct noop_deleter {
-  template<typename T>
-  void operator()(T* /*unused*/) {}
-};
-
-template<typename T>
-struct managed_deleter : util::noncopyable {
- public:
-  using value_type = T;
-  using pointer = T*;
-
-  explicit managed_deleter(pointer ptr = nullptr) noexcept : ptr_(ptr) {}
-
-  template<typename U,
-           typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
-  // cppcheck-suppress noExplicitConstructor
-  managed_deleter(managed_deleter<U>&& rhs) noexcept : ptr_(rhs.ptr_) {
-    rhs.ptr_ = nullptr;
-  }
-
-  managed_deleter(managed_deleter&& rhs) noexcept : ptr_(rhs.ptr_) {
-    rhs.ptr_ = nullptr;
-  }
-
-  managed_deleter& operator=(managed_deleter&& rhs) noexcept {
-    if (this != &rhs) {
-      ptr_ = rhs.ptr_;
-      rhs.ptr_ = nullptr;
-    }
-    return *this;
-  }
-
-  template<typename U,
-           typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
-  managed_deleter& operator=(managed_deleter<U>&& rhs) noexcept {
-    ptr_ = rhs.ptr_;
-    rhs.ptr_ = nullptr;
-    return *this;
-  }
-
-  void operator()(const pointer p) noexcept {
-    IRS_ASSERT(!ptr_ || p == ptr_);
-    delete ptr_;
-  }
-
-  pointer get() const noexcept { return ptr_; }
+struct Managed {
+ protected:
+  virtual ~Managed() = default;
 
  private:
-  template<typename U>
-  friend struct managed_deleter;
+  friend struct ManagedDeleter;
 
-  pointer ptr_;
+  // Const because we can allocate and then delete const object
+  //
+  // Also it's possible to make here empty implementation
+  // and it makes usage more convenient but also more error prone
+  // and don't finalize class
+  virtual void Destroy() const = 0;
+};
+
+template<typename Base>
+struct OnStack final : Base {
+  static_assert(std::is_base_of_v<Managed, Base>);
+
+  template<typename... Args>
+  OnStack(Args&&... args) : Base{std::forward<Args>(args)...} {}
+
+ private:
+  void Destroy() const final {}
+};
+
+template<typename Base>
+struct OnHeap final : Base {
+  static_assert(std::is_base_of_v<Managed, Base>);
+
+  template<typename... Args>
+  OnHeap(Args&&... args) : Base{std::forward<Args>(args)...} {}
+
+ private:
+  void Destroy() const final { delete this; }
+};
+
+struct ManagedDeleter {
+  void operator()(const Managed* p) noexcept {
+    IRS_ASSERT(p != nullptr);  // std::unique_ptr doesn't call dtor on nullptr
+    p->Destroy();
+  }
 };
 
 template<typename T>
-using managed_ptr = std::unique_ptr<T, memory::managed_deleter<T>>;
+using managed_ptr = std::unique_ptr<T, ManagedDeleter>;
 
-template<typename T, bool Manage = true>
-inline std::enable_if_t<!std::is_array_v<T>, managed_ptr<T>> to_managed(
-  T* ptr) noexcept {
-  return managed_ptr<T>(
-    ptr, Manage ? managed_deleter<T>(ptr) : managed_deleter<T>(nullptr));
+template<typename Base, typename Derived = Base>
+inline auto to_managed(OnStack<Derived>& p) noexcept {
+  return managed_ptr<Base>{&p};
 }
 
-template<typename T>
-inline std::enable_if_t<!std::is_array_v<T>, managed_ptr<T>> to_managed(
-  std::unique_ptr<T>&& ptr) noexcept {
-  auto* p = ptr.release();
-  return managed_ptr<T>(p, managed_deleter<T>(p));
-}
-
-template<typename T, typename... Types>
-inline std::enable_if_t<!std::is_array_v<T>, managed_ptr<T>> make_managed(
-  Types&&... Args) {
-  return to_managed<T, true>(new T(std::forward<Types>(Args)...));
+template<typename Base, typename Derived = Base, typename... Args>
+inline auto make_managed(Args&&... args) {
+  return managed_ptr<Base>{new OnHeap<Derived>{std::forward<Args>(args)...}};
 }
 
 template<typename T, typename Alloc, typename... Types>

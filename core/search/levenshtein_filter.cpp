@@ -230,8 +230,9 @@ filter::prepared::ptr prepare_levenshtein_filter(
   auto* stats_buf = stats[0].data();
   term_stats.finish(stats_buf, 0, field_stats, index);
 
-  return memory::make_managed<MultiTermQuery>(
-    std::move(states), std::move(stats), boost, sort::MergeType::kMax, 1);
+  return memory::make_managed<MultiTermQuery>(std::move(states),
+                                              std::move(stats), boost,
+                                              sort::MergeType::kMax, size_t{1});
 }
 
 }  // namespace

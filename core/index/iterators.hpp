@@ -43,7 +43,7 @@ namespace irs {
 //   - `next()` must constantly return `false`
 //   - `seek()` to any value must return `doc_limits::eof()`
 //   - `value()` must return `doc_limits::eof()`
-//
+// TODO(MBkkt) two vptr, probably should be fixed
 struct doc_iterator : iterator<doc_id_t>, attribute_provider {
   using ptr = memory::managed_ptr<doc_iterator>;
 

@@ -554,7 +554,7 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
   }
 }
 
-class term_iterator final : public irs::seek_term_iterator {
+class term_iterator : public irs::seek_term_iterator {
  public:
   struct term_cookie final : irs::seek_cookie {
     explicit term_cookie(irs::bytes_view term) noexcept : term(term) {}

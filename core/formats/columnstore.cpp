@@ -1729,7 +1729,7 @@ class column : public irs::column_reader, private util::noncopyable {
 };                         // column
 
 template<typename Column>
-class column_iterator final : public irs::doc_iterator {
+class column_iterator : public irs::doc_iterator {
  private:
   using attributes = std::tuple<document, cost, score, payload>;
 
@@ -2196,7 +2196,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   irs::doc_iterator::ptr iterator(ColumnHint hint) const final;
 
  private:
-  class column_iterator final : public irs::doc_iterator {
+  class column_iterator : public irs::doc_iterator {
    private:
     using attributes = std::tuple<document, cost, score>;
 

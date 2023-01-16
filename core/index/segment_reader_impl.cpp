@@ -34,7 +34,7 @@
 namespace irs {
 namespace {
 
-class AllIterator final : public doc_iterator {
+class AllIterator : public doc_iterator {
  public:
   explicit AllIterator(doc_id_t docs_count) noexcept
     : max_doc_{doc_limits::min() + docs_count - 1} {}
@@ -66,7 +66,7 @@ class AllIterator final : public doc_iterator {
   doc_id_t max_doc_;  // largest valid doc_id
 };
 
-class MaskDocIterator final : public doc_iterator {
+class MaskDocIterator : public doc_iterator {
  public:
   MaskDocIterator(doc_iterator::ptr&& it, const document_mask& mask) noexcept
     : mask_{mask}, it_{std::move(it)} {}
@@ -104,7 +104,7 @@ class MaskDocIterator final : public doc_iterator {
   doc_iterator::ptr it_;
 };
 
-class MaskedDocIterator final : public doc_iterator, private util::noncopyable {
+class MaskedDocIterator : public doc_iterator, private util::noncopyable {
  public:
   MaskedDocIterator(doc_id_t begin, doc_id_t end,
                     const document_mask& docs_mask) noexcept
@@ -308,12 +308,14 @@ column_iterator::ptr SegmentReaderImpl::columns() const {
 
 doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
   if (docs_mask_.empty()) {
-    return memory::make_managed<AllIterator>(info_.docs_count);
+    return memory::make_managed<AllIterator>(
+      static_cast<doc_id_t>(info_.docs_count));
   }
 
   // the implementation generates doc_ids sequentially
   return memory::make_managed<MaskedDocIterator>(
-    doc_limits::min(), doc_limits::min() + info_.docs_count, docs_mask_);
+    doc_limits::min(),
+    doc_limits::min() + static_cast<doc_id_t>(info_.docs_count), docs_mask_);
 }
 
 doc_iterator::ptr SegmentReaderImpl::mask(doc_iterator::ptr&& it) const {

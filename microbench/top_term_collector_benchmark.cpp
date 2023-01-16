@@ -47,7 +47,7 @@ struct type<::term_meta> : type<irs::term_meta> {};
 namespace {
 
 template<typename T>
-class seek_term_iterator final : public irs::seek_term_iterator {
+class seek_term_iterator : public irs::seek_term_iterator {
  public:
   using iterator_type = const std::tuple<irs::bytes_view, term_meta, T>*;
 
@@ -167,7 +167,8 @@ void BM_top_term_collector(benchmark::State& state) {
   }
 
   for (auto _ : state) {
-    seek_term_iterator<int> it(terms.data(), terms.size());
+    irs::memory::OnStack<seek_term_iterator<int>> it(terms.data(),
+                                                     terms.size());
     collector.prepare(segment, term_reader, it);
 
     while (it.next()) {

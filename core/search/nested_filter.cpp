@@ -23,6 +23,7 @@
 #include "nested_filter.hpp"
 
 #include <tuple>
+#include <utility>
 #include <variant>
 
 #include "analysis/token_attributes.hpp"
@@ -66,7 +67,7 @@ bool IsValid(const ByNestedOptions::MatchType& match) noexcept {
     match);
 }
 
-class ScorerWrapper final : public doc_iterator {
+class ScorerWrapper : public doc_iterator {
  public:
   explicit ScorerWrapper(doc_iterator::ptr it, ScoreFunction&& score) noexcept
     : it_{std::move(it)} {
@@ -96,11 +97,12 @@ class ScorerWrapper final : public doc_iterator {
 class NoneMatcher;
 
 template<typename Matcher>
-class ChildToParentJoin final : public doc_iterator, private Matcher {
+class ChildToParentJoin : public doc_iterator, private Matcher {
  public:
+  template<typename... Args>
   ChildToParentJoin(doc_iterator::ptr&& parent, const prev_doc& prev_parent,
-                    doc_iterator::ptr&& child, Matcher&& matcher) noexcept
-    : Matcher{std::move(matcher)},
+                    doc_iterator::ptr&& child, Args&&... args) noexcept
+    : Matcher{std::forward<Args>(args)...},
       parent_{std::move(parent)},
       child_{std::move(child)},
       prev_parent_{&prev_parent} {
@@ -200,8 +202,8 @@ void ChildToParentJoin<Matcher>::PrepareScore() {
   child_doc_ = irs::get<document>(*child_);
 
   if (!std::is_same_v<Matcher, NoneMatcher> &&
-      (!child_doc_ || !child_score_ ||
-       *child_score_ == ScoreFunction::kDefault)) {
+      (child_doc_ == nullptr || child_score_ == nullptr ||
+       child_score_->IsDefault())) {
     IRS_ASSERT(Matcher::size());
     score = ScoreFunction::Default(Matcher::size());
   } else {
@@ -239,6 +241,9 @@ struct ScoreBuffer<Aggregator<Merger, Size>> {
 
 class NoneMatcher : public NoopAggregator {
  public:
+  struct Tag {
+    using Type = NoneMatcher;
+  };
   using JoinType = ChildToParentJoin<NoneMatcher>;
 
   template<typename Merger>
@@ -263,6 +268,9 @@ class NoneMatcher : public NoopAggregator {
 template<typename Merger>
 class AnyMatcher : public Merger, private score_ctx {
  public:
+  struct Tag {
+    using Type = AnyMatcher<Merger>;
+  };
   using JoinType = ChildToParentJoin<AnyMatcher<Merger>>;
 
   explicit AnyMatcher(Merger&& merger) noexcept : Merger{std::move(merger)} {}
@@ -276,7 +284,7 @@ class AnyMatcher : public Merger, private score_ctx {
   ScoreFunction PrepareScore() {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
@@ -301,6 +309,9 @@ class PredMatcher : public Merger,
                     private ScoreBuffer<Merger>,
                     private score_ctx {
  public:
+  struct Tag {
+    using Type = PredMatcher<Merger>;
+  };
   using BufferType = ScoreBuffer<Merger>;
   using JoinType = ChildToParentJoin<PredMatcher<Merger>>;
 
@@ -357,7 +368,7 @@ class PredMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<PredMatcher&>(*ctx);
@@ -377,6 +388,9 @@ class RangeMatcher : public Merger,
                      private ScoreBuffer<Merger>,
                      private score_ctx {
  public:
+  struct Tag {
+    using Type = RangeMatcher<Merger>;
+  };
   using BufferType = ScoreBuffer<Merger>;
   using JoinType = ChildToParentJoin<RangeMatcher<Merger>>;
 
@@ -440,7 +454,7 @@ class RangeMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<RangeMatcher&>(*ctx);
@@ -461,6 +475,9 @@ class MinMatcher : public Merger,
                    private ScoreBuffer<Merger>,
                    private score_ctx {
  public:
+  struct Tag {
+    using Type = MinMatcher<Merger>;
+  };
   using BufferType = ScoreBuffer<Merger>;
   using JoinType = ChildToParentJoin<MinMatcher<Merger>>;
 
@@ -522,7 +539,7 @@ class MinMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
@@ -557,22 +574,26 @@ auto ResolveMatchType(const SubReader& segment,
                       const ByNestedOptions::MatchType& match,
                       score_t none_boost, A&& aggregator, Visitor&& visitor) {
   return std::visit(
-    irs::Visitor{
-      [&](Match v) {
-        if (v == kMatchNone) {
-          return visitor(NoneMatcher{std::forward<A>(aggregator), none_boost});
-        } else if (v == kMatchAny) {
-          return visitor(AnyMatcher<A>{std::forward<A>(aggregator)});
-        } else if (v.IsMinMatch()) {
-          IRS_ASSERT(doc_limits::eof(v.Max));
-          return visitor(MinMatcher<A>{v.Min, std::forward<A>(aggregator)});
-        } else {
-          return visitor(RangeMatcher<A>{v, std::forward<A>(aggregator)});
-        }
-      },
-      [&](const DocIteratorProvider& v) {
-        return visitor(PredMatcher<A>{std::forward<A>(aggregator), v(segment)});
-      }},
+    irs::Visitor{[&](Match v) {
+                   if (v == kMatchNone) {
+                     return visitor(NoneMatcher::Tag{},
+                                    std::forward<A>(aggregator), none_boost);
+                   } else if (v == kMatchAny) {
+                     return visitor(typename AnyMatcher<A>::Tag{},
+                                    std::forward<A>(aggregator));
+                   } else if (v.IsMinMatch()) {
+                     IRS_ASSERT(doc_limits::eof(v.Max));
+                     return visitor(typename MinMatcher<A>::Tag{}, v.Min,
+                                    std::forward<A>(aggregator));
+                   } else {
+                     return visitor(typename RangeMatcher<A>::Tag{}, v,
+                                    std::forward<A>(aggregator));
+                   }
+                 },
+                 [&](const DocIteratorProvider& v) {
+                   return visitor(typename PredMatcher<A>::Tag{},
+                                  std::forward<A>(aggregator), v(segment));
+                 }},
     match);
 }
 
@@ -580,14 +601,14 @@ auto ResolveMatchType(const SubReader& segment,
 
 namespace irs {
 
-class ByNestedQuery final : public filter::prepared {
+class ByNestedQuery : public filter::prepared {
  public:
   ByNestedQuery(DocIteratorProvider parent, prepared::ptr&& child,
                 sort::MergeType merge_type, ByNestedOptions::MatchType match,
                 score_t none_boost) noexcept
     : parent_{std::move(parent)},
       child_{std::move(child)},
-      match_{match},
+      match_{std::move(match)},
       merge_type_{merge_type},
       none_boost_{none_boost} {
     IRS_ASSERT(parent_);
@@ -648,7 +669,9 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
     [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
       return ResolveMatchType(
         rdr, match_, none_boost_, std::forward<A>(aggregator),
-        [&]<typename M>(M&& matcher) -> irs::doc_iterator::ptr {
+        [&]<typename Tag, typename Head, typename... Tail>(
+          Tag, Head&& head, Tail&&... tail) -> irs::doc_iterator::ptr {
+          using M = typename Tag::Type;
           if constexpr (std::is_same_v<NoneMatcher, M>) {
             if (doc_limits::eof(child->value())) {  // Match all parents
               if constexpr (!std::is_same_v<NoopAggregator, A>) {
@@ -668,7 +691,8 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
             // Unordered case for the range [0..EOF] is the equivalent to
             // matching all parents
             if constexpr (std::is_same_v<NoopAggregator, A>) {
-              if (Match{0} == matcher.range() &&
+              // TODO(MBkkt) unnecessary Match construction
+              if (Match{0} == Match{std::forward<Head>(head)} &&
                   doc_limits::eof(child->value())) {
                 return std::move(parent);
               }
@@ -679,8 +703,9 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
             }
           }
 
-          return memory::make_managed<ChildToParentJoin<M>>(
-            std::move(parent), *prev, std::move(child), std::move(matcher));
+          return memory::make_managed<irs::doc_iterator, ChildToParentJoin<M>>(
+            std::move(parent), *prev, std::move(child),
+            std::forward<Head>(head), std::forward<Tail>(tail)...);
         });
     });
 }

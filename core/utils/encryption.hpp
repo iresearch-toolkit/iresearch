@@ -140,9 +140,9 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
 
   size_t read_internal(byte_type* b, size_t count) final;
 
- private:
   encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept;
 
+ private:
   size_t buf_size_;
   std::unique_ptr<byte_type[]> buf_;
   index_input::ptr managed_in_;

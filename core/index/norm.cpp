@@ -30,7 +30,7 @@ namespace {
 
 using namespace irs;
 
-class NormWriter final : public FeatureWriter {
+class NormWriter : public FeatureWriter {
  public:
   void write(const field_stats& stats, doc_id_t doc,
              // cppcheck-suppress constParameter
@@ -53,7 +53,7 @@ class NormWriter final : public FeatureWriter {
   void finish(bstring& /*out*/) final {}
 };
 
-NormWriter kNormWriter;
+memory::OnStack<NormWriter> kNormWriter;
 
 }  // namespace
 
@@ -95,9 +95,8 @@ bool Norm2ReaderContext::Reset(const SubReader& reader, field_id column_id,
   return false;
 }
 
-/*static*/ FeatureWriter::ptr Norm::MakeWriter(
-  std::span<const bytes_view> /*payload*/) {
-  return memory::to_managed<FeatureWriter, false>(&kNormWriter);
+FeatureWriter::ptr Norm::MakeWriter(std::span<const bytes_view> /*payload*/) {
+  return memory::to_managed<FeatureWriter>(kNormWriter);
 }
 
 void Norm2Header::Reset(const Norm2Header& hdr) noexcept {

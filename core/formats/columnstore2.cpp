@@ -167,8 +167,8 @@ std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
 
 // Iterator over a specified contiguous range of documents
 template<typename PayloadReader>
-class range_column_iterator final : public resettable_doc_iterator,
-                                    private PayloadReader {
+class range_column_iterator : public resettable_doc_iterator,
+                              private PayloadReader {
  private:
   using payload_reader = PayloadReader;
 
@@ -269,8 +269,8 @@ class range_column_iterator final : public resettable_doc_iterator,
 
 // Iterator over a specified bitmap of documents
 template<typename PayloadReader>
-class bitmap_column_iterator final : public resettable_doc_iterator,
-                                     private PayloadReader {
+class bitmap_column_iterator : public resettable_doc_iterator,
+                               private PayloadReader {
  private:
   using payload_reader = PayloadReader;
 
@@ -327,7 +327,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
   void reset() final { bitmap_.reset(); }
 
  private:
-  sparse_bitmap_iterator bitmap_;
+  memory::OnStack<sparse_bitmap_iterator> bitmap_;
   attributes attrs_;
 };
 
@@ -1372,11 +1372,11 @@ void column::finish(index_output& index_out) {
   hdr.id = id_;
 
   memory_index_input in{docs_.file};
-  sparse_bitmap_iterator it{&in,
-                            {.version = ctx_.version,
-                             .track_prev_doc = false,
-                             .use_block_index = false,
-                             .blocks = {}}};
+  memory::OnStack<sparse_bitmap_iterator> it{
+    &in, sparse_bitmap_iterator::options{.version = ctx_.version,
+                                         .track_prev_doc = false,
+                                         .use_block_index = false,
+                                         .blocks = {}}};
   if (it.next()) {
     hdr.min = it.value();
   }

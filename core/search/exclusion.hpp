@@ -30,7 +30,7 @@ namespace irs {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class exclusion
 ////////////////////////////////////////////////////////////////////////////////
-class exclusion final : public doc_iterator {
+class exclusion : public doc_iterator {
  public:
   exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl) noexcept
     : incl_(std::move(incl)), excl_(std::move(excl)) {

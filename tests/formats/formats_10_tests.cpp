@@ -131,7 +131,7 @@ class format_10_test_case : public tests::format_test_case {
 
       // write postings for term
       {
-        postings it(docs, field.index_features);
+        irs::memory::OnStack<postings> it(docs, field.index_features);
         term_meta = writer->write(it);
 
         // write attributes to out
@@ -182,13 +182,14 @@ class format_10_test_case : public tests::format_test_case {
         }
 
         auto assert_docs = [&](size_t seed, size_t inc) {
-          postings expected_postings{docs, field.index_features};
+          irs::memory::OnStack<postings> expected_postings{
+            docs, field.index_features};
 
           auto actual =
             reader->iterator(field.index_features, features, read_meta);
           ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
 
-          postings expected(docs, field.index_features);
+          irs::memory::OnStack<postings> expected(docs, field.index_features);
           for (size_t i = seed, size = docs.size(); i < size; i += inc) {
             auto& doc = docs[i];
             ASSERT_EQ(doc.first, actual->seek(doc.first));
@@ -240,7 +241,7 @@ class format_10_test_case : public tests::format_test_case {
         // seek for backwards && next
         {
           for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
-            postings expected(docs, field.index_features);
+            irs::memory::OnStack<postings> expected(docs, field.index_features);
             auto it =
               reader->iterator(field.index_features, features, read_meta);
             ASSERT_FALSE(irs::doc_limits::valid(it->value()));
@@ -320,7 +321,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 
     // write postings for term0
     {
-      postings docs(docs0);
+      irs::memory::OnStack<postings> docs(docs0);
       meta0 = writer->write(docs);
 
       // check term_meta
@@ -336,7 +337,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 
     // write postings for term0
     {
-      postings docs(docs1);
+      irs::memory::OnStack<postings> docs(docs1);
       meta1 = writer->write(docs);
 
       // check term_meta
@@ -483,7 +484,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
     // write postings for term0
     {
-      postings docs(docs0);
+      irs::memory::OnStack<postings> docs(docs0);
       meta0 = writer->write(docs);
 
       // write attributes to out
@@ -491,7 +492,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     }
     // write postings for term1
     {
-      postings docs(docs1);
+      irs::memory::OnStack<postings> docs(docs1);
       meta1 = writer->write(docs);
 
       // write attributes to out
@@ -624,7 +625,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
-    postings docs(docs0);
+    irs::memory::OnStack<postings> docs(docs0);
 
     writer->prepare(*out, state);
     writer->begin_field(features);
@@ -652,7 +653,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
-    postings docs(docs0);
+    irs::memory::OnStack<postings> docs(docs0);
 
     writer->prepare(*out, state);
     writer->begin_field(features);
@@ -680,7 +681,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
-    postings docs(docs0);
+    irs::memory::OnStack<postings> docs(docs0);
 
     writer->prepare(*out, state);
     writer->begin_field(features);
@@ -707,7 +708,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
-    postings docs(docs0);
+    irs::memory::OnStack<postings> docs(docs0);
 
     writer->prepare(*out, state);
     writer->begin_field(features);
@@ -733,7 +734,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
-    postings docs(docs0);
+    irs::memory::OnStack<postings> docs(docs0);
 
     writer->prepare(*out, state);
     writer->begin_field(features);
@@ -757,7 +758,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
 
-    postings docs(docs0);
+    irs::memory::OnStack<postings> docs(docs0);
 
     writer->prepare(*out, state);
     writer->begin_field(features);
@@ -784,8 +785,8 @@ TEST_P(format_10_test_case, ires336) {
     }
   }
   std::vector<irs::bytes_view> terms{term};
-  tests::format_test_case::terms<decltype(terms.begin())> trms(
-    terms.begin(), terms.end(), docs.begin(), docs.end());
+  irs::memory::OnStack<tests::format_test_case::terms<decltype(terms.begin())>>
+    trms(terms.begin(), terms.end(), docs.begin(), docs.end());
 
   irs::flush_state flush_state;
   flush_state.dir = dir.get();

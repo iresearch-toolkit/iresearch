@@ -38,6 +38,7 @@ struct Match {
 
   constexpr Match(doc_id_t min, doc_id_t max) noexcept : Min(min), Max(max) {}
 
+  constexpr bool operator==(const Match&) const noexcept = default;
   constexpr auto operator<=>(const Match&) const noexcept = default;
 
   constexpr bool IsMinMatch() const noexcept {

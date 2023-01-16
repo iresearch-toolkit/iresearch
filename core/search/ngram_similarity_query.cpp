@@ -433,8 +433,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
 }
 
 template<typename Checker>
-class NGramSimilarityDocIterator final : public doc_iterator,
-                                         private score_ctx {
+class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
  public:
   NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
                              size_t total_terms_count, size_t min_match_count,
@@ -504,7 +503,7 @@ class NGramSimilarityDocIterator final : public doc_iterator,
   using attributes = std::tuple<attribute_ptr<document>, cost, score>;
 
   Checker checker_;
-  NGramApprox approx_;
+  memory::OnStack<NGramApprox> approx_;
   attributes attrs_;
 };
 
@@ -565,7 +564,7 @@ doc_iterator::ptr NGramSimilarityQuery::execute(
   }
 
   return memory::make_managed<
-    NGramSimilarityDocIterator<SerialPositionsChecker<Dummy>>>(
+    doc_iterator, NGramSimilarityDocIterator<SerialPositionsChecker<Dummy>>>(
     std::move(itrs), segment, *query_state->field, boost(), stats_.c_str(),
     query_state->terms.size(), min_match_count_, ord);
 }
@@ -586,6 +585,7 @@ doc_iterator::ptr NGramSimilarityQuery::ExecuteWithOffsets(
   }
 
   return memory::make_managed<
+    doc_iterator,
     NGramSimilarityDocIterator<SerialPositionsChecker<NGramPosition>>>(
     std::move(itrs), query_state->terms.size(), min_match_count_, true);
 }

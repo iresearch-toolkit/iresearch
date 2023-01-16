@@ -32,7 +32,7 @@ namespace irs {
 ////////////////////////////////////////////////////////////////////////////////
 class empty_term_reader final : public irs::term_reader {
  public:
-  explicit empty_term_reader(uint64_t docs_count) noexcept
+  constexpr explicit empty_term_reader(uint64_t docs_count) noexcept
     : docs_count_(docs_count) {}
 
   irs::seek_term_iterator::ptr iterator(SeekMode) const noexcept final {

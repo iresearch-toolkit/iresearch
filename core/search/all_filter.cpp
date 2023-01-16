@@ -27,7 +27,7 @@
 namespace irs {
 
 // Compiled all_filter that returns all documents
-class all_query final : public filter::prepared {
+class all_query : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, score_t boost)
     : filter::prepared(boost), stats_(std::move(stats)) {}

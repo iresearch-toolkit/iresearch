@@ -232,7 +232,7 @@ class min_match_disjunction : public doc_iterator,
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.Reset(this, [](score_ctx* ctx, score_t* res) {
+    score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
       auto& self = *static_cast<min_match_disjunction*>(ctx);
       IRS_ASSERT(!self.heap_.empty());
 

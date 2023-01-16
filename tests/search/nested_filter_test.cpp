@@ -125,13 +125,14 @@ struct DocIdScorer : irs::sort {
       auto* doc = irs::get<irs::document>(attrs);
       EXPECT_NE(nullptr, doc);
 
-      return {std::make_unique<ScorerContext>(doc),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                ASSERT_NE(nullptr, res);
-                ASSERT_NE(nullptr, ctx);
-                const auto& state = *reinterpret_cast<ScorerContext*>(ctx);
-                *res = state.doc->value;
-              }};
+      return irs::ScoreFunction::Make<ScorerContext>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          ASSERT_NE(nullptr, res);
+          ASSERT_NE(nullptr, ctx);
+          const auto& state = *static_cast<ScorerContext*>(ctx);
+          *res = state.doc->value;
+        },
+        doc);
     }
   };
 

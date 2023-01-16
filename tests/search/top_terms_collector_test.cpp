@@ -117,12 +117,12 @@ struct sort : irs::sort {
       return std::make_unique<term_collector>();
     }
 
-    virtual irs::ScoreFunction prepare_scorer(
+    irs::ScoreFunction prepare_scorer(
       const irs::SubReader& /*segment*/, const irs::term_reader& /*field*/,
       const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t /*boost*/) const final {
-      return {nullptr, nullptr};
+      return irs::ScoreFunction::Invalid();
     }
 
     std::pair<size_t, size_t> stats_size() const final { return {0, 0}; }
@@ -133,7 +133,7 @@ struct sort : irs::sort {
   }
 };
 
-class seek_term_iterator final : public irs::seek_term_iterator {
+class seek_term_iterator : public irs::seek_term_iterator {
  public:
   typedef const std::pair<std::string_view, term_meta>* iterator_type;
 
@@ -289,7 +289,8 @@ TEST(top_terms_collector_test, test_top_k) {
   };
 
   {
-    seek_term_iterator it(std::begin(TERMS0), std::end(TERMS0));
+    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS0),
+                                                std::end(TERMS0));
     collector.prepare(segment0, term_reader0, it);
 
     while (it.next()) {
@@ -306,7 +307,8 @@ TEST(top_terms_collector_test, test_top_k) {
   };
 
   {
-    seek_term_iterator it(std::begin(TERMS1), std::end(TERMS1));
+    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS1),
+                                                std::end(TERMS1));
     collector.prepare(segment1, term_reader1, it);
 
     while (it.next()) {
@@ -355,7 +357,8 @@ TEST(top_terms_collector_test, test_top_0) {
   };
 
   {
-    seek_term_iterator it(std::begin(TERMS0), std::end(TERMS0));
+    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS0),
+                                                std::end(TERMS0));
     collector.prepare(segment0, term_reader0, it);
 
     while (it.next()) {
@@ -372,7 +375,8 @@ TEST(top_terms_collector_test, test_top_0) {
   };
 
   {
-    seek_term_iterator it(std::begin(TERMS1), std::end(TERMS1));
+    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS1),
+                                                std::end(TERMS1));
     collector.prepare(segment1, term_reader1, it);
 
     while (it.next()) {

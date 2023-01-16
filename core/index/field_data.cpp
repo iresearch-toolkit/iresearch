@@ -230,7 +230,7 @@ namespace detail {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class doc_iterator final : public irs::doc_iterator {
+class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator() noexcept : freq_in_(EMPTY_POOL) {}
 
@@ -353,7 +353,7 @@ class doc_iterator final : public irs::doc_iterator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sorting_doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class sorting_doc_iterator final : public irs::doc_iterator {
+class sorting_doc_iterator : public irs::doc_iterator {
  public:
   // reset field
   void reset(const field_data& field) {
@@ -611,7 +611,7 @@ class term_iterator : public irs::term_iterator {
       prox_end);  // term's proximity // TODO: create on demand!!!
 
     doc_itr_.reset(posting, freq, &prox);
-    return memory::to_managed<irs::doc_iterator, false>(&doc_itr_);
+    return memory::to_managed<irs::doc_iterator>(doc_itr_);
   }
 
   irs::doc_iterator::ptr sort_postings(const posting& posting) const {
@@ -627,7 +627,7 @@ class term_iterator : public irs::term_iterator {
 
     doc_itr_.reset(posting, freq, nullptr);
     sorting_doc_itr_.reset(doc_itr_, doc_map_);
-    return memory::to_managed<irs::doc_iterator, false>(&sorting_doc_itr_);
+    return memory::to_managed<irs::doc_iterator>(sorting_doc_itr_);
   }
 
   fields_data::postings_ref_t* postings_{};
@@ -636,8 +636,8 @@ class term_iterator : public irs::term_iterator {
   fields_data::postings_ref_t::const_iterator it_;
   const field_data* field_{};
   const doc_map* doc_map_{};
-  mutable detail::doc_iterator doc_itr_;
-  mutable detail::sorting_doc_iterator sorting_doc_itr_;
+  mutable memory::OnStack<detail::doc_iterator> doc_itr_;
+  mutable memory::OnStack<detail::sorting_doc_iterator> sorting_doc_itr_;
 };
 
 /*static*/ const term_iterator::postings_f term_iterator::POSTINGS[2]{
@@ -662,7 +662,7 @@ class term_reader final : public irs::basic_term_reader,
   const irs::field_meta& meta() const noexcept final { return it_.meta(); }
 
   irs::term_iterator::ptr iterator() const noexcept final {
-    return memory::to_managed<irs::term_iterator, false>(&it_);
+    return memory::to_managed<irs::term_iterator>(it_);
   }
 
   attribute* get_mutable(irs::type_info::type_id) noexcept final {
@@ -670,7 +670,7 @@ class term_reader final : public irs::basic_term_reader,
   }
 
  private:
-  mutable detail::term_iterator it_;
+  mutable memory::OnStack<detail::term_iterator> it_;
   const irs::bytes_view min_{};
   const irs::bytes_view max_{};
 };

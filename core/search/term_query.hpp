@@ -29,7 +29,7 @@
 namespace irs {
 
 // Compiled query suitable for filters with a single term like "by_term"
-class TermQuery final : public filter::prepared {
+class TermQuery : public filter::prepared {
  public:
   using States = StatesCache<TermState>;
 

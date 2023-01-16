@@ -32,7 +32,7 @@
 
 namespace irs {
 
-class AllIterator final : public doc_iterator {
+class AllIterator : public doc_iterator {
  public:
   AllIterator(const irs::SubReader& reader, const byte_type* query_stats,
               const irs::Order& order, uint64_t docs_count, score_t boost);

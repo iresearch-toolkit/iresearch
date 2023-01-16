@@ -33,8 +33,7 @@
 namespace irs {
 
 template<typename T>
-struct iterator {
-  virtual ~iterator() = default;
+struct iterator : memory::Managed {
   virtual T value() const = 0;
   virtual bool next() = 0;
 };

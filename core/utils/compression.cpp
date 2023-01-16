@@ -30,17 +30,17 @@
 #include "lz4compression.hpp"
 #endif
 
+namespace irs::compression {
 namespace {
 
 struct value {
-  explicit value(
-    irs::compression::compressor_factory_f compressor_factory = nullptr,
-    irs::compression::decompressor_factory_f decompressor_factory = nullptr)
+  explicit value(compressor_factory_f compressor_factory = nullptr,
+                 decompressor_factory_f decompressor_factory = nullptr)
     : compressor_factory_(compressor_factory),
       decompressor_factory_(decompressor_factory) {}
 
   bool empty() const noexcept {
-    return !compressor_factory_ || !decompressor_factory_;
+    return compressor_factory_ == nullptr || decompressor_factory_ == nullptr;
   }
 
   bool operator==(const value& other) const noexcept {
@@ -48,15 +48,15 @@ struct value {
            decompressor_factory_ == other.decompressor_factory_;
   }
 
-  const irs::compression::compressor_factory_f compressor_factory_;
-  const irs::compression::decompressor_factory_f decompressor_factory_;
+  const compressor_factory_f compressor_factory_;
+  const decompressor_factory_f decompressor_factory_;
 };
 
 constexpr std::string_view kFileNamePrefix("libcompression-");
 
 class compression_register
-  : public irs::tagged_generic_register<
-      std::string_view, value, std::string_view, compression_register> {
+  : public tagged_generic_register<std::string_view, value, std::string_view,
+                                   compression_register> {
  protected:
   std::string key_to_filename(const key_type& key) const final {
     std::string filename(kFileNamePrefix.size() + key.size(), 0);
@@ -71,29 +71,25 @@ class compression_register
   }
 };
 
-struct identity_compressor final : irs::compression::compressor {
-  irs::bytes_view compress(irs::byte_type* in, size_t size,
-                           irs::bstring& /*buf*/) final {
+struct identity_compressor : compressor {
+  bytes_view compress(byte_type* in, size_t size, bstring& /*buf*/) final {
     return {in, size};
   }
 
-  void flush(irs::data_output& /*out*/) final {}
+  void flush(data_output& /*out*/) final {}
 };
 
-identity_compressor kIdentityCompressor;
+memory::OnStack<identity_compressor> kIdentityCompressor;
 
 }  // namespace
-
-namespace irs {
-namespace compression {
 
 compression_registrar::compression_registrar(
   const type_info& type, compressor_factory_f compressor_factory,
   decompressor_factory_f decompressor_factory,
   const char* source /*= nullptr*/) {
   auto const source_ref =
-    source ? std::string_view{source} : std::string_view{};
-  const auto new_entry = ::value(compressor_factory, decompressor_factory);
+    source != nullptr ? std::string_view{source} : std::string_view{};
+  const auto new_entry = value(compressor_factory, decompressor_factory);
 
   auto entry = compression_register::instance().set(
     type.name(), new_entry, IsNull(source_ref) ? nullptr : &source_ref);
@@ -101,19 +97,20 @@ compression_registrar::compression_registrar(
   registered_ = entry.second;
 
   if (!registered_ && new_entry != entry.first) {
-    auto* registered_source = compression_register::instance().tag(type.name());
+    const auto* registered_source =
+      compression_register::instance().tag(type.name());
 
-    if (source && registered_source) {
+    if (source != nullptr && registered_source != nullptr) {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s' from %s, previously from %s",
         type.name().data(), source, registered_source->data());
-    } else if (source) {
+    } else if (source != nullptr) {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s' from %s",
         type.name().data(), source);
-    } else if (registered_source) {
+    } else if (registered_source != nullptr) {
       IR_FRMT_WARN(
         "type name collision detected while registering compression, ignoring: "
         "type '%s', previously from %s",
@@ -138,7 +135,7 @@ compressor::ptr get_compressor(std::string_view name, const options& opts,
                       .get(name, load_library)
                       .compressor_factory_;
 
-    return factory ? factory(opts) : nullptr;
+    return factory != nullptr ? factory(opts) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught exception while getting an analyzer instance");  // cppcheck-suppress
@@ -155,7 +152,7 @@ decompressor::ptr get_decompressor(std::string_view name,
                       .get(name, load_library)
                       .decompressor_factory_;
 
-    return factory ? factory() : nullptr;
+    return factory != nullptr ? factory() : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
   }
@@ -176,7 +173,7 @@ void load_all(std::string_view path) {
 }
 
 bool visit(const std::function<bool(std::string_view)>& visitor) {
-  compression_register::visitor_t wrapper =
+  compression_register::visitor_t const wrapper =
     [&visitor](std::string_view key) -> bool { return visitor(key); };
 
   return compression_register::instance().visit(wrapper);
@@ -192,8 +189,7 @@ bool visit(const std::function<bool(std::string_view)>& visitor) {
 REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
 compressor::ptr compressor::identity() noexcept {
-  return memory::to_managed<compressor, false>(&kIdentityCompressor);
+  return memory::to_managed<compressor>(kIdentityCompressor);
 }
 
-}  // namespace compression
-}  // namespace irs
+}  // namespace irs::compression

@@ -77,7 +77,7 @@ TEST(memory_index_output_tests, reset) {
 
   out.flush();
 
-  memory_index_input in(file);
+  memory_index_input in{file};
   std::for_each(data1.begin(), data1.end(), [&in](const std::string& s) {
     const std::string cs = read_string<std::string>(in);
     EXPECT_EQ(s, cs);

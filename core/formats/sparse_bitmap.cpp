@@ -131,7 +131,7 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
                         sizeof bits_);
     }
   } else {
-    bitset_doc_iterator it(std::begin(bits_), std::end(bits_));
+    memory::OnStack<bitset_doc_iterator> it(std::begin(bits_), std::end(bits_));
 
     while (it.next()) {
       out_->write_short(static_cast<uint16_t>(it.value()));
@@ -430,8 +430,7 @@ constexpr auto GetSeekFunc(bool direct, bool track_prev) noexcept {
 }
 
 // cppcheck-suppress uninitMemberVarPrivate
-sparse_bitmap_iterator::sparse_bitmap_iterator(
-  memory::managed_ptr<index_input>&& in, const options& opts)
+sparse_bitmap_iterator::sparse_bitmap_iterator(Ptr&& in, const options& opts)
   : in_{std::move(in)},
     seek_func_{&sparse_bitmap_iterator::initial_seek},
     block_index_{opts.blocks},

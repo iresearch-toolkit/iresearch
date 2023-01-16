@@ -292,7 +292,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
 
-      if (score && score->Func() != irs::ScoreFunction::kDefault) {
+      if (score && score->Func() != &irs::ScoreFunction::DefaultScore) {
         (*score)(reinterpret_cast<irs::score_t*>(score_value.data()));
 
         scored_result.emplace(score_value, docs->value());

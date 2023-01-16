@@ -52,14 +52,13 @@ struct ExecutionContext {
 class filter {
  public:
   // Base class for all prepared(compiled) queries
-  class prepared {
+  class prepared : public memory::Managed {
    public:
     using ptr = memory::managed_ptr<const prepared>;
 
     static prepared::ptr empty();
 
     explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
-    virtual ~prepared() = default;
 
     doc_iterator::ptr execute(const SubReader& segment,
                               const Order& scorers = Order::kUnordered,

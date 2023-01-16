@@ -501,7 +501,7 @@ TEST_P(terms_filter_test_case, min_match) {
                                 const irs::byte_type*,
                                 const irs::attribute_provider& attrs,
                                 irs::score_t boost) -> irs::ScoreFunction {
-      struct ScoreCtx : public irs::score_ctx {
+      struct ScoreCtx final : public irs::score_ctx {
         ScoreCtx(const irs::document* doc, irs::score_t boost) noexcept
           : doc{doc}, boost{boost} {}
         const irs::document* doc;
@@ -511,12 +511,12 @@ TEST_P(terms_filter_test_case, min_match) {
       auto* doc = irs::get<irs::document>(attrs);
       EXPECT_NE(nullptr, doc);
 
-      return {std::make_unique<ScoreCtx>(doc, boost),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                auto* state = static_cast<ScoreCtx*>(ctx);
-                *res =
-                  static_cast<irs::score_t>(state->doc->value) * state->boost;
-              }};
+      return irs::ScoreFunction::Make<ScoreCtx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          auto* state = static_cast<ScoreCtx*>(ctx);
+          *res = static_cast<irs::score_t>(state->doc->value) * state->boost;
+        },
+        doc, boost);
     };
 
     const auto filter =

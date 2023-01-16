@@ -232,7 +232,7 @@ class BooleanQuery : public filter::prepared {
 };
 
 // Represent a set of queries joint by "And"
-class AndQuery final : public BooleanQuery {
+class AndQuery : public BooleanQuery {
  public:
   doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                             iterator end) const final {
@@ -241,7 +241,7 @@ class AndQuery final : public BooleanQuery {
 };
 
 // Represent a set of queries joint by "Or"
-class OrQuery final : public BooleanQuery {
+class OrQuery : public BooleanQuery {
  public:
   doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                             iterator end) const final {
@@ -251,7 +251,7 @@ class OrQuery final : public BooleanQuery {
 
 // Represent a set of queries joint by "Or" with the specified
 // minimum number of clauses that should satisfy criteria
-class MinMatchQuery final : public BooleanQuery {
+class MinMatchQuery : public BooleanQuery {
  public:
   explicit MinMatchQuery(size_t min_match_count) noexcept
     : min_match_count_{min_match_count} {

@@ -33,7 +33,7 @@ namespace irs {
 using NGramStates = StatesCache<NGramState>;
 
 // Prepared ngram similarity query implementation
-class NGramSimilarityQuery final : public filter::prepared {
+class NGramSimilarityQuery : public filter::prepared {
  public:
   // returns set of features required for filter
   static constexpr IndexFeatures kRequiredFeatures =

@@ -25,15 +25,13 @@
 #include "shared.hpp"
 #include "store/store_utils.hpp"
 
+namespace irs::compression {
 namespace {
 
-irs::compression::delta_compressor COMPRESSOR;
-irs::compression::delta_decompressor DECOMPRESSOR;
+memory::OnStack<delta_compressor> kCompressor;
+memory::OnStack<delta_decompressor> kDecompressor;
 
 }  // namespace
-
-namespace irs {
-namespace compression {
 
 bytes_view delta_compressor::compress(byte_type* src, size_t size,
                                       bstring& buf) {
@@ -43,16 +41,16 @@ bytes_view delta_compressor::compress(byte_type* src, size_t size,
 
   // ensure we have enough space in the worst case
   IRS_ASSERT(end >= begin);
-  buf.resize(size_t(std::distance(begin, end)) *
+  buf.resize(static_cast<size_t>(std::distance(begin, end)) *
              bytes_io<uint64_t>::const_max_vsize);
 
   auto* out = buf.data();
   for (; begin != end; ++begin) {
-    vwrite(out, zig_zag_encode64(int64_t(*begin)));
+    vwrite(out, zig_zag_encode64(static_cast<int64_t>(*begin)));
   }
 
   IRS_ASSERT(out >= buf.data());
-  return {buf.c_str(), size_t(out - buf.data())};
+  return {buf.c_str(), static_cast<size_t>(out - buf.data())};
 }
 
 bytes_view delta_decompressor::decompress(const byte_type* src, size_t src_size,
@@ -60,20 +58,20 @@ bytes_view delta_decompressor::decompress(const byte_type* src, size_t src_size,
   auto* dst_end = reinterpret_cast<uint64_t*>(dst);
 
   for (const auto* src_end = src + src_size; src != src_end; ++dst_end) {
-    *dst_end = uint64_t(zig_zag_decode64(vread<uint64_t>(src)));
+    *dst_end = static_cast<uint64_t>(zig_zag_decode64(vread<uint64_t>(src)));
   }
 
   encode::delta::decode(reinterpret_cast<uint64_t*>(dst), dst_end);
 
-  return bytes_view(dst, dst_size);
+  return {dst, dst_size};
 }
 
 compressor::ptr delta::compressor(const options& /*opts*/) {
-  return memory::to_managed<delta_compressor, false>(&COMPRESSOR);
+  return memory::to_managed<delta_compressor>(kCompressor);
 }
 
 decompressor::ptr delta::decompressor() {
-  return memory::to_managed<delta_decompressor, false>(&DECOMPRESSOR);
+  return memory::to_managed<delta_decompressor>(kDecompressor);
 }
 
 void delta::init() {
@@ -83,5 +81,4 @@ void delta::init() {
 
 REGISTER_COMPRESSION(delta, &delta::compressor, &delta::decompressor);
 
-}  // namespace compression
-}  // namespace irs
+}  // namespace irs::compression

@@ -479,7 +479,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     size_t last_written_size_{};
   };
 
-  class buffered_input final : public irs::buffered_index_input {
+  class buffered_input : public irs::buffered_index_input {
    public:
     buffered_input(index_input& in) noexcept : in_(&in) {
       irs::buffered_index_input::reset(buf_, sizeof buf_, 0);

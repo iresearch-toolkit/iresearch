@@ -156,8 +156,9 @@ filter::prepared::ptr by_range::prepare(const IndexReader& index,
   MultiTermQuery::Stats stats;
   collector.score(index, ord, stats);
 
-  return memory::make_managed<MultiTermQuery>(
-    std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
+  return memory::make_managed<MultiTermQuery>(std::move(states),
+                                              std::move(stats), boost,
+                                              sort::MergeType::kSum, size_t{1});
 }
 
 void by_range::visit(const SubReader& segment, const term_reader& reader,

@@ -90,8 +90,8 @@ class lazy_filter_bitset : private util::noncopyable {
   cost::cost_t cost_;
 };
 
-class lazy_filter_bitset_iterator final : public doc_iterator,
-                                          private util::noncopyable {
+class lazy_filter_bitset_iterator : public doc_iterator,
+                                    private util::noncopyable {
  public:
   explicit lazy_filter_bitset_iterator(lazy_filter_bitset& bitset) noexcept
     : bitset_(bitset), cost_(bitset_.get_cost()) {
@@ -173,7 +173,7 @@ struct proxy_query_cache {
   filter::ptr real_filter_;
 };
 
-class proxy_query final : public filter::prepared {
+class proxy_query : public filter::prepared {
  public:
   explicit proxy_query(proxy_filter::cache_ptr cache) : cache_(cache) {
     IRS_ASSERT(cache_->prepared_real_filter_);

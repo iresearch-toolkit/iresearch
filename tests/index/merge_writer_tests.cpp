@@ -75,7 +75,7 @@ struct norm2 {};
 
 REGISTER_ATTRIBUTE(tests::norm2);
 
-class test_feature_writer final : public irs::FeatureWriter {
+class test_feature_writer : public irs::FeatureWriter {
  public:
   explicit test_feature_writer(uint32_t value) noexcept : value_{value} {}
 
@@ -1322,12 +1322,12 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
     if (irs::type<irs::Norm>::id() == id) {
       writer_factory =
         [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
-        return irs::memory::make_managed<test_feature_writer>(0);
+        return irs::memory::make_managed<test_feature_writer>(0U);
       };
     } else if (irs::type<norm2>::id() == id) {
       writer_factory =
         [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
-        return irs::memory::make_managed<test_feature_writer>(1);
+        return irs::memory::make_managed<test_feature_writer>(1U);
       };
     }
 
@@ -3237,12 +3237,12 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
     if (irs::type<irs::Norm>::id() == type) {
       handler =
         [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
-        return irs::memory::make_managed<test_feature_writer>(0);
+        return irs::memory::make_managed<test_feature_writer>(0U);
       };
     } else if (irs::type<norm2>::id() == type) {
       handler =
         [](std::span<const irs::bytes_view>) -> irs::FeatureWriter::ptr {
-        return irs::memory::make_managed<test_feature_writer>(1);
+        return irs::memory::make_managed<test_feature_writer>(1U);
       };
     }
 

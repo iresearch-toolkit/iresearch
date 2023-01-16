@@ -35,13 +35,12 @@ extern "C" {
 
 using namespace irs;
 
-namespace tests {
-namespace detail {
+namespace tests::detail {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class bytes_input
 //////////////////////////////////////////////////////////////////////////////
-class bytes_input final : public data_input, public bytes_view {
+class bytes_input : public data_input, public bytes_view {
  public:
   bytes_input() = default;
   explicit bytes_input(bytes_view data);
@@ -93,10 +92,6 @@ class bytes_input final : public data_input, public bytes_view {
   bstring buf_;
   const byte_type* pos_{buf_.c_str()};
 };
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                       bytes_input implementation
-// ----------------------------------------------------------------------------
 
 bytes_input::bytes_input(bytes_view data)
   : buf_(data.data(), data.size()), pos_(this->buf_.c_str()) {
@@ -431,8 +426,7 @@ void read_write_block_optimized(const std::array<uint32_t, N>& source) {
 
 #endif
 
-}  // namespace detail
-}  // namespace tests
+}  // namespace tests::detail
 
 TEST(store_utils_tests, vint_from_array) {
   tests::detail::vencode_from_array(UINT32_C(0), 1);

@@ -124,16 +124,16 @@ class Norm2Header final {
 };
 
 template<typename T>
-class Norm2Writer final : public FeatureWriter {
+class Norm2Writer : public FeatureWriter {
  public:
   static_assert(std::is_same_v<T, byte_type> || std::is_same_v<T, uint16_t> ||
                 std::is_same_v<T, uint32_t>);
 
   explicit Norm2Writer() noexcept : hdr_{Norm2Encoding{sizeof(T)}} {}
 
-  virtual void write(const field_stats& stats, doc_id_t doc,
-                     // cppcheck-suppress constParameter
-                     columnstore_writer::values_writer_f& writer) final {
+  void write(const field_stats& stats, doc_id_t doc,
+             // cppcheck-suppress constParameter
+             columnstore_writer::values_writer_f& writer) final {
     hdr_.Reset(stats.len);
 
     auto& stream = writer(doc);

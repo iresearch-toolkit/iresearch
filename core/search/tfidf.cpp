@@ -22,6 +22,11 @@
 
 #include "tfidf.hpp"
 
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include <velocypack/vpack.h>
+
 #include <cmath>
 #include <string_view>
 
@@ -32,11 +37,6 @@
 #include "scorers.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
-#include "velocypack/vpack.h"
 
 namespace {
 
@@ -322,28 +322,29 @@ struct NormScoreContext final : public ScoreContext {
 template<typename Ctx>
 struct MakeScoreFunctionImpl {
   template<bool HasFilterBoost, typename... Args>
-  static ScoreFunction Make(Args&&... args) {
-    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
-            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              IRS_ASSERT(res);
-              IRS_ASSERT(ctx);
+  static auto Make(Args&&... args) {
+    return ScoreFunction::Make<Ctx>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        IRS_ASSERT(res);
+        IRS_ASSERT(ctx);
 
-              auto& state = *static_cast<Ctx*>(ctx);
+        auto& state = *static_cast<Ctx*>(ctx);
 
-              float_t idf;
-              if constexpr (HasFilterBoost) {
-                IRS_ASSERT(state.filter_boost);
-                idf = state.idf * state.filter_boost->value;
-              } else {
-                idf = state.idf;
-              }
+        float_t idf;
+        if constexpr (HasFilterBoost) {
+          IRS_ASSERT(state.filter_boost);
+          idf = state.idf * state.filter_boost->value;
+        } else {
+          idf = state.idf;
+        }
 
-              if constexpr (std::is_same_v<Ctx, ScoreContext>) {
-                *res = ::tfidf(state.freq.value, idf);
-              } else {
-                *res = ::tfidf(state.freq.value, idf) * state.norm();
-              }
-            }};
+        if constexpr (std::is_same_v<Ctx, ScoreContext>) {
+          *res = ::tfidf(state.freq.value, idf);
+        } else {
+          *res = ::tfidf(state.freq.value, idf) * state.norm();
+        }
+      },
+      std::forward<Args>(args)...);
   }
 };
 

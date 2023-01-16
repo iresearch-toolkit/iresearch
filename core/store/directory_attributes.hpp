@@ -30,7 +30,7 @@
 namespace irs {
 
 // A reusable thread-safe allocator for memory files
-class memory_allocator final {
+class memory_allocator : public memory::Managed {
  private:
   struct buffer {
     using ptr = std::unique_ptr<byte_type[]>;

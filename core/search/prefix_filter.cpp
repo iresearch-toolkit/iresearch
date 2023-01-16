@@ -94,8 +94,9 @@ namespace irs {
   std::vector<bstring> stats;
   collector.score(index, ord, stats);
 
-  return memory::make_managed<MultiTermQuery>(
-    std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
+  return memory::make_managed<MultiTermQuery>(std::move(states),
+                                              std::move(stats), boost,
+                                              sort::MergeType::kSum, size_t{1});
 }
 
 /*static*/ void by_prefix::visit(const SubReader& segment,

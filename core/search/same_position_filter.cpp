@@ -36,7 +36,7 @@ namespace {
 using namespace irs;
 
 template<typename Conjunction>
-class same_position_iterator final : public Conjunction {
+class same_position_iterator : public Conjunction {
  public:
   typedef std::vector<position::ref> positions_t;
 
@@ -102,7 +102,7 @@ class same_position_iterator final : public Conjunction {
   positions_t pos_;
 };
 
-class same_position_query final : public filter::prepared {
+class same_position_query : public filter::prepared {
  public:
   typedef std::vector<TermState> terms_states_t;
   typedef StatesCache<terms_states_t> states_t;

@@ -374,12 +374,12 @@ class fs_index_input : public buffered_index_input {
   file_handle::ptr handle_;  // shared file handle
   size_t pool_size_;  // size of pool for instances of pooled_fs_index_input
   size_t pos_;        // current input stream position
-};                    // fs_index_input
+};
 
 class pooled_fs_index_input final : public fs_index_input {
  public:
   explicit pooled_fs_index_input(const fs_index_input& in);
-  virtual ~pooled_fs_index_input() noexcept;
+  ~pooled_fs_index_input() noexcept final;
   index_input::ptr dup() const final {
     return ptr(new pooled_fs_index_input(*this));
   }

@@ -87,8 +87,8 @@ class failing_directory : public tests::directory_mock {
         return nullptr;
       }
 
-      return ptr(
-        new failing_index_input(impl_->dup(), this->name_, *this->dir_));
+      return std::make_unique<failing_index_input>(impl_->dup(), this->name_,
+                                                   *this->dir_);
     }
     ptr reopen() const final {
       if (dir_->should_fail(Failure::REOPEN, name_)) {
@@ -99,8 +99,8 @@ class failing_directory : public tests::directory_mock {
         return nullptr;
       }
 
-      return ptr(
-        new failing_index_input(impl_->reopen(), this->name_, *this->dir_));
+      return std::make_unique<failing_index_input>(impl_->reopen(), this->name_,
+                                                   *this->dir_);
     }
     void seek(size_t pos) final { impl_->seek(pos); }
     int64_t checksum(size_t offset) const final {

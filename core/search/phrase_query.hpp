@@ -72,7 +72,7 @@ class PhraseQuery : public filter::prepared {
   bstring stats_;
 };
 
-class FixedPhraseQuery final : public PhraseQuery<FixedPhraseState> {
+class FixedPhraseQuery : public PhraseQuery<FixedPhraseState> {
  public:
   FixedPhraseQuery(states_t&& states, positions_t&& positions, bstring&& stats,
                    score_t boost) noexcept
@@ -86,7 +86,7 @@ class FixedPhraseQuery final : public PhraseQuery<FixedPhraseState> {
   doc_iterator::ptr ExecuteWithOffsets(const SubReader& segment) const;
 };
 
-class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
+class VariadicPhraseQuery : public PhraseQuery<VariadicPhraseState> {
  public:
   VariadicPhraseQuery(states_t&& states, positions_t&& positions,
                       bstring&& stats, score_t boost) noexcept

@@ -897,7 +897,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   ASSERT_EQ(0, expected.size());
 }
 
-struct test_score_ctx : public irs::score_ctx {
+struct test_score_ctx final : public irs::score_ctx {
   test_score_ctx(std::vector<size_t>* f, const irs::frequency* p,
                  std::vector<irs::score_t>* b,
                  const irs::filter_boost* fb) noexcept
@@ -964,14 +964,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
-    return {
-      std::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
+    return irs::ScoreFunction::Make<test_score_ctx>(
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
         freq.freq->push_back(freq.freq_from_filter->value);
         freq.filter_boost->push_back(freq.boost_from_filter->value);
         *res = {};
-      }};
+      },
+      &frequency, freq, &filter_boost, boost);
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{
@@ -1043,14 +1043,14 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
       irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
-    return {
-      std::make_unique<test_score_ctx>(&frequency, freq, &filter_boost, boost),
+    return irs::ScoreFunction::Make<test_score_ctx>(
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-        const auto& freq = *reinterpret_cast<test_score_ctx*>(ctx);
+        const auto& freq = *static_cast<test_score_ctx*>(ctx);
         freq.freq->push_back(freq.freq_from_filter->value);
         freq.filter_boost->push_back(freq.boost_from_filter->value);
         *res = {};
-      }};
+      },
+      &frequency, freq, &filter_boost, boost);
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{

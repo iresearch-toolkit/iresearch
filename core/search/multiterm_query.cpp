@@ -33,7 +33,7 @@ namespace {
 
 using namespace irs;
 
-class lazy_bitset_iterator final : public bitset_doc_iterator {
+class lazy_bitset_iterator : public bitset_doc_iterator {
  public:
   lazy_bitset_iterator(
     const SubReader& segment, const term_reader& field,

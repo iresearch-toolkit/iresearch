@@ -146,7 +146,7 @@ class ProgressTracker {
   bool valid_{true};
 };
 
-class RemappingDocIterator final : public doc_iterator {
+class RemappingDocIterator : public doc_iterator {
  public:
   RemappingDocIterator(doc_iterator::ptr&& it, const doc_map_f& mapper) noexcept
     : it_{std::move(it)}, mapper_{&mapper}, src_{irs::get<document>(*it_)} {
@@ -288,7 +288,7 @@ bool CompoundDocIterator::next() {
 }
 
 // Iterator over sorted doc_ids for a term over all readers
-class SortingCompoundDocIterator final : public doc_iterator {
+class SortingCompoundDocIterator : public doc_iterator {
  public:
   explicit SortingCompoundDocIterator(CompoundDocIterator& doc_it) noexcept
     : doc_it_{&doc_it}, heap_it_{min_heap_context{doc_it.iterators_}} {}
@@ -407,7 +407,7 @@ class DocIteratorContainer {
   }
 
  private:
-  std::vector<RemappingDocIterator> itrs_;
+  std::vector<memory::OnStack<RemappingDocIterator>> itrs_;
 };
 
 class CompoundColumnIterator final {
@@ -527,15 +527,15 @@ class CompoundColumnIterator final {
 };
 
 // Iterator over documents for a term over all readers
-class CompoundTermIterator final : public term_iterator {
+class CompoundTermIterator : public term_iterator {
  public:
   static constexpr const size_t kProgressStepTerms = size_t(1) << 7;
 
   explicit CompoundTermIterator(const MergeWriter::FlushProgress& progress,
                                 const Comparer* comparator)
-    : doc_itr_(progress),
-      psorting_doc_itr_(nullptr == comparator ? nullptr : &sorting_doc_itr_),
-      progress_(progress, kProgressStepTerms) {}
+    : doc_itr_{progress},
+      has_comparer_{nullptr == comparator},
+      progress_{progress, kProgressStepTerms} {}
 
   bool aborted() const {
     return !static_cast<bool>(progress_) || doc_itr_.aborted();
@@ -588,9 +588,10 @@ class CompoundTermIterator final : public term_iterator {
   const field_meta* meta_{};
   std::vector<size_t> term_iterator_mask_;  // valid iterators for current term
   std::vector<TermIterator> term_iterators_;  // all term iterators
-  mutable CompoundDocIterator doc_itr_;
-  mutable SortingCompoundDocIterator sorting_doc_itr_{doc_itr_};
-  SortingCompoundDocIterator* psorting_doc_itr_;
+  mutable memory::OnStack<CompoundDocIterator> doc_itr_;
+  mutable memory::OnStack<SortingCompoundDocIterator> sorting_doc_itr_{
+    doc_itr_};
+  bool has_comparer_;
   ProgressTracker progress_;
 };
 
@@ -672,18 +673,16 @@ doc_iterator::ptr CompoundTermIterator::postings(
     return true;
   };
 
-  doc_iterator* doc_itr = &doc_itr_;
-
-  if (psorting_doc_itr_) {
+  if (has_comparer_) {
     sorting_doc_itr_.reset(add_iterators);
+    // TODO(MBkkt) Why?
     if (doc_itr_.size() > 1) {
-      doc_itr = psorting_doc_itr_;
+      return memory::to_managed<doc_iterator>(sorting_doc_itr_);
     }
   } else {
     doc_itr_.reset(add_iterators);
   }
-
-  return memory::to_managed<doc_iterator, false>(doc_itr);
+  return memory::to_managed<doc_iterator>(doc_itr_);
 }
 
 // Iterator over field_ids over all readers
@@ -764,7 +763,7 @@ class CompoundFiledIterator final : public basic_term_reader {
   // valid iterators for current field
   std::vector<TermIterator> field_iterator_mask_;
   std::vector<FieldIterator> field_iterators_;  // all segment iterators
-  mutable CompoundTermIterator term_itr_;
+  mutable memory::OnStack<CompoundTermIterator> term_itr_;
   ProgressTracker progress_;
 };
 
@@ -851,12 +850,12 @@ bool CompoundFiledIterator::next() {
 term_iterator::ptr CompoundFiledIterator::iterator() const {
   term_itr_.reset(meta());
 
-  for (auto& segment : field_iterator_mask_) {
+  for (const auto& segment : field_iterator_mask_) {
     term_itr_.add(*(segment.reader),
                   *(field_iterators_[segment.itr_id].doc_map));
   }
 
-  return memory::to_managed<term_iterator, false>(&term_itr_);
+  return memory::to_managed<term_iterator>(term_itr_);
 }
 
 // Computes fields_type
@@ -1221,7 +1220,7 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
 
       std::optional<field_id> res;
       auto feature_writer =
-        factory ? (*factory)({hdrs.data(), hdrs.size()}) : nullptr;
+        factory ? (*factory)({hdrs.data(), hdrs.size()}) : FeatureWriter::ptr{};
 
       if (feature_writer) {
         auto value_writer = [writer = feature_writer.get()](
@@ -1627,8 +1626,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 #endif
 
   Columnstore cs(std::move(writer), progress);
-  CompoundDocIterator doc_it(progress);               // reuse iterator
-  SortingCompoundDocIterator sorting_doc_it(doc_it);  // reuse iterator
+  memory::OnStack<CompoundDocIterator> doc_it(progress);
+  memory::OnStack<SortingCompoundDocIterator> sorting_doc_it(doc_it);
 
   if (!cs.valid()) {
     return false;  // flush failure

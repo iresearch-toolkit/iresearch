@@ -617,7 +617,7 @@ class PhraseIterator : public doc_iterator {
   using attributes = std::tuple<attribute_ptr<document>, cost, score>;
 
   // first approximation (conjunction over all words in a phrase)
-  Conjunction approx_;
+  memory::OnStack<Conjunction> approx_;
   Frequency freq_;
   attributes attrs_;
 };

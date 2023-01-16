@@ -2069,7 +2069,7 @@ template<typename FST>
 using explicit_matcher = fst::explicit_matcher<fst::SortedMatcher<FST>>;
 
 template<typename FST>
-class term_iterator final : public term_iterator_base {
+class term_iterator : public term_iterator_base {
  public:
   using weight_t = typename FST::Weight;
   using stateid_t = typename FST::StateId;
@@ -2453,7 +2453,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
 //          unnecessary allocations as this is mostly useless
 //          in case of exact single seek
 template<typename FST>
-class single_term_iterator final : public seek_term_iterator {
+class single_term_iterator : public seek_term_iterator {
  public:
   explicit single_term_iterator(const field_meta& field,
                                 postings_reader& postings,
@@ -2623,7 +2623,7 @@ class fst_arc_matcher {
 };
 
 template<typename FST>
-class automaton_term_iterator final : public term_iterator_base {
+class automaton_term_iterator : public term_iterator_base {
  public:
   automaton_term_iterator(const field_meta& field, postings_reader& postings,
                           index_input::ptr&& terms_in,
@@ -3031,8 +3031,9 @@ class field_reader final : public irs::field_reader {
     }
 
     term_meta term(bytes_view term) const final {
-      single_term_iterator it{meta(), *owner_->pr_, owner_->terms_in_->reopen(),
-                              owner_->terms_in_cipher_.get(), *fst_};
+      memory::OnStack<single_term_iterator<FST>> it{
+        meta(), *owner_->pr_, owner_->terms_in_->reopen(),
+        owner_->terms_in_cipher_.get(), *fst_};
 
       it.seek(term);
       return it.meta();
@@ -3044,8 +3045,10 @@ class field_reader final : public irs::field_reader {
         return 0;
       }
 
-      single_term_iterator it{meta(), *owner_->pr_, owner_->terms_in_->reopen(),
-                              owner_->terms_in_cipher_.get(), *fst_};
+      memory::OnStack<single_term_iterator<FST>> it{
+        meta(), *owner_->pr_, owner_->terms_in_->reopen(),
+        owner_->terms_in_cipher_.get(), *fst_};
+
       if (!it.seek(term)) {
         return 0;
       }

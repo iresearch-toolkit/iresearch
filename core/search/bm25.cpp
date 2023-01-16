@@ -390,28 +390,29 @@ struct MakeScoreFunctionImpl<BM15Context> {
   using Ctx = BM15Context;
 
   template<bool HasFilterBoost, typename... Args>
-  static ScoreFunction Make(Args&&... args) {
-    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
-            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              IRS_ASSERT(res);
-              IRS_ASSERT(ctx);
+  static auto Make(Args&&... args) {
+    return ScoreFunction::Make<Ctx>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        IRS_ASSERT(res);
+        IRS_ASSERT(ctx);
 
-              auto& state = *static_cast<Ctx*>(ctx);
+        auto& state = *static_cast<Ctx*>(ctx);
 
-              const float_t tf = static_cast<float_t>(state.freq->value);
+        const float_t tf = static_cast<float_t>(state.freq->value);
 
-              float_t c0;
-              if constexpr (HasFilterBoost) {
-                IRS_ASSERT(state.filter_boost);
-                c0 = state.filter_boost->value * state.num;
-              } else {
-                c0 = state.num;
-              }
+        float_t c0;
+        if constexpr (HasFilterBoost) {
+          IRS_ASSERT(state.filter_boost);
+          c0 = state.filter_boost->value * state.num;
+        } else {
+          c0 = state.num;
+        }
 
-              const float_t c1 = state.norm_const;
+        const float_t c1 = state.norm_const;
 
-              *res = c0 - c0 / (1.f + tf / c1);
-            }};
+        *res = c0 - c0 / (1.f + tf / c1);
+      },
+      std::forward<Args>(args)...);
   }
 };
 
@@ -420,42 +421,43 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
   using Ctx = BM25Context<Norm>;
 
   template<bool HasFilterBoost, typename... Args>
-  static ScoreFunction Make(Args&&... args) {
-    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
-            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              IRS_ASSERT(res);
-              IRS_ASSERT(ctx);
+  static auto Make(Args&&... args) {
+    return ScoreFunction::Make<Ctx>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        IRS_ASSERT(res);
+        IRS_ASSERT(ctx);
 
-              auto& state = *static_cast<Ctx*>(ctx);
+        auto& state = *static_cast<Ctx*>(ctx);
 
-              float_t tf;
-              if constexpr (Norm::kType < NormType::kNorm) {
-                tf = static_cast<float_t>(state.freq->value);
-              } else {
-                tf = ::kSQRT.get<true>(state.freq->value);
-              }
+        float_t tf;
+        if constexpr (Norm::kType < NormType::kNorm) {
+          tf = static_cast<float_t>(state.freq->value);
+        } else {
+          tf = ::kSQRT.get<true>(state.freq->value);
+        }
 
-              float_t c0;
-              if constexpr (HasFilterBoost) {
-                IRS_ASSERT(state.filter_boost);
-                c0 = state.filter_boost->value * state.num;
-              } else {
-                c0 = state.num;
-              }
+        float_t c0;
+        if constexpr (HasFilterBoost) {
+          IRS_ASSERT(state.filter_boost);
+          c0 = state.filter_boost->value * state.num;
+        } else {
+          c0 = state.num;
+        }
 
-              if constexpr (NormType::kNorm2Tiny == Norm::kType) {
-                static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
-                const float_t inv_c1 =
-                  state.norm_cache[state.norm() & uint32_t{0xFF}];
+        if constexpr (NormType::kNorm2Tiny == Norm::kType) {
+          static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
+          const float_t inv_c1 =
+            state.norm_cache[state.norm() & uint32_t{0xFF}];
 
-                *res = c0 - c0 / (1.f + tf * inv_c1);
-              } else {
-                const float_t c1 =
-                  state.norm_const + state.norm_length * state.norm();
+          *res = c0 - c0 / (1.f + tf * inv_c1);
+        } else {
+          const float_t c1 =
+            state.norm_const + state.norm_length * state.norm();
 
-                *res = c0 - c0 * c1 / (c1 + tf);
-              }
-            }};
+          *res = c0 - c0 * c1 / (c1 + tf);
+        }
+      },
+      std::forward<Args>(args)...);
   }
 };
 
@@ -525,11 +527,11 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     return std::make_unique<field_collector>();
   }
 
-  virtual ScoreFunction prepare_scorer(const SubReader& segment,
-                                       const term_reader& field,
-                                       const byte_type* query_stats,
-                                       const attribute_provider& doc_attrs,
-                                       score_t boost) const final {
+  ScoreFunction prepare_scorer(const SubReader& segment,
+                               const term_reader& field,
+                               const byte_type* query_stats,
+                               const attribute_provider& doc_attrs,
+                               score_t boost) const final {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {

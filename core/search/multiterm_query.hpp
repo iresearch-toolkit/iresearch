@@ -29,7 +29,7 @@
 namespace irs {
 
 // Compiled query suitable for filters with non adjacent set of terms.
-class MultiTermQuery final : public filter::prepared {
+class MultiTermQuery : public filter::prepared {
  public:
   using States = StatesCache<MultiTermState>;
   using Stats = std::vector<bstring>;

@@ -591,7 +591,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
       {6.21361256f, 261},
@@ -629,7 +629,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
       {9.9112005f, 272},
@@ -665,7 +665,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
       {9.9112005f, 272},
@@ -702,7 +702,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
       {8.1443901f, 265},   {6.9717164f, 46355}, {6.9717164f, 46356},
@@ -759,7 +759,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
       {3.8292058f, 275},
@@ -817,7 +817,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     constexpr std::pair<float_t, irs::doc_id_t> expected_docs[]{
       {3.8292058f, 275},

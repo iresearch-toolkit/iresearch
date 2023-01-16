@@ -1160,7 +1160,7 @@ TEST_P(bm25_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
@@ -1190,7 +1190,7 @@ TEST_P(bm25_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
@@ -1221,7 +1221,7 @@ TEST_P(bm25_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {

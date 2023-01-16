@@ -1761,7 +1761,7 @@ void doc_iterator_base<IteratorTraits, FieldTraits>::read_tail_block() {
 }
 
 template<typename IteratorTraits, typename FieldTraits>
-class single_doc_iterator final
+class single_doc_iterator
   : public irs::doc_iterator,
     private std::conditional_t<IteratorTraits::frequency() &&
                                  IteratorTraits::position(),
@@ -1866,8 +1866,7 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
 template<typename IteratorTraits, typename FieldTraits>
-class doc_iterator final
-  : public doc_iterator_base<IteratorTraits, FieldTraits> {
+class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
  private:
   static_assert(IteratorTraits::block_size() <=
                 std::numeric_limits<doc_id_t>::max());
@@ -2238,7 +2237,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
 template<typename IteratorTraits, typename FieldTraits>
-class wanderator final : public doc_iterator_base<IteratorTraits, FieldTraits> {
+class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
  private:
   static_assert(FieldTraits::wand());
   static_assert(IteratorTraits::block_size() <=
@@ -2593,7 +2592,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   return doc.value;
 }
 
-struct index_meta_writer final : public irs::index_meta_writer {
+struct IndexMetaWriter final : public index_meta_writer {
   static constexpr std::string_view kFormatName = "iresearch_10_index_meta";
   static constexpr std::string_view kFormatPrefix = "segments_";
   static constexpr std::string_view kFormatPrefixTmp = "pending_segments_";
@@ -2607,7 +2606,7 @@ struct index_meta_writer final : public irs::index_meta_writer {
     return FileName(kFormatPrefix, gen);
   }
 
-  explicit index_meta_writer(int32_t version) noexcept : version_{version} {
+  explicit IndexMetaWriter(int32_t version) noexcept : version_{version} {
     IRS_ASSERT(version_ >= kFormatMin && version <= kFormatMax);
   }
 
@@ -2633,9 +2632,9 @@ struct index_meta_writer final : public irs::index_meta_writer {
   int32_t version_;
 };
 
-bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
-                                std::string& pending_filename,
-                                std::string& filename) {
+bool IndexMetaWriter::prepare(directory& dir, IndexMeta& meta,
+                              std::string& pending_filename,
+                              std::string& filename) {
   if (index_gen_limits::valid(pending_gen_)) {
     // prepare() was already called with no corresponding call to commit()
     return false;
@@ -2687,7 +2686,7 @@ bool index_meta_writer::prepare(directory& dir, IndexMeta& meta,
   return true;
 }
 
-bool index_meta_writer::commit() {
+bool IndexMetaWriter::commit() {
   if (!index_gen_limits::valid(pending_gen_)) {
     return false;
   }
@@ -2710,7 +2709,7 @@ bool index_meta_writer::commit() {
   return true;
 }
 
-void index_meta_writer::rollback() noexcept {
+void IndexMetaWriter::rollback() noexcept {
   if (!index_gen_limits::valid(pending_gen_)) {
     return;
   }
@@ -2739,8 +2738,8 @@ void index_meta_writer::rollback() noexcept {
 }
 
 uint64_t ParseGeneration(std::string_view file) noexcept {
-  if (file.starts_with(index_meta_writer::kFormatPrefix)) {
-    constexpr size_t kPrefixLength = index_meta_writer::kFormatPrefix.size();
+  if (file.starts_with(IndexMetaWriter::kFormatPrefix)) {
+    constexpr size_t kPrefixLength = IndexMetaWriter::kFormatPrefix.size();
 
     if (uint64_t gen; absl::SimpleAtoi(file.substr(kPrefixLength), &gen)) {
       return gen;
@@ -2750,15 +2749,15 @@ uint64_t ParseGeneration(std::string_view file) noexcept {
   return index_gen_limits::invalid();
 }
 
-struct index_meta_reader final : public irs::index_meta_reader {
+struct IndexMetaReader : public index_meta_reader {
   bool last_segments_file(const directory& dir, std::string& name) const final;
 
   void read(const directory& dir, IndexMeta& meta,
             std::string_view filename) final;
 };
 
-bool index_meta_reader::last_segments_file(const directory& dir,
-                                           std::string& out) const {
+bool IndexMetaReader::last_segments_file(const directory& dir,
+                                         std::string& out) const {
   uint64_t max_gen = index_gen_limits::invalid();
   directory::visitor_f visitor = [&out, &max_gen](std::string_view name) {
     const uint64_t gen = ParseGeneration(name);
@@ -2774,11 +2773,11 @@ bool index_meta_reader::last_segments_file(const directory& dir,
   return index_gen_limits::valid(max_gen);
 }
 
-void index_meta_reader::read(const directory& dir, IndexMeta& meta,
-                             std::string_view filename) {
+void IndexMetaReader::read(const directory& dir, IndexMeta& meta,
+                           std::string_view filename) {
   std::string meta_file;
   if (IsNull(filename)) {
-    meta_file = index_meta_writer::FileName(meta.gen);
+    meta_file = IndexMetaWriter::FileName(meta.gen);
     filename = meta_file;
   }
 
@@ -2793,8 +2792,8 @@ void index_meta_reader::read(const directory& dir, IndexMeta& meta,
 
   // check header
   const int32_t version = format_utils::check_header(
-    *in, index_meta_writer::kFormatName, index_meta_writer::kFormatMin,
-    index_meta_writer::kFormatMax);
+    *in, IndexMetaWriter::kFormatName, IndexMetaWriter::kFormatMin,
+    IndexMetaWriter::kFormatMax);
 
   // read data from segments file
   auto gen = in->read_vlong();
@@ -2815,8 +2814,8 @@ void index_meta_reader::read(const directory& dir, IndexMeta& meta,
 
   bool has_payload = false;
   bstring payload;
-  if (version > index_meta_writer::kFormatMin) {
-    has_payload = (in->read_byte() & index_meta_writer::kHasPayload);
+  if (version > IndexMetaWriter::kFormatMin) {
+    has_payload = (in->read_byte() & IndexMetaWriter::kHasPayload);
 
     if (has_payload) {
       payload = irs::read_string<bstring>(*in);
@@ -2835,7 +2834,7 @@ void index_meta_reader::read(const directory& dir, IndexMeta& meta,
   }
 }
 
-struct segment_meta_writer final : public irs::segment_meta_writer {
+struct SegmentMetaWriter : public segment_meta_writer {
   static constexpr std::string_view FORMAT_EXT = "sm";
   static constexpr std::string_view FORMAT_NAME = "iresearch_10_segment_meta";
 
@@ -2844,7 +2843,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer {
 
   enum { HAS_COLUMN_STORE = 1, SORTED = 2 };
 
-  explicit segment_meta_writer(int32_t version) noexcept : version_(version) {
+  explicit SegmentMetaWriter(int32_t version) noexcept : version_(version) {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
@@ -2857,14 +2856,13 @@ struct segment_meta_writer final : public irs::segment_meta_writer {
 };
 
 template<>
-std::string file_name<irs::segment_meta_writer, SegmentMeta>(
+std::string file_name<segment_meta_writer, SegmentMeta>(
   const SegmentMeta& meta) {
-  return irs::file_name(meta.name, meta.version,
-                        segment_meta_writer::FORMAT_EXT);
+  return irs::file_name(meta.name, meta.version, SegmentMetaWriter::FORMAT_EXT);
 }
 
-void segment_meta_writer::write(directory& dir, std::string& meta_file,
-                                SegmentMeta& meta) {
+void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
+                              SegmentMeta& meta) {
   if (meta.docs_count < meta.live_docs_count) {
     throw index_error{absl::StrCat("Invalid segment meta '", meta.name,
                                    "' detected : docs_count=", meta.docs_count,
@@ -2904,15 +2902,15 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file,
   format_utils::write_footer(*out);
 }
 
-struct segment_meta_reader final : public irs::segment_meta_reader {
+struct SegmentMetaReader : public segment_meta_reader {
   void read(const directory& dir, SegmentMeta& meta,
             std::string_view filename = {}) final;  // null == use meta
 };
 
-void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
-                               std::string_view filename /*= {} */) {
+void SegmentMetaReader::read(const directory& dir, SegmentMeta& meta,
+                             std::string_view filename /*= {} */) {
   const std::string meta_file = IsNull(filename)
-                                  ? file_name<irs::segment_meta_writer>(meta)
+                                  ? file_name<segment_meta_writer>(meta)
                                   : std::string{filename};
 
   auto in =
@@ -2925,8 +2923,8 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
   const auto checksum = format_utils::checksum(*in);
 
   const int32_t version = format_utils::check_header(
-    *in, segment_meta_writer::FORMAT_NAME, segment_meta_writer::FORMAT_MIN,
-    segment_meta_writer::FORMAT_MAX);
+    *in, SegmentMetaWriter::FORMAT_NAME, SegmentMetaWriter::FORMAT_MIN,
+    SegmentMetaWriter::FORMAT_MAX);
 
   auto name = read_string<std::string>(*in);
   const auto segment_version = in->read_vlong();
@@ -2942,19 +2940,19 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
   const auto size = in->read_vlong();
   const auto flags = in->read_byte();
   field_id sort = field_limits::invalid();
-  if (version > segment_meta_writer::FORMAT_MIN) {
+  if (version > SegmentMetaWriter::FORMAT_MIN) {
     sort = in->read_vlong() - 1;
   }
   auto files = read_strings(*in);
 
   if (flags &
-      ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
+      ~(SegmentMetaWriter::HAS_COLUMN_STORE | SegmentMetaWriter::SORTED)) {
     throw index_error{absl::StrCat("While reading segment meta '", name,
                                    "', error: use of unsupported flags '",
                                    flags, "'")};
   }
 
-  const auto sorted = bool(flags & segment_meta_writer::SORTED);
+  const auto sorted = bool(flags & SegmentMetaWriter::SORTED);
 
   if ((!field_limits::valid(sort)) && sorted) {
     throw index_error{absl::StrCat("While reading segment meta '", name,
@@ -2974,7 +2972,7 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
 
   meta.name = std::move(name);
   meta.version = segment_version;
-  meta.column_store = flags & segment_meta_writer::HAS_COLUMN_STORE;
+  meta.column_store = flags & SegmentMetaWriter::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
   meta.sort = sort;
@@ -2982,15 +2980,13 @@ void segment_meta_reader::read(const directory& dir, SegmentMeta& meta,
   meta.files = std::move(files);
 }
 
-class document_mask_writer final : public irs::document_mask_writer {
+class DocumentMaskWriter : public document_mask_writer {
  public:
   static constexpr std::string_view FORMAT_NAME = "iresearch_10_doc_mask";
   static constexpr std::string_view FORMAT_EXT = "doc_mask";
 
   static constexpr int32_t FORMAT_MIN = 0;
   static constexpr int32_t FORMAT_MAX = FORMAT_MIN;
-
-  virtual ~document_mask_writer() = default;
 
   std::string filename(const SegmentMeta& meta) const final;
 
@@ -2999,19 +2995,19 @@ class document_mask_writer final : public irs::document_mask_writer {
 };
 
 template<>
-std::string file_name<irs::document_mask_writer, SegmentMeta>(
+std::string file_name<document_mask_writer, SegmentMeta>(
   const SegmentMeta& meta) {
   return irs::file_name(meta.name, meta.version,
-                        document_mask_writer::FORMAT_EXT);
+                        DocumentMaskWriter::FORMAT_EXT);
 }
 
-std::string document_mask_writer::filename(const SegmentMeta& meta) const {
-  return file_name<irs::document_mask_writer>(meta);
+std::string DocumentMaskWriter::filename(const SegmentMeta& meta) const {
+  return file_name<document_mask_writer>(meta);
 }
 
-size_t document_mask_writer::write(directory& dir, const SegmentMeta& meta,
-                                   const document_mask& docs_mask) {
-  const auto filename = file_name<irs::document_mask_writer>(meta);
+size_t DocumentMaskWriter::write(directory& dir, const SegmentMeta& meta,
+                                 const document_mask& docs_mask) {
+  const auto filename = file_name<document_mask_writer>(meta);
   auto out = dir.create(filename);
 
   if (!out) {
@@ -3033,17 +3029,15 @@ size_t document_mask_writer::write(directory& dir, const SegmentMeta& meta,
   return out->file_pointer();
 }
 
-class document_mask_reader final : public irs::document_mask_reader {
+class DocumentMaskReader : public document_mask_reader {
  public:
-  virtual ~document_mask_reader() = default;
-
   bool read(const directory& dir, const SegmentMeta& meta,
             document_mask& docs_mask) final;
 };
 
-bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
-                                document_mask& docs_mask) {
-  const auto in_name = file_name<irs::document_mask_writer>(meta);
+bool DocumentMaskReader::read(const directory& dir, const SegmentMeta& meta,
+                              document_mask& docs_mask) {
+  const auto in_name = file_name<document_mask_writer>(meta);
 
   bool exists;
 
@@ -3066,9 +3060,9 @@ bool document_mask_reader::read(const directory& dir, const SegmentMeta& meta,
 
   const auto checksum = format_utils::checksum(*in);
 
-  format_utils::check_header(*in, document_mask_writer::FORMAT_NAME,
-                             document_mask_writer::FORMAT_MIN,
-                             document_mask_writer::FORMAT_MAX);
+  format_utils::check_header(*in, DocumentMaskWriter::FORMAT_NAME,
+                             DocumentMaskWriter::FORMAT_MIN,
+                             DocumentMaskWriter::FORMAT_MAX);
 
   size_t count = in->read_vint();
   docs_mask.reserve(count);
@@ -3509,43 +3503,38 @@ class format10 : public irs::version10::format {
 static const ::format10 FORMAT10_INSTANCE;
 
 index_meta_writer::ptr format10::get_index_meta_writer() const {
-  return std::make_unique<::index_meta_writer>(
-    int32_t(::index_meta_writer::kFormatMin));
+  return std::make_unique<IndexMetaWriter>(IndexMetaWriter::kFormatMin);
 }
 
 index_meta_reader::ptr format10::get_index_meta_reader() const {
   // can reuse stateless reader
-  static ::index_meta_reader INSTANCE;
-
-  return memory::to_managed<irs::index_meta_reader, false>(&INSTANCE);
+  static memory::OnStack<IndexMetaReader> kInstance;
+  return memory::to_managed<index_meta_reader>(kInstance);
 }
 
 segment_meta_writer::ptr format10::get_segment_meta_writer() const {
   // can reuse stateless writer
-  static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MIN);
-
-  return memory::to_managed<irs::segment_meta_writer, false>(&INSTANCE);
+  static memory::OnStack<SegmentMetaWriter> kInstance{
+    SegmentMetaWriter::FORMAT_MIN};
+  return memory::to_managed<segment_meta_writer>(kInstance);
 }
 
 segment_meta_reader::ptr format10::get_segment_meta_reader() const {
   // can reuse stateless writer
-  static ::segment_meta_reader INSTANCE;
-
-  return memory::to_managed<irs::segment_meta_reader, false>(&INSTANCE);
+  static memory::OnStack<SegmentMetaReader> kInstance;
+  return memory::to_managed<segment_meta_reader>(kInstance);
 }
 
 document_mask_writer::ptr format10::get_document_mask_writer() const {
   // can reuse stateless writer
-  static ::document_mask_writer INSTANCE;
-
-  return memory::to_managed<irs::document_mask_writer, false>(&INSTANCE);
+  static memory::OnStack<DocumentMaskWriter> kInstance;
+  return memory::to_managed<document_mask_writer>(kInstance);
 }
 
 document_mask_reader::ptr format10::get_document_mask_reader() const {
   // can reuse stateless writer
-  static ::document_mask_reader INSTANCE;
-
-  return memory::to_managed<irs::document_mask_reader, false>(&INSTANCE);
+  static memory::OnStack<DocumentMaskReader> kInstance;
+  return memory::to_managed<document_mask_reader>(kInstance);
 }
 
 field_writer::ptr format10::get_field_writer(bool consolidation) const {
@@ -3607,9 +3596,8 @@ class format11 : public format10 {
 
 static const ::format11 FORMAT11_INSTANCE;
 
-index_meta_writer::ptr format11::get_index_meta_writer() const {
-  return std::make_unique<::index_meta_writer>(
-    int32_t(::index_meta_writer::kFormatMax));
+IndexMetaWriter::ptr format11::get_index_meta_writer() const {
+  return std::make_unique<IndexMetaWriter>(IndexMetaWriter::kFormatMax);
 }
 
 field_writer::ptr format11::get_field_writer(bool consolidation) const {
@@ -3620,9 +3608,9 @@ field_writer::ptr format11::get_field_writer(bool consolidation) const {
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
   // can reuse stateless writer
-  static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MAX);
-
-  return memory::to_managed<irs::segment_meta_writer, false>(&INSTANCE);
+  static memory::OnStack<SegmentMetaWriter> kInstance{
+    SegmentMetaWriter::FORMAT_MAX};
+  return memory::to_managed<segment_meta_writer>(kInstance);
 }
 
 columnstore_writer::ptr format11::get_columnstore_writer(

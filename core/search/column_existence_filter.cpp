@@ -74,7 +74,7 @@ class column_existence_query : public irs::filter::prepared {
   bstring stats_;
 };
 
-class column_prefix_existence_query final : public column_existence_query {
+class column_prefix_existence_query : public column_existence_query {
  public:
   column_prefix_existence_query(std::string_view prefix, bstring&& stats,
                                 const ColumnAcceptor& acceptor, score_t boost)

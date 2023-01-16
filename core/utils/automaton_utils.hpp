@@ -75,7 +75,7 @@ inline automaton::Weight accept(const automaton& a,
   return match(matcher, target);
 }
 
-class automaton_term_iterator final : public seek_term_iterator {
+class automaton_term_iterator : public seek_term_iterator {
  public:
   automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_), it_(std::move(it)) {

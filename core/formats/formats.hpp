@@ -418,17 +418,11 @@ struct columnstore_reader {
   virtual size_t size() const = 0;
 };
 
-}  // namespace irs
-
-namespace irs {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_writer
 ////////////////////////////////////////////////////////////////////////////////
-struct document_mask_writer {
+struct document_mask_writer : memory::Managed {
   using ptr = memory::managed_ptr<document_mask_writer>;
-
-  virtual ~document_mask_writer() = default;
 
   virtual std::string filename(const SegmentMeta& meta) const = 0;
 
@@ -440,10 +434,8 @@ struct document_mask_writer {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct document_mask_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct document_mask_reader {
+struct document_mask_reader : memory::Managed {
   using ptr = memory::managed_ptr<document_mask_reader>;
-
-  virtual ~document_mask_reader() = default;
 
   /// @returns true if there are any deletes in a segment,
   ///          false - otherwise
@@ -453,19 +445,15 @@ struct document_mask_reader {
                     document_mask& docs_mask) = 0;
 };
 
-struct segment_meta_writer {
+struct segment_meta_writer : memory::Managed {
   using ptr = memory::managed_ptr<segment_meta_writer>;
-
-  virtual ~segment_meta_writer() = default;
 
   virtual void write(directory& dir, std::string& filename,
                      SegmentMeta& meta) = 0;
 };
 
-struct segment_meta_reader {
+struct segment_meta_reader : memory::Managed {
   using ptr = memory::managed_ptr<segment_meta_reader>;
-
-  virtual ~segment_meta_reader() = default;
 
   virtual void read(const directory& dir, SegmentMeta& meta,
                     std::string_view filename = {}) = 0;  // null == use meta
@@ -488,10 +476,8 @@ struct index_meta_writer {
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct index_meta_reader
 ////////////////////////////////////////////////////////////////////////////////
-struct index_meta_reader {
+struct index_meta_reader : memory::Managed {
   using ptr = memory::managed_ptr<index_meta_reader>;
-
-  virtual ~index_meta_reader() = default;
 
   virtual bool last_segments_file(const directory& dir,
                                   std::string& name) const = 0;

@@ -28,7 +28,7 @@
 
 namespace {
 
-class FreqThresholdDocIterator final : public irs::doc_iterator {
+class FreqThresholdDocIterator : public irs::doc_iterator {
  public:
   FreqThresholdDocIterator(irs::doc_iterator& impl, uint32_t threshold)
     : impl_{&impl},
@@ -207,7 +207,7 @@ void Format15TestCase::PostingsWandSeek(
     writer->prepare(*out, state);
     writer->begin_field(features);
 
-    postings it(docs, field.index_features);
+    irs::memory::OnStack<postings> it(docs, field.index_features);
     term_meta = writer->write(it);
 
     writer->encode(*out, *term_meta);
@@ -250,8 +250,10 @@ void Format15TestCase::PostingsWandSeek(
       }
 
       auto assert_docs_seq = [&]() {
-        postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold};
+        irs::memory::OnStack<postings> expected_postings{docs,
+                                                         field.index_features};
+        irs::memory::OnStack<FreqThresholdDocIterator> expected{
+          expected_postings, threshold};
         SkipList skip_list;
 
         auto actual =
@@ -267,7 +269,7 @@ void Format15TestCase::PostingsWandSeek(
           ASSERT_NE(nullptr, threshold_value);
           threshold_value->value = threshold;
 
-          postings tmp{docs, field.index_features};
+          irs::memory::OnStack<postings> tmp{docs, field.index_features};
           skip_list = SkipList::Make(tmp, kVersion10PostingsWriterBlockSize, 8,
                                      irs::doc_id_t(docs.size()));
         }
@@ -300,8 +302,10 @@ void Format15TestCase::PostingsWandSeek(
       };
 
       auto assert_docs_random = [&](size_t seed, size_t inc) {
-        postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold};
+        irs::memory::OnStack<postings> expected_postings{docs,
+                                                         field.index_features};
+        irs::memory::OnStack<FreqThresholdDocIterator> expected{
+          expected_postings, threshold};
 
         auto actual =
           reader->wanderator(field.index_features, features, read_meta);
@@ -374,8 +378,10 @@ void Format15TestCase::PostingsWandSeek(
             continue;
           }
 
-          postings expected_postings{docs, field.index_features};
-          FreqThresholdDocIterator expected{expected_postings, threshold};
+          irs::memory::OnStack<postings> expected_postings{
+            docs, field.index_features};
+          irs::memory::OnStack<FreqThresholdDocIterator> expected{
+            expected_postings, threshold};
 
           auto actual =
             reader->wanderator(field.index_features, features, read_meta);

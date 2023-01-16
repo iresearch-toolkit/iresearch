@@ -15053,7 +15053,7 @@ class index_test_case_14 : public index_test_case {
     size_t num_finish_calls{};
   };
 
-  class FeatureWriter final : public irs::FeatureWriter {
+  class FeatureWriter : public irs::FeatureWriter {
    public:
     static auto make(stats& call_stats, irs::doc_id_t filter_doc,
                      std::span<const irs::bytes_view> headers)
