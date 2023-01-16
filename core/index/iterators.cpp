@@ -88,7 +88,7 @@ struct EmptySeekTermIterator : seek_term_iterator {
 memory::OnStack<EmptySeekTermIterator> kEmptySeekIterator;
 
 // Represents a reader with no terms
-constexpr empty_term_reader kEmptyTermReader{0};
+const empty_term_reader kEmptyTermReader{0};
 
 // Represents a reader with no fields
 struct EmptyFieldIterator : field_iterator {
@@ -120,7 +120,7 @@ struct EmptyColumnReader final : column_reader {
   doc_id_t size() const final { return 0; }
 };
 
-constexpr EmptyColumnReader kEmptyColumnReader;
+const EmptyColumnReader kEmptyColumnReader;
 
 // Represents a reader with no columns
 struct EmptyColumnIterator : column_iterator {
