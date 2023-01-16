@@ -1237,6 +1237,7 @@ MSVC_ONLY(__pragma(warning(disable : 4702)))  // unreachable code
 
 template<int N, int I, typename T>
 IRS_FORCE_INLINE T fastpack_at(const T* in) noexcept {
+  static_assert(std::is_same_v<T, uint32_t> || std::is_same_v<T, uint64_t>);
   static constexpr int kBits = sizeof(T) * 8;
   static_assert(0 < N && N < kBits);
   static_assert(0 <= I && I < kBits);
@@ -1244,18 +1245,14 @@ IRS_FORCE_INLINE T fastpack_at(const T* in) noexcept {
   // ensure all computations are constexpr,
   // i.e. no conditional jumps, no loops, no variable increment/decrement
 
+  // TODO(MBkkt) misalignment access
   if constexpr ((N * (I + 1) % kBits) < (N * I) % kBits &&
                 (1 + N * I / kBits) < N) {
-    T data[2];
-    static_assert(sizeof(data) == sizeof(T) * 2);
-    std::memcpy(data, in + N * I / kBits, sizeof(data));
-    return ((data[0] >> (N * I % kBits)) % (T{1} << N)) |
-           ((data[1] % (T{1} << (N * (I + 1)) % kBits))
+    return ((in[N * I / kBits] >> (N * I % kBits)) % (T{1} << N)) |
+           ((in[1 + N * I / kBits] % (T{1} << (N * (I + 1)) % kBits))
             << (N - ((N * (I + 1)) % kBits)));
   } else {
-    T data;
-    std::memcpy(&data, in + N * I / kBits, sizeof(data));
-    return ((data >> (N * I % kBits)) % (T{1} << N));
+    return ((in[N * I / kBits] >> (N * I % kBits)) % (T{1} << N));
   }
 }
 
