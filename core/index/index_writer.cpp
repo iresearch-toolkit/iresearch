@@ -1425,7 +1425,7 @@ void IndexWriter::Clear(uint64_t tick) {
   std::lock_guard ctx_lock{ctx->mutex_};
 
   Abort();  // Abort any already opened transaction
-  StartImpl(std::move(ctx), std::move(pending_commit), {});
+  StartImpl(std::move(ctx), std::move(pending_commit), {}, {});
   Finish();
 
   // Clear consolidating segments
@@ -2203,6 +2203,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       const std::span modification_queries{
         modifications.segment_->modification_queries_.data() + begin, size};
 
+      // FIXME(gnusi): optimize PK queries
       RemoveFromExistingSegment(deleted_docs, modification_queries,
                                 existing_segment);
     }
@@ -2357,6 +2358,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         const std::span modification_queries{
           modifications.segment_->modification_queries_.data() + begin, size};
 
+        // FIXME(gnusi): optimize PK queries
         docs_mask_modified |= RemoveFromImportedSegment(
           modification_queries, *pending_reader, pending_docs_mask,
           pending_segment.generation);
@@ -2562,6 +2564,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           const std::span modification_queries(
             modifications.segment_->modification_queries_.data() + begin, size);
 
+          // FIXME(gnusi): optimize PK queries
           RemoveFromNewSegment(modification_queries, flush_segment_ctx);
         }
       }
@@ -2624,6 +2627,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 }
 
 void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
+                            std::vector<SegmentReader> readers,
                             std::vector<std::string_view> files_to_sync) {
   IRS_ASSERT(ctx);
   IRS_ASSERT(ctx->dir_);
@@ -2661,10 +2665,12 @@ void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
 
   // Update file name so that directory reader holds a reference
   to_commit.filename = std::move(index_meta_file);
-
-  pending_state_.commit =
-    OpenReader(dir, codec_, std::move(to_commit), committed_reader_->Options());
-  pending_state_.ctx = std::move(ctx);  // Retain flush context reference
+  // Assemble directory reader
+  pending_state_.commit = std::make_shared<const DirectoryReaderImpl>(
+    dir, codec_, committed_reader_->Options(), std::move(to_commit),
+    std::move(readers));
+  // Retain flush context reference
+  pending_state_.ctx = std::move(ctx);
   IRS_ASSERT(pending_state_.Valid());
 }
 
@@ -2686,7 +2692,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
   }
 
   StartImpl(std::move(to_commit.ctx), {.index_meta = std::move(to_commit.meta)},
-            std::move(to_commit.files_to_sync));
+            std::move(to_commit.readers), std::move(to_commit.files_to_sync));
 
   return true;
 }
