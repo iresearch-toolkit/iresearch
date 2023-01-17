@@ -94,7 +94,7 @@ struct TrackingDirectory final : public directory {
     return impl_.visit(visitor);
   }
 
-  std::vector<std::string> FlushTracked(size_t& files_size);
+  std::vector<std::string> FlushTracked(uint64_t& files_size);
 
   void ClearTracked() noexcept;
 
@@ -102,7 +102,7 @@ struct TrackingDirectory final : public directory {
   using FileSet = absl::flat_hash_set<std::string>;
 
   directory& impl_;
-  size_t files_size_{};
+  uint64_t files_size_{};
   FileSet files_;
   index_output::OnClose on_close_;
 };

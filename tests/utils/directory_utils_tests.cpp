@@ -386,7 +386,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
       file1->flush();
     }
     ASSERT_TRUE(track_dir.sync({&file, 1}));
-    size_t byte_size{0};
+    uint64_t byte_size{0};
     ASSERT_TRUE(track_dir.length(byte_size, file));
     ASSERT_EQ(1, byte_size);
     bool exists{false};

@@ -49,7 +49,7 @@ struct SegmentMeta;
 struct field_meta;
 struct flush_state;
 struct reader_state;
-struct index_output;
+class index_output;
 struct data_input;
 struct index_input;
 struct postings_writer;

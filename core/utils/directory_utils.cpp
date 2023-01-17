@@ -104,7 +104,7 @@ void TrackingDirectory::ClearTracked() noexcept {
   files_.clear();
 }
 
-std::vector<std::string> TrackingDirectory::FlushTracked(size_t& files_size) {
+std::vector<std::string> TrackingDirectory::FlushTracked(uint64_t& files_size) {
   std::vector<std::string> files(files_.size());
   auto files_begin = files.begin();
   for (auto begin = files_.begin(), end = files_.end(); begin != end;
@@ -112,7 +112,7 @@ std::vector<std::string> TrackingDirectory::FlushTracked(size_t& files_size) {
     auto to_extract = begin++;
     *files_begin = std::move(files_.extract(to_extract).value());
   }
-  files_size = std::exchange(files_size_, size_t{0});
+  files_size = std::exchange(files_size_, uint64_t{0});
   return files;
 }
 
