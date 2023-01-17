@@ -3374,6 +3374,8 @@ TEST(index_death_test_formats_14, fails_in_length) {
                          "_4.pos");  // postings list (positions)
     dir.register_failure(failing_directory::Failure::LENGTH, "_4.doc");
 
+    const size_t num_failures = dir.num_failures();
+
     // write index
     auto writer = irs::IndexWriter::Make(dir, codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -3415,7 +3417,9 @@ TEST(index_death_test_formats_14, fails_in_length) {
       ASSERT_EQ(4, reader->live_docs_count());
     }
 
-    ASSERT_TRUE(dir.no_failures());
+    // Commit without removals doesn't call `length`
+    ASSERT_EQ(num_failures, dir.num_failures());
+    dir.clear_failures();
 
     dir.register_failure(failing_directory::Failure::EXISTS, "_1.csd");
     dir.register_failure(failing_directory::Failure::EXISTS, "_1.csi");
