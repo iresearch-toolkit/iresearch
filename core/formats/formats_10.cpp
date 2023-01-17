@@ -2995,8 +2995,8 @@ class document_mask_writer final : public irs::document_mask_writer {
 
   std::string filename(const SegmentMeta& meta) const override;
 
-  void write(directory& dir, const SegmentMeta& meta,
-             const document_mask& docs_mask) override;
+  size_t write(directory& dir, const SegmentMeta& meta,
+               const document_mask& docs_mask) override;
 };  // document_mask_writer
 
 template<>
@@ -3010,8 +3010,8 @@ std::string document_mask_writer::filename(const SegmentMeta& meta) const {
   return file_name<irs::document_mask_writer>(meta);
 }
 
-void document_mask_writer::write(directory& dir, const SegmentMeta& meta,
-                                 const document_mask& docs_mask) {
+size_t document_mask_writer::write(directory& dir, const SegmentMeta& meta,
+                                   const document_mask& docs_mask) {
   const auto filename = file_name<irs::document_mask_writer>(meta);
   auto out = dir.create(filename);
 
@@ -3031,6 +3031,7 @@ void document_mask_writer::write(directory& dir, const SegmentMeta& meta,
   }
 
   format_utils::write_footer(*out);
+  return out->file_pointer();
 }
 
 class document_mask_reader final : public irs::document_mask_reader {

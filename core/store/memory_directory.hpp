@@ -205,8 +205,6 @@ class memory_index_output : public index_output {
 
   // data_output
 
-  void close() final;
-
   void write_byte(byte_type b) final;
 
   void write_bytes(const byte_type* b, size_t len) final;
@@ -240,6 +238,8 @@ class memory_index_output : public index_output {
   memory_index_output& operator++(int) noexcept { return *this; }
 
  protected:
+  size_t CloseImpl() final;
+
   virtual void switch_buffer();
 
  private:

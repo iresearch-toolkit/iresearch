@@ -496,20 +496,7 @@ void ReadDocumentMask(irs::document_mask& docs_mask, const irs::directory& dir,
 
 void FlushIndexSegment(directory& dir, IndexSegment& segment) {
   IRS_ASSERT(segment.meta.codec);
-
-  // estimate meta segment size
-  uint64_t segment_size{};
-  for (const auto& filename : segment.meta.files) {
-    uint64_t size;
-
-    if (!dir.length(size, filename)) {
-      IR_FRMT_WARN("Failed to get length of the file '%s'", filename.c_str());
-      continue;
-    }
-
-    segment_size += size;
-  }
-  segment.meta.byte_size = segment_size;
+  IRS_ASSERT(segment.meta.byte_size);  // Ensure segment size is estimated
 
   auto writer = segment.meta.codec->get_segment_meta_writer();
   writer->write(dir, segment.filename, segment.meta);

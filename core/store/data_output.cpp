@@ -148,12 +148,14 @@ void buffered_index_output::flush() {
   }
 }
 
-void buffered_index_output::close() {
+size_t buffered_index_output::CloseImpl() {
   if (pos_ > buf_) {
     flush_buffer(buf_, size_t(std::distance(buf_, pos_)));
   }
+  const auto size = file_pointer();
   start_ = 0;
   pos_ = buf_;
+  return size;
 }
 
 }  // namespace irs

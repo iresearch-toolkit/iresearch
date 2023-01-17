@@ -1681,34 +1681,27 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 bool MergeWriter::Flush(SegmentMeta& segment,
                         const FlushProgress& progress /*= {}*/) {
   REGISTER_TIMER_DETAILED();
-  IRS_ASSERT(segment.codec);  // must be set outside
+  IRS_ASSERT(segment.codec);  // Must be set outside
 
-  bool result = false;  // overall flush result
+  bool result = false;  // Flush result
 
   Finally segment_invalidator = [&result, &segment]() noexcept {
-    if (result) {
-      // all good
-      return;
+    if (IRS_UNLIKELY(!result)) {
+      // Invalidate segment
+      segment.files.clear();
+      segment.column_store = false;
+      static_cast<SegmentInfo&>(segment) = SegmentInfo{};
     }
-
-    // invalidate segment
-    segment.name.clear();
-    segment.files.clear();
-    segment.column_store = false;
-    segment.docs_count = 0;
-    segment.live_docs_count = 0;
-    segment.byte_size = 0;
-    segment.version = 0;
   };
 
   const auto& progress_callback = progress ? progress : kProgressNoop;
 
-  TrackingDirectory track_dir(dir_);  // track writer created files
+  TrackingDirectory track_dir{dir_};  // Track writer created files
 
   result = comparator_ ? FlushSorted(track_dir, segment, progress_callback)
                        : FlushUnsorted(track_dir, segment, progress_callback);
 
-  segment.files = track_dir.flush_tracked();
+  segment.files = track_dir.FlushTracked(segment.byte_size);
 
   return result;
 }

@@ -63,56 +63,22 @@ bool RemoveAllUnreferenced(directory& dir) {
 
 }  // namespace directory_utils
 
-TrackingDirectory::TrackingDirectory(directory& impl,
-                                     bool track_open /*= false*/) noexcept
-  : impl_(impl), track_open_(track_open) {}
+TrackingDirectory::TrackingDirectory(directory& impl) noexcept
+  : impl_{impl}, on_close_{[this](size_t size) noexcept {
+      this->files_size_ += size;
+    }} {}
 
-index_output::ptr TrackingDirectory::create(std::string_view name) noexcept {
-  try {
-    files_.emplace(name);
-  } catch (...) {
-  }
-
-  auto result = impl_.create(name);
-
-  if (result) {
+index_output::ptr TrackingDirectory::create(std::string_view name)  //
+  noexcept try {
+  files_.emplace(name);
+  if (auto result = impl_.create(name); IRS_LIKELY(result)) {
+    result->SetCallback(&on_close_);
     return result;
   }
-
-  try {
-    files_.erase(name);  // revert change
-  } catch (...) {
-  }
-
+  files_.erase(name);  // Revert change
   return nullptr;
-}
-
-index_input::ptr TrackingDirectory::open(std::string_view name,
-                                         IOAdvice advice) const noexcept {
-  if (track_open_) {
-    try {
-      files_.emplace(name);
-    } catch (...) {
-      return nullptr;
-    }
-  }
-
-  return impl_.open(name, advice);
-}
-
-bool TrackingDirectory::remove(std::string_view name) noexcept {
-  if (!impl_.remove(name)) {
-    return false;
-  }
-
-  try {
-    files_.erase(name);
-    return true;
-  } catch (...) {
-    // ignore failure since removal from impl_ was sucessful
-  }
-
-  return false;
+} catch (...) {
+  return nullptr;
 }
 
 bool TrackingDirectory::rename(std::string_view src,
@@ -133,9 +99,12 @@ bool TrackingDirectory::rename(std::string_view src,
   return false;
 }
 
-void TrackingDirectory::clear_tracked() noexcept { files_.clear(); }
+void TrackingDirectory::ClearTracked() noexcept {
+  files_size_ = 0;
+  files_.clear();
+}
 
-std::vector<std::string> TrackingDirectory::flush_tracked() {
+std::vector<std::string> TrackingDirectory::FlushTracked(uint64_t& files_size) {
   std::vector<std::string> files(files_.size());
   auto files_begin = files.begin();
   for (auto begin = files_.begin(), end = files_.end(); begin != end;
@@ -143,6 +112,7 @@ std::vector<std::string> TrackingDirectory::flush_tracked() {
     auto to_extract = begin++;
     *files_begin = std::move(files_.extract(to_extract).value());
   }
+  files_size = std::exchange(files_size_, uint64_t{0});
   return files;
 }
 
