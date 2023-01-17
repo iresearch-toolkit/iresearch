@@ -409,21 +409,30 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     ASSERT_FALSE(!file1);
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
-    auto files = track_dir.flush_tracked();
+    size_t byte_size = 1;
+    auto files = track_dir.FlushTracked(byte_size);
     ASSERT_EQ(0, files.size());
+    ASSERT_EQ(0, byte_size);
   }
 
   // test open (track-open)
   {
     irs::memory_directory dir;
     irs::TrackingDirectory track_dir(dir, true);
-    auto file1 = dir.create("abc");
-    ASSERT_FALSE(!file1);
+    {
+      auto file1 = dir.create("abc");
+      ASSERT_FALSE(!file1);
+      file1->write_byte(1);
+    }
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
-    auto files = track_dir.flush_tracked();
+    size_t byte_size = 0;
+    auto files = track_dir.FlushTracked(byte_size);
     ASSERT_EQ(1, files.size());
-    files = track_dir.flush_tracked();  // tracked files were cleared
+    ASSERT_EQ(1, byte_size);
+    byte_size = 2;
+    files = track_dir.FlushTracked(byte_size);  // tracked files were cleared
     ASSERT_EQ(0, files.size());
+    ASSERT_EQ(0, byte_size);
   }
 }

@@ -188,17 +188,18 @@ class fs_index_output : public buffered_index_output {
     return nullptr;
   }
 
-  void close() override {
-    buffered_index_output::close();
-    handle.reset(nullptr);
-  }
-
   int64_t checksum() const override {
     const_cast<fs_index_output*>(this)->flush();
     return crc.checksum();
   }
 
  protected:
+  size_t CloseImpl() override {
+    const auto size = buffered_index_output::CloseImpl();
+    handle.reset(nullptr);
+    return size;
+  }
+
   void flush_buffer(const byte_type* b, size_t len) override {
     IRS_ASSERT(handle);
 

@@ -87,8 +87,6 @@ void ReadDocumentMask(document_mask& docs_mask, const directory& dir,
                       const SegmentMeta& meta);
 
 // Writes segment_meta to the supplied directory
-// updates index_meta::index_segment_t::filename to the segment filename
-// updates segment_meta::size to the size of files written
 void FlushIndexSegment(directory& dir, IndexSegment& segment);
 
 }  // namespace irs::index_utils

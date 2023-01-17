@@ -320,16 +320,30 @@ size_t WriteDocumentMask(directory& dir, SegmentMeta& meta,
     ++meta.version;
   }
 
+  // Write docs mask file after version is incremented
+  mask_writer->write(dir, meta, docs_mask);
+
+  auto get_file_size = [&](std::string_view file) {
+    size_t size;
+    if (!dir.length(size, file)) {
+      throw io_error{
+        absl::StrCat("Failed to get length of the file '", file, "'")};
+    }
+    return size;
+  };
+
   if (it != meta.files.end()) {
+    meta.byte_size -= get_file_size(*it);
+
     // Replace existing mask file with the new one
     *it = mask_writer->filename(meta);
+    meta.byte_size += get_file_size(*it);
   } else {
     // Add mask file to the list of files
     meta.files.emplace_back(mask_writer->filename(meta));
     it = std::prev(meta.files.end());
+    meta.byte_size += get_file_size(*it);
   }
-
-  mask_writer->write(dir, meta, docs_mask);
 
   IRS_ASSERT(meta.files.begin() <= it);
   return static_cast<size_t>(it - meta.files.begin());

@@ -322,7 +322,7 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   IRS_ASSERT(docs_cached() >= docs_mask.size());
   meta.docs_count = docs_cached();
   meta.live_docs_count = meta.docs_count - docs_mask.size();
-  meta.files = dir_.flush_tracked();
+  meta.files = dir_.FlushTracked(meta.byte_size);
 
   // We intentionally don't write document mask here as it might
   // be changed by removals accumulated in IndexWriter.
@@ -332,7 +332,7 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
 void segment_writer::reset() noexcept {
   initialized_ = false;
   tick_ = 0;
-  dir_.clear_tracked();
+  dir_.ClearTracked();
   docs_context_.clear();
   docs_mask_.clear();
   fields_.reset();

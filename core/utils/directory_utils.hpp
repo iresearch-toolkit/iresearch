@@ -62,13 +62,13 @@ struct TrackingDirectory final : public directory {
 
   index_output::ptr create(std::string_view name) noexcept override;
 
-  void clear_tracked() noexcept;
+  void ClearTracked() noexcept;
 
   bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  std::vector<std::string> flush_tracked();
+  std::vector<std::string> FlushTracked(size_t& files_size);
 
   bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
@@ -99,8 +99,10 @@ struct TrackingDirectory final : public directory {
   }
 
  private:
-  mutable file_set files_;
   directory& impl_;
+  size_t files_size_{};
+  mutable file_set files_;
+  index_output::OnClose on_close_;
   bool track_open_;
 };
 

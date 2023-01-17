@@ -392,10 +392,13 @@ void memory_index_output::write_bytes(const byte_type* b, size_t len) {
   }
 }
 
-void memory_index_output::close() { flush(); }
-
 void memory_index_output::flush() {
   file_.length(memory_index_output::file_pointer());
+}
+
+size_t memory_index_output::CloseImpl() {
+  flush();
+  return file_.length();
 }
 
 size_t memory_index_output::file_pointer() const {

@@ -242,10 +242,12 @@ void encrypted_output::flush() {
   pos_ = buf_.get();
 }
 
-void encrypted_output::close() {
+size_t encrypted_output::CloseImpl() {
   flush();
+  const auto size = file_pointer();
   start_ = 0;
   pos_ = buf_.get();
+  return size;
 }
 
 encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,

@@ -67,22 +67,35 @@ struct data_output {
   data_output& operator++(int) noexcept { return *this; }
 };  // data_output
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct index_output
-//////////////////////////////////////////////////////////////////////////////
-struct index_output : public data_output {
+class index_output : public data_output {
  public:
+  using OnClose = std::function<void(size_t)>;
+
   DECLARE_IO_PTR(index_output, close);
   DEFINE_FACTORY_INLINE(index_output);
 
   virtual void flush() = 0;
 
-  virtual void close() = 0;
+  void close() {
+    const auto size = CloseImpl();
+    if (callback_ && *callback_) {
+      (*callback_)(size);
+    }
+  }
 
   virtual size_t file_pointer() const = 0;
 
   virtual int64_t checksum() const = 0;
-};  // index_output
+
+  const OnClose* SetCallback(const OnClose* callback) noexcept {
+    return std::exchange(callback_, callback);
+  }
+
+ private:
+  virtual size_t CloseImpl() = 0;
+
+  const OnClose* callback_{};
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class output_buf
@@ -110,8 +123,6 @@ class output_buf final : public std::streambuf, util::noncopyable {
 class buffered_index_output : public index_output, util::noncopyable {
  public:
   void flush() override;
-
-  void close() override;
 
   size_t file_pointer() const override;
 
@@ -142,6 +153,8 @@ class buffered_index_output : public index_output, util::noncopyable {
     end_ = buf + size;
     buf_size_ = size;
   }
+
+  size_t CloseImpl() override;
 
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
