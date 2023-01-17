@@ -328,8 +328,8 @@ size_t WriteDocumentMask(directory& dir, SegmentMeta& meta,
   if (it != meta.files.end()) {
     // FIXME(gnusi): We can avoid calling `length` in case if size of
     // the previous mask file would be known.
-    auto get_file_size = [&dir](std::string_view file) {
-      size_t size;
+    auto get_file_size = [&dir](std::string_view file) -> uint64_t {
+      uint64_t size;
       if (!dir.length(size, file)) {
         throw io_error{
           absl::StrCat("Failed to get length of the file '", file, "'")};
