@@ -534,7 +534,7 @@ class CompoundTermIterator : public term_iterator {
   explicit CompoundTermIterator(const MergeWriter::FlushProgress& progress,
                                 const Comparer* comparator)
     : doc_itr_{progress},
-      has_comparer_{nullptr == comparator},
+      has_comparer_{nullptr != comparator},
       progress_{progress, kProgressStepTerms} {}
 
   bool aborted() const {
