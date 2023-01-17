@@ -320,29 +320,31 @@ size_t WriteDocumentMask(directory& dir, SegmentMeta& meta,
     ++meta.version;
   }
 
+  // FIXME(gnusi): Consider returning mask file name from `write` to avoding
+  // calling `filename`.
   // Write docs mask file after version is incremented
-  mask_writer->write(dir, meta, docs_mask);
-
-  auto get_file_size = [&](std::string_view file) {
-    size_t size;
-    if (!dir.length(size, file)) {
-      throw io_error{
-        absl::StrCat("Failed to get length of the file '", file, "'")};
-    }
-    return size;
-  };
+  meta.byte_size += mask_writer->write(dir, meta, docs_mask);
 
   if (it != meta.files.end()) {
+    // FIXME(gnusi): We can avoid calling `length` in case if size of
+    // the previous mask file would be known.
+    auto get_file_size = [&dir](std::string_view file) {
+      size_t size;
+      if (!dir.length(size, file)) {
+        throw io_error{
+          absl::StrCat("Failed to get length of the file '", file, "'")};
+      }
+      return size;
+    };
+
     meta.byte_size -= get_file_size(*it);
 
     // Replace existing mask file with the new one
     *it = mask_writer->filename(meta);
-    meta.byte_size += get_file_size(*it);
   } else {
     // Add mask file to the list of files
     meta.files.emplace_back(mask_writer->filename(meta));
     it = std::prev(meta.files.end());
-    meta.byte_size += get_file_size(*it);
   }
 
   IRS_ASSERT(meta.files.begin() <= it);
@@ -571,24 +573,6 @@ std::string ToString(ConsolidationView consolidation) {
                   " size=", total_size, "");
 
   return str;
-}
-
-std::shared_ptr<const DirectoryReaderImpl> OpenReader(
-  directory& dir, format::ptr codec, DirectoryMeta&& meta,
-  const IndexReaderOptions& opts) {
-  const auto& segments = meta.index_meta.segments;
-
-  std::vector<SegmentReader> readers;
-  readers.reserve(segments.size());
-
-  for (auto& segment : segments) {
-    // Segment reader holds refs to all segment files
-    readers.emplace_back(dir, segment.meta, opts);
-    IRS_ASSERT(readers.back());
-  }
-
-  return std::make_shared<const DirectoryReaderImpl>(
-    dir, std::move(codec), opts, std::move(meta), std::move(readers));
 }
 
 bool IsInitialCommit(const DirectoryMeta& meta) noexcept {
@@ -1493,7 +1477,22 @@ IndexWriter::ptr IndexWriter::Make(
     }
   }
 
-  auto reader = OpenReader(dir, codec, std::move(meta), opts.reader_options);
+  auto reader = [](directory& dir, format::ptr codec, DirectoryMeta&& meta,
+                   const IndexReaderOptions& opts) {
+    const auto& segments = meta.index_meta.segments;
+
+    std::vector<SegmentReader> readers;
+    readers.reserve(segments.size());
+
+    for (auto& segment : segments) {
+      // Segment reader holds refs to all segment files
+      readers.emplace_back(dir, segment.meta, opts);
+      IRS_ASSERT(readers.back());
+    }
+
+    return std::make_shared<const DirectoryReaderImpl>(
+      dir, std::move(codec), opts, std::move(meta), std::move(readers));
+  }(dir, codec, std::move(meta), opts.reader_options);
 
   auto writer = std::make_shared<IndexWriter>(
     ConstructToken{}, std::move(lock), std::move(lock_ref), dir,
@@ -2641,8 +2640,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 }
 
 void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
-                            std::vector<SegmentReader> readers,
-                            std::vector<std::string_view> files_to_sync) {
+                            std::vector<SegmentReader>&& readers,
+                            std::vector<std::string_view>&& files_to_sync) {
   IRS_ASSERT(ctx);
   IRS_ASSERT(ctx->dir_);
   IRS_ASSERT(!pending_state_.Valid());

@@ -939,8 +939,8 @@ class IndexWriter : private util::noncopyable {
   // Start transaction
   bool Start(ProgressReportCallback const& progress = nullptr);
   void StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
-                 std::vector<SegmentReader> readers,
-                 std::vector<std::string_view> files_to_sync);
+                 std::vector<SegmentReader>&& readers,
+                 std::vector<std::string_view>&& files_to_sync);
   // Finish transaction
   void Finish();
   // Abort transaction

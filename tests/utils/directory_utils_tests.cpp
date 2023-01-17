@@ -355,7 +355,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     irs::memory_directory dir;
     irs::TrackingDirectory track_dir(dir);
 
-    ASSERT_EQ(&dir, &(*track_dir));
+    ASSERT_EQ(&dir, &track_dir.GetImpl());
     ASSERT_EQ(&(dir.attributes()), &(track_dir.attributes()));
   }
 
@@ -374,64 +374,39 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     ASSERT_TRUE(lock2->lock());
   }
 
-  // test open
+  // test create
   {
     irs::memory_directory dir;
-    irs::TrackingDirectory track_dir(dir);
+    irs::TrackingDirectory track_dir{dir};
     const std::string_view file{"abc"};
-    auto file1 = dir.create(file);
-    ASSERT_FALSE(!file1);
-
-    file1->write_byte(42);
-    file1->flush();
-
-    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!file2);
-    // does nothing in memory_directory, but adds line coverage
+    {
+      auto file1 = track_dir.create(file);
+      ASSERT_FALSE(!file1);
+      file1->write_byte(42);
+      file1->flush();
+    }
     ASSERT_TRUE(track_dir.sync({&file, 1}));
-    ASSERT_EQ(1, file2->length());
-    ASSERT_TRUE(track_dir.rename(file, "def"));
-    file1.reset();  // release before remove
-    file2.reset();  // release before remove
+    size_t byte_size{0};
+    ASSERT_TRUE(track_dir.length(byte_size, file));
+    ASSERT_EQ(1, byte_size);
+    bool exists{false};
+    ASSERT_TRUE(dir.exists(exists, file) && exists);
     ASSERT_FALSE(track_dir.remove(file));
-    bool exists;
+    ASSERT_TRUE(track_dir.rename(file, "def"));
+    ASSERT_FALSE(track_dir.remove(file));
     ASSERT_TRUE(dir.exists(exists, file) && !exists);
     ASSERT_TRUE(dir.exists(exists, "def") && exists);
-    ASSERT_TRUE(track_dir.remove("def"));
-    ASSERT_TRUE(dir.exists(exists, "def") && !exists);
-  }
+    ASSERT_FALSE(track_dir.remove("def"));
+    ASSERT_TRUE(dir.exists(exists, "def") && exists);
 
-  // test open (no-track-open)
-  {
-    irs::memory_directory dir;
-    irs::TrackingDirectory track_dir(dir);
-    auto file1 = dir.create("abc");
-    ASSERT_FALSE(!file1);
-    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!file2);
-    size_t byte_size = 1;
-    auto files = track_dir.FlushTracked(byte_size);
-    ASSERT_EQ(0, files.size());
-    ASSERT_EQ(0, byte_size);
-  }
-
-  // test open (track-open)
-  {
-    irs::memory_directory dir;
-    irs::TrackingDirectory track_dir(dir, true);
-    {
-      auto file1 = dir.create("abc");
-      ASSERT_FALSE(!file1);
-      file1->write_byte(1);
-    }
-    auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!file2);
-    size_t byte_size = 0;
+    byte_size = 0;
     auto files = track_dir.FlushTracked(byte_size);
     ASSERT_EQ(1, files.size());
+    ASSERT_EQ("def", files.front());
     ASSERT_EQ(1, byte_size);
-    byte_size = 2;
-    files = track_dir.FlushTracked(byte_size);  // tracked files were cleared
+
+    // Tracked files are cleared
+    files = track_dir.FlushTracked(byte_size);
     ASSERT_EQ(0, files.size());
     ASSERT_EQ(0, byte_size);
   }

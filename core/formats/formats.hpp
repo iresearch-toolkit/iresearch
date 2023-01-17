@@ -432,8 +432,9 @@ struct document_mask_writer {
 
   virtual std::string filename(const SegmentMeta& meta) const = 0;
 
-  virtual void write(directory& dir, const SegmentMeta& meta,
-                     const document_mask& docs_mask) = 0;
+  // Return number of bytes written
+  virtual size_t write(directory& dir, const SegmentMeta& meta,
+                       const document_mask& docs_mask) = 0;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

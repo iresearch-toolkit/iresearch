@@ -47,14 +47,9 @@ bool RemoveAllUnreferenced(directory& dir);
 
 // Track files created/opened via file names
 struct TrackingDirectory final : public directory {
-  using file_set = absl::flat_hash_set<std::string>;
-  // FIXME(gnusi): track size of files in file set to avoid unnecessary
-  // fstat calls
+  explicit TrackingDirectory(directory& impl) noexcept;
 
-  // @param track_open - track file refs for calls to open(...)
-  explicit TrackingDirectory(directory& impl, bool track_open = false) noexcept;
-
-  directory& operator*() noexcept { return impl_; }
+  directory& GetImpl() noexcept { return impl_; }
 
   directory_attributes& attributes() noexcept override {
     return impl_.attributes();
@@ -62,13 +57,9 @@ struct TrackingDirectory final : public directory {
 
   index_output::ptr create(std::string_view name) noexcept override;
 
-  void ClearTracked() noexcept;
-
   bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
-
-  std::vector<std::string> FlushTracked(size_t& files_size);
 
   bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
@@ -84,9 +75,14 @@ struct TrackingDirectory final : public directory {
   }
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+                        IOAdvice advice) const noexcept override {
+    return impl_.open(name, advice);
+  }
 
-  bool remove(std::string_view name) noexcept override;
+  bool remove(std::string_view) noexcept override {
+    // not supported
+    return false;
+  }
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
@@ -98,12 +94,17 @@ struct TrackingDirectory final : public directory {
     return impl_.visit(visitor);
   }
 
+  std::vector<std::string> FlushTracked(size_t& files_size);
+
+  void ClearTracked() noexcept;
+
  private:
+  using FileSet = absl::flat_hash_set<std::string>;
+
   directory& impl_;
   size_t files_size_{};
-  mutable file_set files_;
+  FileSet files_;
   index_output::OnClose on_close_;
-  bool track_open_;
 };
 
 // Track files created/opened via file refs instead of file names
