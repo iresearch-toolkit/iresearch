@@ -48,6 +48,8 @@ bool RemoveAllUnreferenced(directory& dir);
 // Track files created/opened via file names
 struct TrackingDirectory final : public directory {
   using file_set = absl::flat_hash_set<std::string>;
+  // FIXME(gnusi): track size of files in file set to avoid unnecessary
+  // fstat calls
 
   // @param track_open - track file refs for calls to open(...)
   explicit TrackingDirectory(directory& impl, bool track_open = false) noexcept;
