@@ -215,8 +215,8 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
   if (IRS_UNLIKELY(!decompressor)) {
     throw irs::index_error{
       absl::StrCat("While reading compact, error: can't decompress "
-                   "block of size",
-                   size, "for whithout decompressor")};
+                   "block of size ",
+                   size, " without decompressor")};
   }
 
   // Try direct buffer access
@@ -406,7 +406,7 @@ bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
 
   if (max_id >= std::numeric_limits<size_t>::max()) {
     throw index_error{
-      absl::StrCat("Invalid max column id: ", max_id, ", path: %s", filename)};
+      absl::StrCat("Invalid max column id: ", max_id, ", path: ", filename)};
   }
 
   format_utils::check_footer(*in_, checksum);

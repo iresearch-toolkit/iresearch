@@ -1755,7 +1755,7 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
     } else {
       throw index_error{
         absl::StrCat("Failed to load column id=", i,
-                     " , got invalid type=", static_cast<uint32_t>(hdr.type))};
+                     ", got invalid type=", static_cast<uint32_t>(hdr.type))};
     }
   }
   if (opts.warmup_column) {
