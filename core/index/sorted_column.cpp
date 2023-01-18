@@ -30,10 +30,9 @@ namespace irs {
 
 bool sorted_column::flush_sparse_primary(
   doc_map& docmap, const columnstore_writer::values_writer_f& writer,
-  doc_id_t docs_count, const comparer& compare) {
-  auto comparer = [&](const std::pair<doc_id_t, size_t>& lhs,
-                      const std::pair<doc_id_t, size_t>& rhs) -> int {
-    return compare(get_value(&lhs), get_value(&rhs));
+  doc_id_t docs_count, const Comparer& compare) {
+  auto comparer = [&](const auto& lhs, const auto& rhs) {
+    return compare.Compare(get_value(&lhs), get_value(&rhs));
   };
 
   if (std::is_sorted(index_.begin(), index_.end() - 1,
@@ -93,7 +92,7 @@ bool sorted_column::flush_sparse_primary(
 
 std::pair<doc_map, field_id> sorted_column::flush(
   columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
-  doc_id_t docs_count, const comparer& less) {
+  doc_id_t docs_count, const Comparer& compare) {
   IRS_ASSERT(index_.size() <= docs_count);
   IRS_ASSERT(index_.empty() || index_.back().first <= docs_count);
 
@@ -108,7 +107,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
   auto [column_id, column_writer] =
     writer.push_column(info_, std::move(finalizer));
 
-  if (!flush_sparse_primary(docmap, column_writer, docs_count, less)) {
+  if (!flush_sparse_primary(docmap, column_writer, docs_count, compare)) {
     flush_already_sorted(column_writer);
   }
 

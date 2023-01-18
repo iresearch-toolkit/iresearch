@@ -31,6 +31,7 @@
 #include "analysis/token_stream.hpp"
 #include "index/comparer.hpp"
 #include "index/directory_reader.hpp"
+#include "index/directory_reader_impl.hpp"
 #include "index/field_meta.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/cost.hpp"
@@ -387,15 +388,15 @@ void index_segment::insert_indexed(const ifield& f) {
   }
 }
 
-void index_segment::sort(const irs::comparer& comparator) {
+void index_segment::sort(const irs::Comparer& comparator) {
   if (sort_.empty()) {
     return;
   }
 
-  std::stable_sort(sort_.begin(), sort_.end(),
-                   [&comparator](const auto& lhs, const auto& rhs) {
-                     return comparator(std::get<0>(lhs), std::get<0>(rhs)) < 0;
-                   });
+  std::stable_sort(
+    sort_.begin(), sort_.end(), [&](const auto& lhs, const auto& rhs) {
+      return comparator.Compare(std::get<0>(lhs), std::get<0>(rhs)) < 0;
+    });
 
   irs::doc_id_t new_doc_id = irs::doc_limits::min();
   std::map<irs::doc_id_t, irs::doc_id_t> order;
@@ -1058,7 +1059,7 @@ void assert_column(const irs::column_reader* actual_reader,
   }
 }
 
-void assert_columnstore(irs::index_reader::ptr actual_index,
+void assert_columnstore(irs::IndexReader::ptr actual_index,
                         const index_t& expected_index, size_t skip /*= 0*/) {
   // check number of segments
   ASSERT_EQ(expected_index.size(), actual_index->size());
@@ -1141,14 +1142,13 @@ void assert_columnstore(irs::index_reader::ptr actual_index,
 
 void assert_columnstore(const irs::directory& dir, irs::format::ptr codec,
                         const index_t& expected_index, size_t skip /*= 0*/) {
-  auto reader = irs::directory_reader::open(dir, codec);
+  auto reader = irs::DirectoryReader(dir, codec);
   ASSERT_NE(nullptr, reader);
 
-  assert_columnstore(static_cast<irs::index_reader::ptr>(reader),
-                     expected_index, skip);
+  assert_columnstore(reader.GetImpl(), expected_index, skip);
 }
 
-void assert_index(irs::index_reader::ptr actual_index,
+void assert_index(irs::IndexReader::ptr actual_index,
                   const index_t& expected_index, irs::IndexFeatures features,
                   size_t skip /*= 0*/,
                   irs::automaton_table_matcher* matcher /*=nullptr*/) {
@@ -1234,11 +1234,10 @@ void assert_index(const irs::directory& dir, irs::format::ptr codec,
                   const index_t& expected_index, irs::IndexFeatures features,
                   size_t skip /*= 0*/,
                   irs::automaton_table_matcher* matcher /*= nullptr*/) {
-  auto reader = irs::directory_reader::open(dir, codec);
+  auto reader = irs::DirectoryReader(dir, codec);
   ASSERT_NE(nullptr, reader);
 
-  assert_index(static_cast<irs::index_reader::ptr>(reader), expected_index,
-               features, skip, matcher);
+  assert_index(reader.GetImpl(), expected_index, features, skip, matcher);
 }
 
 }  // namespace tests

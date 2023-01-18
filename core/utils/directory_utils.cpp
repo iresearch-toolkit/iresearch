@@ -32,18 +32,13 @@
 namespace irs {
 namespace directory_utils {
 
-// return a reference to a file or empty() if not found
-index_file_refs::ref_t reference(const directory& dir, std::string_view name,
-                                 bool include_missing /*= false*/) {
+// Return a reference to a file or empty() if not found
+index_file_refs::ref_t Reference(const directory& dir, std::string_view name) {
   auto& refs = dir.attributes().refs();
-
-  if (include_missing) {
-    return refs.add(name);
-  }
 
   bool exists;
 
-  // do not add an attribute if the file definitly does not exist
+  // Do not add an attribute if the file definitly does not exist
   if (!dir.exists(exists, name) || !exists) {
     return nullptr;
   }
@@ -51,133 +46,14 @@ index_file_refs::ref_t reference(const directory& dir, std::string_view name,
   auto ref = refs.add(name);
 
   return dir.exists(exists, name) && exists ? ref
-                                            : index_file_refs::ref_t(nullptr);
+                                            : index_file_refs::ref_t{nullptr};
 }
 
-#if defined(_MSC_VER)
-#pragma warning(disable : 4706)
-#elif defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wparentheses"
-#endif
-
-// return success, visitor gets passed references to files retrieved from source
-bool reference(const directory& dir,
-               const std::function<std::optional<std::string_view>()>& source,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing /*= false*/) {
-  auto& refs = dir.attributes().refs();
-
-  for (std::optional<std::string_view> file; (file = source()).has_value();) {
-    if (include_missing) {
-      if (!visitor(refs.add(*file))) {
-        return false;
-      }
-
-      continue;
-    }
-
-    bool exists;
-
-    // do not add an attribute if the file definitly does not exist
-    if (!dir.exists(exists, *file) || !exists) {
-      continue;
-    }
-
-    auto ref = refs.add(*file);
-
-    if (dir.exists(exists, *file) && exists && !visitor(std::move(ref))) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-#if defined(_MSC_VER)
-#pragma warning(default : 4706)
-#elif defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
-
-// return success, visitor gets passed references to files registered with
-// index_meta
-bool reference(const directory& dir, const index_meta& meta,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing /*= false*/) {
-  if (meta.empty()) {
-    return true;
-  }
-
-  auto& refs = dir.attributes().refs();
-
-  return meta.visit_files(
-    [include_missing, &refs, &dir, &visitor](std::string_view file) {
-      if (include_missing) {
-        return visitor(refs.add(file));
-      }
-
-      bool exists;
-
-      // do not add an attribute if the file definitly does not exist
-      if (!dir.exists(exists, file) || !exists) {
-        return true;
-      }
-
-      auto ref = refs.add(file);
-
-      if (dir.exists(exists, file) && exists) {
-        return visitor(std::move(ref));
-      }
-
-      return true;
-    });
-}
-
-// return success, visitor gets passed references to files registered with
-// segment_meta
-bool reference(const directory& dir, const segment_meta& meta,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing /*= false*/) {
-  auto files = meta.files;
-
-  if (files.empty()) {
-    return true;
-  }
-
-  auto& refs = dir.attributes().refs();
-
-  for (auto& file : files) {
-    if (include_missing) {
-      if (!visitor(refs.add(file))) {
-        return false;
-      }
-
-      continue;
-    }
-
-    bool exists;
-
-    // do not add an attribute if the file definitly does not exist
-    if (!dir.exists(exists, file) || !exists) {
-      continue;
-    }
-
-    auto ref = refs.add(file);
-
-    if (dir.exists(exists, file) && exists && !visitor(std::move(ref))) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-bool remove_all_unreferenced(directory& dir) {
+bool RemoveAllUnreferenced(directory& dir) {
   auto& refs = dir.attributes().refs();
 
   dir.visit([&refs](std::string_view name) {
-    refs.add(name);  // ensure all files in dir are tracked
+    refs.add(name);  // Ensure all files in dir are tracked
     return true;
   });
 
@@ -187,60 +63,26 @@ bool remove_all_unreferenced(directory& dir) {
 
 }  // namespace directory_utils
 
-tracking_directory::tracking_directory(directory& impl,
-                                       bool track_open /*= false*/) noexcept
-  : impl_(impl), track_open_(track_open) {}
+TrackingDirectory::TrackingDirectory(directory& impl) noexcept
+  : impl_{impl}, on_close_{[this](size_t size) noexcept {
+      this->files_size_ += size;
+    }} {}
 
-index_output::ptr tracking_directory::create(std::string_view name) noexcept {
-  try {
-    files_.emplace(name);
-  } catch (...) {
-  }
-
-  auto result = impl_.create(name);
-
-  if (result) {
+index_output::ptr TrackingDirectory::create(std::string_view name)  //
+  noexcept try {
+  files_.emplace(name);
+  if (auto result = impl_.create(name); IRS_LIKELY(result)) {
+    result->SetCallback(&on_close_);
     return result;
   }
-
-  try {
-    files_.erase(name);  // revert change
-  } catch (...) {
-  }
-
+  files_.erase(name);  // Revert change
+  return nullptr;
+} catch (...) {
   return nullptr;
 }
 
-index_input::ptr tracking_directory::open(std::string_view name,
-                                          IOAdvice advice) const noexcept {
-  if (track_open_) {
-    try {
-      files_.emplace(name);
-    } catch (...) {
-      return nullptr;
-    }
-  }
-
-  return impl_.open(name, advice);
-}
-
-bool tracking_directory::remove(std::string_view name) noexcept {
-  if (!impl_.remove(name)) {
-    return false;
-  }
-
-  try {
-    files_.erase(name);
-    return true;
-  } catch (...) {
-    // ignore failure since removal from impl_ was sucessful
-  }
-
-  return false;
-}
-
-bool tracking_directory::rename(std::string_view src,
-                                std::string_view dst) noexcept {
+bool TrackingDirectory::rename(std::string_view src,
+                               std::string_view dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
@@ -257,33 +99,43 @@ bool tracking_directory::rename(std::string_view src,
   return false;
 }
 
-void tracking_directory::clear_tracked() noexcept { files_.clear(); }
-
-void tracking_directory::flush_tracked(file_set& other) noexcept {
-  other = std::move(files_);
+void TrackingDirectory::ClearTracked() noexcept {
+  files_size_ = 0;
+  files_.clear();
 }
 
-ref_tracking_directory::ref_tracking_directory(directory& impl,
-                                               bool track_open /*= false*/)
+std::vector<std::string> TrackingDirectory::FlushTracked(uint64_t& files_size) {
+  std::vector<std::string> files(files_.size());
+  auto files_begin = files.begin();
+  for (auto begin = files_.begin(), end = files_.end(); begin != end;
+       ++files_begin) {
+    auto to_extract = begin++;
+    *files_begin = std::move(files_.extract(to_extract).value());
+  }
+  files_size = std::exchange(files_size_, uint64_t{0});
+  return files;
+}
+
+RefTrackingDirectory::RefTrackingDirectory(directory& impl,
+                                           bool track_open /*= false*/)
   : attribute_(impl.attributes().refs()),
     impl_(impl),
     track_open_(track_open) {}
 
-ref_tracking_directory::ref_tracking_directory(
-  ref_tracking_directory&& other) noexcept
+RefTrackingDirectory::RefTrackingDirectory(
+  RefTrackingDirectory&& other) noexcept
   : attribute_(other.attribute_),  // references do not require std::move(...)
     impl_(other.impl_),            // references do not require std::move(...)
     refs_(std::move(other.refs_)),
     track_open_(std::move(other.track_open_)) {}
 
-void ref_tracking_directory::clear_refs() const {
+void RefTrackingDirectory::clear_refs() const {
   // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex_};
   refs_.clear();
 }
 
-index_output::ptr ref_tracking_directory::create(
-  std::string_view name) noexcept {
+index_output::ptr RefTrackingDirectory::create(std::string_view name) noexcept {
   try {
     // Do not change the order of calls!
     // The cleaner should "see" the file in directory
@@ -306,8 +158,8 @@ index_output::ptr ref_tracking_directory::create(
   return nullptr;
 }
 
-index_input::ptr ref_tracking_directory::open(std::string_view name,
-                                              IOAdvice advice) const noexcept {
+index_input::ptr RefTrackingDirectory::open(std::string_view name,
+                                            IOAdvice advice) const noexcept {
   if (!track_open_) {
     return impl_.open(name, advice);
   }
@@ -334,7 +186,7 @@ index_input::ptr ref_tracking_directory::open(std::string_view name,
   return nullptr;
 }
 
-bool ref_tracking_directory::remove(std::string_view name) noexcept {
+bool RefTrackingDirectory::remove(std::string_view name) noexcept {
   if (!impl_.remove(name)) {
     return false;
   }
@@ -352,8 +204,8 @@ bool ref_tracking_directory::remove(std::string_view name) noexcept {
   return false;
 }
 
-bool ref_tracking_directory::rename(std::string_view src,
-                                    std::string_view dst) noexcept {
+bool RefTrackingDirectory::rename(std::string_view src,
+                                  std::string_view dst) noexcept {
   if (!impl_.rename(src, dst)) {
     return false;
   }
@@ -376,7 +228,7 @@ bool ref_tracking_directory::rename(std::string_view src,
   return false;
 }
 
-bool ref_tracking_directory::visit_refs(
+bool RefTrackingDirectory::visit_refs(
   const std::function<bool(const index_file_refs::ref_t&)>& visitor) const {
   // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex_};
@@ -388,6 +240,13 @@ bool ref_tracking_directory::visit_refs(
   }
 
   return true;
+}
+
+std::vector<index_file_refs::ref_t> RefTrackingDirectory::GetRefs() const {
+  // cppcheck-suppress unreadVariable
+  std::lock_guard lock{mutex_};
+
+  return {refs_.begin(), refs_.end()};
 }
 
 }  // namespace irs

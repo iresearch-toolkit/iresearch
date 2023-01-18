@@ -39,8 +39,6 @@
 #include <memory_resource>
 #endif
 
-#include <absl/container/flat_hash_map.h>
-
 #include "utils/fstext/fst_utils.hpp"
 
 #if defined(_MSC_VER)
@@ -102,6 +100,10 @@
 #include "utils/attribute_helper.hpp"
 #include "utils/string.hpp"
 #include "utils/log.hpp"
+
+#include <absl/container/flat_hash_map.h>
+#include <absl/strings/internal/resize_uninitialized.h>
+#include <absl/strings/str_cat.h>
 
 // clang-format on
 
@@ -432,8 +434,7 @@ void read_segment_features_legacy(data_input& in, IndexFeatures& features,
     const irs::type_info feature = attributes::get(name);
 
     if (!feature) {
-      throw irs::index_error(irs::string_utils::to_string(
-        "unknown feature name '%s'", name.c_str()));
+      throw irs::index_error{absl::StrCat("Unknown feature name '", name, "'")};
     }
 
     feature_map.emplace_back(feature.id());
@@ -460,9 +461,8 @@ void write_field_features_legacy(FeatureMap& feature_map, data_output& out,
 
     if (feature_map.end() == it) {
       // should not happen in reality
-      throw irs::index_error(string_utils::to_string(
-        "feature '%s' is not listed in segment features",
-        feature().name().data()));
+      throw irs::index_error{absl::StrCat(
+        "Feature '", feature().name(), "' is not listed in segment features")};
     }
 
     out.write_vlong(it->second);
@@ -518,8 +518,7 @@ void read_field_features_legacy(data_input& in,
         features[feature] = field_limits::invalid();
       }
     } else {
-      throw irs::index_error(irs::string_utils::to_string(
-        "unknown feature id '" IR_SIZE_T_SPECIFIER "'", id));
+      throw index_error{absl::StrCat("Unknown feature id '", id, "'")};
     }
   }
 
@@ -530,9 +529,8 @@ void read_field_features_legacy(data_input& in,
     if (IRS_LIKELY(it != features.end())) {
       it->second = norm;
     } else {
-      throw irs::index_error(irs::string_utils::to_string(
-        "'norm' feature is not registered with the field '%s'",
-        field.name.c_str()));
+      throw index_error{absl::StrCat(
+        "'norm' feature is not registered with the field '", field.name, "'")};
     }
   }
 }
@@ -569,7 +567,7 @@ void write_field_features(FeatureMap& feature_map, data_output& out,
     if (feature_map.end() == it) {
       // should not happen in reality
       throw irs::index_error(absl::StrCat(
-        "feature '", feature().name(), "' is not listed in segment features"));
+        "Feature '", feature().name(), "' is not listed in segment features"));
     }
 
     out.write_vlong(it->second);
@@ -589,8 +587,8 @@ IndexFeatures read_index_features(data_input& in) {
   const uint32_t index_features = in.read_int();
 
   if (index_features > static_cast<uint32_t>(IndexFeatures::ALL)) {
-    throw irs::index_error{irs::string_utils::to_string(
-      "invalid segment index features %u", index_features)};
+    throw index_error{
+      absl::StrCat("Invalid segment index features ", index_features)};
   }
 
   return static_cast<IndexFeatures>(index_features);
@@ -608,8 +606,7 @@ void read_segment_features(data_input& in, IndexFeatures& features,
     const irs::type_info feature = attributes::get(name);
 
     if (!feature) {
-      throw irs::index_error(irs::string_utils::to_string(
-        "unknown feature name '%s'", name.c_str()));
+      throw irs::index_error{absl::StrCat("Unknown feature name '", name, "'")};
     }
 
     feature_map.emplace_back(feature.id());
@@ -650,8 +647,7 @@ inline void prepare_output(std::string& str, index_output::ptr& out,
   out = state.dir->create(str);
 
   if (!out) {
-    throw io_error(
-      string_utils::to_string("failed to create file, path: %s", str.c_str()));
+    throw io_error{absl::StrCat("failed to create file, path: ", str)};
   }
 
   format_utils::write_header(*out, format, version);
@@ -668,8 +664,7 @@ inline int32_t prepare_input(std::string& str, index_input::ptr& in,
   in = state.dir->open(str, advice);
 
   if (!in) {
-    throw io_error(
-      string_utils::to_string("failed to open file, path: %s", str.c_str()));
+    throw io_error{absl::StrCat("Failed to open file, path: ", str)};
   }
 
   if (checksum) {
@@ -1324,8 +1319,8 @@ void field_writer::end_field(std::string_view name,
   }
 
   if (IRS_UNLIKELY(!ok)) {
-    throw irs::index_error(irs::string_utils::to_string(
-      "failed to write term index for field '%s'", std::string{name}.c_str()));
+    throw irs::index_error{
+      absl::StrCat("Failed to write term index for field '", name, "'")};
   }
 
   stack_.clear();
@@ -2983,7 +2978,7 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  void prepare(const directory& dir, const segment_meta& meta,
+  void prepare(const directory& dir, const SegmentMeta& meta,
                const document_mask& mask) override;
 
   const irs::term_reader* field(std::string_view field) const override;
@@ -3008,8 +3003,8 @@ class field_reader final : public irs::field_reader {
       fst_.reset(FST::Read(input, fst_read_options()));
 
       if (!fst_) {
-        throw irs::index_error(string_utils::to_string(
-          "failed to read term index for field '%s'", meta().name.c_str()));
+        throw index_error{absl::StrCat("Failed to read term index for field '",
+                                       meta().name, "'")};
       }
     }
 
@@ -3121,7 +3116,7 @@ class field_reader final : public irs::field_reader {
         // implementation returned wrong pointer
         IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
 
-        throw io_error("failed to reopen terms input");  // FIXME
+        throw io_error{"Failed to reopen terms input"};  // FIXME
       }
 
       return memory::make_managed<automaton_term_iterator<FST>>(
@@ -3164,7 +3159,7 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
   IRS_ASSERT(pr_);
 }
 
-void field_reader::prepare(const directory& dir, const segment_meta& meta,
+void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
                            const document_mask& /*mask*/) {
   std::string filename;
 
@@ -3187,7 +3182,7 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
     static_cast<int32_t>(burst_trie::Version::MAX), &checksum));
 
   constexpr const size_t FOOTER_LEN = sizeof(uint64_t)  // fields count
-                                      + format_utils::FOOTER_LEN;
+                                      + format_utils::kFooterLen;
 
   // read total number of indexed fields
   size_t fields_count{0};
@@ -3244,17 +3239,16 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
 
         // ensure that fields are sorted properly
         if (previous_field_name > name) {
-          throw index_error(string_utils::to_string(
-            "invalid field order in segment '%s'", meta.name.c_str()));
+          throw index_error{
+            absl::StrCat("Invalid field order in segment '", meta.name, "'")};
         }
 
         const auto res =
           name_to_field_.emplace(hashed_string_view{name}, &field);
 
         if (!res.second) {
-          throw irs::index_error(string_utils::to_string(
-            "duplicated field: '%s' found in segment: '%s'", name.c_str(),
-            meta.name.c_str()));
+          throw index_error{absl::StrCat("Duplicated field: '", meta.name,
+                                         "' found in segment: '", name, "'")};
         }
 
         previous_field_name = name;
@@ -3273,10 +3267,12 @@ void field_reader::prepare(const directory& dir, const segment_meta& meta,
     static_cast<int32_t>(burst_trie::Version::MAX)));
 
   if (term_index_version != term_dict_version) {
-    throw index_error(string_utils::to_string(
-      "term index version '%d' mismatches term dictionary version '%d' in "
-      "segment '%s'",
-      term_index_version, meta.name.c_str(), term_dict_version));
+    throw index_error(absl::StrCat("Term index version '", term_index_version,
+                                   "' mismatches term dictionary version '",
+                                   term_dict_version,
+                                   "' in "
+                                   "segment '",
+                                   meta.name, "'"));
   }
 
   if (term_dict_version > burst_trie::Version::MIN) {

@@ -198,8 +198,16 @@ TEST(bounded_object_pool_tests, test_sobject_pool) {
         cond.notify_all();
       });
 
-      ASSERT_TRUE(std::cv_status::no_timeout == cond.wait_for(lock, 100ms) ||
-                  emplace);
+      auto result =
+        cond.wait_for(lock, 1000ms);  // assume thread blocks in 1000ms
+
+      // As declaration for wait_for contains "It may also be unblocked
+      // spuriously." for all platforms
+      while (!emplace && result == std::cv_status::no_timeout)
+        result = cond.wait_for(lock, 1000ms);
+
+      ASSERT_TRUE(emplace);
+
       obj.reset();
       lock.unlock();
       thread.join();

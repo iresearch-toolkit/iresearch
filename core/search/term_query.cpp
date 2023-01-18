@@ -75,7 +75,7 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   return docs;
 }
 
-void TermQuery::visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+void TermQuery::visit(const SubReader& segment, PreparedStateVisitor& visitor,
                       score_t boost) const {
   if (auto state = states_.find(segment); state) {
     visitor.Visit(*this, *state, boost * this->boost());

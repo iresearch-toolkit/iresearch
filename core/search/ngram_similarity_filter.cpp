@@ -22,6 +22,8 @@
 
 #include "ngram_similarity_filter.hpp"
 
+#include "index/field_meta.hpp"
+#include "index/index_reader.hpp"
 #include "search/collectors.hpp"
 #include "search/ngram_similarity_query.hpp"
 #include "search/terms_filter.hpp"
@@ -30,7 +32,7 @@
 namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::prepare(
-  const index_reader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Order& ord, score_t boost,
   const attribute_provider* ctx) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;
@@ -56,7 +58,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     return disj.prepare(rdr, irs::Order::kUnordered, boost, ctx);
   }
 
-  NGramStates query_states{rdr};
+  NGramStates query_states{rdr.size()};
 
   // per segment terms states
   const auto terms_count = ngrams.size();
@@ -118,7 +120,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   }
 
   bstring stats(ord.stats_size(), 0);
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
 
   for (size_t term_idx = 0; term_idx < terms_count; ++term_idx) {
     term_stats.finish(stats_buf, term_idx, field_stats, rdr);

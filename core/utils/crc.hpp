@@ -22,9 +22,9 @@
 
 #pragma once
 
-#include <absl/crc/crc32c.h>
-
 #include <shared.hpp>
+
+#include <absl/crc/crc32c.h>
 
 namespace irs {
 

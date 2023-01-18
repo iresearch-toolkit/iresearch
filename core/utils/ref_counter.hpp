@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_set.h>
-
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -32,6 +30,8 @@
 #include "shared.hpp"
 #include "utils/assert.hpp"
 #include "utils/noncopyable.hpp"
+
+#include <absl/container/flat_hash_set.h>
 
 namespace irs {
 

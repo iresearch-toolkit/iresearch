@@ -190,7 +190,7 @@ struct field_collector final : public irs::sort::field_collector {
   // field (possibly without matching terms)
   uint64_t docs_with_field = 0;
 
-  void collect(const irs::sub_reader& /*segment*/,
+  void collect(const irs::SubReader& /*segment*/,
                const irs::term_reader& field) override {
     docs_with_field += field.docs_count();
   }
@@ -217,7 +217,7 @@ struct term_collector final : public irs::sort::term_collector {
   // number of documents containing the matched term
   uint64_t docs_with_term = 0;
 
-  void collect(const irs::sub_reader& /*segment*/,
+  void collect(const irs::SubReader& /*segment*/,
                const irs::term_reader& /*field*/,
                const irs::attribute_provider& term_attrs) override {
     auto* meta = irs::get<irs::term_meta>(term_attrs);
@@ -364,7 +364,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
   explicit sort(bool normalize, bool boost_as_score) noexcept
     : normalize_{normalize}, boost_as_score_{boost_as_score} {}
 
-  void collect(byte_type* stats_buf, const irs::index_reader& /*index*/,
+  void collect(byte_type* stats_buf, const irs::IndexReader& /*index*/,
                const irs::sort::field_collector* field,
                const irs::sort::term_collector* term) const override {
     auto& idf = stats_cast(stats_buf);
@@ -379,7 +379,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
 
     idf.value += float_t(
       std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
-    IRS_ASSERT(idf.value >= 0.f);
+    // TODO(MBkkt) SEARCH-444 IRS_ASSERT(idf.value >= 0.f);
   }
 
   IndexFeatures features() const noexcept override {
@@ -390,7 +390,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     return std::make_unique<field_collector>();
   }
 
-  virtual ScoreFunction prepare_scorer(const sub_reader& segment,
+  virtual ScoreFunction prepare_scorer(const SubReader& segment,
                                        const term_reader& field,
                                        const byte_type* stats_buf,
                                        const attribute_provider& doc_attrs,

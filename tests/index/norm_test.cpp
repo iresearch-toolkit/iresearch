@@ -286,17 +286,17 @@ TEST(Norm2HeaderTest, ResetByPayload) {
 
 class Norm2TestCase : public tests::index_test_base {
  protected:
-  irs::feature_info_provider_t Features() {
+  irs::FeatureInfoProvider Features() {
     return [](irs::type_info::type_id id) {
       if (irs::type<irs::Norm2>::id() == id) {
         return std::make_pair(
-          irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
+          irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
           &irs::Norm2::MakeWriter);
       }
 
       return std::make_pair(
-        irs::column_info{irs::type<irs::compression::none>::get(), {}, false},
-        irs::feature_writer_factory_t{});
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        irs::FeatureWriterFactory{});
     };
   }
 
@@ -319,13 +319,13 @@ class Norm2TestCase : public tests::index_test_base {
 
   template<typename T>
   void AssertNormColumn(
-    const irs::sub_reader& segment, std::string_view name,
+    const irs::SubReader& segment, std::string_view name,
     const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_values);
 };
 
 template<typename T>
 void Norm2TestCase::AssertNormColumn(
-  const irs::sub_reader& segment, std::string_view name,
+  const irs::SubReader& segment, std::string_view name,
   const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_docs) {
   static_assert(std::is_same_v<T, irs::byte_type> ||
                 std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t>);
@@ -427,7 +427,7 @@ TEST_P(Norm2TestCase, CheckNorms) {
   auto* doc2 = gen.next();  // name == 'C'
   auto* doc3 = gen.next();  // name == 'D'
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.features = Features();
 
   // Create actual index
@@ -441,11 +441,12 @@ TEST_P(Norm2TestCase, CheckNorms) {
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                doc0->stored.begin(), doc0->stored.end());
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -539,7 +540,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.features = Features();
 
   // Create actual index
@@ -553,18 +554,20 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end()));
   ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                      doc5->stored.begin(), doc5->stored.end()));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                doc0->stored.begin(), doc0->stored.end());
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -573,7 +576,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
                                doc2->stored.begin(), doc2->stored.end());
   expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
                                doc3->stored.begin(), doc3->stored.end());
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end(),
                                doc4->stored.begin(), doc4->stored.end());
   expected_index.back().insert(doc5->indexed.begin(), doc5->indexed.end(),
@@ -672,14 +675,15 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
 
   // Consolidate segments
   {
-    const irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    const irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
 
     // Simulate consolidation
     index().clear();
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
     expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                  doc0->stored.begin(), doc0->stored.end());
@@ -799,7 +803,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.features = Features();
 
   // Create actual index
@@ -813,18 +817,20 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
                      doc2->stored.begin(), doc2->stored.end()));
   ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                      doc3->stored.begin(), doc3->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
   ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                      doc4->stored.begin(), doc4->stored.end()));
   ASSERT_TRUE(insert(*writer, doc5->indexed.begin(), doc5->indexed.end(),
                      doc5->stored.begin(), doc5->stored.end()));
   ASSERT_TRUE(insert(*writer, doc6->indexed.begin(), doc6->indexed.end(),
                      doc6->stored.begin(), doc6->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Create expected index
   auto& expected_index = index();
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                doc0->stored.begin(), doc0->stored.end());
   expected_index.back().insert(doc1->indexed.begin(), doc1->indexed.end(),
@@ -833,7 +839,7 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
                                doc2->stored.begin(), doc2->stored.end());
   expected_index.back().insert(doc3->indexed.begin(), doc3->indexed.end(),
                                doc3->stored.begin(), doc3->stored.end());
-  expected_index.emplace_back(writer->feature_info());
+  expected_index.emplace_back(writer->FeatureInfo());
   expected_index.back().insert(doc4->indexed.begin(), doc4->indexed.end(),
                                doc4->stored.begin(), doc4->stored.end());
   expected_index.back().insert(doc5->indexed.begin(), doc5->indexed.end(),
@@ -933,20 +939,22 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
   // Remove document
   {
     auto query_doc3 = MakeByTerm("name", "D");
-    writer->documents().remove(*query_doc3);
-    writer->commit();
+    writer->GetBatch().Remove(*query_doc3);
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   // Consolidate segments
   {
-    const irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    const irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
 
     // Simulate consolidation
     index().clear();
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
     expected_index.back().insert(doc0->indexed.begin(), doc0->indexed.end(),
                                  doc0->stored.begin(), doc0->stored.end());
@@ -1027,14 +1035,16 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
 
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end()));
-  writer->commit();
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
 
   // Consolidate segments
   {
-    const irs::index_utils::consolidate_count consolidate_all;
-    ASSERT_TRUE(writer->consolidate(
-      irs::index_utils::consolidation_policy(consolidate_all)));
-    writer->commit();
+    const irs::index_utils::ConsolidateCount consolidate_all;
+    ASSERT_TRUE(
+      writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   reader = open_reader();

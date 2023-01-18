@@ -77,19 +77,19 @@ struct by_range_options : by_range_filter_options {
 //////////////////////////////////////////////////////////////////////////////
 class by_range : public filter_base<by_range_options> {
  public:
-  static prepared::ptr prepare(const index_reader& index, const Order& ord,
+  static prepared::ptr prepare(const IndexReader& index, const Order& ord,
                                score_t boost, std::string_view field,
                                const options_type::range_type& rng,
                                size_t scored_terms_limit);
 
-  static void visit(const sub_reader& segment, const term_reader& reader,
+  static void visit(const SubReader& segment, const term_reader& reader,
                     const options_type::range_type& rng,
                     filter_visitor& visitor);
 
   using filter::prepare;
 
   filter::prepared::ptr prepare(
-    const index_reader& index, const Order& ord, score_t boost,
+    const IndexReader& index, const Order& ord, score_t boost,
     const attribute_provider* /*ctx*/) const override {
     return prepare(index, ord, this->boost() * boost, field(), options().range,
                    options().scored_terms_limit);

@@ -74,11 +74,11 @@ struct bstring_data_output : public irs::data_output {
 class tfidf_test_case : public index_test_base {
  protected:
   void test_query_norms(irs::type_info::type_id norm,
-                        irs::feature_writer_factory_t handler);
+                        irs::FeatureWriterFactory handler);
 };
 
 void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
-                                       irs::feature_writer_factory_t handler) {
+                                       irs::FeatureWriterFactory handler) {
   {
     const std::vector<irs::type_info::type_id> extra_features = {norm};
 
@@ -99,15 +99,15 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
         }
       });
 
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.features = [&](irs::type_info::type_id id) {
-      irs::column_info info{irs::type<irs::compression::lz4>::get(), {}, false};
+      irs::ColumnInfo info{irs::type<irs::compression::lz4>::get(), {}, false};
 
       if (id == norm) {
         return std::make_pair(info, handler);
       }
 
-      return std::make_pair(info, irs::feature_writer_factory_t{});
+      return std::make_pair(info, irs::FeatureWriterFactory{});
     };
 
     add_segment(gen, irs::OM_CREATE, opts);
@@ -115,7 +115,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 
   auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{true});
 
-  auto reader = irs::directory_reader::open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -543,7 +543,7 @@ TEST_P(tfidf_test_case, test_query) {
 
   auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
 
-  auto reader = irs::directory_reader::open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
@@ -618,7 +618,8 @@ TEST_P(tfidf_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     // add second segment (odd 'seq')
@@ -630,10 +631,11 @@ TEST_P(tfidf_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     irs::by_term filter;
     *filter.mutable_field() = "field";
     filter.mutable_options()->term =
@@ -709,7 +711,8 @@ TEST_P(tfidf_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     // add second segment (odd 'seq')
@@ -721,10 +724,11 @@ TEST_P(tfidf_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     irs::Or filter;
     {
       // doc 0, 2, 5
@@ -812,7 +816,8 @@ TEST_P(tfidf_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
     // add second segment (odd 'seq')
@@ -824,10 +829,11 @@ TEST_P(tfidf_test_case, test_query) {
                            doc->stored.begin(), doc->stored.end()));
         gen.next();  // skip 1 doc
       }
-      writer->commit();
+      writer->Commit();
+      AssertSnapshotEquality(*writer);
     }
 
-    auto reader = irs::directory_reader::open(dir(), codec());
+    auto reader = irs::DirectoryReader(dir(), codec());
     irs::by_prefix filter;
     *filter.mutable_field() = "prefix";
     filter.mutable_options()->term =
@@ -1274,10 +1280,11 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
                          doc->stored.begin(), doc->stored.end()));
     }
 
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
-  auto reader = irs::directory_reader::open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
   ASSERT_EQ(1, reader.size());
   auto* field = reader[0].field("name");
   ASSERT_NE(nullptr, field);
@@ -1480,7 +1487,7 @@ TEST_P(tfidf_test_case, test_order) {
     add_segment(gen);
   }
 
-  auto reader = irs::directory_reader::open(dir(), codec());
+  auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
 
   irs::by_term query;

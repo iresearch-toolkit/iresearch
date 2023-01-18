@@ -63,8 +63,6 @@ class encrypted_output : public irs::index_output, util::noncopyable {
 
   void flush() final;
 
-  void close() final;
-
   size_t file_pointer() const noexcept final;
 
   void write_byte(byte_type b) final;
@@ -102,6 +100,8 @@ class encrypted_output : public irs::index_output, util::noncopyable {
  private:
   /// @returns number of remaining bytes in the buffer
   IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+
+  size_t CloseImpl() final;
 
   index_output::ptr managed_out_;
   index_output* out_;

@@ -167,7 +167,7 @@ struct proxy_query_cache {
   explicit proxy_query_cache(filter::ptr&& ptr)
     : real_filter_(std::move(ptr)) {}
 
-  absl::flat_hash_map<const sub_reader*, std::unique_ptr<lazy_filter_bitset>>
+  absl::flat_hash_map<const SubReader*, std::unique_ptr<lazy_filter_bitset>>
     readers_;
   filter::prepared::ptr prepared_real_filter_;
   filter::ptr real_filter_;
@@ -193,7 +193,7 @@ class proxy_query final : public filter::prepared {
     return memory::make_managed<lazy_filter_bitset_iterator>(*cached);
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 
@@ -205,7 +205,7 @@ proxy_filter::proxy_filter() noexcept
   : filter(irs::type<proxy_filter>::get()) {}
 
 filter::prepared::ptr proxy_filter::prepare(
-  const index_reader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Order& ord, score_t boost,
   const attribute_provider* ctx) const {
   if (!cache_ || !cache_->real_filter_) {
     IRS_ASSERT(false);

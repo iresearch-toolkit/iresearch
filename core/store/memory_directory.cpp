@@ -392,10 +392,13 @@ void memory_index_output::write_bytes(const byte_type* b, size_t len) {
   }
 }
 
-void memory_index_output::close() { flush(); }
-
 void memory_index_output::flush() {
   file_.length(memory_index_output::file_pointer());
+}
+
+size_t memory_index_output::CloseImpl() {
+  flush();
+  return file_.length();
 }
 
 size_t memory_index_output::file_pointer() const {
@@ -553,8 +556,6 @@ bool memory_directory::rename(std::string_view src,
 
   return false;
 }
-
-bool memory_directory::sync(std::string_view /*name*/) noexcept { return true; }
 
 bool memory_directory::visit(const directory::visitor_f& visitor) const {
   std::vector<std::string> files;

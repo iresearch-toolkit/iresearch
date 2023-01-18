@@ -1,9 +1,10 @@
-#include <absl/crc/crc32c.h>
 #include <benchmark/benchmark.h>
 
 #include <string>
 
 #include "utils/crc.hpp"
+
+#include <absl/crc/crc32c.h>
 
 namespace {
 

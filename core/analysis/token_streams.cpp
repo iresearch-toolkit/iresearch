@@ -24,7 +24,6 @@
 
 #include "shared.hpp"
 #include "utils/bit_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace irs {
 

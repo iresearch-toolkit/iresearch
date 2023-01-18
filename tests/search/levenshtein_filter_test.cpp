@@ -102,7 +102,7 @@ TEST(by_edit_distance_test, boost) {
     q.mutable_options()->term =
       irs::ViewCast<irs::byte_type>(std::string_view("bar*"));
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -116,7 +116,7 @@ TEST(by_edit_distance_test, boost) {
       irs::ViewCast<irs::byte_type>(std::string_view("bar*"));
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(boost, prepared->boost());
   }
 }
@@ -131,8 +131,8 @@ TEST(by_edit_distance_test, boost) {
 TEST(by_edit_distance_test, test_type_of_prepared_query) {
   // term query
   {
-    auto lhs = make_term_filter("foo", "bar").prepare(irs::sub_reader::empty());
-    auto rhs = make_filter("foo", "bar").prepare(irs::sub_reader::empty());
+    auto lhs = make_term_filter("foo", "bar").prepare(irs::SubReader::empty());
+    auto rhs = make_filter("foo", "bar").prepare(irs::SubReader::empty());
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 }
@@ -173,17 +173,17 @@ TEST_P(by_edit_distance_test_case, test_order) {
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer.collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
       ++finish_count;
@@ -225,17 +225,17 @@ TEST_P(by_edit_distance_test_case, test_order) {
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer.collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
       ++finish_count;
@@ -277,17 +277,17 @@ TEST_P(by_edit_distance_test_case, test_order) {
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer.collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
       ++finish_count;
@@ -549,16 +549,16 @@ TEST_P(by_edit_distance_test_case, bm25) {
         }
       });
 
-    irs::index_writer::init_options opts;
+    irs::IndexWriterOptions opts;
     opts.features = [](irs::type_info::type_id id) {
-      const irs::column_info info{
+      const irs::ColumnInfo info{
         irs::type<irs::compression::lz4>::get(), {}, false};
 
       if (irs::type<irs::Norm>::id() == id) {
         return std::make_pair(info, &irs::Norm::MakeWriter);
       }
 
-      return std::make_pair(info, irs::feature_writer_factory_t{});
+      return std::make_pair(info, irs::FeatureWriterFactory{});
     };
 
     add_segment(gen, irs::OM_CREATE, opts);

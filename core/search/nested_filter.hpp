@@ -23,6 +23,7 @@
 #pragma once
 
 #include <compare>
+#include <variant>
 
 #include "search/filter.hpp"
 #include "utils/type_limits.hpp"
@@ -50,8 +51,7 @@ struct Match {
 static constexpr Match kMatchNone{0, 0};
 static constexpr Match kMatchAny{1};
 
-using DocIteratorProvider =
-  std::function<doc_iterator::ptr(const irs::sub_reader&)>;
+using DocIteratorProvider = std::function<doc_iterator::ptr(const SubReader&)>;
 
 // Options for ByNestedFilter filter
 struct ByNestedOptions {
@@ -110,8 +110,7 @@ class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
  public:
   using filter::prepare;
 
-  prepared::ptr prepare(const index_reader& rdr, const Order& ord,
-                        score_t boost,
+  prepared::ptr prepare(const IndexReader& rdr, const Order& ord, score_t boost,
                         const attribute_provider* /*ctx*/) const override;
 };
 

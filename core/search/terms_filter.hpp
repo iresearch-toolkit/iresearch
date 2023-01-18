@@ -86,14 +86,14 @@ class by_terms final : public filter_base<by_terms_options>,
  public:
   static ptr make();
 
-  static void visit(const sub_reader& segment, const term_reader& field,
+  static void visit(const SubReader& segment, const term_reader& field,
                     const by_terms_options::search_terms& terms,
                     filter_visitor& visitor);
 
   using filter::prepare;
 
   filter::prepared::ptr prepare(
-    const index_reader& index, const Order& order, score_t boost,
+    const IndexReader& index, const Order& order, score_t boost,
     const attribute_provider* /*ctx*/) const override;
 };
 

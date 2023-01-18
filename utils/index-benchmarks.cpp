@@ -22,8 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <absl/container/flat_hash_map.h>
-
 #include <functional>
 
 #include "analysis/collation_token_stream.hpp"
@@ -37,6 +35,8 @@
 #include "analysis/token_stopwords_stream.hpp"
 #include "index-put.hpp"
 #include "index-search.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace {
 

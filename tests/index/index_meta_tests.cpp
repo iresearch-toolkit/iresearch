@@ -45,18 +45,23 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   ASSERT_TRUE(files.empty());
 
   // create index metadata and write it into the specified directory
-  irs::index_meta meta_orig;
-  ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
+  irs::IndexMeta meta_orig;
+  std::string filename;
+  std::string tmp_filename;
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(meta_orig)));
 
   // set payload
   const irs::bytes_view payload =
     ViewCast<byte_type>(std::string_view("payload"));
-  const_cast<bytes_view&>(meta_orig.payload()) = payload;
+  meta_orig.payload.emplace(payload);
 
-  ASSERT_TRUE(writer->prepare(dir, meta_orig));
+  ASSERT_TRUE(writer->prepare(dir, meta_orig, tmp_filename, filename));
+  ASSERT_FALSE(meta_orig.payload.has_value());  // 1_0 doesn't support payload
+  ASSERT_EQ("segments_1", filename);
+  ASSERT_EQ("pending_segments_1", tmp_filename);
 
   // we should increase meta generation after we write to directory
-  EXPECT_EQ(1, meta_orig.generation());
+  EXPECT_EQ(1, meta_orig.gen);
 
   // check that files were successfully
   // written to directory
@@ -68,7 +73,7 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
   writer->commit();
 
   // create index metadata and read it from the specified  directory
-  irs::index_meta meta_read;
+  irs::IndexMeta meta_read;
   {
     std::string segments_file;
 
@@ -79,13 +84,11 @@ TEST(index_meta_tests, memory_directory_read_write_10) {
     reader->read(dir, meta_read, segments_file);
   }
 
-  EXPECT_EQ(meta_orig.counter(), meta_read.counter());
-  EXPECT_EQ(meta_orig.generation(), meta_read.generation());
-  EXPECT_EQ(meta_orig.size(), meta_read.size());
-  EXPECT_TRUE(irs::IsNull(meta_read.payload()));
+  EXPECT_EQ(meta_orig.seg_counter, meta_read.seg_counter);
+  EXPECT_EQ(meta_orig.gen, meta_read.gen);
+  EXPECT_EQ(meta_orig.segments.size(), meta_read.segments.size());
+  EXPECT_TRUE(irs::IsNull(irs::GetPayload(meta_read)));
 
-  EXPECT_NE(meta_orig, meta_read);
-  const_cast<bytes_view&>(meta_orig.payload()) = bytes_view{};
   EXPECT_EQ(meta_orig, meta_read);
 }
 
@@ -105,18 +108,23 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
   ASSERT_TRUE(files.empty());
 
   // create index metadata and write it into the specified directory
-  irs::index_meta meta_orig;
-  ASSERT_TRUE(irs::IsNull(meta_orig.payload()));
+  irs::IndexMeta meta_orig;
+  std::string filename;
+  std::string tmp_filename;
+  ASSERT_TRUE(irs::IsNull(irs::GetPayload(meta_orig)));
 
   // set payload
   const irs::bytes_view payload =
     ViewCast<byte_type>(std::string_view("payload"));
-  const_cast<bytes_view&>(meta_orig.payload()) = payload;
+  meta_orig.payload.emplace(payload);
 
-  ASSERT_TRUE(writer->prepare(dir, meta_orig));
+  ASSERT_TRUE(writer->prepare(dir, meta_orig, tmp_filename, filename));
+  ASSERT_TRUE(meta_orig.payload.has_value());
+  ASSERT_EQ("segments_1", filename);
+  ASSERT_EQ("pending_segments_1", tmp_filename);
 
   // we should increase meta generation after we write to directory
-  EXPECT_EQ(1, meta_orig.generation());
+  EXPECT_EQ(1, meta_orig.gen);
 
   // check that files were successfully
   // written to directory
@@ -128,7 +136,7 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
   writer->commit();
 
   // create index metadata and read it from the specified  directory
-  irs::index_meta meta_read;
+  irs::IndexMeta meta_read;
   {
     std::string segments_file;
 
@@ -139,19 +147,15 @@ TEST(index_meta_tests, memory_directory_read_write_11) {
     reader->read(dir, meta_read, segments_file);
   }
 
-  EXPECT_EQ(meta_orig.counter(), meta_read.counter());
-  EXPECT_EQ(meta_orig.generation(), meta_read.generation());
-  EXPECT_EQ(meta_orig.size(), meta_read.size());
-  EXPECT_EQ(meta_orig.payload(), meta_read.payload());
   EXPECT_EQ(meta_orig, meta_read);
 }
 
 TEST(index_meta_tests, ctor) {
-  irs::index_meta meta;
-  EXPECT_EQ(0, meta.counter());
-  EXPECT_EQ(0, meta.size());
-  EXPECT_TRUE(irs::IsNull(meta.payload()));
-  EXPECT_EQ(irs::index_gen_limits::invalid(), meta.generation());
+  irs::IndexMeta meta;
+  EXPECT_EQ(0, meta.seg_counter);
+  EXPECT_EQ(0, meta.segments.size());
+  EXPECT_TRUE(irs::IsNull(irs::GetPayload(meta)));
+  EXPECT_EQ(irs::index_gen_limits::invalid(), meta.gen);
 }
 
 TEST(index_meta_tests, last_generation) {
@@ -177,7 +181,7 @@ TEST(index_meta_tests, last_generation) {
   // get max value
   uint64_t max = 0;
   for (const auto& s : names) {
-    int num = atoi(s.c_str() + sizeof(prefix) - 1);
+    uint64_t num = atoi(s.c_str() + sizeof(prefix) - 1);
     if (num > max) {
       max = num;
     }

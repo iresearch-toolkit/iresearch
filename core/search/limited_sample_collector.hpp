@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
@@ -34,16 +32,15 @@
 #include "utils/hash_utils.hpp"
 #include "utils/string.hpp"
 
+#include <absl/container/flat_hash_map.h>
+
 namespace irs {
 
-struct sub_reader;
-struct index_reader;
+struct SubReader;
+struct IndexReader;
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class limited_sample_collector
-/// @brief object to collect and track a limited number of scorers,
-///        terms with longer postings are treated as more important
-//////////////////////////////////////////////////////////////////////////////
+// Object to collect and track a limited number of scorers,
+// terms with longer postings are treated as more important
 template<typename Key, typename Comparer = std::less<Key>>
 class limited_sample_collector : private util::noncopyable {
  public:
@@ -57,13 +54,11 @@ class limited_sample_collector : private util::noncopyable {
     scored_states_heap_.reserve(scored_terms_limit);
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief prepare scorer for terms collecting
-  /// @param segment segment reader for the current term
-  /// @param state state containing this scored term
-  /// @param terms segment term-iterator positioned at the current term
-  //////////////////////////////////////////////////////////////////////////////
-  void prepare(const sub_reader& segment, const seek_term_iterator& terms,
+  // Prepare scorer for terms collecting
+  // segment - segment reader for the current term
+  // state - state containing this scored term
+  // terms - segment term-iterator positioned at the current term
+  void prepare(const SubReader& segment, const seek_term_iterator& terms,
                MultiTermState& scored_state) noexcept {
     state_.state = &scored_state;
     state_.segment = &segment;
@@ -74,9 +69,7 @@ class limited_sample_collector : private util::noncopyable {
     state_.docs_count = meta ? &meta->docs_count : &no_docs_;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collect current term
-  //////////////////////////////////////////////////////////////////////////////
+  // Collect current term
   void collect(const Key& key) {
     IRS_ASSERT(state_.segment && state_.terms && state_.state);
 
@@ -125,10 +118,8 @@ class limited_sample_collector : private util::noncopyable {
     }
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief finish collecting and evaluate stats
-  //////////////////////////////////////////////////////////////////////////////
-  void score(const index_reader& index, const Order& order,
+  // Finish collecting and evaluate stats
+  void score(const IndexReader& index, const Order& order,
              std::vector<bstring>& stats) {
     if (!scored_terms_limit_) {
       return;  // nothing to score (optimization)
@@ -176,9 +167,8 @@ class limited_sample_collector : private util::noncopyable {
 
  private:
   struct stats_state {
-    explicit stats_state(const irs::index_reader& index,
-                         const irs::term_reader& field, const irs::Order& order,
-                         uint32_t& state_offset)
+    explicit stats_state(const IndexReader& index, const term_reader& field,
+                         const Order& order, uint32_t& state_offset)
       : field_stats(order),
         term_stats(order, 1) {  // 1 term per bstring because a range is
                                 // treated as a disjunction
@@ -198,19 +188,15 @@ class limited_sample_collector : private util::noncopyable {
     uint32_t stats_offset;
   };
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a representation of state of the collector
-  //////////////////////////////////////////////////////////////////////////////
+  // A representation of state of the collector
   struct collector_state {
-    const sub_reader* segment{};
+    const SubReader* segment{};
     const seek_term_iterator* terms{};
     MultiTermState* state{};
     const uint32_t* docs_count{};
   };
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a representation of a term cookie with its associated range_state
-  //////////////////////////////////////////////////////////////////////////////
+  // A representation of a term cookie with its associated range_state
   struct scored_term_state {
     scored_term_state(const Key& key, const collector_state& state)
       : key(key),
@@ -226,10 +212,10 @@ class limited_sample_collector : private util::noncopyable {
     scored_term_state& operator=(scored_term_state&&) = default;
 
     Key key;
-    seek_cookie::ptr cookie;         // term offset cache
-    MultiTermState* state;           // state containing this scored term
-    const irs::sub_reader* segment;  // segment reader for the current term
-    bstring term;                    // actual term value this state is for
+    seek_cookie::ptr cookie;   // term offset cache
+    MultiTermState* state;     // state containing this scored term
+    const SubReader* segment;  // segment reader for the current term
+    bstring term;              // actual term value this state is for
     uint32_t docs_count;
   };
 
@@ -271,10 +257,7 @@ struct term_frequency {
   }
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class multiterm_visitor
-/// @brief filter visitor for multiterm queries
-//////////////////////////////////////////////////////////////////////////////
+// Filter visitor for multiterm queries
 template<typename States>
 class multiterm_visitor {
  public:
@@ -282,7 +265,7 @@ class multiterm_visitor {
                     States& states)
     : collector_(collector), states_(states) {}
 
-  void prepare(const sub_reader& segment, const term_reader& reader,
+  void prepare(const SubReader& segment, const term_reader& reader,
                const seek_term_iterator& terms) {
     // get term metadata
     auto* meta = irs::get<term_meta>(terms);

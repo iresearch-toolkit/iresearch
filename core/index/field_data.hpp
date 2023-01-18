@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <deque>
 #include <vector>
 
 #include "formats/formats.hpp"
@@ -44,7 +45,7 @@ struct offset;
 struct payload;
 class format;
 struct directory;
-class comparer;
+class Comparer;
 struct flush_state;
 
 namespace analysis {
@@ -62,7 +63,7 @@ class sorting_doc_iterator;
 // represents a mapping between cached column data
 // and a pointer to column identifier
 struct cached_column {
-  cached_column(field_id* id, column_info info,
+  cached_column(field_id* id, ColumnInfo info,
                 columnstore_writer::column_finalizer_f finalizer) noexcept
     : id{id}, stream{info}, finalizer{std::move(finalizer)} {}
 
@@ -74,7 +75,7 @@ struct cached_column {
 class field_data : util::noncopyable {
  public:
   field_data(std::string_view name, const features_t& features,
-             const feature_info_provider_t& feature_columns,
+             const FeatureInfoProvider& feature_columns,
              std::deque<cached_column>& cached_columns,
              columnstore_writer& columns,
              byte_block_pool::inserter& byte_writer,
@@ -115,11 +116,11 @@ class field_data : util::noncopyable {
   friend class fields_data;
 
   struct feature_info {
-    feature_info(feature_writer::ptr handler,
+    feature_info(FeatureWriter::ptr handler,
                  columnstore_writer::values_writer_f writer)
       : handler{std::move(handler)}, writer{std::move(writer)} {}
 
-    feature_writer::ptr handler;
+    FeatureWriter::ptr handler;
     columnstore_writer::values_writer_f writer;
   };
 
@@ -181,11 +182,11 @@ class fields_data : util::noncopyable {
  public:
   using postings_ref_t = std::vector<const posting*>;
 
-  explicit fields_data(const feature_info_provider_t& feature_info,
+  explicit fields_data(const FeatureInfoProvider& feature_info,
                        std::deque<cached_column>& cached_features,
-                       const comparer* comparator);
+                       const Comparer* comparator);
 
-  const comparer* comparator() const noexcept { return comparator_; }
+  const Comparer* comparator() const noexcept { return comparator_; }
 
   field_data* emplace(const hashed_string_view& name,
                       IndexFeatures index_features, const features_t& features,
@@ -206,8 +207,8 @@ class fields_data : util::noncopyable {
   void reset() noexcept;
 
  private:
-  const comparer* comparator_;
-  const feature_info_provider_t* feature_info_;
+  const Comparer* comparator_;
+  const FeatureInfoProvider* feature_info_;
   std::deque<field_data> fields_;               // pointers remain valid
   std::deque<cached_column>* cached_features_;  // pointers remain valid
   fields_map fields_map_;

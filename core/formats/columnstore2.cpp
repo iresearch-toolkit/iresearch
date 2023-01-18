@@ -29,7 +29,6 @@
 #include "search/score.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
-#include "utils/string_utils.hpp"
 
 namespace {
 
@@ -40,7 +39,7 @@ using column_ptr = std::unique_ptr<column_reader>;
 using column_index = std::vector<sparse_bitmap_writer::block>;
 
 constexpr SparseBitmapVersion ToSparseBitmapVersion(
-  const column_info& info) noexcept {
+  const ColumnInfo& info) noexcept {
   static_assert(SparseBitmapVersion::kPrevDoc == SparseBitmapVersion{1});
 
   return SparseBitmapVersion{info.track_prev_doc};
@@ -386,7 +385,7 @@ class column_base : public column_reader, private util::noncopyable {
     return *stream_;
   }
 
-  virtual void make_buffered(irs::index_input&, memory_accounting_f&,
+  virtual void make_buffered(irs::index_input&, MemoryAccountingFunc&,
                              std::span<std::unique_ptr<column_reader>>) {}
 
  protected:
@@ -397,7 +396,7 @@ class column_base : public column_reader, private util::noncopyable {
   void reset_stream(const index_input* stream) { stream_ = stream; }
 
   bool allocate_buffered_memory(
-    size_t size, memory_accounting_f& buffered_memory_accounter) {
+    size_t size, MemoryAccountingFunc& buffered_memory_accounter) {
     IRS_ASSERT(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
     IRS_ASSERT(buffered_memory_accounter);
     if (!buffered_memory_accounter(static_cast<int64_t>(size))) {
@@ -461,7 +460,7 @@ class column_base : public column_reader, private util::noncopyable {
   doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in,
                                   ColumnHint hint) const;
 
-  memory_accounting_f buffered_memory_accounter_;
+  MemoryAccountingFunc buffered_memory_accounter_;
   const index_input* stream_;
   encryption::stream* cipher_;
   column_header hdr_;
@@ -687,7 +686,7 @@ class dense_fixed_length_column final : public column_base {
   doc_iterator::ptr iterator(ColumnHint hint) const override;
 
   void make_buffered(
-    irs::index_input& in, memory_accounting_f& memory_accounter,
+    irs::index_input& in, MemoryAccountingFunc& memory_accounter,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
     auto const data_size = len_ * hdr.docs_count;
@@ -812,7 +811,7 @@ class fixed_length_column final : public column_base {
   doc_iterator::ptr iterator(ColumnHint hint) const override;
 
   void make_buffered(
-    irs::index_input& in, memory_accounting_f& memory_accounter,
+    irs::index_input& in, MemoryAccountingFunc& memory_accounter,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns) override {
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
@@ -866,7 +865,7 @@ class fixed_length_column final : public column_base {
     uint64_t len, column_header& hdr, irs::index_input& in,
     std::vector<uint64_t>& blocks, std::vector<irs::byte_type>& column_data,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns,
-    memory_accounting_f& memory_accounter,
+    MemoryAccountingFunc& memory_accounter,
     remapped_bytes_view_input::mapping* mapping) {
     IRS_ASSERT(!blocks.empty());
     auto const last_block_full = hdr.docs_count % column::kBlockSize == 0;
@@ -978,7 +977,7 @@ class sparse_column final : public column_base {
   doc_iterator::ptr iterator(ColumnHint hint) const override;
 
   void make_buffered(
-    irs::index_input& in, memory_accounting_f& memory_accounter,
+    irs::index_input& in, MemoryAccountingFunc& memory_accounter,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns) override {
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
@@ -1025,7 +1024,7 @@ class sparse_column final : public column_base {
     column_header& hdr, irs::index_input& in, std::vector<column_block>& blocks,
     std::vector<irs::byte_type>& column_data,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns,
-    memory_accounting_f& memory_accounter,
+    MemoryAccountingFunc& memory_accounter,
     remapped_bytes_view_input::mapping* mapping) {
     // idx adr/block offset length source
     std::vector<std::tuple<size_t, bool, size_t, size_t, size_t>> chunks;
@@ -1247,7 +1246,9 @@ namespace irs {
 namespace columnstore2 {
 
 void column::prepare(doc_id_t key) {
+#ifdef IRESEARCH_DEBUG
   IRS_ASSERT(!sealed_);
+#endif
   if (IRS_LIKELY(key > pend_)) {
     if (addr_table_.full()) {
       flush_block();
@@ -1467,15 +1468,14 @@ writer::writer(Version version, bool consolidation)
     ver_{version},
     consolidation_{consolidation} {}
 
-void writer::prepare(directory& dir, const segment_meta& meta) {
+void writer::prepare(directory& dir, const SegmentMeta& meta) {
   columns_.clear();
 
   auto filename = data_file_name(meta.name);
   auto data_out = dir.create(filename);
 
   if (!data_out) {
-    throw io_error{string_utils::to_string("Failed to create file, path: %s",
-                                           filename.c_str())};
+    throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
   format_utils::write_header(*data_out, kDataFormatName,
@@ -1497,7 +1497,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   data_cipher_ = std::move(data_cipher);
 }
 
-columnstore_writer::column_t writer::push_column(const column_info& info,
+columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
                                                  column_finalizer_f finalizer) {
   // FIXME
   // Since current implementation doesn't support custom compression,
@@ -1592,8 +1592,8 @@ bool writer::commit(const flush_state& /*state*/) {
   auto index_out = dir_->create(index_filename);
 
   if (!index_out) {
-    throw io_error{string_utils::to_string("Failed to create file, path: %s",
-                                           index_filename.c_str())};
+    throw io_error{
+      absl::StrCat("Failed to create file, path: ", index_filename)};
   }
 
   format_utils::write_header(*index_out, kIndexFormatName,
@@ -1636,8 +1636,7 @@ void reader::prepare_data(const directory& dir, std::string_view filename) {
   auto data_in = dir.open(filename, irs::IOAdvice::RANDOM);
 
   if (!data_in) {
-    throw io_error{string_utils::to_string("Failed to open file, path: %s",
-                                           std::string{filename}.c_str())};
+    throw io_error{absl::StrCat("Failed to open file, path: ", filename)};
   }
 
   [[maybe_unused]] const auto version = format_utils::check_header(
@@ -1663,7 +1662,7 @@ void reader::prepare_data(const directory& dir, std::string_view filename) {
 }
 
 // FIXME return result???
-void reader::prepare_index(const directory& dir, const segment_meta& meta,
+void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
                            std::string_view filename,
                            std::string_view data_filename,
                            const options& opts) {
@@ -1671,8 +1670,7 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
     dir.open(filename, irs::IOAdvice::READONCE | irs::IOAdvice::SEQUENTIAL);
 
   if (!index_in) {
-    throw io_error{string_utils::to_string("Failed to open file, path: %s",
-                                           std::string{filename}.c_str())};
+    throw io_error{absl::StrCat("Failed to open file, path: ", filename)};
   }
 
   const auto checksum = format_utils::checksum(*index_in);
@@ -1693,16 +1691,13 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
     auto inflater = compression::get_decompressor(compression_id);
 
     if (!inflater && !compression::exists(compression_id)) {
-      throw index_error{string_utils::to_string(
-        "Failed to load compression '%s' for column id=" IR_SIZE_T_SPECIFIER "",
-        compression_id.c_str(), i)};
+      throw index_error{absl::StrCat("Failed to load compression '",
+                                     compression_id, "' for column id=", i)};
     }
 
     if (inflater && !inflater->prepare(*index_in)) {  // FIXME or data_in???
-      throw index_error{
-        string_utils::to_string("Failed to prepare compression '%s' for "
-                                "column id=" IR_SIZE_T_SPECIFIER "",
-                                compression_id.c_str(), i)};
+      throw index_error{absl::StrCat("Failed to prepare compression '",
+                                     compression_id, "' for column id=", i)};
     }
 
     column_header hdr = read_header(*index_in);
@@ -1710,24 +1705,18 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
     const bool encrypted = is_encrypted(hdr);
 
     if (encrypted && !data_cipher_) {
-      throw index_error{string_utils::to_string(
-        "Failed to load encrypted column id=" IR_SIZE_T_SPECIFIER
-        " without a cipher",
-        i)};
+      throw index_error{absl::StrCat("Failed to load encrypted column id=", i,
+                                     " without a cipher")};
     }
 
     if (ColumnType::kMask != hdr.type && 0 == hdr.docs_count) {
-      throw index_error{
-        string_utils::to_string("Failed to load column id=" IR_SIZE_T_SPECIFIER
-                                ", only mask column may be empty",
-                                i)};
+      throw index_error{absl::StrCat("Failed to load column id=", i,
+                                     ", only mask column may be empty")};
     }
 
     if (hdr.id >= std::numeric_limits<uint32_t>::max() || hdr.id >= count) {
-      throw index_error{
-        string_utils::to_string("Failed to load column id=" IR_SIZE_T_SPECIFIER
-                                ", invalid ordinal position",
-                                i)};
+      throw index_error{absl::StrCat("Failed to load column id=", i,
+                                     ", invalid ordinal position")};
     }
 
     auto payload = read_string<bstring>(*index_in);
@@ -1756,8 +1745,8 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
 
       if (!sorted_columns.empty() &&
           ::less(column->name(), sorted_columns.back()->name())) {
-        throw irs::index_error(irs::string_utils::to_string(
-          "invalid column order in segment '%s'", meta.name.c_str()));
+        throw index_error{
+          absl::StrCat("Invalid column order in segment '", meta.name, "'")};
       }
 
       IRS_ASSERT(hdr.id < columns.size());
@@ -1765,9 +1754,8 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
       sorted_columns.emplace_back(std::move(column));
     } else {
       throw index_error{
-        string_utils::to_string("Failed to load column id=" IR_SIZE_T_SPECIFIER
-                                " , got invalid type=%u",
-                                i, static_cast<uint32_t>(hdr.type))};
+        absl::StrCat("Failed to load column id=", i,
+                     ", got invalid type=", static_cast<uint32_t>(hdr.type))};
     }
   }
   if (opts.warmup_column) {
@@ -1805,14 +1793,14 @@ void reader::prepare_index(const directory& dir, const segment_meta& meta,
   IRS_ASSERT(columns_.size() == sorted_columns_.size());
 }
 
-bool reader::prepare(const directory& dir, const segment_meta& meta,
+bool reader::prepare(const directory& dir, const SegmentMeta& meta,
                      const options& opts) {
   bool exists;
   const auto data_filename = data_file_name(meta.name);
 
   if (!dir.exists(exists, data_filename)) {
-    throw io_error{string_utils::to_string(
-      "failed to check existence of file, path: %s", data_filename.c_str())};
+    throw io_error{
+      absl::StrCat("Failed to check existence of file, path: ", data_filename)};
   }
 
   if (!exists) {
@@ -1827,14 +1815,14 @@ bool reader::prepare(const directory& dir, const segment_meta& meta,
   const auto index_filename = index_file_name(meta.name);
 
   if (!dir.exists(exists, index_filename)) {
-    throw io_error{string_utils::to_string(
-      "failed to check existence of file, path: %s", index_filename.c_str())};
+    throw io_error{absl::StrCat("Failed to check existence of file, path: ",
+                                index_filename)};
   }
 
   if (!exists) {
     // more likely index is currupted
-    throw index_error{string_utils::to_string(
-      "columnstore index file '%s' is missing", index_filename.c_str())};
+    throw index_error{
+      absl::StrCat("Columnstore index file '", index_filename, "' is missing")};
   }
 
   prepare_index(dir, meta, index_filename, data_filename, opts);

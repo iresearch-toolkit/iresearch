@@ -85,7 +85,7 @@ TEST_P(terms_filter_test_case, boost) {
   {
     irs::by_terms q = make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -96,7 +96,7 @@ TEST_P(terms_filter_test_case, boost) {
     irs::by_terms q = make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(irs::kNoBoost,
               prepared->boost());  // no boost because index is empty
   }
@@ -145,17 +145,17 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](
-                                        const irs::sub_reader&,
+                                        const irs::SubReader&,
                                         const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer->collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer->collectors_collect_ = [&finish_count](
-                                    irs::byte_type*, const irs::index_reader&,
+                                    irs::byte_type*, const irs::IndexReader&,
                                     const irs::sort::field_collector*,
                                     const irs::sort::term_collector*) -> void {
       ++finish_count;
@@ -472,17 +472,17 @@ TEST_P(terms_filter_test_case, min_match) {
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](
-                                        const irs::sub_reader&,
+                                        const irs::SubReader&,
                                         const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer->collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer->collectors_collect_ = [&finish_count](
-                                    irs::byte_type*, const irs::index_reader&,
+                                    irs::byte_type*, const irs::IndexReader&,
                                     const irs::sort::field_collector*,
                                     const irs::sort::term_collector*) -> void {
       ++finish_count;
@@ -497,7 +497,7 @@ TEST_P(terms_filter_test_case, min_match) {
       return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(*scorer);
     };
-    scorer->prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&,
+    scorer->prepare_scorer = [](const irs::SubReader&, const irs::term_reader&,
                                 const irs::byte_type*,
                                 const irs::attribute_provider& attrs,
                                 irs::score_t boost) -> irs::ScoreFunction {

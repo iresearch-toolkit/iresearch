@@ -36,9 +36,9 @@ namespace {
 
 class segment_writer_tests : public test_base {
  protected:
-  static irs::column_info_provider_t default_column_info() {
+  static irs::ColumnInfoProvider default_column_info() {
     return [](const std::string_view&) {
-      return irs::column_info{
+      return irs::ColumnInfo{
         .compression = irs::type<irs::compression::lz4>::get(),
         .options = {},
         .encryption = true,
@@ -46,14 +46,14 @@ class segment_writer_tests : public test_base {
     };
   }
 
-  static irs::feature_info_provider_t default_feature_info() {
+  static irs::FeatureInfoProvider default_feature_info() {
     return [](irs::type_info::type_id) {
       return std::make_pair(
-        irs::column_info{.compression = irs::type<irs::compression::lz4>::get(),
-                         .options = {},
-                         .encryption = true,
-                         .track_prev_doc = false},
-        irs::feature_writer_factory_t{});
+        irs::ColumnInfo{.compression = irs::type<irs::compression::lz4>::get(),
+                        .options = {},
+                        .encryption = true,
+                        .track_prev_doc = false},
+        irs::FeatureWriterFactory{});
     };
   }
 
@@ -137,8 +137,9 @@ TEST_F(segment_writer_tests, invalid_actions) {
 
 #endif
 
-struct Comparator final : irs::comparer {
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const noexcept final {
+class Comparator final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs,
+                  irs::bytes_view rhs) const noexcept final {
     EXPECT_FALSE(irs::IsNull(lhs));
     EXPECT_FALSE(irs::IsNull(rhs));
     return lhs.compare(rhs);
@@ -172,7 +173,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
     irs::segment_writer::make(dir, column_info, feature_info, nullptr);
   ASSERT_EQ(0, writer_unsorted->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer_sorted->reset(segment);
@@ -222,7 +223,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
   } field;
 
   decltype(default_column_info()) column_info = [](const std::string_view&) {
-    return irs::column_info{
+    return irs::ColumnInfo{
       irs::type<irs::compression::lz4>::get(),
       irs::compression::options(irs::compression::options::Hint::SPEED), true};
   };
@@ -233,7 +234,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
     irs::segment_writer::make(dir, column_info, feature_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -279,7 +280,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
     irs::segment_writer::make(dir, column_info, feature_info, &compare);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -325,7 +326,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
     irs::segment_writer::make(dir, column_info, feature_info, &compare);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -369,7 +370,7 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
     irs::segment_writer::make(dir, column_info, feature_info, nullptr);
   ASSERT_EQ(0, writer->memory_active());
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "foo";
   segment.codec = irs::formats::get("1_1", "1_0");
   writer->reset(segment);
@@ -413,7 +414,7 @@ TEST_F(segment_writer_tests, memory_index_field) {
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
-  irs::segment_meta segment;
+  irs::SegmentMeta segment;
   segment.name = "tmp";
   segment.codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, segment.codec);
@@ -462,7 +463,7 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (increment)
   {
-    irs::segment_meta segment;
+    irs::SegmentMeta segment;
     segment.name = "tmp";
     segment.codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, segment.codec);
@@ -489,7 +490,7 @@ TEST_F(segment_writer_tests, index_field) {
 
   // test missing token_stream attributes (term_attribute)
   {
-    irs::segment_meta segment;
+    irs::SegmentMeta segment;
     segment.name = "tmp";
     segment.codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, segment.codec);
@@ -515,8 +516,8 @@ TEST_F(segment_writer_tests, index_field) {
   }
 }
 
-struct StringComparer final : irs::comparer {
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const final {
+class StringComparer final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs, irs::bytes_view rhs) const final {
     EXPECT_FALSE(irs::IsNull(lhs));
     EXPECT_FALSE(irs::IsNull(rhs));
 
@@ -579,7 +580,7 @@ TEST_F(segment_writer_tests, reorder) {
       irs::segment_writer::make(dir, column_info, feature_info, &less);
     ASSERT_EQ(0, writer->memory_active());
 
-    irs::segment_meta segment;
+    irs::SegmentMeta segment;
     segment.name = "foo";
     segment.codec = default_codec();
     writer->reset(segment);
@@ -595,9 +596,11 @@ TEST_F(segment_writer_tests, reorder) {
 
     // we don't count stored field without comparator
     ASSERT_GT(writer->memory_active(), 0);
-    irs::index_meta::index_segment_t index_segment;
+    irs::IndexSegment index_segment;
+    irs::document_mask docs_mask;
     index_segment.meta.codec = default_codec();
-    writer->flush(index_segment);
+    writer->flush(index_segment, docs_mask);
+    ASSERT_TRUE(docs_mask.empty());
     auto docs_context = writer->docs_context();
     ASSERT_EQ(docs_context.size(), kLen);
     for (size_t i = 0; i < kLen; ++i) {

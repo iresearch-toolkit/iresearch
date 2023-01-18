@@ -103,7 +103,7 @@ class doclist_test_query final : public filter::prepared {
     return memory::make_managed<doclist_test_iterator>(documents_);
   }
 
-  void visit(const sub_reader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
     // No terms to visit
   }
 
@@ -123,8 +123,7 @@ class doclist_test_filter final : public filter {
   doclist_test_filter() noexcept
     : filter(irs::type<doclist_test_filter>::get()) {}
 
-  filter::prepared::ptr prepare(const index_reader&, const Order&,
-                                score_t boost,
+  filter::prepared::ptr prepare(const IndexReader&, const Order&, score_t boost,
                                 const attribute_provider*) const override {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);
@@ -150,17 +149,18 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
  public:
   proxy_filter_test_case() {
     auto codec = irs::formats::get("1_0");
-    auto writer = irs::index_writer::make(dir_, codec, irs::OM_CREATE);
+    auto writer = irs::IndexWriter::Make(dir_, codec, irs::OM_CREATE);
     {  // make dummy document so we could have non-empty index
-      auto ctx = writer->documents();
+      auto ctx = writer->GetBatch();
       for (size_t i = 0; i < GetParam(); ++i) {
-        auto doc = ctx.insert();
+        auto doc = ctx.Insert();
         auto field = std::make_shared<tests::string_field>("foo", "bar");
-        doc.insert<Action::INDEX>(*field);
+        doc.Insert<Action::INDEX>(*field);
       }
     }
-    writer->commit();
-    index_ = irs::directory_reader::open(dir_, codec);
+    writer->Commit();
+    index_ = irs::DirectoryReader(dir_, codec);
+    AssertSnapshotEquality(writer->GetSnapshot(), index_);
   }
 
  protected:
@@ -200,7 +200,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
   }
 
   irs::memory_directory dir_;
-  irs::directory_reader index_;
+  irs::DirectoryReader index_;
 };
 
 TEST_P(proxy_filter_test_case, test_1first_bit) {

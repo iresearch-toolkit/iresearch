@@ -34,7 +34,7 @@ namespace {
 using namespace irs;
 
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& reader,
+void visit(const SubReader& segment, const term_reader& reader,
            bytes_view prefix, Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
@@ -71,12 +71,12 @@ void visit(const sub_reader& segment, const term_reader& reader,
 namespace irs {
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
-  const index_reader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Order& ord, score_t boost,
   std::string_view field, bytes_view prefix, size_t scored_terms_limit) {
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
     ord.empty() ? 0 : scored_terms_limit);
-  MultiTermQuery::States states{index};
+  MultiTermQuery::States states{index.size()};
   multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
@@ -98,7 +98,7 @@ namespace irs {
     std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
-/*static*/ void by_prefix::visit(const sub_reader& segment,
+/*static*/ void by_prefix::visit(const SubReader& segment,
                                  const term_reader& reader, bytes_view prefix,
                                  filter_visitor& visitor) {
   ::visit(segment, reader, prefix, visitor);

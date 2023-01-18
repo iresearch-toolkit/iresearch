@@ -25,42 +25,43 @@
 #include "formats/formats.hpp"
 #include "index/index_meta.hpp"
 #include "shared.hpp"
+#include "store/store_utils.hpp"
 
 namespace irs {
 
 void validate_footer(index_input& in) {
   const int64_t remain = in.length() - in.file_pointer();
 
-  if (remain != format_utils::FOOTER_LEN) {
-    throw index_error(string_utils::to_string(
-      "while validating footer, error: invalid position '%ld'", remain));
+  if (remain != format_utils::kFooterLen) {
+    throw index_error{absl::StrCat(
+      "While validating footer, error: invalid position '", remain, "'")};
   }
 
   const int32_t magic = in.read_int();
 
-  if (magic != format_utils::FOOTER_MAGIC) {
-    throw index_error(string_utils::to_string(
-      "while validating footer, error: invalid magic number '%d'", magic));
+  if (magic != format_utils::kFooterMagic) {
+    throw index_error{absl::StrCat(
+      "While validating footer, error: invalid magic number '", magic, "'")};
   }
 
   const int32_t alg_id = in.read_int();
 
   if (alg_id != 0) {
-    throw index_error(string_utils::to_string(
-      "while validating footer, error: invalid algorithm '%d'", alg_id));
+    throw index_error{absl::StrCat(
+      "While validating footer, error: invalid algorithm '", alg_id, "'")};
   }
 }
 
 namespace format_utils {
 
 void write_header(index_output& out, std::string_view format, int32_t ver) {
-  out.write_int(FORMAT_MAGIC);
+  out.write_int(kFormatMagic);
   write_string(out, format);
   out.write_int(ver);
 }
 
 void write_footer(index_output& out) {
-  out.write_int(FOOTER_MAGIC);
+  out.write_int(kFooterMagic);
   out.write_int(0);
   out.write_long(out.checksum());
 }
@@ -81,32 +82,30 @@ int32_t check_header(index_input& in, std::string_view req_format,
   const size_t expected = header_length(req_format);
 
   if (static_cast<size_t>(left) < expected) {
-    throw index_error(string_utils::to_string(
-      "while checking header, error: only '" IR_SIZE_T_SPECIFIER
-      "' bytes left out of '" IR_SIZE_T_SPECIFIER "'",
-      left, expected));
+    throw index_error{absl::StrCat("While checking header, error: only '", left,
+                                   "' bytes left out of '", expected, "'")};
   }
 
   const int32_t magic = in.read_int();
 
-  if (FORMAT_MAGIC != magic) {
-    throw index_error(string_utils::to_string(
-      "while checking header, error: invalid magic '%d'", magic));
+  if (kFormatMagic != magic) {
+    throw index_error{absl::StrCat(
+      "While checking header, error: invalid magic '", magic, "'")};
   }
 
   const auto format = read_string<std::string>(in);
 
   if (req_format != format) {
-    throw index_error(string_utils::to_string(
-      "while checking header, error: format mismatch '%s' != '%s'",
-      format.c_str(), req_format.data()));
+    throw index_error{
+      absl::StrCat("While checking header, error: format mismatch '", format,
+                   "' != '", req_format, "'")};
   }
 
   const int32_t ver = in.read_int();
 
   if (ver < min_ver || ver > max_ver) {
-    throw index_error(string_utils::to_string(
-      "while checking header, error: invalid version '%d'", ver));
+    throw index_error{absl::StrCat(
+      "While checking header, error: invalid version '", ver, "'")};
   }
 
   return ver;
@@ -118,9 +117,8 @@ int64_t checksum(const index_input& in) {
   const auto length = stream->length();
 
   if (length < sizeof(uint64_t)) {
-    throw index_error(string_utils::to_string(
-      "failed to read checksum from a file of size " IR_SIZE_T_SPECIFIER,
-      length));
+    throw index_error{
+      absl::StrCat("failed to read checksum from a file of size ", length)};
   }
 
   index_input::ptr dup;
@@ -142,5 +140,4 @@ int64_t checksum(const index_input& in) {
 }
 
 }  // namespace format_utils
-
 }  // namespace irs

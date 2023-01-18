@@ -94,18 +94,18 @@ TEST_P(all_filter_test_case, all_order) {
     auto* sort = static_cast<tests::sort::custom_sort*>(bucket.get());
 
     sort->collector_collect_field = [&collector_collect_field_count](
-                                      const irs::sub_reader&,
+                                      const irs::SubReader&,
                                       const irs::term_reader&) -> void {
       ++collector_collect_field_count;
     };
     sort->collector_collect_term = [&collector_collect_term_count](
-                                     const irs::sub_reader&,
+                                     const irs::SubReader&,
                                      const irs::term_reader&,
                                      const irs::attribute_provider&) -> void {
       ++collector_collect_term_count;
     };
     sort->collectors_collect_ =
-      [&collector_finish_count](const irs::byte_type*, const irs::index_reader&,
+      [&collector_finish_count](const irs::byte_type*, const irs::IndexReader&,
                                 const irs::sort::field_collector*,
                                 const irs::sort::term_collector*) -> void {
       ++collector_finish_count;
@@ -135,7 +135,7 @@ TEST_P(all_filter_test_case, all_order) {
       return nullptr;
     };
     sort.prepare_scorer =
-      [](const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*,
+      [](const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
          const irs::attribute_provider&, irs::score_t) -> irs::ScoreFunction {
       return {nullptr, nullptr};
     };

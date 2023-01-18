@@ -29,7 +29,6 @@ add_executable(iresearch-microbench
   )
 
 set_ipo(iresearch-microbench)
-add_sanitizers(iresearch-microbench)
 
 add_dependencies(iresearch-microbench
   iresearch-static

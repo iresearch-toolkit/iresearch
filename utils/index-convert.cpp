@@ -78,12 +78,12 @@ int convert(const std::string& in, const std::string& out,
     return 1;
   }
 
-  auto reader = irs::directory_reader::open(*in_dir);
+  auto reader = irs::DirectoryReader(*in_dir);
   auto writer =
-    irs::index_writer::make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
+    irs::IndexWriter::Make(*out_dir, codec, irs::OM_CREATE | irs::OM_APPEND);
 
-  writer->import(*reader);
-  writer->commit();
+  writer->Import(*reader);
+  writer->Commit();
 
   return 0;
 }

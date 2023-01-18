@@ -25,7 +25,6 @@
 
 #include "text_token_stream.hpp"
 
-#include <absl/container/node_hash_map.h>
 #include <frozen/unordered_map.h>
 #include <libstemmer.h>
 #include <unicode/brkiter.h>  // for icu::BreakIterator
@@ -73,6 +72,8 @@
 #if defined(_MSC_VER)
 #pragma warning(default : 4229)
 #endif
+
+#include <absl/container/node_hash_map.h>
 
 namespace irs {
 namespace analysis {

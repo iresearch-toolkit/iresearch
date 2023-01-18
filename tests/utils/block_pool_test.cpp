@@ -26,7 +26,6 @@
 #include "tests_shared.hpp"
 #include "utils/misc.hpp"
 #include "utils/string.hpp"
-#include "utils/string_utils.hpp"
 
 using namespace irs;
 
@@ -129,10 +128,9 @@ class block_pool_test : public test_base {
       EXPECT_EQ(i, res);
 
       if (i % 3 == 0) {  // read data within slice
-        bstring payload;
-        size_t size =
-          r.read(&(string_utils::oversize(payload, slice_data.size())[0]),
-                 slice_data.size());
+        bstring payload(slice_data.size(), 0);
+
+        size_t size = r.read(payload.data(), slice_data.size());
         EXPECT_TRUE(slice_data.size() == size);
         EXPECT_TRUE(memcmp(slice_data.c_str(), payload.data(),
                            std::min(slice_data.size(), size)) == 0);

@@ -57,7 +57,6 @@
 #include "store/store_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
-#include "utils/string_utils.hpp"
 #include "utils/text_format.hpp"
 
 namespace {
@@ -364,11 +363,11 @@ int put(const std::string& path, const std::string& dir_type,
                        consolidation_threads);  // -1 for commiter thread
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
-  irs::index_writer::init_options opts;
+  irs::IndexWriterOptions opts;
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = segment_mem_max;
   opts.features = [](irs::type_info::type_id id) {
-    const irs::column_info info{
+    const irs::ColumnInfo info{
       irs::type<irs::compression::none>::get(), {}, false};
 
     if (irs::type<irs::Norm>::id() == id) {
@@ -379,10 +378,10 @@ int put(const std::string& path, const std::string& dir_type,
       return std::make_pair(info, &irs::Norm2::MakeWriter);
     }
 
-    return std::make_pair(info, irs::feature_writer_factory_t{});
+    return std::make_pair(info, irs::FeatureWriterFactory{});
   };
 
-  auto writer = irs::index_writer::make(*dir, codec, irs::OM_CREATE, opts);
+  auto writer = irs::IndexWriter::Make(*dir, codec, irs::OM_CREATE, opts);
 
   irs::async_utils::thread_pool thread_pool(
     indexer_threads + consolidation_threads + 1);  // +1 for commiter thread
@@ -483,7 +482,7 @@ int put(const std::string& path, const std::string& dir_type,
           std::cout << "[COMMIT]"
                     << std::endl;  // break indexer thread output by commit
           SCOPED_TIMER("Commit time");
-          writer->commit();
+          writer->Commit();
         }
 
         // notify consolidation threads
@@ -499,8 +498,8 @@ int put(const std::string& path, const std::string& dir_type,
   }
 
   // consolidation threads
-  const irs::index_utils::consolidate_tier consolidation_options;
-  auto policy = irs::index_utils::consolidation_policy(consolidation_options);
+  const irs::index_utils::ConsolidateTier consolidation_options;
+  auto policy = irs::index_utils::MakePolicy(consolidation_options);
 
   for (size_t i = consolidation_threads; i; --i) {
     thread_pool.run([&dir, &policy, &batch_provider, &consolidation_mutex,
@@ -521,12 +520,12 @@ int put(const std::string& path, const std::string& dir_type,
         {
           std::cout << "[CONSOLIDATE]" << std::flush;
           SCOPED_TIMER("Consolidation time");
-          writer->consolidate(policy);
+          writer->Consolidate(policy);
         }
 
         {
           SCOPED_TIMER("Cleanup time");
-          irs::directory_utils::remove_all_unreferenced(*dir);
+          irs::directory_utils::RemoveAllUnreferenced(*dir);
         }
       }
     });
@@ -543,20 +542,20 @@ int put(const std::string& path, const std::string& dir_type,
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
-        auto ctx = writer->documents();
+        auto ctx = writer->GetBatch();
         size_t i = 0;
 
         do {
-          auto builder = ctx.insert();
+          auto builder = ctx.Insert();
 
           doc.fill(const_cast<std::string*>(buf.data()));
 
           for (auto& field : doc.elements) {
-            builder.insert<irs::Action::INDEX>(*field);
+            builder.Insert<irs::Action::INDEX>(*field);
           }
 
           for (auto& field : doc.store) {
-            builder.insert<irs::Action::STORE>(*field);
+            builder.Insert<irs::Action::STORE>(*field);
           }
 
         } while (++i < buf.size());
@@ -572,20 +571,20 @@ int put(const std::string& path, const std::string& dir_type,
     std::cout << "[COMMIT]"
               << std::endl;  // break indexer thread output by commit
     SCOPED_TIMER("Commit time");
-    writer->commit();
+    writer->Commit();
   }
 
   if (consolidate_all) {
     // merge all segments into a single segment
     SCOPED_TIMER("Consolidating all time");
     std::cout << "Consolidating all segments:" << std::endl;
-    writer->consolidate(irs::index_utils::consolidation_policy(
-      irs::index_utils::consolidate_count()));
-    writer->commit();
+    writer->Consolidate(
+      irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount()));
+    writer->Commit();
   }
 
   if (consolidate_all || consolidation_threads) {
-    irs::directory_utils::remove_all_unreferenced(*dir);
+    irs::directory_utils::RemoveAllUnreferenced(*dir);
   }
 
   u_cleanup();

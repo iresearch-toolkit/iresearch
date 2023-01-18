@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -32,6 +30,8 @@
 #include "singleton.hpp"
 #include "so_utils.hpp"
 #include "string.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 // use busywait implementation for Win32 since std::mutex cannot be used in
 // calls going through dllmain()

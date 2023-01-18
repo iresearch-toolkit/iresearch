@@ -22,9 +22,6 @@
 
 #include "levenshtein_utils.hpp"
 
-#include <absl/container/flat_hash_map.h>
-#include <absl/hash/hash.h>
-
 #include <cmath>
 #include <queue>
 
@@ -38,6 +35,9 @@
 #include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utf8_utils.hpp"
+
+#include <absl/container/flat_hash_map.h>
+#include <absl/hash/hash.h>
 
 namespace {
 
@@ -77,10 +77,6 @@ struct position {
   bool operator==(const position& rhs) const noexcept {
     return offset == rhs.offset && distance == rhs.distance &&
            transpose == rhs.transpose;
-  }
-
-  bool operator!=(const position& rhs) const noexcept {
-    return !(*this == rhs);
   }
 
   uint32_t offset{};      // parametric position offset
@@ -161,10 +157,6 @@ class parametric_state {
 
   bool operator==(const parametric_state& rhs) const noexcept {
     return positions_ == rhs.positions_;
-  }
-
-  bool operator!=(const parametric_state& rhs) const noexcept {
-    return !(*this == rhs);
   }
 
  private:

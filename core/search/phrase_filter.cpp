@@ -39,7 +39,7 @@ struct get_visitor {
   using result_type = field_visitor;
 
   result_type operator()(const by_term_options& part) const {
-    return [term = bytes_view(part.term)](const sub_reader& segment,
+    return [term = bytes_view(part.term)](const SubReader& segment,
                                           const term_reader& field,
                                           filter_visitor& visitor) {
       return by_term::visit(segment, field, term, visitor);
@@ -47,7 +47,7 @@ struct get_visitor {
   }
 
   result_type operator()(const by_prefix_options& part) const {
-    return [term = bytes_view(part.term)](const sub_reader& segment,
+    return [term = bytes_view(part.term)](const SubReader& segment,
                                           const term_reader& field,
                                           filter_visitor& visitor) {
       return by_prefix::visit(segment, field, term, visitor);
@@ -64,7 +64,7 @@ struct get_visitor {
 
   result_type operator()(const by_terms_options& part) const {
     return
-      [terms = &part.terms](const sub_reader& segment, const term_reader& field,
+      [terms = &part.terms](const SubReader& segment, const term_reader& field,
                             filter_visitor& visitor) {
         return by_terms::visit(segment, field, *terms, visitor);
       };
@@ -72,7 +72,7 @@ struct get_visitor {
 
   result_type operator()(const by_range_options& part) const {
     return
-      [range = &part.range](const sub_reader& segment, const term_reader& field,
+      [range = &part.range](const SubReader& segment, const term_reader& field,
                             filter_visitor& visitor) {
         return by_range::visit(segment, field, *range, visitor);
       };
@@ -81,7 +81,7 @@ struct get_visitor {
   template<typename T>
   result_type operator()(const T&) const {
     IRS_ASSERT(false);
-    return [](const sub_reader&, const term_reader&, filter_visitor&) {};
+    return [](const SubReader&, const term_reader&, filter_visitor&) {};
   }
 };
 
@@ -124,11 +124,11 @@ struct prepare : util::noncopyable {
     return filter::prepared::empty();
   }
 
-  prepare(const index_reader& index, const Order& order, std::string_view field,
+  prepare(const IndexReader& index, const Order& order, std::string_view field,
           const score_t boost) noexcept
     : index(index), order(order), field(field), boost(boost) {}
 
-  const index_reader& index;
+  const IndexReader& index;
   const irs::Order& order;
   const std::string_view field;
   const score_t boost;
@@ -146,7 +146,7 @@ class phrase_term_visitor final : public filter_visitor,
   explicit phrase_term_visitor(PhraseStates& phrase_states) noexcept
     : phrase_states_(phrase_states) {}
 
-  void prepare(const sub_reader& segment, const term_reader& field,
+  void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) noexcept override {
     segment_ = &segment;
     reader_ = &field;
@@ -189,7 +189,7 @@ class phrase_term_visitor final : public filter_visitor,
  private:
   size_t term_offset_ = 0;
   size_t stats_size_ = 0;
-  const sub_reader* segment_{};
+  const SubReader* segment_{};
   const term_reader* reader_{};
   PhraseStates& phrase_states_;
   term_collectors* collectors_ = nullptr;
@@ -203,7 +203,7 @@ class phrase_term_visitor final : public filter_visitor,
 namespace irs {
 
 filter::prepared::ptr by_phrase::prepare(
-  const index_reader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Order& ord, score_t boost,
   const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
@@ -228,8 +228,9 @@ filter::prepared::ptr by_phrase::prepare(
   return variadic_prepare_collect(index, ord, boost);
 }
 
-filter::prepared::ptr by_phrase::fixed_prepare_collect(
-  const index_reader& index, const Order& ord, score_t boost) const {
+filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
+                                                       const Order& ord,
+                                                       score_t boost) const {
   const auto phrase_size = options().size();
   const auto is_ord_empty = ord.empty();
 
@@ -238,7 +239,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   term_collectors term_stats(ord, phrase_size);
 
   // per segment phrase states
-  FixedPhraseQuery::states_t phrase_states(index);
+  FixedPhraseQuery::states_t phrase_states{index.size()};
 
   // per segment phrase terms
   PhraseTerms<FixedPhraseState::TermState> phrase_terms;
@@ -299,7 +300,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 
   // finish stats
   bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
 
   FixedPhraseQuery::positions_t positions(phrase_size);
   auto pos_itr = positions.begin();
@@ -318,7 +319,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
-  const index_reader& index, const Order& ord, score_t boost) const {
+  const IndexReader& index, const Order& ord, score_t boost) const {
   const auto phrase_size = options().size();
 
   // stats collectors
@@ -334,7 +335,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   }
 
   // per segment phrase states
-  VariadicPhraseQuery::states_t phrase_states(index);
+  VariadicPhraseQuery::states_t phrase_states{index.size()};
 
   // per segment phrase terms
   std::vector<size_t> num_terms(phrase_size);  // number of terms per part
@@ -403,8 +404,8 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     IRS_ASSERT(phrase_size == state.num_terms.size());
 
     phrase_terms.reserve(phrase_size);
-    num_terms.resize(
-      phrase_size);  // reserve space for at least 1 term per part
+    // reserve space for at least 1 term per part
+    num_terms.resize(phrase_size);
   }
 
   // offset of the first term in a phrase
@@ -414,7 +415,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   // finish stats
   IRS_ASSERT(phrase_size == phrase_part_stats.size());
   bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
-  auto* stats_buf = const_cast<byte_type*>(stats.data());
+  auto* stats_buf = stats.data();
   auto collector = phrase_part_stats.begin();
 
   VariadicPhraseQuery::positions_t positions(phrase_size);

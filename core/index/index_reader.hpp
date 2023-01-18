@@ -22,43 +22,24 @@
 
 #pragma once
 
-#include <functional>
-#include <numeric>
-#include <vector>
-
 #include "formats/formats.hpp"
-#include "index/field_meta.hpp"
-#include "store/directory.hpp"
-#include "store/directory_attributes.hpp"
+#include "index/index_reader_options.hpp"
 #include "utils/iterator.hpp"
-#include "utils/memory.hpp"
-#include "utils/string.hpp"
 
 namespace irs {
 
-struct sub_reader;
+struct SubReader;
+struct SegmentMeta;
 
-using column_warmup_callback_f =
-  std::function<bool(const segment_meta& meta, const field_reader& fields,
-                     const column_reader& column)>;
-
-struct index_reader_options {
-  column_warmup_callback_f warmup_columns;
-  memory_accounting_f pinned_memory_accounting;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @struct index_reader
-/// @brief generic interface for accessing an index
-////////////////////////////////////////////////////////////////////////////////
-struct index_reader {
-  class reader_iterator {
+// Generic interface for accessing an index
+struct IndexReader {
+  class Iterator {
    public:
     using iterator_category = std::forward_iterator_tag;
-    using value_type = const sub_reader;
+    using value_type = const SubReader;
     using pointer = value_type*;
     using reference = value_type&;
-    using difference_type = void;
+    using difference_type = ptrdiff_t;
 
     reference operator*() const {
       // can't mark noexcept because of virtual operator[]
@@ -68,39 +49,40 @@ struct index_reader {
 
     pointer operator->() const { return &(**this); }
 
-    reader_iterator& operator++() noexcept {
+    Iterator& operator++() noexcept {
       ++i_;
       return *this;
     }
 
-    reader_iterator operator++(int) noexcept {
+    Iterator operator++(int) noexcept {
       auto it = *this;
       ++(*this);
       return it;
     }
 
-    bool operator==(const reader_iterator& rhs) const noexcept {
+    bool operator==(const Iterator& rhs) const noexcept {
       IRS_ASSERT(reader_ == rhs.reader_);
       return i_ == rhs.i_;
     }
 
-    bool operator!=(const reader_iterator& rhs) const noexcept {
-      return !(*this == rhs);
+    difference_type operator-(const Iterator& rhs) const noexcept {
+      IRS_ASSERT(reader_ == rhs.reader_);
+      return i_ - rhs.i_;
     }
 
    private:
-    friend struct index_reader;
+    friend struct IndexReader;
 
-    explicit reader_iterator(const index_reader& reader, size_t i = 0) noexcept
-      : reader_(&reader), i_(i) {}
+    Iterator(const IndexReader& reader, size_t i) noexcept
+      : reader_{&reader}, i_{i} {}
 
-    const index_reader* reader_;
+    const IndexReader* reader_;
     size_t i_;
-  };  // reader_iterator
+  };
 
-  using ptr = std::shared_ptr<const index_reader>;
+  using ptr = std::shared_ptr<const IndexReader>;
 
-  virtual ~index_reader() = default;
+  virtual ~IndexReader() = default;
 
   // number of live documents
   virtual uint64_t live_docs_count() const = 0;
@@ -109,28 +91,41 @@ struct index_reader {
   virtual uint64_t docs_count() const = 0;
 
   // return the i'th sub_reader
-  virtual const sub_reader& operator[](size_t i) const = 0;
+  virtual const SubReader& operator[](size_t i) const = 0;
 
   // returns number of sub-segments in current reader
   virtual size_t size() const = 0;
 
   // first sub-segment
-  reader_iterator begin() const noexcept { return reader_iterator(*this, 0); }
+  Iterator begin() const noexcept { return Iterator{*this, 0}; }
 
   // after the last sub-segment
-  reader_iterator end() const { return reader_iterator(*this, size()); }
-};  // index_reader
+  Iterator end() const { return Iterator{*this, size()}; }
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct sub_reader
-/// @brief generic interface for accessing an index segment
-////////////////////////////////////////////////////////////////////////////////
-struct sub_reader : index_reader {
-  using ptr = std::shared_ptr<const sub_reader>;
+// Generic interface for accessing an index segment
+struct SubReader : public IndexReader {
+  using ptr = std::shared_ptr<const SubReader>;
 
-  static const sub_reader& empty() noexcept;
+  static const SubReader& empty() noexcept;
+
+  uint64_t live_docs_count() const final { return Meta().live_docs_count; }
+
+  uint64_t docs_count() const final { return Meta().docs_count; }
+
+  const SubReader& operator[](size_t i) const noexcept final {
+    IRS_ASSERT(i == 0);
+    IRS_IGNORE(i);
+    return *this;
+  }
+
+  size_t size() const noexcept final { return 1; }
+
+  virtual const SegmentInfo& Meta() const = 0;
 
   // Live & deleted docs
+
+  virtual const document_mask* docs_mask() const = 0;
 
   // Returns an iterator over live documents in current segment.
   virtual doc_iterator::ptr docs_iterator() const = 0;
@@ -155,10 +150,10 @@ struct sub_reader : index_reader {
   virtual const irs::column_reader* column(std::string_view field) const = 0;
 
   virtual const irs::column_reader* sort() const = 0;
-};  // sub_reader
+};
 
 template<typename Visitor, typename FilterVisitor>
-void visit(const index_reader& index, std::string_view field,
+void visit(const IndexReader& index, std::string_view field,
            const FilterVisitor& field_visitor, Visitor& visitor) {
   for (auto& segment : index) {
     const auto* reader = segment.field(field);

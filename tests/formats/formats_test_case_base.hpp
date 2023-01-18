@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "analysis/token_attributes.hpp"
 #include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
@@ -164,8 +166,8 @@ class format_test_case : public index_test_base {
     irs::document doc_;
   };
 
-  irs::column_info lz4_column_info() const noexcept;
-  irs::column_info none_column_info() const noexcept;
+  irs::ColumnInfo lz4_column_info() const noexcept;
+  irs::ColumnInfo none_column_info() const noexcept;
 
   bool supports_encryption() const noexcept {
     // old formats don't support columnstore headers

@@ -23,12 +23,12 @@
 
 #include "sort.hpp"
 
-#include <absl/base/casts.h>
-
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "shared.hpp"
 #include "utils/memory_pool.hpp"
+
+#include <absl/base/casts.h>
 
 namespace {
 

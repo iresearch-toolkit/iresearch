@@ -62,6 +62,8 @@ ForEachMacros:
   - BOOST_FOREACH
 IncludeBlocks: Regroup
 IncludeCategories:
+  - Regex: '^<absl/.*\.h>'
+    Priority: 4
   - Regex: '^<ext/.*\.h>'
     Priority: 2
   - Regex: '^<.*\.h>'

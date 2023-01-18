@@ -86,7 +86,6 @@ class result {
   const char* c_str() const noexcept { return state_.get(); }
 
   bool operator==(const result& rhs) noexcept { return code_ == rhs.code_; }
-  bool operator!=(const result& rhs) noexcept { return !(*this == rhs); }
 
  private:
   std::unique_ptr<char[]> copyState(const char* rhs);

@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <absl/container/flat_hash_map.h>
-
 #include <mutex>
 #include <shared_mutex>
 
@@ -33,6 +31,8 @@
 #include "utils/async_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
+
+#include <absl/container/flat_hash_map.h>
 
 namespace irs {
 
@@ -205,8 +205,6 @@ class memory_index_output : public index_output {
 
   // data_output
 
-  void close() final;
-
   void write_byte(byte_type b) final;
 
   void write_bytes(const byte_type* b, size_t len) final;
@@ -240,6 +238,8 @@ class memory_index_output : public index_output {
   memory_index_output& operator++(int) noexcept { return *this; }
 
  protected:
+  size_t CloseImpl() final;
+
   virtual void switch_buffer();
 
  private:
@@ -286,7 +286,9 @@ class memory_directory final : public directory {
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::string_view name) noexcept override;
+  bool sync(std::span<const std::string_view>) noexcept override {
+    return true;
+  }
 
   bool visit(const visitor_f& visitor) const override;
 

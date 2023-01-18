@@ -76,27 +76,6 @@ class format_register
 
 namespace irs {
 
-/* static */ void index_meta_writer::complete(index_meta& meta) noexcept {
-  meta.last_gen_ = meta.gen_;
-}
-/* static */ void index_meta_writer::prepare(index_meta& meta) noexcept {
-  meta.gen_ = meta.next_generation();
-}
-
-/* static */ void index_meta_reader::complete(
-  index_meta& meta, uint64_t generation, uint64_t counter,
-  index_meta::index_segments_t&& segments, bstring* payload) {
-  meta.gen_ = generation;
-  meta.last_gen_ = generation;
-  meta.seg_counter_ = counter;
-  meta.segments_ = std::move(segments);
-  if (payload) {
-    meta.payload(std::move(*payload));
-  } else {
-    meta.payload(bytes_view{});
-  }
-}
-
 namespace formats {
 
 /*static*/ bool exists(std::string_view name, bool load_library /*= true*/) {
@@ -139,8 +118,6 @@ void load_all(std::string_view path) {
 
   return format_register::instance().visit(visit_all);
 }
-
-}  // namespace formats
 
 format_registrar::format_registrar(const type_info& type,
                                    std::string_view module,

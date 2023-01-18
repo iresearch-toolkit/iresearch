@@ -23,10 +23,11 @@
 
 #pragma once
 
-#include <absl/hash/hash.h>
 #include <frozen/string.h>
 
 #include "string.hpp"
+
+#include <absl/hash/hash.h>
 
 namespace irs {
 

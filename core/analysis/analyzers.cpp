@@ -38,8 +38,6 @@ struct key {
     return args_format == other.args_format && type == other.type;
   }
 
-  bool operator!=(const key& other) const noexcept { return !(*this == other); }
-
   std::string_view type;
   irs::type_info args_format;
 };
@@ -53,10 +51,6 @@ struct value {
 
   bool operator==(const value& other) const noexcept {
     return factory == other.factory && normalizer == other.normalizer;
-  }
-
-  bool operator!=(const value& other) const noexcept {
-    return !(*this == other);
   }
 
   const analysis::factory_f factory;

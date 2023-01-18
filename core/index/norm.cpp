@@ -22,6 +22,7 @@
 
 #include "norm.hpp"
 
+#include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utils/bytes_utils.hpp"
 
@@ -29,11 +30,11 @@ namespace {
 
 using namespace irs;
 
-class NormWriter final : public feature_writer {
+class NormWriter final : public FeatureWriter {
  public:
-  virtual void write(const field_stats& stats, doc_id_t doc,
-                     // cppcheck-suppress constParameter
-                     columnstore_writer::values_writer_f& writer) final {
+  void write(const field_stats& stats, doc_id_t doc,
+             // cppcheck-suppress constParameter
+             columnstore_writer::values_writer_f& writer) final {
     if (stats.len > 0) {
       const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
       if (value != Norm::DEFAULT()) {
@@ -58,7 +59,7 @@ NormWriter kNormWriter;
 
 namespace irs {
 
-bool NormReaderContext::Reset(const sub_reader& reader, field_id column_id,
+bool NormReaderContext::Reset(const SubReader& reader, field_id column_id,
                               const document& doc) {
   const auto* column = reader.column(column_id);
 
@@ -79,7 +80,7 @@ bool NormReaderContext::Reset(const sub_reader& reader, field_id column_id,
   return false;
 }
 
-bool Norm2ReaderContext::Reset(const sub_reader& reader, field_id column_id,
+bool Norm2ReaderContext::Reset(const SubReader& reader, field_id column_id,
                                const document& doc) {
   if (NormReaderContext::Reset(reader, column_id, doc)) {
     const auto hdr = Norm2Header::Read(header);
@@ -94,9 +95,9 @@ bool Norm2ReaderContext::Reset(const sub_reader& reader, field_id column_id,
   return false;
 }
 
-/*static*/ feature_writer::ptr Norm::MakeWriter(
+/*static*/ FeatureWriter::ptr Norm::MakeWriter(
   std::span<const bytes_view> /*payload*/) {
-  return memory::to_managed<feature_writer, false>(&kNormWriter);
+  return memory::to_managed<FeatureWriter, false>(&kNormWriter);
 }
 
 void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
@@ -147,7 +148,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   return hdr;
 }
 
-/*static*/ feature_writer::ptr Norm2::MakeWriter(
+/*static*/ FeatureWriter::ptr Norm2::MakeWriter(
   std::span<const bytes_view> headers) {
   size_t max_bytes{sizeof(ValueType)};
 

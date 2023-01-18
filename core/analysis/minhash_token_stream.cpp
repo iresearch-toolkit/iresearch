@@ -22,7 +22,6 @@
 
 #include "minhash_token_stream.hpp"
 
-#include <absl/strings/internal/escaping.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
@@ -30,6 +29,8 @@
 #include "analysis/token_streams.hpp"
 #include "utils/log.hpp"
 #include "utils/vpack_utils.hpp"
+
+#include <absl/strings/internal/escaping.h>
 
 namespace {
 

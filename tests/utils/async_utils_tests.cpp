@@ -535,8 +535,6 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
     pool.run(std::move(task1));
     pool.run(std::move(task2));
-    std::this_thread::sleep_for(
-      100ms);  // assume threads start within 100msec (2 threads)
     lock.unlock();
     pool.stop();  // blocking call (thread runtime duration simulated via sleep)
     ASSERT_EQ(2, count);  // all tasks ran
@@ -561,8 +559,14 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
     pool.run(std::move(task1));
     pool.run(std::move(task2));
-    std::this_thread::sleep_for(
-      100ms);  // assume threads start within 100msec (1 thread)
+    {
+      // assume 10s is more than enough to start first thread
+      const auto end = std::chrono::steady_clock::now() + 10s;
+      while (count.load() == 0) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
     lock.unlock();
     pool.stop(
       true);  // blocking call (thread runtime duration simulated via sleep)
@@ -587,8 +591,15 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
     ASSERT_EQ(0, pool.threads());
     pool.run(std::move(task1));
     pool.max_threads(1);
-    std::this_thread::sleep_for(100ms);  // assume threads start within 100msec
-    ASSERT_EQ(1, count);                 // 1 task started
+    {
+      // assume 10s is more than enough to start first thread
+      const auto end = std::chrono::steady_clock::now() + 10s;
+      while (count.load() == 0) {
+        std::this_thread::sleep_for(100ms);
+        ASSERT_LE(std::chrono::steady_clock::now(), end);
+      }
+    }
+    ASSERT_EQ(1, count);  // 1 task started
     ASSERT_EQ(1, pool.threads());
     lock.unlock();
     pool.stop(true);

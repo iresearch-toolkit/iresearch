@@ -20,9 +20,10 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <benchmark/benchmark.h>
+
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/node_hash_map.h>
-#include <benchmark/benchmark.h>
 
 namespace {
 

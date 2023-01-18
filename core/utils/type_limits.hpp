@@ -56,9 +56,7 @@ struct field_limits {
 };
 
 struct index_gen_limits {
-  constexpr static uint64_t invalid() noexcept {
-    return std::numeric_limits<field_id>::max();
-  }
+  constexpr static uint64_t invalid() noexcept { return 0; }
   constexpr static bool valid(uint64_t id) noexcept { return invalid() != id; }
 };
 

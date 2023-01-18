@@ -146,7 +146,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = q.prepare(irs::sub_reader::empty());
+      auto prepared = q.prepare(irs::SubReader::empty());
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -1813,7 +1813,7 @@ TEST(by_granular_range_test, boost) {
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -1832,7 +1832,7 @@ TEST(by_granular_range_test, boost) {
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::sub_reader::empty());
+    auto prepared = q.prepare(irs::SubReader::empty());
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 }
@@ -1881,17 +1881,17 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer.collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
       ++finish_count;
@@ -1937,17 +1937,17 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
     scorer.collector_collect_field = [&collect_field_count](
-                                       const irs::sub_reader&,
+                                       const irs::SubReader&,
                                        const irs::term_reader&) -> void {
       ++collect_field_count;
     };
     scorer.collector_collect_term =
-      [&collect_term_count](const irs::sub_reader&, const irs::term_reader&,
+      [&collect_term_count](const irs::SubReader&, const irs::term_reader&,
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
     scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::index_reader&,
+                                   irs::byte_type*, const irs::IndexReader&,
                                    const irs::sort::field_collector*,
                                    const irs::sort::term_collector*) -> void {
       ++finish_count;
@@ -2053,7 +2053,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     ASSERT_NE(nullptr, writer);
 
     // add segment
-    index().emplace_back(writer->feature_info());
+    index().emplace_back(writer->FeatureInfo());
     auto& segment = index().back();
 
     {
@@ -2078,7 +2078,8 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
 
       write_segment(*writer, segment, gen);
     }
-    writer->commit();
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
   }
 
   auto rdr = open_reader();

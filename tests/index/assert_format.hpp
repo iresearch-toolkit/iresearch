@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <unordered_set>
+
 #include "doc_generator.hpp"
 #include "formats/formats.hpp"
 #include "index/field_meta.hpp"
@@ -84,8 +86,8 @@ struct term {
 struct field : public irs::field_meta {
   struct feature_info {
     irs::field_id id;
-    irs::feature_writer_factory_t factory;
-    irs::feature_writer::ptr writer;
+    irs::FeatureWriterFactory factory;
+    irs::FeatureWriter::ptr writer;
   };
 
   struct field_stats : irs::field_stats {
@@ -118,8 +120,8 @@ struct field : public irs::field_meta {
 class column_values {
  public:
   explicit column_values(irs::field_id id,
-                         irs::feature_writer_factory_t factory,
-                         irs::feature_writer* writer)
+                         irs::FeatureWriterFactory factory,
+                         irs::FeatureWriter* writer)
     : id_{id}, factory_{factory}, writer_{writer} {}
 
   column_values(std::string name, irs::field_id id)
@@ -147,8 +149,8 @@ class column_values {
   std::optional<std::string> name_;
   mutable std::optional<irs::bstring> payload_;
   std::map<irs::doc_id_t, irs::bstring> values_;
-  irs::feature_writer_factory_t factory_;
-  irs::feature_writer* writer_{};
+  irs::FeatureWriterFactory factory_;
+  irs::FeatureWriter* writer_{};
 };
 
 class index_segment : irs::util::noncopyable {
@@ -157,7 +159,7 @@ class index_segment : irs::util::noncopyable {
   using columns_t = std::deque<column_values>;  // pointers remain valid
   using named_columns_t = std::map<std::string, column_values*>;
 
-  explicit index_segment(const irs::feature_info_provider_t& features)
+  explicit index_segment(const irs::FeatureInfoProvider& features)
     : field_features_{features} {}
   index_segment(index_segment&& rhs) = default;
   index_segment& operator=(index_segment&& rhs) = default;
@@ -186,7 +188,7 @@ class index_segment : irs::util::noncopyable {
     }
   }
 
-  void sort(const irs::comparer& comparator);
+  void sort(const irs::Comparer& comparator);
 
   void clear() noexcept {
     fields_.clear();
@@ -204,7 +206,7 @@ class index_segment : irs::util::noncopyable {
   void insert_sorted(const ifield* field);
   void compute_features();
 
-  irs::feature_info_provider_t field_features_;
+  irs::FeatureInfoProvider field_features_;
   named_columns_t named_columns_;
   std::vector<std::tuple<irs::bstring, irs::doc_id_t, irs::doc_id_t>> sort_;
   std::vector<const field*> id_to_field_;
@@ -256,10 +258,10 @@ void assert_columnstore(
   size_t skip = 0);  // do not validate the first 'skip' segments
 
 void assert_columnstore(
-  irs::index_reader::ptr actual_index, const index_t& expected_index,
+  irs::IndexReader::ptr actual_index, const index_t& expected_index,
   size_t skip = 0);  // do not validate the first 'skip' segments
 
-void assert_index(irs::index_reader::ptr actual_index,
+void assert_index(irs::IndexReader::ptr actual_index,
                   const index_t& expected_index, irs::IndexFeatures features,
                   size_t skip = 0,  // do not validate the first 'skip' segments
                   irs::automaton_table_matcher* matcher = nullptr);

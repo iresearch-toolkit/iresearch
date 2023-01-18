@@ -125,10 +125,6 @@ class block_pool_const_iterator {
     return pool_offset() == rhs.pool_offset();
   }
 
-  bool operator!=(const block_pool_const_iterator& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   bool operator>(const block_pool_const_iterator& rhs) const noexcept {
     IRS_ASSERT(pool_ == rhs.pool_);
     return pool_offset() > rhs.pool_offset();

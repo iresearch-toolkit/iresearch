@@ -163,16 +163,6 @@ inline void write_string(data_output& out, const StringType& str) {
   write_string(out, str.data(), str.size());
 }
 
-template<typename ContType>
-inline data_output& write_strings(data_output& out, const ContType& c) {
-  write_size(out, c.size());
-  for (const auto& s : c) {
-    write_string<decltype(s)>(out, s);
-  }
-
-  return out;
-}
-
 template<typename StringType>
 inline StringType read_string(data_input& in) {
   const size_t len = in.read_vint();
@@ -182,20 +172,6 @@ inline StringType read_string(data_input& in) {
     in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
   IRS_ASSERT(read == str.size());
   return str;
-}
-
-template<typename ContType>
-inline ContType read_strings(data_input& in) {
-  ContType c;
-
-  const size_t size = read_size(in);
-  c.reserve(size);
-
-  for (size_t i = 0; i < size; ++i) {
-    c.emplace(read_string<typename ContType::value_type>(in));
-  }
-
-  return c;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

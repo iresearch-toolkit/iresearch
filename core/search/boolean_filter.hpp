@@ -65,7 +65,7 @@ class boolean_filter : public filter, public AllDocsProvider {
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const override;
 
@@ -75,7 +75,7 @@ class boolean_filter : public filter, public AllDocsProvider {
 
   virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const index_reader& rdr, const Order& ord, score_t boost,
+    const IndexReader& rdr, const Order& ord, score_t boost,
     const attribute_provider* ctx) const = 0;
 
  private:
@@ -97,7 +97,7 @@ class And final : public boolean_filter {
  protected:
   filter::prepared::ptr prepare(std::vector<const filter*>& incl,
                                 std::vector<const filter*>& excl,
-                                const index_reader& rdr, const Order& ord,
+                                const IndexReader& rdr, const Order& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const override;
 };
@@ -117,14 +117,14 @@ class Or final : public boolean_filter {
   }
 
   using filter::prepare;
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 
  protected:
   filter::prepared::ptr prepare(std::vector<const filter*>& incl,
                                 std::vector<const filter*>& excl,
-                                const index_reader& rdr, const Order& ord,
+                                const IndexReader& rdr, const Order& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const override;
 
@@ -161,7 +161,7 @@ class Not : public filter, public AllDocsProvider {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const index_reader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const override;
 

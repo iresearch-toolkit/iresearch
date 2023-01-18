@@ -36,7 +36,7 @@ class VariadicPhraseQuery;
 template<typename State>
 class PhraseQuery : public filter::prepared {
  public:
-  using states_t = states_cache<State>;
+  using states_t = StatesCache<State>;
   using positions_t = std::vector<uint32_t>;
 
   // Returns features required for phrase filter
@@ -50,7 +50,7 @@ class PhraseQuery : public filter::prepared {
       positions_{std::move(positions)},
       stats_{std::move(stats)} {}
 
-  void visit(const sub_reader& segment, PreparedStateVisitor& visitor,
+  void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final {
     static_assert(std::is_same_v<State, FixedPhraseState> ||
                   std::is_same_v<State, VariadicPhraseState>);
@@ -83,7 +83,7 @@ class FixedPhraseQuery final : public PhraseQuery<FixedPhraseState> {
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
-  doc_iterator::ptr ExecuteWithOffsets(const irs::sub_reader& segment) const;
+  doc_iterator::ptr ExecuteWithOffsets(const SubReader& segment) const;
 };
 
 class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
@@ -97,7 +97,7 @@ class VariadicPhraseQuery final : public PhraseQuery<VariadicPhraseState> {
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
 
-  doc_iterator::ptr ExecuteWithOffsets(const irs::sub_reader& segment) const;
+  doc_iterator::ptr ExecuteWithOffsets(const SubReader& segment) const;
 };
 
 }  // namespace irs

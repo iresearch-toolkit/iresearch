@@ -92,14 +92,11 @@ option(USE_SIMDCOMP "Use architecture specific low-level optimizations" OFF)
 option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
-option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 
 if (CMAKE_BUILD_TYPE MATCHES "Debug|Coverage")
-  set(IRESEARCH_DEBUG ON)
-endif ()
-
-if (IRESEARCH_DEBUG)
-  add_definitions(-DIRESEARCH_DEBUG)
+  option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" ON)
+else ()
+  option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 endif ()
 
 add_option_gprof(FALSE)
@@ -234,9 +231,6 @@ if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
   set(GCOV_LIBRARY gcov)
 endif ()
 
-# set sanitizers
-find_package(Sanitizers)
-
 find_package(BFD) # optional
 
 if (BFD_FOUND)
@@ -252,6 +246,10 @@ find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
 find_package(Snowball REQUIRED)
 find_package(Unwind) # optional
+
+# Important note, now we include it before everything except c libraries
+# I think it's better to before they to, but now it causing build issues
+include(Sanitize)
 
 if (Unwind_FOUND)
   add_definitions(-DUSE_LIBUNWIND)
@@ -314,6 +312,11 @@ foreach (ELEMENT ${IRESEARCH_PREBUILT_LIST})
 endforeach ()
 
 add_subdirectory(external)
+
+if (IRESEARCH_DEBUG)
+  add_definitions(-DIRESEARCH_DEBUG)
+endif ()
+
 add_subdirectory(core)
 
 if (USE_UTILS)

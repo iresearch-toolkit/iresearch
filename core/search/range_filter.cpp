@@ -34,7 +34,7 @@ namespace {
 using namespace irs;
 
 template<typename Visitor, typename Comparer>
-void collect_terms(const sub_reader& segment, const term_reader& field,
+void collect_terms(const SubReader& segment, const term_reader& field,
                    seek_term_iterator& terms, Visitor& visitor, Comparer cmp) {
   auto* term = irs::get<term_attribute>(terms);
 
@@ -61,7 +61,7 @@ void collect_terms(const sub_reader& segment, const term_reader& field,
 }
 
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& reader,
+void visit(const SubReader& segment, const term_reader& reader,
            const by_range_options::range_type& rng, Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
@@ -112,7 +112,7 @@ void visit(const sub_reader& segment, const term_reader& reader,
 
 namespace irs {
 
-filter::prepared::ptr by_range::prepare(const index_reader& index,
+filter::prepared::ptr by_range::prepare(const IndexReader& index,
                                         const Order& ord, score_t boost,
                                         std::string_view field,
                                         const options_type::range_type& rng,
@@ -137,7 +137,7 @@ filter::prepared::ptr by_range::prepare(const index_reader& index,
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
     ord.empty() ? 0 : scored_terms_limit);
-  MultiTermQuery::States states{index};
+  MultiTermQuery::States states{index.size()};
   multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
@@ -160,7 +160,7 @@ filter::prepared::ptr by_range::prepare(const index_reader& index,
     std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
-void by_range::visit(const sub_reader& segment, const term_reader& reader,
+void by_range::visit(const SubReader& segment, const term_reader& reader,
                      const options_type::range_type& rng,
                      filter_visitor& visitor) {
   ::visit(segment, reader, rng, visitor);

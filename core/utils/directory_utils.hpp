@@ -31,51 +31,25 @@
 
 namespace irs {
 
-class index_meta;
-struct segment_meta;
+struct IndexMeta;
+struct SegmentMeta;
 
 namespace directory_utils {
 
 // return a reference to a file or empty() if not found
-index_file_refs::ref_t reference(const directory& dir, std::string_view name,
-                                 bool include_missing = false);
+index_file_refs::ref_t Reference(const directory& dir, std::string_view name);
 
-// return success, visitor gets passed references to files retrieved from source
-bool reference(const directory& dir,
-               const std::function<std::optional<std::string_view>()>& source,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing = false);
-
-// return success, visitor gets passed references to files registered with
-// index_meta
-bool reference(const directory& dir, const index_meta& meta,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing = false);
-
-// return success, visitor gets passed references to files registered with
-// segment_meta
-bool reference(const directory& dir, const segment_meta& meta,
-               const std::function<bool(index_file_refs::ref_t&& ref)>& visitor,
-               bool include_missing = false);
-
-// remove all (tracked and non-tracked) files if they are unreferenced
+// Remove all (tracked and non-tracked) files if they are unreferenced
 // return success
-bool remove_all_unreferenced(directory& dir);
+bool RemoveAllUnreferenced(directory& dir);
 
 }  // namespace directory_utils
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class tracking_directory
-/// @brief track files created/opened via file names
-//////////////////////////////////////////////////////////////////////////////
-struct tracking_directory final : public directory {
-  using file_set = absl::flat_hash_set<std::string>;
+// Track files created/opened via file names
+struct TrackingDirectory final : public directory {
+  explicit TrackingDirectory(directory& impl) noexcept;
 
-  // @param track_open - track file refs for calls to open(...)
-  explicit tracking_directory(directory& impl,
-                              bool track_open = false) noexcept;
-
-  directory& operator*() noexcept { return impl_; }
+  directory& GetImpl() noexcept { return impl_; }
 
   directory_attributes& attributes() noexcept override {
     return impl_.attributes();
@@ -83,13 +57,9 @@ struct tracking_directory final : public directory {
 
   index_output::ptr create(std::string_view name) noexcept override;
 
-  void clear_tracked() noexcept;
-
   bool exists(bool& result, std::string_view name) const noexcept override {
     return impl_.exists(result, name);
   }
-
-  void flush_tracked(file_set& other) noexcept;
 
   bool length(uint64_t& result, std::string_view name) const noexcept override {
     return impl_.length(result, name);
@@ -105,37 +75,46 @@ struct tracking_directory final : public directory {
   }
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+                        IOAdvice advice) const noexcept override {
+    return impl_.open(name, advice);
+  }
 
-  bool remove(std::string_view name) noexcept override;
+  bool remove(std::string_view) noexcept override {
+    // not supported
+    return false;
+  }
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::string_view name) noexcept override {
-    return impl_.sync(name);
+  bool sync(std::span<const std::string_view> files) noexcept override {
+    return impl_.sync(files);
   }
 
   bool visit(const visitor_f& visitor) const override {
     return impl_.visit(visitor);
   }
 
- private:
-  mutable file_set files_;
-  directory& impl_;
-  bool track_open_;
-};  // tracking_directory
+  std::vector<std::string> FlushTracked(uint64_t& files_size);
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class ref_tracking_directory
-/// @brief track files created/opened via file refs instead of file names
-//////////////////////////////////////////////////////////////////////////////
-struct ref_tracking_directory : public directory {
+  void ClearTracked() noexcept;
+
+ private:
+  using FileSet = absl::flat_hash_set<std::string>;
+
+  directory& impl_;
+  uint64_t files_size_{};
+  FileSet files_;
+  index_output::OnClose on_close_;
+};
+
+// Track files created/opened via file refs instead of file names
+struct RefTrackingDirectory : public directory {
  public:
-  using ptr = std::unique_ptr<ref_tracking_directory>;
+  using ptr = std::unique_ptr<RefTrackingDirectory>;
 
   // @param track_open - track file refs for calls to open(...)
-  explicit ref_tracking_directory(directory& impl, bool track_open = false);
-  ref_tracking_directory(ref_tracking_directory&& other) noexcept;
+  explicit RefTrackingDirectory(directory& impl, bool track_open = false);
+  RefTrackingDirectory(RefTrackingDirectory&& other) noexcept;
 
   directory& operator*() noexcept { return impl_; }
 
@@ -171,18 +150,17 @@ struct ref_tracking_directory : public directory {
 
   bool rename(std::string_view src, std::string_view dst) noexcept override;
 
-  bool sync(std::span<std::string_view> names) noexcept override {
+  bool sync(std::span<const std::string_view> names) noexcept override {
     return impl_.sync(names);
-  }
-
-  bool sync(std::string_view name) noexcept override {
-    return impl_.sync(name);
   }
 
   bool visit(const visitor_f& visitor) const override {
     return impl_.visit(visitor);
   }
 
+  std::vector<index_file_refs::ref_t> GetRefs() const;
+
+  // FIXME(gnusi): remove
   bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>&
                     visitor) const;
 
@@ -196,6 +174,6 @@ struct ref_tracking_directory : public directory {
   mutable std::mutex mutex_;  // for use with refs_
   mutable refs_t refs_;
   bool track_open_;
-};  // ref_tracking_directory
+};
 
 }  // namespace irs

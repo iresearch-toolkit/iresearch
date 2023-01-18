@@ -541,22 +541,6 @@ TEST(store_utils_tests, bytes_read_write) {
     irs::read_string<bstring>, irs::write_string<bstring>);
 }
 
-TEST(store_utils_tests, string_vector_read_write) {
-  typedef std::unordered_set<std::string> container_t;
-
-  container_t src{"quick", "brown", "fox", "jumps",  "over",
-                  "the",   "lazy",  "dog", "mustard"};
-
-  irs::bstring buf;
-  irs::bytes_output out(buf);
-  write_strings(out, src);
-
-  tests::detail::bytes_input in(buf);
-  const container_t readed = read_strings<container_t>(in);
-
-  ASSERT_EQ(src, readed);
-}
-
 TEST(store_utils_tests, packed_read_write_32) {
   // 1024
   {

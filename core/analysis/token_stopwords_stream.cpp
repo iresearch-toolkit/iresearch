@@ -101,7 +101,7 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask,
   size_t offset = 0;
   irs::analysis::token_stopwords_stream::stopwords_set tokens;
 
-  for (auto itr = mask.begin(), end = mask.end(); itr != end; ++itr, ++offset) {
+  for (auto itr = mask.begin(); itr.valid(); ++itr, ++offset) {
     if (!(*itr).isString()) {
       IR_FRMT_WARN(
         "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER
@@ -113,8 +113,8 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask,
     std::string token;
     auto value = (*itr).stringView();
     if (!hex) {
-      tokens.emplace(
-        std::string(value.data(), value.length()));  // interpret verbatim
+      // interpret verbatim
+      tokens.emplace(value);
     } else if (hex_decode(token, value)) {
       tokens.emplace(std::move(token));
     } else {

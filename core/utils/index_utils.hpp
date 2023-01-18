@@ -25,114 +25,68 @@
 
 #include "index/index_writer.hpp"
 
-namespace irs {
-namespace index_utils {
+namespace irs::index_utils {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @param threshold merge segment if:
-///   {threshold} > segment_bytes / (all_segment_bytes / #segments)
-////////////////////////////////////////////////////////////////////////////////
-struct consolidate_bytes {
+// merge segment if:
+//   {threshold} > segment_bytes / (all_segment_bytes / #segments)
+struct ConsolidateBytes {
   float threshold = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @param threshold merge segment if:
-///   {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) /
-///   all_segment_bytes
-////////////////////////////////////////////////////////////////////////////////
-struct consolidate_bytes_accum {
+ConsolidationPolicy MakePolicy(const ConsolidateBytes& options);
+
+// merge segment if:
+//   {threshold} >= (segment_bytes + sum_of_merge_candidate_segment_bytes) /
+//   all_segment_bytes
+struct ConsolidateBytesAccum {
   float threshold = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @param threshold merge first {threshold} segments
-////////////////////////////////////////////////////////////////////////////////
-struct consolidate_count {
+ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options);
+
+// merge first {threshold} segments
+struct ConsolidateCount {
   size_t threshold = std::numeric_limits<size_t>::max();
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @param threshold merge segment if:
-///   {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
-////////////////////////////////////////////////////////////////////////////////
-struct consolidate_docs_live {
+ConsolidationPolicy MakePolicy(const ConsolidateCount& options);
+
+// merge segment if:
+//   {threshold} >= segment_docs{valid} / (all_segment_docs{valid} / #segments)
+struct ConsolidateDocsLive {
   float threshold = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @param threshold merge segment if:
-///   {threshold} > #segment_docs{valid} / (#segment_docs{valid} +
-///   #segment_docs{removed})
-////////////////////////////////////////////////////////////////////////////////
-struct consolidate_docs_fill {
+ConsolidationPolicy MakePolicy(const ConsolidateDocsLive& options);
+
+// merge segment if:
+//   {threshold} > #segment_docs{valid} / (#segment_docs{valid} +
+//   #segment_docs{removed})
+struct ConsolidateDocsFill {
   float threshold = 0;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @param min_segments minimum allowed number of segments to consolidate at
-/// once
-/// @param max_segments maximum allowed number of segments to consolidate at
-/// once
-/// @param max_segments_bytes maxinum allowed size of all consolidated segments
-/// @param floor_segment_bytes treat all smaller segments as equal for
-/// consolidation selection
-/// @param lookahead how many tiers have to be inspected
-/// @param min_score filter out candidates with score less than min_score
-////////////////////////////////////////////////////////////////////////////////
-struct consolidate_tier {
+ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options);
+
+struct ConsolidateTier {
+  // minimum allowed number of segments to consolidate at once
   size_t min_segments = 1;
+  // maximum allowed number of segments to consolidate at once
   size_t max_segments = 10;
+  // maxinum allowed size of all consolidated segments
   size_t max_segments_bytes = size_t(5) * (1 << 30);
+  // treat all smaller segments as equal for consolidation selection
   size_t floor_segment_bytes = size_t(2) * (1 << 20);
+  // filter out candidates with score less than min_score
   double_t min_score = 0.;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @return a consolidation policy with the specified options
-////////////////////////////////////////////////////////////////////////////////
-index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_bytes& options);
+ConsolidationPolicy MakePolicy(const ConsolidateTier& options);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @return a consolidation policy with the specified options
-////////////////////////////////////////////////////////////////////////////////
-index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_bytes_accum& options);
+void ReadDocumentMask(document_mask& docs_mask, const directory& dir,
+                      const SegmentMeta& meta);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @return a consolidation policy with the specified options
-////////////////////////////////////////////////////////////////////////////////
-index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_count& options);
+// Writes segment_meta to the supplied directory
+void FlushIndexSegment(directory& dir, IndexSegment& segment);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @return a consolidation policy with the specified options
-////////////////////////////////////////////////////////////////////////////////
-index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_docs_fill& options);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @return a consolidation policy with the specified options
-////////////////////////////////////////////////////////////////////////////////
-index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_docs_live& options);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @return a consolidation policy with the specified options
-////////////////////////////////////////////////////////////////////////////////
-index_writer::consolidation_policy_t consolidation_policy(
-  const consolidate_tier& options);
-
-void read_document_mask(document_mask& docs_mask, const directory& dir,
-                        const segment_meta& meta);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief writes segment_meta to the supplied directory
-///        updates index_meta::index_segment_t::filename to the segment filename
-///        updates segment_meta::size to the size of files written
-////////////////////////////////////////////////////////////////////////////////
-void flush_index_segment(directory& dir, index_meta::index_segment_t& segment);
-
-}  // namespace index_utils
-}  // namespace irs
+}  // namespace irs::index_utils

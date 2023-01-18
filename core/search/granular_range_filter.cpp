@@ -68,8 +68,7 @@ irs::bytes_view mask_value(irs::bytes_view term, size_t prefix_size) noexcept {
 
 // Collect terms while they are accepted by Comparer
 template<typename Visitor, typename Comparer>
-void collect_terms(const irs::sub_reader& segment,
-                   const irs::term_reader& field,
+void collect_terms(const irs::SubReader& segment, const irs::term_reader& field,
                    irs::seek_term_iterator& terms, Visitor& visitor,
                    const Comparer& cmp) {
   terms.read();  // read attributes (needed for cookie())
@@ -91,7 +90,7 @@ void collect_terms(const irs::sub_reader& segment,
 // [null == current .. max), (min .. null == end of granularity range]
 template<typename Visitor>
 void collect_terms_between(
-  const irs::sub_reader& segment, const irs::term_reader& field,
+  const irs::SubReader& segment, const irs::term_reader& field,
   irs::seek_term_iterator& terms, size_t prefix_size,
   irs::bytes_view begin_term,
   irs::bytes_view end_term,  // granularity level for end_term is ingored
@@ -164,7 +163,7 @@ void collect_terms_between(
 // collect all terms starting from the min_term granularity range
 template<typename Visitor>
 void collect_terms_from(
-  const irs::sub_reader& segment, const irs::term_reader& field,
+  const irs::SubReader& segment, const irs::term_reader& field,
   irs::seek_term_iterator& terms, size_t prefix_size,
   const irs::by_granular_range::options_type::terms& min_term,
   bool min_term_inclusive, Visitor& visitor) {
@@ -248,7 +247,7 @@ void collect_terms_from(
 // with granularity range, include/exclude end term
 template<typename Visitor>
 void collect_terms_until(
-  const irs::sub_reader& segment, const irs::term_reader& field,
+  const irs::SubReader& segment, const irs::term_reader& field,
   irs::seek_term_iterator& terms, size_t prefix_size,
   const irs::by_granular_range::options_type::terms& max_term,
   bool max_term_inclusive, Visitor& visitor) {
@@ -332,7 +331,7 @@ void collect_terms_until(
 // granularity range
 template<typename Visitor>
 void collect_terms_within(
-  const irs::sub_reader& segment, const irs::term_reader& field,
+  const irs::SubReader& segment, const irs::term_reader& field,
   irs::seek_term_iterator& terms, size_t prefix_size,
   const irs::by_granular_range::options_type::terms& min_term,
   const irs::by_granular_range::options_type::terms& max_term,
@@ -485,7 +484,7 @@ void collect_terms_within(
 }
 
 template<typename Visitor>
-void visit(const irs::sub_reader& segment, const irs::term_reader& reader,
+void visit(const irs::SubReader& segment, const irs::term_reader& reader,
            const irs::by_granular_range::options_type::range_type& rng,
            Visitor& visitor) {
   auto terms = reader.iterator(irs::SeekMode::NORMAL);
@@ -556,7 +555,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
 }
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
-  const index_reader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Order& ord, score_t boost,
   std::string_view field, const options_type::range_type& rng,
   size_t scored_terms_limit) {
   if (!rng.min.empty() && !rng.max.empty()) {
@@ -578,7 +577,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector{
     ord.empty() ? 0 : scored_terms_limit};
-  MultiTermQuery::States states{index};
+  MultiTermQuery::States states{index.size()};
   multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
@@ -604,7 +603,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
     std::move(states), std::move(stats), boost, sort::MergeType::kSum, 1);
 }
 
-/*static*/ void by_granular_range::visit(const sub_reader& segment,
+/*static*/ void by_granular_range::visit(const SubReader& segment,
                                          const term_reader& reader,
                                          const options_type::range_type& rng,
                                          filter_visitor& visitor) {

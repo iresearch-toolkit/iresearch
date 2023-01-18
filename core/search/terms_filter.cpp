@@ -36,7 +36,7 @@ namespace {
 using namespace irs;
 
 template<typename Visitor>
-void visit(const sub_reader& segment, const term_reader& field,
+void visit(const SubReader& segment, const term_reader& field,
            const by_terms_options::search_terms& search_terms,
            Visitor& visitor) {
   auto terms = field.iterator(SeekMode::NORMAL);
@@ -64,7 +64,7 @@ class terms_visitor {
   explicit terms_visitor(Collector& collector) noexcept
     : collector_(collector) {}
 
-  void prepare(const sub_reader& segment, const term_reader& field,
+  void prepare(const SubReader& segment, const term_reader& field,
                const seek_term_iterator& terms) {
     collector_.prepare(segment, field, terms);
     collector_.stat_index(0);
@@ -81,7 +81,7 @@ class terms_visitor {
 };  // terms_visitor
 
 template<typename Collector>
-void collect_terms(const index_reader& index, std::string_view field,
+void collect_terms(const IndexReader& index, std::string_view field,
                    const by_terms_options::search_terms& terms,
                    Collector& collector) {
   terms_visitor<Collector> visitor(collector);
@@ -101,14 +101,14 @@ void collect_terms(const index_reader& index, std::string_view field,
 
 namespace irs {
 
-/*static*/ void by_terms::visit(const sub_reader& segment,
+/*static*/ void by_terms::visit(const SubReader& segment,
                                 const term_reader& field,
                                 const by_terms_options::search_terms& terms,
                                 filter_visitor& visitor) {
   ::visit(segment, field, terms, visitor);
 }
 
-filter::prepared::ptr by_terms::prepare(const index_reader& index,
+filter::prepared::ptr by_terms::prepare(const IndexReader& index,
                                         const Order& order, score_t boost,
                                         const attribute_provider* ctx) const {
   const auto& [terms, min_match, merge_type] = options();
@@ -141,7 +141,7 @@ filter::prepared::ptr by_terms::prepare(const index_reader& index,
 
   field_collectors field_stats{order};
   term_collectors term_stats{order, size};
-  MultiTermQuery::States states{index};
+  MultiTermQuery::States states{index.size()};
   all_terms_collector collector{states, field_stats, term_stats};
   collect_terms(index, field(), terms, collector);
 
@@ -159,7 +159,7 @@ filter::prepared::ptr by_terms::prepare(const index_reader& index,
   MultiTermQuery::Stats stats{size};
   for (size_t term_idx = 0; auto& stat : stats) {
     stat.resize(order.stats_size(), 0);
-    auto* stats_buf = const_cast<byte_type*>(stat.data());
+    auto* stats_buf = stat.data();
     term_stats.finish(stats_buf, term_idx++, field_stats, index);
   }
 

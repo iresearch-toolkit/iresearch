@@ -23,23 +23,26 @@
 
 #pragma once
 
-#include <memory>
-
 #include "utils/string.hpp"
 
 namespace irs {
 
-// returns string in the following format : _{gen}
-std::string file_name(uint64_t gen);
-
-// returns string in the following format : {prefix}{gen}
+// Returns string in the following format : {prefix}{gen}
 std::string file_name(std::string_view prefix, uint64_t gen);
 
-// returns string in the following format : {name}.{ext}
-std::string file_name(std::string_view name, std::string_view ext);
+// Returns string in the following format : _{gen}
+inline std::string file_name(uint64_t gen) { return file_name("_", gen); }
+
+// Returns string in the following format : {name}.{ext}
 void file_name(std::string& out, std::string_view name, std::string_view ext);
 
-// returns string in the following format : {name}.{gen}.{ext}
+inline std::string file_name(std::string_view name, std::string_view ext) {
+  std::string result;
+  file_name(result, name, ext);
+  return result;
+}
+
+// Returns string in the following format : {name}.{gen}.{ext}
 std::string file_name(std::string_view name, uint64_t gen,
                       std::string_view ext);
 
