@@ -266,7 +266,13 @@ class AsyncIndexOutput final : public index_output {
   }
   void flush() final;
 
-  void close() final {
+  int64_t checksum() const final {
+    const_cast<AsyncIndexOutput*>(this)->flush();
+    return crc_.checksum();
+  }
+
+ private:
+  size_t CloseImpl() final {
     Finally reset = [this]() noexcept {
       async_->release_buffer(*buf_);
       handle_.reset(nullptr);
@@ -277,14 +283,9 @@ class AsyncIndexOutput final : public index_output {
     // FIXME(gnusi): we can avoid waiting here in case
     // if we'll keep track of all unsynced files
     async_->drain(true);
+    return file_pointer();
   }
 
-  int64_t checksum() const final {
-    const_cast<AsyncIndexOutput*>(this)->flush();
-    return crc_.checksum();
-  }
-
- private:
   using node_type = concurrent_stack<byte_type*>::node_type;
 
   AsyncIndexOutput(AsyncFilePtr&& async, file_utils::handle_t&& handle) noexcept

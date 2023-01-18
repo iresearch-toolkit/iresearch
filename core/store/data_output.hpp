@@ -154,7 +154,7 @@ class buffered_index_output : public index_output, util::noncopyable {
     buf_size_ = size;
   }
 
-  size_t CloseImpl() final;
+  size_t CloseImpl() override;
 
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
