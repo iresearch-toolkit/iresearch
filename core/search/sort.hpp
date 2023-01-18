@@ -114,7 +114,7 @@ class ScoreFunction : util::noncopyable {
                     std::exchange(rhs.score_, &DefaultScore),
                     std::exchange(rhs.deleter_, &Noop)} {}
   ScoreFunction& operator=(ScoreFunction&& rhs) noexcept {
-    if (this != &rhs) {
+    if (IRS_LIKELY(this != &rhs)) {
       std::swap(ctx_, rhs.ctx_);
       std::swap(score_, rhs.score_);
       std::swap(deleter_, rhs.deleter_);
@@ -124,6 +124,7 @@ class ScoreFunction : util::noncopyable {
   ~ScoreFunction() noexcept { deleter_(ctx_); }
 
   void Reset(score_ctx& ctx, score_f score) noexcept {
+    IRS_ASSERT(&ctx != ctx_ || deleter_ == &Noop);
     deleter_(ctx_);
     ctx_ = &ctx;
     score_ = score;
