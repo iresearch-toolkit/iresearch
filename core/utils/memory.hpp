@@ -263,22 +263,7 @@ struct Managed {
   friend struct ManagedDeleter;
 
   // Const because we can allocate and then delete const object
-  //
-  // Also it's possible to make here empty implementation
-  // and it makes usage more convenient but also more error prone
-  // and don't finalize class
-  virtual void Destroy() const = 0;
-};
-
-template<typename Base>
-struct OnStack final : Base {
-  static_assert(std::is_base_of_v<Managed, Base>);
-
-  template<typename... Args>
-  OnStack(Args&&... args) : Base{std::forward<Args>(args)...} {}
-
- private:
-  void Destroy() const final {}
+  virtual void Destroy() const {}
 };
 
 template<typename Base>
@@ -300,15 +285,72 @@ struct ManagedDeleter {
 };
 
 template<typename T>
-using managed_ptr = std::unique_ptr<T, ManagedDeleter>;
+class managed_ptr final : std::unique_ptr<T, ManagedDeleter> {
+ private:
+  using Ptr = std::unique_ptr<T, ManagedDeleter>;
+
+  template<typename U>
+  friend class managed_ptr;
+
+  template<typename Base, typename Derived>
+  friend constexpr managed_ptr<Base> to_managed(Derived& p) noexcept;
+
+  template<typename Base, typename Derived, typename... Args>
+  friend managed_ptr<Base> make_managed(Args&&... args);
+
+  constexpr explicit managed_ptr(T* p) noexcept : Ptr{p} {}
+
+ public:
+  using typename Ptr::element_type;
+  using typename Ptr::pointer;
+
+  static_assert(!std::is_array_v<T>);
+
+  constexpr managed_ptr() noexcept = default;
+  constexpr managed_ptr(managed_ptr&& u) noexcept = default;
+  constexpr managed_ptr(std::nullptr_t) noexcept : Ptr{nullptr} {}
+  template<typename U,
+           typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+  constexpr managed_ptr(managed_ptr<U>&& u) noexcept : Ptr{std::move(u)} {}
+
+  constexpr managed_ptr& operator=(managed_ptr&& t) noexcept = default;
+  constexpr managed_ptr& operator=(std::nullptr_t) noexcept {
+    Ptr::operator=(nullptr);
+    return *this;
+  }
+  template<typename U,
+           typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+  constexpr managed_ptr& operator=(managed_ptr<U>&& u) noexcept {
+    Ptr::operator=(std::move(u));
+    return *this;
+  }
+
+  constexpr void reset(std::nullptr_t = nullptr) noexcept { Ptr::reset(); }
+  constexpr void swap(managed_ptr& t) noexcept { Ptr::swap(t); }
+
+  using Ptr::get;
+  using Ptr::operator bool;
+  using Ptr::operator*;
+  using Ptr::operator->;
+};
+
+template<typename T, typename U>
+constexpr bool operator==(const managed_ptr<T>& t, const managed_ptr<U>& u) {
+  return t.get() == u.get();
+}
+
+template<typename T>
+constexpr bool operator==(const managed_ptr<T>& t, std::nullptr_t) noexcept {
+  return !t;
+}
 
 template<typename Base, typename Derived = Base>
-inline auto to_managed(OnStack<Derived>& p) noexcept {
+constexpr managed_ptr<Base> to_managed(Derived& p) noexcept {
   return managed_ptr<Base>{&p};
 }
 
 template<typename Base, typename Derived = Base, typename... Args>
-inline auto make_managed(Args&&... args) {
+managed_ptr<Base> make_managed(Args&&... args) {
   return managed_ptr<Base>{new OnHeap<Derived>{std::forward<Args>(args)...}};
 }
 

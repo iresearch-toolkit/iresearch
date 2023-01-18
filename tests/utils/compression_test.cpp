@@ -136,8 +136,8 @@ TEST(compression_test, lz4) {
     return dist(mersenne_engine);
   };
 
-  irs::memory::OnStack<compression::lz4::lz4decompressor> decompressor;
-  irs::memory::OnStack<compression::lz4::lz4compressor> compressor;
+  compression::lz4::lz4decompressor decompressor;
+  compression::lz4::lz4compressor compressor;
   ASSERT_EQ(0, compressor.acceleration());
 
   for (size_t i = 0; i < 10; ++i) {
@@ -185,8 +185,8 @@ TEST(compression_test, delta) {
     return dist(mersenne_engine);
   };
 
-  irs::memory::OnStack<compression::delta_decompressor> decompressor;
-  irs::memory::OnStack<compression::delta_compressor> compressor;
+  compression::delta_decompressor decompressor;
+  compression::delta_compressor compressor;
 
   for (size_t i = 0; i < 10; ++i) {
     std::generate(data.begin(), data.end(), generator);

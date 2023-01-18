@@ -503,7 +503,7 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
   using attributes = std::tuple<attribute_ptr<document>, cost, score>;
 
   Checker checker_;
-  memory::OnStack<NGramApprox> approx_;
+  NGramApprox approx_;
   attributes attrs_;
 };
 

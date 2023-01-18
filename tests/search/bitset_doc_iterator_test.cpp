@@ -32,7 +32,7 @@
 
 TEST(bitset_iterator_test, next) {
   {
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(nullptr, nullptr);
+    irs::bitset_doc_iterator it(nullptr, nullptr);
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
 
     ASSERT_TRUE(bool(irs::get<irs::document>(it)));
@@ -51,7 +51,7 @@ TEST(bitset_iterator_test, next) {
 
   {
     irs::bitset bs;
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
 
     ASSERT_TRUE(bool(irs::get<irs::document>(it)));
@@ -70,7 +70,7 @@ TEST(bitset_iterator_test, next) {
   // non-empty bitset
   {
     irs::bitset bs(13);
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
 
     auto* doc = irs::get<irs::document>(it);
@@ -100,7 +100,7 @@ TEST(bitset_iterator_test, next) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
 
     auto* doc = irs::get<irs::document>(it);
@@ -135,7 +135,7 @@ TEST(bitset_iterator_test, next) {
       bs.reset(i, i % 2);
     }
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
 
     auto* doc = irs::get<irs::document>(it);
@@ -166,8 +166,7 @@ TEST(bitset_iterator_test, next) {
       ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
       irs::bitset::word_t(UINT64_C(0x8000000000000000))};
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(std::begin(data),
-                                                      std::end(data));
+    irs::bitset_doc_iterator it(std::begin(data), std::end(data));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
@@ -204,7 +203,7 @@ TEST(bitset_iterator_test, next) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
@@ -240,7 +239,7 @@ TEST(bitset_iterator_test, next) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -265,7 +264,7 @@ TEST(bitset_iterator_test, seek) {
   {
     // empty bitset
     irs::bitset bs;
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -287,7 +286,7 @@ TEST(bitset_iterator_test, seek) {
   // non-empty bitset
   {
     irs::bitset bs(13);
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -317,7 +316,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -349,7 +348,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -382,7 +381,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -403,7 +402,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -423,7 +422,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -444,7 +443,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -464,7 +463,7 @@ TEST(bitset_iterator_test, seek) {
       bs.reset(i, i % 2);
     }
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -498,7 +497,7 @@ TEST(bitset_iterator_test, seek) {
       bs.reset(i, i % 2);
     }
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -533,7 +532,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -566,7 +565,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -597,7 +596,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -623,7 +622,7 @@ TEST(bitset_iterator_test, seek) {
       irs::bitset::word_t(UINT64_C(0x4440000000000000))};
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -650,7 +649,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -675,7 +674,7 @@ TEST(bitset_iterator_test, seek) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -698,7 +697,7 @@ TEST(bitset_iterator_test, seek_next) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -736,7 +735,7 @@ TEST(bitset_iterator_test, seek_next) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -775,7 +774,7 @@ TEST(bitset_iterator_test, seek_next) {
       bs.reset(i, i % 2);
     }
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -813,7 +812,7 @@ TEST(bitset_iterator_test, seek_next) {
       bs.reset(i, i % 2);
     }
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
@@ -851,7 +850,7 @@ TEST(bitset_iterator_test, seek_next) {
 
     bs.memset(data);
 
-    irs::memory::OnStack<irs::bitset_doc_iterator> it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(bs.begin(), bs.end());
     ASSERT_TRUE(!irs::doc_limits::valid(it.value()));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));

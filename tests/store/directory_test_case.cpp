@@ -4630,8 +4630,8 @@ TEST(memory_directory_test, construct_check_allocator) {
 }
 
 TEST(memory_directory_test, file_reset_allocator) {
-  irs::memory::OnStack<memory_allocator> alloc0(1U);
-  irs::memory::OnStack<memory_allocator> alloc1(1U);
+  memory_allocator alloc0(1U);
+  memory_allocator alloc1(1U);
   memory_file file(alloc0);
 
   // get buffer from 'alloc0'

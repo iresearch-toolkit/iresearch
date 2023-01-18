@@ -289,8 +289,7 @@ TEST(top_terms_collector_test, test_top_k) {
   };
 
   {
-    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS0),
-                                                std::end(TERMS0));
+    seek_term_iterator it(std::begin(TERMS0), std::end(TERMS0));
     collector.prepare(segment0, term_reader0, it);
 
     while (it.next()) {
@@ -307,8 +306,7 @@ TEST(top_terms_collector_test, test_top_k) {
   };
 
   {
-    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS1),
-                                                std::end(TERMS1));
+    seek_term_iterator it(std::begin(TERMS1), std::end(TERMS1));
     collector.prepare(segment1, term_reader1, it);
 
     while (it.next()) {
@@ -357,8 +355,7 @@ TEST(top_terms_collector_test, test_top_0) {
   };
 
   {
-    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS0),
-                                                std::end(TERMS0));
+    seek_term_iterator it(std::begin(TERMS0), std::end(TERMS0));
     collector.prepare(segment0, term_reader0, it);
 
     while (it.next()) {
@@ -375,8 +372,7 @@ TEST(top_terms_collector_test, test_top_0) {
   };
 
   {
-    irs::memory::OnStack<seek_term_iterator> it(std::begin(TERMS1),
-                                                std::end(TERMS1));
+    seek_term_iterator it(std::begin(TERMS1), std::end(TERMS1));
     collector.prepare(segment1, term_reader1, it);
 
     while (it.next()) {

@@ -407,7 +407,7 @@ class DocIteratorContainer {
   }
 
  private:
-  std::vector<memory::OnStack<RemappingDocIterator>> itrs_;
+  std::vector<RemappingDocIterator> itrs_;
 };
 
 class CompoundColumnIterator final {
@@ -588,9 +588,8 @@ class CompoundTermIterator : public term_iterator {
   const field_meta* meta_{};
   std::vector<size_t> term_iterator_mask_;  // valid iterators for current term
   std::vector<TermIterator> term_iterators_;  // all term iterators
-  mutable memory::OnStack<CompoundDocIterator> doc_itr_;
-  mutable memory::OnStack<SortingCompoundDocIterator> sorting_doc_itr_{
-    doc_itr_};
+  mutable CompoundDocIterator doc_itr_;
+  mutable SortingCompoundDocIterator sorting_doc_itr_{doc_itr_};
   bool has_comparer_;
   ProgressTracker progress_;
 };
@@ -763,7 +762,7 @@ class CompoundFiledIterator final : public basic_term_reader {
   // valid iterators for current field
   std::vector<TermIterator> field_iterator_mask_;
   std::vector<FieldIterator> field_iterators_;  // all segment iterators
-  mutable memory::OnStack<CompoundTermIterator> term_itr_;
+  mutable CompoundTermIterator term_itr_;
   ProgressTracker progress_;
 };
 
@@ -1626,8 +1625,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 #endif
 
   Columnstore cs(std::move(writer), progress);
-  memory::OnStack<CompoundDocIterator> doc_it(progress);
-  memory::OnStack<SortingCompoundDocIterator> sorting_doc_it(doc_it);
+  CompoundDocIterator doc_it(progress);
+  SortingCompoundDocIterator sorting_doc_it(doc_it);
 
   if (!cs.valid()) {
     return false;  // flush failure

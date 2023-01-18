@@ -53,7 +53,7 @@ class NormWriter : public FeatureWriter {
   void finish(bstring& /*out*/) final {}
 };
 
-memory::OnStack<NormWriter> kNormWriter;
+NormWriter kNormWriter;
 
 }  // namespace
 

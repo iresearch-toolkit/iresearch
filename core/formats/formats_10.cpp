@@ -3508,32 +3508,31 @@ index_meta_writer::ptr format10::get_index_meta_writer() const {
 
 index_meta_reader::ptr format10::get_index_meta_reader() const {
   // can reuse stateless reader
-  static memory::OnStack<IndexMetaReader> kInstance;
+  static IndexMetaReader kInstance;
   return memory::to_managed<index_meta_reader>(kInstance);
 }
 
 segment_meta_writer::ptr format10::get_segment_meta_writer() const {
   // can reuse stateless writer
-  static memory::OnStack<SegmentMetaWriter> kInstance{
-    SegmentMetaWriter::FORMAT_MIN};
+  static SegmentMetaWriter kInstance{SegmentMetaWriter::FORMAT_MIN};
   return memory::to_managed<segment_meta_writer>(kInstance);
 }
 
 segment_meta_reader::ptr format10::get_segment_meta_reader() const {
   // can reuse stateless writer
-  static memory::OnStack<SegmentMetaReader> kInstance;
+  static SegmentMetaReader kInstance;
   return memory::to_managed<segment_meta_reader>(kInstance);
 }
 
 document_mask_writer::ptr format10::get_document_mask_writer() const {
   // can reuse stateless writer
-  static memory::OnStack<DocumentMaskWriter> kInstance;
+  static DocumentMaskWriter kInstance;
   return memory::to_managed<document_mask_writer>(kInstance);
 }
 
 document_mask_reader::ptr format10::get_document_mask_reader() const {
   // can reuse stateless writer
-  static memory::OnStack<DocumentMaskReader> kInstance;
+  static DocumentMaskReader kInstance;
   return memory::to_managed<document_mask_reader>(kInstance);
 }
 
@@ -3608,8 +3607,7 @@ field_writer::ptr format11::get_field_writer(bool consolidation) const {
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
   // can reuse stateless writer
-  static memory::OnStack<SegmentMetaWriter> kInstance{
-    SegmentMetaWriter::FORMAT_MAX};
+  static SegmentMetaWriter kInstance{SegmentMetaWriter::FORMAT_MAX};
   return memory::to_managed<segment_meta_writer>(kInstance);
 }
 

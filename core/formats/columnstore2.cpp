@@ -327,7 +327,7 @@ class bitmap_column_iterator : public resettable_doc_iterator,
   void reset() final { bitmap_.reset(); }
 
  private:
-  memory::OnStack<sparse_bitmap_iterator> bitmap_;
+  sparse_bitmap_iterator bitmap_;
   attributes attrs_;
 };
 
@@ -1372,7 +1372,7 @@ void column::finish(index_output& index_out) {
   hdr.id = id_;
 
   memory_index_input in{docs_.file};
-  memory::OnStack<sparse_bitmap_iterator> it{
+  sparse_bitmap_iterator it{
     &in, sparse_bitmap_iterator::options{.version = ctx_.version,
                                          .track_prev_doc = false,
                                          .use_block_index = false,

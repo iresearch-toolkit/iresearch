@@ -28,7 +28,7 @@
 namespace irs {
 namespace {
 
-memory::OnStack<memory_allocator> kGlobalAlloc{size_t{128}};
+memory_allocator kGlobalAlloc{size_t{128}};
 
 }  // namespace
 

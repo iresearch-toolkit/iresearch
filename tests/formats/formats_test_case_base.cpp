@@ -780,8 +780,8 @@ TEST_P(format_test_case, fields_read_write) {
     state.index_features = field.index_features;
 
     // should use sorted terms on write
-    irs::memory::OnStack<terms<sorted_terms_t::iterator>> terms(
-      sorted_terms.begin(), sorted_terms.end());
+    terms<sorted_terms_t::iterator> terms(sorted_terms.begin(),
+                                          sorted_terms.end());
 
     auto writer = codec()->get_field_writer(false);
     writer->prepare(state);
@@ -3673,9 +3673,8 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
     state.features = &features;
 
     // should use sorted terms on write
-    irs::memory::OnStack<
-      tests::format_test_case::terms<sorted_terms_t::iterator>>
-      terms(sorted_terms.begin(), sorted_terms.end());
+    tests::format_test_case::terms<sorted_terms_t::iterator> terms(
+      sorted_terms.begin(), sorted_terms.end());
 
     auto writer = codec()->get_field_writer(false);
     ASSERT_NE(nullptr, writer);

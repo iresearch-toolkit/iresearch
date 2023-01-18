@@ -636,8 +636,8 @@ class term_iterator : public irs::term_iterator {
   fields_data::postings_ref_t::const_iterator it_;
   const field_data* field_{};
   const doc_map* doc_map_{};
-  mutable memory::OnStack<detail::doc_iterator> doc_itr_;
-  mutable memory::OnStack<detail::sorting_doc_iterator> sorting_doc_itr_;
+  mutable detail::doc_iterator doc_itr_;
+  mutable detail::sorting_doc_iterator sorting_doc_itr_;
 };
 
 /*static*/ const term_iterator::postings_f term_iterator::POSTINGS[2]{
@@ -670,7 +670,7 @@ class term_reader final : public irs::basic_term_reader,
   }
 
  private:
-  mutable memory::OnStack<detail::term_iterator> it_;
+  mutable detail::term_iterator it_;
   const irs::bytes_view min_{};
   const irs::bytes_view max_{};
 };

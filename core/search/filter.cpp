@@ -39,7 +39,7 @@ struct EmptyQuery : public filter::prepared {
   }
 };
 
-memory::OnStack<EmptyQuery> kEmptyQuery;
+EmptyQuery kEmptyQuery;
 
 }  // namespace
 

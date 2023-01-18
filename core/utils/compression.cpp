@@ -79,7 +79,7 @@ struct identity_compressor : compressor {
   void flush(data_output& /*out*/) final {}
 };
 
-memory::OnStack<identity_compressor> kIdentityCompressor;
+identity_compressor kIdentityCompressor;
 
 }  // namespace
 

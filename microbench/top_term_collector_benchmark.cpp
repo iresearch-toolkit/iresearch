@@ -167,8 +167,7 @@ void BM_top_term_collector(benchmark::State& state) {
   }
 
   for (auto _ : state) {
-    irs::memory::OnStack<seek_term_iterator<int>> it(terms.data(),
-                                                     terms.size());
+    seek_term_iterator<int> it(terms.data(), terms.size());
     collector.prepare(segment, term_reader, it);
 
     while (it.next()) {

@@ -91,7 +91,7 @@ TEST(directory_reader_test, open_newest_index) {
   };
   class test_format : public irs::format {
    public:
-    mutable irs::memory::OnStack<test_index_meta_reader> index_meta_reader;
+    mutable test_index_meta_reader index_meta_reader;
     test_format(const irs::type_info& type) : irs::format(type) {}
     irs::index_meta_writer::ptr get_index_meta_writer() const final {
       return nullptr;

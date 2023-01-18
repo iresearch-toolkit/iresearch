@@ -50,7 +50,7 @@ struct EmptyDocIterator : doc_iterator {
   document _doc{doc_limits::eof()};
 };
 
-memory::OnStack<EmptyDocIterator> kEmptyDocIterator;
+EmptyDocIterator kEmptyDocIterator;
 
 // Represents an iterator without terms
 struct EmptyTermIterator : term_iterator {
@@ -65,7 +65,7 @@ struct EmptyTermIterator : term_iterator {
   }
 };
 
-memory::OnStack<EmptyTermIterator> kEmptyTermIterator;
+EmptyTermIterator kEmptyTermIterator;
 
 // Represents an iterator without terms
 struct EmptySeekTermIterator : seek_term_iterator {
@@ -85,7 +85,7 @@ struct EmptySeekTermIterator : seek_term_iterator {
   seek_cookie::ptr cookie() const noexcept final { return nullptr; }
 };
 
-memory::OnStack<EmptySeekTermIterator> kEmptySeekIterator;
+EmptySeekTermIterator kEmptySeekIterator;
 
 // Represents a reader with no terms
 const empty_term_reader kEmptyTermReader{0};
@@ -99,7 +99,7 @@ struct EmptyFieldIterator : field_iterator {
   bool next() final { return false; }
 };
 
-memory::OnStack<EmptyFieldIterator> kEmptyFieldIterator;
+EmptyFieldIterator kEmptyFieldIterator;
 
 struct EmptyColumnReader final : column_reader {
   field_id id() const final { return field_limits::invalid(); }
@@ -131,7 +131,7 @@ struct EmptyColumnIterator : column_iterator {
   bool next() final { return false; }
 };
 
-memory::OnStack<EmptyColumnIterator> kEmptyColumnIterator;
+EmptyColumnIterator kEmptyColumnIterator;
 
 }  // namespace
 

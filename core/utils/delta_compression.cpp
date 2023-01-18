@@ -28,8 +28,8 @@
 namespace irs::compression {
 namespace {
 
-memory::OnStack<delta_compressor> kCompressor;
-memory::OnStack<delta_decompressor> kDecompressor;
+delta_compressor kCompressor;
+delta_decompressor kDecompressor;
 
 }  // namespace
 

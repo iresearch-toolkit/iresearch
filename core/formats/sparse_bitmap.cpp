@@ -131,7 +131,7 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
                         sizeof bits_);
     }
   } else {
-    memory::OnStack<bitset_doc_iterator> it(std::begin(bits_), std::end(bits_));
+    bitset_doc_iterator it(std::begin(bits_), std::end(bits_));
 
     while (it.next()) {
       out_->write_short(static_cast<uint16_t>(it.value()));

@@ -3031,9 +3031,9 @@ class field_reader final : public irs::field_reader {
     }
 
     term_meta term(bytes_view term) const final {
-      memory::OnStack<single_term_iterator<FST>> it{
-        meta(), *owner_->pr_, owner_->terms_in_->reopen(),
-        owner_->terms_in_cipher_.get(), *fst_};
+      single_term_iterator<FST> it{meta(), *owner_->pr_,
+                                   owner_->terms_in_->reopen(),
+                                   owner_->terms_in_cipher_.get(), *fst_};
 
       it.seek(term);
       return it.meta();
@@ -3045,9 +3045,9 @@ class field_reader final : public irs::field_reader {
         return 0;
       }
 
-      memory::OnStack<single_term_iterator<FST>> it{
-        meta(), *owner_->pr_, owner_->terms_in_->reopen(),
-        owner_->terms_in_cipher_.get(), *fst_};
+      single_term_iterator<FST> it{meta(), *owner_->pr_,
+                                   owner_->terms_in_->reopen(),
+                                   owner_->terms_in_cipher_.get(), *fst_};
 
       if (!it.seek(term)) {
         return 0;

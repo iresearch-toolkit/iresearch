@@ -33,8 +33,8 @@ namespace irs {
 namespace {
 
 // can reuse stateless instances
-memory::OnStack<compression::lz4::lz4compressor> kLZ4BasicCompressor;
-memory::OnStack<compression::lz4::lz4decompressor> kLZ4BasicDecompressor;
+compression::lz4::lz4compressor kLZ4BasicCompressor;
+compression::lz4::lz4decompressor kLZ4BasicDecompressor;
 
 inline int acceleration(const compression::options::Hint hint) noexcept {
   static constexpr int FACTORS[]{0, 2, 0};
