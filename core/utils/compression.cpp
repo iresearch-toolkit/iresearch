@@ -173,7 +173,7 @@ void load_all(std::string_view path) {
 }
 
 bool visit(const std::function<bool(std::string_view)>& visitor) {
-  compression_register::visitor_t const wrapper =
+  const compression_register::visitor_t wrapper =
     [&visitor](std::string_view key) -> bool { return visitor(key); };
 
   return compression_register::instance().visit(wrapper);

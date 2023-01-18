@@ -263,7 +263,7 @@ struct Managed {
   friend struct ManagedDeleter;
 
   // Const because we can allocate and then delete const object
-  virtual void Destroy() const {}
+  virtual void Destroy() const noexcept {}
 };
 
 template<typename Base>
@@ -274,7 +274,7 @@ struct OnHeap final : Base {
   OnHeap(Args&&... args) : Base{std::forward<Args>(args)...} {}
 
  private:
-  void Destroy() const final { delete this; }
+  void Destroy() const noexcept final { delete this; }
 };
 
 struct ManagedDeleter {

@@ -42,7 +42,6 @@
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
-#include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"

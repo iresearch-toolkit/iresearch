@@ -94,7 +94,6 @@ set(IReSearch_tests_sources
   ./utils/compression_test.cpp
   ./utils/crc_test.cpp
   ./utils/file_utils_tests.cpp
-  ./utils/map_utils_tests.cpp
   ./utils/object_pool_tests.cpp
   ./utils/numeric_utils_test.cpp
   ./utils/attributes_tests.cpp

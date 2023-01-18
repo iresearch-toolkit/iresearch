@@ -70,23 +70,6 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
   return {std::move(buckets), stats_size, features};
 }
 
-void ConstantScore1(score_ctx* ctx, score_t* res) noexcept {
-  IRS_ASSERT(res != nullptr);
-  const auto boost = absl::bit_cast<uintptr_t>(ctx);
-  std::memcpy(res, &boost, sizeof(score_t));
-}
-
-struct ScoreCtx {
-  score_t value;
-  uint32_t count;
-};
-
-void ConstantScoreN(score_ctx* ctx, score_t* res) noexcept {
-  IRS_ASSERT(res != nullptr);
-  const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
-  std::fill_n(res, score_ctx.count, score_ctx.value);
-}
-
 }  // namespace
 
 REGISTER_ATTRIBUTE(filter_boost);
@@ -95,7 +78,13 @@ ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
   static_assert(sizeof(score_t) <= sizeof(uintptr_t));
   uintptr_t boost = 0;
   std::memcpy(&boost, &value, sizeof(score_t));
-  return {absl::bit_cast<score_ctx*>(boost), &ConstantScore1, &Noop};
+  return {absl::bit_cast<score_ctx*>(boost),
+          [](score_ctx* ctx, score_t* res) noexcept {
+            IRS_ASSERT(res != nullptr);
+            const auto boost = absl::bit_cast<uintptr_t>(ctx);
+            std::memcpy(res, &boost, sizeof(score_t));
+          },
+          &Noop};
 }
 
 ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
@@ -104,7 +93,16 @@ ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
   } else if (1 == count) {
     return Constant(value);
   } else {
-    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, count}), &ConstantScoreN,
+    struct ScoreCtx {
+      score_t value;
+      uint32_t count;
+    };
+    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, count}),
+            [](score_ctx* ctx, score_t* res) noexcept {
+              IRS_ASSERT(res != nullptr);
+              const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
+              std::fill_n(res, score_ctx.count, score_ctx.value);
+            },
             &Noop};
   }
 }

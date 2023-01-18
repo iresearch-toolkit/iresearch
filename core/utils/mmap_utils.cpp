@@ -81,7 +81,7 @@ bool mmap_handle::open(const file_path_t path) noexcept {
     size_ = size;
 
     // TODO(MBkkt) Needs benchmark?
-    //  1. MAP_SHARED can makes more sense than MAP_PRIVATE
+    //  1. MAP_SHARED can make more sense than MAP_PRIVATE
     //     both ok for us, because file is read only
     //     but with it we probably can avoid COW kernel overhead.
     //  2. MAP_POPULATE | MAP_LOCKED instead of read to vector stuff?

@@ -30,7 +30,6 @@
 #include "bit_utils.hpp"
 #include "bitset.hpp"
 #include "hash_utils.hpp"
-#include "map_utils.hpp"
 #include "misc.hpp"
 #include "shared.hpp"
 #include "store/store_utils.hpp"

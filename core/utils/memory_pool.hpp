@@ -27,7 +27,6 @@
 
 #include "shared.hpp"
 #include "utils/ebo_ref.hpp"
-#include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
 #include "utils/noncopyable.hpp"

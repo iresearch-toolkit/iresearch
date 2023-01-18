@@ -30,7 +30,6 @@
 #include "search/sort.hpp"
 #include "shared.hpp"
 #include "utils/hash_utils.hpp"
-#include "utils/map_utils.hpp"
 #include "utils/noncopyable.hpp"
 
 namespace irs {
@@ -124,6 +123,7 @@ template<typename State,
 class top_terms_collector : private util::noncopyable {
  public:
   using state_type = State;
+  static_assert(std::is_nothrow_move_assignable_v<state_type>);
   using key_type = typename state_type::key_type;
   using comparer_type = Comparer;
 
@@ -166,9 +166,15 @@ class top_terms_collector : private util::noncopyable {
     const auto term = *state_.term;
 
     if (left_) {
-      const auto res = emplace(hashed_bytes_view{term}, key);
+      hashed_bytes_view hashedTerm{term};
+      const auto res = terms_.try_emplace(hashedTerm, hashedTerm, key);
 
       if (res.second) {
+        auto& old_key = const_cast<hashed_bytes_view&>(res.first->first);
+        auto& value = res.first->second;
+        hashed_bytes_view new_key{value.term, old_key.hash()};
+        IRS_ASSERT(old_key == new_key);
+        old_key = new_key;
         heap_.emplace_back(res.first);
 
         if (!--left_) {
@@ -195,14 +201,17 @@ class top_terms_collector : private util::noncopyable {
     if (it == terms_.end()) {
       // update min entry
       pop();
-      terms_.erase(min);
-      const auto res = emplace(hashed_term, key);
-      IRS_ASSERT(res.second);
 
-      heap_.back() = res.first;
+      auto node = terms_.extract(min);
+      IRS_ASSERT(!node.empty());
+      node.mapped() = state_type{term, key};
+      node.key() = hashed_bytes_view{node.mapped().term, hashed_term.hash()};
+      auto res = terms_.insert(std::move(node));
+      IRS_ASSERT(res.inserted);
+      IRS_ASSERT(res.node.empty());
+
+      heap_.back() = res.position;
       push();
-
-      res.first->second.emplace(state_);
     } else {
       IRS_ASSERT(it->second.key == key);
       // update existing entry
@@ -251,19 +260,6 @@ class top_terms_collector : private util::noncopyable {
                   [this](const auto lhs, const auto rhs) noexcept {
                     return comparer_(rhs->second, lhs->second);
                   });
-  }
-
-  std::pair<typename states_map_t::iterator, bool> emplace(
-    const hashed_bytes_view& term, const key_type& key) {
-    // replace original reference to 'name' provided by the caller
-    // with a reference to the cached copy in 'value'
-    return map_utils::try_emplace_update_key(
-      terms_,
-      [](const hashed_bytes_view& key, const state_type& value) noexcept {
-        // reuse hash but point ref at value
-        return hashed_bytes_view{value.term, key.hash()};
-      },
-      term, term, key);
   }
 
   IRS_NO_UNIQUE_ADDRESS comparer_type comparer_;

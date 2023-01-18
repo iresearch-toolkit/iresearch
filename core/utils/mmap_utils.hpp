@@ -44,6 +44,30 @@
 #include <sys/mman.h>
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a wrapper for MAP_ANONYMOUS / MAP_ANON
+///
+///               MAP_ANON  MAP_ANONYMOUS
+///    OpenBSD         Y         Y(*)
+///    Linux           Y(*)      Y
+///    FreeBSD         Y         Y
+///    NetBSD          Y         N
+///    OSX             Y         N
+///    Solaris         Y         N
+///    HP-UX           N         Y
+///    AIX             N         Y
+///    IRIX            N         N
+///    (*) synonym to other
+///
+////////////////////////////////////////////////////////////////////////////////
+#ifndef MAP_ANON
+#ifdef MAP_ANONYMOUS
+#define MAP_ANON MAP_ANONYMOUS
+#else
+#error "System does not support mapping anonymous pages?"
+#endif
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constants for madvice
 ////////////////////////////////////////////////////////////////////////////////
 #define IR_MADVICE_NORMAL MADV_NORMAL
