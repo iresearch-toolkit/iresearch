@@ -1853,7 +1853,7 @@ class index_test_case : public tests::index_test_base {
       mutable std::unique_ptr<irs::string_token_stream> stream_;
       std::string name_;
       std::string_view value_;
-    };  // field
+    };
 
     // write docs with empty terms
     {
@@ -1958,7 +1958,7 @@ class index_test_case : public tests::index_test_base {
       std::string_view value_;
       irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
       bool stored_valid_;
-    };  // indexed_and_stored_field
+    };
 
     class indexed_field {
      public:
@@ -1989,7 +1989,7 @@ class index_test_case : public tests::index_test_base {
       std::string name_;
       std::string_view value_;
       irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
-    };  // indexed_field
+    };
 
     struct stored_field {
       stored_field(const std::string_view& name, const std::string_view& value,
@@ -2008,7 +2008,7 @@ class index_test_case : public tests::index_test_base {
       std::string_view name_;
       std::string_view value_;
       bool valid_;
-    };  // stored_field
+    };
 
     // insert documents
     auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
@@ -2156,7 +2156,7 @@ class index_test_case : public tests::index_test_base {
       override_sync_directory(irs::directory& impl, sync_f&& sync)
         : directory_mock(impl), sync_(std::move(sync)) {}
 
-      bool sync(std::span<const std::string_view> files) noexcept override {
+      bool sync(std::span<const std::string_view> files) noexcept final {
         return std::all_of(std::begin(files), std::end(files),
                            [this](std::string_view name) mutable noexcept {
                              try {
@@ -2172,7 +2172,7 @@ class index_test_case : public tests::index_test_base {
       }
 
       sync_f sync_;
-    };  // invalid_sync_directory
+    };
 
     // create empty index
     {
@@ -2252,7 +2252,7 @@ class index_test_case : public tests::index_test_base {
   }
 
   void docs_bit_union(irs::IndexFeatures features);
-};  // index_test_case
+};
 
 void index_test_case::docs_bit_union(irs::IndexFeatures features) {
   tests::string_view_field field("0", features);
@@ -5748,11 +5748,11 @@ TEST_P(index_test_case, doc_update) {
      public:
       irs::string_token_stream tokens_;
       bool write_result_;
-      bool write(irs::data_output& out) const override {
+      bool write(irs::data_output& out) const final {
         out.write_byte(1);
         return write_result_;
       }
-      irs::token_stream& get_tokens() const override {
+      irs::token_stream& get_tokens() const final {
         return const_cast<test_field*>(this)->tokens_;
       }
     };
@@ -14956,22 +14956,21 @@ TEST_P(index_test_case, ensure_no_empty_norms_written) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  index_test_10, index_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  index_test_case::to_string);
+static constexpr auto kTestDirs1 =
+  tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(index_test_10, index_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs1),
+                                            ::testing::Values("1_0")),
+                         index_test_case::to_string);
+
+static constexpr auto kTestDirs2 =
+  tests::getDirectories<tests::kTypesRot13_16>();
 
 INSTANTIATE_TEST_SUITE_P(
   index_test_11, index_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
-                      &tests::rot13_directory<&tests::fs_directory, 16>,
-                      &tests::rot13_directory<&tests::mmap_directory, 16>),
-    ::testing::Values(tests::format_info{"1_1", "1_0"})),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs2),
+                     ::testing::Values(tests::format_info{"1_1", "1_0"})),
   index_test_case::to_string);
 
 // Separate definition as MSVC parser fails to do conditional defines in macro
@@ -14986,14 +14985,10 @@ const auto kIndexTestCase12Formats =
 #endif
 }  // namespace
 
-INSTANTIATE_TEST_SUITE_P(
-  index_test_12, index_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
-                      &tests::rot13_directory<&tests::fs_directory, 16>,
-                      &tests::rot13_directory<&tests::mmap_directory, 16>),
-    kIndexTestCase12Formats),
-  index_test_case::to_string);
+INSTANTIATE_TEST_SUITE_P(index_test_12, index_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs2),
+                                            kIndexTestCase12Formats),
+                         index_test_case::to_string);
 
 // Separate definition as MSVC parser fails to do conditional defines in macro
 // expansion
@@ -15007,14 +15002,10 @@ const auto kIndexTestCase13Formats =
 #endif
 }  // namespace
 
-INSTANTIATE_TEST_SUITE_P(
-  index_test_13, index_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
-                      &tests::rot13_directory<&tests::fs_directory, 16>,
-                      &tests::rot13_directory<&tests::mmap_directory, 16>),
-    kIndexTestCase13Formats),
-  index_test_case::to_string);
+INSTANTIATE_TEST_SUITE_P(index_test_13, index_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs2),
+                                            kIndexTestCase13Formats),
+                         index_test_case::to_string);
 
 // Separate definition as MSVC parser fails to do conditional defines in macro
 // expansion
@@ -15062,7 +15053,7 @@ class index_test_case_14 : public index_test_case {
     size_t num_finish_calls{};
   };
 
-  class FeatureWriter final : public irs::FeatureWriter {
+  class FeatureWriter : public irs::FeatureWriter {
    public:
     static auto make(stats& call_stats, irs::doc_id_t filter_doc,
                      std::span<const irs::bytes_view> headers)
@@ -15922,15 +15913,9 @@ TEST_P(index_test_case_14, consolidate_multiple_stored_features) {
   }
 }
 
-const auto kDirectories = ::testing::Values(
-#ifdef IRESEARCH_URING
-  &tests::directory<&tests::async_directory>,
-#endif
-  &tests::directory<tests::mmap_directory>,
-  &tests::directory<tests::fs_directory>,
-  &tests::directory<tests::memory_directory>,
-  &tests::rot13_directory<&tests::memory_directory, 16>,
-  &tests::rot13_directory<&tests::mmap_directory, 16>);
+static constexpr auto kTestDirs3 =
+  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16>();
+static const auto kDirectories = ::testing::ValuesIn(kTestDirs3);
 
 INSTANTIATE_TEST_SUITE_P(index_test_14, index_test_case,
                          ::testing::Combine(kDirectories,
@@ -16226,14 +16211,10 @@ TEST_P(index_test_case_10, commit_payload) {
   ASSERT_EQ(reader, reader.Reopen());
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  index_test_10, index_test_case_10,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  index_test_case_10::to_string);
+INSTANTIATE_TEST_SUITE_P(index_test_10, index_test_case_10,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs1),
+                                            ::testing::Values("1_0")),
+                         index_test_case_10::to_string);
 
 class index_test_case_11 : public tests::index_test_base {};
 

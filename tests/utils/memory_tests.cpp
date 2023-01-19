@@ -190,7 +190,7 @@ TEST_F(memory_pool_allocator_test, allocate_deallocate) {
     ~checker() { ++(*dtor_calls_); }
 
     size_t* dtor_calls_;
-  };  // test
+  };
 
   irs::memory::memory_pool<> pool(0);
   irs::memory::memory_pool_allocator<checker, decltype(pool)> alloc(pool);
@@ -855,7 +855,7 @@ TEST_F(memory_pool_allocator_test, allocate_unique) {
     ~checker() { ++(*dtor_calls_); }
 
     size_t* dtor_calls_;
-  };  // test
+  };
 
   irs::memory::memory_pool<irs::memory::identity_grow,
                            irs::memory::malloc_free_allocator>
@@ -887,7 +887,7 @@ TEST_F(memory_pool_allocator_test, allocate_shared) {
     ~checker() { ++(*dtor_calls_); }
 
     size_t* dtor_calls_;
-  };  // test
+  };
 
 #if !(defined(_MSC_VER) && defined(IRESEARCH_DEBUG))
   // MSVC in debug mode sets _ITERATOR_DEBUG_LEVEL equal to 2 (by default) which

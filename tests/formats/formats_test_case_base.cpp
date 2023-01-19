@@ -1082,60 +1082,59 @@ TEST_P(format_test_case, segment_meta_read_write) {
 
       using directory::attributes;
 
-      irs::directory_attributes& attributes() noexcept override {
+      irs::directory_attributes& attributes() noexcept final {
         return dir_.attributes();
       }
 
-      irs::index_output::ptr create(std::string_view name) noexcept override {
+      irs::index_output::ptr create(std::string_view name) noexcept final {
         // corrupt meta before writing it
         meta_.docs_count = meta_.live_docs_count - 1;
         return dir_.create(name);
       }
 
-      bool exists(bool& result, std::string_view name) const noexcept override {
+      bool exists(bool& result, std::string_view name) const noexcept final {
         return dir_.exists(result, name);
       }
 
       bool length(uint64_t& result,
-                  std::string_view name) const noexcept override {
+                  std::string_view name) const noexcept final {
         return dir_.length(result, name);
       }
 
-      irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
+      irs::index_lock::ptr make_lock(std::string_view name) noexcept final {
         return dir_.make_lock(name);
       }
 
       bool mtime(std::time_t& result,
-                 std::string_view name) const noexcept override {
+                 std::string_view name) const noexcept final {
         return dir_.mtime(result, name);
       }
 
       irs::index_input::ptr open(std::string_view name,
-                                 irs::IOAdvice advice) const noexcept override {
+                                 irs::IOAdvice advice) const noexcept final {
         return dir_.open(name, advice);
       }
 
-      bool remove(std::string_view name) noexcept override {
+      bool remove(std::string_view name) noexcept final {
         return dir_.remove(name);
       }
 
-      bool rename(std::string_view src,
-                  std::string_view dst) noexcept override {
+      bool rename(std::string_view src, std::string_view dst) noexcept final {
         return dir_.rename(src, dst);
       }
 
-      bool sync(std::span<const std::string_view> files) noexcept override {
+      bool sync(std::span<const std::string_view> files) noexcept final {
         return dir_.sync(files);
       }
 
-      bool visit(const irs::directory::visitor_f& visitor) const override {
+      bool visit(const irs::directory::visitor_f& visitor) const final {
         return dir_.visit(visitor);
       }
 
      private:
       irs::directory& dir_;
       irs::SegmentMeta& meta_;
-    };  // directory_mock
+    };
 
     irs::SegmentMeta meta;
     meta.name = "broken_meta_name";

@@ -167,8 +167,8 @@ std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
 
 // Iterator over a specified contiguous range of documents
 template<typename PayloadReader>
-class range_column_iterator final : public resettable_doc_iterator,
-                                    private PayloadReader {
+class range_column_iterator : public resettable_doc_iterator,
+                              private PayloadReader {
  private:
   using payload_reader = PayloadReader;
 
@@ -209,15 +209,15 @@ class range_column_iterator final : public resettable_doc_iterator,
     }
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  doc_id_t seek(irs::doc_id_t doc) override {
+  doc_id_t seek(irs::doc_id_t doc) final {
     if (IRS_LIKELY(min_doc_ <= doc && doc <= max_doc_)) {
       std::get<document>(attrs_).value = doc;
       min_doc_ = doc + 1;
@@ -242,7 +242,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     return value();
   }
 
-  bool next() override {
+  bool next() final {
     if (min_doc_ <= max_doc_) {
       std::get<document>(attrs_).value = min_doc_++;
       std::get<irs::payload>(attrs_).value = this->payload(value() - min_base_);
@@ -254,7 +254,7 @@ class range_column_iterator final : public resettable_doc_iterator,
     return false;
   }
 
-  void reset() noexcept override {
+  void reset() noexcept final {
     min_doc_ = min_base_;
     max_doc_ = min_doc_ + std::get<cost>(attrs_).estimate() - 1;
     std::get<document>(attrs_).value = doc_limits::invalid();
@@ -269,8 +269,8 @@ class range_column_iterator final : public resettable_doc_iterator,
 
 // Iterator over a specified bitmap of documents
 template<typename PayloadReader>
-class bitmap_column_iterator final : public resettable_doc_iterator,
-                                     private PayloadReader {
+class bitmap_column_iterator : public resettable_doc_iterator,
+                               private PayloadReader {
  private:
   using payload_reader = PayloadReader;
 
@@ -293,15 +293,15 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
       irs::get_mutable<prev_doc>(&bitmap_);
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  doc_id_t seek(irs::doc_id_t doc) override {
+  doc_id_t seek(irs::doc_id_t doc) final {
     IRS_ASSERT(doc_limits::valid(doc) || doc_limits::valid(value()));
     doc = bitmap_.seek(doc);
 
@@ -314,7 +314,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     return doc_limits::eof();
   }
 
-  bool next() override {
+  bool next() final {
     if (bitmap_.next()) {
       std::get<irs::payload>(attrs_).value = this->payload(bitmap_.index());
       return true;
@@ -324,7 +324,7 @@ class bitmap_column_iterator final : public resettable_doc_iterator,
     return false;
   }
 
-  void reset() override { bitmap_.reset(); }
+  void reset() final { bitmap_.reset(); }
 
  private:
   sparse_bitmap_iterator bitmap_;
@@ -652,7 +652,7 @@ struct mask_column final : public column_base {
     IRS_ASSERT(ColumnType::kMask == header().type);
   }
 
-  doc_iterator::ptr iterator(ColumnHint hint) const override;
+  doc_iterator::ptr iterator(ColumnHint hint) const final;
 };
 
 doc_iterator::ptr mask_column::iterator(ColumnHint hint) const {
@@ -683,7 +683,7 @@ class dense_fixed_length_column final : public column_base {
     IRS_ASSERT(ColumnType::kDenseFixed == header().type);
   }
 
-  doc_iterator::ptr iterator(ColumnHint hint) const override;
+  doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   void make_buffered(
     irs::index_input& in, MemoryAccountingFunc& memory_accounter,
@@ -808,11 +808,11 @@ class fixed_length_column final : public column_base {
     IRS_ASSERT(ColumnType::kFixed == header().type);
   }
 
-  doc_iterator::ptr iterator(ColumnHint hint) const override;
+  doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   void make_buffered(
     irs::index_input& in, MemoryAccountingFunc& memory_accounter,
-    std::span<std::unique_ptr<column_reader>> next_sorted_columns) override {
+    std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
       if (make_buffered_data<false>(len_, hdr, in, blocks_, column_data_,
@@ -858,7 +858,7 @@ class fixed_length_column final : public column_base {
    private:
     const column_block* blocks_;
     uint64_t len_;
-  };  // payload_reader
+  };
 
   template<bool encrypted>
   bool make_buffered_data(
@@ -974,11 +974,11 @@ class sparse_column final : public column_base {
     IRS_ASSERT(ColumnType::kSparse == header().type);
   }
 
-  doc_iterator::ptr iterator(ColumnHint hint) const override;
+  doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   void make_buffered(
     irs::index_input& in, MemoryAccountingFunc& memory_accounter,
-    std::span<std::unique_ptr<column_reader>> next_sorted_columns) override {
+    std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
       if (make_buffered_data<false>(hdr, in, blocks_, column_data_,
@@ -1372,11 +1372,11 @@ void column::finish(index_output& index_out) {
   hdr.id = id_;
 
   memory_index_input in{docs_.file};
-  sparse_bitmap_iterator it{&in,
-                            {.version = ctx_.version,
-                             .track_prev_doc = false,
-                             .use_block_index = false,
-                             .blocks = {}}};
+  sparse_bitmap_iterator it{
+    &in, sparse_bitmap_iterator::options{.version = ctx_.version,
+                                         .track_prev_doc = false,
+                                         .use_block_index = false,
+                                         .blocks = {}}};
   if (it.next()) {
     hdr.min = it.value();
   }

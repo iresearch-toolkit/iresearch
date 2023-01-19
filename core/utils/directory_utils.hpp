@@ -51,46 +51,45 @@ struct TrackingDirectory final : public directory {
 
   directory& GetImpl() noexcept { return impl_; }
 
-  directory_attributes& attributes() noexcept override {
+  directory_attributes& attributes() noexcept final {
     return impl_.attributes();
   }
 
-  index_output::ptr create(std::string_view name) noexcept override;
+  index_output::ptr create(std::string_view name) noexcept final;
 
-  bool exists(bool& result, std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept final {
     return impl_.exists(result, name);
   }
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept final {
     return impl_.length(result, name);
   }
 
-  index_lock::ptr make_lock(std::string_view name) noexcept override {
+  index_lock::ptr make_lock(std::string_view name) noexcept final {
     return impl_.make_lock(name);
   }
 
-  bool mtime(std::time_t& result,
-             std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result, std::string_view name) const noexcept final {
     return impl_.mtime(result, name);
   }
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override {
+                        IOAdvice advice) const noexcept final {
     return impl_.open(name, advice);
   }
 
-  bool remove(std::string_view) noexcept override {
+  bool remove(std::string_view) noexcept final {
     // not supported
     return false;
   }
 
-  bool rename(std::string_view src, std::string_view dst) noexcept override;
+  bool rename(std::string_view src, std::string_view dst) noexcept final;
 
-  bool sync(std::span<const std::string_view> files) noexcept override {
+  bool sync(std::span<const std::string_view> files) noexcept final {
     return impl_.sync(files);
   }
 
-  bool visit(const visitor_f& visitor) const override {
+  bool visit(const visitor_f& visitor) const final {
     return impl_.visit(visitor);
   }
 
@@ -118,43 +117,42 @@ struct RefTrackingDirectory : public directory {
 
   directory& operator*() noexcept { return impl_; }
 
-  directory_attributes& attributes() noexcept override {
+  directory_attributes& attributes() noexcept final {
     return impl_.attributes();
   }
 
   void clear_refs() const;
 
-  index_output::ptr create(std::string_view name) noexcept override;
+  index_output::ptr create(std::string_view name) noexcept final;
 
-  bool exists(bool& result, std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept final {
     return impl_.exists(result, name);
   }
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept final {
     return impl_.length(result, name);
   }
 
-  index_lock::ptr make_lock(std::string_view name) noexcept override {
+  index_lock::ptr make_lock(std::string_view name) noexcept final {
     return impl_.make_lock(name);
   }
 
-  bool mtime(std::time_t& result,
-             std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result, std::string_view name) const noexcept final {
     return impl_.mtime(result, name);
   }
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+                        IOAdvice advice) const noexcept final;
 
-  bool remove(std::string_view name) noexcept override;
+  bool remove(std::string_view name) noexcept final;
 
-  bool rename(std::string_view src, std::string_view dst) noexcept override;
+  bool rename(std::string_view src, std::string_view dst) noexcept final;
 
-  bool sync(std::span<const std::string_view> names) noexcept override {
+  bool sync(std::span<const std::string_view> names) noexcept final {
     return impl_.sync(names);
   }
 
-  bool visit(const visitor_f& visitor) const override {
+  bool visit(const visitor_f& visitor) const final {
     return impl_.visit(visitor);
   }
 

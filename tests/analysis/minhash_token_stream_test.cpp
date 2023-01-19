@@ -41,7 +41,7 @@ class ArrayStream final : public irs::analysis::analyzer {
       it_{end},
       end_{end} {}
 
-  bool next() override {
+  bool next() final {
     if (it_ == end_) {
       return false;
     }
@@ -57,11 +57,11 @@ class ArrayStream final : public irs::analysis::analyzer {
     return true;
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
-  bool reset(std::string_view data) override {
+  bool reset(std::string_view data) final {
     std::get<irs::offset>(attrs_) = {};
 
     if (data == data_) {

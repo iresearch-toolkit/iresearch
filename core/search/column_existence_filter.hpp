@@ -53,7 +53,7 @@ class by_column_existence final
 
   filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 };
 
 }  // namespace irs

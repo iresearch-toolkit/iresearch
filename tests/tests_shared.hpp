@@ -89,7 +89,7 @@ class test_base : public test_env, public ::testing::Test {
   std::filesystem::path test_dir_;       // res_dir_/<test-name>
   std::filesystem::path test_case_dir_;  // test_dir/<test-case-name>
   bool artifacts_;
-};  // test_info
+};
 
 template<typename T>
 class test_param_base : public test_base,

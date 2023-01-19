@@ -65,7 +65,7 @@
 #else
 #error "System does not support mapping anonymous pages?"
 #endif
-#endif  // MAP_ANON
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constants for madvice
@@ -76,15 +76,9 @@
 #define IR_MADVICE_WILLNEED MADV_WILLNEED
 #define IR_MADVICE_DONTNEED MADV_DONTNEED
 
-#endif  // _MSC_VER
+#endif
 
-namespace irs {
-namespace mmap_utils {
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief flushes changes made in memory back to disk
-//////////////////////////////////////////////////////////////////////////////
-int flush(int fd, void* addr, size_t size, int flags) noexcept;
+namespace irs::mmap_utils {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class mmap_handle
@@ -104,10 +98,6 @@ class mmap_handle : private util::noncopyable {
   size_t size() const noexcept { return size_; }
   ptrdiff_t fd() const noexcept { return fd_; }
 
-  bool flush(int flags) noexcept {
-    return !mmap_utils::flush(static_cast<int>(fd_), addr_, size_, flags);
-  }
-
   bool advise(int advice) noexcept {
     return 0 == ::madvise(addr_, size_, advice);
   }
@@ -121,7 +111,6 @@ class mmap_handle : private util::noncopyable {
   size_t size_;    // file size
   ptrdiff_t fd_;   // file descriptor
   bool dontneed_;  // request to free pages on close
-};                 // mmap_handle
+};
 
-}  // namespace mmap_utils
-}  // namespace irs
+}  // namespace irs::mmap_utils

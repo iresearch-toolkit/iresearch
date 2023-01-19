@@ -209,7 +209,7 @@ struct field_collector final : public irs::sort::field_collector {
   uint64_t total_term_freq = 0;
 
   void collect(const irs::SubReader& /*segment*/,
-               const irs::term_reader& field) override {
+               const irs::term_reader& field) final {
     docs_with_field += field.docs_count();
 
     auto* freq = irs::get<irs::frequency>(field);
@@ -219,12 +219,12 @@ struct field_collector final : public irs::sort::field_collector {
     }
   }
 
-  void reset() noexcept override {
+  void reset() noexcept final {
     docs_with_field = 0;
     total_term_freq = 0;
   }
 
-  void collect(irs::bytes_view in) override {
+  void collect(irs::bytes_view in) final {
     byte_ref_iterator itr(in);
     auto docs_with_field_value = irs::vread<uint64_t>(itr);
     auto total_term_freq_value = irs::vread<uint64_t>(itr);
@@ -237,7 +237,7 @@ struct field_collector final : public irs::sort::field_collector {
     total_term_freq += total_term_freq_value;
   }
 
-  void write(irs::data_output& out) const override {
+  void write(irs::data_output& out) const final {
     out.write_vlong(docs_with_field);
     out.write_vlong(total_term_freq);
   }
@@ -249,7 +249,7 @@ struct term_collector final : public irs::sort::term_collector {
 
   void collect(const irs::SubReader& /*segment*/,
                const irs::term_reader& /*field*/,
-               const irs::attribute_provider& term_attrs) override {
+               const irs::attribute_provider& term_attrs) final {
     auto* meta = irs::get<irs::term_meta>(term_attrs);
 
     if (meta) {
@@ -257,9 +257,9 @@ struct term_collector final : public irs::sort::term_collector {
     }
   }
 
-  void reset() noexcept override { docs_with_term = 0; }
+  void reset() noexcept final { docs_with_term = 0; }
 
-  void collect(irs::bytes_view in) override {
+  void collect(irs::bytes_view in) final {
     byte_ref_iterator itr(in);
     auto docs_with_term_value = irs::vread<uint64_t>(itr);
 
@@ -270,7 +270,7 @@ struct term_collector final : public irs::sort::term_collector {
     docs_with_term += docs_with_term_value;
   }
 
-  void write(irs::data_output& out) const override {
+  void write(irs::data_output& out) const final {
     out.write_vlong(docs_with_term);
   }
 };
@@ -312,7 +312,7 @@ struct stats final {
   float_t norm_length;
   // precomputed 1/(k*(1-b+b*|doc|/avgDL)) for |doc| E [0..255]
   float_t norm_cache[256];
-};  // stats
+};
 
 struct BM15Context : public irs::score_ctx {
   BM15Context(float_t k, irs::score_t boost, const bm25::stats& stats,
@@ -390,28 +390,29 @@ struct MakeScoreFunctionImpl<BM15Context> {
   using Ctx = BM15Context;
 
   template<bool HasFilterBoost, typename... Args>
-  static ScoreFunction Make(Args&&... args) {
-    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
-            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              IRS_ASSERT(res);
-              IRS_ASSERT(ctx);
+  static auto Make(Args&&... args) {
+    return ScoreFunction::Make<Ctx>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        IRS_ASSERT(res);
+        IRS_ASSERT(ctx);
 
-              auto& state = *static_cast<Ctx*>(ctx);
+        auto& state = *static_cast<Ctx*>(ctx);
 
-              const float_t tf = static_cast<float_t>(state.freq->value);
+        const float_t tf = static_cast<float_t>(state.freq->value);
 
-              float_t c0;
-              if constexpr (HasFilterBoost) {
-                IRS_ASSERT(state.filter_boost);
-                c0 = state.filter_boost->value * state.num;
-              } else {
-                c0 = state.num;
-              }
+        float_t c0;
+        if constexpr (HasFilterBoost) {
+          IRS_ASSERT(state.filter_boost);
+          c0 = state.filter_boost->value * state.num;
+        } else {
+          c0 = state.num;
+        }
 
-              const float_t c1 = state.norm_const;
+        const float_t c1 = state.norm_const;
 
-              *res = c0 - c0 / (1.f + tf / c1);
-            }};
+        *res = c0 - c0 / (1.f + tf / c1);
+      },
+      std::forward<Args>(args)...);
   }
 };
 
@@ -420,42 +421,43 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
   using Ctx = BM25Context<Norm>;
 
   template<bool HasFilterBoost, typename... Args>
-  static ScoreFunction Make(Args&&... args) {
-    return {std::make_unique<Ctx>(std::forward<Args>(args)...),
-            [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-              IRS_ASSERT(res);
-              IRS_ASSERT(ctx);
+  static auto Make(Args&&... args) {
+    return ScoreFunction::Make<Ctx>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        IRS_ASSERT(res);
+        IRS_ASSERT(ctx);
 
-              auto& state = *static_cast<Ctx*>(ctx);
+        auto& state = *static_cast<Ctx*>(ctx);
 
-              float_t tf;
-              if constexpr (Norm::kType < NormType::kNorm) {
-                tf = static_cast<float_t>(state.freq->value);
-              } else {
-                tf = ::kSQRT.get<true>(state.freq->value);
-              }
+        float_t tf;
+        if constexpr (Norm::kType < NormType::kNorm) {
+          tf = static_cast<float_t>(state.freq->value);
+        } else {
+          tf = ::kSQRT.get<true>(state.freq->value);
+        }
 
-              float_t c0;
-              if constexpr (HasFilterBoost) {
-                IRS_ASSERT(state.filter_boost);
-                c0 = state.filter_boost->value * state.num;
-              } else {
-                c0 = state.num;
-              }
+        float_t c0;
+        if constexpr (HasFilterBoost) {
+          IRS_ASSERT(state.filter_boost);
+          c0 = state.filter_boost->value * state.num;
+        } else {
+          c0 = state.num;
+        }
 
-              if constexpr (NormType::kNorm2Tiny == Norm::kType) {
-                static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
-                const float_t inv_c1 =
-                  state.norm_cache[state.norm() & uint32_t{0xFF}];
+        if constexpr (NormType::kNorm2Tiny == Norm::kType) {
+          static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
+          const float_t inv_c1 =
+            state.norm_cache[state.norm() & uint32_t{0xFF}];
 
-                *res = c0 - c0 / (1.f + tf * inv_c1);
-              } else {
-                const float_t c1 =
-                  state.norm_const + state.norm_length * state.norm();
+          *res = c0 - c0 / (1.f + tf * inv_c1);
+        } else {
+          const float_t c1 =
+            state.norm_const + state.norm_length * state.norm();
 
-                *res = c0 - c0 * c1 / (c1 + tf);
-              }
-            }};
+          *res = c0 - c0 * c1 / (c1 + tf);
+        }
+      },
+      std::forward<Args>(args)...);
   }
 };
 
@@ -478,7 +480,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
   void collect(byte_type* stats_buf, const irs::IndexReader& /*index*/,
                const irs::sort::field_collector* field,
-               const irs::sort::term_collector* term) const override {
+               const irs::sort::term_collector* term) const final {
     auto& stats = stats_cast(stats_buf);
 
     const auto* field_ptr = down_cast<field_collector>(field);
@@ -519,19 +521,17 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     }
   }
 
-  IndexFeatures features() const noexcept override {
-    return IndexFeatures::FREQ;
-  }
+  IndexFeatures features() const noexcept final { return IndexFeatures::FREQ; }
 
-  field_collector::ptr prepare_field_collector() const override {
+  field_collector::ptr prepare_field_collector() const final {
     return std::make_unique<field_collector>();
   }
 
-  virtual ScoreFunction prepare_scorer(const SubReader& segment,
-                                       const term_reader& field,
-                                       const byte_type* query_stats,
-                                       const attribute_provider& doc_attrs,
-                                       score_t boost) const override {
+  ScoreFunction prepare_scorer(const SubReader& segment,
+                               const term_reader& field,
+                               const byte_type* query_stats,
+                               const attribute_provider& doc_attrs,
+                               score_t boost) const final {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
@@ -597,7 +597,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
     return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, stats, freq);
   }
 
-  term_collector::ptr prepare_term_collector() const override {
+  term_collector::ptr prepare_term_collector() const final {
     return std::make_unique<term_collector>();
   }
 

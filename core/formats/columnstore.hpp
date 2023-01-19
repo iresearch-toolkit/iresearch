@@ -52,7 +52,7 @@ enum class Version : int32_t {
   /// * per column compression
   ////////////////////////////////////////////////////////////////////////////
   MAX = 1,
-};  // Version
+};
 
 irs::columnstore_writer::ptr make_writer(Version version,
                                          ColumnMetaVersion meta_version);

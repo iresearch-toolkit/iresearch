@@ -30,12 +30,12 @@
 namespace irs {
 
 // A reusable thread-safe allocator for memory files
-class memory_allocator final {
+class memory_allocator : public memory::Managed {
  private:
   struct buffer {
     using ptr = std::unique_ptr<byte_type[]>;
     static ptr make(size_t size);
-  };  // buffer
+  };
 
  public:
   using ptr = memory::managed_ptr<memory_allocator>;
@@ -56,7 +56,7 @@ class memory_allocator final {
 
  private:
   allocator_type allocator_;
-};  // memory_allocator
+};
 
 // Directory encryption provider
 struct encryption {

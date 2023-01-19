@@ -63,10 +63,8 @@ IRS_FORCE_INLINE bool IsSubsetOf(IndexFeatures lhs,
   return lhs == (lhs & rhs);
 }
 
-struct FeatureWriter {
+struct FeatureWriter : memory::Managed {
   using ptr = memory::managed_ptr<FeatureWriter>;
-
-  virtual ~FeatureWriter() = default;
 
   virtual void write(const field_stats& stats, doc_id_t doc,
                      std::function<column_output&(doc_id_t)>& writer) = 0;

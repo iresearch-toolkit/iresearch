@@ -42,7 +42,6 @@
 #include "utils/io_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
-#include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/object_pool.hpp"
 #include "utils/timer_utils.hpp"
@@ -175,7 +174,7 @@ class pos_iterator final : public irs::position {
     return irs::get_mutable(attrs_, id);
   }
 
-  bool next() override {
+  bool next() final {
     IRS_ASSERT(freq_);
 
     if (pos_ == freq_->value) {
@@ -206,7 +205,7 @@ class pos_iterator final : public irs::position {
     return true;
   }
 
-  void reset() override {
+  void reset() final {
     IRS_ASSERT(false);  // unsupported
   }
 
@@ -230,7 +229,7 @@ namespace detail {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class doc_iterator final : public irs::doc_iterator {
+class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator() noexcept : freq_in_(EMPTY_POOL) {}
 
@@ -282,16 +281,16 @@ class doc_iterator final : public irs::doc_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t doc) override {
+  doc_id_t seek(doc_id_t doc) final {
     irs::seek(*this, doc);
     return value();
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() override {
+  bool next() final {
     auto& doc = std::get<document>(attrs_);
 
     if (freq_in_.eof()) {
@@ -353,7 +352,7 @@ class doc_iterator final : public irs::doc_iterator {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class sorting_doc_iterator
 ////////////////////////////////////////////////////////////////////////////////
-class sorting_doc_iterator final : public irs::doc_iterator {
+class sorting_doc_iterator : public irs::doc_iterator {
  public:
   // reset field
   void reset(const field_data& field) {
@@ -408,16 +407,16 @@ class sorting_doc_iterator final : public irs::doc_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t doc) noexcept override {
+  doc_id_t seek(doc_id_t doc) noexcept final {
     irs::seek(*this, doc);
     return value();
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     // cppcheck-suppress shadowFunction
     auto& value = std::get<document>(attrs_);
 
@@ -521,7 +520,7 @@ class sorting_doc_iterator final : public irs::doc_iterator {
   pos_iterator<byte_block_pool::sliced_greedy_reader> pos_;
   frequency freq_;
   attributes attrs_;
-};  // sorting_doc_iterator
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class term_iterator
@@ -552,27 +551,27 @@ class term_iterator : public irs::term_iterator {
     }
   }
 
-  bytes_view value() const noexcept override {
+  bytes_view value() const noexcept final {
     IRS_ASSERT(it_ != end_);
     return (*it_)->term;
   }
 
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 
-  void read() noexcept override {
+  void read() noexcept final {
     // Does nothing now
   }
 
-  irs::doc_iterator::ptr postings(IndexFeatures /*features*/) const override {
+  irs::doc_iterator::ptr postings(IndexFeatures /*features*/) const final {
     REGISTER_TIMER_DETAILED();
     IRS_ASSERT(it_ != end_);
 
     return (this->*POSTINGS[size_t(field_->prox_random_access())])(**it_);
   }
 
-  bool next() override {
+  bool next() final {
     if (next_ == end_) {
       return false;
     }
@@ -611,7 +610,7 @@ class term_iterator : public irs::term_iterator {
       prox_end);  // term's proximity // TODO: create on demand!!!
 
     doc_itr_.reset(posting, freq, &prox);
-    return memory::to_managed<irs::doc_iterator, false>(&doc_itr_);
+    return memory::to_managed<irs::doc_iterator>(doc_itr_);
   }
 
   irs::doc_iterator::ptr sort_postings(const posting& posting) const {
@@ -627,7 +626,7 @@ class term_iterator : public irs::term_iterator {
 
     doc_itr_.reset(posting, freq, nullptr);
     sorting_doc_itr_.reset(doc_itr_, doc_map_);
-    return memory::to_managed<irs::doc_iterator, false>(&sorting_doc_itr_);
+    return memory::to_managed<irs::doc_iterator>(sorting_doc_itr_);
   }
 
   fields_data::postings_ref_t* postings_{};
@@ -638,7 +637,7 @@ class term_iterator : public irs::term_iterator {
   const doc_map* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
-};  // term_iterator
+};
 
 /*static*/ const term_iterator::postings_f term_iterator::POSTINGS[2]{
   &term_iterator::postings, &term_iterator::sort_postings};
@@ -655,17 +654,17 @@ class term_reader final : public irs::basic_term_reader,
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
 
-  irs::bytes_view(min)() const noexcept override { return min_; }
+  irs::bytes_view(min)() const noexcept final { return min_; }
 
-  irs::bytes_view(max)() const noexcept override { return max_; }
+  irs::bytes_view(max)() const noexcept final { return max_; }
 
-  const irs::field_meta& meta() const noexcept override { return it_.meta(); }
+  const irs::field_meta& meta() const noexcept final { return it_.meta(); }
 
-  irs::term_iterator::ptr iterator() const noexcept override {
-    return memory::to_managed<irs::term_iterator, false>(&it_);
+  irs::term_iterator::ptr iterator() const noexcept final {
+    return memory::to_managed<irs::term_iterator>(it_);
   }
 
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 
@@ -673,7 +672,7 @@ class term_reader final : public irs::basic_term_reader,
   mutable detail::term_iterator it_;
   const irs::bytes_view min_{};
   const irs::bytes_view max_{};
-};  // term_reader
+};
 
 }  // namespace detail
 

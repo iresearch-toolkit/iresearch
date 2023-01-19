@@ -90,15 +90,15 @@ class lazy_filter_bitset : private util::noncopyable {
   cost::cost_t cost_;
 };
 
-class lazy_filter_bitset_iterator final : public doc_iterator,
-                                          private util::noncopyable {
+class lazy_filter_bitset_iterator : public doc_iterator,
+                                    private util::noncopyable {
  public:
   explicit lazy_filter_bitset_iterator(lazy_filter_bitset& bitset) noexcept
     : bitset_(bitset), cost_(bitset_.get_cost()) {
     reset();
   }
 
-  bool next() override {
+  bool next() final {
     while (!word_) {
       if (bitset_.get(word_idx_, &word_)) {
         ++word_idx_;  // move only if ok. Or we could be overflowed!
@@ -117,7 +117,7 @@ class lazy_filter_bitset_iterator final : public doc_iterator,
     return true;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     word_idx_ = target / bits_required<lazy_filter_bitset::word_t>();
     if (bitset_.get(word_idx_, &word_)) {
       const doc_id_t bit_idx =
@@ -138,7 +138,7 @@ class lazy_filter_bitset_iterator final : public doc_iterator,
 
   doc_id_t value() const noexcept final { return doc_.value; }
 
-  attribute* get_mutable(type_info::type_id id) noexcept override {
+  attribute* get_mutable(type_info::type_id id) noexcept final {
     if (type<document>::id() == id) {
       return &doc_;
     }
@@ -173,13 +173,13 @@ struct proxy_query_cache {
   filter::ptr real_filter_;
 };
 
-class proxy_query final : public filter::prepared {
+class proxy_query : public filter::prepared {
  public:
   explicit proxy_query(proxy_filter::cache_ptr cache) : cache_(cache) {
     IRS_ASSERT(cache_->prepared_real_filter_);
   }
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     // first try to find segment in cache.
     auto& [unused, cached] =
       *cache_->readers_.emplace(&ctx.segment, nullptr).first;
@@ -193,7 +193,7 @@ class proxy_query final : public filter::prepared {
     return memory::make_managed<lazy_filter_bitset_iterator>(*cached);
   }
 
-  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
 

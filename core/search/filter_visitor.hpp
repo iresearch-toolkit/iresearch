@@ -47,6 +47,6 @@ struct filter_visitor {
   /// @brief applies actions to a current term iterator
   //////////////////////////////////////////////////////////////////////////////
   virtual void visit(score_t boost) = 0;
-};  // filter_visitor
+};
 
 }  // namespace irs

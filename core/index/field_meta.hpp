@@ -66,7 +66,6 @@ struct field_meta {
   IndexFeatures index_features{IndexFeatures::NONE};
 };
 
-static_assert(std::is_move_constructible<field_meta>::value,
-              "default move constructor expected");
+static_assert(std::is_move_constructible_v<field_meta>);
 
 }  // namespace irs

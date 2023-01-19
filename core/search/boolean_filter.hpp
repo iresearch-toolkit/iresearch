@@ -59,7 +59,7 @@ class boolean_filter : public filter, public AllDocsProvider {
     return *filters_.emplace_back(std::move(filter));
   }
 
-  size_t hash() const noexcept override;
+  size_t hash() const noexcept final;
 
   void clear() { return filters_.clear(); }
   bool empty() const { return filters_.empty(); }
@@ -71,7 +71,7 @@ class boolean_filter : public filter, public AllDocsProvider {
 
  protected:
   explicit boolean_filter(const type_info& type) noexcept;
-  bool equals(const filter& rhs) const noexcept override;
+  bool equals(const filter& rhs) const noexcept final;
 
   virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
@@ -99,7 +99,7 @@ class And final : public boolean_filter {
                                 std::vector<const filter*>& excl,
                                 const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 };
 
 // Represents disjunction
@@ -126,7 +126,7 @@ class Or final : public boolean_filter {
                                 std::vector<const filter*>& excl,
                                 const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 
  private:
   size_t min_match_count_;
@@ -163,12 +163,12 @@ class Not : public filter, public AllDocsProvider {
 
   filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 
-  size_t hash() const noexcept override;
+  size_t hash() const noexcept final;
 
  protected:
-  bool equals(const irs::filter& rhs) const noexcept override;
+  bool equals(const irs::filter& rhs) const noexcept final;
 
  private:
   filter::ptr filter_;

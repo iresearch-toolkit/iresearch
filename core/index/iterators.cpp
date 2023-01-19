@@ -29,135 +29,130 @@
 #include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
 
+namespace irs {
 namespace {
 
 // Represents an iterator with no documents
-struct empty_doc_iterator final : irs::doc_iterator {
-  empty_doc_iterator() noexcept : cost(0), doc{irs::doc_limits::eof()} {}
-
-  irs::doc_id_t value() const override { return irs::doc_limits::eof(); }
-  bool next() override { return false; }
-  irs::doc_id_t seek(irs::doc_id_t) override { return irs::doc_limits::eof(); }
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (irs::type<irs::document>::id() == type) {
-      return &doc;
+struct EmptyDocIterator : doc_iterator {
+  doc_id_t value() const final { return doc_limits::eof(); }
+  bool next() final { return false; }
+  doc_id_t seek(doc_id_t /*target*/) final { return doc_limits::eof(); }
+  attribute* get_mutable(type_info::type_id id) noexcept final {
+    if (type<document>::id() == id) {
+      return &_doc;
     }
 
-    return irs::type<irs::cost>::id() == type ? &cost : nullptr;
+    return type<cost>::id() == id ? &_cost : nullptr;
   }
 
-  irs::cost cost;
-  irs::document doc{irs::doc_limits::eof()};
+ private:
+  cost _cost{0};
+  document _doc{doc_limits::eof()};
 };
 
-empty_doc_iterator kEmptyDocIterator;
+EmptyDocIterator kEmptyDocIterator;
 
 // Represents an iterator without terms
-struct empty_term_iterator : irs::term_iterator {
-  irs::bytes_view value() const noexcept final { return {}; }
-  irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept final {
-    return irs::doc_iterator::empty();
+struct EmptyTermIterator : term_iterator {
+  bytes_view value() const noexcept final { return {}; }
+  doc_iterator::ptr postings(IndexFeatures /*features*/) const noexcept final {
+    return doc_iterator::empty();
   }
   void read() noexcept final {}
   bool next() noexcept final { return false; }
-  irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+  attribute* get_mutable(type_info::type_id /*type*/) noexcept final {
     return nullptr;
   }
 };
 
-empty_term_iterator kEmptyTermIterator;
+EmptyTermIterator kEmptyTermIterator;
 
 // Represents an iterator without terms
-struct empty_seek_term_iterator final : irs::seek_term_iterator {
-  irs::bytes_view value() const noexcept final { return {}; }
-  irs::doc_iterator::ptr postings(irs::IndexFeatures) const noexcept final {
-    return irs::doc_iterator::empty();
+struct EmptySeekTermIterator : seek_term_iterator {
+  bytes_view value() const noexcept final { return {}; }
+  doc_iterator::ptr postings(IndexFeatures /*features*/) const noexcept final {
+    return doc_iterator::empty();
   }
   void read() noexcept final {}
   bool next() noexcept final { return false; }
-  irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+  attribute* get_mutable(type_info::type_id /*type*/) noexcept final {
     return nullptr;
   }
-  irs::SeekResult seek_ge(irs::bytes_view) noexcept override {
-    return irs::SeekResult::END;
+  SeekResult seek_ge(bytes_view /*value*/) noexcept final {
+    return SeekResult::END;
   }
-  bool seek(irs::bytes_view) noexcept override { return false; }
-  irs::seek_cookie::ptr cookie() const noexcept override { return nullptr; }
+  bool seek(bytes_view /*value*/) noexcept final { return false; }
+  seek_cookie::ptr cookie() const noexcept final { return nullptr; }
 };
 
-empty_seek_term_iterator kEmptySeekIterator;
+EmptySeekTermIterator kEmptySeekIterator;
 
 // Represents a reader with no terms
-const irs::empty_term_reader kEmptyTermReader{0};
+const empty_term_reader kEmptyTermReader{0};
 
 // Represents a reader with no fields
-struct empty_field_iterator final : irs::field_iterator {
-  const irs::term_reader& value() const override { return kEmptyTermReader; }
+struct EmptyFieldIterator : field_iterator {
+  const term_reader& value() const final { return kEmptyTermReader; }
 
-  bool seek(std::string_view) override { return false; }
+  bool seek(std::string_view /*target*/) final { return false; }
 
-  bool next() override { return false; }
+  bool next() final { return false; }
 };
 
-empty_field_iterator kEmptyFieldIterator;
+EmptyFieldIterator kEmptyFieldIterator;
 
-struct empty_column_reader final : irs::column_reader {
-  irs::field_id id() const override { return irs::field_limits::invalid(); }
+struct EmptyColumnReader final : column_reader {
+  field_id id() const final { return field_limits::invalid(); }
 
   // Returns optional column name.
-  std::string_view name() const override { return {}; }
+  std::string_view name() const final { return {}; }
 
   // Returns column header.
-  irs::bytes_view payload() const override { return {}; }
+  bytes_view payload() const final { return {}; }
 
   // Returns the corresponding column iterator.
   // If the column implementation supports document payloads then it
   // can be accessed via the 'payload' attribute.
-  irs::doc_iterator::ptr iterator(irs::ColumnHint /*hint*/) const override {
-    return irs::doc_iterator::empty();
+  doc_iterator::ptr iterator(ColumnHint /*hint*/) const final {
+    return doc_iterator::empty();
   }
 
-  irs::doc_id_t size() const override { return 0; }
+  doc_id_t size() const final { return 0; }
 };
 
-const empty_column_reader kEmptyColumnReader;
+const EmptyColumnReader kEmptyColumnReader;
 
 // Represents a reader with no columns
-struct empty_column_iterator final : irs::column_iterator {
-  const irs::column_reader& value() const override {
-    return kEmptyColumnReader;
-  }
+struct EmptyColumnIterator : column_iterator {
+  const column_reader& value() const final { return kEmptyColumnReader; }
 
-  bool seek(std::string_view) override { return false; }
+  bool seek(std::string_view /*name*/) final { return false; }
 
-  bool next() override { return false; }
+  bool next() final { return false; }
 };
 
-empty_column_iterator kEmptyColumnIterator;
+EmptyColumnIterator kEmptyColumnIterator;
 
 }  // namespace
 
-namespace irs {
-
 term_iterator::ptr term_iterator::empty() {
-  return memory::to_managed<irs::term_iterator, false>(&kEmptyTermIterator);
+  return memory::to_managed<term_iterator>(kEmptyTermIterator);
 }
 
 seek_term_iterator::ptr seek_term_iterator::empty() {
-  return memory::to_managed<irs::seek_term_iterator, false>(
-    &kEmptySeekIterator);
+  return memory::to_managed<seek_term_iterator>(kEmptySeekIterator);
 }
 
 doc_iterator::ptr doc_iterator::empty() {
-  return memory::to_managed<doc_iterator, false>(&kEmptyDocIterator);
+  return memory::to_managed<doc_iterator>(kEmptyDocIterator);
 }
 
 field_iterator::ptr field_iterator::empty() {
-  return memory::to_managed<irs::field_iterator, false>(&kEmptyFieldIterator);
+  return memory::to_managed<field_iterator>(kEmptyFieldIterator);
 }
 
 column_iterator::ptr column_iterator::empty() {
-  return memory::to_managed<irs::column_iterator, false>(&kEmptyColumnIterator);
+  return memory::to_managed<column_iterator>(kEmptyColumnIterator);
 }
 
 }  // namespace irs

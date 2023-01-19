@@ -57,7 +57,7 @@ class format_register
                                         std::string_view, format_register, hash,
                                         equal_to> {
  protected:
-  std::string key_to_filename(const key_type& key) const override {
+  std::string key_to_filename(const key_type& key) const final {
     auto const& module = irs::IsNull(key.second) ? key.first : key.second;
 
     std::string filename(kFileNamePrefix.size() + module.size(), 0);
@@ -70,7 +70,7 @@ class format_register
 
     return filename;
   }
-};  // format_register
+};
 
 }  // namespace
 

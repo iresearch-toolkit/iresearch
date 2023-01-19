@@ -468,7 +468,7 @@ class block_pool_test : public test_base {
 
  protected:
   irs::block_pool<T, BlockSize> pool_;
-};  // block_pool_test
+};
 
 typedef block_pool_test<irs::byte_type, 32768> byte_block_pool_test;
 

@@ -339,7 +339,6 @@ class bitvector final {
   size_t size_{};  // number of bits requested in a bitset
 };
 
-static_assert(std::is_nothrow_move_constructible<bitvector>::value,
-              "default move constructor expected");
+static_assert(std::is_nothrow_move_constructible_v<bitvector>);
 
 }  // namespace irs

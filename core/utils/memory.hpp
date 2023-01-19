@@ -97,7 +97,7 @@ class aligned_storage {
     align_t<Alignment> align_;
     char data[MSVC_ONLY(!Size ? 1 :) Size];
   };
-};  // aligned_storage
+};
 
 // Provides the member typedef type, which is a POD type of a size and
 // alignment suitable for use as uninitialized storage for an object of
@@ -116,7 +116,7 @@ struct aligned_union {
 
   static const size_t alignment_value = alignof(type);
   static const size_t size_value = sizeof(type);
-};  // aligned_union
+};
 
 // Provides the storage (POD type) that is suitable for use as
 // uninitialized storage for an object of  any of the specified Types
@@ -167,7 +167,7 @@ struct aligned_type {
   }
 
   typename aligned_union<Types...>::type storage;
-};  // aligned_type
+};
 
 template<typename Alloc>
 class allocator_deallocator {
@@ -255,86 +255,108 @@ class allocator_array_deleter {
   size_t size_;
 };
 
-struct noop_deleter {
-  template<typename T>
-  void operator()(T* /*unused*/) {}
+struct Managed {
+ protected:
+  virtual ~Managed() = default;
+
+ private:
+  friend struct ManagedDeleter;
+
+  // Const because we can allocate and then delete const object
+  virtual void Destroy() const noexcept {}
+};
+
+template<typename Base>
+struct OnHeap final : Base {
+  static_assert(std::is_base_of_v<Managed, Base>);
+
+  template<typename... Args>
+  OnHeap(Args&&... args) : Base{std::forward<Args>(args)...} {}
+
+ private:
+  void Destroy() const noexcept final { delete this; }
+};
+
+struct ManagedDeleter {
+  void operator()(const Managed* p) noexcept {
+    IRS_ASSERT(p != nullptr);  // std::unique_ptr doesn't call dtor on nullptr
+    p->Destroy();
+  }
 };
 
 template<typename T>
-struct managed_deleter : util::noncopyable {
- public:
-  using value_type = T;
-  using pointer = T*;
-
-  explicit managed_deleter(pointer ptr = nullptr) noexcept : ptr_(ptr) {}
-
-  template<typename U,
-           typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
-  // cppcheck-suppress noExplicitConstructor
-  managed_deleter(managed_deleter<U>&& rhs) noexcept : ptr_(rhs.ptr_) {
-    rhs.ptr_ = nullptr;
-  }
-
-  managed_deleter(managed_deleter&& rhs) noexcept : ptr_(rhs.ptr_) {
-    rhs.ptr_ = nullptr;
-  }
-
-  managed_deleter& operator=(managed_deleter&& rhs) noexcept {
-    if (this != &rhs) {
-      ptr_ = rhs.ptr_;
-      rhs.ptr_ = nullptr;
-    }
-    return *this;
-  }
-
-  template<typename U,
-           typename = std::enable_if_t<std::is_convertible_v<U*, pointer>, U*>>
-  managed_deleter& operator=(managed_deleter<U>&& rhs) noexcept {
-    ptr_ = rhs.ptr_;
-    rhs.ptr_ = nullptr;
-    return *this;
-  }
-
-  void operator()(const pointer p) noexcept {
-    IRS_ASSERT(!ptr_ || p == ptr_);
-    delete ptr_;
-  }
-
-  pointer get() const noexcept { return ptr_; }
-
+class managed_ptr final : std::unique_ptr<T, ManagedDeleter> {
  private:
+  using Ptr = std::unique_ptr<T, ManagedDeleter>;
+
   template<typename U>
-  friend struct managed_deleter;
+  friend class managed_ptr;
 
-  pointer ptr_;
-};  // managed_deleter
+  template<typename Base, typename Derived>
+  friend constexpr managed_ptr<Base> to_managed(Derived& p) noexcept;
 
-template<typename T>
-using managed_ptr = std::unique_ptr<T, memory::managed_deleter<T>>;
+  template<typename Base, typename Derived, typename... Args>
+  friend managed_ptr<Base> make_managed(Args&&... args);
 
-template<typename T, bool Manage = true>
-inline typename std::enable_if_t<!std::is_array<T>::value, managed_ptr<T>>
-to_managed(T* ptr) noexcept {
-  return managed_ptr<T>(
-    ptr, Manage ? managed_deleter<T>(ptr) : managed_deleter<T>(nullptr));
+  constexpr explicit managed_ptr(T* p) noexcept : Ptr{p} {}
+
+ public:
+  using typename Ptr::element_type;
+  using typename Ptr::pointer;
+
+  static_assert(!std::is_array_v<T>);
+
+  constexpr managed_ptr() noexcept = default;
+  constexpr managed_ptr(managed_ptr&& u) noexcept = default;
+  constexpr managed_ptr(std::nullptr_t) noexcept : Ptr{nullptr} {}
+  template<typename U,
+           typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+  constexpr managed_ptr(managed_ptr<U>&& u) noexcept : Ptr{std::move(u)} {}
+
+  constexpr managed_ptr& operator=(managed_ptr&& t) noexcept = default;
+  constexpr managed_ptr& operator=(std::nullptr_t) noexcept {
+    Ptr::operator=(nullptr);
+    return *this;
+  }
+  template<typename U,
+           typename = std::enable_if_t<std::is_convertible_v<U*, T*>>>
+  constexpr managed_ptr& operator=(managed_ptr<U>&& u) noexcept {
+    Ptr::operator=(std::move(u));
+    return *this;
+  }
+
+  constexpr void reset(std::nullptr_t = nullptr) noexcept { Ptr::reset(); }
+  constexpr void swap(managed_ptr& t) noexcept { Ptr::swap(t); }
+
+  using Ptr::get;
+  using Ptr::operator bool;
+  using Ptr::operator*;
+  using Ptr::operator->;
+};
+
+template<typename T, typename U>
+constexpr bool operator==(const managed_ptr<T>& t, const managed_ptr<U>& u) {
+  return t.get() == u.get();
 }
 
 template<typename T>
-inline typename std::enable_if_t<!std::is_array<T>::value, managed_ptr<T>>
-to_managed(std::unique_ptr<T>&& ptr) noexcept {
-  auto* p = ptr.release();
-  return managed_ptr<T>(p, managed_deleter<T>(p));
+constexpr bool operator==(const managed_ptr<T>& t, std::nullptr_t) noexcept {
+  return !t;
 }
 
-template<typename T, typename... Types>
-inline typename std::enable_if_t<!std::is_array<T>::value, managed_ptr<T>>
-make_managed(Types&&... Args) {
-  return to_managed<T, true>(new T(std::forward<Types>(Args)...));
+template<typename Base, typename Derived = Base>
+constexpr managed_ptr<Base> to_managed(Derived& p) noexcept {
+  return managed_ptr<Base>{&p};
+}
+
+template<typename Base, typename Derived = Base, typename... Args>
+managed_ptr<Base> make_managed(Args&&... args) {
+  return managed_ptr<Base>{new OnHeap<Derived>{std::forward<Args>(args)...}};
 }
 
 template<typename T, typename Alloc, typename... Types>
-inline typename std::enable_if_t<!std::is_array<T>::value,
-                                 std::unique_ptr<T, allocator_deleter<Alloc>>>
+inline std::enable_if_t<!std::is_array_v<T>,
+                        std::unique_ptr<T, allocator_deleter<Alloc>>>
 allocate_unique(Alloc& alloc, Types&&... Args) {
   typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
   typedef typename traits_t::pointer pointer;
@@ -355,8 +377,8 @@ allocate_unique(Alloc& alloc, Types&&... Args) {
 }
 
 template<typename T, typename Alloc>
-typename std::enable_if_t<std::is_array<T>::value && std::extent<T>::value == 0,
-                          std::unique_ptr<T, allocator_array_deleter<Alloc>>>
+std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0,
+                 std::unique_ptr<T, allocator_array_deleter<Alloc>>>
 allocate_unique(Alloc& alloc, size_t size) {
   typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
   typedef typename traits_t::pointer pointer;
@@ -396,9 +418,8 @@ struct allocate_only_tag {};
 static const auto allocate_only = allocate_only_tag();
 
 template<typename T, typename Alloc>
-typename std::enable_if_t<
-  std::is_array<T>::value && std::extent<T>::value == 0,
-  std::unique_ptr<T, allocator_array_deallocator<Alloc>>>
+std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0,
+                 std::unique_ptr<T, allocator_array_deallocator<Alloc>>>
 allocate_unique(Alloc& alloc, size_t size, allocate_only_tag /*tag*/) {
   typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
   typedef typename traits_t::pointer pointer;
@@ -418,7 +439,7 @@ allocate_unique(Alloc& alloc, size_t size, allocate_only_tag /*tag*/) {
 
 // Decline wrong syntax
 template<typename T, typename Alloc, typename... Types>
-typename std::enable_if_t<std::extent<T>::value != 0, void> allocate_unique(
+std::enable_if_t<std::extent_v<T> != 0, void> allocate_unique(
   Alloc&, Types&&...) = delete;
 
 template<typename Class, bool = is_shared_ptr_v<typename Class::ptr>>
@@ -435,9 +456,8 @@ struct maker<Class, false> {
   template<typename... Args>
   static typename Class::ptr make(Args&&... args) {
     static_assert(
-      std::is_nothrow_constructible<typename Class::ptr,
-                                    typename Class::ptr::element_type*>::value,
-      "type must be nothrow constructible");
+      std::is_nothrow_constructible_v<typename Class::ptr,
+                                      typename Class::ptr::element_type*>);
 
     return typename Class::ptr(new Class(std::forward<Args>(args)...));
   }
@@ -446,13 +466,12 @@ struct maker<Class, false> {
 }  // namespace irs::memory
 
 // Default inline implementation of a factory method, instantiation on heap
-#define DEFINE_FACTORY_INLINE(class_name)                                   \
-  template<typename Class, bool>                                            \
-  friend struct irs::memory::maker;                                         \
-  template<typename _T, typename... Args>                                   \
-  static ptr make(Args&&... args) {                                         \
-    typedef typename std::enable_if<std::is_base_of<class_name, _T>::value, \
-                                    _T>::type type;                         \
-    typedef irs::memory::maker<type> maker_t;                               \
-    return maker_t::template make(std::forward<Args>(args)...);             \
+#define DEFINE_FACTORY_INLINE(class_name)                                 \
+  template<typename Class, bool>                                          \
+  friend struct irs::memory::maker;                                       \
+  template<typename _T, typename... Args>                                 \
+  static ptr make(Args&&... args) {                                       \
+    using type = std::enable_if_t<std::is_base_of_v<class_name, _T>, _T>; \
+    using maker_t = irs::memory::maker<type>;                             \
+    return maker_t::template make(std::forward<Args>(args)...);           \
   }

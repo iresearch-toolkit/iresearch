@@ -284,8 +284,7 @@ class format_10_test_case : public tests::format_test_case {
       ASSERT_EQ(begin, in_data.data() + in_data.size());
     }
   }
-
-};  // format_10_test_case
+};
 
 TEST_P(format_10_test_case, postings_read_write_single_doc) {
   irs::field_meta field;
@@ -949,11 +948,9 @@ TEST_P(format_10_test_case, postings_seek) {
   }
 }
 
-const auto kTestValues = ::testing::Combine(
-  ::testing::Values(&tests::directory<&tests::memory_directory>,
-                    &tests::directory<&tests::fs_directory>,
-                    &tests::directory<&tests::mmap_directory>),
-  ::testing::Values(tests::format_info{"1_0"}));
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+static const auto kTestValues = ::testing::Combine(
+  ::testing::ValuesIn(kTestDirs), ::testing::Values(tests::format_info{"1_0"}));
 
 // 1.0 specific tests
 INSTANTIATE_TEST_SUITE_P(format_10_test, format_10_test_case, kTestValues,

@@ -32,60 +32,59 @@ namespace irs {
 ////////////////////////////////////////////////////////////////////////////////
 class empty_term_reader final : public irs::term_reader {
  public:
-  explicit empty_term_reader(uint64_t docs_count) noexcept
+  constexpr explicit empty_term_reader(uint64_t docs_count) noexcept
     : docs_count_(docs_count) {}
 
-  irs::seek_term_iterator::ptr iterator(SeekMode) const noexcept override {
+  irs::seek_term_iterator::ptr iterator(SeekMode) const noexcept final {
     return irs::seek_term_iterator::empty();
   }
 
   irs::seek_term_iterator::ptr iterator(
-    automaton_table_matcher&) const noexcept override {
+    automaton_table_matcher&) const noexcept final {
     return irs::seek_term_iterator::empty();
   }
 
-  size_t bit_union(const cookie_provider&, size_t*) const noexcept override {
+  size_t bit_union(const cookie_provider&, size_t*) const noexcept final {
     return 0;
   }
 
-  size_t read_documents(bytes_view,
-                        std::span<doc_id_t>) const noexcept override {
+  size_t read_documents(bytes_view, std::span<doc_id_t>) const noexcept final {
     return 0;
   }
 
-  term_meta term(bytes_view) const noexcept override { return {}; }
+  term_meta term(bytes_view) const noexcept final { return {}; }
 
   doc_iterator::ptr postings(const seek_cookie&,
-                             IndexFeatures) const noexcept override {
+                             IndexFeatures) const noexcept final {
     return doc_iterator::empty();
   }
 
   doc_iterator::ptr wanderator(const seek_cookie&,
-                               IndexFeatures) const noexcept override {
+                               IndexFeatures) const noexcept final {
     return doc_iterator::empty();
   }
 
-  const irs::field_meta& meta() const noexcept override {
+  const irs::field_meta& meta() const noexcept final {
     return irs::field_meta::kEmpty;
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 
   // total number of terms
-  size_t size() const noexcept override {
+  size_t size() const noexcept final {
     return 0;  // no terms in reader
   }
 
   // total number of documents
-  uint64_t docs_count() const noexcept override { return docs_count_; }
+  uint64_t docs_count() const noexcept final { return docs_count_; }
 
   // least significant term
-  irs::bytes_view(min)() const noexcept override { return {}; }
+  irs::bytes_view(min)() const noexcept final { return {}; }
 
   // most significant term
-  irs::bytes_view(max)() const noexcept override { return {}; }
+  irs::bytes_view(max)() const noexcept final { return {}; }
 
  private:
   uint64_t docs_count_;

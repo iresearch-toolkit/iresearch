@@ -36,7 +36,7 @@ namespace {
 using namespace irs;
 
 template<typename Conjunction>
-class same_position_iterator final : public Conjunction {
+class same_position_iterator : public Conjunction {
  public:
   typedef std::vector<position::ref> positions_t;
 
@@ -54,7 +54,7 @@ class same_position_iterator final : public Conjunction {
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-  bool next() override {
+  bool next() final {
     bool next = false;
     while (true == (next = Conjunction::next()) && !find_same_position()) {
     }
@@ -67,7 +67,7 @@ class same_position_iterator final : public Conjunction {
 #pragma GCC diagnostic pop
 #endif
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     const auto doc = Conjunction::seek(target);
 
     if (doc_limits::eof(doc) || find_same_position()) {
@@ -102,7 +102,7 @@ class same_position_iterator final : public Conjunction {
   positions_t pos_;
 };
 
-class same_position_query final : public filter::prepared {
+class same_position_query : public filter::prepared {
  public:
   typedef std::vector<TermState> terms_states_t;
   typedef StatesCache<terms_states_t> states_t;
@@ -114,11 +114,11 @@ class same_position_query final : public filter::prepared {
 
   using filter::prepared::execute;
 
-  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // FIXME(gnusi): implement
   }
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     auto& segment = ctx.segment;
     auto& ord = ctx.scorers;
 

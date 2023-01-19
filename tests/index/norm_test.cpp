@@ -51,13 +51,13 @@ class Analyzer : public irs::analysis::analyzer {
     return irs::get_mutable(attrs_, id);
   }
 
-  bool reset(std::string_view value) noexcept override {
+  bool reset(std::string_view value) noexcept final {
     value_ = value;
     i_ = 0;
     return true;
   }
 
-  bool next() override {
+  bool next() final {
     if (i_ < count_) {
       std::get<irs::term_attribute>(attrs_).value =
         irs::ViewCast<irs::byte_type>(value_);
@@ -83,20 +83,20 @@ class NormField final : public tests::ifield {
   NormField(std::string name, std::string value, size_t count)
     : name_{std::move(name)}, value_{std::move(value)}, analyzer_{count} {}
 
-  std::string_view name() const override { return name_; }
+  std::string_view name() const final { return name_; }
 
-  irs::token_stream& get_tokens() const override {
+  irs::token_stream& get_tokens() const final {
     analyzer_.reset(value_);
     return analyzer_;
   }
 
-  irs::features_t features() const noexcept override { return {&norm_, 1}; }
+  irs::features_t features() const noexcept final { return {&norm_, 1}; }
 
-  irs::IndexFeatures index_features() const noexcept override {
+  irs::IndexFeatures index_features() const noexcept final {
     return irs::IndexFeatures::ALL;
   }
 
-  bool write(irs::data_output& out) const override {
+  bool write(irs::data_output& out) const final {
     irs::write_string(out, value_);
     return true;
   }
@@ -1117,13 +1117,11 @@ const auto kNorm2TestCaseValues =
   ::testing::Values(tests::format_info{"1_4", "1_0"});
 #endif
 
-INSTANTIATE_TEST_SUITE_P(
-  Norm2Test, Norm2TestCase,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    kNorm2TestCaseValues),
-  Norm2TestCase::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(Norm2Test, Norm2TestCase,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            kNorm2TestCaseValues),
+                         Norm2TestCase::to_string);
 
 }  // namespace

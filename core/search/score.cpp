@@ -26,7 +26,7 @@
 
 namespace irs {
 
-/*static*/ const score score::kNoScore;
+const score score::kNoScore;
 
 Scorers PrepareScorers(std::span<const OrderBucket> buckets,
                        const SubReader& segment, const term_reader& field,
@@ -35,7 +35,7 @@ Scorers PrepareScorers(std::span<const OrderBucket> buckets,
   Scorers scorers;
   scorers.reserve(buckets.size());
 
-  for (auto& entry : buckets) {
+  for (const auto& entry : buckets) {
     const auto& bucket = *entry.bucket;
 
     if (IRS_UNLIKELY(!entry.bucket)) {
@@ -59,51 +59,53 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
   switch (scorers.size()) {
     case 0: {
       return ScoreFunction{};
-    } break;
+    }
     case 1: {
       // The most important and frequent case when only
       // one scorer is provided.
       return std::move(scorers.front());
-    } break;
+    }
     case 2: {
-      struct ctx : score_ctx {
-        ctx(ScoreFunction&& func0, ScoreFunction&& func1) noexcept
+      struct Ctx final : score_ctx {
+        Ctx(ScoreFunction&& func0, ScoreFunction&& func1) noexcept
           : func0{std::move(func0)}, func1{std::move(func1)} {}
 
         ScoreFunction func0;
         ScoreFunction func1;
       };
 
-      return {std::make_unique<ctx>(std::move(scorers.front()),
-                                    std::move(scorers.back())),
-              [](score_ctx* ctx, score_t* res) noexcept {
-                auto* scorers = static_cast<struct ctx*>(ctx);
-                scorers->func0(res);
-                scorers->func1(res + 1);
-              }};
-    } break;
+      return ScoreFunction::Make<Ctx>(
+        [](score_ctx* ctx, score_t* res) noexcept {
+          IRS_ASSERT(res != nullptr);
+          auto* scorers = static_cast<Ctx*>(ctx);
+          scorers->func0(res);
+          scorers->func1(res + 1);
+        },
+        std::move(scorers.front()), std::move(scorers.back()));
+    }
     default: {
-      struct ctx : score_ctx {
-        explicit ctx(Scorers&& scorers) noexcept
+      struct Ctx final : score_ctx {
+        explicit Ctx(Scorers&& scorers) noexcept
           : scorers{std::move(scorers)} {}
 
         Scorers scorers;
       };
 
-      return {std::make_unique<ctx>(std::move(scorers)),
-              [](score_ctx* ctx, score_t* res) noexcept {
-                auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
-                for (auto& scorer : scorers) {
-                  scorer(res++);
-                }
-              }};
-    } break;
+      return ScoreFunction::Make<Ctx>(
+        [](score_ctx* ctx, score_t* res) noexcept {
+          auto& scorers = static_cast<Ctx*>(ctx)->scorers;
+          for (auto& scorer : scorers) {
+            scorer(res++);
+          }
+        },
+        std::move(scorers));
+    }
   }
 }
 
 void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
                        const IndexReader& index) {
-  for (auto& entry : order) {
+  for (const auto& entry : order) {
     if (IRS_LIKELY(entry.bucket)) {
       entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr,
                             nullptr);

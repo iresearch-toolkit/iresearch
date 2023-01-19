@@ -23,7 +23,6 @@
 
 #include "postings.hpp"
 
-#include "utils/map_utils.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 

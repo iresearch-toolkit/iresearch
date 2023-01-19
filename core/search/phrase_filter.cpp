@@ -147,14 +147,14 @@ class phrase_term_visitor final : public filter_visitor,
     : phrase_states_(phrase_states) {}
 
   void prepare(const SubReader& segment, const term_reader& field,
-               const seek_term_iterator& terms) noexcept override {
+               const seek_term_iterator& terms) noexcept final {
     segment_ = &segment;
     reader_ = &field;
     terms_ = &terms;
     found_ = true;
   }
 
-  void visit(score_t boost) override {
+  void visit(score_t boost) final {
     IRS_ASSERT(terms_ && collectors_ && segment_ && reader_);
 
     // disallow negative boost

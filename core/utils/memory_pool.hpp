@@ -27,7 +27,6 @@
 
 #include "shared.hpp"
 #include "utils/ebo_ref.hpp"
-#include "utils/map_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
 #include "utils/noncopyable.hpp"
@@ -138,7 +137,7 @@ class freelist : private util::noncopyable {
   }
 
   slot* head_{};
-};  // freelist
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief BlockAllocator concept
@@ -166,7 +165,7 @@ struct malloc_free_allocator {
   }
 
   void deallocate(char* const ptr, size_t /*size*/) noexcept { std::free(ptr); }
-};  // malloc_free_allocator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class new_delete_allocator
@@ -181,7 +180,7 @@ struct new_delete_allocator {
   }
 
   void deallocate(const char* ptr, size_t /*size*/) noexcept { delete[] ptr; }
-};  // new_delete_allocator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief GrowPolicy concept
@@ -198,7 +197,7 @@ struct new_delete_allocator {
 ///////////////////////////////////////////////////////////////////////////////
 struct log2_grow {
   size_t operator()(size_t size) const { return size << 1; }
-};  // log2_grow
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class bounded_log2_grow
@@ -213,7 +212,7 @@ class bounded_log2_grow {
 
  private:
   size_t max_;
-};  // bounded_log2_grow
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class identity_grow
@@ -221,7 +220,7 @@ class bounded_log2_grow {
 ///////////////////////////////////////////////////////////////////////////////
 struct identity_grow {
   size_t operator()(size_t size) const { return size; }
-};  // identity_grow
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class pool_base
@@ -461,7 +460,7 @@ struct allocator_base {
   void destroy(pointer p) noexcept {
     p->~value_type();  // call dtor
   }
-};  // allocator_base
+};
 
 struct single_allocator_tag {};
 struct bulk_allocator_tag {};
@@ -505,29 +504,27 @@ class memory_pool_allocator : public allocator_base<T> {
   pointer allocate(size_type n, const_pointer hint = 0) {
     IRS_IGNORE(hint);
 
-    if (std::is_same<Tag, single_allocator_tag>::value) {
+    if constexpr (std::is_same_v<Tag, single_allocator_tag>) {
       IRS_ASSERT(1 == n);
       return static_cast<pointer>(pool_->allocate());
+    } else {
+      if (1 == n) {
+        return static_cast<pointer>(pool_->allocate());
+      }
+      return static_cast<pointer>(pool_->allocate(n));
     }
-
-    if (1 == n) {
-      return static_cast<pointer>(pool_->allocate());
-    }
-
-    return static_cast<pointer>(pool_->allocate(n));
   }
 
   void deallocate(pointer p, size_type n = 1) noexcept {
-    if (std::is_same<Tag, single_allocator_tag>::value) {
+    if constexpr (std::is_same_v<Tag, single_allocator_tag>) {
       IRS_ASSERT(1 == n);
       pool_->deallocate(p);
-      return;
-    }
-
-    if (1 == n) {
-      pool_->deallocate(p);
     } else {
-      pool_->deallocate(p, n);
+      if (1 == n) {
+        pool_->deallocate(p);
+      } else {
+        pool_->deallocate(p, n);
+      }
     }
   }
 
@@ -536,7 +533,7 @@ class memory_pool_allocator : public allocator_base<T> {
 
   template<typename U, typename, typename>
   friend class memory_pool_allocator;
-};  // memory_pool_allocator
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class memory_multi_size_pool
@@ -625,29 +622,27 @@ class memory_pool_multi_size_allocator : public allocator_base<T> {
   pointer allocate(size_type n, const_pointer hint = 0) {
     IRS_IGNORE(hint);
 
-    if (std::is_same<Tag, single_allocator_tag>::value) {
+    if constexpr (std::is_same_v<Tag, single_allocator_tag>) {
       IRS_ASSERT(1 == n);
       return static_cast<pointer>(pool_->allocate());
+    } else {
+      if (1 == n) {
+        return static_cast<pointer>(pool_->allocate());
+      }
+      return static_cast<pointer>(pool_->allocate(n));
     }
-
-    if (1 == n) {
-      return static_cast<pointer>(pool_->allocate());
-    }
-
-    return static_cast<pointer>(pool_->allocate(n));
   }
 
   void deallocate(pointer p, size_type n = 1) noexcept {
-    if (std::is_same<Tag, single_allocator_tag>::value) {
+    if constexpr (std::is_same_v<Tag, single_allocator_tag>) {
       IRS_ASSERT(1 == n);
       pool_->deallocate(p);
-      return;
-    }
-
-    if (1 == n) {
-      pool_->deallocate(p);
     } else {
-      pool_->deallocate(p, n);
+      if (1 == n) {
+        pool_->deallocate(p);
+      } else {
+        pool_->deallocate(p, n);
+      }
     }
   }
 

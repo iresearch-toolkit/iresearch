@@ -57,7 +57,7 @@ TEST_P(all_filter_test_case, all_sequential) {
   ASSERT_TRUE(it_cost);
   ASSERT_EQ(docs.size(), it_cost->estimate());
   auto& score = irs::score::get(*it);
-  ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+  ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
   ASSERT_EQ(&score, irs::get_mutable<irs::score>(it.get()));
 }
 
@@ -137,7 +137,7 @@ TEST_P(all_filter_test_case, all_order) {
     sort.prepare_scorer =
       [](const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
          const irs::attribute_provider&, irs::score_t) -> irs::ScoreFunction {
-      return {nullptr, nullptr};
+      return irs::ScoreFunction::Invalid();
     };
     sort.prepare_term_collector_ = []() -> irs::sort::term_collector::ptr {
       return nullptr;
@@ -177,13 +177,11 @@ TEST_P(all_filter_test_case, all_order) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  all_filter_test, all_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  all_filter_test_case::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(all_filter_test, all_filter_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_0")),
+                         all_filter_test_case::to_string);
 
 }  // namespace

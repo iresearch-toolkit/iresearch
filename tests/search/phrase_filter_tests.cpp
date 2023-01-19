@@ -40,7 +40,7 @@ void analyzed_json_field_factory(
    public:
     string_field(const std::string& name, const std::string_view& value)
       : tests::string_field(name, value, irs::IndexFeatures::FREQ) {}
-  };  // string_field
+  };
 
   if (data.is_string()) {
     // analyzed field
@@ -8977,12 +8977,11 @@ TEST(by_phrase_test, copy_move) {
   }
 }
 
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
 INSTANTIATE_TEST_SUITE_P(
   phrase_filter_test, phrase_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_3", "1_0"})),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_0"},
+                                       tests::format_info{"1_3", "1_0"})),
   phrase_filter_test_case::to_string);

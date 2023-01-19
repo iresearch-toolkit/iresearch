@@ -69,7 +69,7 @@ struct encode_traits<uint64_t> {
   static const byte_type TYPE_MAGIC = 0x60;
   static type hton(type value) { return htonll(value); }
   static type ntoh(type value) { return ntohll(value); }
-};  // encode_traits
+};
 
 template<>
 struct encode_traits<uint32_t> {
@@ -77,21 +77,21 @@ struct encode_traits<uint32_t> {
   static const byte_type TYPE_MAGIC = 0;
   static type hton(type value) { return htonl(value); }
   static type ntoh(type value) { return ntohl(value); }
-};  // encode_traits
+};
 
 #ifndef FLOAT_T_IS_DOUBLE_T
 template<>
 struct encode_traits<float_t> : encode_traits<uint32_t> {
   // cppcheck-suppress duplInheritedMember
   static const byte_type TYPE_MAGIC = 0x20;
-};  // encode_traits
+};
 #endif
 
 template<>
 struct encode_traits<double_t> : encode_traits<uint64_t> {
   // cppcheck-suppress duplInheritedMember
   static const byte_type TYPE_MAGIC = 0xA0;
-};  // encode_traits
+};
 
 // returns number of bytes required to store
 // value of type T with the specified offset

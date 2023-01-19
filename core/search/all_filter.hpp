@@ -35,7 +35,7 @@ class all : public filter {
 
   filter::prepared::ptr prepare(const IndexReader& reader, const Order& order,
                                 score_t filter_boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 };
 
 }  // namespace irs

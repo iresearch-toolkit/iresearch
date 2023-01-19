@@ -167,7 +167,12 @@ struct value_index : document {
   }
 };
 
-class sparse_bitmap_iterator final : public resettable_doc_iterator {
+class sparse_bitmap_iterator : public resettable_doc_iterator {
+  static void Noop(index_input* /*in*/) noexcept {}
+  static void Delete(index_input* in) noexcept { delete in; }
+  // TOOD(MBkkt) unique_ptr isn't optimal here
+  using Ptr = std::unique_ptr<index_input, void (*)(index_input*)>;
+
  public:
   using block_index_t = std::span<const sparse_bitmap_writer::block>;
 
@@ -186,11 +191,9 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
   };
 
   sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
-    : sparse_bitmap_iterator{memory::to_managed<index_input>(std::move(in)),
-                             opts} {}
+    : sparse_bitmap_iterator{Ptr{in.release(), &Delete}, opts} {}
   sparse_bitmap_iterator(index_input* in, const options& opts)
-    : sparse_bitmap_iterator{memory::to_managed<index_input, false>(in), opts} {
-  }
+    : sparse_bitmap_iterator{Ptr{in, &Noop}, opts} {}
 
   template<typename Cost>
   sparse_bitmap_iterator(index_input::ptr&& in, const options& opts, Cost&& est)
@@ -261,15 +264,14 @@ class sparse_bitmap_iterator final : public resettable_doc_iterator {
 
   using attributes = std::tuple<document, value_index, prev_doc, cost, score>;
 
-  explicit sparse_bitmap_iterator(memory::managed_ptr<index_input>&& in,
-                                  const options& opts);
+  explicit sparse_bitmap_iterator(Ptr&& in, const options& opts);
 
   void seek_to_block(doc_id_t block);
   void read_block_header();
 
   container_iterator_context ctx_;
   attributes attrs_;
-  memory::managed_ptr<index_input> in_;
+  Ptr in_;
   std::unique_ptr<byte_type[]> block_index_data_;
   block_seek_f seek_func_;
   block_index_t block_index_;

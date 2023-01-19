@@ -35,7 +35,7 @@ namespace fst {
 // actual epsilon transitions. If match_type == MATCH_OUTPUT, then
 // Arc(0, kNoLabel, Weight::One(), current_state) is instead matched.
 template<class F, fst::MatchType MatchType = MATCH_INPUT>
-class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
+class SortedRangeExplicitMatcher final : public MatcherBase<typename F::Arc> {
  public:
   using FST = F;
   using Arc = typename FST::Arc;
@@ -60,13 +60,13 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
       binary_label_(matcher.binary_label_),
       error_(matcher.error_) {}
 
-  ~SortedRangeExplicitMatcher() override { Destroy(aiter_, &aiter_pool_); }
+  ~SortedRangeExplicitMatcher() final { Destroy(aiter_, &aiter_pool_); }
 
-  SortedRangeExplicitMatcher<FST> *Copy(bool safe = false) const override {
+  SortedRangeExplicitMatcher<FST> *Copy(bool safe = false) const final {
     return new SortedRangeExplicitMatcher<FST>(*this, safe);
   }
 
-  fst::MatchType Type(bool test) const override {
+  fst::MatchType Type(bool test) const final {
     if constexpr (MatchType == MATCH_NONE) return MatchType;
     const auto true_prop =
       MatchType == MATCH_INPUT ? kILabelSorted : kOLabelSorted;
@@ -143,9 +143,9 @@ class SortedRangeExplicitMatcher : public MatcherBase<typename F::Arc> {
 
   ssize_t Priority(StateId s) final { return MatcherBase<Arc>::Priority(s); }
 
-  const FST &GetFst() const override { return fst_; }
+  const FST &GetFst() const final { return fst_; }
 
-  std::uint64_t Properties(std::uint64_t inprops) const override {
+  std::uint64_t Properties(std::uint64_t inprops) const final {
     return inprops | (error_ ? kError : 0);
   }
 

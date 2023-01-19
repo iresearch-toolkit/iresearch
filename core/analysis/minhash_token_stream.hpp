@@ -48,13 +48,13 @@ class MinHashTokenStream final : public analyzer, private util::noncopyable {
   explicit MinHashTokenStream(Options&& opts);
 
   // Advance stream to the next token.
-  bool next() override;
+  bool next() final;
 
   // Reset stream to a specified value.
-  bool reset(std::string_view value) override;
+  bool reset(std::string_view value) final;
 
   // Return a stream attribute denoted by `id`.
-  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 

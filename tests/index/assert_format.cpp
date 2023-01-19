@@ -226,13 +226,13 @@ void index_segment::compute_features() {
     column_output(column_output&&) = default;
     column_output& operator=(column_output&&) = default;
 
-    void write_byte(irs::byte_type b) override { (*buf_) += b; }
+    void write_byte(irs::byte_type b) final { (*buf_) += b; }
 
-    void write_bytes(const irs::byte_type* b, size_t size) override {
+    void write_bytes(const irs::byte_type* b, size_t size) final {
       buf_->append(b, size);
     }
 
-    void reset() override { buf_->clear(); }
+    void reset() final { buf_->clear(); }
 
     irs::bstring* buf_;
   } out{buf_};
@@ -426,14 +426,14 @@ class doc_iterator : public irs::doc_iterator {
  public:
   doc_iterator(irs::IndexFeatures features, const tests::term& data);
 
-  irs::doc_id_t value() const override { return doc_.value; }
+  irs::doc_id_t value() const final { return doc_.value; }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }
 
-  bool next() override {
+  bool next() final {
     if (next_ == data_.postings.end()) {
       doc_.value = irs::doc_limits::eof();
       return false;
@@ -447,7 +447,7 @@ class doc_iterator : public irs::doc_iterator {
     return true;
   }
 
-  irs::doc_id_t seek(irs::doc_id_t id) override {
+  irs::doc_id_t seek(irs::doc_id_t id) final {
     auto it = data_.postings.find(posting{id});
 
     if (it == data_.postings.end()) {
@@ -477,7 +477,7 @@ class doc_iterator : public irs::doc_iterator {
       }
     }
 
-    attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       if (irs::type<irs::offset>::id() == type) {
         return poffs_;
       }
@@ -496,7 +496,7 @@ class doc_iterator : public irs::doc_iterator {
       pay_.value = irs::bytes_view{};
     }
 
-    bool next() override {
+    bool next() final {
       if (next_ == owner_.prev_->positions().end()) {
         value_ = irs::pos_limits::eof();
         return false;
@@ -511,7 +511,7 @@ class doc_iterator : public irs::doc_iterator {
       return true;
     }
 
-    void reset() override {
+    void reset() final {
       ASSERT_TRUE(false);  // unsupported
     }
 
@@ -554,20 +554,20 @@ doc_iterator::doc_iterator(irs::IndexFeatures features, const tests::term& data)
   }
 }
 
-class term_iterator final : public irs::seek_term_iterator {
+class term_iterator : public irs::seek_term_iterator {
  public:
   struct term_cookie final : irs::seek_cookie {
     explicit term_cookie(irs::bytes_view term) noexcept : term(term) {}
 
-    irs::attribute* get_mutable(irs::type_info::type_id) override {
+    irs::attribute* get_mutable(irs::type_info::type_id) final {
       return nullptr;
     }
 
-    bool IsEqual(const irs::seek_cookie& rhs) const noexcept override {
+    bool IsEqual(const irs::seek_cookie& rhs) const noexcept final {
       return term == irs::down_cast<term_cookie>(rhs).term;
     }
 
-    size_t Hash() const noexcept override {
+    size_t Hash() const noexcept final {
       return std::hash<irs::bytes_view>{}(term);
     }
 
@@ -578,7 +578,7 @@ class term_iterator final : public irs::seek_term_iterator {
     next_ = data_.terms.begin();
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<irs::term_attribute>::id()) {
       return &value_;
     }
@@ -588,9 +588,9 @@ class term_iterator final : public irs::seek_term_iterator {
     return nullptr;
   }
 
-  irs::bytes_view value() const override { return value_.value; }
+  irs::bytes_view value() const final { return value_.value; }
 
-  bool next() override {
+  bool next() final {
     if (next_ == data_.terms.end()) {
       value_.value = {};
       return false;
@@ -601,9 +601,9 @@ class term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  void read() noexcept override { meta_.docs_count = prev_->docs_count(); }
+  void read() noexcept final { meta_.docs_count = prev_->docs_count(); }
 
-  bool seek(irs::bytes_view value) override {
+  bool seek(irs::bytes_view value) final {
     auto it = data_.terms.find(term{value});
 
     if (it == data_.terms.end()) {
@@ -618,7 +618,7 @@ class term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  irs::SeekResult seek_ge(irs::bytes_view value) override {
+  irs::SeekResult seek_ge(irs::bytes_view value) final {
     auto it = data_.terms.lower_bound(term{value});
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
@@ -633,12 +633,12 @@ class term_iterator final : public irs::seek_term_iterator {
                                   : irs::SeekResult::NOT_FOUND;
   }
 
-  doc_iterator::ptr postings(irs::IndexFeatures features) const override {
+  doc_iterator::ptr postings(irs::IndexFeatures features) const final {
     return irs::memory::make_managed<doc_iterator>(
       data_.index_features & features, *prev_);
   }
 
-  irs::seek_cookie::ptr cookie() const override {
+  irs::seek_cookie::ptr cookie() const final {
     return std::make_unique<term_cookie>(value_.value);
   }
 

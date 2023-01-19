@@ -44,8 +44,8 @@ using namespace tests;
 
 struct bstring_data_output : public irs::data_output {
   irs::bstring out_;
-  void write_byte(irs::byte_type b) override { write_bytes(&b, 1); }
-  void write_bytes(const irs::byte_type* b, size_t size) override {
+  void write_byte(irs::byte_type b) final { write_bytes(&b, 1); }
+  void write_bytes(const irs::byte_type* b, size_t size) final {
     out_.append(b, size);
   }
 };
@@ -373,7 +373,7 @@ TEST_P(tfidf_test_case, test_phrase) {
           : tests::string_field(name, value) {
           this->index_features_ = irs::IndexFeatures::FREQ;
         }
-      };  // string_field
+      };
 
       if (data.is_string()) {
         // analyzed field
@@ -1163,7 +1163,7 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
@@ -1192,7 +1192,7 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
@@ -1221,7 +1221,7 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
@@ -1251,7 +1251,7 @@ TEST_P(tfidf_test_case, test_query) {
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
-    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     while (docs->next()) {
@@ -1544,14 +1544,12 @@ TEST_P(tfidf_test_case, test_order) {
 
 #endif  // IRESEARCH_DLL
 
-INSTANTIATE_TEST_SUITE_P(
-  tfidf_test, tfidf_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  tfidf_test_case::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(tfidf_test, tfidf_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_0")),
+                         tfidf_test_case::to_string);
 
 class tfidf_test_case_14 : public tfidf_test_case {};
 
@@ -1559,13 +1557,9 @@ TEST_P(tfidf_test_case_14, test_query_norms) {
   test_query_norms(irs::type<irs::Norm2>::id(), &irs::Norm2::MakeWriter);
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  tfidf_test_14, tfidf_test_case_14,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_4", "1_5")),
-  tfidf_test_case_14::to_string);
+INSTANTIATE_TEST_SUITE_P(tfidf_test_14, tfidf_test_case_14,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_4", "1_5")),
+                         tfidf_test_case_14::to_string);
 
 }  // namespace

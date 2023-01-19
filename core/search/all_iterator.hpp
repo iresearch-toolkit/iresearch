@@ -32,16 +32,16 @@
 
 namespace irs {
 
-class AllIterator final : public doc_iterator {
+class AllIterator : public doc_iterator {
  public:
   AllIterator(const irs::SubReader& reader, const byte_type* query_stats,
-               const irs::Order& order, uint64_t docs_count, score_t boost);
+              const irs::Order& order, uint64_t docs_count, score_t boost);
 
-  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     auto& doc = std::get<document>(attrs_);
 
     if (doc.value >= max_doc_) {
@@ -53,7 +53,7 @@ class AllIterator final : public doc_iterator {
     }
   }
 
-  irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
+  irs::doc_id_t seek(irs::doc_id_t target) noexcept final {
     auto& doc = std::get<document>(attrs_);
 
     doc.value = target <= max_doc_ ? target : doc_limits::eof();
@@ -61,7 +61,7 @@ class AllIterator final : public doc_iterator {
     return doc.value;
   }
 
-  irs::doc_id_t value() const noexcept override {
+  irs::doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 

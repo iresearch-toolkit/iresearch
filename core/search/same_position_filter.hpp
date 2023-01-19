@@ -62,7 +62,7 @@ class by_same_position : public filter_with_options<by_same_position_options> {
 
   filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
                                 score_t boost,
-                                const attribute_provider* ctx) const override;
+                                const attribute_provider* ctx) const final;
 };
 
 }  // namespace irs

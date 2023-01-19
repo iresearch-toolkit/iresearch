@@ -33,8 +33,7 @@
 namespace irs {
 
 template<typename T>
-struct iterator {
-  virtual ~iterator() = default;
+struct iterator : memory::Managed {
   virtual T value() const = 0;
   virtual bool next() = 0;
 };
@@ -52,14 +51,14 @@ class iterator_adaptor : public Base {
                    const Less& less = Less())
     : begin_{begin}, cur_{begin}, end_{end}, less_{less} {}
 
-  const_reference value() const noexcept override { return *cur_; }
+  const_reference value() const noexcept final { return *cur_; }
 
-  bool seek(key_type key) noexcept override {
+  bool seek(key_type key) noexcept final {
     begin_ = std::lower_bound(cur_, end_, key, less_);
     return next();
   }
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     if (begin_ == end_) {
       cur_ = begin_;  // seal iterator
       return false;
@@ -156,12 +155,9 @@ class ptr_iterator
   //////////////////////////////////////////////////////////////////////////////
   template<typename T>
   typename adjust_const<T>::pointer safe_as() const {
-    typedef
-      typename std::enable_if<std::is_base_of<base_element_type, T>::value,
-                              T>::type type;
-
+    static_assert(std::is_base_of_v<base_element_type, T>);
     reference it = dereference();
-    return dynamic_cast<typename adjust_const<type>::pointer>(&it);
+    return dynamic_cast<typename adjust_const<T>::pointer>(&it);
   }
 
  private:

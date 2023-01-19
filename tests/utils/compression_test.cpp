@@ -30,22 +30,22 @@
 
 namespace {
 
-struct dummy_compressor final : irs::compression::compressor {
-  virtual irs::bytes_view compress(irs::byte_type*, size_t,
-                                   irs::bstring& /*buf*/) {
-    return irs::bytes_view{};
+struct dummy_compressor : irs::compression::compressor {
+  irs::bytes_view compress(irs::byte_type*, size_t,
+                           irs::bstring& /*buf*/) final {
+    return {};
   }
 
-  virtual void flush(irs::data_output&) {}
+  void flush(irs::data_output&) final {}
 };
 
-struct dummy_decompressor final : irs::compression::decompressor {
-  virtual irs::bytes_view decompress(const irs::byte_type*, size_t,
-                                     irs::byte_type*, size_t) {
+struct dummy_decompressor : irs::compression::decompressor {
+  irs::bytes_view decompress(const irs::byte_type*, size_t, irs::byte_type*,
+                             size_t) final {
     return irs::bytes_view{};
   }
 
-  virtual bool prepare(irs::data_input&) { return true; }
+  bool prepare(irs::data_input&) final { return true; }
 };
 
 }  // namespace
@@ -71,11 +71,11 @@ TEST(compression_test, registration) {
     type,
     [](const irs::compression::options&) -> irs::compression::compressor::ptr {
       ++calls_count;
-      return irs::memory::to_managed(std::make_unique<dummy_compressor>());
+      return irs::memory::make_managed<dummy_compressor>();
     },
     []() -> irs::compression::decompressor::ptr {
       ++calls_count;
-      return irs::memory::to_managed(std::make_unique<dummy_decompressor>());
+      return irs::memory::make_managed<dummy_decompressor>();
     });
   ASSERT_TRUE(initial);  // registered
 

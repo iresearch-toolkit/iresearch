@@ -28,35 +28,6 @@
 
 namespace irs::mmap_utils {
 
-int flush(int fd, void* addr, size_t size, int flags) noexcept {
-  if (fd < 0) {  // an invalid file descriptor of course means an invalid handle
-    return 0;
-  }
-
-  // sync mmapped region
-  if (msync(addr, size, flags)) {
-    return -1;
-  }
-
-#ifdef __APPLE__
-  if (fcntl(fd, F_FULLFSYNC, 0) < 0) {
-    return -1;
-  }
-#endif
-
-#ifdef _MSC_VER
-  // under windows all flushes are achieved synchronously, however
-  // under windows, there is no guarentee that the underlying disk hardware
-  // cache has physically written to disk.
-  // FlushFileBuffers ensures file written to disk
-  if (((flags & MS_SYNC) == MS_SYNC) && !file_utils::file_sync(fd)) {
-    return -1;
-  }
-#endif
-
-  return 0;
-}
-
 void mmap_handle::close() noexcept {
   if (addr_ != MAP_FAILED) {
     if (dontneed_) {
@@ -109,6 +80,11 @@ bool mmap_handle::open(const file_path_t path) noexcept {
   if (size) {
     size_ = size;
 
+    // TODO(MBkkt) Needs benchmark?
+    //  1. MAP_SHARED can make more sense than MAP_PRIVATE
+    //     both ok for us, because file is read only
+    //     but with it we probably can avoid COW kernel overhead.
+    //  2. MAP_POPULATE | MAP_LOCKED instead of read to vector stuff?
     void* addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     if (MAP_FAILED == addr) {

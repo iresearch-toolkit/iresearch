@@ -84,7 +84,7 @@ class fs_lock : public index_lock {
   fs_lock(const std::filesystem::path& dir, std::string_view file)
     : dir_{dir}, file_{file} {}
 
-  bool lock() override {
+  bool lock() final {
     if (handle_) {
       // don't allow self obtaining
       return false;
@@ -119,7 +119,7 @@ class fs_lock : public index_lock {
     return handle_ != nullptr;
   }
 
-  bool is_locked(bool& result) const noexcept override {
+  bool is_locked(bool& result) const noexcept final {
     if (handle_ != nullptr) {
       result = true;
       return true;
@@ -136,7 +136,7 @@ class fs_lock : public index_lock {
     return false;
   }
 
-  bool unlock() noexcept override {
+  bool unlock() noexcept final {
     if (handle_ != nullptr) {
       handle_ = nullptr;
 #ifdef _WIN32
@@ -188,19 +188,19 @@ class fs_index_output : public buffered_index_output {
     return nullptr;
   }
 
-  int64_t checksum() const override {
+  int64_t checksum() const final {
     const_cast<fs_index_output*>(this)->flush();
     return crc.checksum();
   }
 
  protected:
-  size_t CloseImpl() override {
+  size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
     handle.reset(nullptr);
     return size;
   }
 
-  void flush_buffer(const byte_type* b, size_t len) override {
+  void flush_buffer(const byte_type* b, size_t len) final {
     IRS_ASSERT(handle);
 
     const auto len_written =
@@ -222,7 +222,7 @@ class fs_index_output : public buffered_index_output {
   byte_type buf_[1024];
   file_utils::handle_t handle;
   crc32c crc;
-};  // fs_index_output
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_index_input
@@ -296,12 +296,11 @@ class fs_index_input : public buffered_index_input {
     try {
       return ptr(new fs_index_input(std::move(handle), pool_size));
     } catch (...) {
+      return nullptr;
     }
-
-    return nullptr;
   }
 
-  size_t length() const override { return handle_->size; }
+  size_t length() const final { return handle_->size; }
 
   ptr reopen() const override;
 
@@ -354,7 +353,7 @@ class fs_index_input : public buffered_index_input {
     size_t size{};               /* file size */
     size_t pos{};                /* current file position*/
     IOAdvice io_advice{IOAdvice::NORMAL};
-  };  // file_handle
+  };
 
   fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
     : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
@@ -375,16 +374,16 @@ class fs_index_input : public buffered_index_input {
   file_handle::ptr handle_;  // shared file handle
   size_t pool_size_;  // size of pool for instances of pooled_fs_index_input
   size_t pos_;        // current input stream position
-};                    // fs_index_input
+};
 
 class pooled_fs_index_input final : public fs_index_input {
  public:
   explicit pooled_fs_index_input(const fs_index_input& in);
-  virtual ~pooled_fs_index_input() noexcept;
-  index_input::ptr dup() const override {
+  ~pooled_fs_index_input() noexcept final;
+  index_input::ptr dup() const final {
     return ptr(new pooled_fs_index_input(*this));
   }
-  index_input::ptr reopen() const override;
+  index_input::ptr reopen() const final;
 
  private:
   struct builder {
@@ -400,7 +399,7 @@ class pooled_fs_index_input final : public fs_index_input {
 
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
   file_handle::ptr reopen(const file_handle& src) const;
-};  // pooled_fs_index_input
+};
 
 index_input::ptr fs_index_input::reopen() const {
   return std::make_unique<pooled_fs_index_input>(*this);

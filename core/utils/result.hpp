@@ -95,6 +95,6 @@ class result {
 
   Code code_;
   std::unique_ptr<char[]> state_;
-};  // result
+};
 
 }  // namespace irs

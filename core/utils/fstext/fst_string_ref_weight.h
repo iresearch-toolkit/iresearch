@@ -50,7 +50,7 @@ struct StringRefWeightTraits {
   static const StringRefWeight<Label> NoWeight();
 
   static bool Member(const StringRefWeight<Label>& weight);
-};  // StringRefWeightTraits
+};
 
 template<typename Label>
 class StringRefWeight : public StringRefWeightTraits<Label> {
@@ -120,7 +120,7 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
 
  private:
   str_t str_;
-};  // StringRefWeight
+};
 
 template<typename Label>
 inline bool operator!=(StringRefWeight<Label> w1, StringRefWeight<Label> w2) {
@@ -178,7 +178,7 @@ struct StringRefWeightTraits<irs::byte_type> {
     // always a member
     return true;
   }
-};  // StringRefWeightTraits
+};
 
 inline std::ostream& operator<<(std::ostream& strm,
                                 StringRefWeight<irs::byte_type> weight) {

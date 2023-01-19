@@ -23,12 +23,17 @@
 
 #pragma once
 
+#include <cstring>
+#include <utility>
+
 #include "index/index_features.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/attributes.hpp"
 #include "utils/iterator.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/small_vector.hpp"
+
+#include <absl/base/casts.h>
 
 namespace irs {
 
@@ -40,7 +45,7 @@ struct SubReader;
 struct term_reader;
 
 // Represents no boost value.
-constexpr score_t kNoBoost{1.f};
+inline constexpr score_t kNoBoost{1.F};
 
 // Represents an addition to score from filter specific to a particular
 // document. May vary from document to document.
@@ -58,85 +63,102 @@ struct score_ctx {
   score_ctx() = default;
   score_ctx(score_ctx&&) = default;
   score_ctx& operator=(score_ctx&&) = default;
-  virtual ~score_ctx() = default;
-};
 
-using score_f = void (*)(score_ctx* ctx, score_t* res);
+ protected:
+  ~score_ctx() = default;
+};
 
 // Convenient wrapper around score_f and score_ctx.
 class ScoreFunction : util::noncopyable {
+  using deleter_f = void (*)(score_ctx* ctx) noexcept;
+
+  using score_f = void (*)(score_ctx* ctx, score_t* res) noexcept;
+
+  static void Noop(score_ctx* /*ctx*/) noexcept {}
+
  public:
-  // Default implementation sets result to 0.
-  static const score_f kDefault;
+  static void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
+    IRS_ASSERT(res != nullptr);
+    const auto size = absl::bit_cast<size_t>(ctx);
+    std::memset(res, 0, size);
+  }
 
   // Returns default scoring function setting `size` score buckets to 0.
-  static ScoreFunction Default(size_t size) noexcept {
-    // FIXME(gnusi): use std::bit_cast when avaibale
-    return {reinterpret_cast<score_ctx*>(sizeof(score_t) * size), kDefault};
+  static ScoreFunction Default(size_t count) noexcept {
+    // write byte size instead of count to avoid multiply in DefaultScore call
+    return {absl::bit_cast<score_ctx*>(sizeof(score_t) * count), &DefaultScore,
+            &Noop};
   }
 
   // Returns scoring function setting `size` score buckets to `value`.
-  static ScoreFunction Constant(score_t value, uint32_t size) noexcept;
+  static ScoreFunction Constant(score_t value, uint32_t count) noexcept;
 
   // Returns scoring function setting a single score bucket to `value`.
   static ScoreFunction Constant(score_t value) noexcept;
 
   // Returns invalid scoring function.
-  static ScoreFunction Invalid() noexcept { return {nullptr, nullptr}; }
+  static ScoreFunction Invalid() noexcept { return {nullptr, nullptr, &Noop}; }
 
-  ScoreFunction() noexcept;
-  ScoreFunction(memory::managed_ptr<score_ctx>&& ctx,
-                const score_f func) noexcept
-    : ctx_(std::move(ctx)), func_(func) {}
-  ScoreFunction(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept
-    : ScoreFunction(memory::to_managed<score_ctx>(std::move(ctx)), func) {}
-  ScoreFunction(score_ctx* ctx, const score_f func) noexcept
-    : ScoreFunction(memory::to_managed<score_ctx, false>(std::move(ctx)),
-                    func) {}
-  ScoreFunction(ScoreFunction&& rhs) noexcept;
-  ScoreFunction& operator=(ScoreFunction&& rhs) noexcept;
-
-  [[nodiscard]] score_ctx* Ctx() const noexcept { return ctx_.get(); }
-  [[nodiscard]] score_f Func() const noexcept { return func_; }
-
-  void Reset(memory::managed_ptr<score_ctx>&& ctx,
-             const score_f func) noexcept {
-    ctx_ = std::move(ctx);
-    func_ = func;
+  template<typename T, typename... Args>
+  static auto Make(score_f score, Args&&... args) {
+    return ScoreFunction{
+      new T{std::forward<Args>(args)...}, score,
+      [](score_ctx* ctx) noexcept { delete static_cast<T*>(ctx); }};
   }
 
-  void Reset(std::unique_ptr<score_ctx>&& ctx, const score_f func) noexcept {
-    ctx_ = memory::to_managed<score_ctx>(std::move(ctx));
-    func_ = func;
+  ScoreFunction() noexcept = default;
+  ScoreFunction(score_ctx& ctx, score_f score) noexcept
+    : ScoreFunction{&ctx, score, &Noop} {}
+  ScoreFunction(ScoreFunction&& rhs) noexcept
+    : ScoreFunction{std::exchange(rhs.ctx_, nullptr),
+                    std::exchange(rhs.score_, &DefaultScore),
+                    std::exchange(rhs.deleter_, &Noop)} {}
+  ScoreFunction& operator=(ScoreFunction&& rhs) noexcept {
+    if (IRS_LIKELY(this != &rhs)) {
+      std::swap(ctx_, rhs.ctx_);
+      std::swap(score_, rhs.score_);
+      std::swap(deleter_, rhs.deleter_);
+    }
+    return *this;
+  }
+  ~ScoreFunction() noexcept { deleter_(ctx_); }
+
+  void Reset(score_ctx& ctx, score_f score) noexcept {
+    IRS_ASSERT(&ctx != ctx_ || deleter_ == &Noop);
+    deleter_(ctx_);
+    ctx_ = &ctx;
+    score_ = score;
+    deleter_ = &Noop;
   }
 
-  void Reset(score_ctx* ctx, const score_f func) noexcept {
-    ctx_ = memory::to_managed<score_ctx, false>(ctx);
-    func_ = func;
-  }
-
-  bool IsNoop() const noexcept { return nullptr == ctx_ && kDefault == func_; }
+  bool IsNoop() const noexcept { return ctx_ == nullptr && IsDefault(); }
+  bool IsDefault() const noexcept { return score_ == &DefaultScore; }
 
   IRS_FORCE_INLINE void operator()(score_t* res) const noexcept {
-    IRS_ASSERT(func_);
-    return func_(ctx_.get(), res);
-  }
-
-  bool operator==(std::nullptr_t) const noexcept {
-    return !static_cast<bool>(*this);
+    IRS_ASSERT(score_ != nullptr);
+    score_(ctx_, res);
   }
 
   bool operator==(const ScoreFunction& rhs) const noexcept {
-    return ctx_ == rhs.ctx_ && func_ == rhs.func_;
+    return ctx_ == rhs.ctx_ && score_ == rhs.score_;
+  }
+  bool operator==(score_f score) const noexcept { return score_ == score; }
+  explicit operator bool() const noexcept { return score_ != nullptr; }
+
+  // TODO(MBkkt) test only
+  [[nodiscard]] score_ctx* Ctx() const noexcept { return ctx_; }
+  [[nodiscard]] score_f Func() const noexcept { return score_; }
+  static ScoreFunction Empty() noexcept {
+    return {nullptr, [](score_ctx* ctx, score_t* res) noexcept {}, &Noop};
   }
 
-  bool operator==(score_f rhs) const noexcept { return func_ == rhs; }
-
-  explicit operator bool() const noexcept { return nullptr != func_; }
-
  private:
-  memory::managed_ptr<score_ctx> ctx_;
-  score_f func_;
+  ScoreFunction(score_ctx* ctx, score_f score, deleter_f deleter) noexcept
+    : ctx_{ctx}, score_{score}, deleter_{deleter} {}
+
+  score_ctx* ctx_{nullptr};
+  score_f score_{&DefaultScore};
+  deleter_f deleter_{&Noop};
 };
 
 // Base class for all user-side sort entries.

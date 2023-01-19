@@ -48,7 +48,7 @@ enum class ErrorCode : uint32_t {
 
 #define DECLARE_ERROR_CODE(class_name)                 \
   static const ErrorCode CODE = ErrorCode::class_name; \
-  ::irs::ErrorCode code() const noexcept override { return CODE; }
+  ::irs::ErrorCode code() const noexcept final { return CODE; }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct error_base
@@ -56,7 +56,7 @@ enum class ErrorCode : uint32_t {
 struct error_base : std::exception {
   virtual ErrorCode code() const noexcept { return ErrorCode::undefined_error; }
   const char* what() const noexcept override;
-};  // error_base
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class detailed_error_base
@@ -74,7 +74,7 @@ class detailed_error_base : public error_base {
 
  private:
   std::string error_;
-};  // detailed_error_base
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct not_supported
@@ -82,8 +82,8 @@ class detailed_error_base : public error_base {
 struct not_supported : error_base {
   DECLARE_ERROR_CODE(not_supported);
 
-  const char* what() const noexcept override;
-};  // not_supported
+  const char* what() const noexcept final;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct io_error
@@ -95,7 +95,7 @@ struct io_error : detailed_error_base {
 
   template<typename T>
   explicit io_error(T&& error) : detailed_error_base(std::forward<T>(error)) {}
-};  // io_error
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct lock_obtain_failed
@@ -105,11 +105,11 @@ class lock_obtain_failed : public error_base {
   DECLARE_ERROR_CODE(lock_obtain_failed);
 
   explicit lock_obtain_failed(std::string_view filename = "");
-  const char* what() const noexcept override;
+  const char* what() const noexcept final;
 
  private:
   std::string error_;
-};  // lock_obtain_failed
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class file_not_found
@@ -119,11 +119,11 @@ class file_not_found : public error_base {
   DECLARE_ERROR_CODE(file_not_found);
 
   explicit file_not_found(std::string_view filename = "");
-  const char* what() const noexcept override;
+  const char* what() const noexcept final;
 
  private:
   std::string error_;
-};  // file_not_found
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct file_not_found
@@ -131,8 +131,8 @@ class file_not_found : public error_base {
 struct index_not_found : error_base {
   DECLARE_ERROR_CODE(index_not_found);
 
-  const char* what() const noexcept override;
-};  // index_not_found
+  const char* what() const noexcept final;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_error
@@ -143,7 +143,7 @@ struct index_error : detailed_error_base {
   template<typename T>
   explicit index_error(T&& error)
     : detailed_error_base(std::forward<T>(error)) {}
-};  // index_error
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct not_impl_error
@@ -151,8 +151,8 @@ struct index_error : detailed_error_base {
 struct not_impl_error : error_base {
   DECLARE_ERROR_CODE(not_impl_error);
 
-  const char* what() const noexcept override;
-};  // not_impl_error
+  const char* what() const noexcept final;
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct illegal_argument
@@ -163,7 +163,7 @@ struct illegal_argument : detailed_error_base {
   template<typename T>
   explicit illegal_argument(T&& error)
     : detailed_error_base(std::forward<T>(error)) {}
-};  // illegal_argument
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct illegal_state
@@ -174,6 +174,6 @@ struct illegal_state : detailed_error_base {
   template<typename T>
   explicit illegal_state(T&& error)
     : detailed_error_base(std::forward<T>(error)) {}
-};  // illegal_state
+};
 
 }  // namespace irs

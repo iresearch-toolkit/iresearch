@@ -535,7 +535,7 @@ class index_profile_test_case : public tests::index_test_base {
     ASSERT_EQ(1, reader.size());
     ASSERT_EQ(docs_count, reader[0].docs_count());
   }
-};  // index_profile_test_case
+};
 
 TEST_P(index_profile_test_case, profile_bulk_index_singlethread_full_mt) {
   profile_bulk_index(0, 0, 0, 0);
@@ -598,16 +598,10 @@ TEST_P(index_profile_test_case,
   profile_bulk_index(16, 0, 5, 10000);  // 5 does not divide evenly into 16
 }
 
-const auto kValues = ::testing::Values(
-#ifdef IRESEARCH_URING
-  &tests::directory<&tests::async_directory>,
-#endif
-  &tests::directory<&tests::memory_directory>,
-  &tests::directory<&tests::fs_directory>,
-  &tests::directory<&tests::mmap_directory>);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
 INSTANTIATE_TEST_SUITE_P(
   index_profile_test, index_profile_test_case,
-  ::testing::Combine(kValues,
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
                      ::testing::Values("1_0", "1_2", "1_3", "1_4", "1_5")),
   index_profile_test_case::to_string);

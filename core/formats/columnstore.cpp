@@ -117,7 +117,7 @@ struct format_traits {
     IRS_ASSERT(size);
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   }
-};  // format_traits
+};
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                 Format constants
@@ -293,7 +293,7 @@ class meta_writer final {
   field_id max_id_{};  // The highest column id written (optimization for vector
                        // resize on read to highest id)
   ColumnMetaVersion version_;
-};  // meta_writer
+};
 
 void meta_writer::prepare(directory& dir, std::string_view segment) {
   auto filename = irs::file_name(segment, meta_writer::FORMAT_EXT);
@@ -360,7 +360,7 @@ class meta_reader final {
   index_input::ptr in_;
   size_t count_{0};
   field_id max_id_{0};
-};  // meta_writer
+};
 
 bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
                           size_t& count, field_id& max_id) {
@@ -597,12 +597,12 @@ class writer final : public irs::columnstore_writer {
     IRS_ASSERT(version >= Version::MIN && version <= Version::MAX);
   }
 
-  void prepare(directory& dir, const SegmentMeta& meta) override;
+  void prepare(directory& dir, const SegmentMeta& meta) final;
   // Current implmentation doesn't support column headers
   column_t push_column(const ColumnInfo& info,
-                       column_finalizer_f /*writer*/) override;
-  bool commit(const flush_state& state) override;
-  void rollback() noexcept override;
+                       column_finalizer_f /*writer*/) final;
+  bool commit(const flush_state& state) final;
+  void rollback() noexcept final;
 
  private:
   class column final : public irs::column_output {
@@ -694,13 +694,13 @@ class writer final : public irs::columnstore_writer {
       blocks_index_.stream.flush();
     }
 
-    void write_byte(byte_type b) override { block_buf_ += b; }
+    void write_byte(byte_type b) final { block_buf_ += b; }
 
-    void write_bytes(const byte_type* b, size_t size) override {
+    void write_bytes(const byte_type* b, size_t size) final {
       block_buf_.append(b, size);
     }
 
-    void reset() override {
+    void reset() final {
       if (block_index_.empty()) {
         // nothing to reset
         return;
@@ -798,7 +798,7 @@ class writer final : public irs::columnstore_writer {
                           // into account since it may skew distribution)
     doc_id_t max_{doc_limits::invalid()};  // max key (among flushed blocks)
     std::string_view name_;
-  };  // column
+  };
 
   void flush_meta(const flush_state& meta);
 
@@ -812,7 +812,7 @@ class writer final : public irs::columnstore_writer {
   directory* dir_;
   encryption::stream::ptr data_out_cipher_;
   Version version_;
-};  // writer
+};
 
 void writer::prepare(directory& dir, const SegmentMeta& meta) {
   columns_.clear();
@@ -1064,7 +1064,7 @@ class sparse_block : util::noncopyable {
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
     const bstring* data_{};
-  };  // iterator
+  };
 
   void load(index_input& in, compression::decompressor* decomp,
             encryption::stream* cipher, bstring& buf) {
@@ -1107,7 +1107,7 @@ class sparse_block : util::noncopyable {
   ref index_[INDEX_BLOCK_SIZE];
   bstring data_;
   const ref* end_{std::end(index_)};
-};  // sparse_block
+};
 
 // cppcheck-suppress noConstructor
 class dense_block : util::noncopyable {
@@ -1179,7 +1179,7 @@ class dense_block : util::noncopyable {
     const uint32_t* end_{};
     const bstring* data_{};
     doc_id_t base_{};
-  };  // iterator
+  };
 
   void load(index_input& in, compression::decompressor* decomp,
             encryption::stream* cipher, bstring& buf) {
@@ -1223,7 +1223,7 @@ class dense_block : util::noncopyable {
   bstring data_;
   uint32_t* end_{index_};
   doc_id_t base_{0};
-};  // dense_block
+};
 
 class dense_fixed_offset_block : util::noncopyable {
  public:
@@ -1332,7 +1332,7 @@ class dense_fixed_offset_block : util::noncopyable {
   uint32_t avg_length_{};   // entry length
   doc_id_t size_{};         // total number of entries
   bstring data_;
-};  // dense_fixed_offset_block
+};
 
 class sparse_mask_block : util::noncopyable {
  public:
@@ -1379,7 +1379,7 @@ class sparse_mask_block : util::noncopyable {
     const doc_id_t* it_{};
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
-  };  // iterator
+  };
 
   sparse_mask_block() noexcept {
     std::fill(std::begin(keys_), std::end(keys_), doc_limits::eof());
@@ -1467,7 +1467,7 @@ class dense_mask_block {
     doc_id_t value_{doc_limits::invalid()};
     doc_id_t doc_{doc_limits::invalid()};
     doc_id_t max_{doc_limits::invalid()};
-  };  // iterator
+  };
 
   dense_mask_block() noexcept
     : min_(doc_limits::invalid()), max_(doc_limits::invalid()) {}
@@ -1500,7 +1500,7 @@ class dense_mask_block {
  private:
   doc_id_t min_;
   doc_id_t max_;
-};  // dense_mask_block
+};
 
 template<typename Allocator = std::allocator<sparse_block>>
 class read_context
@@ -1609,7 +1609,7 @@ class context_provider : private util::noncopyable {
   mutable bounded_object_pool<read_context_t> pool_;
   encryption::stream::ptr cipher_;
   index_input::ptr stream_;
-};  // context_provider
+};
 
 // in case of success caches block pointed
 // instance, nullptr otherwise
@@ -1703,7 +1703,7 @@ class column : public irs::column_reader, private util::noncopyable {
 
   bool encrypted() const noexcept { return encrypted_; }
   doc_id_t max() const noexcept { return max_; }
-  doc_id_t size() const noexcept override { return count_; }
+  doc_id_t size() const noexcept final { return count_; }
   bool empty() const noexcept { return 0 == size(); }
   uint32_t avg_block_size() const noexcept { return avg_block_size_; }
   uint32_t avg_block_count() const noexcept { return avg_block_count_; }
@@ -1729,7 +1729,7 @@ class column : public irs::column_reader, private util::noncopyable {
 };                         // column
 
 template<typename Column>
-class column_iterator final : public irs::doc_iterator {
+class column_iterator : public irs::doc_iterator {
  private:
   using attributes = std::tuple<document, cost, score, payload>;
 
@@ -1749,15 +1749,15 @@ class column_iterator final : public irs::doc_iterator {
     std::get<cost>(attrs_).reset(column.size());
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  doc_id_t seek(irs::doc_id_t doc) override {
+  doc_id_t seek(irs::doc_id_t doc) final {
     begin_ = column_->find_block(seek_origin_, end_, doc);
 
     if (!next_block()) {
@@ -1775,7 +1775,7 @@ class column_iterator final : public irs::doc_iterator {
     return value();
   }
 
-  bool next() override {
+  bool next() final {
     while (!block_.next()) {
       if (!next_block()) {
         return false;
@@ -1836,7 +1836,7 @@ class column_iterator final : public irs::doc_iterator {
   const column_t* column_;
   block_t cached_block_;
   bool cache_;
-};  // column_iterator
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Columns
@@ -1860,7 +1860,7 @@ class sparse_column final : public column {
     : column(id, props), ctxs_(&ctxs) {}
 
   void read(data_input& in, uint64_t* buf,
-            compression::decompressor::ptr decomp) override {
+            compression::decompressor::ptr decomp) final {
     column::read(in, buf, std::move(decomp));  // read common header
 
     uint32_t blocks_count =
@@ -1916,7 +1916,7 @@ class sparse_column final : public column {
     refs_ = std::move(refs);
   }
 
-  irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
+  irs::doc_iterator::ptr iterator(ColumnHint hint) const final {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2014,7 +2014,7 @@ class dense_fixed_offset_column final : public column {
     : column(id, prop), ctxs_(&ctxs) {}
 
   void read(data_input& in, uint64_t* buf,
-            compression::decompressor::ptr decomp) override {
+            compression::decompressor::ptr decomp) final {
     column::read(in, buf, std::move(decomp));  // read common header
 
     size_t blocks_count =
@@ -2063,7 +2063,7 @@ class dense_fixed_offset_column final : public column {
     min_ = this->max() - this->count() + 1;
   }
 
-  irs::doc_iterator::ptr iterator(ColumnHint hint) const override {
+  irs::doc_iterator::ptr iterator(ColumnHint hint) const final {
     typedef column_iterator<column_t> iterator_t;
 
     if (empty()) {
@@ -2092,7 +2092,7 @@ class dense_fixed_offset_column final : public column {
     uint64_t offset;  // need to store base offset since blocks may not be
                       // located sequentially
     mutable std::atomic<const block_t*> pblock;
-  };  // block_ref
+  };
 
   typedef std::vector<block_ref> refs_t;
 
@@ -2149,7 +2149,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     : column(id, prop) {}
 
   void read(data_input& in, uint64_t* buf,
-            compression::decompressor::ptr decomp) override {
+            compression::decompressor::ptr decomp) final {
     // we treat data in blocks as "garbage" which could be
     // potentially removed on merge, so we don't validate
     // column properties using such blocks
@@ -2193,10 +2193,10 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     min_ = this->max() - this->count();
   }
 
-  irs::doc_iterator::ptr iterator(ColumnHint hint) const override;
+  irs::doc_iterator::ptr iterator(ColumnHint hint) const final;
 
  private:
-  class column_iterator final : public irs::doc_iterator {
+  class column_iterator : public irs::doc_iterator {
    private:
     using attributes = std::tuple<document, cost, score>;
 
@@ -2210,11 +2210,11 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       return irs::get_mutable(attrs_, type);
     }
 
-    irs::doc_id_t value() const noexcept override {
+    irs::doc_id_t value() const noexcept final {
       return std::get<document>(attrs_).value;
     }
 
-    irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
+    irs::doc_id_t seek(irs::doc_id_t doc) noexcept final {
       // cppcheck-suppress shadowFunction
       auto& value = std::get<document>(attrs_);
 
@@ -2232,7 +2232,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       return value.value;
     }
 
-    bool next() noexcept override {
+    bool next() noexcept final {
       // cppcheck-suppress shadowFunction
       auto& value = std::get<document>(attrs_);
 
@@ -2251,7 +2251,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
     attributes attrs_;
     doc_id_t min_{doc_limits::invalid()};
     doc_id_t max_{doc_limits::invalid()};
-  };  // column_iterator
+  };
 
   doc_id_t min_{};  // min key (less than any key in column)
 };                  // dense_fixed_offset_column
@@ -2305,13 +2305,13 @@ class reader final : public columnstore_reader, public context_provider {
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
   bool prepare(const directory& dir, const SegmentMeta& meta,
-               const options& opts = options{}) override;
+               const options& opts = options{}) final;
 
-  const column_reader* column(field_id field) const override;
+  const column_reader* column(field_id field) const final;
 
-  bool visit(const column_visitor_f& visitor) const override;
+  bool visit(const column_visitor_f& visitor) const final;
 
-  size_t size() const noexcept override { return columns_.size(); }
+  size_t size() const noexcept final { return columns_.size(); }
 
  private:
   static bool read_meta(const directory& dir, const SegmentMeta& meta,
@@ -2320,7 +2320,7 @@ class reader final : public columnstore_reader, public context_provider {
 
   std::vector<column::ptr> columns_;
   std::vector<const class column*> sorted_columns_;
-};  // reader
+};
 
 bool reader::read_meta(const directory& dir, const SegmentMeta& meta,
                        std::vector<column::ptr>& columns,

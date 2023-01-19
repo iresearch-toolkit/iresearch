@@ -986,7 +986,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(expected, actual);
     }
   }
-};  // column_existence_filter_test_case
+};
 
 TEST_P(column_existence_filter_test_case, mask_column) {
   simple_sequential_mask();
@@ -1397,7 +1397,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
         some_docs_field_{some_docs_field},
         with_field_{with_field},
         max_doc_id_(total_docs + 1) {}
-    const tests::document* next() override {
+    const tests::document* next() final {
       if (produced_docs_ >= max_doc_id_) {
         return nullptr;
       }
@@ -1414,7 +1414,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
       }
       return &doc_;
     }
-    void reset() override {
+    void reset() final {
       produced_docs_ = 0;
       span_index_ = 0;
     }
@@ -1510,22 +1510,19 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  column_existence_filter_test, column_existence_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  column_existence_filter_test_case::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
-INSTANTIATE_TEST_SUITE_P(
-  column_existence_long_filter_test, column_existence_long_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_4", "1_4simd")),
-  column_existence_long_filter_test_case::to_string);
+INSTANTIATE_TEST_SUITE_P(column_existence_filter_test,
+                         column_existence_filter_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_0")),
+                         column_existence_filter_test_case::to_string);
+
+INSTANTIATE_TEST_SUITE_P(column_existence_long_filter_test,
+                         column_existence_long_filter_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_4",
+                                                              "1_4simd")),
+                         column_existence_long_filter_test_case::to_string);
 
 }  // namespace

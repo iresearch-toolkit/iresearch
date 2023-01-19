@@ -37,7 +37,7 @@ struct cipher {
   virtual bool encrypt(byte_type* data) const = 0;
 
   virtual bool decrypt(byte_type* data) const = 0;
-};  // cipher
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_encryption
@@ -51,13 +51,12 @@ class ctr_encryption : public encryption {
 
   size_t header_length() noexcept override { return DEFAULT_HEADER_LENGTH; }
 
-  bool create_header(std::string_view filename, byte_type* header) override;
+  bool create_header(std::string_view filename, byte_type* header) final;
 
-  stream::ptr create_stream(std::string_view filename,
-                            byte_type* header) override;
+  stream::ptr create_stream(std::string_view filename, byte_type* header) final;
 
  private:
   const cipher* cipher_;
-};  // ctr_encryption
+};
 
 }  // namespace irs

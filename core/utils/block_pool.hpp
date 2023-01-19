@@ -537,7 +537,7 @@ class block_pool_sliced_reader
 
   size_t level_{};
   size_t end_{};
-};  // block_pool_sliced_reader
+};
 
 template<typename ContType>
 block_pool_sliced_reader<ContType>::block_pool_sliced_reader(

@@ -51,7 +51,7 @@ enum class Version : int32_t {
   /// max supported version
   ////////////////////////////////////////////////////////////////////////////
   MAX = IMMUTABLE_FST
-};  // Version
+};
 
 irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,

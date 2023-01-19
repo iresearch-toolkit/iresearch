@@ -81,28 +81,29 @@ struct basic_sort : irs::sort {
   struct prepared_sort final : irs::PreparedSortBase<void> {
     explicit prepared_sort(size_t idx) : idx(idx) {}
 
-    irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const final {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual irs::ScoreFunction prepare_scorer(const irs::SubReader&,
-                                              const irs::term_reader&,
-                                              const irs::byte_type*,
-                                              const irs::attribute_provider&,
-                                              irs::score_t) const override {
-      return {std::unique_ptr<irs::score_ctx>(new basic_scorer(idx)),
-              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                ASSERT_NE(nullptr, res);
-                ASSERT_NE(nullptr, ctx);
-                const auto& state = *reinterpret_cast<basic_scorer*>(ctx);
-                *res = static_cast<uint32_t>(state.idx);
-              }};
+    irs::ScoreFunction prepare_scorer(const irs::SubReader&,
+                                      const irs::term_reader&,
+                                      const irs::byte_type*,
+                                      const irs::attribute_provider&,
+                                      irs::score_t) const final {
+      return irs::ScoreFunction::Make<basic_scorer>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          ASSERT_NE(nullptr, res);
+          ASSERT_NE(nullptr, ctx);
+          const auto& state = *static_cast<basic_scorer*>(ctx);
+          *res = static_cast<uint32_t>(state.idx);
+        },
+        idx);
     }
 
     size_t idx;
   };
 
-  irs::sort::prepared::ptr prepare() const override {
+  irs::sort::prepared::ptr prepare() const final {
     return irs::sort::prepared::ptr(new prepared_sort(idx));
   }
 
@@ -140,7 +141,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
         irs::PrepareScorers(ord.buckets(), irs::SubReader::empty(),
                             irs::empty_term_reader{0}, stats_, *this, boost);
 
-      score_.Reset(this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+      score_.Reset(*this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& self = *static_cast<basic_doc_iterator*>(ctx);
         for (auto& scorer : self.scorers_) {
           scorer(res++);
@@ -157,9 +158,9 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
 #pragma GCC diagnostic pop
 #endif
 
-  irs::doc_id_t value() const override { return doc_.value; }
+  irs::doc_id_t value() const final { return doc_.value; }
 
-  bool next() override {
+  bool next() final {
     if (first_ == last_) {
       doc_.value = irs::doc_limits::eof();
       return false;
@@ -170,12 +171,12 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
     return true;
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }
 
-  irs::doc_id_t seek(irs::doc_id_t doc) override {
+  irs::doc_id_t seek(irs::doc_id_t doc) final {
     if (irs::doc_limits::eof(doc_.value) || doc <= doc_.value) {
       return doc_.value;
     }
@@ -196,7 +197,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
   const irs::byte_type* stats_;
   irs::score score_;
   irs::document doc_;
-};  // basic_doc_iterator
+};
 
 std::vector<irs::doc_id_t> union_all(
   const std::vector<std::vector<irs::doc_id_t>>& docs) {
@@ -257,24 +258,24 @@ struct boosted : public irs::filter {
       : irs::filter::prepared(boost), docs(docs) {}
 
     irs::doc_iterator::ptr execute(
-      const irs::ExecutionContext& ctx) const override {
+      const irs::ExecutionContext& ctx) const final {
       boosted::execute_count++;
       return irs::memory::make_managed<basic_doc_iterator>(
         docs.begin(), docs.end(), stats.c_str(), ctx.scorers, boost());
     }
 
     void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
-               irs::score_t) const override {
+               irs::score_t) const final {
       // No terms to visit
     }
 
     basic_doc_iterator::docids_t docs;
     irs::bstring stats;
-  };  // prepared
+  };
 
   irs::filter::prepared::ptr prepare(
     const irs::IndexReader&, const irs::Order&, irs::score_t boost,
-    const irs::attribute_provider* /*ctx*/) const override {
+    const irs::attribute_provider* /*ctx*/) const final {
     return irs::memory::make_managed<boosted::prepared>(docs,
                                                         this->boost() * boost);
   }
@@ -283,7 +284,7 @@ struct boosted : public irs::filter {
 
   basic_doc_iterator::docids_t docs;
   static unsigned execute_count;
-};  // boosted
+};
 
 unsigned boosted::execute_count{0};
 
@@ -1130,42 +1131,40 @@ namespace detail {
 
 struct unestimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
-    irs::doc_id_t value() const override {
+    irs::doc_id_t value() const final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    bool next() override { return false; }
-    irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() final { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       return type == irs::type<irs::document>::id() ? &doc : nullptr;
     }
 
     irs::document doc;
-  };  // doc_iterator
+  };
 
   struct prepared : public irs::filter::prepared {
-    irs::doc_iterator::ptr execute(
-      const irs::ExecutionContext&) const override {
+    irs::doc_iterator::ptr execute(const irs::ExecutionContext&) const final {
       return irs::memory::make_managed<unestimated::doc_iterator>();
     }
     void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
-               irs::score_t) const override {
+               irs::score_t) const final {
       // No terms to visit
     }
-  };  // prepared
+  };
 
   filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
-                                const irs::attribute_provider*) const override {
+                                const irs::attribute_provider*) const final {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
   unestimated() : filter(irs::type<unestimated>::get()) {}
-};  // unestimated
+};
 
 struct estimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
@@ -1175,17 +1174,16 @@ struct estimated : public irs::filter {
         return est;
       });
     }
-    irs::doc_id_t value() const override {
+    irs::doc_id_t value() const final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    bool next() override { return false; }
-    irs::doc_id_t seek(irs::doc_id_t) override {
+    bool next() final { return false; }
+    irs::doc_id_t seek(irs::doc_id_t) final {
       // prevent iterator to filter out
       return irs::doc_limits::invalid();
     }
-    irs::attribute* get_mutable(
-      irs::type_info::type_id type) noexcept override {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       if (type == irs::type<irs::cost>::id()) {
         return &cost;
       }
@@ -1195,29 +1193,28 @@ struct estimated : public irs::filter {
 
     irs::document doc;
     irs::cost cost;
-  };  // doc_iterator
+  };
 
   struct prepared : public irs::filter::prepared {
     explicit prepared(irs::cost::cost_t est, bool* evaluated)
       : evaluated(evaluated), est(est) {}
 
-    irs::doc_iterator::ptr execute(
-      const irs::ExecutionContext&) const override {
+    irs::doc_iterator::ptr execute(const irs::ExecutionContext&) const final {
       return irs::memory::make_managed<estimated::doc_iterator>(est, evaluated);
     }
 
     void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
-               irs::score_t) const override {
+               irs::score_t) const final {
       // No terms to visit
     }
 
     bool* evaluated;
     irs::cost::cost_t est;
-  };  // prepared
+  };
 
   filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
                                 irs::score_t,
-                                const irs::attribute_provider*) const override {
+                                const irs::attribute_provider*) const final {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
   }
 
@@ -1225,7 +1222,7 @@ struct estimated : public irs::filter {
 
   mutable bool evaluated = false;
   irs::cost::cost_t est{};
-};  // estimated
+};
 
 }  // namespace detail
 
@@ -1785,7 +1782,7 @@ TEST(basic_disjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -1843,7 +1840,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // estimation
@@ -1887,7 +1884,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
             first.begin(), first.end(), empty_stats, prepared_first_order)),
           adapter(irs::memory::make_managed<detail::basic_doc_iterator>(
             last.begin(), last.end(), empty_stats, prepared_last_order)),
-          std::move(aggregator), 1);  // custom cost
+          std::move(aggregator), 1U);
       });
 
     using ExpectedType =
@@ -1903,7 +1900,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -1959,7 +1956,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
             first.begin(), first.end(), empty_stats, prepared_first_order)),
           adapter(irs::memory::make_managed<detail::basic_doc_iterator>(
             last.begin(), last.end(), empty_stats, prepared_last_order)),
-          std::move(aggregator), 1);  // custom cost
+          std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -1975,7 +1972,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -2042,7 +2039,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2110,7 +2107,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2178,7 +2175,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2247,7 +2244,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2315,7 +2312,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2383,7 +2380,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
     ASSERT_NE(nullptr, irs::get<irs::score>(it));
     auto& score = irs::score::get(it);
     ASSERT_NE(&irs::score::kNoScore, &score);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // estimation
     ASSERT_EQ(first.size() + last.size(), irs::cost::extract(it));
@@ -2432,7 +2429,7 @@ TEST(small_disjunction_test, next) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -2793,7 +2790,7 @@ TEST(small_disjunction_test, seek) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -2961,7 +2958,7 @@ TEST(small_disjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3004,7 +3001,7 @@ TEST(small_disjunction_test, scored_seek_next) {
         auto itrs = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(itrs), std::move(aggregator), 1);  // custom cost
+          std::move(itrs), std::move(aggregator), 1U);
       });
 
     using ExpectedType =
@@ -3017,7 +3014,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3057,7 +3054,7 @@ TEST(small_disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -3071,7 +3068,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3126,7 +3123,7 @@ TEST(small_disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -3140,7 +3137,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3195,7 +3192,7 @@ TEST(small_disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -3209,7 +3206,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3264,7 +3261,7 @@ TEST(small_disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -3278,7 +3275,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3332,7 +3329,7 @@ TEST(small_disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -3347,7 +3344,7 @@ TEST(small_disjunction_test, scored_seek_next) {
     // score
     auto& score = irs::score::get(it);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
 
     // cost
     ASSERT_EQ(1, irs::cost::extract(it));
@@ -3400,7 +3397,7 @@ TEST(small_disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -3414,7 +3411,7 @@ TEST(small_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -3463,7 +3460,7 @@ TEST(block_disjunction_test, check_attributes) {
       irs::doc_iterator::ptr, irs::NoopAggregator,
       irs::block_disjunction_traits<irs::MatchType::kMatch, false, 1>>;
 
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
@@ -3472,7 +3469,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
   }
 
   // scoring, no order
@@ -3481,7 +3478,7 @@ TEST(block_disjunction_test, check_attributes) {
       irs::doc_iterator::ptr, irs::NoopAggregator,
       irs::block_disjunction_traits<irs::MatchType::kMatch, false, 1>>;
 
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
@@ -3490,7 +3487,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_TRUE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
   }
 
   // no scoring, order
@@ -3501,7 +3498,7 @@ TEST(block_disjunction_test, check_attributes) {
       irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
       irs::block_disjunction_traits<irs::MatchType::kMatch, false, 1>>;
 
-    disjunction it({}, {});
+    disjunction it(disjunction::doc_iterators_t{}, size_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
@@ -3510,7 +3507,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_TRUE(score->Func() != irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score->Func() != &irs::ScoreFunction::DefaultScore);
   }
 
   // scoring, order
@@ -3521,7 +3518,7 @@ TEST(block_disjunction_test, check_attributes) {
       irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
       irs::block_disjunction_traits<irs::MatchType::kMatch, false, 1>>;
 
-    disjunction it({}, {});
+    disjunction it(disjunction::doc_iterators_t{}, size_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_NE(nullptr, doc);
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
@@ -3530,7 +3527,7 @@ TEST(block_disjunction_test, check_attributes) {
     ASSERT_EQ(0, cost->estimate());
     auto* score = irs::get<irs::score>(it);
     ASSERT_NE(nullptr, score);
-    ASSERT_FALSE(score->Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
   }
 }
 
@@ -3816,7 +3813,7 @@ TEST(block_disjunction_test, next) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -4035,7 +4032,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 1);  // custom cost
+            std::move(res), std::move(aggregator), 1U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4047,7 +4044,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4093,7 +4090,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 1);  // custom cost
+            std::move(res), std::move(aggregator), 1U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4104,7 +4101,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4152,7 +4149,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4163,7 +4160,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4213,7 +4210,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4224,7 +4221,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4271,7 +4268,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4282,7 +4279,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4346,7 +4343,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4357,7 +4354,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4421,7 +4418,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4432,7 +4429,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4483,7 +4480,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4494,7 +4491,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4539,7 +4536,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4550,7 +4547,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4592,7 +4589,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4603,7 +4600,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4655,7 +4652,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4674,10 +4671,10 @@ TEST(block_disjunction_test, next_scored) {
       irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
       irs::block_disjunction_traits<irs::MatchType::kMatch, false, 1>>;
 
-    disjunction it({}, {});
+    disjunction it(disjunction::doc_iterators_t{}, size_t{});
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -4715,7 +4712,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4726,7 +4723,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4778,7 +4775,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4789,7 +4786,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4835,7 +4832,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4846,7 +4843,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4891,7 +4888,7 @@ TEST(block_disjunction_test, next_scored) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -4902,7 +4899,7 @@ TEST(block_disjunction_test, next_scored) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -4946,7 +4943,7 @@ TEST(block_disjunction_test, next_scored) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 3);  // custom cost
+          std::move(res), std::move(aggregator), 3U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -4957,7 +4954,7 @@ TEST(block_disjunction_test, next_scored) {
 
     // score is set
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -4998,7 +4995,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 1);  // custom cost
+            std::move(res), std::move(aggregator), 1U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5009,7 +5006,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5055,7 +5052,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 1);  // custom cost
+            std::move(res), std::move(aggregator), 1U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5066,7 +5063,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5114,7 +5111,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5125,7 +5122,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5173,7 +5170,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5184,7 +5181,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5232,7 +5229,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5243,7 +5240,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5307,7 +5304,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5318,7 +5315,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5382,7 +5379,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5393,7 +5390,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5443,7 +5440,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5454,7 +5451,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5498,7 +5495,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5509,7 +5506,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5549,7 +5546,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 2);  // custom cost
+            std::move(res), std::move(aggregator), 2U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5560,7 +5557,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5610,7 +5607,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5644,7 +5641,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -5680,7 +5677,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5691,7 +5688,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5740,7 +5737,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5751,7 +5748,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5794,7 +5791,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5805,7 +5802,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5850,7 +5847,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
           auto res = detail::execute_all<adapter>(docs);
 
           return irs::memory::make_managed<disjunction>(
-            std::move(res), std::move(aggregator), 3);  // custom cost
+            std::move(res), std::move(aggregator), 3U);  // custom cost
         });
 
       using ExpectedType = irs::block_disjunction<
@@ -5861,7 +5858,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
       // score is set
       auto& score = irs::score::get(it);
-      ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
       auto* doc = irs::get<irs::document>(it);
@@ -5902,7 +5899,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 3);  // custom cost
+          std::move(res), std::move(aggregator), 3U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -5913,7 +5910,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
     // score is set
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -5972,7 +5969,7 @@ TEST(block_disjunction_test, min_match_next) {
     };
 
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_FALSE(irs::doc_limits::valid(doc->value));
@@ -6108,7 +6105,7 @@ TEST(block_disjunction_test, min_match_next) {
     std::vector<size_t> match_counts{2, 2, 3};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -6140,7 +6137,7 @@ TEST(block_disjunction_test, min_match_next) {
     std::vector<size_t> match_counts{3};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 3U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -6167,7 +6164,7 @@ TEST(block_disjunction_test, min_match_next) {
     std::vector<std::vector<irs::doc_id_t>> docs{
       {1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127}, {1, 5, 6, 12, 29, 126}, {129}};
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -6192,7 +6189,7 @@ TEST(block_disjunction_test, min_match_next) {
     ASSERT_EQ(expected.size(), match_counts.size());
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 1);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 1U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
@@ -6259,7 +6256,7 @@ TEST(block_disjunction_test, min_match_next) {
     ASSERT_EQ(expected.size(), match_counts.size());
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 0);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 0U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
@@ -6291,7 +6288,7 @@ TEST(block_disjunction_test, min_match_next) {
     ASSERT_EQ(expected.size(), match_counts.size());
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
@@ -6365,7 +6362,7 @@ TEST(block_disjunction_test, min_match_next) {
     std::vector<std::vector<irs::doc_id_t>> docs{{24}, {24}, {24}};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum),
@@ -6400,7 +6397,7 @@ TEST(block_disjunction_test, min_match_next) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -6614,7 +6611,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     };
 
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_FALSE(irs::doc_limits::valid(doc->value));
@@ -6750,7 +6747,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     std::vector<size_t> match_counts{2, 2, 3};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -6782,7 +6779,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     std::vector<size_t> match_counts{3};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 3U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -6809,7 +6806,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     std::vector<std::vector<irs::doc_id_t>> docs{
       {1, 2, 5, 7, 9, 11, 45, 65, 78, 126, 127}, {1, 5, 6, 12, 29, 126}, {129}};
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
@@ -6834,7 +6831,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     ASSERT_EQ(expected.size(), match_counts.size());
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 1);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 1U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
@@ -6901,7 +6898,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     ASSERT_EQ(expected.size(), match_counts.size());
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 0);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 0U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
@@ -6933,7 +6930,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     ASSERT_EQ(expected.size(), match_counts.size());
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_FALSE(irs::doc_limits::valid(it.value()));
       ASSERT_TRUE(bool(doc));
@@ -7007,7 +7004,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
     std::vector<std::vector<irs::doc_id_t>> docs{{24}, {24}, {24}};
     std::vector<irs::doc_id_t> result;
     {
-      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+      disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::accumulate(docs.begin(), docs.end(), size_t(0), sum),
@@ -7042,7 +7039,7 @@ TEST(block_disjunction_test, min_match_next_two_blocks) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -7228,7 +7225,7 @@ TEST(block_disjunction_test, seek_no_readahead) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -7692,7 +7689,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7703,7 +7700,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
     // no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7753,7 +7750,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7763,7 +7760,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7821,7 +7818,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7831,7 +7828,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7878,7 +7875,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
         auto res = detail::execute_all<adapter>(docs);
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7888,7 +7885,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7927,7 +7924,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7938,7 +7935,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -7982,7 +7979,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -7992,7 +7989,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8035,7 +8032,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8045,7 +8042,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8093,7 +8090,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8103,7 +8100,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8155,7 +8152,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8165,7 +8162,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8206,7 +8203,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8216,7 +8213,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8263,7 +8260,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8273,7 +8270,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8320,7 +8317,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8330,7 +8327,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8363,7 +8360,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
       irs::doc_iterator::ptr, irs::NoopAggregator,
       irs::block_disjunction_traits<irs::MatchType::kMatch, true, 1>>;
 
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -8405,7 +8402,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8416,7 +8413,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
     // no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8466,7 +8463,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8476,7 +8473,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8534,7 +8531,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8544,7 +8541,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8592,7 +8589,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8602,7 +8599,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8640,7 +8637,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8650,7 +8647,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8694,7 +8691,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8704,7 +8701,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8745,7 +8742,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8755,7 +8752,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8803,7 +8800,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8813,7 +8810,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8865,7 +8862,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8875,7 +8872,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8916,7 +8913,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8926,7 +8923,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -8973,7 +8970,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -8983,7 +8980,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -9030,7 +9027,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 2);  // custom cost
+          std::move(res), std::move(aggregator), 2U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -9040,7 +9037,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     auto* doc = irs::get<irs::document>(it);
@@ -9072,7 +9069,7 @@ TEST(block_disjunction_test, min_match_seek_no_readahead) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -9136,7 +9133,7 @@ TEST(block_disjunction_test, min_match_seek_no_readahead) {
       {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
     };
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_TRUE(bool(doc));
@@ -9171,7 +9168,7 @@ TEST(block_disjunction_test, min_match_seek_no_readahead) {
       {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
     };
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_TRUE(bool(doc));
@@ -9524,7 +9521,7 @@ TEST(block_disjunction_test, min_match_seek_no_readahead) {
       {9, irs::doc_limits::eof(), 0},
     };
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
@@ -9555,7 +9552,7 @@ TEST(block_disjunction_test, seek_readahead) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -9979,7 +9976,7 @@ TEST(block_disjunction_test, min_match_seek_readahead) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -10043,7 +10040,7 @@ TEST(block_disjunction_test, min_match_seek_readahead) {
       {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
     };
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_TRUE(bool(doc));
@@ -10078,7 +10075,7 @@ TEST(block_disjunction_test, min_match_seek_readahead) {
       {irs::doc_limits::eof(), irs::doc_limits::eof(), 0},
     };
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 2U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
     ASSERT_TRUE(bool(doc));
@@ -10429,7 +10426,7 @@ TEST(block_disjunction_test, min_match_seek_readahead) {
       {9, irs::doc_limits::eof(), 0},
     };
 
-    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3);
+    disjunction it(detail::execute_all<disjunction::adapter>(docs), 3U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_FALSE(irs::doc_limits::valid(doc->value));
@@ -10461,7 +10458,7 @@ TEST(block_disjunction_test, seek_next_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10494,7 +10491,7 @@ TEST(block_disjunction_test, seek_next_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10532,7 +10529,7 @@ TEST(block_disjunction_test, next_seek_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10577,7 +10574,7 @@ TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10610,7 +10607,7 @@ TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10651,7 +10648,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -10665,7 +10662,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10707,7 +10704,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -10721,7 +10718,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10778,7 +10775,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -10792,7 +10789,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10849,7 +10846,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -10863,7 +10860,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10920,7 +10917,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -10934,7 +10931,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -10990,7 +10987,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -11004,7 +11001,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11060,7 +11057,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::block_disjunction<
@@ -11074,7 +11071,7 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11112,7 +11109,8 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--         disjunction (iterator0 OR iterator1 OR iterator2 OR ...)
+// --SECTION--         disjunction (iterator0 OR iterator1
+// OR iterator2 OR ...)
 // ----------------------------------------------------------------------------
 
 TEST(disjunction_test, next) {
@@ -11242,7 +11240,7 @@ TEST(disjunction_test, next) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -11402,7 +11400,7 @@ TEST(disjunction_test, seek) {
 
   // no iterators provided
   {
-    disjunction it({});
+    disjunction it(disjunction::doc_iterators_t{});
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(0, irs::cost::extract(it));
@@ -11656,7 +11654,7 @@ TEST(disjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11699,7 +11697,7 @@ TEST(disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType =
@@ -11712,7 +11710,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11752,7 +11750,7 @@ TEST(disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr,
@@ -11765,7 +11763,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11820,7 +11818,7 @@ TEST(disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr,
@@ -11833,7 +11831,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11888,7 +11886,7 @@ TEST(disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr,
@@ -11901,7 +11899,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -11956,7 +11954,7 @@ TEST(disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr,
@@ -11969,7 +11967,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -12023,7 +12021,7 @@ TEST(disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr,
@@ -12036,7 +12034,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -12090,7 +12088,7 @@ TEST(disjunction_test, scored_seek_next) {
         auto res = detail::execute_all<adapter>(docs);
 
         return irs::memory::make_managed<disjunction>(
-          std::move(res), std::move(aggregator), 1);  // custom cost
+          std::move(res), std::move(aggregator), 1U);  // custom cost
       });
 
     using ExpectedType = irs::disjunction<irs::doc_iterator::ptr,
@@ -12103,7 +12101,7 @@ TEST(disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -12720,7 +12718,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0U);
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
           ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -12737,7 +12735,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
+            detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1U);
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
           ASSERT_EQ(irs::doc_limits::invalid(), it.value());
@@ -13018,7 +13016,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
+        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -13028,7 +13026,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
+        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -13069,7 +13067,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
+        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -13079,7 +13077,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
+        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -13089,7 +13087,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2);
+        detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2U);
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       for (const auto& target : expected) {
@@ -13131,7 +13129,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0);
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 0U);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -13141,7 +13139,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1U);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -13159,7 +13157,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2);
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2U);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -13177,7 +13175,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 3);
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 3U);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -13196,7 +13194,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 5);
+          detail::execute_all<disjunction::cost_iterator_adapter>(docs), 5U);
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));
         for (const auto& target : expected) {
@@ -13227,13 +13225,13 @@ TEST(min_match_disjunction_test, seek_next) {
       {1, 2, 5, 7, 9, 11, 45}, {1, 5, 6, 12, 29}, {1, 5, 6, 9, 29}};
 
     disjunction it(
-      detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2);
+      detail::execute_all<disjunction::cost_iterator_adapter>(docs), 2U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13271,13 +13269,13 @@ TEST(min_match_disjunction_test, match_count) {
       {1, 3}, {1, 2, 3, 4}, {1, 3, 4}, {1, 3, 4}};
 
     disjunction it(
-      detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1);
+      detail::execute_all<disjunction::cost_iterator_adapter>(docs), 1U);
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13313,7 +13311,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
         auto res = detail::execute_all<adapter>(docs);
 
-        return irs::memory::make_managed<disjunction>(std::move(res), 2,
+        return irs::memory::make_managed<disjunction>(std::move(res), 2U,
                                                       std::move(aggregator));
       });
 
@@ -13327,7 +13325,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13367,7 +13365,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
         auto res = detail::execute_all<adapter>(docs);
 
-        return irs::memory::make_managed<disjunction>(std::move(res), 2,
+        return irs::memory::make_managed<disjunction>(std::move(res), 2U,
                                                       std::move(aggregator));
       });
 
@@ -13382,7 +13380,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13435,7 +13433,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
         auto res = detail::execute_all<adapter>(docs);
 
-        return irs::memory::make_managed<disjunction>(std::move(res), 2,
+        return irs::memory::make_managed<disjunction>(std::move(res), 2U,
                                                       std::move(aggregator));
       });
 
@@ -13450,7 +13448,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13503,7 +13501,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
         auto res = detail::execute_all<adapter>(docs);
 
-        return irs::memory::make_managed<disjunction>(std::move(res), 2,
+        return irs::memory::make_managed<disjunction>(std::move(res), 2U,
                                                       std::move(aggregator));
       });
 
@@ -13518,7 +13516,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13574,7 +13572,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
         auto res = detail::execute_all<adapter>(docs);
 
-        return irs::memory::make_managed<disjunction>(std::move(res), 2,
+        return irs::memory::make_managed<disjunction>(std::move(res), 2U,
                                                       std::move(aggregator));
       });
 
@@ -13589,7 +13587,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13641,7 +13639,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
         auto res = detail::execute_all<adapter>(docs);
 
-        return irs::memory::make_managed<disjunction>(std::move(res), 2,
+        return irs::memory::make_managed<disjunction>(std::move(res), 2U,
                                                       std::move(aggregator));
       });
 
@@ -13656,7 +13654,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -13708,7 +13706,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
         auto res = detail::execute_all<adapter>(docs);
 
-        return irs::memory::make_managed<disjunction>(std::move(res), 2,
+        return irs::memory::make_managed<disjunction>(std::move(res), 2U,
                                                       std::move(aggregator));
       });
 
@@ -13723,7 +13721,7 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14133,7 +14131,7 @@ TEST(conjunction_test, seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14188,7 +14186,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14253,7 +14251,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score, no order set
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14308,7 +14306,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14373,7 +14371,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14438,7 +14436,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14503,7 +14501,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14567,7 +14565,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14631,7 +14629,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14696,7 +14694,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14761,7 +14759,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_FALSE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14825,7 +14823,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14889,7 +14887,7 @@ TEST(conjunction_test, scored_seek_next) {
 
     // score
     auto& score = irs::score::get(it);
-    ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+    ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     ASSERT_EQ(&score, irs::get_mutable<irs::score>(&it));
 
     // cost
@@ -14941,7 +14939,7 @@ TEST(exclusion_test, next) {
 
       // score, no order set
       auto& score = irs::score::get(it);
-      ASSERT_TRUE(score.Func() == irs::ScoreFunction::kDefault);
+      ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
       ASSERT_FALSE(irs::get_mutable<irs::score>(&it));
       ASSERT_EQ(&score, &irs::score::kNoScore);
 
@@ -16596,13 +16594,11 @@ TEST(Or_test, boosted_not) {
 
 #endif  // IRESEARCH_DLL
 
-INSTANTIATE_TEST_SUITE_P(
-  boolean_filter_test, boolean_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  boolean_filter_test_case::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(boolean_filter_test, boolean_filter_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_0")),
+                         boolean_filter_test_case::to_string);
 
 }  // tests

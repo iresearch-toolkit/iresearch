@@ -117,8 +117,8 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 
   // term query
   {
-    auto lhs = make_filter<irs::by_term>("foo", "foo%")
-                 .prepare(irs::SubReader::empty());
+    auto lhs =
+      make_filter<irs::by_term>("foo", "foo%").prepare(irs::SubReader::empty());
     auto rhs = make_filter("foo", "foo\\%").prepare(irs::SubReader::empty());
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
@@ -141,8 +141,8 @@ TEST(by_wildcard_test, test_type_of_prepared_query) {
 
   // term query
   {
-    auto lhs = make_filter<irs::by_term>("foo", "bar%")
-                 .prepare(irs::SubReader::empty());
+    auto lhs =
+      make_filter<irs::by_term>("foo", "bar%").prepare(irs::SubReader::empty());
     auto rhs = make_filter("foo", "bar\\%").prepare(irs::SubReader::empty());
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
@@ -525,14 +525,13 @@ TEST_P(wildcard_filter_test_case, visit) {
   }
 }
 
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
 INSTANTIATE_TEST_SUITE_P(
   wildcard_filter_test, wildcard_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_2", "1_0"},
-                      tests::format_info{"1_3", "1_0"})),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_0"},
+                                       tests::format_info{"1_1", "1_0"},
+                                       tests::format_info{"1_2", "1_0"},
+                                       tests::format_info{"1_3", "1_0"})),
   wildcard_filter_test_case::to_string);

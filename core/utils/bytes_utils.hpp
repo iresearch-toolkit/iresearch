@@ -67,7 +67,7 @@ struct bytes_io<T, sizeof(uint8_t)> {
     // write direct since no benefit from variable-size encoding
     write(out, value);
   }
-};  // bytes_io<T, sizeof(uint8_t)>
+};
 
 template<typename T>
 struct bytes_io<T, sizeof(uint16_t)> {
@@ -115,7 +115,7 @@ struct bytes_io<T, sizeof(uint16_t)> {
     // write direct since no benefit from variable-size encoding
     write(out, value);
   }
-};  // bytes_io<T, sizeof(uint16_t)>
+};
 
 template<typename T>
 struct bytes_io<T, sizeof(uint32_t)> {
@@ -254,7 +254,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
   static void zvwrite(OutputIterator& out, int32_t value) {
     vwrite(out, zig_zag_encode32(value));
   }
-};  // bytes_io<T, sizeof(uint32_t)>
+};
 
 template<typename T>
 struct bytes_io<T, sizeof(uint64_t)> {
@@ -426,7 +426,7 @@ struct bytes_io<T, sizeof(uint64_t)> {
   static void zvwrite(OutputIterator& out, int64_t value) {
     vwrite(out, zig_zag_encode64(value));
   }
-};  // bytes_io<T, sizeof(uint64_t)>
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             exported functions for skipping bytes

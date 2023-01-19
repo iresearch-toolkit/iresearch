@@ -73,7 +73,7 @@ struct SegmentStats {
   const irs::SegmentInfo* meta;
   size_t size;  // approximate size of segment without removals
   double_t fill_factor;
-};  // segment_stat
+};
 
 struct ConsolidationCandidate {
   using iterator_t = std::vector<SegmentStats>::const_iterator;
@@ -273,7 +273,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
                    const ConsolidatingSegments& /*consolidating_segments*/) {
     auto fill_threshold = options.threshold;
-    auto threshold = std::clamp(0.0f, fill_threshold, 1.0f);
+    auto threshold = std::clamp(fill_threshold, 0.0F, 1.0F);
 
     // merge segment if: {threshold} >= #segment_docs{valid} /
     // (#segment_docs{valid} + #segment_docs{removed})

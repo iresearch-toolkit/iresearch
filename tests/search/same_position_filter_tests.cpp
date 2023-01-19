@@ -552,7 +552,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       }
     }
   }
-};  // same_position_filter_test_case
+};
 
 TEST_P(same_position_filter_test_case, by_same_position) {
   sub_objects_ordered();
@@ -726,13 +726,12 @@ TEST(by_same_position_test, equal) {
   }
 }
 
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
 INSTANTIATE_TEST_SUITE_P(
   same_position_filter_test, same_position_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(tests::format_info{"1_0"},
-                      tests::format_info{"1_1", "1_0"},
-                      tests::format_info{"1_3", "1_0"})),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_0"},
+                                       tests::format_info{"1_1", "1_0"},
+                                       tests::format_info{"1_3", "1_0"})),
   same_position_filter_test_case::to_string);

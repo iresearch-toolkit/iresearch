@@ -179,7 +179,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
       // FIXME(gnus): remove const cast
       auto* score = const_cast<irs::score*>(it.score);
       IRS_ASSERT(score);  // ensured by score_iterator_adapter
-      if (*score != ScoreFunction::kDefault) {
+      if (!score->IsDefault()) {
         scores_.emplace_back(score);
       }
     }
@@ -187,14 +187,14 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     // prepare score
     switch (scores_.size()) {
       case 0:
-        IRS_ASSERT(score == ScoreFunction::kDefault);
+        IRS_ASSERT(score.IsDefault());
         score = ScoreFunction::Default(Merger::size());
         break;
       case 1:
         score = std::move(*scores_.front());
         break;
       case 2:
-        score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+        score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
           // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
@@ -204,7 +204,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         });
         break;
       case 3:
-        score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+        score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
           // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
@@ -216,7 +216,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         });
         break;
       default:
-        score.Reset(this, [](score_ctx* ctx, score_t* res) noexcept {
+        score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
           // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);

@@ -27,19 +27,19 @@
 namespace irs {
 
 // Compiled all_filter that returns all documents
-class all_query final : public filter::prepared {
+class all_query : public filter::prepared {
  public:
   explicit all_query(bstring&& stats, score_t boost)
     : filter::prepared(boost), stats_(std::move(stats)) {}
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     auto& rdr = ctx.segment;
 
     return memory::make_managed<AllIterator>(rdr, stats_.c_str(), ctx.scorers,
                                              rdr.docs_count(), boost());
   }
 
-  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
 

@@ -34,12 +34,12 @@
 namespace irs {
 namespace {
 
-class AllIterator final : public doc_iterator {
+class AllIterator : public doc_iterator {
  public:
   explicit AllIterator(doc_id_t docs_count) noexcept
     : max_doc_{doc_limits::min() + docs_count - 1} {}
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     if (doc_.value < max_doc_) {
       ++doc_.value;
       return true;
@@ -49,15 +49,15 @@ class AllIterator final : public doc_iterator {
     }
   }
 
-  doc_id_t seek(doc_id_t target) noexcept override {
+  doc_id_t seek(doc_id_t target) noexcept final {
     doc_.value = target <= max_doc_ ? target : doc_limits::eof();
 
     return doc_.value;
   }
 
-  doc_id_t value() const noexcept override { return doc_.value; }
+  doc_id_t value() const noexcept final { return doc_.value; }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<document>::id() == type ? &doc_ : nullptr;
   }
 
@@ -66,7 +66,7 @@ class AllIterator final : public doc_iterator {
   doc_id_t max_doc_;  // largest valid doc_id
 };
 
-class MaskDocIterator final : public doc_iterator {
+class MaskDocIterator : public doc_iterator {
  public:
   MaskDocIterator(doc_iterator::ptr&& it, const document_mask& mask) noexcept
     : mask_{mask}, it_{std::move(it)} {}
@@ -104,13 +104,13 @@ class MaskDocIterator final : public doc_iterator {
   doc_iterator::ptr it_;
 };
 
-class MaskedDocIterator final : public doc_iterator, private util::noncopyable {
+class MaskedDocIterator : public doc_iterator, private util::noncopyable {
  public:
   MaskedDocIterator(doc_id_t begin, doc_id_t end,
                     const document_mask& docs_mask) noexcept
     : docs_mask_{docs_mask}, end_{end}, next_{begin} {}
 
-  bool next() override {
+  bool next() final {
     while (next_ < end_) {
       current_.value = next_++;
 
@@ -124,18 +124,18 @@ class MaskedDocIterator final : public doc_iterator, private util::noncopyable {
     return false;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     next_ = target;
     next();
 
     return value();
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<document>::id() == type ? &current_ : nullptr;
   }
 
-  doc_id_t value() const override { return current_.value; }
+  doc_id_t value() const final { return current_.value; }
 
  private:
   const document_mask& docs_mask_;
@@ -308,12 +308,14 @@ column_iterator::ptr SegmentReaderImpl::columns() const {
 
 doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
   if (docs_mask_.empty()) {
-    return memory::make_managed<AllIterator>(info_.docs_count);
+    return memory::make_managed<AllIterator>(
+      static_cast<doc_id_t>(info_.docs_count));
   }
 
   // the implementation generates doc_ids sequentially
   return memory::make_managed<MaskedDocIterator>(
-    doc_limits::min(), doc_limits::min() + info_.docs_count, docs_mask_);
+    doc_limits::min(),
+    doc_limits::min() + static_cast<doc_id_t>(info_.docs_count), docs_mask_);
 }
 
 doc_iterator::ptr SegmentReaderImpl::mask(doc_iterator::ptr&& it) const {

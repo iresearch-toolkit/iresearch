@@ -43,7 +43,7 @@ namespace irs {
 //   - `next()` must constantly return `false`
 //   - `seek()` to any value must return `doc_limits::eof()`
 //   - `value()` must return `doc_limits::eof()`
-//
+// TODO(MBkkt) two vptr, probably should be fixed
 struct doc_iterator : iterator<doc_id_t>, attribute_provider {
   using ptr = memory::managed_ptr<doc_iterator>;
 
@@ -138,7 +138,7 @@ struct seek_term_iterator : term_iterator {
 
   // Returns seek cookie of the current term value.
   [[nodiscard]] virtual seek_cookie::ptr cookie() const = 0;
-};  // seek_term_iterator
+};
 
 // Position iterator to the specified target and returns current value
 // of the iterator. Returns `false` if iterator exhausted, `true` otherwise.

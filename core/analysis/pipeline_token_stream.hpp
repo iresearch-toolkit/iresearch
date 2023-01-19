@@ -44,7 +44,7 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
   static void init();  // for triggering registration in a static build
 
   explicit pipeline_token_stream(options_t&& options);
-  attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     auto attr = irs::get_mutable(attrs_, id);
     if (!attr) {
       // if attribute is not strictly pipeline-controlled let`s find nearest to
@@ -60,8 +60,8 @@ class pipeline_token_stream final : public analyzer, private util::noncopyable {
     }
     return attr;
   }
-  bool next() override;
-  bool reset(std::string_view data) override;
+  bool next() final;
+  bool reset(std::string_view data) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief calls visitor on pipeline members in respective order. Visiting is

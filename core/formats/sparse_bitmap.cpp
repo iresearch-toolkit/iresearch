@@ -379,7 +379,13 @@ struct container_iterator<BT_DENSE, true> {
         self->in_->seek(pos);
       } else {
         for (auto* prev_word = ctx.u64data - 1; !word; --word_idx) {
-          word = *--prev_word;
+          --prev_word;
+          if constexpr (AT_DIRECT_ALIGNED == Access) {
+            word = *prev_word;
+          } else {
+            static_assert(AT_DIRECT == Access);
+            std::memcpy(&word, prev_word, sizeof word);
+          }
           IRS_ASSERT(word_idx);
         }
         if constexpr (!is_big_endian()) {
@@ -424,8 +430,7 @@ constexpr auto GetSeekFunc(bool direct, bool track_prev) noexcept {
 }
 
 // cppcheck-suppress uninitMemberVarPrivate
-sparse_bitmap_iterator::sparse_bitmap_iterator(
-  memory::managed_ptr<index_input>&& in, const options& opts)
+sparse_bitmap_iterator::sparse_bitmap_iterator(Ptr&& in, const options& opts)
   : in_{std::move(in)},
     seek_func_{&sparse_bitmap_iterator::initial_seek},
     block_index_{opts.blocks},

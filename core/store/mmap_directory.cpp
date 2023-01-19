@@ -121,9 +121,9 @@ class MMapIndexInput final : public bytes_view_input {
   MMapIndexInput(const MMapIndexInput& rhs) noexcept
     : bytes_view_input{rhs}, handle_{rhs.handle_} {}
 
-  ptr dup() const override { return std::make_unique<MMapIndexInput>(*this); }
+  ptr dup() const final { return std::make_unique<MMapIndexInput>(*this); }
 
-  ptr reopen() const override { return dup(); }
+  ptr reopen() const final { return dup(); }
 
  private:
   MMapIndexInput& operator=(const MMapIndexInput&) = delete;

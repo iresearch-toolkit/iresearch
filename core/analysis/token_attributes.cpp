@@ -27,9 +27,9 @@
 namespace {
 
 struct empty_position final : irs::position {
-  void reset() override {}
-  bool next() override { return false; }
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  void reset() final {}
+  bool next() final { return false; }
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 };

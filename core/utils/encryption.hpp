@@ -111,7 +111,7 @@ class encrypted_output : public irs::index_output, util::noncopyable {
   size_t start_;    // position of buffer in a file
   byte_type* pos_;  // position in buffer
   byte_type* end_;
-};  // encrypted_output
+};
 
 class encrypted_input : public buffered_index_input, util::noncopyable {
  public:
@@ -140,9 +140,9 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
 
   size_t read_internal(byte_type* b, size_t count) final;
 
- private:
   encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept;
 
+ private:
   size_t buf_size_;
   std::unique_ptr<byte_type[]> buf_;
   index_input::ptr managed_in_;
@@ -150,6 +150,6 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
   encryption::stream* cipher_;
   const uint64_t start_;
   const size_t length_;
-};  // encrypted_input
+};
 
 }  // namespace irs

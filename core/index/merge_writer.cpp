@@ -79,47 +79,41 @@ class NoopDirectory : public directory {
     return INSTANCE;
   }
 
-  directory_attributes& attributes() noexcept override { return attrs_; }
+  directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view) noexcept override {
+  index_output::ptr create(std::string_view) noexcept final { return nullptr; }
+
+  bool exists(bool&, std::string_view) const noexcept final { return false; }
+
+  bool length(uint64_t&, std::string_view) const noexcept final {
+    return false;
+  }
+
+  index_lock::ptr make_lock(std::string_view) noexcept final { return nullptr; }
+
+  bool mtime(std::time_t&, std::string_view) const noexcept final {
+    return false;
+  }
+
+  index_input::ptr open(std::string_view, IOAdvice) const noexcept final {
     return nullptr;
   }
 
-  bool exists(bool&, std::string_view) const noexcept override { return false; }
+  bool remove(std::string_view) noexcept final { return false; }
 
-  bool length(uint64_t&, std::string_view) const noexcept override {
+  bool rename(std::string_view, std::string_view) noexcept final {
     return false;
   }
 
-  index_lock::ptr make_lock(std::string_view) noexcept override {
-    return nullptr;
-  }
+  bool sync(std::span<const std::string_view>) noexcept final { return false; }
 
-  bool mtime(std::time_t&, std::string_view) const noexcept override {
-    return false;
-  }
-
-  index_input::ptr open(std::string_view, IOAdvice) const noexcept override {
-    return nullptr;
-  }
-
-  bool remove(std::string_view) noexcept override { return false; }
-
-  bool rename(std::string_view, std::string_view) noexcept override {
-    return false;
-  }
-
-  bool sync(std::span<const std::string_view>) noexcept override {
-    return false;
-  }
-
-  bool visit(const directory::visitor_f&) const override { return false; }
+  bool visit(const directory::visitor_f&) const final { return false; }
 
  private:
   NoopDirectory() = default;
 
   directory_attributes attrs_{0, nullptr};
-};  // noop_directory
+};
 
 class ProgressTracker {
  public:
@@ -150,25 +144,25 @@ class ProgressTracker {
   const size_t count_;  // call progress callback each `count_` hits
   size_t hits_{0};      // current number of hits
   bool valid_{true};
-};  // progress_tracker
+};
 
-class RemappingDocIterator final : public doc_iterator {
+class RemappingDocIterator : public doc_iterator {
  public:
   RemappingDocIterator(doc_iterator::ptr&& it, const doc_map_f& mapper) noexcept
     : it_{std::move(it)}, mapper_{&mapper}, src_{irs::get<document>(*it_)} {
     IRS_ASSERT(it_ && src_);
   }
 
-  bool next() override;
+  bool next() final;
 
-  doc_id_t value() const noexcept override { return doc_.value; }
+  doc_id_t value() const noexcept final { return doc_.value; }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     irs::seek(*this, target);
     return value();
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<irs::document>::id() == type ? &doc_
                                                   : it_->get_mutable(type);
   }
@@ -233,7 +227,7 @@ class CompoundDocIterator : public doc_iterator {
              : nullptr;
   }
 
-  bool next() override;
+  bool next() final;
 
   doc_id_t seek(doc_id_t target) final {
     irs::seek(*this, target);
@@ -294,7 +288,7 @@ bool CompoundDocIterator::next() {
 }
 
 // Iterator over sorted doc_ids for a term over all readers
-class SortingCompoundDocIterator final : public doc_iterator {
+class SortingCompoundDocIterator : public doc_iterator {
  public:
   explicit SortingCompoundDocIterator(CompoundDocIterator& doc_it) noexcept
     : doc_it_{&doc_it}, heap_it_{min_heap_context{doc_it.iterators_}} {}
@@ -311,18 +305,18 @@ class SortingCompoundDocIterator final : public doc_iterator {
     return true;
   }
 
-  attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return doc_it_->get_mutable(type);
   }
 
-  bool next() override;
+  bool next() final;
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     irs::seek(*this, target);
     return value();
   }
 
-  doc_id_t value() const noexcept override { return doc_it_->value(); }
+  doc_id_t value() const noexcept final { return doc_it_->value(); }
 
  private:
   class min_heap_context {
@@ -356,12 +350,12 @@ class SortingCompoundDocIterator final : public doc_iterator {
     }
 
     CompoundDocIterator::iterators_t* itrs_;
-  };  // min_heap_context
+  };
 
   CompoundDocIterator* doc_it_;
   ExternalHeapIterator<min_heap_context> heap_it_;
   CompoundDocIterator::doc_iterator_t* lead_{};
-};  // sorting_compound_doc_iterator
+};
 
 bool SortingCompoundDocIterator::next() {
   auto& iterators = doc_it_->iterators_;
@@ -533,15 +527,15 @@ class CompoundColumnIterator final {
 };
 
 // Iterator over documents for a term over all readers
-class CompoundTermIterator final : public term_iterator {
+class CompoundTermIterator : public term_iterator {
  public:
   static constexpr const size_t kProgressStepTerms = size_t(1) << 7;
 
   explicit CompoundTermIterator(const MergeWriter::FlushProgress& progress,
                                 const Comparer* comparator)
-    : doc_itr_(progress),
-      psorting_doc_itr_(nullptr == comparator ? nullptr : &sorting_doc_itr_),
-      progress_(progress, kProgressStepTerms) {}
+    : doc_itr_{progress},
+      has_comparer_{nullptr != comparator},
+      progress_{progress, kProgressStepTerms} {}
 
   bool aborted() const {
     return !static_cast<bool>(progress_) || doc_itr_.aborted();
@@ -556,22 +550,22 @@ class CompoundTermIterator final : public term_iterator {
 
   const field_meta& meta() const noexcept { return *meta_; }
   void add(const term_reader& reader, const doc_map_f& doc_map);
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     // no way to merge attributes for the same term spread over multiple
     // iterators would require API change for attributes
     IRS_ASSERT(false);
     return nullptr;
   }
-  bool next() override;
-  doc_iterator::ptr postings(IndexFeatures features) const override;
-  void read() override {
+  bool next() final;
+  doc_iterator::ptr postings(IndexFeatures features) const final;
+  void read() final {
     for (auto& itr_id : term_iterator_mask_) {
       if (term_iterators_[itr_id].first) {
         term_iterators_[itr_id].first->read();
       }
     }
   }
-  bytes_view value() const override { return current_term_; }
+  bytes_view value() const final { return current_term_; }
 
  private:
   struct TermIterator {
@@ -596,9 +590,9 @@ class CompoundTermIterator final : public term_iterator {
   std::vector<TermIterator> term_iterators_;  // all term iterators
   mutable CompoundDocIterator doc_itr_;
   mutable SortingCompoundDocIterator sorting_doc_itr_{doc_itr_};
-  SortingCompoundDocIterator* psorting_doc_itr_;
+  bool has_comparer_;
   ProgressTracker progress_;
-};  // compound_term_iterator
+};
 
 void CompoundTermIterator::add(const term_reader& reader,
                                const doc_map_f& doc_id_map) {
@@ -678,18 +672,16 @@ doc_iterator::ptr CompoundTermIterator::postings(
     return true;
   };
 
-  doc_iterator* doc_itr = &doc_itr_;
-
-  if (psorting_doc_itr_) {
+  if (has_comparer_) {
     sorting_doc_itr_.reset(add_iterators);
+    // TODO(MBkkt) Why?
     if (doc_itr_.size() > 1) {
-      doc_itr = psorting_doc_itr_;
+      return memory::to_managed<doc_iterator>(sorting_doc_itr_);
     }
   } else {
     doc_itr_.reset(add_iterators);
   }
-
-  return memory::to_managed<doc_iterator, false>(doc_itr);
+  return memory::to_managed<doc_iterator>(doc_itr_);
 }
 
 // Iterator over field_ids over all readers
@@ -722,20 +714,20 @@ class CompoundFiledIterator final : public basic_term_reader {
     return true;
   }
 
-  const field_meta& meta() const noexcept override {
+  const field_meta& meta() const noexcept final {
     IRS_ASSERT(current_meta_);
     return *current_meta_;
   }
 
-  bytes_view(min)() const noexcept override { return min_; }
+  bytes_view(min)() const noexcept final { return min_; }
 
-  bytes_view(max)() const noexcept override { return max_; }
+  bytes_view(max)() const noexcept final { return max_; }
 
-  attribute* get_mutable(irs::type_info::type_id) noexcept override {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 
-  term_iterator::ptr iterator() const override;
+  term_iterator::ptr iterator() const final;
 
   bool aborted() const {
     return !static_cast<bool>(progress_) || term_itr_.aborted();
@@ -857,12 +849,12 @@ bool CompoundFiledIterator::next() {
 term_iterator::ptr CompoundFiledIterator::iterator() const {
   term_itr_.reset(meta());
 
-  for (auto& segment : field_iterator_mask_) {
+  for (const auto& segment : field_iterator_mask_) {
     term_itr_.add(*(segment.reader),
                   *(field_iterators_[segment.itr_id].doc_map));
   }
 
-  return memory::to_managed<term_iterator, false>(&term_itr_);
+  return memory::to_managed<term_iterator>(term_itr_);
 }
 
 // Computes fields_type
@@ -1227,7 +1219,7 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
 
       std::optional<field_id> res;
       auto feature_writer =
-        factory ? (*factory)({hdrs.data(), hdrs.size()}) : nullptr;
+        factory ? (*factory)({hdrs.data(), hdrs.size()}) : FeatureWriter::ptr{};
 
       if (feature_writer) {
         auto value_writer = [writer = feature_writer.get()](
@@ -1633,8 +1625,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 #endif
 
   Columnstore cs(std::move(writer), progress);
-  CompoundDocIterator doc_it(progress);               // reuse iterator
-  SortingCompoundDocIterator sorting_doc_it(doc_it);  // reuse iterator
+  CompoundDocIterator doc_it(progress);
+  SortingCompoundDocIterator sorting_doc_it(doc_it);
 
   if (!cs.valid()) {
     return false;  // flush failure

@@ -23,6 +23,7 @@
 #include "nested_filter.hpp"
 
 #include <tuple>
+#include <utility>
 #include <variant>
 
 #include "analysis/token_attributes.hpp"
@@ -66,7 +67,7 @@ bool IsValid(const ByNestedOptions::MatchType& match) noexcept {
     match);
 }
 
-class ScorerWrapper final : public doc_iterator {
+class ScorerWrapper : public doc_iterator {
  public:
   explicit ScorerWrapper(doc_iterator::ptr it, ScoreFunction&& score) noexcept
     : it_{std::move(it)} {
@@ -80,7 +81,7 @@ class ScorerWrapper final : public doc_iterator {
 
   bool next() final { return it_->next(); }
 
-  attribute* get_mutable(irs::type_info::type_id id) override {
+  attribute* get_mutable(irs::type_info::type_id id) final {
     if (irs::type<score>::id() == id) {
       return &score_;
     }
@@ -96,7 +97,7 @@ class ScorerWrapper final : public doc_iterator {
 class NoneMatcher;
 
 template<typename Matcher>
-class ChildToParentJoin final : public doc_iterator, private Matcher {
+class ChildToParentJoin : public doc_iterator, private Matcher {
  public:
   ChildToParentJoin(doc_iterator::ptr&& parent, const prev_doc& prev_parent,
                     doc_iterator::ptr&& child, Matcher&& matcher) noexcept
@@ -122,15 +123,15 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
     }
   }
 
-  doc_id_t value() const noexcept override {
+  doc_id_t value() const noexcept final {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  attribute* get_mutable(irs::type_info::type_id id) override {
+  attribute* get_mutable(irs::type_info::type_id id) final {
     return irs::get_mutable(attrs_, id);
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     const auto& doc = *std::get<attribute_ptr<document>>(attrs_).ptr;
 
     if (IRS_UNLIKELY(target <= doc.value)) {
@@ -146,7 +147,7 @@ class ChildToParentJoin final : public doc_iterator, private Matcher {
     return SeekInternal(parent);
   }
 
-  bool next() override {
+  bool next() final {
     if (IRS_LIKELY(parent_->next())) {
       return !doc_limits::eof(SeekInternal(value()));
     }
@@ -200,8 +201,8 @@ void ChildToParentJoin<Matcher>::PrepareScore() {
   child_doc_ = irs::get<document>(*child_);
 
   if (!std::is_same_v<Matcher, NoneMatcher> &&
-      (!child_doc_ || !child_score_ ||
-       *child_score_ == ScoreFunction::kDefault)) {
+      (child_doc_ == nullptr || child_score_ == nullptr ||
+       child_score_->IsDefault())) {
     IRS_ASSERT(Matcher::size());
     score = ScoreFunction::Default(Matcher::size());
   } else {
@@ -276,7 +277,7 @@ class AnyMatcher : public Merger, private score_ctx {
   ScoreFunction PrepareScore() {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
@@ -357,7 +358,7 @@ class PredMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<PredMatcher&>(*ctx);
@@ -440,7 +441,7 @@ class RangeMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<RangeMatcher&>(*ctx);
@@ -522,7 +523,7 @@ class MinMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {this, [](score_ctx* ctx, score_t* res) {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
@@ -580,14 +581,14 @@ auto ResolveMatchType(const SubReader& segment,
 
 namespace irs {
 
-class ByNestedQuery final : public filter::prepared {
+class ByNestedQuery : public filter::prepared {
  public:
   ByNestedQuery(DocIteratorProvider parent, prepared::ptr&& child,
                 sort::MergeType merge_type, ByNestedOptions::MatchType match,
                 score_t none_boost) noexcept
     : parent_{std::move(parent)},
       child_{std::move(child)},
-      match_{match},
+      match_{std::move(match)},
       merge_type_{merge_type},
       none_boost_{none_boost} {
     IRS_ASSERT(parent_);
@@ -596,10 +597,10 @@ class ByNestedQuery final : public filter::prepared {
   }
 
   using filter::prepared::execute;
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override {
+             score_t boost) const final {
     boost *= this->boost();
 
     if (!visitor.Visit(*this, boost)) {

@@ -1116,11 +1116,12 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
     auto stream = dir().open("tmp", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, stream);
 
-    irs::sparse_bitmap_iterator it{stream.get(),
-                                   {.version = version(),
-                                    .track_prev_doc = false,
-                                    .use_block_index = false,
-                                    .blocks = {}}};
+    irs::sparse_bitmap_iterator it{
+      stream.get(),
+      irs::sparse_bitmap_iterator::options{.version = version(),
+                                           .track_prev_doc = false,
+                                           .use_block_index = false,
+                                           .blocks = {}}};
     ASSERT_TRUE(it.next());
     ASSERT_EQ(70000, it.value());
     ASSERT_FALSE(it.next());
@@ -1130,12 +1131,11 @@ TEST_P(sparse_bitmap_test_case, insert_erase) {
 static_assert(irs::SparseBitmapVersion::kMax ==
               irs::SparseBitmapVersion::kPrevDoc);
 
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
 INSTANTIATE_TEST_SUITE_P(
   sparse_bitmap_test, sparse_bitmap_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values(irs::SparseBitmapVersion::kMin,
-                      irs::SparseBitmapVersion::kPrevDoc)),
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(irs::SparseBitmapVersion::kMin,
+                                       irs::SparseBitmapVersion::kPrevDoc)),
   sparse_bitmap_test_case::to_string);

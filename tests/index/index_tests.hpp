@@ -51,7 +51,7 @@ class directory_mock : public irs::directory {
 
   using directory::attributes;
 
-  irs::directory_attributes& attributes() noexcept override {
+  irs::directory_attributes& attributes() noexcept final {
     return impl_.attributes();
   }
 
@@ -93,19 +93,19 @@ class directory_mock : public irs::directory {
     return impl_.sync(files);
   }
 
-  bool visit(const irs::directory::visitor_f& visitor) const override {
+  bool visit(const irs::directory::visitor_f& visitor) const final {
     return impl_.visit(visitor);
   }
 
  private:
   irs::directory& impl_;
-};  // directory_mock
+};
 
 struct blocking_directory : directory_mock {
   explicit blocking_directory(irs::directory& impl, const std::string& blocker)
     : tests::directory_mock(impl), blocker(blocker) {}
 
-  irs::index_output::ptr create(std::string_view name) noexcept {
+  irs::index_output::ptr create(std::string_view name) noexcept final {
     auto stream = tests::directory_mock::create(name);
 
     if (name == blocker) {
@@ -137,7 +137,7 @@ struct blocking_directory : directory_mock {
   std::mutex policy_lock;
   std::condition_variable policy_applied;
   std::mutex intermediate_commits_lock;
-};  // blocking_directory
+};
 
 struct callback_directory : directory_mock {
   typedef std::function<void()> AfterCallback;
@@ -145,14 +145,14 @@ struct callback_directory : directory_mock {
   explicit callback_directory(irs::directory& impl, AfterCallback&& p)
     : tests::directory_mock(impl), after(p) {}
 
-  irs::index_output::ptr create(std::string_view name) noexcept override {
+  irs::index_output::ptr create(std::string_view name) noexcept final {
     auto stream = tests::directory_mock::create(name);
     after();
     return stream;
   }
 
   AfterCallback after;
-};  // callback_directory
+};
 
 struct format_info {
   constexpr format_info(const char* codec = "",
@@ -216,7 +216,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     tests::assert_columnstore(open_reader().GetImpl(), index(), skip);
   }
 
-  void SetUp() override {
+  void SetUp() final {
     test_base::SetUp();
 
     // set directory
@@ -228,7 +228,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     ASSERT_NE(nullptr, codec_);
   }
 
-  void TearDown() override {
+  void TearDown() final {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();
@@ -251,6 +251,6 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   index_t index_;
   std::shared_ptr<irs::directory> dir_;
   irs::format::ptr codec_;
-};  // index_test_base
+};
 
 }  // namespace tests

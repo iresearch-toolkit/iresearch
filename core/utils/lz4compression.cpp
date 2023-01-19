@@ -33,8 +33,8 @@ namespace irs {
 namespace {
 
 // can reuse stateless instances
-compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
-compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
+compression::lz4::lz4compressor kLZ4BasicCompressor;
+compression::lz4::lz4decompressor kLZ4BasicDecompressor;
 
 inline int acceleration(const compression::options::Hint hint) noexcept {
   static constexpr int FACTORS[]{0, 2, 0};
@@ -50,13 +50,13 @@ static_assert(sizeof(char) == sizeof(byte_type));
 namespace compression {
 
 void LZ4_streamDecode_deleter::operator()(void* p) noexcept {
-  if (p) {
+  if (p != nullptr) {
     LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(p));
   }
 }
 
 void LZ4_stream_deleter::operator()(void* p) noexcept {
-  if (p) {
+  if (p != nullptr) {
     LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
   }
 }
@@ -79,7 +79,7 @@ bytes_view lz4::lz4compressor::compress(byte_type* src, size_t size,
   out.resize(std::max(out.size(), size_t{bound}));
 
   const auto* src_data = reinterpret_cast<const char*>(src);
-  auto* buf = reinterpret_cast<char*>(&out[0]);
+  auto* buf = reinterpret_cast<char*>(out.data());
   const auto buf_size = static_cast<int>(out.size());
   const auto lz4_size =
     LZ4_compress_fast(src_data, buf, src_size, buf_size, acceleration_);
@@ -111,21 +111,21 @@ bytes_view lz4::lz4decompressor::decompress(const byte_type* src,
     return {};  // corrupted index
   }
 
-  return bytes_view{dst, size_t(lz4_size)};
+  return bytes_view{dst, static_cast<size_t>(lz4_size)};
 }
 
 compressor::ptr lz4::compressor(const options& opts) {
   const auto acceleration = irs::acceleration(opts.hint);
 
   if (0 == acceleration) {
-    return memory::to_managed<lz4compressor, false>(&LZ4_BASIC_COMPRESSOR);
+    return memory::to_managed<lz4compressor>(kLZ4BasicCompressor);
   }
 
-  return memory::to_managed(std::make_unique<lz4compressor>(acceleration));
+  return memory::make_managed<lz4compressor>(acceleration);
 }
 
 decompressor::ptr lz4::decompressor() {
-  return memory::to_managed<lz4decompressor, false>(&LZ4_BASIC_DECOMPRESSOR);
+  return memory::to_managed<lz4decompressor>(kLZ4BasicDecompressor);
 }
 
 void lz4::init() {

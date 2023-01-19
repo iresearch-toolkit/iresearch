@@ -29,16 +29,16 @@
 namespace irs {
 
 // Compiled query suitable for filters with a single term like "by_term"
-class TermQuery final : public filter::prepared {
+class TermQuery : public filter::prepared {
  public:
   using States = StatesCache<TermState>;
 
   explicit TermQuery(States&& states, bstring&& stats, score_t boost);
 
-  doc_iterator::ptr execute(const ExecutionContext& ctx) const override;
+  doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
-             score_t boost) const override;
+             score_t boost) const final;
 
  private:
   States states_;

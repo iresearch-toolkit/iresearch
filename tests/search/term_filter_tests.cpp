@@ -576,7 +576,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     // address to the [SDD-179]
     CheckQuery(make_filter("Name", "Product"), Docs{32}, rdr);
   }
-};  // term_filter_test_case
+};
 
 TEST_P(term_filter_test_case, by_term) {
   by_term_sequential();
@@ -660,13 +660,11 @@ TEST(by_term_test, boost) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-  term_filter_test, term_filter_test_case,
-  ::testing::Combine(
-    ::testing::Values(&tests::directory<&tests::memory_directory>,
-                      &tests::directory<&tests::fs_directory>,
-                      &tests::directory<&tests::mmap_directory>),
-    ::testing::Values("1_0")),
-  term_filter_test_case::to_string);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+
+INSTANTIATE_TEST_SUITE_P(term_filter_test, term_filter_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                                            ::testing::Values("1_0")),
+                         term_filter_test_case::to_string);
 
 }  // namespace

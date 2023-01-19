@@ -28,11 +28,8 @@
 #include "shared.hpp"
 #include "utils/memory_pool.hpp"
 
-#include <absl/base/casts.h>
-
+namespace irs {
 namespace {
-
-using namespace irs;
 
 template<typename Vector, typename Iterator>
 std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
@@ -73,84 +70,57 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
   return {std::move(buckets), stats_size, features};
 }
 
-void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
-  IRS_ASSERT(res);
-  std::memset(res, 0, reinterpret_cast<size_t>(ctx));
-}
-
 }  // namespace
-
-namespace irs {
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-/*static*/ const score_f ScoreFunction::kDefault{&::DefaultScore};
-
-/*static*/ ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
-  uintptr_t ctx;
-  std::memcpy(&ctx, &value, sizeof value);
-
-  return {reinterpret_cast<score_ctx*>(ctx),
+ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
+  static_assert(sizeof(score_t) <= sizeof(uintptr_t));
+  uintptr_t boost = 0;
+  std::memcpy(&boost, &value, sizeof(score_t));
+  return {absl::bit_cast<score_ctx*>(boost),
           [](score_ctx* ctx, score_t* res) noexcept {
-            IRS_ASSERT(res);
-            IRS_ASSERT(ctx);
-
-            const auto boost = reinterpret_cast<uintptr_t>(ctx);
+            IRS_ASSERT(res != nullptr);
+            const auto boost = absl::bit_cast<uintptr_t>(ctx);
             std::memcpy(res, &boost, sizeof(score_t));
-          }};
+          },
+          &Noop};
 }
 
-/*static*/ ScoreFunction ScoreFunction::Constant(score_t value,
-                                                 uint32_t size) noexcept {
-  if (0 == size) {
+ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
+  if (0 == count) {
     return {};
-  } else if (1 == size) {
+  } else if (1 == count) {
     return Constant(value);
   } else {
     struct ScoreCtx {
       score_t value;
-      uint32_t size;
+      uint32_t count;
     };
-    static_assert(sizeof(ScoreCtx) == sizeof(uintptr_t));
-
-    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, size}),
+    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, count}),
             [](score_ctx* ctx, score_t* res) noexcept {
-              IRS_ASSERT(res);
-              IRS_ASSERT(ctx);
-
+              IRS_ASSERT(res != nullptr);
               const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
-              std::fill_n(res, score_ctx.size, score_ctx.value);
-            }};
+              std::fill_n(res, score_ctx.count, score_ctx.value);
+            },
+            &Noop};
   }
 }
 
-ScoreFunction::ScoreFunction() noexcept : func_{kDefault} {}
-
-ScoreFunction::ScoreFunction(ScoreFunction&& rhs) noexcept
-  : ctx_(std::move(rhs.ctx_)), func_(std::exchange(rhs.func_, kDefault)) {}
-
-ScoreFunction& ScoreFunction::operator=(ScoreFunction&& rhs) noexcept {
-  if (this != &rhs) {
-    ctx_ = std::move(rhs.ctx_);
-    func_ = std::exchange(rhs.func_, kDefault);
-  }
-  return *this;
-}
-
-sort::sort(const type_info& type) noexcept : type_(type.id()) {}
+sort::sort(const type_info& type) noexcept : type_{type.id()} {}
 
 Order Order::Prepare(std::span<const sort::ptr> order) {
   return std::apply(
     [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
-    ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                            ptr_iterator{std::end(order)}));
+    ::irs::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
+                                 ptr_iterator{std::end(order)}));
 }
 
 Order Order::Prepare(std::span<const sort*> order) {
   return std::apply(
     [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
-    ::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                            ptr_iterator{std::end(order)}));
+    ::irs::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
+                                 ptr_iterator{std::end(order)}));
 }
 
 const Order Order::kUnordered;

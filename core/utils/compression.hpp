@@ -77,13 +77,11 @@ struct options {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
-struct compressor {
+struct compressor : memory::Managed {
   using ptr = memory::managed_ptr<compressor>;
 
   /// @note returns a value as it is
   static ptr identity() noexcept;
-
-  virtual ~compressor() = default;
 
   /// @note caller is allowed to modify data pointed by 'in' up to 'size'
   virtual bytes_view compress(byte_type* in, size_t size, bstring& buf) = 0;
@@ -96,10 +94,8 @@ struct compressor {
 ////////////////////////////////////////////////////////////////////////////////
 /// @class compressor
 ////////////////////////////////////////////////////////////////////////////////
-struct decompressor {
+struct decompressor : memory::Managed {
   using ptr = memory::managed_ptr<decompressor>;
-
-  virtual ~decompressor() = default;
 
   /// @note caller is allowed to modify data pointed by 'dst' up to 'dst_size'
   virtual bytes_view decompress(const byte_type* src, size_t src_size,
@@ -199,7 +195,7 @@ struct none {
   }
 
   static compression::decompressor::ptr decompressor() { return nullptr; }
-};  // raw
+};
 
 }  // namespace compression
 }  // namespace irs

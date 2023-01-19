@@ -56,7 +56,7 @@ struct ifield {
   virtual irs::token_stream& get_tokens() const = 0;
   virtual std::string_view name() const = 0;
   virtual bool write(irs::data_output& out) const = 0;
-};  // ifield
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class field
@@ -72,22 +72,22 @@ class field_base : public ifield {
   field_base(const field_base&) = default;
   field_base& operator=(const field_base&) = default;
 
-  irs::features_t features() const noexcept override {
+  irs::features_t features() const noexcept final {
     return {features_.data(), features_.size()};
   }
 
-  irs::IndexFeatures index_features() const noexcept override {
+  irs::IndexFeatures index_features() const noexcept final {
     return index_features_;
   }
 
-  std::string_view name() const noexcept override { return name_; }
+  std::string_view name() const noexcept final { return name_; }
 
   void name(std::string name) noexcept { name_ = std::move(name); }
 
   std::vector<irs::type_info::type_id> features_;
   std::string name_;
   irs::IndexFeatures index_features_{irs::IndexFeatures::NONE};
-};  // field_base
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class long_field
@@ -99,15 +99,15 @@ class long_field : public field_base {
 
   long_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
   int64_t value_{};
-};  // long_field
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class long_field
@@ -127,15 +127,15 @@ class int_field : public field_base {
   }
   int_field(int_field&& other) = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable std::shared_ptr<irs::numeric_token_stream> stream_;
   int32_t value_{};
-};  // int_field
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class long_field
@@ -147,15 +147,15 @@ class double_field : public field_base {
 
   double_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
   double_t value_{};
-};  // double_field
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class long_field
@@ -167,15 +167,15 @@ class float_field : public field_base {
 
   float_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
   float_t value_{};
-};  // float_field
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class binary_field
@@ -185,7 +185,7 @@ class binary_field : public field_base {
  public:
   binary_field() = default;
 
-  irs::token_stream& get_tokens() const override;
+  irs::token_stream& get_tokens() const final;
   const irs::bstring& value() const { return value_; }
   void value(irs::bytes_view value) { value_ = value; }
   void value(irs::bstring&& value) { value_ = std::move(value); }
@@ -195,12 +195,12 @@ class binary_field : public field_base {
     value_ = bytes(first, last);
   }
 
-  bool write(irs::data_output& out) const override;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;
   irs::bstring value_;
-};  // binary_field
+};
 
 /* -------------------------------------------------------------------
  * document
@@ -265,7 +265,7 @@ class particle : irs::util::noncopyable {
 
  protected:
   fields_t fields_;
-};  // particle
+};
 
 struct document : irs::util::noncopyable {
   document() = default;
@@ -291,7 +291,7 @@ struct document : irs::util::noncopyable {
   particle indexed;
   particle stored;
   ifield::ptr sorted;
-};  // document
+};
 
 struct doc_generator_base {
   using ptr = std::unique_ptr<doc_generator_base>;
@@ -307,7 +307,7 @@ class limiting_doc_generator : public doc_generator_base {
   limiting_doc_generator(doc_generator_base& gen, size_t offset, size_t limit)
     : gen_(&gen), begin_(offset), end_(offset + limit) {}
 
-  const tests::document* next() override {
+  const tests::document* next() final {
     while (pos_ < begin_) {
       if (!gen_->next()) {
         // exhausted
@@ -332,7 +332,7 @@ class limiting_doc_generator : public doc_generator_base {
     return nullptr;
   }
 
-  void reset() override {
+  void reset() final {
     pos_ = 0;
     gen_->reset();
   }
@@ -354,20 +354,20 @@ class delim_doc_generator : public doc_generator_base {
     virtual void value(size_t idx, const std::string& value) = 0;
     virtual void end() {}
     virtual void reset() {}
-  };  // doc_template
+  };
 
   delim_doc_generator(const std::filesystem::path& file, doc_template& doc,
                       uint32_t delim = 0x0009);
 
-  const tests::document* next() override;
-  void reset() override;
+  const tests::document* next() final;
+  void reset() final;
 
  private:
   std::string str_;
   std::ifstream ifs_;
   doc_template* doc_;
   uint32_t delim_;
-};  // delim_doc_generator
+};
 
 // Generates documents from a CSV file
 class csv_doc_generator : public doc_generator_base {
@@ -377,11 +377,11 @@ class csv_doc_generator : public doc_generator_base {
     virtual void value(size_t idx, const std::string_view& value) = 0;
     virtual void end() {}
     virtual void reset() {}
-  };  // doc_template
+  };
 
   csv_doc_generator(const std::filesystem::path& file, doc_template& doc);
-  const tests::document* next() override;
-  void reset() override;
+  const tests::document* next() final;
+  void reset() final;
   bool skip();  // skip a single document, return if anything was skiped, false
                 // == EOF
 
@@ -405,7 +405,7 @@ class json_doc_generator : public doc_generator_base {
     DBL,
     STRING,
     RAWNUM
-  };  // ValueType
+  };
 
   // an std::string_view for union inclusion without a user-defined constructor
   // and non-trivial default constructor for compatibility with MSVC 2013
@@ -478,7 +478,7 @@ class json_doc_generator : public doc_generator_base {
       IRS_ASSERT(false);
       return T(0.);
     }
-  };  // json_value
+  };
 
   typedef std::function<void(tests::document&, const std::string&,
                              const json_value&)>
@@ -491,8 +491,8 @@ class json_doc_generator : public doc_generator_base {
 
   json_doc_generator(json_doc_generator&& rhs) noexcept;
 
-  const tests::document* next() override;
-  void reset() override;
+  const tests::document* next() final;
+  void reset() final;
 
  private:
   json_doc_generator(const json_doc_generator&) = delete;
@@ -500,7 +500,7 @@ class json_doc_generator : public doc_generator_base {
   std::vector<document> docs_;
   std::vector<document>::const_iterator prev_;
   std::vector<document>::const_iterator next_;
-};  // json_doc_generator
+};
 
 // stream wrapper which sets payload equal to term value
 class token_stream_payload final : public irs::token_stream {
@@ -514,7 +514,7 @@ class token_stream_payload final : public irs::token_stream {
   const irs::term_attribute* term_;
   irs::payload pay_;
   irs::token_stream* impl_;
-};  // token_stream_payload
+};
 
 // field which uses text analyzer for tokenization and stemming
 template<typename T>
@@ -574,7 +574,7 @@ class text_field : public tests::field_base {
   std::unique_ptr<token_stream_payload> pay_stream_;
   irs::analysis::analyzer::ptr token_stream_;
   T value_;
-};  // text_field
+};
 
 // field which uses simple analyzer without tokenization
 class string_field : public tests::field_base {
@@ -591,13 +591,13 @@ class string_field : public tests::field_base {
   void value(std::string_view str);
   std::string_view value() const { return value_; }
 
-  irs::token_stream& get_tokens() const override;
-  bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const final;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;
   std::string value_;
-};  // string_field
+};
 
 // field which uses simple analyzer without tokenization
 class string_view_field : public tests::field_base {
@@ -614,13 +614,13 @@ class string_view_field : public tests::field_base {
   void value(std::string_view str);
   std::string_view value() const { return value_; }
 
-  irs::token_stream& get_tokens() const override;
-  bool write(irs::data_output& out) const override;
+  irs::token_stream& get_tokens() const final;
+  bool write(irs::data_output& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;
   std::string_view value_;
-};  // string_field
+};
 
 // document template for europarl.subset.text
 class europarl_doc_template : public delim_doc_generator::doc_template {
@@ -636,7 +636,7 @@ class europarl_doc_template : public delim_doc_generator::doc_template {
   std::string title_;  // current title
   std::string body_;   // current body
   irs::doc_id_t idval_ = 0;
-};  // europarl_doc_template
+};
 
 void generic_json_field_factory(tests::document& doc, const std::string& name,
                                 const json_doc_generator::json_value& data);
@@ -694,8 +694,8 @@ bool insert(irs::IndexWriter& writer, const Doc& doc, size_t count = 1,
 }
 
 template<typename Indexed>
-bool update(irs::IndexWriter& writer, const irs::filter& filter,
-            Indexed ibegin, Indexed iend) {
+bool update(irs::IndexWriter& writer, const irs::filter& filter, Indexed ibegin,
+            Indexed iend) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
@@ -703,8 +703,8 @@ bool update(irs::IndexWriter& writer, const irs::filter& filter,
 }
 
 template<typename Indexed, typename Stored>
-bool update(irs::IndexWriter& writer, const irs::filter& filter,
-            Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
+bool update(irs::IndexWriter& writer, const irs::filter& filter, Indexed ibegin,
+            Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(filter);
 
@@ -713,8 +713,8 @@ bool update(irs::IndexWriter& writer, const irs::filter& filter,
 }
 
 template<typename Indexed>
-bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
-            Indexed ibegin, Indexed iend) {
+bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter, Indexed ibegin,
+            Indexed iend) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(std::move(filter));
 
@@ -722,8 +722,8 @@ bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
 }
 
 template<typename Indexed, typename Stored>
-bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter,
-            Indexed ibegin, Indexed iend, Stored sbegin, Stored send) {
+bool update(irs::IndexWriter& writer, irs::filter::ptr&& filter, Indexed ibegin,
+            Indexed iend, Stored sbegin, Stored send) {
   auto ctx = writer.GetBatch();
   auto doc = ctx.Replace(std::move(filter));
 

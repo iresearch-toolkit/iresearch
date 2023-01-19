@@ -51,11 +51,11 @@ class ctr_cipher_stream : public encryption::stream {
                              uint64_t counter_base) noexcept
     : cipher_(&cipher), iv_(iv), counter_base_(counter_base) {}
 
-  size_t block_size() const noexcept override { return cipher_->block_size(); }
+  size_t block_size() const noexcept final { return cipher_->block_size(); }
 
-  bool encrypt(uint64_t offset, byte_type* data, size_t size) override;
+  bool encrypt(uint64_t offset, byte_type* data, size_t size) final;
 
-  bool decrypt(uint64_t offset, byte_type* data, size_t size) override;
+  bool decrypt(uint64_t offset, byte_type* data, size_t size) final;
 
  private:
   bool encrypt_block(uint64_t block_index, byte_type* data, byte_type* scratch);
@@ -65,7 +65,7 @@ class ctr_cipher_stream : public encryption::stream {
   const cipher* cipher_;
   bstring iv_;
   uint64_t counter_base_;
-};  // ctr_cipher_stream
+};
 
 bool ctr_cipher_stream::encrypt(uint64_t offset, byte_type* data, size_t size) {
   const auto block_size = this->block_size();

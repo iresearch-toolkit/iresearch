@@ -50,32 +50,32 @@ class SegmentReaderImpl final : public SubReader {
 
   const IndexReaderOptions& Options() const noexcept { return opts_; }
 
-  const SegmentInfo& Meta() const override { return info_; }
+  const SegmentInfo& Meta() const final { return info_; }
 
   std::shared_ptr<const SegmentReaderImpl> Reopen(
     const SegmentMeta& meta) const;
 
-  column_iterator::ptr columns() const override;
+  column_iterator::ptr columns() const final;
 
-  const document_mask* docs_mask() const override { return &docs_mask_; }
+  const document_mask* docs_mask() const final { return &docs_mask_; }
 
-  doc_iterator::ptr docs_iterator() const override;
+  doc_iterator::ptr docs_iterator() const final;
 
-  doc_iterator::ptr mask(doc_iterator::ptr&& it) const override;
+  doc_iterator::ptr mask(doc_iterator::ptr&& it) const final;
 
-  const term_reader* field(std::string_view name) const override {
+  const term_reader* field(std::string_view name) const final {
     return data_->field_reader_->field(name);
   }
 
-  field_iterator::ptr fields() const override {
+  field_iterator::ptr fields() const final {
     return data_->field_reader_->iterator();
   }
 
-  const irs::column_reader* sort() const noexcept override { return sort_; }
+  const irs::column_reader* sort() const noexcept final { return sort_; }
 
-  const irs::column_reader* column(field_id field) const override;
+  const irs::column_reader* column(field_id field) const final;
 
-  const irs::column_reader* column(std::string_view name) const override;
+  const irs::column_reader* column(std::string_view name) const final;
 
  private:
   using NamedColumns =

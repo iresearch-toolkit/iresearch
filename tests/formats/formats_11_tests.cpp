@@ -221,14 +221,11 @@ TEST_P(format_11_test_case, write_zero_block_encryption) {
   ASSERT_THROW(writer->Commit(), irs::index_error);
 }
 
-const auto kTestValues = ::testing::Combine(
-  ::testing::Values(&tests::rot13_directory<&tests::memory_directory, 16>,
-                    &tests::rot13_directory<&tests::fs_directory, 16>,
-                    &tests::rot13_directory<&tests::mmap_directory, 16>,
-                    &tests::rot13_directory<&tests::memory_directory, 7>,
-                    &tests::rot13_directory<&tests::fs_directory, 7>,
-                    &tests::rot13_directory<&tests::mmap_directory, 7>),
-  ::testing::Values(tests::format_info{"1_1", "1_0"}));
+static constexpr auto kTestDirs =
+  tests::getDirectories<tests::kTypesRot13_16 | tests::kTypesRot13_7>();
+static const auto kTestValues =
+  ::testing::Combine(::testing::ValuesIn(kTestDirs),
+                     ::testing::Values(tests::format_info{"1_1", "1_0"}));
 
 // 1.1 specific tests
 INSTANTIATE_TEST_SUITE_P(format_11_test, format_11_test_case, kTestValues,

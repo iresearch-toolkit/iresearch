@@ -111,7 +111,7 @@ class thread_pool {
   size_t max_threads_;
   std::priority_queue<task> queue_;
   std::basic_string<native_char_t> worker_name_;
-};  // thread_pool
+};
 
 }  // namespace async_utils
 }  // namespace irs

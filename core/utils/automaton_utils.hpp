@@ -75,7 +75,7 @@ inline automaton::Weight accept(const automaton& a,
   return match(matcher, target);
 }
 
-class automaton_term_iterator final : public seek_term_iterator {
+class automaton_term_iterator : public seek_term_iterator {
  public:
   automaton_term_iterator(const automaton& a, seek_term_iterator::ptr&& it)
     : a_(&a), matcher_(a_), it_(std::move(it)) {
@@ -85,15 +85,15 @@ class automaton_term_iterator final : public seek_term_iterator {
     value_ = &term->value;
   }
 
-  bytes_view value() const noexcept override { return *value_; }
+  bytes_view value() const noexcept final { return *value_; }
 
-  doc_iterator::ptr postings(IndexFeatures features) const override {
+  doc_iterator::ptr postings(IndexFeatures features) const final {
     return it_->postings(features);
   }
 
-  void read() override { it_->read(); }
+  void read() final { it_->read(); }
 
-  bool next() override {
+  bool next() final {
     bool next = it_->next();
 
     while (next && !accept()) {
@@ -103,11 +103,11 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next;
   }
 
-  attribute* get_mutable(type_info::type_id type) noexcept override {
+  attribute* get_mutable(type_info::type_id type) noexcept final {
     return it_->get_mutable(type);
   }
 
-  SeekResult seek_ge(bytes_view target) override {
+  SeekResult seek_ge(bytes_view target) final {
     it_->seek_ge(target);
 
     if (accept()) {
@@ -117,11 +117,11 @@ class automaton_term_iterator final : public seek_term_iterator {
     return next() ? SeekResult::NOT_FOUND : SeekResult::END;
   }
 
-  bool seek(bytes_view target) override {
+  bool seek(bytes_view target) final {
     return SeekResult::FOUND == seek_ge(target);
   }
 
-  seek_cookie::ptr cookie() const override { return it_->cookie(); }
+  seek_cookie::ptr cookie() const final { return it_->cookie(); }
 
  private:
   bool accept() { return irs::match(matcher_, *value_); }
@@ -130,7 +130,7 @@ class automaton_term_iterator final : public seek_term_iterator {
   fst::SortedRangeExplicitMatcher<automaton> matcher_;
   seek_term_iterator::ptr it_;
   const bytes_view* value_;
-};  // automaton_term_iterator
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief add a new transition to "to" state denoted by "label" or expands
@@ -217,7 +217,7 @@ class utf8_transitions_builder {
       state* target;
       automaton::StateId id;
     };
-  };  // arc
+  };
 
   struct state : private util::noncopyable {
     void clear() noexcept {
@@ -241,7 +241,7 @@ class utf8_transitions_builder {
 
     automaton::StateId id{fst::kNoStateId};
     std::vector<arc> arcs;
-  };  // state
+  };
 
   static_assert(std::is_nothrow_move_constructible_v<state>);
 
@@ -280,7 +280,7 @@ class utf8_transitions_builder {
 
       return hash;
     }
-  };  // state_hash
+  };
 
   struct state_equal {
     bool operator()(const state& lhs, automaton::StateId rhs,
@@ -307,7 +307,7 @@ class utf8_transitions_builder {
 
       return true;
     }
-  };  // state_equal
+  };
 
   class state_emplace {
    public:
@@ -331,7 +331,7 @@ class utf8_transitions_builder {
 
    private:
     const automaton::Weight* weight_;
-  };  // state_emplace
+  };
 
   using automaton_states_map =
     fst_states_map<automaton, state, state_emplace, state_hash, state_equal,
@@ -350,7 +350,7 @@ class utf8_transitions_builder {
   state states_[utf8_utils::MAX_CODE_POINT_SIZE + 1];  // +1 for root state
   automaton_states_map states_map_;
   bytes_view last_;
-};  // utf8_automaton_builder
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief validate a specified automaton and print message on error

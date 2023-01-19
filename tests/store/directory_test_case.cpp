@@ -4417,22 +4417,17 @@ TEST_P(directory_test_case, directory_size) {
   }
 }
 
-const auto kValues = ::testing::Values(
-#ifdef IRESEARCH_URING
-  &tests::directory<&tests::async_directory>,
-#endif
-  &tests::directory<&tests::memory_directory>,
-  &tests::directory<&tests::fs_directory>,
-  &tests::directory<&tests::mmap_directory>);
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
-INSTANTIATE_TEST_SUITE_P(directory_test, directory_test_case, kValues,
+INSTANTIATE_TEST_SUITE_P(directory_test, directory_test_case,
+                         ::testing::Combine(::testing::ValuesIn(kTestDirs)),
                          tests::directory_test_case_base<>::to_string);
 
 class fs_directory_test : public test_base {
  public:
   fs_directory_test() : name_("directory") {}
 
-  void SetUp() override {
+  void SetUp() final {
     test_base::SetUp();
     path_ = test_case_dir() / name_;
 
@@ -4440,7 +4435,7 @@ class fs_directory_test : public test_base {
     dir_ = std::make_shared<FSDirectory>(path_);
   }
 
-  void TearDown() override {
+  void TearDown() final {
     dir_ = nullptr;
     irs::file_utils::remove(path_.c_str());
     test_base::TearDown();
@@ -4635,8 +4630,8 @@ TEST(memory_directory_test, construct_check_allocator) {
 }
 
 TEST(memory_directory_test, file_reset_allocator) {
-  memory_allocator alloc0(1);
-  memory_allocator alloc1(1);
+  memory_allocator alloc0(1U);
+  memory_allocator alloc1(1U);
   memory_file file(alloc0);
 
   // get buffer from 'alloc0'

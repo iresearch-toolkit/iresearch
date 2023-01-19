@@ -45,7 +45,7 @@ class column_existence_query : public irs::filter::prepared {
     return iterator(segment, *column, ctx.scorers);
   }
 
-  void visit(const SubReader&, PreparedStateVisitor&, score_t) const override {
+  void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // No terms to visit
   }
 
@@ -74,7 +74,7 @@ class column_existence_query : public irs::filter::prepared {
   bstring stats_;
 };
 
-class column_prefix_existence_query final : public column_existence_query {
+class column_prefix_existence_query : public column_existence_query {
  public:
   column_prefix_existence_query(std::string_view prefix, bstring&& stats,
                                 const ColumnAcceptor& acceptor, score_t boost)
@@ -83,7 +83,7 @@ class column_prefix_existence_query final : public column_existence_query {
     IRS_ASSERT(acceptor_);
   }
 
-  irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const override {
+  irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
 
     IRS_ASSERT(acceptor_);

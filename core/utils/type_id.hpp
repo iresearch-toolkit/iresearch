@@ -61,6 +61,6 @@ struct type {
   /// @returns type identifier of a type denoted by template parameter "T"
   //////////////////////////////////////////////////////////////////////////////
   static constexpr type_info::type_id id() noexcept { return &get; }
-};  // type
+};
 
 }  // namespace irs

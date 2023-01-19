@@ -62,24 +62,23 @@ class failing_directory : public tests::directory_mock {
                                  const failing_directory& dir)
       : impl_(std::move(impl)), dir_(&dir), name_(name) {}
     const irs::byte_type* read_buffer(size_t offset, size_t size,
-                                      irs::BufferHint hint) override {
+                                      irs::BufferHint hint) final {
       return impl_->read_buffer(offset, size, hint);
     }
-    const irs::byte_type* read_buffer(size_t size,
-                                      irs::BufferHint hint) override {
+    const irs::byte_type* read_buffer(size_t size, irs::BufferHint hint) final {
       return impl_->read_buffer(size, hint);
     }
-    irs::byte_type read_byte() override { return impl_->read_byte(); }
-    size_t read_bytes(irs::byte_type* b, size_t count) override {
+    irs::byte_type read_byte() final { return impl_->read_byte(); }
+    size_t read_bytes(irs::byte_type* b, size_t count) final {
       return impl_->read_bytes(b, count);
     }
-    size_t read_bytes(size_t offset, irs::byte_type* b, size_t count) override {
+    size_t read_bytes(size_t offset, irs::byte_type* b, size_t count) final {
       return impl_->read_bytes(offset, b, count);
     }
-    size_t file_pointer() const override { return impl_->file_pointer(); }
-    size_t length() const override { return impl_->length(); }
-    bool eof() const override { return impl_->eof(); }
-    ptr dup() const override {
+    size_t file_pointer() const final { return impl_->file_pointer(); }
+    size_t length() const final { return impl_->length(); }
+    bool eof() const final { return impl_->eof(); }
+    ptr dup() const final {
       if (dir_->should_fail(Failure::DUP, name_)) {
         throw irs::io_error();
       }
@@ -88,10 +87,10 @@ class failing_directory : public tests::directory_mock {
         return nullptr;
       }
 
-      return ptr(
-        new failing_index_input(impl_->dup(), this->name_, *this->dir_));
+      return std::make_unique<failing_index_input>(impl_->dup(), this->name_,
+                                                   *this->dir_);
     }
-    ptr reopen() const override {
+    ptr reopen() const final {
       if (dir_->should_fail(Failure::REOPEN, name_)) {
         throw irs::io_error();
       }
@@ -100,11 +99,11 @@ class failing_directory : public tests::directory_mock {
         return nullptr;
       }
 
-      return ptr(
-        new failing_index_input(impl_->reopen(), this->name_, *this->dir_));
+      return std::make_unique<failing_index_input>(impl_->reopen(), this->name_,
+                                                   *this->dir_);
     }
-    void seek(size_t pos) override { impl_->seek(pos); }
-    int64_t checksum(size_t offset) const override {
+    void seek(size_t pos) final { impl_->seek(pos); }
+    int64_t checksum(size_t offset) const final {
       return impl_->checksum(offset);
     }
 
@@ -112,7 +111,7 @@ class failing_directory : public tests::directory_mock {
     index_input::ptr impl_;
     const failing_directory* dir_;
     std::string name_;
-  };  // failing_index_input
+  };
 
  public:
   explicit failing_directory(irs::directory& impl) noexcept
@@ -139,36 +138,35 @@ class failing_directory : public tests::directory_mock {
 
   bool no_failures() const noexcept { return failures_.empty(); }
 
-  irs::index_output::ptr create(std::string_view name) noexcept override {
+  irs::index_output::ptr create(std::string_view name) noexcept final {
     if (should_fail(Failure::CREATE, name)) {
       return nullptr;
     }
 
     return tests::directory_mock::create(name);
   }
-  bool exists(bool& result, std::string_view name) const noexcept override {
+  bool exists(bool& result, std::string_view name) const noexcept final {
     if (should_fail(Failure::EXISTS, name)) {
       return false;
     }
 
     return tests::directory_mock::exists(result, name);
   }
-  bool length(uint64_t& result, std::string_view name) const noexcept override {
+  bool length(uint64_t& result, std::string_view name) const noexcept final {
     if (should_fail(Failure::LENGTH, name)) {
       return false;
     }
 
     return tests::directory_mock::length(result, name);
   }
-  irs::index_lock::ptr make_lock(std::string_view name) noexcept override {
+  irs::index_lock::ptr make_lock(std::string_view name) noexcept final {
     if (should_fail(Failure::MAKE_LOCK, name)) {
       return nullptr;
     }
 
     return tests::directory_mock::make_lock(name);
   }
-  bool mtime(std::time_t& result,
-             std::string_view name) const noexcept override {
+  bool mtime(std::time_t& result, std::string_view name) const noexcept final {
     if (should_fail(Failure::MTIME, name)) {
       return false;
     }
@@ -176,7 +174,7 @@ class failing_directory : public tests::directory_mock {
     return tests::directory_mock::mtime(result, name);
   }
   irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept override {
+                             irs::IOAdvice advice) const noexcept final {
     if (should_fail(Failure::OPEN, name)) {
       return nullptr;
     }
@@ -184,21 +182,21 @@ class failing_directory : public tests::directory_mock {
     return std::make_unique<failing_index_input>(
       tests::directory_mock::open(name, advice), name, *this);
   }
-  bool remove(std::string_view name) noexcept override {
+  bool remove(std::string_view name) noexcept final {
     if (should_fail(Failure::REMOVE, name)) {
       return false;
     }
 
     return tests::directory_mock::remove(name);
   }
-  bool rename(std::string_view src, std::string_view dst) noexcept override {
+  bool rename(std::string_view src, std::string_view dst) noexcept final {
     if (should_fail(Failure::RENAME, src)) {
       return false;
     }
 
     return tests::directory_mock::rename(src, dst);
   }
-  bool sync(std::span<const std::string_view> files) noexcept override {
+  bool sync(std::span<const std::string_view> files) noexcept final {
     return std::all_of(std::begin(files), std::end(files),
                        [this](std::string_view name) mutable noexcept {
                          if (should_fail(Failure::SYNC, name)) {
@@ -234,7 +232,7 @@ class failing_directory : public tests::directory_mock {
   };
 
   mutable std::set<fail_t, fail_less> failures_;
-};  // failing_directory
+};
 
 irs::FeatureInfoProvider default_feature_info() {
   return [](irs::type_info::type_id) {

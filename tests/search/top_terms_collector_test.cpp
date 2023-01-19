@@ -63,8 +63,7 @@ struct sort : irs::sort {
             // without matching terms)
       uint64_t total_term_freq = 0;  // number of terms for processed field
 
-      void collect(const irs::SubReader&,
-                   const irs::term_reader& field) override {
+      void collect(const irs::SubReader&, const irs::term_reader& field) final {
         docs_with_field += field.docs_count();
 
         auto* freq = irs::get<irs::frequency>(field);
@@ -74,13 +73,13 @@ struct sort : irs::sort {
         }
       }
 
-      void reset() noexcept override {
+      void reset() noexcept final {
         docs_with_field = 0;
         total_term_freq = 0;
       }
 
-      void collect(irs::bytes_view) override {}
-      void write(irs::data_output&) const override {}
+      void collect(irs::bytes_view) final {}
+      void write(irs::data_output&) const final {}
     };
 
     struct term_collector final : irs::sort::term_collector {
@@ -88,7 +87,7 @@ struct sort : irs::sort {
         0;  // number of documents containing the matched term
 
       void collect(const irs::SubReader&, const irs::term_reader&,
-                   const irs::attribute_provider& term_attrs) override {
+                   const irs::attribute_provider& term_attrs) final {
         auto* meta = irs::get<irs::term_meta>(term_attrs);
 
         if (meta) {
@@ -96,62 +95,62 @@ struct sort : irs::sort {
         }
       }
 
-      void reset() noexcept override { docs_with_term = 0; }
+      void reset() noexcept final { docs_with_term = 0; }
 
-      void collect(irs::bytes_view) override {}
-      void write(irs::data_output&) const override {}
+      void collect(irs::bytes_view) final {}
+      void write(irs::data_output&) const final {}
     };
 
     void collect(irs::byte_type*, const irs::IndexReader&,
                  const irs::sort::field_collector*,
-                 const irs::sort::term_collector*) const override {}
+                 const irs::sort::term_collector*) const final {}
 
-    irs::IndexFeatures features() const override {
+    irs::IndexFeatures features() const final {
       return irs::IndexFeatures::NONE;
     }
 
-    irs::sort::field_collector::ptr prepare_field_collector() const override {
+    irs::sort::field_collector::ptr prepare_field_collector() const final {
       return std::make_unique<field_collector>();
     }
 
-    irs::sort::term_collector::ptr prepare_term_collector() const override {
+    irs::sort::term_collector::ptr prepare_term_collector() const final {
       return std::make_unique<term_collector>();
     }
 
-    virtual irs::ScoreFunction prepare_scorer(
+    irs::ScoreFunction prepare_scorer(
       const irs::SubReader& /*segment*/, const irs::term_reader& /*field*/,
       const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
-      irs::score_t /*boost*/) const override {
-      return {nullptr, nullptr};
+      irs::score_t /*boost*/) const final {
+      return irs::ScoreFunction::Invalid();
     }
 
-    std::pair<size_t, size_t> stats_size() const override { return {0, 0}; }
+    std::pair<size_t, size_t> stats_size() const final { return {0, 0}; }
   };
 
-  irs::sort::prepared::ptr prepare() const override {
+  irs::sort::prepared::ptr prepare() const final {
     return std::make_unique<prepared>();
   }
 };
 
-class seek_term_iterator final : public irs::seek_term_iterator {
+class seek_term_iterator : public irs::seek_term_iterator {
  public:
   typedef const std::pair<std::string_view, term_meta>* iterator_type;
 
   seek_term_iterator(iterator_type begin, iterator_type end)
     : begin_(begin), end_(end), cookie_ptr_(begin) {}
 
-  irs::SeekResult seek_ge(irs::bytes_view) override {
+  irs::SeekResult seek_ge(irs::bytes_view) final {
     return irs::SeekResult::NOT_FOUND;
   }
 
-  bool seek(irs::bytes_view) override { return false; }
+  bool seek(irs::bytes_view) final { return false; }
 
-  irs::seek_cookie::ptr cookie() const override {
+  irs::seek_cookie::ptr cookie() const final {
     return std::make_unique<struct seek_ptr>(cookie_ptr_);
   }
 
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     if (type == irs::type<decltype(meta_)>::id()) {
       return &meta_;
     }
@@ -161,7 +160,7 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return nullptr;
   }
 
-  bool next() noexcept override {
+  bool next() noexcept final {
     if (begin_ == end_) {
       return false;
     }
@@ -173,27 +172,26 @@ class seek_term_iterator final : public irs::seek_term_iterator {
     return true;
   }
 
-  irs::bytes_view value() const noexcept override { return value_.value; }
+  irs::bytes_view value() const noexcept final { return value_.value; }
 
-  void read() override {}
+  void read() final {}
 
-  irs::doc_iterator::ptr postings(
-    irs::IndexFeatures /*features*/) const override {
+  irs::doc_iterator::ptr postings(irs::IndexFeatures /*features*/) const final {
     return irs::doc_iterator::empty();
   }
 
   struct seek_ptr final : irs::seek_cookie {
     explicit seek_ptr(iterator_type ptr) noexcept : ptr(ptr) {}
 
-    irs::attribute* get_mutable(irs::type_info::type_id) override {
+    irs::attribute* get_mutable(irs::type_info::type_id) final {
       return nullptr;
     }
 
-    bool IsEqual(const irs::seek_cookie& rhs) const noexcept override {
+    bool IsEqual(const irs::seek_cookie& rhs) const noexcept final {
       return ptr == irs::down_cast<seek_ptr>(rhs).ptr;
     }
 
-    size_t Hash() const noexcept override {
+    size_t Hash() const noexcept final {
       return std::hash<std::string_view>{}(ptr->first);
     }
 
@@ -206,39 +204,39 @@ class seek_term_iterator final : public irs::seek_term_iterator {
   iterator_type begin_;
   iterator_type end_;
   iterator_type cookie_ptr_;
-};  // term_iterator
+};
 
 struct sub_reader final : irs::SubReader {
   explicit sub_reader(size_t num_docs) {
     info.docs_count = num_docs;
     info.live_docs_count = num_docs;
   }
-  const irs::SegmentInfo& Meta() const override { return info; }
+  const irs::SegmentInfo& Meta() const final { return info; }
 
-  const irs::document_mask* docs_mask() const override { return nullptr; }
+  const irs::document_mask* docs_mask() const final { return nullptr; }
 
-  irs::column_iterator::ptr columns() const override {
+  irs::column_iterator::ptr columns() const final {
     return irs::column_iterator::empty();
   }
-  const irs::column_reader* column(irs::field_id) const override {
+  const irs::column_reader* column(irs::field_id) const final {
     return nullptr;
   }
-  const irs::column_reader* column(std::string_view) const override {
+  const irs::column_reader* column(std::string_view) const final {
     return nullptr;
   }
-  irs::doc_iterator::ptr docs_iterator() const override {
+  irs::doc_iterator::ptr docs_iterator() const final {
     return irs::doc_iterator::empty();
   }
-  const irs::term_reader* field(std::string_view) const override {
+  const irs::term_reader* field(std::string_view) const final {
     return nullptr;
   }
-  irs::field_iterator::ptr fields() const override {
+  irs::field_iterator::ptr fields() const final {
     return irs::field_iterator::empty();
   }
-  const irs::column_reader* sort() const override { return nullptr; }
+  const irs::column_reader* sort() const final { return nullptr; }
 
   irs::SegmentInfo info;
-};  // index_reader
+};
 
 struct state {
   struct segment_state {

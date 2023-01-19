@@ -314,7 +314,7 @@ index_input::ptr encrypted_input::dup() const {
       absl::StrCat("Failed to duplicate input file, error: ", errno)};
   }
 
-  return index_input::ptr(new encrypted_input(*this, std::move(dup)));
+  return index_input::ptr{new encrypted_input{*this, std::move(dup)}};
 }
 
 index_input::ptr encrypted_input::reopen() const {
@@ -324,7 +324,7 @@ index_input::ptr encrypted_input::reopen() const {
     throw io_error(absl::StrCat("Failed to reopen input file, error: ", errno));
   }
 
-  return index_input::ptr(new encrypted_input(*this, std::move(reopened)));
+  return index_input::ptr{new encrypted_input{*this, std::move(reopened)}};
 }
 
 void encrypted_input::seek_internal(size_t pos) {

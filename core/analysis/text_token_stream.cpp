@@ -38,7 +38,6 @@
 #include "utils/file_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/log.hpp"
-#include "utils/map_utils.hpp"
 #include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/snowball_stemmer.hpp"
@@ -143,7 +142,6 @@ using namespace irs;
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 struct cached_options_t : public analysis::text_token_stream::options_t {
-  std::string key_;
   analysis::text_token_stream::stopwords_t stopwords_;
 
   cached_options_t(analysis::text_token_stream::options_t&& options,
@@ -152,7 +150,17 @@ struct cached_options_t : public analysis::text_token_stream::options_t {
       stopwords_(std::move(stopwords)) {}
 };
 
-absl::node_hash_map<hashed_string_view, cached_options_t> cached_state_by_key;
+struct StringHash {
+  using is_transparent = void;
+
+  size_t operator()(std::string_view v) const {
+    return absl::Hash<std::string_view>{}(v);
+  }
+  size_t operator()(hashed_string_view v) const { return v.hash(); }
+};
+
+absl::node_hash_map<std::string, cached_options_t, StringHash>
+  cached_state_by_key;
 std::mutex mutex;
 
 // -----------------------------------------------------------------------------
@@ -296,30 +304,15 @@ bool build_stopwords(const analysis::text_token_stream::options_t& options,
 /// @brief create an analyzer based on the supplied cache_key and options
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr construct(
-  std::string_view cache_key, analysis::text_token_stream::options_t&& options,
+  hashed_string_view cache_key,
+  analysis::text_token_stream::options_t&& options,
   analysis::text_token_stream::stopwords_t&& stopwords) {
-  auto generator = [](const hashed_string_view& key,
-                      cached_options_t& value) noexcept {
-    if (IsNull(key)) {
-      return key;
-    }
-
-    value.key_ = key;
-
-    // reuse hash but point ref at value
-    return hashed_string_view{value.key_, key.hash()};
-  };
-
   cached_options_t* options_ptr;
-
   {
     std::lock_guard lock{mutex};
-
-    options_ptr =
-      &(map_utils::try_emplace_update_key(
-          cached_state_by_key, generator, hashed_string_view{cache_key},
-          std::move(options), std::move(stopwords))
-          .first->second);
+    auto r = cached_state_by_key.try_emplace(cache_key, std::move(options),
+                                             std::move(stopwords));
+    options_ptr = &r.first->second;
   }
 
   return std::make_unique<analysis::text_token_stream>(*options_ptr,
@@ -335,9 +328,10 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
   }
 
   {
+    hashed_string_view key{locale.getName()};
     std::lock_guard lock{mutex};
 
-    auto itr = cached_state_by_key.find(hashed_string_view{locale.getName()});
+    auto itr = cached_state_by_key.find(key);
 
     if (itr != cached_state_by_key.end()) {
       return std::make_unique<analysis::text_token_stream>(
@@ -359,8 +353,8 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
       return nullptr;
     }
 
-    return construct(options.locale.getName(), std::move(options),
-                     std::move(stopwords));
+    return construct(hashed_string_view{options.locale.getName()},
+                     std::move(options), std::move(stopwords));
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while constructing text_token_stream cache key: %s",
@@ -852,10 +846,11 @@ bool make_vpack_config(const analysis::text_token_stream::options_t& options,
 ////////////////////////////////////////////////////////////////////////////////
 analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
   try {
-    const std::string_view slice_ref(slice.startAs<char>(), slice.byteSize());
+    const hashed_string_view slice_ref{
+      std::string_view{slice.startAs<char>(), slice.byteSize()}};
     {
       std::lock_guard lock{mutex};
-      auto itr = cached_state_by_key.find(hashed_string_view{slice_ref});
+      auto itr = cached_state_by_key.find(slice_ref);
 
       if (itr != cached_state_by_key.end()) {
         return std::make_unique<analysis::text_token_stream>(

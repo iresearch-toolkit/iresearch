@@ -27,18 +27,18 @@ namespace {
 using namespace irs;
 
 struct noop_field_collector final : sort::field_collector {
-  void collect(const SubReader&, const term_reader&) override {}
-  void reset() override {}
-  void collect(bytes_view) override {}
-  void write(data_output&) const override {}
+  void collect(const SubReader&, const term_reader&) final {}
+  void reset() final {}
+  void collect(bytes_view) final {}
+  void write(data_output&) const final {}
 };
 
 struct noop_term_collector final : sort::term_collector {
   void collect(const SubReader&, const term_reader&,
-               const attribute_provider&) override {}
-  void reset() override {}
-  void collect(bytes_view) override {}
-  void write(data_output&) const override {}
+               const attribute_provider&) final {}
+  void reset() final {}
+  void collect(bytes_view) final {}
+  void write(data_output&) const final {}
 };
 
 static noop_field_collector NOOP_FIELD_STATS;

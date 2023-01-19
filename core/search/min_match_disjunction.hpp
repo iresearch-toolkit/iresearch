@@ -55,9 +55,7 @@ class min_match_disjunction : public doc_iterator,
     cost::cost_t est;
   };
 
-  static_assert(
-    std::is_nothrow_move_constructible<cost_iterator_adapter>::value,
-    "default move constructor expected");
+  static_assert(std::is_nothrow_move_constructible_v<cost_iterator_adapter>);
 
   typedef cost_iterator_adapter doc_iterator_t;
   typedef std::vector<doc_iterator_t> doc_iterators_t;
@@ -94,13 +92,13 @@ class min_match_disjunction : public doc_iterator,
     }
   }
 
-  attribute* get_mutable(type_info::type_id id) noexcept override {
+  attribute* get_mutable(type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
   }
 
-  doc_id_t value() const override { return std::get<document>(attrs_).value; }
+  doc_id_t value() const final { return std::get<document>(attrs_).value; }
 
-  bool next() override {
+  bool next() final {
     auto& doc_ = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc_.value)) {
@@ -144,7 +142,7 @@ class min_match_disjunction : public doc_iterator,
     return false;
   }
 
-  doc_id_t seek(doc_id_t target) override {
+  doc_id_t seek(doc_id_t target) final {
     auto& doc_ = std::get<document>(attrs_);
 
     if (target <= doc_.value) {
@@ -234,7 +232,7 @@ class min_match_disjunction : public doc_iterator,
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.Reset(this, [](score_ctx* ctx, score_t* res) {
+    score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
       auto& self = *static_cast<min_match_disjunction*>(ctx);
       IRS_ASSERT(!self.heap_.empty());
 

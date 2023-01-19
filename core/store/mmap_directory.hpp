@@ -45,10 +45,10 @@ class CachingMMapDirectory
  public:
   using CachingDirectoryBase::CachingDirectoryBase;
 
-  bool length(uint64_t& result, std::string_view name) const noexcept override;
+  bool length(uint64_t& result, std::string_view name) const noexcept final;
 
   index_input::ptr open(std::string_view name,
-                        IOAdvice advice) const noexcept override;
+                        IOAdvice advice) const noexcept final;
 };
 
 }  // namespace irs

@@ -25,13 +25,12 @@
 
 #include "error/error.hpp"
 
+namespace irs {
 namespace {
 
-irs::memory_allocator kGlobalAlloc{128};
+memory_allocator kGlobalAlloc{size_t{128}};
 
-}
-
-namespace irs {
+}  // namespace
 
 /*static*/ memory_allocator::buffer::ptr memory_allocator::buffer::make(
   size_t size) {
@@ -43,11 +42,11 @@ namespace irs {
 }
 
 /*static*/ memory_allocator::ptr memory_allocator::make(size_t pool_size) {
-  if (pool_size) {
+  if (pool_size != 0) {
     return memory::make_managed<memory_allocator>(pool_size);
   }
 
-  return memory::to_managed<memory_allocator, false>(&kGlobalAlloc);
+  return memory::to_managed<memory_allocator>(kGlobalAlloc);
 }
 
 memory_allocator::memory_allocator(size_t pool_size) : allocator_(pool_size) {}
