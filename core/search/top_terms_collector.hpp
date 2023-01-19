@@ -212,6 +212,8 @@ class top_terms_collector : private util::noncopyable {
 
       heap_.back() = res.position;
       push();
+
+      res.position->second.emplace(state_);
     } else {
       IRS_ASSERT(it->second.key == key);
       // update existing entry
