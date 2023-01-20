@@ -1241,7 +1241,7 @@ FORCE_INLINE uint32_t fastpack_at(const uint32_t* in) noexcept {
   // ensure all computations are constexr, i.e. no conditional jumps, no loops,
   // no variable increment/decrement
 
-  if constexpr ((N * (I + 1) % 32) < ((N * I) % 32)) {
+  if constexpr ((N * (I + 1) % 32) < ((N * I) % 32) && (1 + N * I / 32) < N) {
     return ((in[N * I / 32] >> (N * I % 32)) % (1U << N)) |
            ((in[1 + N * I / 32] % (1U << (N * (I + 1)) % 32))
             << (N - ((N * (I + 1)) % 32)));
@@ -1259,7 +1259,7 @@ FORCE_INLINE uint64_t fastpack_at(const uint64_t* in) noexcept {
   // ensure all computations are constexr, i.e. no conditional jumps, no loops,
   // no variable increment/decrement
 
-  if constexpr ((N * (I + 1) % 64) < ((N * I) % 64)) {
+  if constexpr ((N * (I + 1) % 64) < ((N * I) % 64) && (1 + N * I / 64) < N) {
     return ((in[N * I / 64] >> (N * I % 64)) % (1ULL << N)) |
            ((in[1 + N * I / 64] % (1ULL << (N * (I + 1)) % 64))
             << (N - ((N * (I + 1)) % 64)));
