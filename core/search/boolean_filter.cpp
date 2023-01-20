@@ -320,9 +320,11 @@ size_t boolean_filter::hash() const noexcept {
 }
 
 bool boolean_filter::equals(const filter& rhs) const noexcept {
+  if (!filter::equals(rhs)) {
+    return false;
+  }
   const boolean_filter& typed_rhs = static_cast<const boolean_filter&>(rhs);
-
-  return filter::equals(rhs) && filters_.size() == typed_rhs.size() &&
+  return filters_.size() == typed_rhs.size() &&
          std::equal(begin(), end(), typed_rhs.begin());
 }
 
@@ -631,10 +633,12 @@ size_t Not::hash() const noexcept {
 }
 
 bool Not::equals(const irs::filter& rhs) const noexcept {
+  if (!filter::equals(rhs)) {
+    return false;
+  }
   const Not& typed_rhs = static_cast<const Not&>(rhs);
-  return filter::equals(rhs) &&
-         ((!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_) ||
-          (empty() && typed_rhs.empty()));
+  return (!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_) ||
+         (empty() && typed_rhs.empty());
 }
 
 }  // namespace iresearch
