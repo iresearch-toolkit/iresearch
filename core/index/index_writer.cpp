@@ -944,7 +944,7 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
     } catch (...) {
       IR_FRMT_ERROR(
         "while flushing segment '%s', error: failed to flush segment",
-        segment.writer_meta_.meta.name.c_str());
+        segment.writer_meta_.name.c_str());
 
       segment.Reset(true);
 
@@ -1230,7 +1230,7 @@ uint64_t IndexWriter::SegmentContext::Flush() {
 
   IRS_ASSERT(writer_->docs_cached() <= doc_limits::eof());
 
-  auto& segment = flushed_.emplace_back(std::move(writer_meta_.meta));
+  auto& segment = flushed_.emplace_back(std::move(writer_meta_));
 
   try {
     writer_->flush(segment, segment.docs_mask);
@@ -1300,8 +1300,8 @@ void IndexWriter::SegmentContext::Prepare() {
   IRS_ASSERT(writer_);
 
   if (!writer_->initialized()) {
-    writer_meta_ = IndexSegment{.meta = meta_generator_()};
-    writer_->reset(writer_meta_.meta);
+    writer_meta_ = meta_generator_();
+    writer_->reset(writer_meta_);
   }
 }
 
@@ -2121,7 +2121,7 @@ IndexWriter::FlushPending(FlushContext& ctx,
 }
 
 IndexWriter::PendingContext IndexWriter::FlushAll(
-  ProgressReportCallback const& progress_callback) {
+  uint64_t tick, ProgressReportCallback const& progress_callback) {
   REGISTER_TIMER_DETAILED();
 
   auto const& progress =
@@ -2687,7 +2687,7 @@ void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
   IRS_ASSERT(pending_state_.Valid());
 }
 
-bool IndexWriter::Start(ProgressReportCallback const& progress) {
+bool IndexWriter::Start(uint64_t tick, ProgressReportCallback const& progress) {
   IRS_ASSERT(!commit_lock_.try_lock());  // already locked
 
   REGISTER_TIMER_DETAILED();
@@ -2697,7 +2697,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
     return false;
   }
 
-  auto to_commit = FlushAll(progress);
+  auto to_commit = FlushAll(tick, progress);
 
   if (to_commit.Empty()) {
     // Nothing to commit, no transaction started

@@ -370,7 +370,7 @@ class IndexWriter : private util::noncopyable {
 
     // FIXME(gnusi): Commit() should return committed index snapshot
     // Commit all accumulated modifications and release resources
-    bool Commit() noexcept;
+    bool Commit(uint64_t tick = std::numeric_limits<uint64_t>::max()) noexcept;
 
     // Revert all pending document modifications and release resources
     // noexcept because all insertions reserve enough space for rollback
@@ -501,11 +501,12 @@ class IndexWriter : private util::noncopyable {
   // Begins the two-phase transaction.
   // payload arbitrary user supplied data to store in the index
   // Returns true if transaction has been successflully started.
-  bool Begin() {
+  bool Begin(uint64_t tick = std::numeric_limits<uint64_t>::max(),
+             ProgressReportCallback const& progress = {}) {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{commit_lock_};
 
-    return Start();
+    return Start(tick, progress);
   }
 
   // Rollbacks the two-phase transaction
@@ -522,11 +523,12 @@ class IndexWriter : private util::noncopyable {
   //
   // Note that if begin() has been already called commit() is
   // relatively lightweight operation.
-  bool Commit(ProgressReportCallback const& progress = nullptr) {
+  bool Commit(uint64_t tick = std::numeric_limits<uint64_t>::max(),
+              ProgressReportCallback const& progress = {}) {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{commit_lock_};
 
-    const bool modified = Start(progress);
+    const bool modified = Start(tick, progress);
     Finish();
     return modified;
   }
@@ -728,7 +730,7 @@ class IndexWriter : private util::noncopyable {
     size_t uncomitted_modification_queries_;
     std::unique_ptr<segment_writer> writer_;
     // the SegmentMeta this writer was initialized with
-    IndexSegment writer_meta_;
+    SegmentMeta writer_meta_;
 
     static std::unique_ptr<SegmentContext> make(
       directory& dir, segment_meta_generator_t&& meta_generator,
@@ -921,7 +923,8 @@ class IndexWriter : private util::noncopyable {
   std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t> FlushPending(
     FlushContext& ctx, std::unique_lock<std::mutex>& ctx_lock);
 
-  PendingContext FlushAll(ProgressReportCallback const& progress_callback);
+  PendingContext FlushAll(uint64_t tick,
+                          ProgressReportCallback const& progress_callback);
 
   FlushContextPtr GetFlushContext(bool shared = true);
 
@@ -937,7 +940,7 @@ class IndexWriter : private util::noncopyable {
   void InitMeta(IndexMeta& meta, uint64_t tick) const;
 
   // Start transaction
-  bool Start(ProgressReportCallback const& progress = nullptr);
+  bool Start(uint64_t tick, ProgressReportCallback const& progress);
   void StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
                  std::vector<SegmentReader>&& readers,
                  std::vector<std::string_view>&& files_to_sync);
