@@ -2106,14 +2106,6 @@ IndexWriter::FlushPending(FlushContext& ctx,
 
     // force a flush of the underlying segment_writer
     max_tick = std::max(segment->Flush(), max_tick);
-
-    // may be std::numeric_limits<size_t>::max() if SegmentMeta only in this
-    // flush_context
-    entry.doc_id_end_ =
-      std::min(segment->uncomitted_doc_id_begin_, entry.doc_id_end_);
-    entry.modification_offset_end_ =
-      std::min(segment->uncomitted_modification_queries_,
-               entry.modification_offset_end_);
   }
 
   return {std::move(segment_flush_locks), max_tick};
@@ -2447,10 +2439,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         continue;  // skip empty segments
       }
 
+      const auto doc_id_begin = segment->uncomitted_doc_id_begin_;
       size_t flushed_docs_count = 0;
+
       // was updated after flush
-      auto flushed_doc_id_end = pending_segment_context.doc_id_end_;
-      IRS_ASSERT(pending_segment_context.doc_id_begin_ <= flushed_doc_id_end);
+      auto flushed_doc_id_end = doc_id_begin;
+      IRS_ASSERT(doc_id_begin <= flushed_doc_id_end);
       IRS_ASSERT(flushed_doc_id_end - doc_limits::min() <=
                  segment->flushed_update_contexts_.size());
 
@@ -2471,15 +2465,13 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
             // SegmentMeta fully before the start of this flush_context
             || flushed_doc_id_end - doc_limits::min() <= flushed_docs_start
             // SegmentMeta fully after the start of this flush_context
-            || pending_segment_context.doc_id_begin_ - doc_limits::min() >=
-                 flushed_docs_count) {
+            || doc_id_begin - doc_limits::min() >= flushed_docs_count) {
           continue;
         }
 
         // 0-based
         auto update_contexts_begin =
-          std::max(pending_segment_context.doc_id_begin_ - doc_limits::min(),
-                   flushed_docs_start);
+          std::max(doc_id_begin - doc_limits::min(), flushed_docs_start);
         // 0-based
         auto update_contexts_end =
           std::min(flushed_doc_id_end - doc_limits::min(), flushed_docs_count);

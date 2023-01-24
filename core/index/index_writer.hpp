@@ -639,46 +639,8 @@ class IndexWriter : private util::noncopyable {
     doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
   };
 
-  // The segment writer and its associated ref tracing directory
+  // The segment writer and its associated ref tracking directory
   // for use with an unbounded_object_pool
-  //
-  // Note the segment flows through following stages
-  //  1a) taken from pool (!busy_, !dirty) {Thread A}
-  //  2a) requested by GetBatch() (!busy_, !dirty)
-  //  3a) GetBatch() validates that active context is the same &&
-  //  !dirty_
-  //  4a) GetBatch() sets 'busy_', guarded by flush_context::flush_mutex_
-  //  5a) GetBatch() starts operation
-  //  6a) GetBatch() finishes operation
-  //  7a) GetBatch() unsets 'busy_', guarded by flush_context::mutex_
-  //    (different mutex for cond notify)
-  //  8a) GetBatch() notifies flush_context::pending_segment_context_cond_
-  //    ... after some time ...
-  // 10a) GetBatch() validates that active context is the same && !dirty_
-  // 11a) GetBatch() sets 'busy_', guarded by flush_context::flush_mutex_
-  // 12a) GetBatch() starts operation
-  // 13b) flush_all() switches active context {Thread B}
-  // 14b) flush_all() sets 'dirty_', guarded by flush_context::mutex_
-  // 15b) flush_all() checks 'busy_' and waits on flush_context::mutex_
-  //    (different mutex for cond notify)
-  // 16a) GetBatch() finishes operation {Thread A}
-  // 17a) GetBatch() unsets 'busy_', guarded by flush_context::mutex_
-  //    (different mutex for cond notify)
-  // 18a) GetBatch() notifies flush_context::pending_segment_context_cond_
-  // 19b) flush_all() checks 'busy_' and continues flush {Thread B}
-  //    (different mutex for cond notify)  {scenario 1} ... after some time
-  //    reuse of same GetBatch() {Thread A}
-  // 20a) GetBatch() validates that active context is not the same
-  // 21a) GetBatch() re-requests a new segment, i.e. continues
-  //    to (1a) {scenario 2} ...  after some time reuse of same
-  //    GetBatch() {Thread A}
-  // 20a) GetBatch() validates that active context is the same && dirty_
-  // 21a) GetBatch() re-requests a new segment, i.e. continues to (1a)
-  // Note segment_writer::doc_contexts[...uncomitted_document_contexts_):
-  //   generation == flush_context::generation
-  // Note segment_writer::doc_contexts[uncomitted_document_contexts_...]:
-  //   generation == local generation (updated when segment_context
-  //   registered once again with flush_context)
   struct SegmentContext {
     using segment_meta_generator_t = std::function<SegmentMeta()>;
     using ptr = std::unique_ptr<SegmentContext>;
@@ -794,39 +756,11 @@ class IndexWriter : private util::noncopyable {
   using Freelist = concurrent_stack<size_t>;
 
   struct PendindSegmentContext : public Freelist::node_type {
-    // range of SegmentContext::document_contexts_ for this
-    // FlushContext range, i.e.
-    // [PendingSegmentContext::doc_id_begin_,
-    // std::min(PendingSegmentContext::doc_id_end_,
-    //          SegmentContext::uncomitted_doc_ids_))
-    const size_t doc_id_begin_;
-    // ending segment_context::document_contexts_ for
-    // this flush_context range
-    // [pending_segment_context::doc_id_begin_,
-    // std::min(pending_segment_context::doc_id_end_,
-    // segment_context::uncomitted_doc_ids_))
-    size_t doc_id_end_;
-    // starting SegmentContext::modification_queries_ for this
-    // FlushContext range, i.e.
-    // [PendingSegmentContext::modification_offset_begin_,
-    //  std::min(PendingSegmentContext::::modification_offset_end_,
-    //           SegmentContext::uncomitted_modification_queries_))
-    const size_t modification_offset_begin_;
-    // ending SegmentContext::modification_queries_ for this
-    // FlushContext range, i.e.
-    // [PendingSegmentContext::modification_offset_begin_,
-    //  std::min(PendingSegmentContext::::modification_offset_end_,
-    //           SegmentContext::uncomitted_modification_queries_))
-    size_t modification_offset_end_;
     std::shared_ptr<SegmentContext> segment_;
 
     PendindSegmentContext(std::shared_ptr<SegmentContext> segment,
                           size_t pending_segment_context_offset)
       : Freelist::node_type{.value = pending_segment_context_offset},
-        doc_id_begin_(segment->uncomitted_doc_id_begin_),
-        doc_id_end_(std::numeric_limits<size_t>::max()),
-        modification_offset_begin_(segment->uncomitted_modification_queries_),
-        modification_offset_end_(std::numeric_limits<size_t>::max()),
         segment_(std::move(segment)) {
       IRS_ASSERT(segment_);
     }
