@@ -786,7 +786,7 @@ bool IndexWriter::Transaction::Commit() noexcept {
     // FIXME move emplace into active_segment_context destructor commit segment
     const auto& flush_ctx = writer_.GetFlushContext();
     IRS_ASSERT(flush_ctx);
-    flush_ctx->emplace(std::move(segment_), first_operation_tick_);
+    flush_ctx->Emplace(std::move(segment_), first_operation_tick_);
     return true;
   } catch (...) {
     Reset();  // abort segment
@@ -958,7 +958,7 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
   return ctx;
 }
 
-void IndexWriter::FlushContext::emplace(ActiveSegmentContext&& segment,
+void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& segment,
                                         uint64_t generation_base) {
   if (!segment.ctx_) {
     return;  // nothing to do
@@ -1005,10 +1005,10 @@ void IndexWriter::FlushContext::emplace(ActiveSegmentContext&& segment,
         segment.ctx_, pending_segment_contexts_.size());
 
       // mark segment as non-reusable if it was peviously registered with a
-      // different flush_context NOTE: 'ctx.dirty_' implies flush_context
-      // switching making a full-circle
-      //       and this emplace(...) call being the first and only call for this
-      //       segment (not given out again via free-list) so no 'dirty_' check
+      // different flush_context
+      // NOTE: 'ctx.dirty_' implies flush_context switching making a full-circle
+      // and this emplace(...) call being the first and only call for this
+      // segment (not given out again via free-list) so no 'dirty_' check
       if (flush_ctx && this != flush_ctx) {
         ctx.dirty_ = true;
         // 'segment.flush_ctx_' may be asynchronously flushed
@@ -1184,7 +1184,7 @@ bool IndexWriter::FlushContext::AddToPending(ActiveSegmentContext& segment) {
   return true;
 }
 
-void IndexWriter::FlushContext::reset() noexcept {
+void IndexWriter::FlushContext::Reset() noexcept {
   // reset before returning to pool
   for (auto& entry : pending_segment_contexts_) {
     if (auto& segment = entry.segment_; segment.use_count() == 1) {
@@ -1981,7 +1981,7 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
       return {ctx, [](FlushContext* ctx) noexcept -> void {
                 std::unique_lock lock{ctx->flush_mutex_, std::adopt_lock};
                 // reset context and make ready for reuse
-                ctx->reset();
+                ctx->Reset();
               }};
     }
   }
@@ -2042,8 +2042,7 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext(
   if (auto* freelist_node = ctx.pending_segment_contexts_freelist_.pop();
       freelist_node) {
     const auto& segment =
-      static_cast<FlushContext::PendindSegmentContext*>(freelist_node)
-        ->segment_;
+      static_cast<PendindSegmentContext*>(freelist_node)->segment_;
 
     // +1 for the reference in 'pending_segment_contexts_'
     IRS_ASSERT(segment.use_count() == 1);
@@ -2198,23 +2197,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     // mask documents matching filters from segment_contexts (i.e. from new
     // operations)
     for (auto& modifications : ctx->pending_segment_contexts_) {
-      // modification_queries_ range
-      // [flush_segment_context::modification_offset_begin_,
-      // segment_context::uncomitted_modification_queries_)
-      const auto begin = modifications.modification_offset_begin_;
-      const auto end = modifications.modification_offset_end_;
+      const std::span modification_queries{
+        modifications.segment_->modification_queries_};
 
-      IRS_ASSERT(begin <= end);
-      IRS_ASSERT(end <= modifications.segment_->modification_queries_.size());
-
-      const size_t size = end - begin;
-
-      if (!size) {
+      if (modification_queries.empty()) {
         continue;
       }
-
-      const std::span modification_queries{
-        modifications.segment_->modification_queries_.data() + begin, size};
 
       // FIXME(gnusi): optimize PK queries
       RemoveFromExistingSegment(deleted_docs, modification_queries,
@@ -2353,23 +2341,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       // mask documents matching filters from segment_contexts (i.e. from new
       // operations)
       for (auto& modifications : ctx->pending_segment_contexts_) {
-        // modification_queries_ range
-        // [flush_segment_context::modification_offset_begin_,
-        // segment_context::uncomitted_modification_queries_)
-        auto begin = modifications.modification_offset_begin_;
-        auto end = modifications.modification_offset_end_;
+        const std::span modification_queries{
+          modifications.segment_->modification_queries_};
 
-        IRS_ASSERT(begin <= end);
-        IRS_ASSERT(end <= modifications.segment_->modification_queries_.size());
-
-        const size_t size = end - begin;
-
-        if (!size) {
+        if (modification_queries.empty()) {
           continue;  // Nothing to do
         }
-
-        const std::span modification_queries{
-          modifications.segment_->modification_queries_.data() + begin, size};
 
         // FIXME(gnusi): optimize PK queries
         docs_mask_modified |= RemoveFromImportedSegment(
@@ -2562,20 +2539,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         // mask documents matching filters from all flushed segment_contexts
         // (i.e. from new operations)
         for (auto& modifications : ctx->pending_segment_contexts_) {
-          const auto begin = modifications.modification_offset_begin_;
-          const auto end = modifications.modification_offset_end_;
+          const std::span modification_queries(
+            modifications.segment_->modification_queries_);
 
-          IRS_ASSERT(begin <= end);
-          IRS_ASSERT(end <=
-                     modifications.segment_->modification_queries_.size());
-          const size_t size = end - begin;
-
-          if (!size) {
+          if (modification_queries.empty()) {
             continue;  // Nothing to do
           }
-
-          const std::span modification_queries(
-            modifications.segment_->modification_queries_.data() + begin, size);
 
           // FIXME(gnusi): optimize PK queries
           RemoveFromNewSegment(modification_queries, flush_segment_ctx);

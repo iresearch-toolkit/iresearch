@@ -368,9 +368,8 @@ class IndexWriter : private util::noncopyable {
               segment_.ctx()->MakeUpdateContext(std::forward<Filter>(filter))};
     }
 
-    // FIXME(gnusi): Commit() should return committed index snapshot
     // Commit all accumulated modifications and release resources
-    bool Commit(uint64_t tick = std::numeric_limits<uint64_t>::max()) noexcept;
+    bool Commit() noexcept;
 
     // Revert all pending document modifications and release resources
     // noexcept because all insertions reserve enough space for rollback
@@ -523,6 +522,7 @@ class IndexWriter : private util::noncopyable {
   //
   // Note that if begin() has been already called commit() is
   // relatively lightweight operation.
+  // FIXME(gnusi): Commit() should return committed index snapshot
   bool Commit(uint64_t tick = std::numeric_limits<uint64_t>::max(),
               ProgressReportCallback const& progress = {}) {
     // cppcheck-suppress unreadVariable
@@ -628,6 +628,17 @@ class IndexWriter : private util::noncopyable {
 
   static_assert(std::is_nothrow_move_constructible_v<ImportContext>);
 
+  struct FlushedSegment : public IndexSegment {
+    FlushedSegment() = default;
+    explicit FlushedSegment(SegmentMeta&& meta) noexcept
+      : IndexSegment{.meta = std::move(meta)} {}
+
+    // Flushed segment removals
+    document_mask docs_mask;
+    // starting doc_id that should be added to docs_mask
+    doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
+  };
+
   // The segment writer and its associated ref tracing directory
   // for use with an unbounded_object_pool
   //
@@ -669,26 +680,13 @@ class IndexWriter : private util::noncopyable {
   //   generation == local generation (updated when segment_context
   //   registered once again with flush_context)
   struct SegmentContext {
-    struct FlushedSegment : public IndexSegment {
-      FlushedSegment() = default;
-      explicit FlushedSegment(SegmentMeta&& meta) noexcept
-        : IndexSegment{.meta = std::move(meta)} {}
-
-      // Flushed segment removals
-      document_mask docs_mask;
-      // starting doc_id that should be added to docs_mask
-      doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
-    };
-
     using segment_meta_generator_t = std::function<SegmentMeta()>;
     using ptr = std::unique_ptr<SegmentContext>;
 
-    // number of active in-progress
-    // operations (insert/replace) (e.g.
+    // number of active in-progress operations (insert/replace) (e.g.
     // document instances or replace(...))
     std::atomic_size_t active_count_;
-    // for use with index_writer::buffered_docs()
-    // asynchronous call
+    // for use with index_writer::buffered_docs(), asynchronous call
     std::atomic_size_t buffered_docs_;
     // the codec to used for flushing a segment writer
     format::ptr codec_;
@@ -699,11 +697,10 @@ class IndexWriter : private util::noncopyable {
     // ref tracking for segment_writer to allow for easy ref removal on
     // segment_writer reset
     RefTrackingDirectory dir_;
-    // guard 'flushed_', 'uncomitted_*' and 'writer_'
-    // from concurrent flush
+    // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::mutex flush_mutex_;
-    // all of the previously flushed versions of this segment,
-    // guarded by the flush_context::flush_mutex_
+    // all of the previously flushed versions of this segment, guarded by the
+    // flush_context::flush_mutex_
     std::vector<FlushedSegment> flushed_;
     // update_contexts to use with 'flushed_'
     // sequentially increasing through all offsets
@@ -793,6 +790,47 @@ class IndexWriter : private util::noncopyable {
   };
 
   using SegmentPool = unbounded_object_pool<SegmentContext>;
+  // 'value' == node offset into 'pending_segment_context_'
+  using Freelist = concurrent_stack<size_t>;
+
+  struct PendindSegmentContext : public Freelist::node_type {
+    // range of SegmentContext::document_contexts_ for this
+    // FlushContext range, i.e.
+    // [PendingSegmentContext::doc_id_begin_,
+    // std::min(PendingSegmentContext::doc_id_end_,
+    //          SegmentContext::uncomitted_doc_ids_))
+    const size_t doc_id_begin_;
+    // ending segment_context::document_contexts_ for
+    // this flush_context range
+    // [pending_segment_context::doc_id_begin_,
+    // std::min(pending_segment_context::doc_id_end_,
+    // segment_context::uncomitted_doc_ids_))
+    size_t doc_id_end_;
+    // starting SegmentContext::modification_queries_ for this
+    // FlushContext range, i.e.
+    // [PendingSegmentContext::modification_offset_begin_,
+    //  std::min(PendingSegmentContext::::modification_offset_end_,
+    //           SegmentContext::uncomitted_modification_queries_))
+    const size_t modification_offset_begin_;
+    // ending SegmentContext::modification_queries_ for this
+    // FlushContext range, i.e.
+    // [PendingSegmentContext::modification_offset_begin_,
+    //  std::min(PendingSegmentContext::::modification_offset_end_,
+    //           SegmentContext::uncomitted_modification_queries_))
+    size_t modification_offset_end_;
+    std::shared_ptr<SegmentContext> segment_;
+
+    PendindSegmentContext(std::shared_ptr<SegmentContext> segment,
+                          size_t pending_segment_context_offset)
+      : Freelist::node_type{.value = pending_segment_context_offset},
+        doc_id_begin_(segment->uncomitted_doc_id_begin_),
+        doc_id_end_(std::numeric_limits<size_t>::max()),
+        modification_offset_begin_(segment->uncomitted_modification_queries_),
+        modification_offset_end_(std::numeric_limits<size_t>::max()),
+        segment_(std::move(segment)) {
+      IRS_ASSERT(segment_);
+    }
+  };
 
   // The context containing data collected for the next commit() call
   // Note a 'segment_context' is tracked by at most 1 'flush_context', it is
@@ -800,50 +838,6 @@ class IndexWriter : private util::noncopyable {
   // 'segment_context' is not used once the tracker 'flush_context' is no
   // longer active.
   struct FlushContext {
-    // 'value' == node offset into 'pending_segment_context_'
-    using Freelist = concurrent_stack<size_t>;
-
-    struct PendindSegmentContext : public Freelist::node_type {
-      // starting segment_context::document_contexts_ for this
-      // flush_context range
-      // [pending_segment_context::doc_id_begin_,
-      // std::min(pending_segment_context::doc_id_end_,
-      // segment_context::uncomitted_doc_ids_))
-      const size_t doc_id_begin_;
-      // ending segment_context::document_contexts_ for
-      // this flush_context range
-      // [pending_segment_context::doc_id_begin_,
-      // std::min(pending_segment_context::doc_id_end_,
-      // segment_context::uncomitted_doc_ids_))
-      size_t doc_id_end_;
-      // starting
-      // segment_context::modification_queries_
-      // for this flush_context range
-      // [pending_segment_context::modification_offset_begin_,
-      // std::min(pending_segment_context::::modification_offset_end_,
-      // segment_context::uncomitted_modification_queries_))
-      const size_t modification_offset_begin_;
-      // ending
-      // segment_context::modification_queries_ for
-      // this flush_context range
-      // [pending_segment_context::modification_offset_begin_,
-      // std::min(pending_segment_context::::modification_offset_end_,
-      // segment_context::uncomitted_modification_queries_))
-      size_t modification_offset_end_;
-      std::shared_ptr<SegmentContext> segment_;
-
-      PendindSegmentContext(std::shared_ptr<SegmentContext> segment,
-                            size_t pending_segment_context_offset)
-        : Freelist::node_type{.value = pending_segment_context_offset},
-          doc_id_begin_(segment->uncomitted_doc_id_begin_),
-          doc_id_end_(std::numeric_limits<size_t>::max()),
-          modification_offset_begin_(segment->uncomitted_modification_queries_),
-          modification_offset_end_(std::numeric_limits<size_t>::max()),
-          segment_(std::move(segment)) {
-        IRS_ASSERT(segment_);
-      }
-    };
-
     using SegmentMask = absl::flat_hash_set<const SubReader*>;
 
     // current modification/update generation
@@ -870,21 +864,21 @@ class IndexWriter : private util::noncopyable {
     std::deque<PendindSegmentContext> pending_segment_contexts_;
     // entries from 'pending_segment_contexts_' that are available for reuse
     Freelist pending_segment_contexts_freelist_;
-    // set of segment names to be removed from the index upon commit
+    // set of segments to be removed from the index upon commit
     SegmentMask segment_mask_;
 
     FlushContext() = default;
 
-    ~FlushContext() noexcept { reset(); }
+    ~FlushContext() noexcept { Reset(); }
 
     // add the segment to this flush_context
-    void emplace(ActiveSegmentContext&& segment, uint64_t first_operation_tick);
+    void Emplace(ActiveSegmentContext&& segment, uint64_t first_operation_tick);
 
     // add the segment to this flush_context pending segments
     // but not to freelist. So this segment would be waited upon flushing
     bool AddToPending(ActiveSegmentContext& segment);
 
-    void reset() noexcept;
+    void Reset() noexcept;
   };
 
   struct PendingContext {
