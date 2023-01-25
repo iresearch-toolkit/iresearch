@@ -2442,7 +2442,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       size_t flushed_docs_count = 0;
 
       // was updated after flush
-      auto flushed_doc_id_end = segment->uncomitted_doc_id_begin_;
+      const auto flushed_doc_id_end = segment->uncomitted_doc_id_begin_;
       IRS_ASSERT(flushed_doc_id_end - doc_limits::min() <=
                  segment->flushed_update_contexts_.size());
 
@@ -2465,16 +2465,15 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
           continue;
         }
 
-        // 0-based
         auto update_contexts_begin = flushed_docs_start;
         // 0-based
         auto update_contexts_end =
           std::min(flushed_doc_id_end - doc_limits::min(), flushed_docs_count);
         IRS_ASSERT(update_contexts_begin <= update_contexts_end);
         // beginning doc_id in this SegmentMeta
-        auto valid_doc_id_begin =
+        const auto valid_doc_id_begin =
           update_contexts_begin - flushed_docs_start + doc_limits::min();
-        auto valid_doc_id_end =
+        const auto valid_doc_id_end =
           std::min(update_contexts_end - flushed_docs_start + doc_limits::min(),
                    static_cast<size_t>(flushed.docs_mask_tail_doc_id));
         IRS_ASSERT(valid_doc_id_begin <= valid_doc_id_end);
@@ -2482,10 +2481,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         if (valid_doc_id_begin == valid_doc_id_end) {
           continue;  // empty segment since head+tail == 'docs_count'
         }
-
-        const std::span flush_update_contexts{
-          segment->flushed_update_contexts_.data() + flushed_docs_start,
-          flushed.meta.docs_count};
 
         auto reader =
           SegmentReaderImpl::Open(dir, flushed.meta, reader_options);
@@ -2497,6 +2492,10 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
             "segment '",
             flushed.meta.name, "', error: failed to open segment")};
         }
+
+        const std::span flush_update_contexts{
+          segment->flushed_update_contexts_.data() + flushed_docs_start,
+          flushed.meta.docs_count};
 
         auto& flush_segment_ctx = segment_ctxs.emplace_back(
           std::move(reader), std::move(flushed), std::move(flushed.docs_mask),
