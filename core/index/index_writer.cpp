@@ -1230,12 +1230,18 @@ uint64_t IndexWriter::SegmentContext::Flush() {
 
   IRS_ASSERT(writer_->docs_cached() <= doc_limits::eof());
 
-  auto& segment = flushed_.emplace_back(std::move(writer_meta_));
+  const std::span ctxs{writer_->docs_context()};
+  // 1-based
+  const auto docs_begin =
+    static_cast<doc_id_t>(flushed_update_contexts_.size()) + 1;
+
+  auto& segment =
+    flushed_.emplace_back(std::move(writer_meta_), docs_begin,
+                          docs_begin + static_cast<doc_id_t>(ctxs.size()));
 
   try {
     writer_->flush(segment, segment.docs_mask);
 
-    const std::span ctxs{writer_->docs_context()};
     flushed_update_contexts_.insert(flushed_update_contexts_.end(),
                                     ctxs.begin(), ctxs.end());
   } catch (...) {
@@ -2429,6 +2435,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     }
 
     std::vector<FlushSegmentContext> segment_ctxs;
+    segment_ctxs.reserve(total_pending_segment_context_segments);
     size_t current_pending_segment_context_segments = 0;
 
     // proces all segments that have been seen by the current flush_context
@@ -2458,28 +2465,15 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
         // sum of all previous SegmentMeta::docs_count including this meta
         flushed_docs_count += flushed.meta.docs_count;
+        const auto docs_begin = flushed.docs_begin;
+        const auto docs_end = flushed.docs_end;
+        IRS_ASSERT((docs_end - docs_begin) == flushed.meta.docs_count);
 
         if (!flushed.meta.live_docs_count /* empty SegmentMeta */
             // SegmentMeta fully before the start of this flush_context
-            || flushed_doc_id_end - doc_limits::min() <= flushed_docs_start) {
+            || flushed_doc_id_end - doc_limits::min() <= flushed_docs_start ||
+            docs_begin == docs_end) {
           continue;
-        }
-
-        auto update_contexts_begin = flushed_docs_start;
-        // 0-based
-        auto update_contexts_end =
-          std::min(flushed_doc_id_end - doc_limits::min(), flushed_docs_count);
-        IRS_ASSERT(update_contexts_begin <= update_contexts_end);
-        // beginning doc_id in this SegmentMeta
-        const auto valid_doc_id_begin =
-          update_contexts_begin - flushed_docs_start + doc_limits::min();
-        const auto valid_doc_id_end =
-          std::min(update_contexts_end - flushed_docs_start + doc_limits::min(),
-                   static_cast<size_t>(flushed.docs_mask_tail_doc_id));
-        IRS_ASSERT(valid_doc_id_begin <= valid_doc_id_end);
-
-        if (valid_doc_id_begin == valid_doc_id_end) {
-          continue;  // empty segment since head+tail == 'docs_count'
         }
 
         auto reader =
@@ -2494,12 +2488,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         }
 
         const std::span flush_update_contexts{
-          segment->flushed_update_contexts_.data() + flushed_docs_start,
+          segment->flushed_update_contexts_.begin() + docs_begin,
           flushed.meta.docs_count};
 
         auto& flush_segment_ctx = segment_ctxs.emplace_back(
           std::move(reader), std::move(flushed), std::move(flushed.docs_mask),
-          valid_doc_id_begin, valid_doc_id_end, flush_update_contexts,
+          flushed.docs_begin, flushed.docs_end, flush_update_contexts,
           segment->modification_queries_);
 
         // read document_mask as was originally flushed
@@ -2507,15 +2501,14 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         auto& docs_mask = flush_segment_ctx.docs_mask_;
 
         // add doc_ids before start of this flush_context to document_mask
-        for (size_t doc_id = doc_limits::min(); doc_id < valid_doc_id_begin;
-             ++doc_id) {
+        for (size_t doc_id = doc_limits::min(); doc_id < docs_begin; ++doc_id) {
           IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
           docs_mask.emplace(static_cast<doc_id_t>(doc_id));
         }
 
         // add tail doc_ids not part of this flush_context to documents_mask
         // (including truncated)
-        for (size_t doc_id = valid_doc_id_end,
+        for (size_t doc_id = docs_end,
                     doc_id_end = flushed.meta.docs_count + doc_limits::min();
              doc_id < doc_id_end; ++doc_id) {
           IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
