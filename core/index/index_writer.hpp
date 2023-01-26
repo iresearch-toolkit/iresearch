@@ -630,15 +630,9 @@ class IndexWriter : private util::noncopyable {
 
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
-    explicit FlushedSegment(SegmentMeta&& meta, doc_id_t docs_begin,
-                            doc_id_t docs_end) noexcept
-      : IndexSegment{.meta = std::move(meta)},
-        docs_begin{docs_begin},
-        docs_end{docs_end} {}
+    explicit FlushedSegment(SegmentMeta&& meta) noexcept
+      : IndexSegment{.meta = std::move(meta)} {}
 
-    // Range of the flushed docs in SegmentContext::flushed_update_contexts_
-    doc_id_t docs_begin{};
-    doc_id_t docs_end{};
     // Flushed segment removals
     document_mask docs_mask;
     // starting doc_id that should be added to docs_mask
