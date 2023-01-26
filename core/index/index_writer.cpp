@@ -944,7 +944,7 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
     } catch (...) {
       IR_FRMT_ERROR(
         "while flushing segment '%s', error: failed to flush segment",
-        segment.writer_meta_.name.c_str());
+        segment.writer_meta_.meta.name.c_str());
 
       segment.Reset(true);
 
@@ -1224,18 +1224,30 @@ uint64_t IndexWriter::SegmentContext::Flush() {
   // must be already locked to prevent concurrent flush related modifications
   IRS_ASSERT(!flush_mutex_.try_lock());
 
-  if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
+  if (!writer_ || !writer_->initialized() || writer_->docs_cached() == 0) {
     return 0;  // skip flushing an empty writer
   }
 
   IRS_ASSERT(writer_->docs_cached() <= doc_limits::eof());
 
-  auto& segment = flushed_.emplace_back(std::move(writer_meta_));
+  document_mask docs_mask;
+  writer_->flush(writer_meta_, docs_mask);
+
+  const std::span ctxs{writer_->docs_context()};
+
+  if (ctxs.empty() || writer_meta_.meta.live_docs_count == 0) {
+    return 0;  // skip flushing an empty writer
+  }
+
+  IRS_ASSERT(ctxs.size() == writer_meta_.meta.docs_count);
+
+  const auto docs_start =
+    static_cast<doc_id_t>(flushed_update_contexts_.size());
+
+  flushed_.emplace_back(std::move(writer_meta_), std::move(docs_mask),
+                        docs_start);
 
   try {
-    writer_->flush(segment, segment.docs_mask);
-
-    const std::span ctxs{writer_->docs_context()};
     flushed_update_contexts_.insert(flushed_update_contexts_.end(),
                                     ctxs.begin(), ctxs.end());
   } catch (...) {
@@ -1300,8 +1312,9 @@ void IndexWriter::SegmentContext::Prepare() {
   IRS_ASSERT(writer_);
 
   if (!writer_->initialized()) {
-    writer_meta_ = meta_generator_();
-    writer_->reset(writer_meta_);
+    writer_meta_.filename.clear();
+    writer_meta_.meta = meta_generator_();
+    writer_->reset(writer_meta_.meta);
   }
 }
 
@@ -2448,20 +2461,21 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
       // process individually each flushed SegmentMeta from the segment_context
       for (auto& flushed : segment->flushed_) {
+        IRS_ASSERT(flushed.meta.live_docs_count != 0);
+
         // report progress
         progress("Stage 3: Creating new segments",
                  current_pending_segment_context_segments,
                  total_pending_segment_context_segments);
         ++current_pending_segment_context_segments;
 
-        const auto flushed_docs_start = flushed_docs_count;
+        const auto flushed_docs_start = flushed.docs_begin;
 
         // sum of all previous SegmentMeta::docs_count including this meta
         flushed_docs_count += flushed.meta.docs_count;
 
-        if (!flushed.meta.live_docs_count /* empty SegmentMeta */
-            // SegmentMeta fully before the start of this flush_context
-            || flushed_doc_id_end - doc_limits::min() <= flushed_docs_start) {
+        // SegmentMeta fully before the start of this flush_context
+        if (flushed_doc_id_end - doc_limits::min() <= flushed_docs_start) {
           continue;
         }
 

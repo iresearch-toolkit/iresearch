@@ -630,13 +630,18 @@ class IndexWriter : private util::noncopyable {
 
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
-    explicit FlushedSegment(SegmentMeta&& meta) noexcept
-      : IndexSegment{.meta = std::move(meta)} {}
+    explicit FlushedSegment(IndexSegment&& segment, document_mask&& docs_mask,
+                            doc_id_t docs_begin) noexcept
+      : IndexSegment{std::move(segment)},
+        docs_mask{std::move(docs_mask)},
+        docs_begin{docs_begin} {}
 
     // Flushed segment removals
     document_mask docs_mask;
     // starting doc_id that should be added to docs_mask
     doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
+    // Offset of flushed docs in SegmentContext::flushed_update_contexts_
+    doc_id_t docs_begin{};
   };
 
   // The segment writer and its associated ref tracking directory
@@ -689,7 +694,7 @@ class IndexWriter : private util::noncopyable {
     size_t uncomitted_modification_queries_;
     std::unique_ptr<segment_writer> writer_;
     // the SegmentMeta this writer was initialized with
-    SegmentMeta writer_meta_;
+    IndexSegment writer_meta_;
 
     static std::unique_ptr<SegmentContext> make(
       directory& dir, segment_meta_generator_t&& meta_generator,
