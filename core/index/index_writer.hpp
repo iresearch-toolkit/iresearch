@@ -706,6 +706,8 @@ class IndexWriter : private util::noncopyable {
                    const FeatureInfoProvider& feature_info,
                    const Comparer* comparator);
 
+    void UpdateGeneration(uint64_t base) noexcept;
+
     // Flush current writer state into a materialized segment.
     // Return tick of last committed transaction.
     uint64_t Flush();
