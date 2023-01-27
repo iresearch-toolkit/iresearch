@@ -269,7 +269,8 @@ document_mask segment_writer::get_doc_mask(const doc_map& docmap) {
   return docs_mask;
 }
 
-void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
+std::span<segment_writer::update_context> segment_writer::flush(
+  IndexSegment& segment, document_mask& docs_mask) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(docs_mask.empty());
 
@@ -326,6 +327,8 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   // We intentionally don't write document mask here as it might
   // be changed by removals accumulated in IndexWriter.
   index_utils::FlushIndexSegment(dir_, segment);
+
+  return docs_context_;
 }
 
 void segment_writer::reset() noexcept {

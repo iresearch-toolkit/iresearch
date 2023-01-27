@@ -1221,22 +1221,21 @@ IndexWriter::SegmentContext::SegmentContext(
 }
 
 uint64_t IndexWriter::SegmentContext::Flush() {
-  // must be already locked to prevent concurrent flush related modifications
+  // Must be already locked to prevent concurrent flush related modifications
   IRS_ASSERT(!flush_mutex_.try_lock());
 
   if (!writer_ || !writer_->initialized() || writer_->docs_cached() == 0) {
-    return 0;  // skip flushing an empty writer
+    return 0;  // Skip flushing an empty writer
   }
 
   IRS_ASSERT(writer_->docs_cached() <= doc_limits::eof());
 
   document_mask docs_mask;
-  writer_->flush(writer_meta_, docs_mask);
-
-  const std::span ctxs{writer_->docs_context()};
+  const std::span ctxs = writer_->flush(writer_meta_, docs_mask);
 
   if (ctxs.empty() || writer_meta_.meta.live_docs_count == 0) {
-    return 0;  // skip flushing an empty writer
+    writer_->reset();
+    return 0;  // Skip flushing an empty writer
   }
 
   IRS_ASSERT(ctxs.size() == writer_meta_.meta.docs_count);
@@ -1251,14 +1250,14 @@ uint64_t IndexWriter::SegmentContext::Flush() {
     flushed_update_contexts_.insert(flushed_update_contexts_.end(),
                                     ctxs.begin(), ctxs.end());
   } catch (...) {
-    // failed to flush segment
+    // Failed to flush segment
     flushed_.pop_back();
 
     throw;
   }
 
   auto const tick = writer_->tick();
-  writer_->reset();  // mark segment as already flushed
+  writer_->reset();  // Mark segment as already flushed
   return tick;
 }
 
@@ -2469,7 +2468,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
                  total_pending_segment_context_segments);
         ++current_pending_segment_context_segments;
 
-        const auto flushed_docs_start = flushed.docs_begin;
+        const auto flushed_docs_start = flushed_docs_count;
 
         // sum of all previous SegmentMeta::docs_count including this meta
         flushed_docs_count += flushed.meta.docs_count;

@@ -83,8 +83,6 @@ class segment_writer : util::noncopyable {
   // Return doc_id_t as per doc_limits
   doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
 
-  std::span<update_context> docs_context() noexcept { return docs_context_; }
-
   template<Action action, typename Field>
   bool insert(Field&& field) {
     if (IRS_LIKELY(valid_)) {
@@ -146,7 +144,10 @@ class segment_writer : util::noncopyable {
     valid_ = false;
   }
 
-  void flush(IndexSegment& segment, document_mask& docs_mask);
+  std::span<update_context> docs_context() noexcept { return docs_context_; }
+
+  std::span<update_context> flush(IndexSegment& segment,
+                                  document_mask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t docs_cached() const noexcept { return docs_context_.size(); }
