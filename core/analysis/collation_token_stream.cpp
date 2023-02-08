@@ -76,9 +76,15 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
 
   // print warn message
   if (err != UErrorCode::U_ZERO_ERROR) {
-    IR_FRMT_WARN(
-      "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
-      locale_name.c_str(), u_errorName(err));
+    if (U_FAILURE(err)) {
+      IR_FRMT_WARN(
+        "Failure while instantiation of icu::Collator from locale '%s' : '%s'",
+        locale_name.c_str(), u_errorName(err));
+    } else {
+      IR_FRMT_TRACE(
+        "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
+        locale_name.c_str(), u_errorName(err));
+    }
   }
 
   return U_SUCCESS(err);
