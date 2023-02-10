@@ -2382,7 +2382,7 @@ template<typename IteratorTraits, typename FieldTraits>
 bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLessThanUpperBound(
   doc_id_t target) const noexcept {
   if constexpr (FieldTraits::frequency()) {
-    // FIXME(gnusi): parameterize > vs >=
+    // FIXME(gnusi): parameterize < vs <=
     return skip_levels_.back().doc < target ||
            skip_scores_.back() < threshold_->value;
   } else {
@@ -2394,7 +2394,7 @@ template<typename IteratorTraits, typename FieldTraits>
 bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
   size_t level, doc_id_t target) const noexcept {
   if constexpr (FieldTraits::frequency()) {
-    // FIXME(gnusi): parameterize > vs >=
+    // FIXME(gnusi): parameterize < vs <=
     return skip_levels_[level].doc < target ||
            skip_scores_[level] < threshold_->value;
   } else {
@@ -2555,7 +2555,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
   // FIXME(gnusi): use WAND condition in the loop below
 
-  auto& min_competitive_score = std::get<score_threshold>(attrs_);
+  const auto min_competitive_score = std::get<score_threshold>(attrs_).value;
 
   [[maybe_unused]] uint32_t notify{0};
   while (this->begin_ != std::end(this->buf_.docs)) {
@@ -2571,7 +2571,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
           auto& freq = std::get<frequency>(attrs_);
           freq.value = this->freq_[-1];
 
-          if (freq.value <= min_competitive_score.value) {
+          // FIXME(gnusi) < vs <=
+          if (freq.value < min_competitive_score) {
             continue;
           }
         }
@@ -2584,7 +2585,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       freq.value = *this->freq_++;
       notify += freq.value;
 
-      if (freq.value <= min_competitive_score.value) {
+      // FIXME(gnusi) < vs <=
+      if (freq.value < min_competitive_score) {
         continue;
       }
 
@@ -2599,8 +2601,16 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   if constexpr (IteratorTraits::position()) {
     std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
   }
-  while (doc.value < target) {
-    next();
+
+  if constexpr (IteratorTraits::frequency()) {
+    auto& freq = std::get<frequency>(attrs_);
+    while ((doc.value < target || freq.value < min_competitive_score) &&
+           next()) {
+    }
+  } else {
+    while (doc.value < target) {
+      next();
+    }
   }
 
   return doc.value;
