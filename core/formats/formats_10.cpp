@@ -1839,22 +1839,25 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
     std::get<frequency>(attrs_).value = term_freq;
 
     if constexpr (IteratorTraits::position()) {
-      DocState state;
-      state.pos_in = pos_in;
-      state.pay_in = pay_in;
-      state.term_state = &term_state;
-      state.freq = &std::get<frequency>(attrs_).value;
-      state.enc_buf = this->docs;
+      auto get_tail_start = [&]() noexcept {
+        if (term_freq < IteratorTraits::block_size()) {
+          return term_state.pos_start;
+        } else if (term_freq == IteratorTraits::block_size()) {
+          return address_limits::invalid();
+        } else {
+          return term_state.pos_start + term_state.pos_end;
+        }
+      };
 
-      if (term_freq < IteratorTraits::block_size()) {
-        state.tail_start = term_state.pos_start;
-      } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = address_limits::invalid();
-      } else {
-        state.tail_start = term_state.pos_start + term_state.pos_end;
-      }
+      const DocState state{
+        .pos_in = pos_in,
+        .pay_in = pay_in,
+        .term_state = &term_state,
+        .freq = &std::get<frequency>(attrs_).value,
+        .enc_buf = this->docs,
+        .tail_start = get_tail_start(),
+        .tail_length = term_freq % IteratorTraits::block_size()};
 
-      state.tail_length = term_freq % IteratorTraits::block_size();
       std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
     }
   }
@@ -2083,24 +2086,27 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
     IRS_ASSERT(meta.freq);
 
     if constexpr (IteratorTraits::position()) {
-      DocState state;
-      state.pos_in = pos_in;
-      state.pay_in = pay_in;
-      state.term_state = &term_state;
-      state.freq = &std::get<frequency>(attrs_).value;
-      state.enc_buf = this->enc_buf_;
-
       const auto term_freq = meta.freq;
 
-      if (term_freq < IteratorTraits::block_size()) {
-        state.tail_start = term_state.pos_start;
-      } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = address_limits::invalid();
-      } else {
-        state.tail_start = term_state.pos_start + term_state.pos_end;
-      }
+      auto get_tail_start = [&]() noexcept {
+        if (term_freq < IteratorTraits::block_size()) {
+          return term_state.pos_start;
+        } else if (term_freq == IteratorTraits::block_size()) {
+          return address_limits::invalid();
+        } else {
+          return term_state.pos_start + term_state.pos_end;
+        }
+      };
 
-      state.tail_length = term_freq % IteratorTraits::block_size();
+      const DocState state{
+        .pos_in = pos_in,
+        .pay_in = pay_in,
+        .term_state = &term_state,
+        .freq = &std::get<frequency>(attrs_).value,
+        .enc_buf = this->enc_buf_,
+        .tail_start = get_tail_start(),
+        .tail_length = term_freq % IteratorTraits::block_size()};
+
       std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
     }
   }
@@ -2256,10 +2262,12 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   wanderator(const ScoreFunctionFactory& factory)
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
-            ReadSkip{factory}} {
+            ReadSkip{}} {
     IRS_ASSERT(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
+
+    skip_.Reader().SetScoreFunction(factory);
   }
 
   void prepare(const term_meta& meta, const index_input* doc_in,
@@ -2292,8 +2300,11 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   class ReadSkip {
    public:
-    explicit ReadSkip(const ScoreFunctionFactory& factory)
-      : func_{factory(ctx_)}, skip_levels_(1), skip_scores_(1) {}
+    ReadSkip() : skip_levels_(1), skip_scores_(1) {}
+
+    void SetScoreFunction(const ScoreFunctionFactory& factory) {
+      func_ = factory(ctx_);
+    }
 
     void EnsureSorted() const noexcept;
 
@@ -2311,7 +2322,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     SkipState& State() noexcept { return prev_skip_; }
 
    private:
-    SkipScoreContext ctx_;  // must be initialized before `func_`
+    SkipScoreContext ctx_;
     ScoreFunction func_;
     std::vector<SkipState> skip_levels_;
     std::vector<score_t> skip_scores_;
@@ -2460,24 +2471,27 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
     IRS_ASSERT(meta.freq);
 
     if constexpr (IteratorTraits::position()) {
-      DocState state;
-      state.pos_in = pos_in;
-      state.pay_in = pay_in;
-      state.term_state = &term_state;
-      state.freq = &std::get<frequency>(attrs_).value;
-      state.enc_buf = this->enc_buf_;
-
       const auto term_freq = meta.freq;
 
-      if (term_freq < IteratorTraits::block_size()) {
-        state.tail_start = term_state.pos_start;
-      } else if (term_freq == IteratorTraits::block_size()) {
-        state.tail_start = address_limits::invalid();
-      } else {
-        state.tail_start = term_state.pos_start + term_state.pos_end;
-      }
+      auto get_tail_start = [&]() noexcept {
+        if (term_freq < IteratorTraits::block_size()) {
+          return term_state.pos_start;
+        } else if (term_freq == IteratorTraits::block_size()) {
+          return address_limits::invalid();
+        } else {
+          return term_state.pos_start + term_state.pos_end;
+        }
+      };
 
-      state.tail_length = term_freq % IteratorTraits::block_size();
+      const DocState state{
+        .pos_in = pos_in,
+        .pay_in = pay_in,
+        .term_state = &term_state,
+        .freq = &std::get<frequency>(attrs_).value,
+        .enc_buf = this->enc_buf_,
+        .tail_start = get_tail_start(),
+        .tail_length = term_freq % IteratorTraits::block_size()};
+
       std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
     }
   }

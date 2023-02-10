@@ -76,7 +76,7 @@ class SkipList {
  public:
   struct Step {
     irs::doc_id_t key;
-    uint32_t freq;
+    irs::score_t freq;
   };
 
   struct Level {
@@ -91,12 +91,12 @@ class SkipList {
 
   bool Empty() const noexcept { return skip_list_.empty(); }
   size_t Size() const noexcept { return skip_list_.size(); }
-  uint32_t At(size_t level, irs::doc_id_t doc) const noexcept {
+  irs::score_t At(size_t level, irs::doc_id_t doc) const noexcept {
     EXPECT_LT(level, skip_list_.size());
 
     auto& [_, data] = skip_list_[level];
     auto it = std::lower_bound(
-      std::begin(data), std::end(data), Step{doc, 0},
+      std::begin(data), std::end(data), Step{doc, 0.f},
       [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; });
 
     EXPECT_NE(it, std::end(data));
@@ -129,17 +129,17 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
     skip_0 * static_cast<size_t>(std::pow(skip_n, num_levels - 1)));
 
   for (; num_levels; --num_levels) {
-    skip_list.emplace_back(Level{step, std::vector{Step{0U, 0U}}});
+    skip_list.emplace_back(Level{step, std::vector{Step{0U, 0.f}}});
     step /= skip_n;
   }
 
-  auto add = [&](irs::doc_id_t i, irs::doc_id_t doc, uint32_t freq) {
+  auto add = [&](irs::doc_id_t i, irs::doc_id_t doc, irs::score_t freq) {
     for (auto& [step, level] : skip_list) {
       if (level.size() * step < count) {
         ASSERT_FALSE(level.empty());
         level.back() = {doc, std::max(level.back().freq, freq)};
         if (0 == (i % step)) {
-          level.emplace_back(Step{0, 0});
+          level.emplace_back(Step{0, 0.f});
         }
       }
     }
@@ -154,7 +154,7 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
 
     for (auto& [step, level] : skip_list) {
       level.back() = {irs::doc_limits::eof(),
-                      std::numeric_limits<uint32_t>::max()};
+                      std::numeric_limits<irs::score_t>::max()};
     }
   }
 
@@ -224,7 +224,7 @@ void Format15TestCase::PostingsWandSeek(
 
     auto in = dir->open("attributes", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
-    const auto tmp = irs::read_string<std::string>(*in);
+    [[maybe_unused]] const auto tmp = irs::read_string<std::string>(*in);
 
     auto reader = codec->get_postings_reader();
     ASSERT_NE(nullptr, reader);
@@ -233,6 +233,17 @@ void Format15TestCase::PostingsWandSeek(
     irs::bstring in_data(in->length() - in->file_pointer(), 0);
     in->read_bytes(&in_data[0], in_data.size());
     const auto* begin = in_data.c_str();
+
+    auto factory = [](const irs::attribute_provider& attrs) {
+      auto* freq = irs::get<irs::frequency>(attrs);
+      EXPECT_NE(nullptr, freq);
+
+      return irs::ScoreFunction{
+        reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          *res = reinterpret_cast<irs::frequency*>(ctx)->value;
+        }};
+    };
 
     {
       irs::version10::term_meta read_meta;
@@ -253,10 +264,6 @@ void Format15TestCase::PostingsWandSeek(
         postings expected_postings{docs, field.index_features};
         FreqThresholdDocIterator expected{expected_postings, threshold};
         SkipList skip_list;
-
-        auto factory = [](const irs::attribute_provider&) {
-          return irs::ScoreFunction{};
-        };
 
         auto actual = reader->wanderator(field.index_features, features,
                                          factory, read_meta);
@@ -307,10 +314,6 @@ void Format15TestCase::PostingsWandSeek(
         postings expected_postings{docs, field.index_features};
         FreqThresholdDocIterator expected{expected_postings, threshold};
 
-        auto factory = [](const irs::attribute_provider&) {
-          return irs::ScoreFunction{};
-        };
-
         auto actual = reader->wanderator(field.index_features, features,
                                          factory, read_meta);
         ASSERT_NE(nullptr, actual);
@@ -351,9 +354,6 @@ void Format15TestCase::PostingsWandSeek(
 
       // next + seek to eof
       {
-        auto factory = [](const irs::attribute_provider&) {
-          return irs::ScoreFunction{};
-        };
         auto it = reader->wanderator(
           field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
         ASSERT_FALSE(irs::doc_limits::valid(it->value()));
@@ -387,10 +387,6 @@ void Format15TestCase::PostingsWandSeek(
 
           postings expected_postings{docs, field.index_features};
           FreqThresholdDocIterator expected{expected_postings, threshold};
-
-          auto factory = [](const irs::attribute_provider&) {
-            return irs::ScoreFunction{};
-          };
 
           auto actual = reader->wanderator(field.index_features, features,
                                            factory, read_meta);
@@ -426,10 +422,6 @@ void Format15TestCase::PostingsWandSeek(
 
       // seek to irs::doc_limits::invalid()
       {
-        auto factory = [](const irs::attribute_provider&) {
-          return irs::ScoreFunction{};
-        };
-
         auto it = reader->wanderator(
           field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
         ASSERT_FALSE(irs::doc_limits::valid(it->value()));
@@ -441,10 +433,6 @@ void Format15TestCase::PostingsWandSeek(
 
       // seek to irs::doc_limits::eof()
       {
-        auto factory = [](const irs::attribute_provider&) {
-          return irs::ScoreFunction{};
-        };
-
         auto it = reader->wanderator(
           field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
         ASSERT_FALSE(irs::doc_limits::valid(it->value()));
