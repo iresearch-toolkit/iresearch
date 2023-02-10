@@ -30,10 +30,12 @@ namespace {
 
 class FreqThresholdDocIterator : public irs::doc_iterator {
  public:
-  FreqThresholdDocIterator(irs::doc_iterator& impl, uint32_t threshold)
+  FreqThresholdDocIterator(irs::doc_iterator& impl, uint32_t threshold,
+                           bool is_strict)
     : impl_{&impl},
       freq_{irs::get<irs::frequency>(impl)},
-      threshold_{threshold} {}
+      threshold_{threshold},
+      is_strict_{is_strict} {}
 
   irs::attribute* get_mutable(irs::type_info::type_id id) final {
     return impl_->get_mutable(id);
@@ -43,7 +45,7 @@ class FreqThresholdDocIterator : public irs::doc_iterator {
 
   bool next() final {
     while (impl_->next()) {
-      if (freq_ && freq_->value < threshold_) {
+      if (freq_ && Less()) {
         continue;
       }
 
@@ -67,9 +69,18 @@ class FreqThresholdDocIterator : public irs::doc_iterator {
   }
 
  private:
+  bool Less() {
+    if (is_strict_) {
+      return freq_->value <= threshold_;
+    } else {
+      return freq_->value < threshold_;
+    }
+  }
+
   irs::doc_iterator* impl_;
   const irs::frequency* freq_;
   uint32_t threshold_;
+  bool is_strict_;
 };
 
 class SkipList {
@@ -262,7 +273,7 @@ void Format15TestCase::PostingsWandSeek(
 
       auto assert_docs_seq = [&]() {
         postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold};
+        FreqThresholdDocIterator expected{expected_postings, threshold, false};
         SkipList skip_list;
 
         auto actual = reader->wanderator(field.index_features, features,
@@ -312,7 +323,7 @@ void Format15TestCase::PostingsWandSeek(
 
       auto assert_docs_random = [&](size_t seed, size_t inc) {
         postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold};
+        FreqThresholdDocIterator expected{expected_postings, threshold, false};
 
         auto actual = reader->wanderator(field.index_features, features,
                                          factory, read_meta);
@@ -386,7 +397,8 @@ void Format15TestCase::PostingsWandSeek(
           }
 
           postings expected_postings{docs, field.index_features};
-          FreqThresholdDocIterator expected{expected_postings, threshold};
+          FreqThresholdDocIterator expected{expected_postings, threshold,
+                                            false};
 
           auto actual = reader->wanderator(field.index_features, features,
                                            factory, read_meta);
@@ -539,6 +551,36 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
     constexpr uint32_t kThreshold = 0;
     const auto docs =
       generate_docs(kVersion10PostingsWriterBlockSize, 50.f, 14.f, 1);
+    ASSERT_TRUE(check_docs(docs));
+
+    PostingsWandSeek(docs, kNone, kThreshold);
+    PostingsWandSeek(docs, kFreq, kThreshold);
+    PostingsWandSeek(docs, kPos, kThreshold);
+    PostingsWandSeek(docs, kOffs, kThreshold);
+    PostingsWandSeek(docs, kPay, kThreshold);
+    PostingsWandSeek(docs, kAll, kThreshold);
+  }
+
+  // long list
+  {
+    constexpr size_t kCount = 10000;
+    constexpr uint32_t kThreshold = 60;
+    const auto docs = generate_docs(kCount, 50.f, 13.f, 1);
+    ASSERT_TRUE(check_docs(docs));
+
+    PostingsWandSeek(docs, kNone, kThreshold);
+    PostingsWandSeek(docs, kFreq, kThreshold);
+    PostingsWandSeek(docs, kPos, kThreshold);
+    PostingsWandSeek(docs, kOffs, kThreshold);
+    PostingsWandSeek(docs, kPay, kThreshold);
+    PostingsWandSeek(docs, kAll, kThreshold);
+  }
+
+  // long list
+  {
+    constexpr size_t kCount = 10000;
+    constexpr uint32_t kThreshold = 100;
+    const auto docs = generate_docs(kCount, 50.f, 13.f, 1);
     ASSERT_TRUE(check_docs(docs));
 
     PostingsWandSeek(docs, kNone, kThreshold);

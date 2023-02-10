@@ -2240,7 +2240,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
 // WAND iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
-template<typename IteratorTraits, typename FieldTraits, bool Strict = false>
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
 class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
  private:
   static_assert(FieldTraits::wand());
@@ -3293,9 +3293,11 @@ class postings_reader final : public postings_reader_base {
         field_features, required_features,
         [&meta, &factory,
          this]<typename IteratorTraits, typename FieldTraits>() {
-          auto it =
-            memory::make_managed<::wanderator<IteratorTraits, FieldTraits>>(
-              factory);
+          // FIXME(gnusi): parameterize
+          static constexpr bool kStrict = false;
+
+          auto it = memory::make_managed<
+            ::wanderator<IteratorTraits, FieldTraits, kStrict>>(factory);
 
           it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
 
