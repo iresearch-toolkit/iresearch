@@ -2240,7 +2240,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
 // WAND iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
-template<typename IteratorTraits, typename FieldTraits>
+template<typename IteratorTraits, typename FieldTraits, bool Strict = false>
 class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
  private:
   static_assert(FieldTraits::wand());
@@ -2345,12 +2345,21 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     }
   }
 
+  static bool ScoreLess(score_t lhs, score_t rhs) noexcept {
+    if constexpr (Strict) {
+      // For strict comparison we can skip equal scores
+      return lhs <= rhs;
+    } else {
+      return lhs < rhs;
+    }
+  }
+
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
 };
 
-template<typename IteratorTraits, typename FieldTraits>
-void wanderator<IteratorTraits, FieldTraits>::ReadSkip::EnsureSorted()
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::EnsureSorted()
   const noexcept {
   IRS_ASSERT(std::is_sorted(
     std::begin(skip_levels_), std::end(skip_levels_),
@@ -2360,8 +2369,8 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::EnsureSorted()
                    [](const auto& lhs, const auto& rhs) { return lhs > rhs; }));
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Init(
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Init(
   const version10::term_meta& term_state, size_t num_levels,
   score_threshold& threshold) {
   // don't use wanderator for short posting lists,
@@ -2378,34 +2387,32 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Init(
   CopyState<IteratorTraits>(top, term_state);
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLessThanUpperBound(
-  doc_id_t target) const noexcept {
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+bool wanderator<IteratorTraits, FieldTraits,
+                Strict>::ReadSkip::IsLessThanUpperBound(doc_id_t target)
+  const noexcept {
   if constexpr (FieldTraits::frequency()) {
-    // FIXME(gnusi): parameterize < vs <=
     return skip_levels_.back().doc < target ||
-           skip_scores_.back() < threshold_->value;
+           ScoreLess(skip_scores_.back(), threshold_->value);
   } else {
     return skip_levels_.back().doc < target;
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-bool wanderator<IteratorTraits, FieldTraits>::ReadSkip::IsLess(
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+bool wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::IsLess(
   size_t level, doc_id_t target) const noexcept {
   if constexpr (FieldTraits::frequency()) {
-    // FIXME(gnusi): parameterize < vs <=
     return skip_levels_[level].doc < target ||
-           skip_scores_[level] < threshold_->value;
+           ScoreLess(skip_scores_[level], threshold_->value);
   } else {
     return skip_levels_[level].doc < target;
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(size_t level,
-                                                             ptrdiff_t left,
-                                                             index_input& in) {
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Read(
+  size_t level, ptrdiff_t left, index_input& in) {
   auto& last = prev_skip_;
   auto& next = skip_levels_[level];
 
@@ -2428,8 +2435,8 @@ void wanderator<IteratorTraits, FieldTraits>::ReadSkip::Read(size_t level,
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-void wanderator<IteratorTraits, FieldTraits>::prepare(
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, Strict>::prepare(
   const term_meta& meta, const index_input* doc_in,
   [[maybe_unused]] const index_input* pos_in,
   [[maybe_unused]] const index_input* pay_in) {
@@ -2521,8 +2528,9 @@ void wanderator<IteratorTraits, FieldTraits>::prepare(
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
+  doc_id_t target) {
   auto& doc = std::get<document>(attrs_);
 
   if (IRS_UNLIKELY(target <= doc.value)) {
@@ -2571,8 +2579,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
           auto& freq = std::get<frequency>(attrs_);
           freq.value = this->freq_[-1];
 
-          // FIXME(gnusi) < vs <=
-          if (freq.value < min_competitive_score) {
+          if (ScoreLess(freq.value, min_competitive_score)) {
             continue;
           }
         }
@@ -2585,8 +2592,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
       freq.value = *this->freq_++;
       notify += freq.value;
 
-      // FIXME(gnusi) < vs <=
-      if (freq.value < min_competitive_score) {
+      if (ScoreLess(freq.value, min_competitive_score)) {
         continue;
       }
 
@@ -2604,8 +2610,9 @@ doc_id_t wanderator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
   if constexpr (IteratorTraits::frequency()) {
     auto& freq = std::get<frequency>(attrs_);
-    while ((doc.value < target || freq.value < min_competitive_score) &&
-           next()) {
+    while (
+      (doc.value < target || ScoreLess(freq.value, min_competitive_score)) &&
+      next()) {
     }
   } else {
     while (doc.value < target) {
