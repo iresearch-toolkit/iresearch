@@ -198,14 +198,261 @@ class Format15TestCase : public tests::format_test_case {
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
     irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
-  using Docs = std::vector<std::pair<irs::doc_id_t, uint32_t>>;
+  using Doc = std::pair<irs::doc_id_t, uint32_t>;
+  using Docs = std::vector<Doc>;
+  using DocsView = std::span<const Doc>;
 
   Docs GenerateDocs(size_t count, float_t mean, float_t dev, size_t step);
 
-  void PostingsWandSeek(
-    std::span<const std::pair<irs::doc_id_t, uint32_t>> docs,
-    irs::IndexFeatures features, uint32_t threshold);
+  std::pair<irs::version10::term_meta, irs::postings_reader::ptr> WriteReadMeta(
+    irs::directory& dir, DocsView docs, irs::IndexFeatures features);
+
+  void AssertWanderator(irs::doc_iterator::ptr& actual,
+                        irs::IndexFeatures features, DocsView docs);
+
+  void AssertBackwardsNext(irs::postings_reader& reader, DocsView docs,
+                           irs::IndexFeatures field_features,
+                           irs::IndexFeatures features,
+                           const irs::term_meta& meta, uint32_t threshold);
+  void AssertDocsSeq(irs::postings_reader& reader, DocsView docs,
+                     irs::IndexFeatures field_features,
+                     irs::IndexFeatures features, const irs::term_meta& meta,
+                     uint32_t threshold);
+  void AssertDocsRandom(irs::postings_reader& reader, DocsView docs,
+                        irs::IndexFeatures field_features,
+                        irs::IndexFeatures features, const irs::term_meta& meta,
+                        uint32_t threshold, size_t seed, size_t inc);
+  void PostingsWandSeek(DocsView docs, irs::IndexFeatures features,
+                        uint32_t threshold);
+
+ private:
+  irs::doc_iterator::ptr GetWanderator(irs::postings_reader& reader,
+                                       irs::IndexFeatures field_features,
+                                       irs::IndexFeatures features,
+                                       const irs::term_meta& meta,
+                                       uint32_t threshold);
 };
+
+std::pair<irs::version10::term_meta, irs::postings_reader::ptr>
+Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
+                                irs::IndexFeatures features) {
+  auto codec =
+    std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
+  EXPECT_NE(nullptr, codec);
+  auto writer = codec->get_postings_writer(false);
+  EXPECT_NE(nullptr, writer);
+  irs::postings_writer::state term_meta;  // must be destroyed before the writer
+
+  {
+    const irs::flush_state state{.dir = &dir,
+                                 .name = "segment_name",
+                                 .doc_count = docs.back().first + 1,
+                                 .index_features = features};
+
+    auto out = dir.create("attributes");
+    EXPECT_FALSE(!out);
+    irs::write_string(*out, std::string_view("file_header"));
+
+    writer->prepare(*out, state);
+    writer->begin_field(features);
+
+    postings it{docs, features};
+    term_meta = writer->write(it);
+
+    writer->encode(*out, *term_meta);
+    writer->end();
+  }
+
+  irs::SegmentMeta meta;
+  meta.name = "segment_name";
+
+  const irs::reader_state state{.dir = &dir, .meta = &meta};
+
+  auto in = dir.open("attributes", irs::IOAdvice::NORMAL);
+  EXPECT_FALSE(!in);
+  [[maybe_unused]] const auto tmp = irs::read_string<std::string>(*in);
+
+  auto reader = codec->get_postings_reader();
+  EXPECT_NE(nullptr, reader);
+  reader->prepare(*in, state, features);
+
+  irs::bstring in_data(in->length() - in->file_pointer(), 0);
+  in->read_bytes(&in_data[0], in_data.size());
+  const auto* begin = in_data.c_str();
+
+  irs::version10::term_meta read_meta;
+  begin += reader->decode(begin, features, read_meta);
+
+  {
+    auto& typed_meta = static_cast<irs::version10::term_meta&>(*term_meta);
+    EXPECT_EQ(typed_meta.docs_count, read_meta.docs_count);
+    EXPECT_EQ(typed_meta.doc_start, read_meta.doc_start);
+    EXPECT_EQ(typed_meta.pos_start, read_meta.pos_start);
+    EXPECT_EQ(typed_meta.pos_end, read_meta.pos_end);
+    EXPECT_EQ(typed_meta.pay_start, read_meta.pay_start);
+    EXPECT_EQ(typed_meta.e_single_doc, read_meta.e_single_doc);
+    EXPECT_EQ(typed_meta.e_skip_start, read_meta.e_skip_start);
+  }
+
+  EXPECT_EQ(begin, in_data.data() + in_data.size());
+
+  return std::make_pair(read_meta, std::move(reader));
+}
+
+void Format15TestCase::AssertWanderator(irs::doc_iterator::ptr& actual,
+                                        irs::IndexFeatures features,
+                                        DocsView docs) {
+  ASSERT_NE(nullptr, actual);
+
+  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+  if (docs.size() <= kVersion10PostingsWriterBlockSize ||
+      irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
+    ASSERT_EQ(nullptr, threshold_value);
+  } else {
+    ASSERT_NE(nullptr, threshold_value);
+  }
+}
+
+irs::doc_iterator::ptr Format15TestCase::GetWanderator(
+  irs::postings_reader& reader, irs::IndexFeatures field_features,
+  irs::IndexFeatures features, const irs::term_meta& meta, uint32_t threshold) {
+  auto factory = [](const irs::attribute_provider& attrs) {
+    auto* freq = irs::get<irs::frequency>(attrs);
+    EXPECT_NE(nullptr, freq);
+
+    return irs::ScoreFunction{
+      reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        *res = reinterpret_cast<irs::frequency*>(ctx)->value;
+      }};
+  };
+
+  auto actual = reader.wanderator(field_features, features, factory, meta);
+  EXPECT_NE(nullptr, actual);
+
+  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+  if (threshold_value) {
+    threshold_value->value = threshold;
+  }
+
+  return actual;
+}
+
+void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
+                                           DocsView docs,
+                                           irs::IndexFeatures field_features,
+                                           irs::IndexFeatures features,
+                                           const irs::term_meta& meta,
+                                           uint32_t threshold) {
+  for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
+    if (doc->second < threshold) {
+      continue;
+    }
+
+    postings expected_postings{docs, field_features};
+    FreqThresholdDocIterator expected{expected_postings, threshold, false};
+
+    auto actual =
+      GetWanderator(reader, field_features, features, meta, threshold);
+    AssertWanderator(actual, features, docs);
+
+    ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+    ASSERT_EQ(doc->first, actual->seek(doc->first));
+
+    ASSERT_EQ(doc->first, expected.seek(doc->first));
+    assert_frequency_and_positions(expected, *actual);
+    if (doc != docs.rbegin()) {
+      ASSERT_TRUE(expected.next());
+      ASSERT_EQ((doc - 1)->first, expected.value());
+
+      ASSERT_TRUE(actual->next());
+      ASSERT_EQ((doc - 1)->first, actual->value());
+
+      assert_frequency_and_positions(expected, *actual);
+    }
+  }
+}
+
+void Format15TestCase::AssertDocsRandom(
+  irs::postings_reader& reader, DocsView docs,
+  irs::IndexFeatures field_features, irs::IndexFeatures features,
+  const irs::term_meta& meta, uint32_t threshold, size_t seed, size_t inc) {
+  postings expected_postings{docs, field_features};
+  FreqThresholdDocIterator expected{expected_postings, threshold, false};
+  auto actual =
+    GetWanderator(reader, field_features, features, meta, threshold);
+  AssertWanderator(actual, features, docs);
+
+  ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+
+  for (size_t i = seed, size = docs.size(); i < size; i += inc) {
+    const auto& doc = docs[i];
+    const auto expected_doc_id = expected.seek(doc.first);
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // seek to the same doc
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // seek to the smaller doc
+    ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
+
+    assert_frequency_and_positions(expected, *actual);
+  }
+
+  if (inc == 1) {
+    ASSERT_FALSE(actual->next());
+    ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
+
+    // seek after the existing documents
+    ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
+  }
+}
+
+void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
+                                     DocsView docs,
+                                     irs::IndexFeatures field_features,
+                                     irs::IndexFeatures features,
+                                     const irs::term_meta& meta,
+                                     uint32_t threshold) {
+  postings expected_postings{docs, field_features};
+  FreqThresholdDocIterator expected{expected_postings, threshold, false};
+  SkipList skip_list;
+
+  auto actual =
+    GetWanderator(reader, field_features, features, meta, threshold);
+  AssertWanderator(actual, features, docs);
+
+  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+
+  if (threshold_value) {
+    postings tmp{docs, field_features};
+    skip_list = SkipList::Make(tmp, kVersion10PostingsWriterBlockSize, 8,
+                               irs::doc_id_t(docs.size()));
+  }
+
+  ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+
+  while (expected.next()) {
+    const auto expected_doc_id = expected.value();
+    ASSERT_TRUE(actual->next());
+
+    ASSERT_EQ(expected_doc_id, actual->value());
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // seek to the same doc
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // seek to the smaller doc
+    ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
+
+    if (threshold_value) {
+      AssertSkipList(skip_list, expected_doc_id, threshold_value->skip_scores);
+    }
+    assert_frequency_and_positions(expected, *actual);
+  }
+
+  ASSERT_FALSE(actual->next());
+  ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
+
+  // seek after the existing documents
+  ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
+}
 
 Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
                                                       float_t mean, float_t dev,
@@ -236,271 +483,65 @@ Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
   return docs;
 }
 
-void Format15TestCase::PostingsWandSeek(
-  std::span<const std::pair<irs::doc_id_t, uint32_t>> docs,
-  irs::IndexFeatures features, uint32_t threshold) {
-  irs::field_meta field;
-  field.index_features = features;
+void Format15TestCase::PostingsWandSeek(DocsView docs,
+                                        irs::IndexFeatures features,
+                                        uint32_t threshold) {
   auto dir = get_directory(*this);
+  ASSERT_NE(nullptr, dir);
+  auto [read_meta, reader] = WriteReadMeta(*dir, docs, features);
+  ASSERT_NE(nullptr, reader);
 
-  auto codec =
-    std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
-  ASSERT_NE(nullptr, codec);
-  auto writer = codec->get_postings_writer(false);
-  ASSERT_NE(nullptr, writer);
-  irs::postings_writer::state term_meta;  // must be destroyed before the writer
-
+  // next + seek to eof
   {
-    irs::flush_state state;
-    state.dir = dir.get();
-    state.doc_count = docs.back().first + 1;
-    state.name = "segment_name";
-    state.index_features = field.index_features;
-
-    auto out = dir->create("attributes");
-    ASSERT_FALSE(!out);
-    irs::write_string(*out, std::string_view("file_header"));
-
-    writer->prepare(*out, state);
-    writer->begin_field(features);
-
-    postings it(docs, field.index_features);
-    term_meta = writer->write(it);
-
-    writer->encode(*out, *term_meta);
-    writer->end();
+    auto it =
+      GetWanderator(*reader, features, irs::IndexFeatures::NONE, read_meta, 0);
+    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+    ASSERT_TRUE(it->next());
+    ASSERT_EQ(docs.front().first, it->value());
+    ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
   }
 
+  AssertDocsSeq(*reader, docs, features, features, read_meta, threshold);
+
+  // seek to every document 127th document in a block
+  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold,
+                   kVersion10PostingsWriterBlockSize - 1,
+                   kVersion10PostingsWriterBlockSize);
+
+  // seek to every 128th document in a block
+  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold,
+                   kVersion10PostingsWriterBlockSize,
+                   kVersion10PostingsWriterBlockSize);
+
+  // seek to every document
+  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold, 0,
+                   1);
+
+  // seek to every 5th document
+  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold, 0,
+                   5);
+
+  // seek backwards && next
+  AssertBackwardsNext(*reader, docs, features, features, read_meta, threshold);
+
+  // seek to irs::doc_limits::invalid()
   {
-    irs::SegmentMeta meta;
-    meta.name = "segment_name";
+    auto it =
+      GetWanderator(*reader, features, irs::IndexFeatures::NONE, read_meta, 0);
+    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+    ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
+    ASSERT_TRUE(it->next());
+    ASSERT_EQ(docs.front().first, it->value());
+  }
 
-    irs::reader_state state;
-    state.dir = dir.get();
-    state.meta = &meta;
-
-    auto in = dir->open("attributes", irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!in);
-    [[maybe_unused]] const auto tmp = irs::read_string<std::string>(*in);
-
-    auto reader = codec->get_postings_reader();
-    ASSERT_NE(nullptr, reader);
-    reader->prepare(*in, state, field.index_features);
-
-    irs::bstring in_data(in->length() - in->file_pointer(), 0);
-    in->read_bytes(&in_data[0], in_data.size());
-    const auto* begin = in_data.c_str();
-
-    auto factory = [](const irs::attribute_provider& attrs) {
-      auto* freq = irs::get<irs::frequency>(attrs);
-      EXPECT_NE(nullptr, freq);
-
-      return irs::ScoreFunction{
-        reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
-        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-          *res = reinterpret_cast<irs::frequency*>(ctx)->value;
-        }};
-    };
-
-    {
-      irs::version10::term_meta read_meta;
-      begin += reader->decode(begin, field.index_features, read_meta);
-
-      {
-        auto& typed_meta = static_cast<irs::version10::term_meta&>(*term_meta);
-        ASSERT_EQ(typed_meta.docs_count, read_meta.docs_count);
-        ASSERT_EQ(typed_meta.doc_start, read_meta.doc_start);
-        ASSERT_EQ(typed_meta.pos_start, read_meta.pos_start);
-        ASSERT_EQ(typed_meta.pos_end, read_meta.pos_end);
-        ASSERT_EQ(typed_meta.pay_start, read_meta.pay_start);
-        ASSERT_EQ(typed_meta.e_single_doc, read_meta.e_single_doc);
-        ASSERT_EQ(typed_meta.e_skip_start, read_meta.e_skip_start);
-      }
-
-      auto assert_docs_seq = [&]() {
-        postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold, false};
-        SkipList skip_list;
-
-        auto actual = reader->wanderator(field.index_features, features,
-                                         factory, read_meta);
-        ASSERT_NE(nullptr, actual);
-
-        auto* threshold_value =
-          irs::get_mutable<irs::score_threshold>(actual.get());
-        if (docs.size() <= kVersion10PostingsWriterBlockSize ||
-            irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
-          ASSERT_EQ(nullptr, threshold_value);
-        } else {
-          ASSERT_NE(nullptr, threshold_value);
-          threshold_value->value = threshold;
-
-          postings tmp{docs, field.index_features};
-          skip_list = SkipList::Make(tmp, kVersion10PostingsWriterBlockSize, 8,
-                                     irs::doc_id_t(docs.size()));
-        }
-
-        ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
-
-        while (expected.next()) {
-          const auto expected_doc_id = expected.value();
-          ASSERT_TRUE(actual->next());
-
-          ASSERT_EQ(expected_doc_id, actual->value());
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the same doc
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the smaller doc
-          ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
-
-          if (!skip_list.Empty()) {
-            AssertSkipList(skip_list, expected_doc_id,
-                           threshold_value->skip_scores);
-          }
-          assert_frequency_and_positions(expected, *actual);
-        }
-
-        ASSERT_FALSE(actual->next());
-        ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
-
-        // seek after the existing documents
-        ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
-      };
-
-      auto assert_docs_random = [&](size_t seed, size_t inc) {
-        postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold, false};
-
-        auto actual = reader->wanderator(field.index_features, features,
-                                         factory, read_meta);
-        ASSERT_NE(nullptr, actual);
-
-        auto* threshold_value =
-          irs::get_mutable<irs::score_threshold>(actual.get());
-        if (docs.size() <= kVersion10PostingsWriterBlockSize ||
-            irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
-          ASSERT_EQ(nullptr, threshold_value);
-        } else {
-          ASSERT_NE(nullptr, threshold_value);
-          threshold_value->value = threshold;
-        }
-
-        ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
-
-        for (size_t i = seed, size = docs.size(); i < size; i += inc) {
-          const auto& doc = docs[i];
-          const auto expected_doc_id = expected.seek(doc.first);
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the same doc
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the smaller doc
-          ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
-
-          assert_frequency_and_positions(expected, *actual);
-        }
-
-        if (inc == 1) {
-          ASSERT_FALSE(actual->next());
-          ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
-
-          // seek after the existing documents
-          ASSERT_TRUE(
-            irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
-        }
-      };
-
-      // next + seek to eof
-      {
-        auto it = reader->wanderator(
-          field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
-        ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-        ASSERT_TRUE(it->next());
-        ASSERT_EQ(docs.front().first, it->value());
-        ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
-      }
-
-      assert_docs_seq();
-
-      // seek for every document 127th document in a block
-      assert_docs_random(kVersion10PostingsWriterBlockSize - 1,
-                         kVersion10PostingsWriterBlockSize);
-
-      // seek for every 128th document in a block
-      assert_docs_random(kVersion10PostingsWriterBlockSize,
-                         kVersion10PostingsWriterBlockSize);
-
-      // seek for every document
-      assert_docs_random(0, 1);
-
-      // seek to every 5th document
-      assert_docs_random(0, 5);
-
-      // seek backwards && next
-      {
-        for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
-          if (doc->second < threshold) {
-            continue;
-          }
-
-          postings expected_postings{docs, field.index_features};
-          FreqThresholdDocIterator expected{expected_postings, threshold,
-                                            false};
-
-          auto actual = reader->wanderator(field.index_features, features,
-                                           factory, read_meta);
-          ASSERT_NE(nullptr, actual);
-
-          auto* threshold_value =
-            irs::get_mutable<irs::score_threshold>(actual.get());
-          if (docs.size() <= kVersion10PostingsWriterBlockSize ||
-              irs::IndexFeatures::NONE ==
-                (features & irs::IndexFeatures::FREQ)) {
-            ASSERT_EQ(nullptr, threshold_value);
-          } else {
-            ASSERT_NE(nullptr, threshold_value);
-            threshold_value->value = threshold;
-          }
-
-          ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
-          ASSERT_EQ(doc->first, actual->seek(doc->first));
-
-          ASSERT_EQ(doc->first, expected.seek(doc->first));
-          assert_frequency_and_positions(expected, *actual);
-          if (doc != docs.rbegin()) {
-            ASSERT_TRUE(expected.next());
-            ASSERT_EQ((doc - 1)->first, expected.value());
-
-            ASSERT_TRUE(actual->next());
-            ASSERT_EQ((doc - 1)->first, actual->value());
-
-            assert_frequency_and_positions(expected, *actual);
-          }
-        }
-      }
-
-      // seek to irs::doc_limits::invalid()
-      {
-        auto it = reader->wanderator(
-          field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
-        ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-        ASSERT_FALSE(
-          irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
-        ASSERT_TRUE(it->next());
-        ASSERT_EQ(docs.front().first, it->value());
-      }
-
-      // seek to irs::doc_limits::eof()
-      {
-        auto it = reader->wanderator(
-          field.index_features, irs::IndexFeatures::NONE, factory, read_meta);
-        ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-        ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
-        ASSERT_FALSE(it->next());
-        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
-      }
-    }
-
-    ASSERT_EQ(begin, in_data.data() + in_data.size());
+  // seek to irs::doc_limits::eof()
+  {
+    auto it =
+      GetWanderator(*reader, features, irs::IndexFeatures::NONE, read_meta, 0);
+    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
+    ASSERT_FALSE(it->next());
+    ASSERT_TRUE(irs::doc_limits::eof(it->value()));
   }
 }
 
