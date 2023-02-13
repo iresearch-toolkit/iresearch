@@ -360,7 +360,7 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
     ASSERT_EQ(doc->first, actual->seek(doc->first));
 
     ASSERT_EQ(doc->first, expected.seek(doc->first));
-    assert_frequency_and_positions(expected, *actual);
+    AssertFrequencyAndPositions(expected, *actual);
     if (doc != docs.rbegin()) {
       ASSERT_TRUE(expected.next());
       ASSERT_EQ((doc - 1)->first, expected.value());
@@ -368,7 +368,7 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
       ASSERT_TRUE(actual->next());
       ASSERT_EQ((doc - 1)->first, actual->value());
 
-      assert_frequency_and_positions(expected, *actual);
+      AssertFrequencyAndPositions(expected, *actual);
     }
   }
 }
@@ -394,7 +394,7 @@ void Format15TestCase::AssertDocsRandom(
     // seek to the smaller doc
     ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
 
-    assert_frequency_and_positions(expected, *actual);
+    AssertFrequencyAndPositions(expected, *actual);
   }
 
   if (inc == 1) {
@@ -444,7 +444,7 @@ void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
     if (threshold_value) {
       AssertSkipList(skip_list, expected_doc_id, threshold_value->skip_scores);
     }
-    assert_frequency_and_positions(expected, *actual);
+    AssertFrequencyAndPositions(expected, *actual);
   }
 
   ASSERT_FALSE(actual->next());

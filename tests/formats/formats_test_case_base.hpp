@@ -232,10 +232,10 @@ class format_test_case : public index_test_base {
     Iterator end_;
   };
 
-  void assert_frequency_and_positions(irs::doc_iterator& expected,
+  void AssertFrequencyAndPositions(irs::doc_iterator& expected,
                                       irs::doc_iterator& actual);
 
-  void assert_no_directory_artifacts(
+  void AssertNoDirectoryArtifacts(
     const irs::directory& dir, const irs::format& codec,
     const std::unordered_set<std::string>& expect_additional = {});
 };
