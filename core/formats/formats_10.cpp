@@ -1653,10 +1653,10 @@ struct position<IteratorTraits, FieldTraits, false> : attribute {
     return irs::position::type_name();
   }
 
-  void prepare(DocState&) {}
-  void prepare(SkipState&) {}
-  void notify(uint32_t) {}
-  void clear() {}
+  void prepare(const DocState&) noexcept {}
+  void prepare(const SkipState&) noexcept {}
+  void notify(uint32_t) noexcept {}
+  void clear() noexcept {}
 };
 
 struct empty {};
@@ -2561,11 +2561,9 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
     doc.value += doc_id_t{!doc_limits::valid(doc.value)};
   }
 
-  // FIXME(gnusi): use WAND condition in the loop below
-
   const auto min_competitive_score = std::get<score_threshold>(attrs_).value;
-
   [[maybe_unused]] uint32_t notify{0};
+
   while (this->begin_ != std::end(this->buf_.docs)) {
     doc.value += *this->begin_++;
 
