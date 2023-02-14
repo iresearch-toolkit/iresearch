@@ -228,6 +228,7 @@ class Format15TestCase : public tests::format_test_case {
                         uint32_t threshold, size_t seed, size_t inc);
   void AssertPostings(DocsView docs, irs::IndexFeatures features,
                       uint32_t threshold);
+  void AssertPostings(DocsView docs, uint32_t threshold);
 
  private:
   irs::doc_iterator::ptr GetWanderator(irs::postings_reader& reader,
@@ -548,6 +549,15 @@ void Format15TestCase::AssertPostings(DocsView docs,
   }
 }
 
+void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
+  AssertPostings(docs, kNone, threshold);
+  AssertPostings(docs, kFreq, threshold);
+  AssertPostings(docs, kPos, threshold);
+  AssertPostings(docs, kOffs, threshold);
+  AssertPostings(docs, kPay, threshold);
+  AssertPostings(docs, kAll, threshold);
+}
+
 static constexpr auto kTestDirs =
   tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
                         tests::kTypesRot13_7>();
@@ -572,12 +582,7 @@ TEST_P(Format15TestCase, SingletonPostingsThreshold0) {
 
   const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
 
-  AssertPostings(docs, kNone, kThreshold);
-  AssertPostings(docs, kFreq, kThreshold);
-  AssertPostings(docs, kPos, kThreshold);
-  AssertPostings(docs, kOffs, kThreshold);
-  AssertPostings(docs, kPay, kThreshold);
-  AssertPostings(docs, kAll, kThreshold);
+  AssertPostings(docs, kThreshold);
 }
 
 TEST_P(Format15TestCase, ShortPostingsThreshold0) {
@@ -587,12 +592,7 @@ TEST_P(Format15TestCase, ShortPostingsThreshold0) {
 
   const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
 
-  AssertPostings(docs, kNone, kThreshold);
-  AssertPostings(docs, kFreq, kThreshold);
-  AssertPostings(docs, kPos, kThreshold);
-  AssertPostings(docs, kOffs, kThreshold);
-  AssertPostings(docs, kPay, kThreshold);
-  AssertPostings(docs, kAll, kThreshold);
+  AssertPostings(docs, kThreshold);
 }
 
 TEST_P(Format15TestCase, BlockPostingsThreshold0) {
@@ -600,12 +600,7 @@ TEST_P(Format15TestCase, BlockPostingsThreshold0) {
   const auto docs =
     GenerateDocs(kVersion10PostingsWriterBlockSize, 50.f, 14.f, 1);
 
-  AssertPostings(docs, kNone, kThreshold);
-  AssertPostings(docs, kFreq, kThreshold);
-  AssertPostings(docs, kPos, kThreshold);
-  AssertPostings(docs, kOffs, kThreshold);
-  AssertPostings(docs, kPay, kThreshold);
-  AssertPostings(docs, kAll, kThreshold);
+  AssertPostings(docs, kThreshold);
 }
 
 TEST_P(Format15TestCase, LongPostingsThreshold60) {
@@ -613,12 +608,7 @@ TEST_P(Format15TestCase, LongPostingsThreshold60) {
   static constexpr uint32_t kThreshold = 60;
   const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
 
-  AssertPostings(docs, kNone, kThreshold);
-  AssertPostings(docs, kFreq, kThreshold);
-  AssertPostings(docs, kPos, kThreshold);
-  AssertPostings(docs, kOffs, kThreshold);
-  AssertPostings(docs, kPay, kThreshold);
-  AssertPostings(docs, kAll, kThreshold);
+  AssertPostings(docs, kThreshold);
 }
 
 TEST_P(Format15TestCase, LongPostingsThreshold100) {
@@ -626,12 +616,7 @@ TEST_P(Format15TestCase, LongPostingsThreshold100) {
   static constexpr uint32_t kThreshold = 100;
   const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
 
-  AssertPostings(docs, kNone, kThreshold);
-  AssertPostings(docs, kFreq, kThreshold);
-  AssertPostings(docs, kPos, kThreshold);
-  AssertPostings(docs, kOffs, kThreshold);
-  AssertPostings(docs, kPay, kThreshold);
-  AssertPostings(docs, kAll, kThreshold);
+  AssertPostings(docs, kThreshold);
 }
 
 TEST_P(Format15TestCase, LongPostingsThreshold0) {
@@ -639,12 +624,7 @@ TEST_P(Format15TestCase, LongPostingsThreshold0) {
   static constexpr uint32_t kThreshold = 0;
   const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
 
-  AssertPostings(docs, kNone, kThreshold);
-  AssertPostings(docs, kFreq, kThreshold);
-  AssertPostings(docs, kPos, kThreshold);
-  AssertPostings(docs, kOffs, kThreshold);
-  AssertPostings(docs, kPay, kThreshold);
-  AssertPostings(docs, kAll, kThreshold);
+  AssertPostings(docs, kThreshold);
 }
 
 TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
@@ -652,12 +632,7 @@ TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
   static constexpr uint32_t kThreshold = 0;
   const auto docs = GenerateDocs(kCount, 1000.f, 20.f, 2);
 
-  AssertPostings(docs, kNone, kThreshold);
-  AssertPostings(docs, kFreq, kThreshold);
-  AssertPostings(docs, kPos, kThreshold);
-  AssertPostings(docs, kOffs, kThreshold);
-  AssertPostings(docs, kPay, kThreshold);
-  AssertPostings(docs, kAll, kThreshold);
+  AssertPostings(docs, kThreshold);
 }
 
 INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues,
