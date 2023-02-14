@@ -101,8 +101,13 @@ irs::ColumnInfo format_test_case::none_column_info() const noexcept {
           .track_prev_doc = false};
 }
 
-void format_test_case::AssertFrequencyAndPositions(
-  irs::doc_iterator& expected, irs::doc_iterator& actual) {
+void format_test_case::AssertFrequencyAndPositions(irs::doc_iterator& expected,
+                                                   irs::doc_iterator& actual) {
+  if (irs::doc_limits::eof(expected.value())) {
+    ASSERT_TRUE(irs::doc_limits::eof(expected.value()));
+    return;
+  }
+
   auto* expected_freq = irs::get<irs::frequency>(expected);
   auto* actual_freq = irs::get<irs::frequency>(actual);
   ASSERT_EQ(!expected_freq, !actual_freq);
@@ -110,6 +115,8 @@ void format_test_case::AssertFrequencyAndPositions(
   if (!expected_freq) {
     return;
   }
+
+  ASSERT_EQ(expected_freq->value, actual_freq->value);
 
   auto* expected_pos = irs::get_mutable<irs::position>(&expected);
   auto* actual_pos = irs::get_mutable<irs::position>(&actual);

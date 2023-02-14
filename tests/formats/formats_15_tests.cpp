@@ -55,13 +55,17 @@ class FreqThresholdDocIterator : public irs::doc_iterator {
   }
 
   irs::doc_id_t seek(irs::doc_id_t target) final {
+    if (target <= value()) {
+      return value();
+    }
+
     target = impl_->seek(target);
 
     if (irs::doc_limits::eof(target)) {
       return irs::doc_limits::eof();
     }
 
-    if (freq_ && freq_->value < threshold_) {
+    if (freq_ && Less()) {
       next();
     }
 
@@ -222,8 +226,8 @@ class Format15TestCase : public tests::format_test_case {
                         irs::IndexFeatures field_features,
                         irs::IndexFeatures features, const irs::term_meta& meta,
                         uint32_t threshold, size_t seed, size_t inc);
-  void PostingsWandSeek(DocsView docs, irs::IndexFeatures features,
-                        uint32_t threshold);
+  void AssertPostings(DocsView docs, irs::IndexFeatures features,
+                      uint32_t threshold);
 
  private:
   irs::doc_iterator::ptr GetWanderator(irs::postings_reader& reader,
@@ -361,15 +365,13 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
 
     ASSERT_EQ(doc->first, expected.seek(doc->first));
     AssertFrequencyAndPositions(expected, *actual);
-    if (doc != docs.rbegin()) {
-      ASSERT_TRUE(expected.next());
-      ASSERT_EQ((doc - 1)->first, expected.value());
 
+    while (expected.next()) {
       ASSERT_TRUE(actual->next());
-      ASSERT_EQ((doc - 1)->first, actual->value());
-
       AssertFrequencyAndPositions(expected, *actual);
     }
+    ASSERT_FALSE(actual->next());
+    ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
   }
 }
 
@@ -379,6 +381,7 @@ void Format15TestCase::AssertDocsRandom(
   const irs::term_meta& meta, uint32_t threshold, size_t seed, size_t inc) {
   postings expected_postings{docs, field_features};
   FreqThresholdDocIterator expected{expected_postings, threshold, false};
+
   auto actual =
     GetWanderator(reader, field_features, features, meta, threshold);
   AssertWanderator(actual, features, docs);
@@ -483,9 +486,9 @@ Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
   return docs;
 }
 
-void Format15TestCase::PostingsWandSeek(DocsView docs,
-                                        irs::IndexFeatures features,
-                                        uint32_t threshold) {
+void Format15TestCase::AssertPostings(DocsView docs,
+                                      irs::IndexFeatures features,
+                                      uint32_t threshold) {
   auto dir = get_directory(*this);
   ASSERT_NE(nullptr, dir);
   auto [read_meta, reader] = WriteReadMeta(*dir, docs, features);
@@ -562,99 +565,99 @@ INSTANTIATE_TEST_SUITE_P(Format15Test, format_test_case, kTestValues,
 
 // 1.5 specific tests
 
-TEST_P(Format15TestCase, PostingsWandSeekSingletonThreshold0) {
-  constexpr size_t kCount = 1;
-  constexpr uint32_t kThreshold = 0;
+TEST_P(Format15TestCase, SingletonPostingsThreshold0) {
+  static constexpr size_t kCount = 1;
+  static constexpr uint32_t kThreshold = 0;
   static_assert(kCount < kVersion10PostingsWriterBlockSize);
 
   const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
 
-  PostingsWandSeek(docs, kNone, kThreshold);
-  PostingsWandSeek(docs, kFreq, kThreshold);
-  PostingsWandSeek(docs, kPos, kThreshold);
-  PostingsWandSeek(docs, kOffs, kThreshold);
-  PostingsWandSeek(docs, kPay, kThreshold);
-  PostingsWandSeek(docs, kAll, kThreshold);
+  AssertPostings(docs, kNone, kThreshold);
+  AssertPostings(docs, kFreq, kThreshold);
+  AssertPostings(docs, kPos, kThreshold);
+  AssertPostings(docs, kOffs, kThreshold);
+  AssertPostings(docs, kPay, kThreshold);
+  AssertPostings(docs, kAll, kThreshold);
 }
 
-TEST_P(Format15TestCase, PostingsWandSeekShortThreshold0) {
-  constexpr size_t kCount = 117;  // < postings_writer::BLOCK_SIZE
-  constexpr uint32_t kThreshold = 0;
+TEST_P(Format15TestCase, ShortPostingsThreshold0) {
+  static constexpr size_t kCount = 117;  // < postings_writer::BLOCK_SIZE
+  static constexpr uint32_t kThreshold = 0;
   static_assert(kCount < kVersion10PostingsWriterBlockSize);
 
   const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
 
-  PostingsWandSeek(docs, kNone, kThreshold);
-  PostingsWandSeek(docs, kFreq, kThreshold);
-  PostingsWandSeek(docs, kPos, kThreshold);
-  PostingsWandSeek(docs, kOffs, kThreshold);
-  PostingsWandSeek(docs, kPay, kThreshold);
-  PostingsWandSeek(docs, kAll, kThreshold);
+  AssertPostings(docs, kNone, kThreshold);
+  AssertPostings(docs, kFreq, kThreshold);
+  AssertPostings(docs, kPos, kThreshold);
+  AssertPostings(docs, kOffs, kThreshold);
+  AssertPostings(docs, kPay, kThreshold);
+  AssertPostings(docs, kAll, kThreshold);
 }
 
-TEST_P(Format15TestCase, PostingsWandSeekBlockSizeThreshold0) {
-  constexpr uint32_t kThreshold = 0;
+TEST_P(Format15TestCase, BlockPostingsThreshold0) {
+  static constexpr uint32_t kThreshold = 0;
   const auto docs =
     GenerateDocs(kVersion10PostingsWriterBlockSize, 50.f, 14.f, 1);
 
-  PostingsWandSeek(docs, kNone, kThreshold);
-  PostingsWandSeek(docs, kFreq, kThreshold);
-  PostingsWandSeek(docs, kPos, kThreshold);
-  PostingsWandSeek(docs, kOffs, kThreshold);
-  PostingsWandSeek(docs, kPay, kThreshold);
-  PostingsWandSeek(docs, kAll, kThreshold);
+  AssertPostings(docs, kNone, kThreshold);
+  AssertPostings(docs, kFreq, kThreshold);
+  AssertPostings(docs, kPos, kThreshold);
+  AssertPostings(docs, kOffs, kThreshold);
+  AssertPostings(docs, kPay, kThreshold);
+  AssertPostings(docs, kAll, kThreshold);
 }
 
-TEST_P(Format15TestCase, PostingsWandSeekBlockLongThreshold60) {
-  constexpr size_t kCount = 10000;
-  constexpr uint32_t kThreshold = 60;
+TEST_P(Format15TestCase, LongPostingsThreshold60) {
+  static constexpr size_t kCount = 10000;
+  static constexpr uint32_t kThreshold = 60;
   const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
 
-  PostingsWandSeek(docs, kNone, kThreshold);
-  PostingsWandSeek(docs, kFreq, kThreshold);
-  PostingsWandSeek(docs, kPos, kThreshold);
-  PostingsWandSeek(docs, kOffs, kThreshold);
-  PostingsWandSeek(docs, kPay, kThreshold);
-  PostingsWandSeek(docs, kAll, kThreshold);
+  AssertPostings(docs, kNone, kThreshold);
+  AssertPostings(docs, kFreq, kThreshold);
+  AssertPostings(docs, kPos, kThreshold);
+  AssertPostings(docs, kOffs, kThreshold);
+  AssertPostings(docs, kPay, kThreshold);
+  AssertPostings(docs, kAll, kThreshold);
 }
 
-TEST_P(Format15TestCase, PostingsWandSeekBlockLongThreshold100) {
-  constexpr size_t kCount = 10000;
-  constexpr uint32_t kThreshold = 100;
+TEST_P(Format15TestCase, LongPostingsThreshold100) {
+  static constexpr size_t kCount = 10000;
+  static constexpr uint32_t kThreshold = 100;
   const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
 
-  PostingsWandSeek(docs, kNone, kThreshold);
-  PostingsWandSeek(docs, kFreq, kThreshold);
-  PostingsWandSeek(docs, kPos, kThreshold);
-  PostingsWandSeek(docs, kOffs, kThreshold);
-  PostingsWandSeek(docs, kPay, kThreshold);
-  PostingsWandSeek(docs, kAll, kThreshold);
+  AssertPostings(docs, kNone, kThreshold);
+  AssertPostings(docs, kFreq, kThreshold);
+  AssertPostings(docs, kPos, kThreshold);
+  AssertPostings(docs, kOffs, kThreshold);
+  AssertPostings(docs, kPay, kThreshold);
+  AssertPostings(docs, kAll, kThreshold);
 }
 
-TEST_P(Format15TestCase, PostingsWandSeekBlockLongThreshold0) {
-  constexpr size_t kCount = 10000;
-  constexpr uint32_t kThreshold = 0;
+TEST_P(Format15TestCase, LongPostingsThreshold0) {
+  static constexpr size_t kCount = 10000;
+  static constexpr uint32_t kThreshold = 0;
   const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
 
-  PostingsWandSeek(docs, kNone, kThreshold);
-  PostingsWandSeek(docs, kFreq, kThreshold);
-  PostingsWandSeek(docs, kPos, kThreshold);
-  PostingsWandSeek(docs, kOffs, kThreshold);
-  PostingsWandSeek(docs, kPay, kThreshold);
-  PostingsWandSeek(docs, kAll, kThreshold);
+  AssertPostings(docs, kNone, kThreshold);
+  AssertPostings(docs, kFreq, kThreshold);
+  AssertPostings(docs, kPos, kThreshold);
+  AssertPostings(docs, kOffs, kThreshold);
+  AssertPostings(docs, kPay, kThreshold);
+  AssertPostings(docs, kAll, kThreshold);
 }
 
-TEST_P(Format15TestCase, PostingsWandSeekBlockVeryLongThreshold0) {
-  constexpr size_t kCount = size_t{1} << 15;
-  constexpr uint32_t kThreshold = 0;
+TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
+  static constexpr size_t kCount = size_t{1} << 15;
+  static constexpr uint32_t kThreshold = 0;
   const auto docs = GenerateDocs(kCount, 1000.f, 20.f, 2);
 
-  PostingsWandSeek(docs, kNone, kThreshold);
-  PostingsWandSeek(docs, kFreq, kThreshold);
-  PostingsWandSeek(docs, kPos, kThreshold);
-  PostingsWandSeek(docs, kOffs, kThreshold);
-  PostingsWandSeek(docs, kPay, kThreshold);
-  PostingsWandSeek(docs, kAll, kThreshold);
+  AssertPostings(docs, kNone, kThreshold);
+  AssertPostings(docs, kFreq, kThreshold);
+  AssertPostings(docs, kPos, kThreshold);
+  AssertPostings(docs, kOffs, kThreshold);
+  AssertPostings(docs, kPay, kThreshold);
+  AssertPostings(docs, kAll, kThreshold);
 }
 
 INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues,
