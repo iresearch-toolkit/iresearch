@@ -227,6 +227,10 @@ class Format15TestCase : public tests::format_test_case {
                         irs::IndexFeatures features, const irs::term_meta& meta,
                         uint32_t threshold, bool strict, size_t seed,
                         size_t inc);
+  void AssertCornerCases(irs::postings_reader& reader, DocsView docs,
+                         irs::IndexFeatures field_features,
+                         irs::IndexFeatures features,
+                         const irs::term_meta& meta, bool strict);
   void AssertPostings(DocsView docs, irs::IndexFeatures features,
                       uint32_t threshold, bool strict);
   void AssertPostings(DocsView docs, uint32_t threshold, bool strict);
@@ -496,53 +500,24 @@ Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
   return docs;
 }
 
-void Format15TestCase::AssertPostings(DocsView docs,
-                                      irs::IndexFeatures features,
-                                      uint32_t threshold, bool strict) {
-  auto dir = get_directory(*this);
-  ASSERT_NE(nullptr, dir);
-  auto [read_meta, reader] = WriteReadMeta(*dir, docs, features);
-  ASSERT_NE(nullptr, reader);
-
+void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
+                                         DocsView docs,
+                                         irs::IndexFeatures field_features,
+                                         irs::IndexFeatures features,
+                                         const irs::term_meta& meta,
+                                         bool strict) {
   // next + seek to eof
   {
-    auto it = GetWanderator(*reader, features, irs::IndexFeatures::NONE,
-                            read_meta, 0, strict);
+    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(it->next());
     ASSERT_EQ(docs.front().first, it->value());
     ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
   }
 
-  AssertDocsSeq(*reader, docs, features, features, read_meta, threshold,
-                strict);
-
-  // Seek to every document 127th document in a block
-  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold,
-                   kVersion10PostingsWriterBlockSize - 1,
-                   kVersion10PostingsWriterBlockSize, strict);
-
-  // Seek to every 128th document in a block
-  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold,
-                   kVersion10PostingsWriterBlockSize,
-                   kVersion10PostingsWriterBlockSize, strict);
-
-  // Seek to every document
-  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold, 0,
-                   1, strict);
-
-  // Seek to every 5th document
-  AssertDocsRandom(*reader, docs, features, features, read_meta, threshold, 0,
-                   5, strict);
-
-  // Seek backwards && next
-  AssertBackwardsNext(*reader, docs, features, features, read_meta, threshold,
-                      strict);
-
   // Seek to irs::doc_limits::invalid()
   {
-    auto it = GetWanderator(*reader, features, irs::IndexFeatures::NONE,
-                            read_meta, 0, strict);
+    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
     ASSERT_TRUE(it->next());
@@ -551,13 +526,47 @@ void Format15TestCase::AssertPostings(DocsView docs,
 
   // Seek to irs::doc_limits::eof()
   {
-    auto it = GetWanderator(*reader, features, irs::IndexFeatures::NONE,
-                            read_meta, 0, strict);
+    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
     ASSERT_FALSE(it->next());
     ASSERT_TRUE(irs::doc_limits::eof(it->value()));
   }
+}
+
+void Format15TestCase::AssertPostings(DocsView docs,
+                                      irs::IndexFeatures features,
+                                      uint32_t threshold, bool strict) {
+  auto dir = get_directory(*this);
+  ASSERT_NE(nullptr, dir);
+  auto [meta, reader] = WriteReadMeta(*dir, docs, features);
+  ASSERT_NE(nullptr, reader);
+
+  AssertCornerCases(*reader, docs, features, features, meta, strict);
+
+  AssertDocsSeq(*reader, docs, features, features, meta, threshold, strict);
+
+  // Seek to every document 127th document in a block
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold,
+                   kVersion10PostingsWriterBlockSize - 1,
+                   kVersion10PostingsWriterBlockSize, strict);
+
+  // Seek to every 128th document in a block
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold,
+                   kVersion10PostingsWriterBlockSize,
+                   kVersion10PostingsWriterBlockSize, strict);
+
+  // Seek to every document
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, 0, 1,
+                   strict);
+
+  // Seek to every 5th document
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, 0, 5,
+                   strict);
+
+  // Seek backwards && next
+  AssertBackwardsNext(*reader, docs, features, features, meta, threshold,
+                      strict);
 }
 
 void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold,
@@ -613,9 +622,9 @@ TEST_P(Format15TestCase, ShortPostingsThreshold0) {
 }
 
 TEST_P(Format15TestCase, BlockPostingsThreshold0) {
+  static constexpr size_t kCount = kVersion10PostingsWriterBlockSize;
   static constexpr uint32_t kThreshold = 0;
-  const auto docs =
-    GenerateDocs(kVersion10PostingsWriterBlockSize, 50.f, 14.f, 1);
+  const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
 
   AssertPostings(docs, kThreshold);
 }
