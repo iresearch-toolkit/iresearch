@@ -3276,8 +3276,8 @@ class postings_reader final : public postings_reader_base {
 
   irs::doc_iterator::ptr wanderator(
     IndexFeatures field_features, IndexFeatures required_features,
-    [[maybe_unused]] const ScoreFunctionFactory& factory,
-    const term_meta& meta) final {
+    const term_meta& meta,
+    [[maybe_unused]] const WanderatorOptions& options) final {
     if constexpr (FormatTraits::wand()) {
       if (meta.docs_count <= FormatTraits::block_size() ||
           IndexFeatures::NONE == (field_features & IndexFeatures::FREQ)) {
@@ -3289,17 +3289,24 @@ class postings_reader final : public postings_reader_base {
 
       return iterator_impl(
         field_features, required_features,
-        [&meta, &factory,
-         this]<typename IteratorTraits, typename FieldTraits>() {
-          // FIXME(gnusi): parameterize
-          static constexpr bool kStrict = false;
+        [&]<typename IteratorTraits, typename FieldTraits>() {
+          auto make =
+            [&]<bool Strict>(
+              std::integral_constant<bool, Strict>) -> irs::doc_iterator::ptr {
+            auto it = memory::make_managed<
+              ::wanderator<IteratorTraits, FieldTraits, Strict>>(
+              options.factory);
 
-          auto it = memory::make_managed<
-            ::wanderator<IteratorTraits, FieldTraits, kStrict>>(factory);
+            it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
 
-          it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
+            return it;
+          };
 
-          return it;
+          if (options.strict) {
+            return make(std::true_type{});
+          } else {
+            return make(std::false_type{});
+          }
         });
     } else {
       return iterator(field_features, required_features, meta);

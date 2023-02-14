@@ -213,21 +213,23 @@ class Format15TestCase : public tests::format_test_case {
 
   void AssertWanderator(irs::doc_iterator::ptr& actual,
                         irs::IndexFeatures features, DocsView docs);
-
   void AssertBackwardsNext(irs::postings_reader& reader, DocsView docs,
                            irs::IndexFeatures field_features,
                            irs::IndexFeatures features,
-                           const irs::term_meta& meta, uint32_t threshold);
+                           const irs::term_meta& meta, uint32_t threshold,
+                           bool strict);
   void AssertDocsSeq(irs::postings_reader& reader, DocsView docs,
                      irs::IndexFeatures field_features,
                      irs::IndexFeatures features, const irs::term_meta& meta,
-                     uint32_t threshold);
+                     uint32_t threshold, bool strict);
   void AssertDocsRandom(irs::postings_reader& reader, DocsView docs,
                         irs::IndexFeatures field_features,
                         irs::IndexFeatures features, const irs::term_meta& meta,
-                        uint32_t threshold, size_t seed, size_t inc);
+                        uint32_t threshold, bool strict, size_t seed,
+                        size_t inc);
   void AssertPostings(DocsView docs, irs::IndexFeatures features,
-                      uint32_t threshold);
+                      uint32_t threshold, bool strict);
+  void AssertPostings(DocsView docs, uint32_t threshold, bool strict);
   void AssertPostings(DocsView docs, uint32_t threshold);
 
  private:
@@ -235,7 +237,7 @@ class Format15TestCase : public tests::format_test_case {
                                        irs::IndexFeatures field_features,
                                        irs::IndexFeatures features,
                                        const irs::term_meta& meta,
-                                       uint32_t threshold);
+                                       uint32_t threshold, bool strict);
 };
 
 std::pair<irs::version10::term_meta, irs::postings_reader::ptr>
@@ -320,19 +322,23 @@ void Format15TestCase::AssertWanderator(irs::doc_iterator::ptr& actual,
 
 irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   irs::postings_reader& reader, irs::IndexFeatures field_features,
-  irs::IndexFeatures features, const irs::term_meta& meta, uint32_t threshold) {
-  auto factory = [](const irs::attribute_provider& attrs) {
-    auto* freq = irs::get<irs::frequency>(attrs);
-    EXPECT_NE(nullptr, freq);
+  irs::IndexFeatures features, const irs::term_meta& meta, uint32_t threshold,
+  bool strict) {
+  const irs::WanderatorOptions options{
+    .factory =
+      [](const irs::attribute_provider& attrs) {
+        auto* freq = irs::get<irs::frequency>(attrs);
+        EXPECT_NE(nullptr, freq);
 
-    return irs::ScoreFunction{
-      reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
-      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-        *res = reinterpret_cast<irs::frequency*>(ctx)->value;
-      }};
-  };
+        return irs::ScoreFunction{
+          reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+            *res = reinterpret_cast<irs::frequency*>(ctx)->value;
+          }};
+      },
+    .strict = strict};
 
-  auto actual = reader.wanderator(field_features, features, factory, meta);
+  auto actual = reader.wanderator(field_features, features, meta, options);
   EXPECT_NE(nullptr, actual);
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
@@ -348,17 +354,17 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
                                            irs::IndexFeatures field_features,
                                            irs::IndexFeatures features,
                                            const irs::term_meta& meta,
-                                           uint32_t threshold) {
+                                           uint32_t threshold, bool strict) {
   for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
     if (doc->second < threshold) {
       continue;
     }
 
     postings expected_postings{docs, field_features};
-    FreqThresholdDocIterator expected{expected_postings, threshold, false};
+    FreqThresholdDocIterator expected{expected_postings, threshold, strict};
 
     auto actual =
-      GetWanderator(reader, field_features, features, meta, threshold);
+      GetWanderator(reader, field_features, features, meta, threshold, strict);
     AssertWanderator(actual, features, docs);
 
     ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
@@ -376,15 +382,18 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
   }
 }
 
-void Format15TestCase::AssertDocsRandom(
-  irs::postings_reader& reader, DocsView docs,
-  irs::IndexFeatures field_features, irs::IndexFeatures features,
-  const irs::term_meta& meta, uint32_t threshold, size_t seed, size_t inc) {
+void Format15TestCase::AssertDocsRandom(irs::postings_reader& reader,
+                                        DocsView docs,
+                                        irs::IndexFeatures field_features,
+                                        irs::IndexFeatures features,
+                                        const irs::term_meta& meta,
+                                        uint32_t threshold, bool strict,
+                                        size_t seed, size_t inc) {
   postings expected_postings{docs, field_features};
-  FreqThresholdDocIterator expected{expected_postings, threshold, false};
+  FreqThresholdDocIterator expected{expected_postings, threshold, strict};
 
   auto actual =
-    GetWanderator(reader, field_features, features, meta, threshold);
+    GetWanderator(reader, field_features, features, meta, threshold, strict);
   AssertWanderator(actual, features, docs);
 
   ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
@@ -393,9 +402,9 @@ void Format15TestCase::AssertDocsRandom(
     const auto& doc = docs[i];
     const auto expected_doc_id = expected.seek(doc.first);
     ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-    // seek to the same doc
+    // Seek to the same doc
     ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-    // seek to the smaller doc
+    // Seek to the smaller doc
     ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
 
     AssertFrequencyAndPositions(expected, *actual);
@@ -405,7 +414,7 @@ void Format15TestCase::AssertDocsRandom(
     ASSERT_FALSE(actual->next());
     ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
 
-    // seek after the existing documents
+    // Seek after the existing documents
     ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
   }
 }
@@ -415,13 +424,13 @@ void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
                                      irs::IndexFeatures field_features,
                                      irs::IndexFeatures features,
                                      const irs::term_meta& meta,
-                                     uint32_t threshold) {
+                                     uint32_t threshold, bool strict) {
   postings expected_postings{docs, field_features};
-  FreqThresholdDocIterator expected{expected_postings, threshold, false};
+  FreqThresholdDocIterator expected{expected_postings, threshold, strict};
   SkipList skip_list;
 
   auto actual =
-    GetWanderator(reader, field_features, features, meta, threshold);
+    GetWanderator(reader, field_features, features, meta, threshold, strict);
   AssertWanderator(actual, features, docs);
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
@@ -489,7 +498,7 @@ Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
 
 void Format15TestCase::AssertPostings(DocsView docs,
                                       irs::IndexFeatures features,
-                                      uint32_t threshold) {
+                                      uint32_t threshold, bool strict) {
   auto dir = get_directory(*this);
   ASSERT_NE(nullptr, dir);
   auto [read_meta, reader] = WriteReadMeta(*dir, docs, features);
@@ -497,51 +506,53 @@ void Format15TestCase::AssertPostings(DocsView docs,
 
   // next + seek to eof
   {
-    auto it =
-      GetWanderator(*reader, features, irs::IndexFeatures::NONE, read_meta, 0);
+    auto it = GetWanderator(*reader, features, irs::IndexFeatures::NONE,
+                            read_meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(it->next());
     ASSERT_EQ(docs.front().first, it->value());
     ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
   }
 
-  AssertDocsSeq(*reader, docs, features, features, read_meta, threshold);
+  AssertDocsSeq(*reader, docs, features, features, read_meta, threshold,
+                strict);
 
-  // seek to every document 127th document in a block
+  // Seek to every document 127th document in a block
   AssertDocsRandom(*reader, docs, features, features, read_meta, threshold,
                    kVersion10PostingsWriterBlockSize - 1,
-                   kVersion10PostingsWriterBlockSize);
+                   kVersion10PostingsWriterBlockSize, strict);
 
-  // seek to every 128th document in a block
+  // Seek to every 128th document in a block
   AssertDocsRandom(*reader, docs, features, features, read_meta, threshold,
                    kVersion10PostingsWriterBlockSize,
-                   kVersion10PostingsWriterBlockSize);
+                   kVersion10PostingsWriterBlockSize, strict);
 
-  // seek to every document
+  // Seek to every document
   AssertDocsRandom(*reader, docs, features, features, read_meta, threshold, 0,
-                   1);
+                   1, strict);
 
-  // seek to every 5th document
+  // Seek to every 5th document
   AssertDocsRandom(*reader, docs, features, features, read_meta, threshold, 0,
-                   5);
+                   5, strict);
 
-  // seek backwards && next
-  AssertBackwardsNext(*reader, docs, features, features, read_meta, threshold);
+  // Seek backwards && next
+  AssertBackwardsNext(*reader, docs, features, features, read_meta, threshold,
+                      strict);
 
-  // seek to irs::doc_limits::invalid()
+  // Seek to irs::doc_limits::invalid()
   {
-    auto it =
-      GetWanderator(*reader, features, irs::IndexFeatures::NONE, read_meta, 0);
+    auto it = GetWanderator(*reader, features, irs::IndexFeatures::NONE,
+                            read_meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
     ASSERT_TRUE(it->next());
     ASSERT_EQ(docs.front().first, it->value());
   }
 
-  // seek to irs::doc_limits::eof()
+  // Seek to irs::doc_limits::eof()
   {
-    auto it =
-      GetWanderator(*reader, features, irs::IndexFeatures::NONE, read_meta, 0);
+    auto it = GetWanderator(*reader, features, irs::IndexFeatures::NONE,
+                            read_meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
     ASSERT_FALSE(it->next());
@@ -549,13 +560,19 @@ void Format15TestCase::AssertPostings(DocsView docs,
   }
 }
 
+void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold,
+                                      bool strict) {
+  AssertPostings(docs, kNone, threshold, strict);
+  AssertPostings(docs, kFreq, threshold, strict);
+  AssertPostings(docs, kPos, threshold, strict);
+  AssertPostings(docs, kOffs, threshold, strict);
+  AssertPostings(docs, kPay, threshold, strict);
+  AssertPostings(docs, kAll, threshold, strict);
+}
+
 void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
-  AssertPostings(docs, kNone, threshold);
-  AssertPostings(docs, kFreq, threshold);
-  AssertPostings(docs, kPos, threshold);
-  AssertPostings(docs, kOffs, threshold);
-  AssertPostings(docs, kPay, threshold);
-  AssertPostings(docs, kAll, threshold);
+  //  AssertPostings(docs, threshold, true);
+  AssertPostings(docs, threshold, false);
 }
 
 static constexpr auto kTestDirs =

@@ -61,6 +61,11 @@ using callback_f = std::function<bool(doc_iterator&)>;
 using ScoreFunctionFactory =
   std::function<ScoreFunction(const attribute_provider&)>;
 
+struct WanderatorOptions {
+  ScoreFunctionFactory factory;
+  bool strict{false};
+};
+
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
 // Represents metadata associated with the term
@@ -156,8 +161,8 @@ struct postings_reader {
 
   virtual doc_iterator::ptr wanderator(IndexFeatures field_features,
                                        IndexFeatures required_features,
-                                       const ScoreFunctionFactory& factory,
-                                       const term_meta& meta) = 0;
+                                       const term_meta& meta,
+                                       const WanderatorOptions& options) = 0;
 
   // Evaluates a union of all docs denoted by attribute supplied via a
   // speciified 'provider'. Each doc is represented by a bit in a
@@ -227,9 +232,9 @@ struct term_reader : public attribute_provider {
   virtual doc_iterator::ptr postings(const seek_cookie& cookie,
                                      IndexFeatures features) const = 0;
 
-  virtual doc_iterator::ptr wanderator(const seek_cookie& cookie,
-                                       const ScoreFunctionFactory& factory,
-                                       IndexFeatures features) const = 0;
+  virtual doc_iterator::ptr wanderator(
+    const seek_cookie& cookie, IndexFeatures features,
+    const WanderatorOptions& options) const = 0;
 
   // Returns field metadata.
   virtual const field_meta& meta() const = 0;
