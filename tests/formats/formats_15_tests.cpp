@@ -547,22 +547,22 @@ void Format15TestCase::AssertPostings(DocsView docs,
   AssertDocsSeq(*reader, docs, features, features, meta, threshold, strict);
 
   // Seek to every document 127th document in a block
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold,
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
                    kVersion10PostingsWriterBlockSize - 1,
-                   kVersion10PostingsWriterBlockSize, strict);
+                   kVersion10PostingsWriterBlockSize);
 
   // Seek to every 128th document in a block
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold,
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
                    kVersion10PostingsWriterBlockSize,
-                   kVersion10PostingsWriterBlockSize, strict);
+                   kVersion10PostingsWriterBlockSize);
 
   // Seek to every document
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold, 0, 1,
-                   strict);
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
+                   0, 1);
 
   // Seek to every 5th document
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold, 0, 5,
-                   strict);
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
+                   0, 5);
 
   // Seek backwards && next
   AssertBackwardsNext(*reader, docs, features, features, meta, threshold,
