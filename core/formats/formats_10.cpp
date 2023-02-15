@@ -2586,7 +2586,6 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
     } else {
       IRS_ASSERT(IteratorTraits::frequency());
       auto& freq = std::get<frequency>(attrs_);
-      auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
       freq.value = *this->freq_++;
       notify += freq.value;
 
@@ -2595,6 +2594,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
       }
 
       if (doc.value >= target) {
+        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
         pos.notify(notify);
         pos.clear();
         return doc.value;
