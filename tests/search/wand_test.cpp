@@ -132,7 +132,7 @@ TEST_P(WandTestCase, TermFilter) {
   ASSERT_NE(nullptr, reader);
 
   irs::by_term filter;
-  *filter.mutable_field() = "name";
+  *filter.mutable_field() = "name_anl";
   filter.mutable_options()->term =
     irs::ViewCast<irs::byte_type>(std::string_view{"tempor"});
 
