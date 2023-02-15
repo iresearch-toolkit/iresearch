@@ -359,8 +359,16 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
                                            irs::IndexFeatures features,
                                            const irs::term_meta& meta,
                                            uint32_t threshold, bool strict) {
+  auto is_less = [&](auto lhs, auto rhs) {
+    if (strict) {
+      return lhs <= rhs;
+    } else {
+      return lhs < rhs;
+    }
+  };
+
   for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
-    if (doc->second < threshold) {
+    if (is_less(doc->second, threshold)) {
       continue;
     }
 
@@ -580,7 +588,7 @@ void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold,
 }
 
 void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
-  //  AssertPostings(docs, threshold, true);
+  AssertPostings(docs, threshold, true);
   AssertPostings(docs, threshold, false);
 }
 
