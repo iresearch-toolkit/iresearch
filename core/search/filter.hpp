@@ -37,8 +37,11 @@ struct IndexReader;
 struct PreparedStateVisitor;
 
 enum class ExecutionMode : uint32_t {
-  kAll,  // Access all documents
-  kTop   // Access only top matched documents
+  // Access all documents
+  kAll = 0,
+  // Access only top matched documents
+  kTop,
+  kStrictTop
 };
 
 struct ExecutionContext {
