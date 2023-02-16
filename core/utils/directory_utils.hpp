@@ -158,10 +158,6 @@ struct RefTrackingDirectory : public directory {
 
   std::vector<index_file_refs::ref_t> GetRefs() const;
 
-  // FIXME(gnusi): remove
-  bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>&
-                    visitor) const;
-
  private:
   using refs_t = absl::flat_hash_set<index_file_refs::ref_t,
                                      index_file_refs::counter_t::hash,

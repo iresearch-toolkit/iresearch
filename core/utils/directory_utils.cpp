@@ -228,20 +228,6 @@ bool RefTrackingDirectory::rename(std::string_view src,
   return false;
 }
 
-bool RefTrackingDirectory::visit_refs(
-  const std::function<bool(const index_file_refs::ref_t&)>& visitor) const {
-  // cppcheck-suppress unreadVariable
-  std::lock_guard lock{mutex_};
-
-  for (const auto& ref : refs_) {
-    if (!visitor(ref)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 std::vector<index_file_refs::ref_t> RefTrackingDirectory::GetRefs() const {
   // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex_};

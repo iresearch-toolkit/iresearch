@@ -268,7 +268,6 @@ class basic_disjunction : public compound_doc_iterator<Adapter>,
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators have score
       score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-        // FIXME(gnusi)
         auto& self = *static_cast<basic_disjunction*>(ctx);
         auto& merger = static_cast<Merger&>(self);
         self.score_iterator_impl(self.lhs_, res);
@@ -1099,7 +1098,6 @@ class block_disjunction : public doc_iterator,
 
       score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = static_cast<block_disjunction&>(*ctx);
-        // FIXME(gnusi)
         std::memcpy(res, self.score_value_,
                     static_cast<Merger&>(self).byte_size());
       });

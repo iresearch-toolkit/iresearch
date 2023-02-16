@@ -186,14 +186,8 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_FALSE(!file1);
     auto file2 = track_dir.create("def");
     ASSERT_FALSE(!file2);
-    size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t&) -> bool {
-      ++count;
-      return true;
-    };
 
-    ASSERT_TRUE(track_dir.visit_refs(visitor));
-    ASSERT_EQ(2, count);
+    ASSERT_EQ(2, track_dir.GetRefs().size());
   }
 
   // test visit refs visitor (no-track-open)
@@ -204,14 +198,8 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_FALSE(!file1);
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
-    size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t&) -> bool {
-      ++count;
-      return true;
-    };
 
-    ASSERT_TRUE(track_dir.visit_refs(visitor));
-    ASSERT_EQ(0, count);
+    ASSERT_EQ(0, track_dir.GetRefs().size());
   }
 
   // test visit refs visitor (track-open)
@@ -222,14 +210,8 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_FALSE(!file1);
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file2);
-    size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t&) -> bool {
-      ++count;
-      return true;
-    };
 
-    ASSERT_TRUE(track_dir.visit_refs(visitor));
-    ASSERT_EQ(1, count);
+    ASSERT_EQ(1, track_dir.GetRefs().size());
   }
 
   // test open (track-open)
@@ -245,14 +227,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, file2);
 
-    size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t&) -> bool {
-      ++count;
-      return true;
-    };
-
-    ASSERT_TRUE(track_dir.visit_refs(visitor));
-    ASSERT_EQ(1, count);
+    ASSERT_EQ(1, track_dir.GetRefs().size());
 
     auto file3 = dir.open("abc", irs::IOAdvice::NORMAL);
     ASSERT_NE(nullptr, file3);
@@ -266,14 +241,8 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_FALSE(!file1);
     auto file2 = track_dir.create("def");
     ASSERT_FALSE(!file2);
-    size_t count = 0;
-    auto visitor = [&count](const irs::index_file_refs::ref_t&) -> bool {
-      ++count;
-      return false;
-    };
 
-    ASSERT_FALSE(track_dir.visit_refs(visitor));
-    ASSERT_EQ(1, count);
+    ASSERT_EQ(1, track_dir.GetRefs().size());
   }
 
   // ...........................................................................
@@ -316,14 +285,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
     ASSERT_FALSE(track_dir.create("abc"));
 
-    std::set<std::string> refs;
-    auto visitor = [&refs](const irs::index_file_refs::ref_t& ref) -> bool {
-      refs.insert(*ref);
-      return true;
-    };
-
-    ASSERT_TRUE(track_dir.visit_refs(visitor));
-    ASSERT_TRUE(refs.empty());
+    ASSERT_TRUE(track_dir.GetRefs().empty());
   }
 
   // test open failure
@@ -332,14 +294,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
 
     ASSERT_FALSE(track_dir.open("abc", irs::IOAdvice::NORMAL));
 
-    std::set<std::string> refs;
-    auto visitor = [&refs](const irs::index_file_refs::ref_t& ref) -> bool {
-      refs.insert(*ref);
-      return true;
-    };
-
-    ASSERT_TRUE(track_dir.visit_refs(visitor));
-    ASSERT_TRUE(refs.empty());
+    ASSERT_TRUE(track_dir.GetRefs().empty());
   }
 }
 
