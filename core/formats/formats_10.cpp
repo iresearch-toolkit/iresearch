@@ -1941,7 +1941,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
       this->refill();
 
-      // if this is the initial doc_id then
+      // If this is the initial doc_id then
       // set it to min() for proper delta value
       doc.value += doc_id_t{!doc_limits::valid(doc.value)};
     }
@@ -1972,7 +1972,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   class ReadSkip {
    public:
     explicit ReadSkip() : skip_levels_(1) {
-      Disable();  // prevent using skip-list by default
+      Disable();  // Prevent using skip-list by default
     }
 
     void Disable() noexcept {
@@ -1984,7 +1984,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     void Enable(const version10::term_meta& state) noexcept {
       IRS_ASSERT(state.docs_count > IteratorTraits::block_size());
 
-      // since we store pointer deltas, add postings offset
+      // Since we store pointer deltas, add postings offset
       auto& top = skip_levels_.front();
       CopyState<IteratorTraits>(top, state);
       Enable();
@@ -2001,7 +2001,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
     void MoveDown(size_t level) noexcept {
       auto& next = skip_levels_[level];
-      // move to the more granular level
+      // Move to the more granular level
       IRS_ASSERT(prev_);
       CopyState<IteratorTraits>(next, *prev_);
     }
@@ -2029,7 +2029,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     }
 
     std::vector<SkipState> skip_levels_;
-    SkipState* prev_{};  // pointer to skip context used by skip reader
+    SkipState* prev_{};  // Pointer to skip context used by skip reader
   };
 
   void seek_to_block(doc_id_t target);
@@ -2045,7 +2045,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   size_t level, ptrdiff_t left, index_input& in) {
   auto& next = skip_levels_[level];
 
-  // store previous step on the same level
+  // Store previous step on the same level
   CopyState<IteratorTraits>(*prev_, next);
 
   if (IRS_LIKELY(left > 0)) {
@@ -2055,7 +2055,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
       skip_score_stats::skip(in);
     }
   } else {
-    // stream exhausted
+    // Stream exhausted
     next.doc = doc_limits::eof();
   }
 }
@@ -2074,20 +2074,19 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   IRS_ASSERT(!IteratorTraits::payload() ||
              IteratorTraits::payload() == FieldTraits::payload());
 
-  // don't use doc_iterator for singleton docs
-  // must be ensured by the caller
+  // Don't use doc_iterator for singleton docs, must be ensured by the caller
   IRS_ASSERT(meta.docs_count > 1);
   IRS_ASSERT(this->begin_ == std::end(this->buf_.docs));
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   this->left_ = term_state.docs_count;
 
-  // init document stream
+  // Init document stream
   if (!this->doc_in_) {
-    this->doc_in_ = doc_in->reopen();  // reopen thread-safe stream
+    this->doc_in_ = doc_in->reopen();  // Reopen thread-safe stream
 
     if (!this->doc_in_) {
-      // implementation returned wrong pointer
+      // Implementation returned wrong pointer
       IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
 
       throw io_error("failed to reopen document input");
@@ -2097,7 +2096,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   this->doc_in_->seek(term_state.doc_start);
   IRS_ASSERT(!this->doc_in_->eof());
 
-  std::get<cost>(attrs_).reset(term_state.docs_count);  // estimate iterator
+  std::get<cost>(attrs_).reset(term_state.docs_count);  // Estimate iterator
 
   if constexpr (IteratorTraits::frequency()) {
     IRS_ASSERT(meta.freq);
@@ -2129,7 +2128,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   }
 
   if (term_state.docs_count > IteratorTraits::block_size()) {
-    // allow using skip-list for long enough postings
+    // Allow using skip-list for long enough postings
     skip_.Reader().Enable(term_state);
     skip_offs_ = term_state.doc_start + term_state.e_skip_start;
     docs_count_ = term_state.docs_count;
@@ -2144,7 +2143,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
     return doc.value;
   }
 
-  // check whether it make sense to use skip-list
+  // Check whether it make sense to use skip-list
   if (skip_.Reader().UpperBound() < target) {
     seek_to_block(target);
   }
@@ -2157,7 +2156,7 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
     this->refill();
 
-    // if this is the initial doc_id then
+    // If this is the initial doc_id then
     // set it to min() for proper delta value
     doc.value += doc_id_t{!doc_limits::valid(doc.value)};
   }
@@ -2203,13 +2202,13 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
-  // ensured by caller
+  // Ensured by caller
   IRS_ASSERT(skip_.Reader().UpperBound() < target);
 
-  SkipState last;  // where block starts
+  SkipState last;  // Where block starts
   skip_.Reader().Reset(last);
 
-  // init skip writer in lazy fashion
+  // Init skip writer in lazy fashion
   if (IRS_LIKELY(!docs_count_)) {
   seek_after_initialization:
     IRS_ASSERT(skip_.NumLevels());
@@ -2217,10 +2216,10 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     this->left_ = skip_.Seek(target);
     this->doc_in_->seek(last.doc_ptr);
     std::get<document>(attrs_).value = last.doc;
-    this->begin_ = std::end(this->buf_.docs);  // will trigger refill in "next"
+    this->begin_ = std::end(this->buf_.docs);  // Will trigger refill in "next"
     if constexpr (IteratorTraits::position()) {
       auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
-      pos.prepare(last);  // notify positions
+      pos.prepare(last);  // Notify positions
     }
 
     return;
@@ -2274,7 +2273,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       std::tuple<document, cost, score_threshold, score>>>;
 
  public:
-  // hide 'ptr' defined in irs::doc_iterator
+  // Hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<wanderator>;
 
   wanderator(const ScoreFunctionFactory& factory)
@@ -2332,7 +2331,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     void MoveDown(size_t level) noexcept {
       auto& next = skip_levels_[level];
 
-      // move to the more granular level
+      // Move to the more granular level
       CopyState<IteratorTraits>(next, prev_skip_);
     }
     void Read(size_t level, ptrdiff_t left, index_input& in);
@@ -2348,17 +2347,18 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   };
 
   void seek_to_block(doc_id_t target) {
-    // check whether it makes sense to use skip-list
+    skip_.Reader().EnsureSorted();
+
+    // Check whether it makes sense to use skip-list
     if (skip_.Reader().IsLessThanUpperBound(target)) {
-      // ensured by prepare(...)
+      // Ensured by prepare(...)
       IRS_ASSERT(skip_.NumLevels());
       IRS_ASSERT(0 == skip_.Reader().State().doc_ptr);
-      skip_.Reader().EnsureSorted();
 
       this->left_ = skip_.Seek(target);
       std::get<document>(attrs_).value = skip_.Reader().State().doc;
-      this->begin_ =
-        std::end(this->buf_.docs);  // will trigger refill in "next"
+      // Will trigger refill in "next"
+      this->begin_ = std::end(this->buf_.docs);
     }
   }
 
@@ -2390,8 +2390,7 @@ template<typename IteratorTraits, typename FieldTraits, bool Strict>
 void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Init(
   const version10::term_meta& term_state, size_t num_levels,
   score_threshold& threshold) {
-  // don't use wanderator for short posting lists,
-  // must be ensured by the caller
+  // Don't use wanderator for short posting lists, must be ensured by the caller
   IRS_ASSERT(term_state.docs_count > IteratorTraits::block_size());
 
   skip_levels_.resize(num_levels);
@@ -2399,7 +2398,7 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Init(
   threshold_ = &threshold;
   threshold.skip_scores = std::span{skip_scores_};
 
-  // since we store pointer deltas, add postings offset
+  // Since we store pointer deltas, add postings offset
   auto& top = skip_levels_.front();
   CopyState<IteratorTraits>(top, term_state);
 }
@@ -2433,7 +2432,7 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Read(
   auto& last = prev_skip_;
   auto& next = skip_levels_[level];
 
-  // store previous step on the same level
+  // Store previous step on the same level
   CopyState<IteratorTraits>(last, next);
 
   if (IRS_LIKELY(left > 0)) {
@@ -2466,20 +2465,19 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::prepare(
   IRS_ASSERT(!IteratorTraits::payload() ||
              IteratorTraits::payload() == FieldTraits::payload());
 
-  // don't use wanderator for short posting lists,
-  // must be ensured by the caller
+  // Don't use wanderator for short posting lists, must be ensured by the caller
   IRS_ASSERT(meta.docs_count > IteratorTraits::block_size());
   IRS_ASSERT(this->begin_ == std::end(this->buf_.docs));
 
   auto& term_state = static_cast<const version10::term_meta&>(meta);
   this->left_ = term_state.docs_count;
 
-  // init document stream
+  // Init document stream
   if (!this->doc_in_) {
     this->doc_in_ = doc_in->reopen();  // reopen thread-safe stream
 
     if (!this->doc_in_) {
-      // implementation returned wrong pointer
+      // Implementation returned wrong pointer
       IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
 
       throw io_error("failed to reopen document input");
@@ -2489,7 +2487,7 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::prepare(
   this->doc_in_->seek(term_state.doc_start);
   IRS_ASSERT(!this->doc_in_->eof());
 
-  std::get<cost>(attrs_).reset(term_state.docs_count);  // estimate iterator
+  std::get<cost>(attrs_).reset(term_state.docs_count);  // Estimate iterator
 
   if constexpr (IteratorTraits::frequency()) {
     IRS_ASSERT(meta.freq);
@@ -2532,7 +2530,7 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::prepare(
 
   skip_.Prepare(std::move(skip_in), term_state.docs_count);
 
-  // initialize skip levels
+  // Initialize skip levels
   if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(
         num_levels > 0 && num_levels <= postings_writer_base::kMaxSkipLevels)) {
     skip_.Reader().Init(term_state, num_levels,
@@ -2566,15 +2564,14 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
       this->doc_in_->seek(state.doc_ptr);
       if constexpr (IteratorTraits::position()) {
         auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
-        pos.prepare(state);  // notify positions
+        pos.prepare(state);  // Notify positions
       }
       state.doc_ptr = 0;
     }
 
     this->refill();
 
-    // if this is the initial doc_id then
-    // set it to min() for proper delta value
+    // If this is the initial doc_id then set it to min() for proper delta value
     doc.value += doc_id_t{!doc_limits::valid(doc.value)};
   }
 
