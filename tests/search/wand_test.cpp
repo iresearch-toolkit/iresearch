@@ -156,6 +156,7 @@ TEST_P(WandTestCase, TermFilter) {
   irs::tfidf_sort scorer{false, false};
 
   AssertResults(reader, filter, scorer, 10);
+  AssertResults(reader, filter, scorer, 100);
 }
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
