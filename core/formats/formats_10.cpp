@@ -400,7 +400,7 @@ class postings_writer_base : public irs::postings_writer {
   }
 
   void begin_field(IndexFeatures features) final {
-    features_ = features;
+    features_.Reset(features);
     docs_.value.clear();
     last_state_.clear();
   }
@@ -417,6 +417,28 @@ class postings_writer_base : public irs::postings_writer {
   void end() final;
 
  protected:
+  class Features {
+   public:
+    void Reset(IndexFeatures features) noexcept {
+      has_freq_ = (IndexFeatures::NONE != (features & IndexFeatures::FREQ));
+      has_pos_ = (IndexFeatures::NONE != (features & IndexFeatures::POS));
+      has_offs_ = (IndexFeatures::NONE != (features & IndexFeatures::OFFS));
+      has_pay_ = (IndexFeatures::NONE != (features & IndexFeatures::PAY));
+    }
+
+    bool HasFrequency() const noexcept { return has_freq_; }
+    bool HasPosition() const noexcept { return has_pos_; }
+    bool HasOffset() const noexcept { return has_offs_; }
+    bool HasPayload() const noexcept { return has_pay_; }
+    bool HasOffsetOrPayload() const noexcept { return has_offs_ | has_pay_; }
+
+   private:
+    bool has_freq_{};
+    bool has_pos_{};
+    bool has_offs_{};
+    bool has_pay_{};
+  };
+
   struct attributes {
     const frequency* freq_{};
     irs::position* pos_{};
@@ -467,7 +489,7 @@ class postings_writer_base : public irs::postings_writer {
   pay_buffer pay_;                   // payloads and offsets stream
   uint32_t* buf_;                    // buffer for encoding
   attributes attrs_;                 // set of attributes
-  IndexFeatures features_;           // features supported by current field
+  Features features_;                // features supported by current field
   const PostingsFormat postings_format_version_;
   const TermsFormat terms_format_version_;
 };
@@ -483,7 +505,7 @@ void postings_writer_base::write_skip(size_t level,
   doc_.skip_doc[level] = doc_.block_last;
   doc_.skip_ptr[level] = doc_ptr;
 
-  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
+  if (features_.HasPosition()) {
     const uint64_t pos_ptr = pos_out_->file_pointer();
 
     out.write_vint(pos_.block_last);
@@ -491,11 +513,10 @@ void postings_writer_base::write_skip(size_t level,
 
     pos_.skip_ptr[level] = pos_ptr;
 
-    if (IndexFeatures::NONE !=
-        (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
+    if (features_.HasOffsetOrPayload()) {
       IRS_ASSERT(pay_out_);
 
-      if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
+      if (features_.HasPayload()) {
         out.write_vint(static_cast<uint32_t>(pay_.block_last));
       }
 
@@ -555,13 +576,12 @@ void postings_writer_base::encode(data_output& out,
   }
 
   out.write_vlong(meta.doc_start - last_state_.doc_start);
-  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
+  if (features_.HasPosition()) {
     out.write_vlong(meta.pos_start - last_state_.pos_start);
     if (address_limits::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
-    if (IndexFeatures::NONE !=
-        (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
+    if (features_.HasOffsetOrPayload()) {
       out.write_vlong(meta.pay_start - last_state_.pay_start);
     }
   }
@@ -591,12 +611,11 @@ void postings_writer_base::end() {
 void postings_writer_base::begin_term() {
   doc_.start = doc_out_->file_pointer();
   std::fill_n(doc_.skip_ptr, kMaxSkipLevels, doc_.start);
-  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
+  if (features_.HasPosition()) {
     IRS_ASSERT(pos_out_);
     pos_.start = pos_out_->file_pointer();
     std::fill_n(pos_.skip_ptr, kMaxSkipLevels, pos_.start);
-    if (IndexFeatures::NONE !=
-        (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
+    if (features_.HasOffsetOrPayload()) {
       IRS_ASSERT(pay_out_);
       pay_.start = pay_out_->file_pointer();
       std::fill_n(pay_.skip_ptr, kMaxSkipLevels, pay_.start);
@@ -612,14 +631,13 @@ void postings_writer_base::end_doc() {
   if (doc_.full()) {
     doc_.block_last = doc_.last;
     doc_.end = doc_out_->file_pointer();
-    if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
+    if (features_.HasPosition()) {
       IRS_ASSERT(pos_out_);
       pos_.end = pos_out_->file_pointer();
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_.block_last = pos_.size;
-      if (IndexFeatures::NONE !=
-          (features_ & (IndexFeatures::OFFS | IndexFeatures::PAY))) {
+      if (features_.HasOffsetOrPayload()) {
         IRS_ASSERT(pay_out_);
         pay_.end = pay_out_->file_pointer();
         pay_.block_last = pay_.pay_buf_.size();
@@ -645,7 +663,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
     auto doc = doc_.docs.begin();
     auto prev = doc_.block_last;
 
-    if (IndexFeatures::NONE != (features_ & IndexFeatures::FREQ)) {
+    if (features_.HasFrequency()) {
       auto doc_freq = doc_.freqs.begin();
       for (; doc < doc_.doc; ++doc) {
         const uint32_t freq = *doc_freq;
@@ -673,7 +691,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
 
   // write remaining position using
   // variable length encoding
-  if (IndexFeatures::NONE != (features_ & IndexFeatures::POS)) {
+  if (features_.HasPosition()) {
     IRS_ASSERT(pos_out_);
 
     if (meta.freq > skip_.Skip0()) {
@@ -687,7 +705,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
       uint32_t pay_buf_start = 0;
       for (uint32_t i = 0; i < pos_.size; ++i) {
         const uint32_t pos_delta = pos_.buf[i];
-        if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
+        if (features_.HasPayload()) {
           IRS_ASSERT(pay_out_);
 
           const uint32_t size = pay_.pay_sizes[i];
@@ -707,7 +725,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
           out.write_vint(pos_delta);
         }
 
-        if (IndexFeatures::NONE != (features_ & IndexFeatures::OFFS)) {
+        if (features_.HasOffset()) {
           IRS_ASSERT(pay_out_);
 
           const uint32_t pay_offs_delta = pay_.offs_start_buf[i];
@@ -722,7 +740,7 @@ void postings_writer_base::end_term(version10::term_meta& meta) {
         }
       }
 
-      if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
+      if (features_.HasPayload()) {
         IRS_ASSERT(pay_out_);
         pay_.pay_buf_.clear();
       }
@@ -850,8 +868,7 @@ void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
 template<typename FormatTraits>
 void postings_writer<FormatTraits>::add_position(uint32_t pos) {
   // at least positions stream should be created
-  IRS_ASSERT(IndexFeatures::NONE != (features_ & IndexFeatures::POS) &&
-             pos_out_);
+  IRS_ASSERT(features_.HasPosition() && pos_out_);
   IRS_ASSERT(!attrs_.offs_ || attrs_.offs_->start <= attrs_.offs_->end);
 
   pos_.pos(pos - pos_.last);
@@ -870,7 +887,7 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
     FormatTraits::write_block(*pos_out_, pos_.buf.data(), buf_);
     pos_.size = 0;
 
-    if (IndexFeatures::NONE != (features_ & IndexFeatures::PAY)) {
+    if (features_.HasPayload()) {
       IRS_ASSERT(pay_out_);
       auto& pay_buf = pay_.pay_buf_;
 
@@ -882,7 +899,7 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
       }
     }
 
-    if (IndexFeatures::NONE != (features_ & IndexFeatures::OFFS)) {
+    if (features_.HasOffset()) {
       IRS_ASSERT(pay_out_);
       FormatTraits::write_block(*pay_out_, pay_.offs_start_buf, buf_);
       FormatTraits::write_block(*pay_out_, pay_.offs_len_buf, buf_);
@@ -949,7 +966,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
         write_skip(level, out);
 
         if constexpr (FormatTraits::wand()) {
-          if (IndexFeatures::NONE != (features_ & IndexFeatures::FREQ)) {
+          if (features_.HasFrequency()) {
             auto& score = score_levels_[level];
 
             if (level < std::size(score_levels_) - 1) {
