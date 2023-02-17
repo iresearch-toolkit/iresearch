@@ -2139,12 +2139,10 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
     return doc.value;
   }
 
-  // Check whether it make sense to use skip-list
+  // Check whether it makes sense to use skip-list
   if (skip_.Reader().UpperBound() < target) {
     seek_to_block(target);
-  }
 
-  if (this->begin_ == std::end(this->buf_.docs)) {
     if (IRS_UNLIKELY(!this->left_)) {
       doc.value = doc_limits::eof();
       return doc_limits::eof();
@@ -2212,7 +2210,6 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
     this->left_ = skip_.Seek(target);
     this->doc_in_->seek(last.doc_ptr);
     std::get<document>(attrs_).value = last.doc;
-    this->begin_ = std::end(this->buf_.docs);  // Will trigger refill in "next"
     if constexpr (IteratorTraits::position()) {
       auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
       pos.prepare(last);  // Notify positions
@@ -2342,10 +2339,10 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     const score_threshold* threshold_{};
   };
 
-  void seek_to_block(doc_id_t target) {
+  bool seek_to_block(doc_id_t target) {
     skip_.Reader().EnsureSorted();
 
-    // Check whether it makes sense to use skip-list
+    // Check whether we have to use skip-list
     if (skip_.Reader().IsLessThanUpperBound(target)) {
       // Ensured by prepare(...)
       IRS_ASSERT(skip_.NumLevels());
@@ -2353,9 +2350,10 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
       this->left_ = skip_.Seek(target);
       std::get<document>(attrs_).value = skip_.Reader().State().doc;
-      // Will trigger refill in "next"
-      this->begin_ = std::end(this->buf_.docs);
+      return true;
     }
+
+    return false;
   }
 
   static bool ScoreLess(score_t lhs, score_t rhs) noexcept {
@@ -2548,9 +2546,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
     return doc.value;
   }
 
-  seek_to_block(target);
-
-  if (this->begin_ == std::end(this->buf_.docs)) {
+  if (seek_to_block(target)) {
     if (IRS_UNLIKELY(!this->left_)) {
       doc.value = doc_limits::eof();
       return doc_limits::eof();
@@ -2571,6 +2567,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
     doc.value += doc_id_t{!doc_limits::valid(doc.value)};
   }
 
+  // FIXME cache score!!!
+  const auto& score = std::get<score>(attrs_);
   const auto min_competitive_score = std::get<score_threshold>(attrs_).value;
   [[maybe_unused]] uint32_t notify{0};
 
@@ -2587,7 +2585,9 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
           auto& freq = std::get<frequency>(attrs_);
           freq.value = this->freq_[-1];
 
-          if (ScoreLess(freq.value, min_competitive_score)) {
+          // FIXME(gnusi): can we use approximation before actual score
+          //               evaluation? e.g. frequency in case of tfidf
+          if (ScoreLess(score(), min_competitive_score)) {
             continue;
           }
         }
@@ -2599,7 +2599,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
       freq.value = *this->freq_++;
       notify += freq.value;
 
-      if (ScoreLess(freq.value, min_competitive_score)) {
+      if (ScoreLess(score(), min_competitive_score)) {
         continue;
       }
 
@@ -2615,6 +2615,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
   if constexpr (IteratorTraits::position()) {
     std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
   }
+
+  // FIXME(gnusi): Jump to seek_to_block...
 
   if constexpr (IteratorTraits::frequency()) {
     auto& freq = std::get<frequency>(attrs_);
