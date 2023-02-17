@@ -446,8 +446,9 @@ void prepareTasks(std::vector<task_t>& buf, std::istream& in,
   }
 }
 
-static constexpr frozen::map<std::string_view, irs::ExecutionMode, 2>
+static constexpr frozen::map<std::string_view, irs::ExecutionMode, 3>
   kSearchModes = {{"all", irs::ExecutionMode::kAll},
+                  {"strictWand", irs::ExecutionMode::kStrictTop},
                   {"wand", irs::ExecutionMode::kTop}};
 
 static constexpr frozen::map<std::string_view, irs::type_info, 2> kTextFormats =

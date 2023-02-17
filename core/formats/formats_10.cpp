@@ -832,7 +832,7 @@ class postings_writer final : public postings_writer_base {
     uint32_t
       buf[FormatTraits::block_size()];  // buffer for encoding (worst case)
   } encbuf_;
-  skip_score_stats score_levels_[kMaxSkipLevels];
+  std::array<skip_score_stats, kMaxSkipLevels> score_levels_;
   bool volatile_attributes_;
 };
 
@@ -969,7 +969,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
           if (features_.HasFrequency()) {
             auto& score = score_levels_[level];
 
-            if (level < std::size(score_levels_) - 1) {
+            if (level < score_levels_.size() - 1) {
               // accumulate score on less granular level
               score_levels_[level + 1].add(score);
             }
@@ -978,15 +978,11 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
           }
         }
       });
-
-      if constexpr (FormatTraits::wand()) {
-        score_levels_[0].reset();
-      }
     }
 
     begin_doc(did, freqv);
     if constexpr (FormatTraits::wand()) {
-      score_levels_[0].add(freqv);
+      score_levels_.front().add(freqv);
     }
 
     IRS_ASSERT(attrs_.pos_);
