@@ -47,7 +47,7 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   IRS_ASSERT(reader);
 
   auto docs = [&]() -> irs::doc_iterator::ptr {
-    if (ctx.mode != ExecutionMode::kAll && !ctx.scorers.empty()) {
+    if (ctx.mode != ExecutionMode::kAll && !ord.empty()) {
       return reader->wanderator(
         *state->cookie, ord.features(),
         {.factory = [&, bucket = ord.buckets().front().bucket.get()](

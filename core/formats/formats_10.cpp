@@ -2271,12 +2271,17 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   wanderator(const ScoreFunctionFactory& factory)
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
-            ReadSkip{}} {
+            ReadSkip{}},
+      scorer_{factory(*this)} {
     IRS_ASSERT(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
 
     skip_.Reader().SetScoreFunction(factory);
+    std::get<score>(attrs_).Reset(*absl::bit_cast<score_ctx*>(&score_),
+                                  [](score_ctx* ctx, score_t* res) noexcept {
+                                    *res = *absl::bit_cast<score_t*>(ctx);
+                                  });
   }
 
   void prepare(const term_meta& meta, const index_input* doc_in,
@@ -2339,7 +2344,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     const score_threshold* threshold_{};
   };
 
-  bool seek_to_block(doc_id_t target) {
+  void seek_to_block(doc_id_t target) {
     skip_.Reader().EnsureSorted();
 
     // Check whether we have to use skip-list
@@ -2350,10 +2355,9 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
       this->left_ = skip_.Seek(target);
       std::get<document>(attrs_).value = skip_.Reader().State().doc;
-      return true;
+      // Will trigger refill in "next"
+      this->begin_ = std::end(this->buf_.docs);
     }
-
-    return false;
   }
 
   static bool ScoreLess(score_t lhs, score_t rhs) noexcept {
@@ -2367,6 +2371,8 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
+  ScoreFunction scorer_;  // FIXME(gnusi): can we use only one ScoreFunction?
+  score_t score_;
 };
 
 template<typename IteratorTraits, typename FieldTraits, bool Strict>
@@ -2546,91 +2552,86 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
     return doc.value;
   }
 
-  if (seek_to_block(target)) {
-    if (IRS_UNLIKELY(!this->left_)) {
-      doc.value = doc_limits::eof();
-      return doc_limits::eof();
-    }
+  while (true) {
+    seek_to_block(target);
 
-    if (auto& state = skip_.Reader().State(); state.doc_ptr) {
-      this->doc_in_->seek(state.doc_ptr);
-      if constexpr (IteratorTraits::position()) {
-        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
-        pos.prepare(state);  // Notify positions
+    if (this->begin_ == std::end(this->buf_.docs)) {
+      if (IRS_UNLIKELY(!this->left_)) {
+        doc.value = doc_limits::eof();
+        return doc_limits::eof();
       }
-      state.doc_ptr = 0;
-    }
 
-    this->refill();
-
-    // If this is the initial doc_id then set it to min() for proper delta value
-    doc.value += doc_id_t{!doc_limits::valid(doc.value)};
-  }
-
-  // FIXME cache score!!!
-  const auto& score = std::get<score>(attrs_);
-  const auto min_competitive_score = std::get<score_threshold>(attrs_).value;
-  [[maybe_unused]] uint32_t notify{0};
-
-  while (this->begin_ != std::end(this->buf_.docs)) {
-    doc.value += *this->begin_++;
-
-    if constexpr (!IteratorTraits::position()) {
-      if (doc.value >= target) {
-        if constexpr (IteratorTraits::frequency()) {
-          this->freq_ = this->buf_.freqs + this->relative_pos();
-          IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
-          IRS_ASSERT((this->freq_ - 1) < std::end(this->buf_.freqs));
-
-          auto& freq = std::get<frequency>(attrs_);
-          freq.value = this->freq_[-1];
-
-          // FIXME(gnusi): can we use approximation before actual score
-          //               evaluation? e.g. frequency in case of tfidf
-          if (ScoreLess(score(), min_competitive_score)) {
-            continue;
-          }
+      if (auto& state = skip_.Reader().State(); state.doc_ptr) {
+        this->doc_in_->seek(state.doc_ptr);
+        if constexpr (IteratorTraits::position()) {
+          auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+          pos.prepare(state);  // Notify positions
         }
-        return doc.value;
-      }
-    } else {
-      IRS_ASSERT(IteratorTraits::frequency());
-      auto& freq = std::get<frequency>(attrs_);
-      freq.value = *this->freq_++;
-      notify += freq.value;
-
-      if (ScoreLess(score(), min_competitive_score)) {
-        continue;
+        state.doc_ptr = 0;
       }
 
-      if (doc.value >= target) {
-        auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
-        pos.notify(notify);
-        pos.clear();
-        return doc.value;
+      this->refill();
+
+      // If this is the initial doc_id then set it to min() for proper delta
+      // value
+      doc.value += doc_id_t{!doc_limits::valid(doc.value)};
+    }
+
+    const auto min_competitive_score = std::get<score_threshold>(attrs_).value;
+    [[maybe_unused]] uint32_t notify{0};
+
+    while (this->begin_ != std::end(this->buf_.docs)) {
+      doc.value += *this->begin_++;
+
+      if constexpr (!IteratorTraits::position()) {
+        if (doc.value >= target) {
+          if constexpr (IteratorTraits::frequency()) {
+            this->freq_ = this->buf_.freqs + this->relative_pos();
+            IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
+            IRS_ASSERT((this->freq_ - 1) < std::end(this->buf_.freqs));
+
+            auto& freq = std::get<frequency>(attrs_);
+            freq.value = this->freq_[-1];
+
+            // FIXME(gnusi): can we use approximation before actual score
+            //               evaluation? e.g. frequency in case of tfidf
+            scorer_(&score_);
+
+            if (ScoreLess(score_, min_competitive_score)) {
+              continue;
+            }
+          }
+          return doc.value;
+        }
+      } else {
+        IRS_ASSERT(IteratorTraits::frequency());
+        auto& freq = std::get<frequency>(attrs_);
+        freq.value = *this->freq_++;
+        notify += freq.value;
+
+        // FIXME(gnusi): can we use approximation before actual score
+        //               evaluation? e.g. frequency in case of tfidf
+        scorer_(&score_);
+
+        if (ScoreLess(score_, min_competitive_score)) {
+          continue;
+        }
+
+        if (doc.value >= target) {
+          auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
+          pos.notify(notify);
+          pos.clear();
+          return doc.value;
+        }
       }
     }
-  }
 
-  if constexpr (IteratorTraits::position()) {
-    std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
-  }
-
-  // FIXME(gnusi): Jump to seek_to_block...
-
-  if constexpr (IteratorTraits::frequency()) {
-    auto& freq = std::get<frequency>(attrs_);
-    while (
-      (doc.value < target || ScoreLess(freq.value, min_competitive_score)) &&
-      next()) {
+    if constexpr (IteratorTraits::position()) {
+      std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
     }
-  } else {
-    while (doc.value < target) {
-      next();
-    }
-  }
 
-  return doc.value;
+    target = doc.value + 1;
+  }
 }
 
 struct IndexMetaWriter final : public index_meta_writer {
