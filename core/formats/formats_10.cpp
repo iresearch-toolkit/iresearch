@@ -2471,7 +2471,7 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Seal(
   // Store previous step on the same level
   CopyState<IteratorTraits>(last, next);
 
-  // stream exhausted
+  // Stream exhausted
   next.doc = doc_limits::eof();
   if constexpr (FieldTraits::frequency()) {
     skip_scores_[level] = std::numeric_limits<score_t>::max();
