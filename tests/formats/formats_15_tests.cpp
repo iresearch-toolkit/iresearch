@@ -593,7 +593,7 @@ void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
   AssertPostings(docs, threshold, false);
 }
 
-static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>;
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
 
 static const auto kTestValues =
   ::testing::Combine(::testing::ValuesIn(kTestDirs),
