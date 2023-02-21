@@ -593,12 +593,15 @@ void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
   AssertPostings(docs, threshold, false);
 }
 
-static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
+static constexpr auto kTestFormats = ::testing::Values(
+  tests::format_info{"1_5", "1_0"}, tests::format_info{"1_5simd", "1_0"});
+
+static constexpr auto kTestDirs =
+  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
+                        tests::kTypesRot13_7>();
 
 static const auto kTestValues =
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(tests::format_info{"1_5", "1_0"},
-                                       tests::format_info{"1_5simd", "1_0"}));
+  ::testing::Combine(::testing::ValuesIn(kTestDirs), kTestFormats);
 
 // Generic tests
 using tests::format_test_case;
@@ -669,7 +672,13 @@ TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
   AssertPostings(docs, kThreshold);
 }*/
 
-INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues,
+static constexpr auto kTestDirs15 =
+  tests::getDirectories<tests::kTypesDefault>();
+
+static const auto kTestValues15 =
+  ::testing::Combine(::testing::ValuesIn(kTestDirs15), kTestFormats);
+
+INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues15,
                          Format15TestCase::to_string);
 
 }  // namespace
