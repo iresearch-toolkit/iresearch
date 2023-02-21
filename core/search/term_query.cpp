@@ -70,6 +70,7 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
+      // FIXME(gnusi): honor cached wanderator score
       *score = CompileScore(ord.buckets(), rdr, *state->reader, stats_.c_str(),
                             *docs, boost());
     }
