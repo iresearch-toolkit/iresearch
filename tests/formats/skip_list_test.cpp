@@ -667,7 +667,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(1695, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(), 1727U, 1703U}),
                 upper_bounds);
-      ctx.AssertCallsCount(10, 2, 9);
+      ctx.AssertCallsCount(9, 2, 9);
 
       // seek to 1920
       ctx.ResetCallsCount();
@@ -676,7 +676,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(
         (std::vector{irs::doc_limits::eof(), irs::doc_limits::eof(), 1927U}),
         upper_bounds);
-      ctx.AssertCallsCount(7, 1, 5);
+      ctx.AssertCallsCount(6, 1, 5);
 
       // seek to last doc in a skip-list
       ctx.ResetCallsCount();
@@ -685,7 +685,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ((std::vector{irs::doc_limits::eof(), irs::doc_limits::eof(),
                              irs::doc_limits::eof()}),
                 upper_bounds);
-      ctx.AssertCallsCount(4, 0, 1);
+      ctx.AssertCallsCount(3, 0, 1);
 
       // seek after the last doc in a skip-list
       ctx.ResetCallsCount();
@@ -760,7 +760,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ((std::vector{irs::doc_limits::eof(), irs::doc_limits::eof(),
                              irs::doc_limits::eof()}),
                 upper_bounds);
-      ctx.AssertCallsCount(14, 2, 13);
+      ctx.AssertCallsCount(11, 2, 13);
 
       // reset && seek to 1928
       reader.Reset();
@@ -771,7 +771,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ((std::vector{irs::doc_limits::eof(), irs::doc_limits::eof(),
                              irs::doc_limits::eof()}),
                 upper_bounds);
-      ctx.AssertCallsCount(14, 2, 13);
+      ctx.AssertCallsCount(11, 2, 13);
 
       // reset && seek to 1927
       reader.Reset();
@@ -782,7 +782,7 @@ TEST_F(SkipReaderTest, Seek) {
       ASSERT_EQ(
         (std::vector{irs::doc_limits::eof(), irs::doc_limits::eof(), 1927U}),
         upper_bounds);
-      ctx.AssertCallsCount(13, 2, 12);
+      ctx.AssertCallsCount(11, 2, 12);
 
       // reset && seek to 1511
       reader.Reset();
@@ -950,7 +950,7 @@ TEST_F(SkipReaderTest, Seek) {
       // seek to one doc before the last in a skip-list
       ctx.ResetCallsCount();
       ASSERT_EQ(docs_left(7191), reader.Seek(7191));
-      ctx.AssertCallsCount(16, 2, 15);
+      ctx.AssertCallsCount(13, 2, 15);
       ASSERT_EQ(7183, lower);
       ASSERT_EQ((std::vector{irs::doc_limits::eof(), irs::doc_limits::eof(),
                              irs::doc_limits::eof()}),
