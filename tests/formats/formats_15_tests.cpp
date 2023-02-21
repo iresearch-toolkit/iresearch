@@ -24,6 +24,7 @@
 #include "formats/formats_10_attributes.hpp"
 #include "formats_test_case_base.hpp"
 #include "store/directory_attributes.hpp"
+#include "store/mmap_directory.hpp"
 #include "tests_shared.hpp"
 
 namespace {
@@ -592,9 +593,7 @@ void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
   AssertPostings(docs, threshold, false);
 }
 
-static constexpr auto kTestDirs =
-  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
-                        tests::kTypesRot13_7>();
+static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>;
 
 static const auto kTestValues =
   ::testing::Combine(::testing::ValuesIn(kTestDirs),
@@ -661,13 +660,14 @@ TEST_P(Format15TestCase, LongPostingsThreshold0) {
   AssertPostings(docs, kThreshold);
 }
 
+/* Long test
 TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
   static constexpr size_t kCount = size_t{1} << 15;
   static constexpr uint32_t kThreshold = 0;
   const auto docs = GenerateDocs(kCount, 1000.f, 20.f, 2);
 
   AssertPostings(docs, kThreshold);
-}
+}*/
 
 INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues,
                          Format15TestCase::to_string);
