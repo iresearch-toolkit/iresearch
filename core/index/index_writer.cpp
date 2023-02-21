@@ -632,20 +632,6 @@ IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
     flush_ctx_{flush_ctx},
     pending_segment_context_offset_{pending_segment_context_offset},
     segments_active_{&segments_active} {
-#ifdef IRESEARCH_DEBUG
-  if (flush_ctx) {
-    // ensure there are no active struct update operations
-    // (only needed for IRS_ASSERT)
-    // cppcheck-suppress unreadVariable
-    std::lock_guard lock{flush_ctx->mutex_};
-
-    // IRS_ASSERT that flush_ctx and ctx are compatible
-    IRS_ASSERT(
-      flush_ctx->pending_segment_contexts_[pending_segment_context_offset_]
-        .segment_ == ctx_);
-  }
-#endif
-
   if (ctx_) {
     // track here since guaranteed to have 1 ref per active
     // segment
@@ -654,24 +640,20 @@ IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
 }
 
 IndexWriter::ActiveSegmentContext::~ActiveSegmentContext() {
-  if (ctx_) {
-    // track here since guaranteed to have 1 ref per active
-    // segment
-    segments_active_->fetch_sub(1);
+  if (ctx_ == nullptr) {
+    return;
   }
-
-  if (flush_ctx_) {
+  // track here since guaranteed to have 1 ref per active segment
+  segments_active_->fetch_sub(1);
+  if (flush_ctx_ != nullptr) {
     ctx_.reset();
-
-    try {
-      std::lock_guard lock{flush_ctx_->mutex_};
+    std::unique_lock lock{flush_ctx_->mutex_, std::try_to_lock};
+    if (lock.owns_lock()) {
+      // ignore if lock failed because it implies that FlushAll() is not waiting
+      // for a notification or someone else will make notification
       flush_ctx_->pending_segment_context_cond_.notify_all();
-    } catch (...) {
-      // lock may throw
     }
-  }  // FIXME TODO remove once col_writer tail is fixed to flush() multiple
-     // times without overwrite (since then the tail will be in a different
-     // context)
+  }
 }
 
 IndexWriter::ActiveSegmentContext& IndexWriter::ActiveSegmentContext::operator=(
@@ -741,14 +723,10 @@ IndexWriter::Document::~Document() noexcept {
   // optimization to notify any ongoing flush_all() operations so they wake up
   // earlier
   if (1 == segment_->active_count_.fetch_sub(1)) {
-    // lock due to context modification and notification, note:
-    // std::mutex::try_lock() does not throw exceptions as per documentation
-    // @see https://en.cppreference.com/w/cpp/named_req/Mutex
     std::unique_lock lock{ctx_.mutex_, std::try_to_lock};
-
     if (lock.owns_lock()) {
-      // ignore if lock failed because it implies that
-      // flush_all() is not waiting for a notification
+      // ignore if lock failed because it implies that FlushAll() is not waiting
+      // for a notification or someone else will make notification
       ctx_.pending_segment_context_cond_.notify_all();
     }
   }
@@ -901,7 +879,7 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
   bool disable_flush) {
   auto ctx = writer_.GetFlushContext();
 
-  // refresh segment if required (guarded by flush_context::flush_mutex_)
+  // refresh segment if required (guarded by FlushContext::context_mutex_)
 
   while (!segment_.ctx()) {  // no segment (lazy initialized)
     segment_ = writer_.GetSegmentContext(*ctx);
@@ -911,8 +889,8 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
 
     // must unlock/relock flush_context before retrying to get a new segment so
     // as to avoid a deadlock due to a read-write-read situation for
-    // flush_context::flush_mutex_ with threads trying to lock
-    // flush_context::flush_mutex_ to return their segment_context
+    // FlushContext::context_mutex_ with threads trying to lock
+    // FlushContext::context_mutex_ to return their segment_context
     if (!segment_.ctx()) {
       ctx.reset();  // reset before reacquiring
       ctx = writer_.GetFlushContext();
@@ -975,13 +953,6 @@ void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& segment,
   if (!is_null && !is_this) {
     ctx.dirty_.store(true);
     flush_lock.lock();
-    // this assert really fragile, it's thread safe only because now when we
-    // work with pending_segment_contexts_ we always lock (shared or unique)
-    // flush_mutex_
-    IRS_ASSERT(
-      flush_ctx
-        ->pending_segment_contexts_[segment.pending_segment_context_offset_]
-        .segment_ == segment.ctx_);
   }
 
   // NOTE: if the first uncommitted operation is a removal operation then it
@@ -1004,6 +975,10 @@ void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& segment,
 
   // Update generation of segment operation
   ctx.UpdateGeneration(generation_base);
+
+  if (flush_lock.owns_lock()) {
+    return;
+  }
 
   // pending_segment_contexts_ may be asynchronously read
   std::lock_guard lock{mutex_};
@@ -1036,7 +1011,8 @@ void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& segment,
   if (is_dirty || is_null) {
     freelist_node = &pending_segment_contexts_.emplace_back(
       segment.ctx_, pending_segment_contexts_.size());
-  } else if (is_this) {
+  } else {
+    IRS_ASSERT(is_this);
     // the segment is present in this flush_context 'pending_segment_contexts_'
     IRS_ASSERT(segment.pending_segment_context_offset_ <
                pending_segment_contexts_.size());
@@ -1046,7 +1022,7 @@ void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& segment,
     freelist_node = &segment_context;
   }
   // do not reuse segments that are present in another flush_context
-  if (freelist_node == nullptr || is_dirty) {
+  if (is_dirty) {
     return;
   }
   // +1 for 'active_segment_context::ctx_'
@@ -1919,7 +1895,7 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
   if (!shared) {
     for (;;) {
       // lock ctx exchange (write-lock)
-      std::unique_lock lock{ctx->flush_mutex_};
+      std::unique_lock lock{ctx->context_mutex_};
 
       // acquire the current flush_context and its lock
       if (!flush_context_.compare_exchange_strong(ctx, ctx->next_context_)) {
@@ -1930,7 +1906,7 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
       lock.release();
 
       return {ctx, [](FlushContext* ctx) noexcept -> void {
-                std::unique_lock lock{ctx->flush_mutex_, std::adopt_lock};
+                std::unique_lock lock{ctx->context_mutex_, std::adopt_lock};
                 // reset context and make ready for reuse
                 ctx->Reset();
               }};
@@ -1939,7 +1915,7 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
 
   for (;;) {
     // lock current ctx (read-lock)
-    std::shared_lock lock{ctx->flush_mutex_, std::try_to_lock};
+    std::shared_lock lock{ctx->context_mutex_, std::try_to_lock};
 
     if (!lock) {
       std::this_thread::yield();    // allow flushing thread to finish exchange
@@ -1961,7 +1937,7 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
     lock.release();
 
     return {ctx, [](FlushContext* ctx) noexcept -> void {
-              std::shared_lock lock{ctx->flush_mutex_, std::adopt_lock};
+              std::shared_lock lock{ctx->context_mutex_, std::adopt_lock};
             }};
   }
 }
@@ -1979,8 +1955,8 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext(
   // no free segment_context available and maximum number of segments reached
   // must return to caller so as to unlock/relock flush_context before retrying
   // to get a new segment so as to avoid a deadlock due to a read-write-read
-  // situation for flush_context::flush_mutex_ with threads trying to lock
-  // flush_context::flush_mutex_ to return their segment_context
+  // situation for FlushContext::context_mutex_ with threads trying to lock
+  // FlushContext::context_mutex_ to return their segment_context
   if (const auto segment_count_max = segment_limits_.segment_count_max.load();
       segment_count_max &&
       // '<' to account for +1 reservation
@@ -2030,29 +2006,32 @@ IndexWriter::FlushPending(FlushContext& ctx,
   std::vector<std::unique_lock<std::mutex>> segment_flush_locks;
   segment_flush_locks.reserve(ctx.pending_segment_contexts_.size());
 
+  // mark the 'segment_context' as dirty so that it will not be reused if this
+  // 'flush_context' once again becomes the active context while the
+  // 'segment_context' handle is still held by GetBatch()
+  for (auto& entry : ctx.pending_segment_contexts_) {
+    entry.segment_->dirty_.store(true);
+  }
+
+  // wait for the segment to no longer be active
+  // i.e. wait for all ongoing document operations to finish (insert/replace)
+  // the segment will not be given out again by the active 'flush_context'
+  // because it was started by a different 'flush_context', i.e. by 'ctx'
   for (auto& entry : ctx.pending_segment_contexts_) {
     auto& segment = entry.segment_;
-
-    // mark the 'segment_context' as dirty so that it will not be reused if this
-    // 'flush_context' once again becomes the active context while the
-    // 'segment_context' handle is still held by GetBatch()
-    segment->dirty_.store(true);
-
-    // wait for the segment to no longer be active
-    // i.e. wait for all ongoing document operations to finish (insert/replace)
-    // the segment will not be given out again by the active 'flush_context'
-    // because it was started by a different 'flush_context', i.e. by 'ctx'
-
     // FIXME remove this condition once col_writer tail is written correctly
     while (segment->active_count_.load() || segment.use_count() != 1) {
       // arbitrary sleep interval
       ctx.pending_segment_context_cond_.wait_for(ctx_lock, 50ms);
     }
+  }
 
-    // prevent concurrent modification of segment_context properties during
-    // flush_context::emplace(...)
-    // FIXME flush_all() blocks flush_context::emplace(...) and
-    // insert()/remove()/replace()
+  // prevent concurrent modification of segment_context properties during
+  // flush_context::emplace(...)
+  // FIXME flush_all() blocks flush_context::emplace(...) and
+  // insert()/remove()/replace()
+  for (auto& entry : ctx.pending_segment_contexts_) {
+    auto& segment = entry.segment_;
     segment_flush_locks.emplace_back(segment->flush_mutex_);
 
     // force a flush of the underlying segment_writer

@@ -346,7 +346,7 @@ class IndexWriter : private util::noncopyable {
       auto ctx = UpdateSegment(false);  // updates 'segment_' and 'ctx_'
       IRS_ASSERT(segment_.ctx());
 
-      // guarded by flush_context::flush_mutex_
+      // guarded by FlushContext::context_mutex_
       segment_.ctx()->Remove(std::forward<Filter>(filter));
     }
 
@@ -385,7 +385,7 @@ class IndexWriter : private util::noncopyable {
     void ForceFlush();
 
    private:
-    // refresh segment if required (guarded by flush_context::flush_mutex_)
+    // refresh segment if required (guarded by FlushContext::context_mutex_)
     // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
     // since active 'flush_context' will not change and hence no reload required
     FlushContextPtr UpdateSegment(bool disable_flush);
@@ -659,7 +659,7 @@ class IndexWriter : private util::noncopyable {
     format::ptr codec_;
     // true if flush_all() started processing this segment (this
     // segment should not be used for any new operations), guarded by
-    // the flush_context::flush_mutex_
+    // the FlushContext::context_mutex_
     std::atomic_bool dirty_;
     // ref tracking for segment_writer to allow for easy ref removal on
     // segment_writer reset
@@ -667,7 +667,7 @@ class IndexWriter : private util::noncopyable {
     // guard 'flushed_', 'uncomitted_*' and 'writer_' from concurrent flush
     std::mutex flush_mutex_;
     // all of the previously flushed versions of this segment, guarded by the
-    // flush_context::flush_mutex_
+    // SegmentContext::flush_mutex_
     std::vector<FlushedSegment> flushed_;
     // update_contexts to use with 'flushed_'
     // sequentially increasing through all offsets
@@ -788,7 +788,7 @@ class IndexWriter : private util::noncopyable {
     RefTrackingDirectory::ptr dir_;
     // guard for the current context during flush (write)
     // operations vs update (read)
-    std::shared_mutex flush_mutex_;
+    std::shared_mutex context_mutex_;
     // guard for the current context during struct update operations,
     // e.g. pending_segments_, pending_segment_contexts_
     std::mutex mutex_;
