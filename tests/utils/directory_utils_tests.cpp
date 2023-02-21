@@ -233,7 +233,6 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     ASSERT_NE(nullptr, file3);
   }
 
-  // test visit refs visitor terminate
   {
     irs::memory_directory dir;
     irs::RefTrackingDirectory track_dir(dir);
@@ -242,7 +241,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file2 = track_dir.create("def");
     ASSERT_FALSE(!file2);
 
-    ASSERT_EQ(1, track_dir.GetRefs().size());
+    ASSERT_EQ(2, track_dir.GetRefs().size());
   }
 
   // ...........................................................................

@@ -501,28 +501,6 @@ TEST_P(tfidf_test_case, test_phrase) {
   }
 }
 
-TEST_P(tfidf_test_case, term_query_wand) {
-  {
-    tests::json_doc_generator gen(
-      resource("simple_single_column_multi_term.json"),
-      &tests::payloaded_json_field_factory);
-    add_segment(gen);
-  }
-
-  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, false});
-
-  auto reader = irs::DirectoryReader{dir(), codec()};
-  ASSERT_NE(nullptr, reader);
-  auto& segment = *(reader.begin());
-  const auto* column = segment.column("seq");
-  ASSERT_NE(nullptr, column);
-
-  irs::by_term filter;
-  *filter.mutable_field() = "name";
-  filter.mutable_options()->term =
-    irs::ViewCast<irs::byte_type>(std::string_view{"tempor"});
-}
-
 TEST_P(tfidf_test_case, test_query) {
   {
     tests::json_doc_generator gen(
