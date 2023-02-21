@@ -210,48 +210,44 @@ class SkipReader final : public SkipReaderBase {
 template<typename Read>
 doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   IRS_ASSERT(!levels_.empty());
-  size_t size = std::size(levels_);
+  const size_t size = std::size(levels_);
   size_t id = 0;
 
-  // returns the highest level with the value not less than a target
+  // Returns the highest level with the value not less than a target
   for (; id != size; ++id) {
     if (reader_.IsLess(id, target)) {
       break;
     }
   }
 
-  auto& level_0 = levels_.back();
-  const doc_id_t step_0{level_0.step};
+  for (uint64_t child_ptr{0}; id != size;) {
+    auto& level = levels_[id];
+    auto& stream = *level.stream;
+    child_ptr = level.child;
+    const bool is_leaf = (child_ptr == kUndefined);
 
-  if (id != size) {
-    --size;
-    for (uint64_t child_ptr{0}; id != size; ++id) {
-      auto& level = levels_[id];
-      const doc_id_t step{level.step};
-      auto& stream{*level.stream};
-
-      do {
-        child_ptr = level.child;
-        reader_.Read(id, level.left -= step, stream);
-        if (level.left > 0) {
-          level.child = stream.read_vlong();
-        }
-      } while (reader_.IsLess(id, target));
-
-      const auto next_id = id + 1;
-      SeekToChild(levels_[next_id], child_ptr, level);
-      reader_.MoveDown(next_id);
+    if (const auto left = (level.left -= level.step); IRS_LIKELY(left > 0)) {
+      reader_.Read(id, stream);
+      if (!is_leaf) {
+        level.child = stream.read_vlong();
+      }
+      if (reader_.IsLess(id, target)) {
+        id = reader_.AdjustLevel(id);
+        continue;
+      }
+    } else {
+      reader_.Seal(id);
     }
-
-    IRS_ASSERT(&level_0 == &levels_[id]);
-    auto& stream{*level_0.stream};
-
-    do {
-      reader_.Read(id, level_0.left -= step_0, stream);
-    } while (reader_.IsLess(id, target));
+    ++id;
+    if (!is_leaf) {
+      IRS_ASSERT(id < size);
+      SeekToChild(levels_[id], child_ptr, level);
+      reader_.MoveDown(id);
+    }
   }
 
-  return level_0.left + step_0;
+  auto& level_0 = levels_.back();
+  return level_0.left + level_0.step;
 }
 
 }  // namespace irs

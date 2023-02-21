@@ -2002,7 +2002,9 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       CopyState<IteratorTraits>(next, *prev_);
     }
 
-    void Read(size_t level, ptrdiff_t left, index_input& in);
+    void Read(size_t level, index_input& in);
+    void Seal(size_t level);
+    size_t AdjustLevel(size_t level) const noexcept { return level; }
 
     void Reset(SkipState& state) noexcept {
       IRS_ASSERT(std::is_sorted(
@@ -2038,22 +2040,28 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
 template<typename IteratorTraits, typename FieldTraits>
 void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
-  size_t level, ptrdiff_t left, index_input& in) {
+  size_t level, index_input& in) {
   auto& next = skip_levels_[level];
 
   // Store previous step on the same level
   CopyState<IteratorTraits>(*prev_, next);
 
-  if (IRS_LIKELY(left > 0)) {
-    ReadState<FieldTraits>(next, in);
+  ReadState<FieldTraits>(next, in);
 
-    if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
-      skip_score_stats::skip(in);
-    }
-  } else {
-    // Stream exhausted
-    next.doc = doc_limits::eof();
+  if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
+    skip_score_stats::skip(in);
   }
+}
+
+template<typename IteratorTraits, typename FieldTraits>
+void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Seal(size_t level) {
+  auto& next = skip_levels_[level];
+
+  // Store previous step on the same level
+  CopyState<IteratorTraits>(*prev_, next);
+
+  // Stream exhausted
+  next.doc = doc_limits::eof();
 }
 
 template<typename IteratorTraits, typename FieldTraits>
@@ -2332,7 +2340,9 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       // Move to the more granular level
       CopyState<IteratorTraits>(next, prev_skip_);
     }
-    void Read(size_t level, ptrdiff_t left, index_input& in);
+    void Read(size_t level, index_input& in);
+    void Seal(size_t level);
+    size_t AdjustLevel(size_t level) const noexcept;
     SkipState& State() noexcept { return prev_skip_; }
 
    private:
@@ -2428,26 +2438,43 @@ bool wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::IsLess(
 
 template<typename IteratorTraits, typename FieldTraits, bool Strict>
 void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Read(
-  size_t level, ptrdiff_t left, index_input& in) {
+  size_t level, index_input& in) {
   auto& last = prev_skip_;
   auto& next = skip_levels_[level];
 
   // Store previous step on the same level
   CopyState<IteratorTraits>(last, next);
 
-  if (IRS_LIKELY(left > 0)) {
-    ReadState<FieldTraits>(next, in);
+  ReadState<FieldTraits>(next, in);
 
-    if constexpr (FieldTraits::frequency()) {
-      ctx_.freq.value = skip_score_stats::read(in);
-      func_(&skip_scores_[level]);
-    }
-  } else {
-    // stream exhausted
-    next.doc = doc_limits::eof();
-    if constexpr (FieldTraits::frequency()) {
-      skip_scores_[level] = std::numeric_limits<score_t>::max();
-    }
+  if constexpr (FieldTraits::frequency()) {
+    ctx_.freq.value = skip_score_stats::read(in);
+    func_(&skip_scores_[level]);
+  }
+}
+
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+size_t wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::AdjustLevel(
+  size_t level) const noexcept {
+  while (level && skip_levels_[level].doc >= skip_levels_[level - 1].doc) {
+    --level;
+  }
+  return level;
+}
+
+template<typename IteratorTraits, typename FieldTraits, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Seal(
+  size_t level) {
+  auto& last = prev_skip_;
+  auto& next = skip_levels_[level];
+
+  // Store previous step on the same level
+  CopyState<IteratorTraits>(last, next);
+
+  // stream exhausted
+  next.doc = doc_limits::eof();
+  if constexpr (FieldTraits::frequency()) {
+    skip_scores_[level] = std::numeric_limits<score_t>::max();
   }
 }
 

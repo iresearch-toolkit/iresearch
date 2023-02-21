@@ -463,26 +463,31 @@ TEST_F(SkipReaderTest, Seek) {
       return upper_bounds[level] < target;
     }
 
+    size_t AdjustLevel(size_t id) const noexcept { return id; }
+
     void MoveDown(size_t level) {
       ASSERT_LT(level, upper_bounds.size());
       ++move_down_calls_count;
       upper_bounds[level] = lower;
     }
 
-    void Read(size_t level, ptrdiff_t left, irs::data_input& in) {
+    void Read(size_t level, irs::data_input& in) {
       EXPECT_LT(level, upper_bounds.size());
       ++read_calls_count;
 
-      if (left <= 0) {
-        lower = upper_bounds[level];
-        upper_bounds[level] = irs::doc_limits::eof();
-      } else {
-        if (level == (upper_bounds.size() - 1)) {
-          lower = in.read_vlong();
-        }
-
-        upper_bounds[level] = in.read_vlong();
+      if (level == (upper_bounds.size() - 1)) {
+        lower = in.read_vlong();
       }
+
+      upper_bounds[level] = in.read_vlong();
+    }
+
+    void Seal(size_t level) {
+      EXPECT_LT(level, upper_bounds.size());
+      ++read_calls_count;
+
+      lower = upper_bounds[level];
+      upper_bounds[level] = irs::doc_limits::eof();
     }
 
     void ResetCallsCount() noexcept {
