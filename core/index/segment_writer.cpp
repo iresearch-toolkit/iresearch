@@ -183,8 +183,7 @@ segment_writer::segment_writer(ConstructToken, directory& dir,
   : sort_(column_info, {}),
     fields_(feature_info, cached_columns_, comparator),
     column_info_(&column_info),
-    dir_(dir),
-    initialized_(false) {}
+    dir_(dir) {}
 
 bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,

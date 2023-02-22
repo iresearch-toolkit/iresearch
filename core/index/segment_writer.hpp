@@ -380,7 +380,7 @@ class segment_writer : util::noncopyable {
   columnstore_writer::ptr col_writer_;
   TrackingDirectory dir_;
   uint64_t tick_{0};
-  bool initialized_;
+  bool initialized_{false};
   bool valid_{true};  // current state
 };
 

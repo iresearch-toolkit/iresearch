@@ -244,7 +244,7 @@ class IndexWriter : private util::noncopyable {
    public:
     Document(FlushContext& ctx, std::shared_ptr<SegmentContext> segment,
              const segment_writer::update_context& update);
-    Document(Document&&) = default;
+    Document(Document&&) noexcept = default;
     ~Document() noexcept;
 
     Document& operator=(Document&&) = delete;
@@ -293,9 +293,10 @@ class IndexWriter : private util::noncopyable {
    private:
     // hold reference to segment to prevent if from going back into the pool
     std::shared_ptr<SegmentContext> segment_;
-    segment_writer& writer_;  // cached *segment->writer_ to avoid dereference
-    FlushContext& ctx_;       // for rollback operations
-    size_t update_id_;
+    // cached *segment->writer_ to avoid dereference for rollback operations
+    segment_writer& writer_;
+    FlushContext& ctx_;
+    size_t update_id_{0};
   };
 
   class Transaction : private util::noncopyable {
@@ -630,18 +631,14 @@ class IndexWriter : private util::noncopyable {
 
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
-    explicit FlushedSegment(IndexSegment&& segment, document_mask&& docs_mask,
-                            doc_id_t docs_begin) noexcept
-      : IndexSegment{std::move(segment)},
-        docs_mask{std::move(docs_mask)},
-        docs_begin{docs_begin} {}
+    explicit FlushedSegment(IndexSegment&& segment,
+                            document_mask&& docs_mask) noexcept
+      : IndexSegment{std::move(segment)}, docs_mask{std::move(docs_mask)} {}
 
     // Flushed segment removals
     document_mask docs_mask;
     // starting doc_id that should be added to docs_mask
-    doc_id_t docs_mask_tail_doc_id{doc_limits::eof()};
-    // Offset of flushed docs in SegmentContext::flushed_update_contexts_
-    doc_id_t docs_begin{};
+    doc_id_t docs_mask_valid_end{doc_limits::eof()};
   };
 
   // The segment writer and its associated ref tracking directory
@@ -678,20 +675,12 @@ class IndexWriter : private util::noncopyable {
     segment_meta_generator_t meta_generator_;
     // sequential list of pending modification
     std::vector<ModificationContext> modification_queries_;
-    // requests (remove/update)
-    // starting doc_id that is not part of the current flush_context (doc_id
-    // sequentially increasing through all 'flushed_' offsets and into
-    // 'segment_writer::doc_contexts' hence value may be greater than
-    // doc_id_t::max)
-    size_t uncomitted_doc_id_begin_;
-    // current modification/update
-    // generation offset for asignment to uncommited operations (same as
-    // modification_queries_.size() - uncomitted_modification_queries_)
-    // FIXME TODO consider removing
-    size_t uncomitted_generation_offset_;
-    // staring offset in
-    // 'modification_queries_' that is not part of the current flush_context
-    size_t uncomitted_modification_queries_;
+
+    // Transaction::Commit was not called for these:
+    size_t uncommitted_docs_;
+    size_t uncommitted_generation_;
+    size_t uncommitted_modification_queries_;
+
     std::unique_ptr<segment_writer> writer_;
     // the SegmentMeta this writer was initialized with
     IndexSegment writer_meta_;
@@ -714,7 +703,7 @@ class IndexWriter : private util::noncopyable {
 
     // Returns context for "insert" operation.
     segment_writer::update_context MakeUpdateContext() const noexcept {
-      return {uncomitted_generation_offset_, kNonUpdateRecord};
+      return {uncommitted_generation_, kNonUpdateRecord};
     }
 
     // Returns context for "update" operation.

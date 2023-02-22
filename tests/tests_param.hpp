@@ -146,7 +146,7 @@ enum Types : uint64_t {
   kTypesRot13_7 = 1 << 3,
 };
 
-// #define IRESEARCH_ONLY_MEMORY
+#define IRESEARCH_ONLY_MEMORY
 
 template<uint64_t Type>
 constexpr auto getDirectories() {
