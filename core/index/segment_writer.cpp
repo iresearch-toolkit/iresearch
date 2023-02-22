@@ -112,10 +112,8 @@ doc_id_t segment_writer::begin(const update_context& ctx,
 }
 
 std::unique_ptr<segment_writer> segment_writer::make(
-  directory& dir, const ColumnInfoProvider& column_info,
-  const FeatureInfoProvider& feature_info, const Comparer* comparator) {
-  return std::make_unique<segment_writer>(ConstructToken{}, dir, column_info,
-                                          feature_info, comparator);
+  directory& dir, const SegmentWriterOptions& options) {
+  return std::make_unique<segment_writer>(ConstructToken{}, dir, options);
 }
 
 size_t segment_writer::memory_active() const noexcept {
@@ -177,14 +175,12 @@ bool segment_writer::remove(doc_id_t doc_id) {
 }
 
 segment_writer::segment_writer(ConstructToken, directory& dir,
-                               const ColumnInfoProvider& column_info,
-                               const FeatureInfoProvider& feature_info,
-                               const Comparer* comparator) noexcept
-  : sort_(column_info, {}),
-    fields_(feature_info, cached_columns_, comparator),
-    column_info_(&column_info),
-    dir_(dir),
-    initialized_(false) {}
+                               const SegmentWriterOptions& options) noexcept
+  : wand_scorers_{options.wand_scorers},
+    sort_{options.column_info, {}},
+    fields_{options.feature_info, cached_columns_, options.comparator},
+    column_info_{&options.column_info},
+    dir_{dir} {}
 
 bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
@@ -194,7 +190,8 @@ bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
 
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
-  // invert only if new field index features are a subset of slot index features
+  // invert only if new field index features are a subset of slot index
+  // features
   IRS_ASSERT(IsSubsetOf(features, slot->meta().features));
   if (IsSubsetOf(index_features, slot->requested_features()) &&
       slot->invert(tokens, doc)) {

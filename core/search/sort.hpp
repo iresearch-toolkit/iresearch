@@ -23,14 +23,9 @@
 
 #pragma once
 
-#include <cstring>
-#include <utility>
-
 #include "index/index_features.hpp"
 #include "search/score_function.hpp"
 #include "utils/attribute_provider.hpp"
-#include "utils/attributes.hpp"
-#include "utils/iterator.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/small_vector.hpp"
 

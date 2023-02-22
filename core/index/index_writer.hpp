@@ -149,6 +149,10 @@ using ProgressReportCallback =
 // payload generation.
 using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
+// Scorers allowed to use in conjunction with wanderator.
+using WandScorers = SmallVector<sort::ptr, 2>;
+using WandScorersProvider = std::function<WandScorers()>;
+
 // Options the the writer should use after creation
 struct IndexWriterOptions : public SegmentOptions {
   // Options for snapshot management
@@ -163,6 +167,9 @@ struct IndexWriterOptions : public SegmentOptions {
 
   // Provides payload for index_meta created by writer
   PayloadProvider meta_payload_provider;
+
+  // Returns a list of wand scorers.
+  WandScorersProvider wand_provider;
 
   // Comparator defines physical order of documents in each segment
   // produced by an index_writer.
@@ -546,6 +553,7 @@ class IndexWriter : private util::noncopyable {
               const ColumnInfoProvider& column_info,
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
+              const WandScorersProvider& wand_provider,
               std::shared_ptr<const DirectoryReaderImpl>&& committed_reader);
 
  private:
@@ -732,13 +740,10 @@ class IndexWriter : private util::noncopyable {
 
     static std::unique_ptr<SegmentContext> make(
       directory& dir, segment_meta_generator_t&& meta_generator,
-      const ColumnInfoProvider& column_info,
-      const FeatureInfoProvider& feature_info, const Comparer* comparator);
+      const SegmentWriterOptions& segment_writer_options);
 
     SegmentContext(directory& dir, segment_meta_generator_t&& meta_generator,
-                   const ColumnInfoProvider& column_info,
-                   const FeatureInfoProvider& feature_info,
-                   const Comparer* comparator);
+                   const SegmentWriterOptions& segment_writer_options);
 
     // Flush current writer state into a materialized segment.
     // Return tick of last committed transaction.
@@ -925,9 +930,18 @@ class IndexWriter : private util::noncopyable {
 
   FlushContextPtr GetFlushContext(bool shared = true);
 
-  // return a usable segment or a nullptr segment if
+  // Return a usable segment or a nullptr segment if
   // retry is required (e.g. no free segments available)
   ActiveSegmentContext GetSegmentContext(FlushContext& ctx);
+
+  // Return options for segment_writer
+  SegmentWriterOptions GetSegmentWriterOptions() const noexcept {
+    return {
+      .column_info = column_info_,
+      .feature_info = feature_info_,
+      .wand_scorers = std::span{wand_scorers_.data(), wand_scorers_.size()},
+      .comparator = this->comparator_};
+  }
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;
@@ -948,9 +962,9 @@ class IndexWriter : private util::noncopyable {
 
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
-  // provides payload for new segments
-  PayloadProvider meta_payload_provider_;
+  WandScorers wand_scorers_;
   const Comparer* comparator_;
+  PayloadProvider meta_payload_provider_;  // provides payload for new segments
   format::ptr codec_;
   // guard for cached_segment_readers_, commit_pool_, meta_
   // (modification during commit()/defragment()), payload_buf_

@@ -1206,8 +1206,7 @@ void IndexWriter::FlushContext::reset() noexcept {
 
 IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
-  const ColumnInfoProvider& column_info,
-  const FeatureInfoProvider& feature_info, const Comparer* comparator)
+  const SegmentWriterOptions& segment_writer_options)
   : active_count_(0),
     buffered_docs_(0),
     dirty_(false),
@@ -1216,7 +1215,7 @@ IndexWriter::SegmentContext::SegmentContext(
     uncomitted_doc_id_begin_(doc_limits::min()),
     uncomitted_generation_offset_(0),
     uncomitted_modification_queries_(0),
-    writer_(segment_writer::make(dir_, column_info, feature_info, comparator)) {
+    writer_{segment_writer::make(dir_, segment_writer_options)} {
   IRS_ASSERT(meta_generator_);
 }
 
@@ -1252,10 +1251,9 @@ uint64_t IndexWriter::SegmentContext::Flush() {
 
 IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
-  const ColumnInfoProvider& column_info,
-  const FeatureInfoProvider& feature_info, const Comparer* comparator) {
-  return std::make_unique<SegmentContext>(
-    dir, std::move(meta_generator), column_info, feature_info, comparator);
+  const SegmentWriterOptions& segment_writer_options) {
+  return std::make_unique<SegmentContext>(dir, std::move(meta_generator),
+                                          segment_writer_options);
 }
 
 segment_writer::update_context IndexWriter::SegmentContext::MakeUpdateContext(
@@ -1358,11 +1356,13 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
+  const WandScorersProvider& wand_provider,
   std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
   : feature_info_{feature_info},
     column_info_{column_info},
-    meta_payload_provider_{meta_payload_provider},
+    wand_scorers_{wand_provider ? wand_provider() : WandScorers{}},
     comparator_{comparator},
+    meta_payload_provider_{meta_payload_provider},
     codec_{std::move(codec)},
     dir_{dir},
     // 2 because just swap them due to common commit lock
@@ -1499,7 +1499,7 @@ IndexWriter::ptr IndexWriter::Make(
     std::move(codec), opts.segment_pool_size, SegmentOptions{opts},
     opts.comparator, opts.column_info ? opts.column_info : kDefaultColumnInfo,
     opts.features ? opts.features : kDefaultFeatureInfo,
-    opts.meta_payload_provider, std::move(reader));
+    opts.meta_payload_provider, opts.wand_provider, std::move(reader));
 
   // Remove non-index files from directory
   directory_utils::RemoveAllUnreferenced(dir);
@@ -2060,14 +2060,14 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext(
 
       return meta;
     },
-    column_info_, feature_info_, comparator_)};
+    GetSegmentWriterOptions())};
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (auto segment_memory_max = segment_limits_.segment_memory_max.load();
       segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, column_info_,
-                                                feature_info_, comparator_);
+    segment_ctx->writer_ =
+      segment_writer::make(segment_ctx->dir_, GetSegmentWriterOptions());
   }
 
   return {segment_ctx, segments_active_};

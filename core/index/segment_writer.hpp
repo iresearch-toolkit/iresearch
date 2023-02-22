@@ -27,6 +27,7 @@
 #include "column_info.hpp"
 #include "field_data.hpp"
 #include "formats/formats.hpp"
+#include "search/sort.hpp"
 #include "sorted_column.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/compression.hpp"
@@ -59,6 +60,15 @@ enum class Action {
 
 ENABLE_BITMASK_ENUM(Action);
 
+using WandScorersView = std::span<const sort::ptr>;
+
+struct SegmentWriterOptions {
+  const ColumnInfoProvider& column_info;
+  const FeatureInfoProvider& feature_info;
+  WandScorersView wand_scorers;
+  const Comparer* const comparator{};
+};
+
 // Interface for an index writer over a directory
 // an object that represents a single ongoing transaction
 // non-thread safe
@@ -76,8 +86,7 @@ class segment_writer : util::noncopyable {
   };
 
   static std::unique_ptr<segment_writer> make(
-    directory& dir, const ColumnInfoProvider& column_info,
-    const FeatureInfoProvider& feature_info, const Comparer* comparator);
+    directory& dir, const SegmentWriterOptions& options);
 
   // begin document-write transaction
   // Return doc_id_t as per doc_limits
@@ -159,9 +168,7 @@ class segment_writer : util::noncopyable {
   uint64_t tick() const noexcept { return tick_; }
 
   segment_writer(ConstructToken, directory& dir,
-                 const ColumnInfoProvider& column_info,
-                 const FeatureInfoProvider& feature_info,
-                 const Comparer* comparator) noexcept;
+                 const SegmentWriterOptions& options) noexcept;
 
  private:
   struct stored_column : util::noncopyable {
@@ -364,6 +371,7 @@ class segment_writer : util::noncopyable {
   // Flushes indexed fields to directory
   void flush_fields(const doc_map& docmap);
 
+  WandScorersView wand_scorers_;
   std::deque<cached_column> cached_columns_;  // pointers remain valid
   sorted_column sort_;
   std::vector<update_context> docs_context_;
@@ -379,7 +387,7 @@ class segment_writer : util::noncopyable {
   columnstore_writer::ptr col_writer_;
   TrackingDirectory dir_;
   uint64_t tick_{0};
-  bool initialized_;
+  bool initialized_{false};
   bool valid_{true};  // current state
 };
 
