@@ -787,31 +787,22 @@ void IndexWriter::Transaction::Reset() noexcept {
   auto& flushed_update_contexts = ctx->flushed_update_contexts_;
 
   // find and mask/truncate uncommitted tail
-  for (size_t i = 0, size = ctx->flushed_.size(), flushed_docs_end = 0;
-       i != size; ++i) {
-    auto& flushed = ctx->flushed_[i];
-    auto flushed_docs_begin = flushed_docs_end;
-    IRS_ASSERT(flushed.meta.docs_count != 0);
-    // sum of all previous SegmentMeta::docs_count including this meta
-    flushed_docs_end += flushed.meta.docs_count;
-
-    if (flushed_docs_end <= ctx->uncommitted_docs_) {
-      continue;  // all documents in this this index_meta have been committed
-    }
-    if (flushed_docs_begin == ctx->uncommitted_docs_) {
-      ctx->flushed_.resize(i);                // truncate including current meta
-      flushed_docs_end = flushed_docs_begin;  // move to previous
+  const auto end = ctx->flushed_.end();
+  auto it = std::find_if(ctx->flushed_.begin(), end, [&](const auto& flushed) {
+    return ctx->uncommitted_docs_ < flushed.GetDocsEnd();
+  });
+  if (it != end) {
+    const auto docs_begin = it->GetDocsBegin();
+    const auto docs_end = it->GetDocsEnd();
+    if (it->SetValidEnd(ctx->uncommitted_docs_)) {
+      ctx->flushed_.erase(it + 1, end);
+      ctx->flushed_update_contexts_.resize(docs_end);
+      ctx->uncommitted_docs_ = docs_end;
     } else {
-      ctx->flushed_.resize(i + 1);  // truncate starting from subsequent meta
-      flushed.docs_mask_valid_end = static_cast<doc_id_t>(
-        ctx->uncommitted_docs_ - flushed_docs_begin + doc_limits::min());
+      ctx->flushed_.erase(it, end);
+      ctx->flushed_update_contexts_.resize(docs_begin);
+      ctx->uncommitted_docs_ = docs_begin;
     }
-    IRS_ASSERT(flushed_docs_end <= flushed_update_contexts.size());
-    // truncate 'flushed_update_contexts_'
-    flushed_update_contexts.resize(flushed_docs_end);
-    // reset to start of 'writer_'
-    ctx->uncommitted_docs_ = flushed_docs_end;
-    break;
   }
 
   if (!ctx->writer_) {
@@ -1135,7 +1126,8 @@ uint64_t IndexWriter::SegmentContext::Flush() {
   IRS_ASSERT(writer_meta_.meta.live_docs_count <= writer_meta_.meta.docs_count);
   IRS_ASSERT(writer_meta_.meta.docs_count == ctxs.size());
 
-  flushed_.emplace_back(std::move(writer_meta_), std::move(docs_mask));
+  flushed_.emplace_back(std::move(writer_meta_), std::move(docs_mask),
+                        flushed_update_contexts_.size());
   try {
     flushed_update_contexts_.insert(flushed_update_contexts_.end(),
                                     ctxs.begin(), ctxs.end());
@@ -2344,7 +2336,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
                  segment->flushed_update_contexts_.size());
 
       // process individually each flushed SegmentMeta from the SegmentContext
-      for (size_t flushed_docs_end = 0; auto& flushed : segment->flushed_) {
+      for (auto& flushed : segment->flushed_) {
         // report progress
         progress("Stage 3: Creating new segments",
                  current_pending_segment_context_segments,
@@ -2353,16 +2345,6 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
 
         IRS_ASSERT(flushed.meta.live_docs_count != 0);
         IRS_ASSERT(flushed.meta.live_docs_count <= flushed.meta.docs_count);
-        const auto flushed_docs_begin = flushed_docs_end;
-        // sum of all previous SegmentMeta::docs_count including this meta
-        flushed_docs_end += flushed.meta.docs_count;
-
-        // beginning doc_id in this SegmentMeta
-        const auto valid_doc_id_begin = doc_limits::min();
-        const auto valid_doc_id_end = std::min(
-          static_cast<doc_id_t>(flushed.meta.docs_count) + doc_limits::min(),
-          flushed.docs_mask_valid_end);
-        IRS_ASSERT(valid_doc_id_begin < valid_doc_id_end);
 
         auto reader =
           SegmentReaderImpl::Open(dir, flushed.meta, reader_options);
@@ -2375,13 +2357,15 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
             flushed.meta.name, "', error: failed to open segment")};
         }
 
-        const std::span flush_update_contexts{
-          segment->flushed_update_contexts_.data() + flushed_docs_begin,
-          flushed.meta.docs_count};
+        // beginning doc_id in this SegmentMeta
+        const auto valid_doc_id_begin = doc_limits::min();
+        const auto valid_doc_id_end = flushed.GetValidEnd();
+        IRS_ASSERT(valid_doc_id_begin < valid_doc_id_end);
 
         auto& flush_segment_ctx = segment_ctxs.emplace_back(
           std::move(reader), std::move(flushed), std::move(flushed.docs_mask),
-          valid_doc_id_begin, valid_doc_id_end, flush_update_contexts,
+          valid_doc_id_begin, valid_doc_id_end,
+          flushed.GetContexts(segment->flushed_update_contexts_),
           segment->modification_queries_);
 
         // read document_mask as was originally flushed

@@ -631,14 +631,36 @@ class IndexWriter : private util::noncopyable {
 
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
-    explicit FlushedSegment(IndexSegment&& segment,
-                            document_mask&& docs_mask) noexcept
-      : IndexSegment{std::move(segment)}, docs_mask{std::move(docs_mask)} {}
+    explicit FlushedSegment(IndexSegment&& segment, document_mask&& docs_mask,
+                            size_t docs_begin) noexcept
+      : IndexSegment{std::move(segment)},
+        docs_mask{std::move(docs_mask)},
+        docs_begin{docs_begin} {}
+
+    size_t GetDocsBegin() const noexcept { return docs_begin; }
+    size_t GetDocsEnd() const noexcept { return docs_begin + meta.docs_count; }
+
+    bool SetValidEnd(size_t valid_docs_end) noexcept {
+      docs_mask_valid_end =
+        static_cast<doc_id_t>(valid_docs_end - docs_begin + doc_limits::min());
+      return docs_begin != valid_docs_end;
+    }
+    doc_id_t GetValidEnd() const noexcept {
+      return std::min(
+        static_cast<doc_id_t>(meta.docs_count) + doc_limits::min(),
+        docs_mask_valid_end);
+    }
+
+    std::span<segment_writer::update_context> GetContexts(
+      std::span<segment_writer::update_context> all) const noexcept {
+      return {all.data() + docs_begin, meta.docs_count};
+    }
 
     // Flushed segment removals
     document_mask docs_mask;
     // starting doc_id that should be added to docs_mask
     doc_id_t docs_mask_valid_end{doc_limits::eof()};
+    size_t docs_begin;
   };
 
   // The segment writer and its associated ref tracking directory
