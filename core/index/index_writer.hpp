@@ -640,10 +640,11 @@ class IndexWriter : private util::noncopyable {
     size_t GetDocsBegin() const noexcept { return docs_begin; }
     size_t GetDocsEnd() const noexcept { return docs_begin + meta.docs_count; }
 
-    bool SetValidEnd(size_t valid_docs_end) noexcept {
+    bool SetCommitted(size_t committed) noexcept {
+      IRS_ASSERT(committed < GetDocsEnd());
       docs_mask_valid_end =
-        static_cast<doc_id_t>(valid_docs_end - docs_begin + doc_limits::min());
-      return docs_begin != valid_docs_end;
+        static_cast<doc_id_t>(committed - docs_begin + doc_limits::min());
+      return docs_begin != committed;
     }
     doc_id_t GetValidEnd() const noexcept {
       return std::min(
@@ -658,6 +659,8 @@ class IndexWriter : private util::noncopyable {
 
     // Flushed segment removals
     document_mask docs_mask;
+
+   private:
     // starting doc_id that should be added to docs_mask
     doc_id_t docs_mask_valid_end{doc_limits::eof()};
     size_t docs_begin;

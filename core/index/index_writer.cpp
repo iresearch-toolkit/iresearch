@@ -792,13 +792,13 @@ void IndexWriter::Transaction::Reset() noexcept {
     return ctx->uncommitted_docs_ < flushed.GetDocsEnd();
   });
   if (it != end) {
-    const auto docs_begin = it->GetDocsBegin();
-    const auto docs_end = it->GetDocsEnd();
-    if (it->SetValidEnd(ctx->uncommitted_docs_)) {
+    if (it->SetCommitted(ctx->uncommitted_docs_)) {
+      const auto docs_end = it->GetDocsEnd();
       ctx->flushed_.erase(it + 1, end);
       ctx->flushed_update_contexts_.resize(docs_end);
       ctx->uncommitted_docs_ = docs_end;
     } else {
+      const auto docs_begin = it->GetDocsBegin();
       ctx->flushed_.erase(it, end);
       ctx->flushed_update_contexts_.resize(docs_begin);
       ctx->uncommitted_docs_ = docs_begin;
