@@ -54,7 +54,7 @@ class format_10_test_case : public tests::format_test_case {
     irs::term_meta* meta{};
   };
 
-  void assert_frequency_and_positions(irs::doc_iterator& expected,
+  void AssertFrequencyAndPositions(irs::doc_iterator& expected,
                                       irs::doc_iterator& actual) {
     auto* expected_freq = irs::get_mutable<irs::frequency>(&expected);
     auto* actual_freq = irs::get_mutable<irs::frequency>(&actual);
@@ -200,7 +200,7 @@ class format_10_test_case : public tests::format_test_case {
                 irs::doc_limits::invalid()));  // seek to the smaller doc
 
             ASSERT_EQ(doc.first, expected.seek(doc.first));
-            assert_frequency_and_positions(expected, *actual);
+            AssertFrequencyAndPositions(expected, *actual);
           }
 
           if (inc == 1) {
@@ -247,14 +247,14 @@ class format_10_test_case : public tests::format_test_case {
             ASSERT_EQ(doc->first, it->seek(doc->first));
 
             ASSERT_EQ(doc->first, expected.seek(doc->first));
-            assert_frequency_and_positions(expected, *it);
+            AssertFrequencyAndPositions(expected, *it);
             if (doc != docs.rbegin()) {
               ASSERT_TRUE(it->next());
               ASSERT_EQ((doc - 1)->first, it->value());
 
               ASSERT_TRUE(expected.next());
               ASSERT_EQ((doc - 1)->first, expected.value());
-              assert_frequency_and_positions(expected, *it);
+              AssertFrequencyAndPositions(expected, *it);
             }
           }
         }

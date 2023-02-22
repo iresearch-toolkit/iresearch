@@ -66,7 +66,11 @@ void AssertCallback(std::string_view file, std::size_t line,
                     std::string_view function, std::string_view condition,
                     std::string_view message) noexcept {
   std::cerr << file << ":" << line << ": " << function << ": Condition '"
-            << condition << "' is false. With message '" << message << "'\n";
+            << condition << "' is false.";
+  if (!message.empty()) {
+    std::cerr << "With message '" << message;
+  }
+  std::cerr << "'\n ";
   std::abort();
 }
 

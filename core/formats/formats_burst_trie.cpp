@@ -3133,9 +3133,10 @@ class field_reader final : public irs::field_reader {
     }
 
     doc_iterator::ptr wanderator(const seek_cookie& cookie,
-                                 IndexFeatures features) const final {
+                                 IndexFeatures features,
+                                 const WanderatorOptions& options) const final {
       return owner_->pr_->wanderator(meta().index_features, features,
-                                     down_cast<::cookie>(cookie).meta);
+                                     down_cast<::cookie>(cookie).meta, options);
     }
 
    private:

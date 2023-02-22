@@ -30,16 +30,14 @@
 namespace irs {
 namespace {
 
-const offset kEmptyOffset;
-
 struct Position {
   template<typename Iterator>
   explicit Position(Iterator& itr) noexcept
     : pos{&position::get_mutable(itr)},
       doc{irs::get<document>(itr)},
       scr{&irs::score::get(itr)} {
-    IRS_ASSERT(doc);
     IRS_ASSERT(pos);
+    IRS_ASSERT(doc);
     IRS_ASSERT(scr);
   }
 
@@ -52,10 +50,7 @@ struct PositionWithOffset : Position {
   template<typename Iterator>
   explicit PositionWithOffset(Iterator& itr) noexcept
     : Position{itr}, offs{irs::get<offset>(*this->pos)} {
-    if (IRS_UNLIKELY(!offs)) {
-      IRS_ASSERT(false);
-      offs = &kEmptyOffset;
-    }
+    IRS_ASSERT(offs);
   }
 
   const offset* offs;
@@ -522,10 +517,6 @@ NGramApprox::doc_iterators_t Execute(const NGramState& query_state,
   NGramApprox::doc_iterators_t itrs;
   itrs.reserve(query_state.terms.size());
 
-  auto validate = [](const auto& it) noexcept {
-    return it.it && it.doc && irs::get<irs::position>(*it.it);
-  };
-
   for (auto& term_state : query_state.terms) {
     if (IRS_UNLIKELY(term_state == nullptr)) {
       continue;
@@ -534,7 +525,7 @@ NGramApprox::doc_iterators_t Execute(const NGramState& query_state,
     if (auto docs = field->postings(*term_state, required_features); docs) {
       auto& it = itrs.emplace_back(std::move(docs));
 
-      if (IRS_UNLIKELY(!validate(it))) {
+      if (IRS_UNLIKELY(!it)) {
         itrs.pop_back();
       }
     }

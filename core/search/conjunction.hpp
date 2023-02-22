@@ -195,7 +195,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         break;
       case 2:
         score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-          // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
           (*self.scores_.front())(res);
@@ -205,7 +204,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         break;
       case 3:
         score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-          // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
           (*self.scores_.front())(res);
@@ -217,7 +215,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
         break;
       default:
         score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-          // FIXME(gnusi)
           auto& self = *static_cast<conjunction*>(ctx);
           auto& merger = static_cast<Merger&>(self);
           auto begin = std::begin(self.scores_);

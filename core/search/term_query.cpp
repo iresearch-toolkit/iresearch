@@ -34,10 +34,9 @@ TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
     stats_{std::move(stats)} {}
 
 doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
-  // get term state for the specified reader
   auto& rdr = ctx.segment;
   auto& ord = ctx.scorers;
-  auto state = states_.find(rdr);
+  auto state = states_.find(rdr);  // Get term state for the specified reader
 
   if (!state) {
     // Invalid state
@@ -47,9 +46,20 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   auto* reader = state->reader;
   IRS_ASSERT(reader);
 
-  auto docs = (ctx.mode == ExecutionMode::kTop)
-                ? reader->wanderator(*state->cookie, ord.features())
-                : reader->postings(*state->cookie, ord.features());
+  auto docs = [&]() -> irs::doc_iterator::ptr {
+    if (ctx.mode != ExecutionMode::kAll && !ord.empty()) {
+      return reader->wanderator(
+        *state->cookie, ord.features(),
+        {.factory = [&, bucket = ord.buckets().front().bucket.get()](
+                      const attribute_provider& attrs) -> ScoreFunction {
+           return bucket->prepare_scorer(rdr, *state->reader, stats_.c_str(),
+                                         attrs, boost());
+         },
+         .strict = (ctx.mode == ExecutionMode::kStrictTop)});
+    } else {
+      return reader->postings(*state->cookie, ord.features());
+    }
+  }();
 
   if (IRS_UNLIKELY(!docs)) {
     IRS_ASSERT(false);
@@ -60,6 +70,7 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
     if (score) {
+      // FIXME(gnusi): honor cached wanderator score
       *score = CompileScore(ord.buckets(), rdr, *state->reader, stats_.c_str(),
                             *docs, boost());
     }

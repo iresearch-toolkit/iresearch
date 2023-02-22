@@ -50,32 +50,24 @@ struct bstring_data_output : public irs::data_output {
   }
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
+// Freq | Term
+// -----------
+// 4    | 0
+// 3    | 1
+// 10   | 2
+// 7    | 3
+// 5    | 4
+// 4    | 5
+// 3    | 6
+// 7    | 7
+// 2    | 8
+// 7    | 9
 
-/////////////////
-// Freq | Term //
-/////////////////
-// 4    | 0    //
-// 3    | 1    //
-// 10   | 2    //
-// 7    | 3    //
-// 5    | 4    //
-// 4    | 5    //
-// 3    | 6    //
-// 7    | 7    //
-// 2    | 8    //
-// 7    | 9    //
-/////////////////
-
-//////////////////////////////////////////////////
-// Stats                                        //
-//////////////////////////////////////////////////
-// TotalFreq = 52                               //
-// DocsCount = 8                                //
-// AverageDocLength (TotalFreq/DocsCount) = 6.5 //
-//////////////////////////////////////////////////
+// Stats
+// ---------------------------------------------
+// TotalFreq = 52
+// DocsCount = 8
+// AverageDocLength (TotalFreq/DocsCount) = 6.5
 
 class tfidf_test_case : public index_test_base {
  protected:
@@ -1013,14 +1005,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      7,  // 3.45083 = sqrt(1)*(log(8/(4+1))+1) + sqrt(1)*(log(8/(2+1))+1)
-      0,  // 2.54612 = sqrt(3)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
-      1,  // 2.0789  = sqrt(2)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
-      3,  // 1.98083 = sqrt(0)*(log(8/(4+1))+1) + sqrt(1)*(log(8/(2+1))+1)
-      5,  // 1.47    = sqrt(1)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
-    };
+    std::vector<uint64_t> expected{7, 0, 1, 3, 5};
 
     irs::bytes_view_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);
@@ -1063,21 +1048,7 @@ TEST_P(tfidf_test_case, test_query) {
     filter.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
     std::multimap<irs::score_t, uint64_t, std::greater<>> sorted;
-    std::vector<uint64_t> expected{
-      // FIXME the following calculation is based on old formula
-      0,  // 4.239268 = sqrt(1)*(log(8/(3+1))+1) + sqrt(3)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-      7,  // 3.450832 = sqrt(0)*(log(8/(3+1))+1) + sqrt(1)*(log(8/(4+1))+1) +
-          // sqrt(1)*(log(8/(2+1))+1)
-      5,  // 3.163150 = sqrt(1)*(log(8/(3+1))+1) + sqrt(1)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-      1,  // 2.078899 = sqrt(0)*(log(8/(3+1))+1) + sqrt(2)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-      3,  // 1.980829 = sqrt(0)*(log(8/(3+1))+1) + sqrt(0)*(log(8/(4+1))+1) +
-          // sqrt(1)*(log(8/(2+1))+1)
-      2,  // 1.693147 = sqrt(1)*(log(8/(3+1))+1) + sqrt(0)*(log(8/(4+1))+1) +
-          // sqrt(0)*(log(8/(2+1))+1)
-    };
+    std::vector<uint64_t> expected{0, 7, 5, 1, 3, 2};
 
     irs::bytes_view_input in;
     auto prepared_filter = filter.prepare(reader, prepared_order);

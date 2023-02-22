@@ -739,7 +739,15 @@ void assert_docs(const irs::term_iterator& expected_term,
   });
 
   assert_docs(expected_term.postings(requested_features), [&]() {
-    return actual_terms.wanderator(*actual_cookie, requested_features);
+    // FIXME(gnusi)
+    const irs::WanderatorOptions options{
+      .factory =
+        [](const irs::attribute_provider&) {
+          return irs::ScoreFunction::Default(1);
+        },
+      .strict = false};
+
+    return actual_terms.wanderator(*actual_cookie, requested_features, options);
   });
 
   // FIXME(gnusi): check bit_union

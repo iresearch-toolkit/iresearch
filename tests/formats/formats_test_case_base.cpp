@@ -101,8 +101,13 @@ irs::ColumnInfo format_test_case::none_column_info() const noexcept {
           .track_prev_doc = false};
 }
 
-void format_test_case::assert_frequency_and_positions(
-  irs::doc_iterator& expected, irs::doc_iterator& actual) {
+void format_test_case::AssertFrequencyAndPositions(irs::doc_iterator& expected,
+                                                   irs::doc_iterator& actual) {
+  if (irs::doc_limits::eof(expected.value())) {
+    ASSERT_TRUE(irs::doc_limits::eof(expected.value()));
+    return;
+  }
+
   auto* expected_freq = irs::get<irs::frequency>(expected);
   auto* actual_freq = irs::get<irs::frequency>(actual);
   ASSERT_EQ(!expected_freq, !actual_freq);
@@ -110,6 +115,8 @@ void format_test_case::assert_frequency_and_positions(
   if (!expected_freq) {
     return;
   }
+
+  ASSERT_EQ(expected_freq->value, actual_freq->value);
 
   auto* expected_pos = irs::get_mutable<irs::position>(&expected);
   auto* actual_pos = irs::get_mutable<irs::position>(&actual);
@@ -143,7 +150,7 @@ void format_test_case::assert_frequency_and_positions(
   ASSERT_FALSE(actual_pos->next());
 }
 
-void format_test_case::assert_no_directory_artifacts(
+void format_test_case::AssertNoDirectoryArtifacts(
   const irs::directory& dir, const irs::format& codec,
   const std::unordered_set<std::string>& expect_additional /* ={} */) {
   std::vector<std::string> dir_files;
@@ -223,7 +230,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // add first segment
@@ -236,7 +243,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // add second segment (creating new index_meta file, remove old)
@@ -247,7 +254,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // delete record from first segment (creating new index_meta file + doc_mask
@@ -258,7 +265,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // delete all record from first segment (creating new index_meta file,
@@ -269,7 +276,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // delete all records from second segment (creating new index_meta file,
@@ -280,7 +287,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
   }
 
@@ -307,7 +314,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // add first segment
@@ -322,7 +329,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // delete record from first segment (creating new doc_mask file)
@@ -332,7 +339,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
 
     // create reader to directory
@@ -363,7 +370,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec(), reader_files);
+      AssertNoDirectoryArtifacts(*dir, *codec(), reader_files);
     }
 
     // delete record from first segment (creating new doc_mask file, not-remove
@@ -374,7 +381,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec(), reader_files);
+      AssertNoDirectoryArtifacts(*dir, *codec(), reader_files);
     }
 
     // delete all record from first segment (creating new index_meta file,
@@ -385,7 +392,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec(), reader_files);
+      AssertNoDirectoryArtifacts(*dir, *codec(), reader_files);
     }
 
     // delete all records from second segment (creating new index_meta file,
@@ -396,14 +403,14 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
       tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                     irs::DirectoryReader(*dir));
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec(), reader_files);
+      AssertNoDirectoryArtifacts(*dir, *codec(), reader_files);
     }
 
     // close reader (remove old meta + old doc_mask + first segment)
     {
       reader = {};
       irs::directory_cleaner::clean(*dir);  // clean unused files
-      assert_no_directory_artifacts(*dir, *codec());
+      AssertNoDirectoryArtifacts(*dir, *codec());
     }
   }
 
@@ -466,7 +473,7 @@ TEST_P(format_test_case, directory_artifact_cleaner) {
     // meta+segments loaded
     ASSERT_TRUE(dir->exists(exists, "dummy.file.1") && !exists);
     ASSERT_TRUE(dir->exists(exists, "dummy.file.2") && !exists);
-    assert_no_directory_artifacts(*dir, *codec());
+    AssertNoDirectoryArtifacts(*dir, *codec());
   }
 }
 

@@ -24,16 +24,19 @@
 #include "formats/formats_10_attributes.hpp"
 #include "formats_test_case_base.hpp"
 #include "store/directory_attributes.hpp"
+#include "store/mmap_directory.hpp"
 #include "tests_shared.hpp"
 
 namespace {
 
 class FreqThresholdDocIterator : public irs::doc_iterator {
  public:
-  FreqThresholdDocIterator(irs::doc_iterator& impl, uint32_t threshold)
+  FreqThresholdDocIterator(irs::doc_iterator& impl, uint32_t threshold,
+                           bool is_strict)
     : impl_{&impl},
       freq_{irs::get<irs::frequency>(impl)},
-      threshold_{threshold} {}
+      threshold_{threshold},
+      is_strict_{is_strict} {}
 
   irs::attribute* get_mutable(irs::type_info::type_id id) final {
     return impl_->get_mutable(id);
@@ -43,7 +46,7 @@ class FreqThresholdDocIterator : public irs::doc_iterator {
 
   bool next() final {
     while (impl_->next()) {
-      if (freq_ && freq_->value < threshold_) {
+      if (freq_ && Less()) {
         continue;
       }
 
@@ -53,13 +56,17 @@ class FreqThresholdDocIterator : public irs::doc_iterator {
   }
 
   irs::doc_id_t seek(irs::doc_id_t target) final {
+    if (target <= value()) {
+      return value();
+    }
+
     target = impl_->seek(target);
 
     if (irs::doc_limits::eof(target)) {
       return irs::doc_limits::eof();
     }
 
-    if (freq_ && freq_->value < threshold_) {
+    if (freq_ && Less()) {
       next();
     }
 
@@ -67,16 +74,25 @@ class FreqThresholdDocIterator : public irs::doc_iterator {
   }
 
  private:
+  bool Less() {
+    if (is_strict_) {
+      return freq_->value <= threshold_;
+    } else {
+      return freq_->value < threshold_;
+    }
+  }
+
   irs::doc_iterator* impl_;
   const irs::frequency* freq_;
   uint32_t threshold_;
+  bool is_strict_;
 };
 
 class SkipList {
  public:
   struct Step {
     irs::doc_id_t key;
-    uint32_t freq;
+    irs::score_t freq;
   };
 
   struct Level {
@@ -91,12 +107,12 @@ class SkipList {
 
   bool Empty() const noexcept { return skip_list_.empty(); }
   size_t Size() const noexcept { return skip_list_.size(); }
-  uint32_t At(size_t level, irs::doc_id_t doc) const noexcept {
+  irs::score_t At(size_t level, irs::doc_id_t doc) const noexcept {
     EXPECT_LT(level, skip_list_.size());
 
     auto& [_, data] = skip_list_[level];
     auto it = std::lower_bound(
-      std::begin(data), std::end(data), Step{doc, 0},
+      std::begin(data), std::end(data), Step{doc, 0.f},
       [](const auto& lhs, const auto& rhs) { return lhs.key < rhs.key; });
 
     EXPECT_NE(it, std::end(data));
@@ -129,17 +145,17 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
     skip_0 * static_cast<size_t>(std::pow(skip_n, num_levels - 1)));
 
   for (; num_levels; --num_levels) {
-    skip_list.emplace_back(Level{step, std::vector{Step{0U, 0U}}});
+    skip_list.emplace_back(Level{step, std::vector{Step{0U, 0.f}}});
     step /= skip_n;
   }
 
-  auto add = [&](irs::doc_id_t i, irs::doc_id_t doc, uint32_t freq) {
+  auto add = [&](irs::doc_id_t i, irs::doc_id_t doc, irs::score_t freq) {
     for (auto& [step, level] : skip_list) {
       if (level.size() * step < count) {
         ASSERT_FALSE(level.empty());
         level.back() = {doc, std::max(level.back().freq, freq)};
         if (0 == (i % step)) {
-          level.emplace_back(Step{0, 0});
+          level.emplace_back(Step{0, 0.f});
         }
       }
     }
@@ -154,7 +170,7 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
 
     for (auto& [step, level] : skip_list) {
       level.back() = {irs::doc_limits::eof(),
-                      std::numeric_limits<uint32_t>::max()};
+                      std::numeric_limits<irs::score_t>::max()};
     }
   }
 
@@ -162,7 +178,7 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
 }
 
 void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
-                    std::span<const uint32_t> actual_freqs) {
+                    std::span<const irs::score_t> actual_freqs) {
   ASSERT_EQ(expected_freqs.Size(), actual_freqs.size());
   for (size_t i = 0, size = expected_freqs.Size(); i < size; ++i) {
     const auto expected_freq = expected_freqs.At(i, doc);
@@ -171,304 +187,314 @@ void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
 }
 
 class Format15TestCase : public tests::format_test_case {
- protected:
+ public:
   static constexpr size_t kVersion10PostingsWriterBlockSize = 128;
+  static constexpr auto kNone = irs::IndexFeatures::NONE;
+  static constexpr auto kFreq = irs::IndexFeatures::FREQ;
+  static constexpr auto kPos =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
+  static constexpr auto kOffs = irs::IndexFeatures::FREQ |
+                                irs::IndexFeatures::POS |
+                                irs::IndexFeatures::OFFS;
+  static constexpr auto kPay = irs::IndexFeatures::FREQ |
+                               irs::IndexFeatures::POS |
+                               irs::IndexFeatures::PAY;
+  static constexpr auto kAll =
+    irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+    irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
 
-  void PostingsWandSeek(
-    std::span<const std::pair<irs::doc_id_t, uint32_t>> docs,
-    irs::IndexFeatures features, uint32_t threshold);
+  using Doc = std::pair<irs::doc_id_t, uint32_t>;
+  using Docs = std::vector<Doc>;
+  using DocsView = std::span<const Doc>;
+
+  Docs GenerateDocs(size_t count, float_t mean, float_t dev, size_t step);
+
+  std::pair<irs::version10::term_meta, irs::postings_reader::ptr> WriteReadMeta(
+    irs::directory& dir, DocsView docs, irs::IndexFeatures features);
+
+  void AssertWanderator(irs::doc_iterator::ptr& actual,
+                        irs::IndexFeatures features, DocsView docs);
+  void AssertBackwardsNext(irs::postings_reader& reader, DocsView docs,
+                           irs::IndexFeatures field_features,
+                           irs::IndexFeatures features,
+                           const irs::term_meta& meta, uint32_t threshold,
+                           bool strict);
+  void AssertDocsSeq(irs::postings_reader& reader, DocsView docs,
+                     irs::IndexFeatures field_features,
+                     irs::IndexFeatures features, const irs::term_meta& meta,
+                     uint32_t threshold, bool strict);
+  void AssertDocsRandom(irs::postings_reader& reader, DocsView docs,
+                        irs::IndexFeatures field_features,
+                        irs::IndexFeatures features, const irs::term_meta& meta,
+                        uint32_t threshold, bool strict, size_t seed,
+                        size_t inc);
+  void AssertCornerCases(irs::postings_reader& reader, DocsView docs,
+                         irs::IndexFeatures field_features,
+                         irs::IndexFeatures features,
+                         const irs::term_meta& meta, bool strict);
+  void AssertPostings(DocsView docs, irs::IndexFeatures features,
+                      uint32_t threshold, bool strict);
+  void AssertPostings(DocsView docs, uint32_t threshold, bool strict);
+  void AssertPostings(DocsView docs, uint32_t threshold);
+
+ private:
+  irs::doc_iterator::ptr GetWanderator(irs::postings_reader& reader,
+                                       irs::IndexFeatures field_features,
+                                       irs::IndexFeatures features,
+                                       const irs::term_meta& meta,
+                                       uint32_t threshold, bool strict);
 };
 
-void Format15TestCase::PostingsWandSeek(
-  std::span<const std::pair<irs::doc_id_t, uint32_t>> docs,
-  irs::IndexFeatures features, uint32_t threshold) {
-  irs::field_meta field;
-  field.index_features = features;
-  auto dir = get_directory(*this);
-
+std::pair<irs::version10::term_meta, irs::postings_reader::ptr>
+Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
+                                irs::IndexFeatures features) {
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
-  ASSERT_NE(nullptr, codec);
+  EXPECT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false);
-  ASSERT_NE(nullptr, writer);
+  EXPECT_NE(nullptr, writer);
   irs::postings_writer::state term_meta;  // must be destroyed before the writer
 
   {
-    irs::flush_state state;
-    state.dir = dir.get();
-    state.doc_count = docs.back().first + 1;
-    state.name = "segment_name";
-    state.index_features = field.index_features;
+    const irs::flush_state state{.dir = &dir,
+                                 .name = "segment_name",
+                                 .doc_count = docs.back().first + 1,
+                                 .index_features = features};
 
-    auto out = dir->create("attributes");
-    ASSERT_FALSE(!out);
+    auto out = dir.create("attributes");
+    EXPECT_FALSE(!out);
     irs::write_string(*out, std::string_view("file_header"));
 
     writer->prepare(*out, state);
     writer->begin_field(features);
 
-    postings it(docs, field.index_features);
+    postings it{docs, features};
     term_meta = writer->write(it);
 
     writer->encode(*out, *term_meta);
     writer->end();
   }
 
+  irs::SegmentMeta meta;
+  meta.name = "segment_name";
+
+  const irs::reader_state state{.dir = &dir, .meta = &meta};
+
+  auto in = dir.open("attributes", irs::IOAdvice::NORMAL);
+  EXPECT_FALSE(!in);
+  [[maybe_unused]] const auto tmp = irs::read_string<std::string>(*in);
+
+  auto reader = codec->get_postings_reader();
+  EXPECT_NE(nullptr, reader);
+  reader->prepare(*in, state, features);
+
+  irs::bstring in_data(in->length() - in->file_pointer(), 0);
+  in->read_bytes(&in_data[0], in_data.size());
+  const auto* begin = in_data.c_str();
+
+  irs::version10::term_meta read_meta;
+  begin += reader->decode(begin, features, read_meta);
+
   {
-    irs::SegmentMeta meta;
-    meta.name = "segment_name";
+    auto& typed_meta = static_cast<irs::version10::term_meta&>(*term_meta);
+    EXPECT_EQ(typed_meta.docs_count, read_meta.docs_count);
+    EXPECT_EQ(typed_meta.doc_start, read_meta.doc_start);
+    EXPECT_EQ(typed_meta.pos_start, read_meta.pos_start);
+    EXPECT_EQ(typed_meta.pos_end, read_meta.pos_end);
+    EXPECT_EQ(typed_meta.pay_start, read_meta.pay_start);
+    EXPECT_EQ(typed_meta.e_single_doc, read_meta.e_single_doc);
+    EXPECT_EQ(typed_meta.e_skip_start, read_meta.e_skip_start);
+  }
 
-    irs::reader_state state;
-    state.dir = dir.get();
-    state.meta = &meta;
+  EXPECT_EQ(begin, in_data.data() + in_data.size());
 
-    auto in = dir->open("attributes", irs::IOAdvice::NORMAL);
-    ASSERT_FALSE(!in);
-    const auto tmp = irs::read_string<std::string>(*in);
+  return std::make_pair(read_meta, std::move(reader));
+}
 
-    auto reader = codec->get_postings_reader();
-    ASSERT_NE(nullptr, reader);
-    reader->prepare(*in, state, field.index_features);
+void Format15TestCase::AssertWanderator(irs::doc_iterator::ptr& actual,
+                                        irs::IndexFeatures features,
+                                        DocsView docs) {
+  ASSERT_NE(nullptr, actual);
 
-    irs::bstring in_data(in->length() - in->file_pointer(), 0);
-    in->read_bytes(&in_data[0], in_data.size());
-    const auto* begin = in_data.c_str();
-
-    {
-      irs::version10::term_meta read_meta;
-      begin += reader->decode(begin, field.index_features, read_meta);
-
-      {
-        auto& typed_meta = static_cast<irs::version10::term_meta&>(*term_meta);
-        ASSERT_EQ(typed_meta.docs_count, read_meta.docs_count);
-        ASSERT_EQ(typed_meta.doc_start, read_meta.doc_start);
-        ASSERT_EQ(typed_meta.pos_start, read_meta.pos_start);
-        ASSERT_EQ(typed_meta.pos_end, read_meta.pos_end);
-        ASSERT_EQ(typed_meta.pay_start, read_meta.pay_start);
-        ASSERT_EQ(typed_meta.e_single_doc, read_meta.e_single_doc);
-        ASSERT_EQ(typed_meta.e_skip_start, read_meta.e_skip_start);
-      }
-
-      auto assert_docs_seq = [&]() {
-        postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold};
-        SkipList skip_list;
-
-        auto actual =
-          reader->wanderator(field.index_features, features, read_meta);
-        ASSERT_NE(nullptr, actual);
-
-        auto* threshold_value =
-          irs::get_mutable<irs::score_threshold>(actual.get());
-        if (docs.size() <= kVersion10PostingsWriterBlockSize ||
-            irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
-          ASSERT_EQ(nullptr, threshold_value);
-        } else {
-          ASSERT_NE(nullptr, threshold_value);
-          threshold_value->value = threshold;
-
-          postings tmp{docs, field.index_features};
-          skip_list = SkipList::Make(tmp, kVersion10PostingsWriterBlockSize, 8,
-                                     irs::doc_id_t(docs.size()));
-        }
-
-        ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
-
-        while (expected.next()) {
-          const auto expected_doc_id = expected.value();
-          ASSERT_TRUE(actual->next());
-
-          ASSERT_EQ(expected_doc_id, actual->value());
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the same doc
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the smaller doc
-          ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
-
-          if (!skip_list.Empty()) {
-            AssertSkipList(skip_list, expected_doc_id,
-                           threshold_value->skip_scores);
-          }
-          assert_frequency_and_positions(expected, *actual);
-        }
-
-        ASSERT_FALSE(actual->next());
-        ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
-
-        // seek after the existing documents
-        ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
-      };
-
-      auto assert_docs_random = [&](size_t seed, size_t inc) {
-        postings expected_postings{docs, field.index_features};
-        FreqThresholdDocIterator expected{expected_postings, threshold};
-
-        auto actual =
-          reader->wanderator(field.index_features, features, read_meta);
-        ASSERT_NE(nullptr, actual);
-
-        auto* threshold_value =
-          irs::get_mutable<irs::score_threshold>(actual.get());
-        if (docs.size() <= kVersion10PostingsWriterBlockSize ||
-            irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
-          ASSERT_EQ(nullptr, threshold_value);
-        } else {
-          ASSERT_NE(nullptr, threshold_value);
-          threshold_value->value = threshold;
-        }
-
-        ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
-
-        for (size_t i = seed, size = docs.size(); i < size; i += inc) {
-          const auto& doc = docs[i];
-          const auto expected_doc_id = expected.seek(doc.first);
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the same doc
-          ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
-          // seek to the smaller doc
-          ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
-
-          assert_frequency_and_positions(expected, *actual);
-        }
-
-        if (inc == 1) {
-          ASSERT_FALSE(actual->next());
-          ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
-
-          // seek after the existing documents
-          ASSERT_TRUE(
-            irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
-        }
-      };
-
-      // next + seek to eof
-      {
-        auto it = reader->wanderator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
-        ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-        ASSERT_TRUE(it->next());
-        ASSERT_EQ(docs.front().first, it->value());
-        ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
-      }
-
-      assert_docs_seq();
-
-      // seek for every document 127th document in a block
-      assert_docs_random(kVersion10PostingsWriterBlockSize - 1,
-                         kVersion10PostingsWriterBlockSize);
-
-      // seek for every 128th document in a block
-      assert_docs_random(kVersion10PostingsWriterBlockSize,
-                         kVersion10PostingsWriterBlockSize);
-
-      // seek for every document
-      assert_docs_random(0, 1);
-
-      // seek to every 5th document
-      assert_docs_random(0, 5);
-
-      // seek backwards && next
-      {
-        for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
-          if (doc->second < threshold) {
-            continue;
-          }
-
-          postings expected_postings{docs, field.index_features};
-          FreqThresholdDocIterator expected{expected_postings, threshold};
-
-          auto actual =
-            reader->wanderator(field.index_features, features, read_meta);
-          ASSERT_NE(nullptr, actual);
-
-          auto* threshold_value =
-            irs::get_mutable<irs::score_threshold>(actual.get());
-          if (docs.size() <= kVersion10PostingsWriterBlockSize ||
-              irs::IndexFeatures::NONE ==
-                (features & irs::IndexFeatures::FREQ)) {
-            ASSERT_EQ(nullptr, threshold_value);
-          } else {
-            ASSERT_NE(nullptr, threshold_value);
-            threshold_value->value = threshold;
-          }
-
-          ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
-          ASSERT_EQ(doc->first, actual->seek(doc->first));
-
-          ASSERT_EQ(doc->first, expected.seek(doc->first));
-          assert_frequency_and_positions(expected, *actual);
-          if (doc != docs.rbegin()) {
-            ASSERT_TRUE(expected.next());
-            ASSERT_EQ((doc - 1)->first, expected.value());
-
-            ASSERT_TRUE(actual->next());
-            ASSERT_EQ((doc - 1)->first, actual->value());
-
-            assert_frequency_and_positions(expected, *actual);
-          }
-        }
-      }
-
-      // seek to irs::doc_limits::invalid()
-      {
-        auto it = reader->wanderator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
-        ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-        ASSERT_FALSE(
-          irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
-        ASSERT_TRUE(it->next());
-        ASSERT_EQ(docs.front().first, it->value());
-      }
-
-      // seek to irs::doc_limits::eof()
-      {
-        auto it = reader->wanderator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
-        ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-        ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
-        ASSERT_FALSE(it->next());
-        ASSERT_TRUE(irs::doc_limits::eof(it->value()));
-      }
-    }
-
-    ASSERT_EQ(begin, in_data.data() + in_data.size());
+  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+  if (docs.size() <= kVersion10PostingsWriterBlockSize ||
+      irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
+    ASSERT_EQ(nullptr, threshold_value);
+  } else {
+    ASSERT_NE(nullptr, threshold_value);
   }
 }
 
-static constexpr auto kTestDirs =
-  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
-                        tests::kTypesRot13_7>();
+irs::doc_iterator::ptr Format15TestCase::GetWanderator(
+  irs::postings_reader& reader, irs::IndexFeatures field_features,
+  irs::IndexFeatures features, const irs::term_meta& meta, uint32_t threshold,
+  bool strict) {
+  const irs::WanderatorOptions options{
+    .factory =
+      [](const irs::attribute_provider& attrs) {
+        auto* freq = irs::get<irs::frequency>(attrs);
+        EXPECT_NE(nullptr, freq);
 
-static const auto kTestValues =
-  ::testing::Combine(::testing::ValuesIn(kTestDirs),
-                     ::testing::Values(tests::format_info{"1_5", "1_0"},
-                                       tests::format_info{"1_5simd", "1_0"}));
+        return irs::ScoreFunction{
+          reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
+          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+            *res = reinterpret_cast<irs::frequency*>(ctx)->value;
+          }};
+      },
+    .strict = strict};
 
-// Generic tests
-using tests::format_test_case;
+  auto actual = reader.wanderator(field_features, features, meta, options);
+  EXPECT_NE(nullptr, actual);
 
-INSTANTIATE_TEST_SUITE_P(Format15Test, format_test_case, kTestValues,
-                         format_test_case::to_string);
+  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+  if (threshold_value) {
+    threshold_value->value = threshold;
+  }
 
-// 1.5 specific tests
+  return actual;
+}
 
-TEST_P(Format15TestCase, PostingsWandSeek) {
-  auto generate_docs = [](size_t count, float_t mean, float_t dev,
-                          size_t step) {
-    std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;
-    docs.reserve(count);
-    std::generate_n(
-      std::back_inserter(docs), count,
-      [i = (irs::doc_limits::min)(), gen = std::mt19937{},
-       distr = std::normal_distribution<float_t>{mean, dev}, step]() mutable {
-        const irs::doc_id_t doc = i;
-        const auto freq = static_cast<uint32_t>(std::roundf(distr(gen)));
-        i += step;
-
-        return std::make_pair(doc, freq);
-      });
-    return docs;
+void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
+                                           DocsView docs,
+                                           irs::IndexFeatures field_features,
+                                           irs::IndexFeatures features,
+                                           const irs::term_meta& meta,
+                                           uint32_t threshold, bool strict) {
+  auto is_less = [&](auto lhs, auto rhs) {
+    if (strict) {
+      return lhs <= rhs;
+    } else {
+      return lhs < rhs;
+    }
   };
+
+  for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
+    if (is_less(doc->second, threshold)) {
+      continue;
+    }
+
+    postings expected_postings{docs, field_features};
+    FreqThresholdDocIterator expected{expected_postings, threshold, strict};
+
+    auto actual =
+      GetWanderator(reader, field_features, features, meta, threshold, strict);
+    AssertWanderator(actual, features, docs);
+
+    ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+    ASSERT_EQ(doc->first, actual->seek(doc->first));
+
+    ASSERT_EQ(doc->first, expected.seek(doc->first));
+    AssertFrequencyAndPositions(expected, *actual);
+
+    while (expected.next()) {
+      ASSERT_TRUE(actual->next());
+      AssertFrequencyAndPositions(expected, *actual);
+    }
+    ASSERT_FALSE(actual->next());
+    ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
+  }
+}
+
+void Format15TestCase::AssertDocsRandom(irs::postings_reader& reader,
+                                        DocsView docs,
+                                        irs::IndexFeatures field_features,
+                                        irs::IndexFeatures features,
+                                        const irs::term_meta& meta,
+                                        uint32_t threshold, bool strict,
+                                        size_t seed, size_t inc) {
+  postings expected_postings{docs, field_features};
+  FreqThresholdDocIterator expected{expected_postings, threshold, strict};
+
+  auto actual =
+    GetWanderator(reader, field_features, features, meta, threshold, strict);
+  AssertWanderator(actual, features, docs);
+
+  ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+
+  for (size_t i = seed, size = docs.size(); i < size; i += inc) {
+    const auto& doc = docs[i];
+    const auto expected_doc_id = expected.seek(doc.first);
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // Seek to the same doc
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // Seek to the smaller doc
+    ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
+
+    AssertFrequencyAndPositions(expected, *actual);
+  }
+
+  if (inc == 1) {
+    ASSERT_FALSE(actual->next());
+    ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
+
+    // Seek after the existing documents
+    ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
+  }
+}
+
+void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
+                                     DocsView docs,
+                                     irs::IndexFeatures field_features,
+                                     irs::IndexFeatures features,
+                                     const irs::term_meta& meta,
+                                     uint32_t threshold, bool strict) {
+  postings expected_postings{docs, field_features};
+  FreqThresholdDocIterator expected{expected_postings, threshold, strict};
+  SkipList skip_list;
+
+  auto actual =
+    GetWanderator(reader, field_features, features, meta, threshold, strict);
+  AssertWanderator(actual, features, docs);
+
+  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+
+  if (threshold_value) {
+    postings tmp{docs, field_features};
+    skip_list = SkipList::Make(tmp, kVersion10PostingsWriterBlockSize, 8,
+                               irs::doc_id_t(docs.size()));
+  }
+
+  ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
+
+  while (expected.next()) {
+    const auto expected_doc_id = expected.value();
+    ASSERT_TRUE(actual->next());
+
+    ASSERT_EQ(expected_doc_id, actual->value());
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // seek to the same doc
+    ASSERT_EQ(expected_doc_id, actual->seek(expected_doc_id));
+    // seek to the smaller doc
+    ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
+
+    if (threshold_value) {
+      AssertSkipList(skip_list, expected_doc_id, threshold_value->skip_scores);
+    }
+    AssertFrequencyAndPositions(expected, *actual);
+  }
+
+  ASSERT_FALSE(actual->next());
+  ASSERT_TRUE(irs::doc_limits::eof(actual->value()));
+
+  // seek after the existing documents
+  ASSERT_TRUE(irs::doc_limits::eof(actual->seek(docs.back().first + 42)));
+}
+
+Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
+                                                      float_t mean, float_t dev,
+                                                      size_t step) {
+  std::vector<std::pair<irs::doc_id_t, uint32_t>> docs;
+  docs.reserve(count);
+  std::generate_n(
+    std::back_inserter(docs), count,
+    [i = (irs::doc_limits::min)(), gen = std::mt19937{},
+     distr = std::normal_distribution<float_t>{mean, dev}, step]() mutable {
+      const irs::doc_id_t doc = i;
+      const auto freq = static_cast<uint32_t>(std::roundf(distr(gen)));
+      i += step;
+
+      return std::make_pair(doc, freq);
+    });
 
   auto check_docs = [](const auto& docs) {
     return std::is_sorted(
@@ -478,98 +504,181 @@ TEST_P(Format15TestCase, PostingsWandSeek) {
              return static_cast<int32_t>(v.second) > 0;
            });
   };
+  EXPECT_TRUE(check_docs(docs));
 
-  constexpr auto kNone = irs::IndexFeatures::NONE;
-  constexpr auto kFreq = irs::IndexFeatures::FREQ;
-  constexpr auto kPos = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS;
-  constexpr auto kOffs = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-                         irs::IndexFeatures::OFFS;
-  constexpr auto kPay = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-                        irs::IndexFeatures::PAY;
-  constexpr auto kAll = irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
-                        irs::IndexFeatures::OFFS | irs::IndexFeatures::PAY;
+  return docs;
+}
 
-  // singleton doc
+void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
+                                         DocsView docs,
+                                         irs::IndexFeatures field_features,
+                                         irs::IndexFeatures features,
+                                         const irs::term_meta& meta,
+                                         bool strict) {
+  // next + seek to eof
   {
-    constexpr size_t kCount = 1;
-    constexpr uint32_t kThreshold = 0;
-    static_assert(kCount < kVersion10PostingsWriterBlockSize);
-
-    const auto docs = generate_docs(kCount, 50.f, 14.f, 1);
-    ASSERT_TRUE(check_docs(docs));
-
-    PostingsWandSeek(docs, kNone, kThreshold);
-    PostingsWandSeek(docs, kFreq, kThreshold);
-    PostingsWandSeek(docs, kPos, kThreshold);
-    PostingsWandSeek(docs, kOffs, kThreshold);
-    PostingsWandSeek(docs, kPay, kThreshold);
-    PostingsWandSeek(docs, kAll, kThreshold);
+    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
+    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+    ASSERT_TRUE(it->next());
+    ASSERT_EQ(docs.front().first, it->value());
+    ASSERT_TRUE(irs::doc_limits::eof(it->seek(docs.back().first + 42)));
   }
 
-  // short list (< postings_writer::BLOCK_SIZE)
+  // Seek to irs::doc_limits::invalid()
   {
-    constexpr size_t kCount = 117;
-    constexpr uint32_t kThreshold = 0;
-    static_assert(kCount < kVersion10PostingsWriterBlockSize);
-
-    const auto docs = generate_docs(kCount, 50.f, 14.f, 1);
-    ASSERT_TRUE(check_docs(docs));
-
-    PostingsWandSeek(docs, kNone, kThreshold);
-    PostingsWandSeek(docs, kFreq, kThreshold);
-    PostingsWandSeek(docs, kPos, kThreshold);
-    PostingsWandSeek(docs, kOffs, kThreshold);
-    PostingsWandSeek(docs, kPay, kThreshold);
-    PostingsWandSeek(docs, kAll, kThreshold);
+    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
+    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+    ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
+    ASSERT_TRUE(it->next());
+    ASSERT_EQ(docs.front().first, it->value());
   }
 
-  // equals to postings_writer::BLOCK_SIZE
+  // Seek to irs::doc_limits::eof()
   {
-    constexpr uint32_t kThreshold = 0;
-    const auto docs =
-      generate_docs(kVersion10PostingsWriterBlockSize, 50.f, 14.f, 1);
-    ASSERT_TRUE(check_docs(docs));
-
-    PostingsWandSeek(docs, kNone, kThreshold);
-    PostingsWandSeek(docs, kFreq, kThreshold);
-    PostingsWandSeek(docs, kPos, kThreshold);
-    PostingsWandSeek(docs, kOffs, kThreshold);
-    PostingsWandSeek(docs, kPay, kThreshold);
-    PostingsWandSeek(docs, kAll, kThreshold);
-  }
-
-  // long list
-  {
-    constexpr size_t kCount = 10000;
-    constexpr uint32_t kThreshold = 0;
-    const auto docs = generate_docs(kCount, 50.f, 13.f, 1);
-    ASSERT_TRUE(check_docs(docs));
-
-    PostingsWandSeek(docs, kNone, kThreshold);
-    PostingsWandSeek(docs, kFreq, kThreshold);
-    PostingsWandSeek(docs, kPos, kThreshold);
-    PostingsWandSeek(docs, kOffs, kThreshold);
-    PostingsWandSeek(docs, kPay, kThreshold);
-    PostingsWandSeek(docs, kAll, kThreshold);
-  }
-
-  // 2^15
-  {
-    constexpr size_t kCount = size_t{1} << 15;
-    constexpr uint32_t kThreshold = 0;
-    const auto docs = generate_docs(kCount, 1000.f, 20.f, 2);
-    ASSERT_TRUE(check_docs(docs));
-
-    PostingsWandSeek(docs, kNone, kThreshold);
-    PostingsWandSeek(docs, kFreq, kThreshold);
-    PostingsWandSeek(docs, kPos, kThreshold);
-    PostingsWandSeek(docs, kOffs, kThreshold);
-    PostingsWandSeek(docs, kPay, kThreshold);
-    PostingsWandSeek(docs, kAll, kThreshold);
+    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
+    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
+    ASSERT_FALSE(it->next());
+    ASSERT_TRUE(irs::doc_limits::eof(it->value()));
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues,
+void Format15TestCase::AssertPostings(DocsView docs,
+                                      irs::IndexFeatures features,
+                                      uint32_t threshold, bool strict) {
+  auto dir = get_directory(*this);
+  ASSERT_NE(nullptr, dir);
+  auto [meta, reader] = WriteReadMeta(*dir, docs, features);
+  ASSERT_NE(nullptr, reader);
+
+  AssertCornerCases(*reader, docs, features, features, meta, strict);
+
+  AssertDocsSeq(*reader, docs, features, features, meta, threshold, strict);
+
+  // Seek to every document 127th document in a block
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
+                   kVersion10PostingsWriterBlockSize - 1,
+                   kVersion10PostingsWriterBlockSize);
+
+  // Seek to every 128th document in a block
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
+                   kVersion10PostingsWriterBlockSize,
+                   kVersion10PostingsWriterBlockSize);
+
+  // Seek to every document
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
+                   0, 1);
+
+  // Seek to every 5th document
+  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
+                   0, 5);
+
+  // Seek backwards && next
+  AssertBackwardsNext(*reader, docs, features, features, meta, threshold,
+                      strict);
+}
+
+void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold,
+                                      bool strict) {
+  AssertPostings(docs, kNone, threshold, strict);
+  AssertPostings(docs, kFreq, threshold, strict);
+  AssertPostings(docs, kPos, threshold, strict);
+  AssertPostings(docs, kOffs, threshold, strict);
+  AssertPostings(docs, kPay, threshold, strict);
+  AssertPostings(docs, kAll, threshold, strict);
+}
+
+void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {
+  AssertPostings(docs, threshold, true);
+  AssertPostings(docs, threshold, false);
+}
+
+static const auto kTestFormats = ::testing::Values(
+  tests::format_info{"1_5", "1_0"}, tests::format_info{"1_5simd", "1_0"});
+
+static constexpr auto kTestDirs =
+  tests::getDirectories<tests::kTypesDefault | tests::kTypesRot13_16 |
+                        tests::kTypesRot13_7>();
+
+static const auto kTestValues =
+  ::testing::Combine(::testing::ValuesIn(kTestDirs), kTestFormats);
+
+// Generic tests
+using tests::format_test_case;
+
+INSTANTIATE_TEST_SUITE_P(Format15Test, format_test_case, kTestValues,
+                         format_test_case::to_string);
+
+// 1.5 specific tests
+
+TEST_P(Format15TestCase, SingletonPostingsThreshold0) {
+  static constexpr size_t kCount = 1;
+  static constexpr uint32_t kThreshold = 0;
+  static_assert(kCount < kVersion10PostingsWriterBlockSize);
+
+  const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
+
+  AssertPostings(docs, kThreshold);
+}
+
+TEST_P(Format15TestCase, ShortPostingsThreshold0) {
+  static constexpr size_t kCount = 117;  // < postings_writer::BLOCK_SIZE
+  static constexpr uint32_t kThreshold = 0;
+  static_assert(kCount < kVersion10PostingsWriterBlockSize);
+
+  const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
+
+  AssertPostings(docs, kThreshold);
+}
+
+TEST_P(Format15TestCase, BlockPostingsThreshold0) {
+  static constexpr size_t kCount = kVersion10PostingsWriterBlockSize;
+  static constexpr uint32_t kThreshold = 0;
+  const auto docs = GenerateDocs(kCount, 50.f, 14.f, 1);
+
+  AssertPostings(docs, kThreshold);
+}
+
+TEST_P(Format15TestCase, LongPostingsThreshold60) {
+  static constexpr size_t kCount = 10000;
+  static constexpr uint32_t kThreshold = 60;
+  const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
+
+  AssertPostings(docs, kThreshold);
+}
+
+TEST_P(Format15TestCase, LongPostingsThreshold100) {
+  static constexpr size_t kCount = 10000;
+  static constexpr uint32_t kThreshold = 100;
+  const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
+
+  AssertPostings(docs, kThreshold);
+}
+
+TEST_P(Format15TestCase, LongPostingsThreshold0) {
+  static constexpr size_t kCount = 10000;
+  static constexpr uint32_t kThreshold = 0;
+  const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
+
+  AssertPostings(docs, kThreshold);
+}
+
+/* Long test
+TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
+  static constexpr size_t kCount = size_t{1} << 15;
+  static constexpr uint32_t kThreshold = 0;
+  const auto docs = GenerateDocs(kCount, 1000.f, 20.f, 2);
+
+  AssertPostings(docs, kThreshold);
+}*/
+
+static constexpr auto kTestDirs15 =
+  tests::getDirectories<tests::kTypesDefault>();
+
+static const auto kTestValues15 =
+  ::testing::Combine(::testing::ValuesIn(kTestDirs15), kTestFormats);
+
+INSTANTIATE_TEST_SUITE_P(Format15Test, Format15TestCase, kTestValues15,
                          Format15TestCase::to_string);
 
 }  // namespace
