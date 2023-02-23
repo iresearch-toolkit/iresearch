@@ -425,7 +425,7 @@ filter::prepared::ptr prepare_automaton_filter(
 
   return memory::make_managed<MultiTermQuery>(std::move(states),
                                               std::move(stats), boost,
-                                              Sort::MergeType::kSum, size_t{1});
+                                              ScoreMergeType::kSum, size_t{1});
 }
 
 }  // namespace irs

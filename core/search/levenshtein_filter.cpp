@@ -232,7 +232,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 
   return memory::make_managed<MultiTermQuery>(std::move(states),
                                               std::move(stats), boost,
-                                              Sort::MergeType::kMax, size_t{1});
+                                              ScoreMergeType::kMax, size_t{1});
 }
 
 }  // namespace

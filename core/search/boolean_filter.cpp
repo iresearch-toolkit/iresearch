@@ -48,7 +48,7 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
 // Returns disjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
-                                        irs::Sort::MergeType merge_type,
+                                        irs::ScoreMergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
   IRS_ASSERT(std::distance(begin, end) >= 0);
@@ -87,7 +87,7 @@ irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
 // Returns conjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
-                                        irs::Sort::MergeType merge_type,
+                                        irs::ScoreMergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
   IRS_ASSERT(std::distance(begin, end) >= 0);
@@ -155,7 +155,7 @@ class BooleanQuery : public filter::prepared {
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(
       {.segment = ctx.segment, .scorers = Order::kUnordered, .ctx = ctx.ctx},
-      irs::Sort::MergeType::kSum, excl_begin, end);
+      irs::ScoreMergeType::kSum, excl_begin, end);
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {
@@ -181,7 +181,7 @@ class BooleanQuery : public filter::prepared {
   }
 
   virtual void prepare(const IndexReader& rdr, const Order& ord, score_t boost,
-                       Sort::MergeType merge_type,
+                       ScoreMergeType merge_type,
                        const attribute_provider* ctx,
                        std::span<const filter* const> incl,
                        std::span<const filter* const> excl) {
@@ -220,7 +220,7 @@ class BooleanQuery : public filter::prepared {
   virtual doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                                     iterator end) const = 0;
 
-  Sort::MergeType merge_type() const noexcept { return merge_type_; }
+  ScoreMergeType merge_type() const noexcept { return merge_type_; }
 
  private:
   // 0..excl_-1 - included queries
@@ -228,7 +228,7 @@ class BooleanQuery : public filter::prepared {
   queries_t queries_;
   // index of the first excluded query
   size_t excl_;
-  Sort::MergeType merge_type_{Sort::MergeType::kSum};
+  ScoreMergeType merge_type_{ScoreMergeType::kSum};
 };
 
 // Represent a set of queries joint by "And"
@@ -615,7 +615,7 @@ filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Order& ord,
     const std::array<const irs::filter*, 1> excl{res.first};
 
     auto q = memory::make_managed<AndQuery>();
-    q->prepare(rdr, ord, boost, Sort::MergeType::kSum, ctx, incl, excl);
+    q->prepare(rdr, ord, boost, ScoreMergeType::kSum, ctx, incl, excl);
     return q;
   }
 

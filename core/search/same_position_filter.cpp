@@ -175,7 +175,7 @@ class same_position_query : public filter::prepared {
     }
 
     return irs::ResoveMergeType(
-      irs::Sort::MergeType::kSum, ord.buckets().size(),
+      irs::ScoreMergeType::kSum, ord.buckets().size(),
       [&]<typename Aggregator>(
         Aggregator&& aggregator) -> irs::doc_iterator::ptr {
         using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;

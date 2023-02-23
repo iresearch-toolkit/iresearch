@@ -206,7 +206,7 @@ auto MakeByTermAndRange(std::string_view name, std::string_view value,
 
 auto MakeOptions(std::string_view parent, std::string_view child,
                  std::string_view child_value,
-                 irs::Sort::MergeType merge_type = irs::Sort::MergeType::kSum,
+                 irs::ScoreMergeType merge_type = irs::ScoreMergeType::kSum,
                  irs::Match match = irs::kMatchAny) {
   irs::ByNestedOptions opts;
   opts.match = match;
@@ -232,7 +232,7 @@ TEST(NestedFilterTest, CheckOptions) {
     irs::ByNestedOptions opts;
     ASSERT_EQ(nullptr, opts.parent);
     ASSERT_EQ(nullptr, opts.child);
-    ASSERT_EQ(irs::Sort::MergeType::kSum, opts.merge_type);
+    ASSERT_EQ(irs::ScoreMergeType::kSum, opts.merge_type);
     ASSERT_NE(nullptr, std::get_if<irs::Match>(&opts.match));
     ASSERT_EQ(irs::kMatchAny, std::get<irs::Match>(opts.match));
     ASSERT_EQ(opts, irs::ByNestedOptions{});
@@ -252,9 +252,9 @@ TEST(NestedFilterTest, CheckOptions) {
 
     ASSERT_NE(opts0, MakeOptions("parent", "child", "443"));
     ASSERT_NE(
-      opts0, MakeOptions("parent", "child", "442", irs::Sort::MergeType::kMax));
+      opts0, MakeOptions("parent", "child", "442", irs::ScoreMergeType::kMax));
     ASSERT_NE(opts0, MakeOptions("parent", "child", "442",
-                                 irs::Sort::MergeType::kSum, irs::kMatchNone));
+                                 irs::ScoreMergeType::kSum, irs::kMatchNone));
   }
 }
 
@@ -503,7 +503,7 @@ TEST_P(NestedFilterTestCase, JoinAny3) {
   CheckQuery(filter, Docs{6, 13, 20}, Costs{11}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -519,7 +519,7 @@ TEST_P(NestedFilterTestCase, JoinAny3) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -535,7 +535,7 @@ TEST_P(NestedFilterTestCase, JoinAny3) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -568,7 +568,7 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   CheckQuery(filter, Docs{13, 20}, Costs{11}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -583,7 +583,7 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -598,7 +598,7 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -626,7 +626,7 @@ TEST_P(NestedFilterTestCase, JoinMin0) {
   CheckQuery(filter, Docs{13, 20}, Costs{11}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -641,7 +641,7 @@ TEST_P(NestedFilterTestCase, JoinMin0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -656,7 +656,7 @@ TEST_P(NestedFilterTestCase, JoinMin0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -684,7 +684,7 @@ TEST_P(NestedFilterTestCase, JoinMin1) {
   CheckQuery(filter, Docs{6}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -698,7 +698,7 @@ TEST_P(NestedFilterTestCase, JoinMin1) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -712,7 +712,7 @@ TEST_P(NestedFilterTestCase, JoinMin1) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -739,7 +739,7 @@ TEST_P(NestedFilterTestCase, JoinMin2) {
   CheckQuery(filter, Docs{6, 8, 13, 20}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -754,7 +754,7 @@ TEST_P(NestedFilterTestCase, JoinMin2) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -769,7 +769,7 @@ TEST_P(NestedFilterTestCase, JoinMin2) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -799,7 +799,7 @@ TEST_P(NestedFilterTestCase, JoinMin3) {
   CheckQuery(filter, Docs{6, 8, 13, 20}, Costs{4}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -814,7 +814,7 @@ TEST_P(NestedFilterTestCase, JoinMin3) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -829,7 +829,7 @@ TEST_P(NestedFilterTestCase, JoinMin3) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -859,7 +859,7 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
   CheckQuery(filter, Docs{13, 20}, Costs{11}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -874,7 +874,7 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -889,7 +889,7 @@ TEST_P(NestedFilterTestCase, JoinRange0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -917,7 +917,7 @@ TEST_P(NestedFilterTestCase, JoinRange1) {
   CheckQuery(filter, Docs{6}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -931,7 +931,7 @@ TEST_P(NestedFilterTestCase, JoinRange1) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -945,7 +945,7 @@ TEST_P(NestedFilterTestCase, JoinRange1) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -972,7 +972,7 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
   CheckQuery(filter, Docs{6, 8, 13, 20}, Costs{11}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -987,7 +987,7 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1002,7 +1002,7 @@ TEST_P(NestedFilterTestCase, JoinRange2) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1032,7 +1032,7 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
   CheckQuery(filter, Docs{8}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1046,7 +1046,7 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1060,7 +1060,7 @@ TEST_P(NestedFilterTestCase, JoinNone0) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1088,7 +1088,7 @@ TEST_P(NestedFilterTestCase, JoinNone1) {
   CheckQuery(filter, Docs{8}, Costs{3}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1102,7 +1102,7 @@ TEST_P(NestedFilterTestCase, JoinNone1) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1116,7 +1116,7 @@ TEST_P(NestedFilterTestCase, JoinNone1) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1144,7 +1144,7 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
   CheckQuery(filter, Docs{6, 8, 13, 20}, Costs{4}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1159,7 +1159,7 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1174,7 +1174,7 @@ TEST_P(NestedFilterTestCase, JoinNone2) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1217,7 +1217,7 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
   CheckQuery(filter, Docs{6, 8, 13, 20}, Costs{4}, reader, SOURCE_LOCATION);
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMax;
+    opts.merge_type = irs::ScoreMergeType::kMax;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1232,7 +1232,7 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kMin;
+    opts.merge_type = irs::ScoreMergeType::kMin;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};
@@ -1247,7 +1247,7 @@ TEST_P(NestedFilterTestCase, JoinNone3) {
   }
 
   {
-    opts.merge_type = irs::Sort::MergeType::kNoop;
+    opts.merge_type = irs::ScoreMergeType::kNoop;
 
     std::array<irs::Sort::ptr, 2> scorers{std::make_unique<DocIdScorer>(),
                                           std::make_unique<DocIdScorer>()};

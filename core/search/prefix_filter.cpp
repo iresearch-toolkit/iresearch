@@ -96,7 +96,7 @@ namespace irs {
 
   return memory::make_managed<MultiTermQuery>(std::move(states),
                                               std::move(stats), boost,
-                                              Sort::MergeType::kSum, size_t{1});
+                                              ScoreMergeType::kSum, size_t{1});
 }
 
 /*static*/ void by_prefix::visit(const SubReader& segment,

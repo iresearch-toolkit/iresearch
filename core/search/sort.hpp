@@ -163,27 +163,27 @@ class PreparedSort {
   virtual std::pair<size_t, size_t> stats_size() const = 0;
 };
 
+// Possible variants of merging multiple scores
+enum class ScoreMergeType {
+  // Do nothing
+  kNoop = 0,
+
+  // Sum multiple scores
+  kSum,
+
+  // Find max amongst multiple scores
+  kMax,
+
+  // Find min amongst multiple scores
+  kMin
+};
+
 // Base class for all user-side sort entries.
 // Stats are meant to be trivially constructible and will be
 // zero initialized before usage.
 class Sort {
  public:
   using ptr = std::unique_ptr<Sort>;
-
-  // Possible variants of merging multiple scores
-  enum class MergeType {
-    // Do nothing
-    kNoop = 0,
-
-    // Sum multiple scores
-    kSum,
-
-    // Find max amongst multiple scores
-    kMax,
-
-    // Find min amongst multiple scores
-    kMin
-  };
 
   explicit Sort(const type_info& type) noexcept;
   virtual ~Sort() = default;
@@ -339,7 +339,7 @@ struct MinMerger {
 };
 
 template<typename Visitor>
-auto ResoveMergeType(Sort::MergeType type, size_t num_buckets,
+auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
                      Visitor&& visitor) {
   constexpr size_t kRuntimeSize = std::numeric_limits<size_t>::max();
 
@@ -361,13 +361,13 @@ auto ResoveMergeType(Sort::MergeType type, size_t num_buckets,
   };
 
   switch (type) {
-    case Sort::MergeType::kNoop:
+    case ScoreMergeType::kNoop:
       return visitor(NoopAggregator{});
-    case Sort::MergeType::kSum:
+    case ScoreMergeType::kSum:
       return impl.template operator()<SumMerger>();
-    case Sort::MergeType::kMax:
+    case ScoreMergeType::kMax:
       return impl.template operator()<MaxMerger>();
-    case Sort::MergeType::kMin:
+    case ScoreMergeType::kMin:
       return impl.template operator()<MinMerger>();
     default:
       IRS_ASSERT(false);

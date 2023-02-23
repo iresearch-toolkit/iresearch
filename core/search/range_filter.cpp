@@ -158,7 +158,7 @@ filter::prepared::ptr by_range::prepare(const IndexReader& index,
 
   return memory::make_managed<MultiTermQuery>(std::move(states),
                                               std::move(stats), boost,
-                                              Sort::MergeType::kSum, size_t{1});
+                                              ScoreMergeType::kSum, size_t{1});
 }
 
 void by_range::visit(const SubReader& segment, const term_reader& reader,

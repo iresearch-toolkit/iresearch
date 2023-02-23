@@ -113,7 +113,7 @@ class column_prefix_existence_query : public column_existence_query {
     }
 
     return ResoveMergeType(
-      Sort::MergeType::kSum, ord.buckets().size(),
+      ScoreMergeType::kSum, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t =
           irs::disjunction_iterator<irs::doc_iterator::ptr, A>;

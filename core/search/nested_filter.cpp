@@ -584,7 +584,7 @@ namespace irs {
 class ByNestedQuery : public filter::prepared {
  public:
   ByNestedQuery(DocIteratorProvider parent, prepared::ptr&& child,
-                Sort::MergeType merge_type, ByNestedOptions::MatchType match,
+                ScoreMergeType merge_type, ByNestedOptions::MatchType match,
                 score_t none_boost) noexcept
     : parent_{std::move(parent)},
       child_{std::move(child)},
@@ -615,7 +615,7 @@ class ByNestedQuery : public filter::prepared {
   DocIteratorProvider parent_;
   prepared::ptr child_;
   ByNestedOptions::MatchType match_;
-  Sort::MergeType merge_type_;
+  ScoreMergeType merge_type_;
   score_t none_boost_;
 };
 
