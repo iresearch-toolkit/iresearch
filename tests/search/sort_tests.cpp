@@ -55,19 +55,22 @@ struct aligned_value {
 };
 
 template<typename StatsType>
-struct aligned_scorer : public irs::sort {
+struct aligned_scorer : public irs::Sort {
   class prepared final : public irs::PreparedSortBase<StatsType> {
    public:
     explicit prepared(irs::IndexFeatures index_features,
                       bool empty_scorer) noexcept
       : empty_scorer_(empty_scorer), index_features_(index_features) {}
 
-    field_collector::ptr prepare_field_collector() const final {
+    irs::FieldCollector::ptr prepare_field_collector() const final {
       return nullptr;
     }
-    term_collector::ptr prepare_term_collector() const final { return nullptr; }
+    irs::TermCollector::ptr prepare_term_collector() const final {
+      return nullptr;
+    }
     void collect(irs::byte_type*, const irs::IndexReader&,
-                 const field_collector*, const term_collector*) const final {
+                 const irs::FieldCollector*,
+                 const irs::TermCollector*) const final {
       // NOOP
     }
     irs::ScoreFunction prepare_scorer(
@@ -95,11 +98,11 @@ struct aligned_scorer : public irs::sort {
   explicit aligned_scorer(
     irs::IndexFeatures index_features_ = irs::IndexFeatures::NONE,
     bool empty_scorer = true)
-    : irs::sort(irs::type<aligned_scorer>::get()),
+    : irs::Sort(irs::type<aligned_scorer>::get()),
       index_features_(index_features_),
       empty_scorer_(empty_scorer) {}
 
-  irs::sort::prepared::ptr prepare() const final {
+  irs::PreparedSort::ptr prepare() const final {
     return std::make_unique<aligned_scorer<StatsType>::prepared>(
       index_features_, empty_scorer_);
   }
@@ -108,9 +111,9 @@ struct aligned_scorer : public irs::sort {
   bool empty_scorer_;
 };
 
-struct dummy_scorer0 : public irs::sort {
-  dummy_scorer0() : irs::sort(irs::type<dummy_scorer0>::get()) {}
-  prepared::ptr prepare() const final { return nullptr; }
+struct dummy_scorer0 : public irs::Sort {
+  dummy_scorer0() : irs::Sort(irs::type<dummy_scorer0>::get()) {}
+  irs::PreparedSort::ptr prepare() const final { return nullptr; }
 };
 
 }  // namespace
@@ -127,7 +130,7 @@ TEST(sort_tests, static_const) {
 
 TEST(sort_tests, prepare_order) {
   {
-    std::array<irs::sort::ptr, 2> ord{
+    std::array<irs::Sort::ptr, 2> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<1, 4>>>()};
 
@@ -167,7 +170,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 4> ord{
+    std::array<irs::Sort::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
@@ -209,7 +212,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 4> ord{
+    std::array<irs::Sort::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::NONE, false),  // returns valid scorers
@@ -266,7 +269,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 4> ord{
+    std::array<irs::Sort::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
@@ -324,7 +327,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 4> ord{
+    std::array<irs::Sort::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(),
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(),
@@ -378,7 +381,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 3> ord{
+    std::array<irs::Sort::ptr, 3> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
@@ -427,7 +430,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 4> ord{
+    std::array<irs::Sort::ptr, 4> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
       std::make_unique<dummy_scorer0>(),
@@ -478,7 +481,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 4> ord{
+    std::array<irs::Sort::ptr, 4> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
       std::make_unique<aligned_scorer<aligned_value<5, 4>>>(),
@@ -528,7 +531,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 11> ord{
+    std::array<irs::Sort::ptr, 11> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<3, 1>>>(
         irs::IndexFeatures::NONE),
@@ -585,7 +588,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 5> ord{
+    std::array<irs::Sort::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<3, 1>>>(
         irs::IndexFeatures::NONE),
@@ -636,7 +639,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 5> ord{
+    std::array<irs::Sort::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<7, 4>>>(
         irs::IndexFeatures::FREQ),
@@ -688,7 +691,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 5> ord{
+    std::array<irs::Sort::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::NONE),
@@ -739,7 +742,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 5> ord{
+    std::array<irs::Sort::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>(
         irs::IndexFeatures::FREQ),
@@ -790,7 +793,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::sort::ptr, 5> ord{
+    std::array<irs::Sort::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>(
         irs::IndexFeatures::FREQ),

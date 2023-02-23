@@ -26,7 +26,7 @@
 
 namespace irs {
 
-class tfidf_sort : public sort {
+class tfidf_sort : public Sort {
  public:
   using score_t = float_t;
 
@@ -47,7 +47,7 @@ class tfidf_sort : public sort {
   bool use_boost_as_score() const noexcept { return boost_as_score_; }
   void use_boost_as_score(bool use) noexcept { boost_as_score_ = use; }
 
-  sort::prepared::ptr prepare() const final;
+  PreparedSort::ptr prepare() const final;
 
  private:
   bool normalize_;

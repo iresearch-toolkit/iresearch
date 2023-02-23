@@ -74,16 +74,16 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-sort::sort(const type_info& type) noexcept : type_{type.id()} {}
+Sort::Sort(const type_info& type) noexcept : type_{type.id()} {}
 
-Order Order::Prepare(std::span<const sort::ptr> order) {
+Order Order::Prepare(std::span<const Sort::ptr> order) {
   return std::apply(
     [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
     ::irs::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
                                  ptr_iterator{std::end(order)}));
 }
 
-Order Order::Prepare(std::span<const sort*> order) {
+Order Order::Prepare(std::span<const Sort*> order) {
   return std::apply(
     [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
     ::irs::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},

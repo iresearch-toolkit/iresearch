@@ -516,7 +516,7 @@ TEST_P(bm25_test_case, test_query) {
   }
 
   irs::bm25_sort impl{irs::bm25_sort::K(), irs::bm25_sort::B(), true};
-  const irs::sort* sort{&impl};
+  const irs::Sort* sort{&impl};
 
   auto prepared_order = irs::Order::Prepare(std::span{&sort, 1});
 
@@ -1532,7 +1532,7 @@ TEST_P(bm25_test_case, test_order) {
   *query.mutable_field() = "field";
 
   irs::bm25_sort sort;
-  const irs::sort* impl{&sort};
+  const irs::Sort* impl{&sort};
 
   auto prepared_order = irs::Order::Prepare(std::span{&impl, 1});
   ASSERT_EQ(sizeof(irs::score_t), prepared_order.score_size());

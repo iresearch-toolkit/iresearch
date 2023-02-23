@@ -51,71 +51,124 @@ struct filter_boost final : attribute {
   score_t value{kNoBoost};
 };
 
+// Object used for collecting index statistics, for a specific matched
+// field, that are required by the scorer for scoring individual
+// documents.
+class FieldCollector {
+ public:
+  using ptr = std::unique_ptr<FieldCollector>;
+
+  virtual ~FieldCollector() = default;
+
+  // Collect field related statistics, i.e. field used in the filter
+  // `segment` is the segment being processed (e.g. for columnstore).
+  // `field` is  the field matched by the filter in the 'segment'.
+  // Called once for every field matched by a filter per each segment.
+  // Always called on each matched 'field' irrespective of if it
+  // contains a matching 'term'.
+  virtual void collect(const SubReader& segment, const term_reader& field) = 0;
+
+  // Clear collected stats
+  virtual void reset() = 0;
+
+  // Collect field related statistics from a serialized
+  // representation as produced by write(...) below.
+  virtual void collect(bytes_view in) = 0;
+
+  // Serialize the internal data representation into 'out'.
+  virtual void write(data_output& out) const = 0;
+};
+
+// Object used for collecting index statistics, for a specific matched
+// term of a field, that are required by the scorer for scoring
+// individual documents.
+class TermCollector {
+ public:
+  using ptr = std::unique_ptr<TermCollector>;
+
+  virtual ~TermCollector() = default;
+
+  // Collect term related statistics, i.e. term used in the filter.
+  // `segment` is the segment being processed (e.g. for columnstore)
+  // `field` is the the field matched by the filter in the 'segment'.
+  // `term_attrs` is the attributes of the matched term in the field.
+  // Called once for every term matched by a filter in the 'field'
+  // per each segment.
+  // Only called on a matched 'term' in the 'field' in the 'segment'.
+  virtual void collect(const SubReader& segment, const term_reader& field,
+                       const attribute_provider& term_attrs) = 0;
+
+  // Clear collected stats
+  virtual void reset() = 0;
+
+  // Collect term related statistics from a serialized
+  // representation as produced by write(...) below.
+  virtual void collect(bytes_view in) = 0;
+
+  // Serialize the internal data representation into 'out'.
+  virtual void write(data_output& out) const = 0;
+};
+
+// Base class for all prepared(compiled) sort entries.
+class PreparedSort {
+ public:
+  using ptr = std::unique_ptr<PreparedSort>;
+
+  virtual ~PreparedSort() = default;
+
+  // Store collected index statistics into 'stats' of the
+  // current 'filter'
+  // `filter_attrs` is out-parameter to store statistics for later use in
+  // calls to score(...).
+  // `index` is the full index to collect statistics on
+  // `field` is the field level statistics collector as returned from
+  //  prepare_field_collector()
+  // `term` is the term level statistics collector as returned from
+  //  prepare_term_collector()
+  // Called once on the 'index' for every field+term matched by the
+  // filter.
+  // Called once on the 'index' for every field with null term stats
+  // if term is not applicable, e.g. by_column_existence filter.
+  // Called exactly once if field/term collection is not applicable,
+  // e.g. collecting statistics over the columnstore.
+  // Called after all calls to collector::collect(...) on each segment.
+  virtual void collect(byte_type* stats, const IndexReader& index,
+                       const FieldCollector* field,
+                       const TermCollector* term) const = 0;
+
+  // The index features required for proper operation of this sort::prepared
+  virtual IndexFeatures features() const = 0;
+
+  // Create an object to be used for collecting index statistics, one
+  // instance per matched field.
+  // Returns nullptr == no statistics collection required
+  virtual FieldCollector::ptr prepare_field_collector() const = 0;
+
+  // Create a stateful scorer used for computation of document scores
+  virtual ScoreFunction prepare_scorer(const SubReader& segment,
+                                       const term_reader& field,
+                                       const byte_type* stats,
+                                       const attribute_provider& doc_attrs,
+                                       score_t boost) const = 0;
+
+  // Create an object to be used for collecting index statistics, one
+  // instance per matched term.
+  // Returns nullptr == no statistics collection required.
+  virtual TermCollector::ptr prepare_term_collector() const = 0;
+
+  // Number of bytes (first) and alignment (first) required to store stats
+  // Alignment must satisfy the following requirements:
+  //   - be a power of 2
+  //   - be less or equal than alignof(MAX_ALIGN_T))
+  virtual std::pair<size_t, size_t> stats_size() const = 0;
+};
+
 // Base class for all user-side sort entries.
 // Stats are meant to be trivially constructible and will be
 // zero initialized before usage.
-class sort {
+class Sort {
  public:
-  using ptr = std::unique_ptr<sort>;
-
-  // Object used for collecting index statistics, for a specific matched
-  // field, that are required by the scorer for scoring individual
-  // documents.
-  class field_collector {
-   public:
-    using ptr = std::unique_ptr<field_collector>;
-
-    virtual ~field_collector() = default;
-
-    // Collect field related statistics, i.e. field used in the filter
-    // `segment` is the segment being processed (e.g. for columnstore).
-    // `field` is  the field matched by the filter in the 'segment'.
-    // Called once for every field matched by a filter per each segment.
-    // Always called on each matched 'field' irrespective of if it
-    // contains a matching 'term'.
-    virtual void collect(const SubReader& segment,
-                         const term_reader& field) = 0;
-
-    // Clear collected stats
-    virtual void reset() = 0;
-
-    // Collect field related statistics from a serialized
-    // representation as produced by write(...) below.
-    virtual void collect(bytes_view in) = 0;
-
-    // Serialize the internal data representation into 'out'.
-    virtual void write(data_output& out) const = 0;
-  };
-
-  // Object used for collecting index statistics, for a specific matched
-  // term of a field, that are required by the scorer for scoring
-  // individual documents.
-  class term_collector {
-   public:
-    using ptr = std::unique_ptr<term_collector>;
-
-    virtual ~term_collector() = default;
-
-    // Collect term related statistics, i.e. term used in the filter.
-    // `segment` is the segment being processed (e.g. for columnstore)
-    // `field` is the the field matched by the filter in the 'segment'.
-    // `term_attrs` is the attributes of the matched term in the field.
-    // Called once for every term matched by a filter in the 'field'
-    // per each segment.
-    // Only called on a matched 'term' in the 'field' in the 'segment'.
-    virtual void collect(const SubReader& segment, const term_reader& field,
-                         const attribute_provider& term_attrs) = 0;
-
-    // Clear collected stats
-    virtual void reset() = 0;
-
-    // Collect term related statistics from a serialized
-    // representation as produced by write(...) below.
-    virtual void collect(bytes_view in) = 0;
-
-    // Serialize the internal data representation into 'out'.
-    virtual void write(data_output& out) const = 0;
-  };
+  using ptr = std::unique_ptr<Sort>;
 
   // Possible variants of merging multiple scores
   enum class MergeType {
@@ -132,73 +185,19 @@ class sort {
     kMin
   };
 
-  // Base class for all prepared(compiled) sort entries.
-  class prepared {
-   public:
-    using ptr = std::unique_ptr<prepared>;
-
-    virtual ~prepared() = default;
-
-    // Store collected index statistics into 'stats' of the
-    // current 'filter'
-    // `filter_attrs` is out-parameter to store statistics for later use in
-    // calls to score(...).
-    // `index` is the full index to collect statistics on
-    // `field` is the field level statistics collector as returned from
-    //  prepare_field_collector()
-    // `term` is the term level statistics collector as returned from
-    //  prepare_term_collector()
-    // Called once on the 'index' for every field+term matched by the
-    // filter.
-    // Called once on the 'index' for every field with null term stats
-    // if term is not applicable, e.g. by_column_existence filter.
-    // Called exactly once if field/term collection is not applicable,
-    // e.g. collecting statistics over the columnstore.
-    // Called after all calls to collector::collect(...) on each segment.
-    virtual void collect(byte_type* stats, const IndexReader& index,
-                         const field_collector* field,
-                         const term_collector* term) const = 0;
-
-    // The index features required for proper operation of this sort::prepared
-    virtual IndexFeatures features() const = 0;
-
-    // Create an object to be used for collecting index statistics, one
-    // instance per matched field.
-    // Returns nullptr == no statistics collection required
-    virtual field_collector::ptr prepare_field_collector() const = 0;
-
-    // Create a stateful scorer used for computation of document scores
-    virtual ScoreFunction prepare_scorer(const SubReader& segment,
-                                         const term_reader& field,
-                                         const byte_type* stats,
-                                         const attribute_provider& doc_attrs,
-                                         score_t boost) const = 0;
-
-    // Create an object to be used for collecting index statistics, one
-    // instance per matched term.
-    // Returns nullptr == no statistics collection required.
-    virtual term_collector::ptr prepare_term_collector() const = 0;
-
-    // Number of bytes (first) and alignment (first) required to store stats
-    // Alignment must satisfy the following requirements:
-    //   - be a power of 2
-    //   - be less or equal than alignof(MAX_ALIGN_T))
-    virtual std::pair<size_t, size_t> stats_size() const = 0;
-  };
-
-  explicit sort(const type_info& type) noexcept;
-  virtual ~sort() = default;
+  explicit Sort(const type_info& type) noexcept;
+  virtual ~Sort() = default;
 
   constexpr type_info::type_id type() const noexcept { return type_; }
 
-  virtual prepared::ptr prepare() const = 0;
+  virtual PreparedSort::ptr prepare() const = 0;
 
  private:
   type_info::type_id type_;
 };
 
 struct OrderBucket : util::noncopyable {
-  OrderBucket(sort::prepared::ptr&& bucket, size_t stats_offset) noexcept
+  OrderBucket(PreparedSort::ptr&& bucket, size_t stats_offset) noexcept
     : bucket(std::move(bucket)), stats_offset{stats_offset} {
     IRS_ASSERT(this->bucket);
   }
@@ -206,8 +205,8 @@ struct OrderBucket : util::noncopyable {
   OrderBucket(OrderBucket&&) = default;
   OrderBucket& operator=(OrderBucket&&) = default;
 
-  sort::prepared::ptr bucket;  // prepared score
-  size_t stats_offset;         // offset in stats buffer
+  PreparedSort::ptr bucket;  // prepared score
+  size_t stats_offset;       // offset in stats buffer
 };
 
 static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
@@ -218,9 +217,9 @@ class Order final : private util::noncopyable {
  public:
   static const Order kUnordered;
 
-  static Order Prepare(std::span<const sort::ptr> order);
-  static Order Prepare(std::span<const sort*> order);
-  static Order Prepare(const sort& order) {
+  static Order Prepare(std::span<const Sort::ptr> order);
+  static Order Prepare(std::span<const Sort*> order);
+  static Order Prepare(const Sort& order) {
     const auto* p = &order;
     return Prepare(std::span{&p, 1});
   }
@@ -340,7 +339,7 @@ struct MinMerger {
 };
 
 template<typename Visitor>
-auto ResoveMergeType(sort::MergeType type, size_t num_buckets,
+auto ResoveMergeType(Sort::MergeType type, size_t num_buckets,
                      Visitor&& visitor) {
   constexpr size_t kRuntimeSize = std::numeric_limits<size_t>::max();
 
@@ -362,13 +361,13 @@ auto ResoveMergeType(sort::MergeType type, size_t num_buckets,
   };
 
   switch (type) {
-    case sort::MergeType::kNoop:
+    case Sort::MergeType::kNoop:
       return visitor(NoopAggregator{});
-    case sort::MergeType::kSum:
+    case Sort::MergeType::kSum:
       return impl.template operator()<SumMerger>();
-    case sort::MergeType::kMax:
+    case Sort::MergeType::kMax:
       return impl.template operator()<MaxMerger>();
-    case sort::MergeType::kMin:
+    case Sort::MergeType::kMin:
       return impl.template operator()<MinMerger>();
     default:
       IRS_ASSERT(false);
@@ -378,7 +377,7 @@ auto ResoveMergeType(sort::MergeType type, size_t num_buckets,
 
 // Template score for base class for all prepared(compiled) sort entries
 template<typename StatsType>
-class PreparedSortBase : public sort::prepared {
+class PreparedSortBase : public PreparedSort {
  public:
   static_assert(std::is_trivially_constructible_v<StatsType>,
                 "StatsTypemust be trivially constructible");
@@ -408,18 +407,16 @@ class PreparedSortBase : public sort::prepared {
 };
 
 template<>
-class PreparedSortBase<void> : public sort::prepared {
+class PreparedSortBase<void> : public PreparedSort {
  public:
-  sort::field_collector::ptr prepare_field_collector() const override {
+  FieldCollector::ptr prepare_field_collector() const override {
     return nullptr;
   }
 
-  sort::term_collector::ptr prepare_term_collector() const override {
-    return nullptr;
-  }
+  TermCollector::ptr prepare_term_collector() const override { return nullptr; }
 
-  void collect(byte_type*, const IndexReader&, const sort::field_collector*,
-               const sort::term_collector*) const override {
+  void collect(byte_type*, const IndexReader&, const FieldCollector*,
+               const TermCollector*) const override {
     // NOOP
   }
 

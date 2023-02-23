@@ -1025,7 +1025,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       size_t collect_term_count = 0;
       size_t finish_count = 0;
 
-      irs::sort::ptr sort{std::make_unique<tests::sort::custom_sort>()};
+      irs::Sort::ptr sort{std::make_unique<tests::sort::custom_sort>()};
       auto& scorer = static_cast<tests::sort::custom_sort&>(*sort);
 
       scorer.collector_collect_field = [&collect_field_count](
@@ -1038,19 +1038,16 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::IndexReader&,
+                        const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
@@ -1078,7 +1075,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "value";
 
-      irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+      irs::Sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }
@@ -1098,7 +1095,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->scored_terms_limit = 2;
 
-      irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+      irs::Sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }
@@ -1121,7 +1118,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       filter.mutable_options()->range.max = max_term->value;
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+      irs::Sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }
   }

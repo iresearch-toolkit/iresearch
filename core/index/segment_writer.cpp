@@ -221,12 +221,8 @@ column_output& segment_writer::stream(const hashed_string_view& name,
     ->writer(doc_id);
 }
 
-void segment_writer::flush_fields(const doc_map& docmap) {
-  flush_state state;
-  state.dir = &dir_;
-  state.doc_count = docs_cached();
-  state.name = seg_name_;
-  state.docmap = fields_.comparator() && !docmap.empty() ? &docmap : nullptr;
+void segment_writer::flush_fields(flush_state& state) {
+  IRS_ASSERT(field_writer_);
 
   try {
     fields_.flush(*field_writer_, state);
@@ -273,11 +269,10 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   auto& meta = segment.meta;
 
   doc_map docmap;
-  flush_state state;
-  state.dir = &dir_;
-  state.doc_count = docs_cached();
-  state.name = seg_name_;
-  state.docmap = nullptr;
+  flush_state state{.dir = &dir_,
+                    .name = seg_name_,
+                    .wand_scorers = wand_scorers_,
+                    .doc_count = docs_cached()};
 
   if (fields_.comparator()) {
     std::tie(docmap, sort_.id) =
@@ -306,7 +301,7 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
 
   // flush fields metadata & inverted data,
   if (docs_cached()) {
-    flush_fields(docmap);
+    flush_fields(state);
   }
 
   // get non-empty document mask

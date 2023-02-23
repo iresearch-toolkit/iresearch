@@ -5610,18 +5610,15 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::IndexReader&,
-                                 const irs::sort::field_collector*,
-                                 const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
-    sort.prepare_field_collector_ =
-      [&sort]() -> irs::sort::field_collector::ptr {
+    sort.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::IndexReader&,
+                      const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
+    sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
       return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(sort);
     };
-    sort.prepare_term_collector_ = [&sort]() -> irs::sort::term_collector::ptr {
+    sort.prepare_term_collector_ = [&sort]() -> irs::TermCollector::ptr {
       return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(sort);
     };
@@ -6008,18 +6005,15 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::IndexReader&,
-                                 const irs::sort::field_collector*,
-                                 const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
-    sort.prepare_field_collector_ =
-      [&sort]() -> irs::sort::field_collector::ptr {
+    sort.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::IndexReader&,
+                      const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
+    sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
       return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(sort);
     };
-    sort.prepare_term_collector_ = [&sort]() -> irs::sort::term_collector::ptr {
+    sort.prepare_term_collector_ = [&sort]() -> irs::TermCollector::ptr {
       return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(sort);
     };

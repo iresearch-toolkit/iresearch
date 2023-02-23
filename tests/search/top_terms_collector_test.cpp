@@ -53,11 +53,11 @@ struct type<::term_meta> : type<irs::term_meta> {};
 
 namespace {
 
-struct sort : irs::sort {
-  sort() noexcept : irs::sort(irs::type<sort>::get()) {}
+struct sort : irs::Sort {
+  sort() noexcept : irs::Sort(irs::type<Sort>::get()) {}
 
-  struct prepared final : irs::sort::prepared {
-    struct field_collector final : irs::sort::field_collector {
+  struct prepared final : irs::PreparedSort {
+    struct field_collector final : irs::FieldCollector {
       uint64_t docs_with_field =
         0;  // number of documents containing the matched field (possibly
             // without matching terms)
@@ -82,7 +82,7 @@ struct sort : irs::sort {
       void write(irs::data_output&) const final {}
     };
 
-    struct term_collector final : irs::sort::term_collector {
+    struct term_collector final : irs::TermCollector {
       uint64_t docs_with_term =
         0;  // number of documents containing the matched term
 
@@ -102,18 +102,18 @@ struct sort : irs::sort {
     };
 
     void collect(irs::byte_type*, const irs::IndexReader&,
-                 const irs::sort::field_collector*,
-                 const irs::sort::term_collector*) const final {}
+                 const irs::FieldCollector*,
+                 const irs::TermCollector*) const final {}
 
     irs::IndexFeatures features() const final {
       return irs::IndexFeatures::NONE;
     }
 
-    irs::sort::field_collector::ptr prepare_field_collector() const final {
+    irs::FieldCollector::ptr prepare_field_collector() const final {
       return std::make_unique<field_collector>();
     }
 
-    irs::sort::term_collector::ptr prepare_term_collector() const final {
+    irs::TermCollector::ptr prepare_term_collector() const final {
       return std::make_unique<term_collector>();
     }
 
@@ -128,7 +128,7 @@ struct sort : irs::sort {
     std::pair<size_t, size_t> stats_size() const final { return {0, 0}; }
   };
 
-  irs::sort::prepared::ptr prepare() const final {
+  irs::PreparedSort::ptr prepare() const final {
     return std::make_unique<prepared>();
   }
 };

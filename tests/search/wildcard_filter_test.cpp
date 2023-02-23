@@ -202,7 +202,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Sort::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -216,19 +216,15 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
-    scorer.prepare_field_collector_ =
-      [&scorer]() -> irs::sort::field_collector::ptr {
+    scorer.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::IndexReader&,
+                      const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
+    scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
       return std::make_unique<
         tests::sort::custom_sort::prepared::field_collector>(scorer);
     };
-    scorer.prepare_term_collector_ =
-      [&scorer]() -> irs::sort::term_collector::ptr {
+    scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
       return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(scorer);
     };
@@ -244,7 +240,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     Docs docs{31, 32, 1, 4, 9, 16, 21, 24, 26, 29};
     Costs costs{docs.size()};
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Sort::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     CheckQuery(make_filter("prefix", "%"), order, docs, rdr);
@@ -255,7 +251,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
     Docs docs{31, 32, 1, 4, 16, 21, 26, 29};
     Costs costs{docs.size()};
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Sort::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     CheckQuery(make_filter("prefix", "a%"), order, docs, rdr);

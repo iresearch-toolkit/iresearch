@@ -741,12 +741,10 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
                                       const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
-      sort.collectors_collect_ = [&collector_finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-        ++collector_finish_count;
-      };
+      sort.collectors_collect_ =
+        [&collector_finish_count](
+          irs::byte_type*, const irs::IndexReader&, const irs::FieldCollector*,
+          const irs::TermCollector*) -> void { ++collector_finish_count; };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
                                                 irs::score_t* score) -> void {
         ++scorer_score_count;
@@ -832,12 +830,10 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
                                       const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
-      sort.collectors_collect_ = [&collector_finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-        ++collector_finish_count;
-      };
+      sort.collectors_collect_ =
+        [&collector_finish_count](
+          irs::byte_type*, const irs::IndexReader&, const irs::FieldCollector*,
+          const irs::TermCollector*) -> void { ++collector_finish_count; };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
                                                 irs::score_t* score) -> void {
         ++scorer_score_count;
@@ -922,12 +918,10 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
                                       const irs::attribute_provider&) -> void {
         ++collector_collect_term_count;
       };
-      sort.collectors_collect_ = [&collector_finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-        ++collector_finish_count;
-      };
+      sort.collectors_collect_ =
+        [&collector_finish_count](
+          irs::byte_type*, const irs::IndexReader&, const irs::FieldCollector*,
+          const irs::TermCollector*) -> void { ++collector_finish_count; };
       sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
                                                 irs::score_t* score) -> void {
         ++scorer_score_count;

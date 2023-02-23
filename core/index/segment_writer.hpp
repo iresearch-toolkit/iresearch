@@ -27,7 +27,6 @@
 #include "column_info.hpp"
 #include "field_data.hpp"
 #include "formats/formats.hpp"
-#include "search/sort.hpp"
 #include "sorted_column.hpp"
 #include "utils/bitvector.hpp"
 #include "utils/compression.hpp"
@@ -59,8 +58,6 @@ enum class Action {
 };
 
 ENABLE_BITMASK_ENUM(Action);
-
-using WandScorersView = std::span<const sort::ptr>;
 
 struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
@@ -369,7 +366,7 @@ class segment_writer : util::noncopyable {
   // Flushes document mask to directory, returns number of masked documens
   document_mask get_doc_mask(const doc_map& docmap);
   // Flushes indexed fields to directory
-  void flush_fields(const doc_map& docmap);
+  void flush_fields(flush_state& docmap);
 
   WandScorersView wand_scorers_;
   std::deque<cached_column> cached_columns_;  // pointers remain valid

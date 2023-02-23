@@ -137,12 +137,12 @@ class collectors_base {
   std::span<const OrderBucket> buckets_;
 };
 
-// Wrapper around sort::field_collector which guarantees collector
+// Wrapper around FieldCollector which guarantees collector
 // is not nullptr
 class field_collector_wrapper
-  : public collector_wrapper<field_collector_wrapper, sort::field_collector> {
+  : public collector_wrapper<field_collector_wrapper, FieldCollector> {
  public:
-  using collector_type = sort::field_collector;
+  using collector_type = FieldCollector;
   using base_type = collector_wrapper<field_collector_wrapper, collector_type>;
 
   static collector_type& noop() noexcept;
@@ -193,12 +193,12 @@ class field_collectors : public collectors_base<field_collector_wrapper> {
 static_assert(std::is_nothrow_move_constructible_v<field_collectors>);
 static_assert(std::is_nothrow_move_assignable_v<field_collectors>);
 
-// Wrapper around sort::term_collector which guarantees collector
+// Wrapper around TermCollector which guarantees collector
 // is not nullptr
 class term_collector_wrapper
-  : public collector_wrapper<term_collector_wrapper, sort::term_collector> {
+  : public collector_wrapper<term_collector_wrapper, TermCollector> {
  public:
-  using collector_type = sort::term_collector;
+  using collector_type = TermCollector;
   using base_type = collector_wrapper<term_collector_wrapper, collector_type>;
 
   static collector_type& noop() noexcept;

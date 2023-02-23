@@ -25,11 +25,11 @@
 #include "tests_shared.hpp"
 
 TEST(scorers_tests, duplicate_register) {
-  struct dummy_scorer : public irs::sort {
+  struct dummy_scorer : public irs::Sort {
     static ptr make(std::string_view) { return ptr(new dummy_scorer()); }
-    dummy_scorer() : irs::sort(irs::type<dummy_scorer>::get()) {}
+    dummy_scorer() : irs::Sort(irs::type<dummy_scorer>::get()) {}
 
-    prepared::ptr prepare() const { return nullptr; }
+    irs::PreparedSort::ptr prepare() const { return nullptr; }
   };
 
   static bool initial_expected = true;

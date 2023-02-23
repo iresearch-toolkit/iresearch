@@ -76,19 +76,16 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::IndexReader&,
+                        const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
@@ -122,19 +119,16 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::IndexReader&,
+                        const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
@@ -170,19 +164,16 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::IndexReader&,
+                        const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
           tests::sort::custom_sort::prepared::term_collector>(scorer);
       };

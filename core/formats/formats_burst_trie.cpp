@@ -1118,7 +1118,7 @@ field_writer::field_writer(
 
 field_writer::~field_writer() { delete fst_buf_; }
 
-void field_writer::prepare(const irs::flush_state& state) {
+void field_writer::prepare(const flush_state& state) {
   IRS_ASSERT(state.dir);
 
   // reset writer state

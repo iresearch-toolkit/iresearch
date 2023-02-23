@@ -40,9 +40,9 @@ class boolean_filter : public filter, public AllDocsProvider {
   auto begin() { return ptr_iterator{std::begin(filters_)}; }
   auto end() { return ptr_iterator{std::end(filters_)}; }
 
-  sort::MergeType merge_type() const noexcept { return merge_type_; }
+  Sort::MergeType merge_type() const noexcept { return merge_type_; }
 
-  void merge_type(sort::MergeType merge_type) noexcept {
+  void merge_type(Sort::MergeType merge_type) noexcept {
     merge_type_ = merge_type;
   }
 
@@ -84,7 +84,7 @@ class boolean_filter : public filter, public AllDocsProvider {
                      std::vector<const filter*>& excl) const;
 
   std::vector<filter::ptr> filters_;
-  sort::MergeType merge_type_{sort::MergeType::kSum};
+  Sort::MergeType merge_type_{Sort::MergeType::kSum};
 };
 
 // Represents conjunction

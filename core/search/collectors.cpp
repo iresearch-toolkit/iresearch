@@ -26,14 +26,14 @@ namespace {
 
 using namespace irs;
 
-struct noop_field_collector final : sort::field_collector {
+struct noop_field_collector final : FieldCollector {
   void collect(const SubReader&, const term_reader&) final {}
   void reset() final {}
   void collect(bytes_view) final {}
   void write(data_output&) const final {}
 };
 
-struct noop_term_collector final : sort::term_collector {
+struct noop_term_collector final : TermCollector {
   void collect(const SubReader&, const term_reader&,
                const attribute_provider&) final {}
   void reset() final {}

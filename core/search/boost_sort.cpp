@@ -25,7 +25,7 @@
 namespace irs {
 namespace {
 
-sort::ptr make_json(std::string_view /*args*/) {
+Sort::ptr make_json(std::string_view /*args*/) {
   return std::make_unique<boost_sort>();
 }
 
@@ -67,9 +67,9 @@ struct Prepared final : PreparedSortBase<void> {
 
 void boost_sort::init() { REGISTER_SCORER_JSON(boost_sort, make_json); }
 
-boost_sort::boost_sort() noexcept : sort{irs::type<boost_sort>::get()} {}
+boost_sort::boost_sort() noexcept : Sort{irs::type<boost_sort>::get()} {}
 
-sort::prepared::ptr boost_sort::prepare() const {
+PreparedSort::ptr boost_sort::prepare() const {
   // FIXME can avoid allocation
   // TODO(MBkkt) managed_ptr? What exactly do you want?
   return std::make_unique<Prepared>();

@@ -53,6 +53,7 @@ class index_output;
 struct data_input;
 struct index_input;
 struct postings_writer;
+struct PreparedSort;
 
 using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
@@ -65,6 +66,8 @@ struct WanderatorOptions {
   ScoreFunctionFactory factory;
   bool strict{false};
 };
+
+using WandScorersView = std::span<const std::unique_ptr<PreparedSort>>;
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
@@ -446,6 +449,7 @@ struct flush_state {
   const doc_map* docmap{};
   const std::set<type_info::type_id>* features{};  // segment features
   std::string_view name;                           // segment name
+  WandScorersView wand_scorers;
   size_t doc_count;
   IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
 };

@@ -601,7 +601,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
 
   return memory::make_managed<MultiTermQuery>(std::move(states),
                                               std::move(stats), boost,
-                                              sort::MergeType::kSum, size_t{1});
+                                              Sort::MergeType::kSum, size_t{1});
 }
 
 /*static*/ void by_granular_range::visit(const SubReader& segment,

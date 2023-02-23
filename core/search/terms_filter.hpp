@@ -65,7 +65,7 @@ struct by_terms_options {
 
   search_terms terms;
   size_t min_match{1};
-  sort::MergeType merge_type{sort::MergeType::kSum};
+  Sort::MergeType merge_type{Sort::MergeType::kSum};
 
   bool operator==(const by_terms_options& rhs) const noexcept {
     return terms == rhs.terms;

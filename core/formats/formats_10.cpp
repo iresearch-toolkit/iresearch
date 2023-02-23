@@ -412,7 +412,7 @@ class postings_writer_base : public irs::postings_writer {
     last_state_.clear();
   }
 
-  void prepare(index_output& out, const irs::flush_state& state) final;
+  void prepare(index_output& out, const flush_state& state) final;
   void encode(data_output& out, const irs::term_meta& attrs) final;
   void end() final;
 
@@ -529,7 +529,7 @@ void postings_writer_base::write_skip(size_t level,
 }
 
 void postings_writer_base::prepare(index_output& out,
-                                   const irs::flush_state& state) {
+                                   const flush_state& state) {
   IRS_ASSERT(state.dir);
   IRS_ASSERT(!IsNull(state.name));
 

@@ -47,7 +47,7 @@ const auto kRSQRT = irs::cache_func<uint32_t, 2048>(1, [](uint32_t i) noexcept {
   return 1.f / std::sqrt(static_cast<float_t>(i));
 });
 
-irs::sort::ptr make_from_bool(const VPackSlice slice) {
+irs::Sort::ptr make_from_bool(const VPackSlice slice) {
   IRS_ASSERT(slice.isBool());
 
   return std::make_unique<irs::tfidf_sort>(slice.getBool());
@@ -55,7 +55,7 @@ irs::sort::ptr make_from_bool(const VPackSlice slice) {
 
 constexpr std::string_view WITH_NORMS_PARAM_NAME("withNorms");
 
-irs::sort::ptr make_from_object(const VPackSlice slice) {
+irs::Sort::ptr make_from_object(const VPackSlice slice) {
   IRS_ASSERT(slice.isObject());
 
   auto scorer = std::make_unique<irs::tfidf_sort>();
@@ -79,7 +79,7 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
   return scorer;
 }
 
-irs::sort::ptr make_from_array(const VPackSlice slice) {
+irs::Sort::ptr make_from_array(const VPackSlice slice) {
   IRS_ASSERT(slice.isArray());
 
   VPackArrayIterator array = VPackArrayIterator(slice);
@@ -111,7 +111,7 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
   return std::make_unique<irs::tfidf_sort>(norms);
 }
 
-irs::sort::ptr make_vpack(const VPackSlice slice) {
+irs::Sort::ptr make_vpack(const VPackSlice slice) {
   switch (slice.type()) {
     case VPackValueType::Bool:
       return make_from_bool(slice);
@@ -127,7 +127,7 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::sort::ptr make_vpack(std::string_view args) {
+irs::Sort::ptr make_vpack(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
     return std::make_unique<irs::tfidf_sort>();
@@ -137,7 +137,7 @@ irs::sort::ptr make_vpack(std::string_view args) {
   }
 }
 
-irs::sort::ptr make_json(std::string_view args) {
+irs::Sort::ptr make_json(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
     return std::make_unique<irs::tfidf_sort>();
@@ -185,7 +185,7 @@ struct byte_ref_iterator {
   void operator++() { ++pos_; }
 };
 
-struct field_collector final : public irs::sort::field_collector {
+struct field_collector final : public irs::FieldCollector {
   // number of documents containing the matched
   // field (possibly without matching terms)
   uint64_t docs_with_field = 0;
@@ -213,7 +213,7 @@ struct field_collector final : public irs::sort::field_collector {
   }
 };
 
-struct term_collector final : public irs::sort::term_collector {
+struct term_collector final : public irs::TermCollector {
   // number of documents containing the matched term
   uint64_t docs_with_term = 0;
 
@@ -254,12 +254,12 @@ IRS_FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
 namespace irs {
 namespace tfidf {
 
-// empty frequency
-const frequency kEmptyFreq;
-
 struct idf final {
   float_t value;
 };
+
+constexpr idf kDefaultIdf{.value = 1.f};
+constexpr frequency kEmptyFreq;
 
 struct ScoreContext : public irs::score_ctx {
   ScoreContext(irs::score_t boost, const tfidf::idf& idf, const frequency* freq,
@@ -366,8 +366,8 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     : normalize_{normalize}, boost_as_score_{boost_as_score} {}
 
   void collect(byte_type* stats_buf, const irs::IndexReader& /*index*/,
-               const irs::sort::field_collector* field,
-               const irs::sort::term_collector* term) const final {
+               const irs::FieldCollector* field,
+               const irs::TermCollector* term) const final {
     auto& idf = stats_cast(stats_buf);
 
     const auto* field_ptr = down_cast<field_collector>(field);
@@ -385,7 +385,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
 
   IndexFeatures features() const noexcept final { return IndexFeatures::FREQ; }
 
-  field_collector::ptr prepare_field_collector() const final {
+  FieldCollector::ptr prepare_field_collector() const final {
     return std::make_unique<field_collector>();
   }
 
@@ -406,7 +406,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
       return ScoreFunction::Constant(boost);
     }
 
-    auto& stats = stats_cast(stats_buf);
+    const auto& stats = stats_buf ? stats_cast(stats_buf) : kDefaultIdf;
     auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
     // add norm attribute if requested
@@ -455,7 +455,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
     return MakeScoreFunction<ScoreContext>(filter_boost, boost, stats, freq);
   }
 
-  term_collector::ptr prepare_term_collector() const final {
+  TermCollector::ptr prepare_term_collector() const final {
     return std::make_unique<term_collector>();
   }
 
@@ -467,7 +467,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
 }  // namespace tfidf
 
 tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
-  : sort{irs::type<tfidf_sort>::get()},
+  : Sort{irs::type<tfidf_sort>::get()},
     normalize_{normalize},
     boost_as_score_{boost_as_score} {}
 
@@ -476,7 +476,7 @@ tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
   REGISTER_SCORER_VPACK(tfidf_sort, make_vpack);  // match registration above
 }
 
-sort::prepared::ptr tfidf_sort::prepare() const {
+PreparedSort::ptr tfidf_sort::prepare() const {
   return std::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
 

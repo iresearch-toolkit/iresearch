@@ -26,7 +26,7 @@
 
 namespace irs {
 
-struct boost_sort final : public sort {
+struct boost_sort final : public Sort {
   static constexpr std::string_view type_name() noexcept {
     return "boostscore";
   }
@@ -35,7 +35,7 @@ struct boost_sort final : public sort {
 
   boost_sort() noexcept;
 
-  sort::prepared::ptr prepare() const final;
+  PreparedSort::ptr prepare() const final;
 };
 
 }  // namespace irs
