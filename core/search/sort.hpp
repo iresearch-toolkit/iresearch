@@ -400,7 +400,7 @@ class ScorerBase : public Scorer {
     static_assert(math::is_power2(alignof(stats_t)),
                   "alignof(stats_t) must be a power of 2");
 
-    return std::make_pair(sizeof(stats_t), alignof(stats_t));
+    return {sizeof(stats_t), alignof(stats_t)};
   }
 };
 
@@ -419,7 +419,7 @@ class ScorerBase<void> : public Scorer {
   }
 
   inline std::pair<size_t, size_t> stats_size() const noexcept final {
-    return std::make_pair(size_t(0), size_t(0));
+    return {size_t{0}, size_t{0}};
   }
 };
 
