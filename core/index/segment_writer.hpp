@@ -62,7 +62,7 @@ ENABLE_BITMASK_ENUM(Action);
 struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
   const FeatureInfoProvider& feature_info;
-  WandScorersView wand_scorers;
+  ScorersView scorers;
   const Comparer* const comparator{};
 };
 
@@ -368,7 +368,7 @@ class segment_writer : util::noncopyable {
   // Flushes indexed fields to directory
   void flush_fields(flush_state& docmap);
 
-  WandScorersView wand_scorers_;
+  ScorersView scorers_;
   std::deque<cached_column> cached_columns_;  // pointers remain valid
   sorted_column sort_;
   std::vector<update_context> docs_context_;

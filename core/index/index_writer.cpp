@@ -1356,11 +1356,11 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  const WandScorersProvider& wand_provider,
+  const ScorersProvider& scorers_provider,
   std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
   : feature_info_{feature_info},
     column_info_{column_info},
-    wand_scorers_{wand_provider ? wand_provider() : WandScorers{}},
+    scorers_{scorers_provider ? scorers_provider() : WandScorers{}},
     comparator_{comparator},
     meta_payload_provider_{meta_payload_provider},
     codec_{std::move(codec)},
@@ -1379,6 +1379,9 @@ IndexWriter::IndexWriter(
   IRS_ASSERT(column_info);   // ensured by 'make'
   IRS_ASSERT(feature_info);  // ensured by 'make'
   IRS_ASSERT(codec_);
+  IRS_ASSERT(std::all_of(scorers_.begin(), scorers_.end(),
+                         [](const auto& v) { return v != nullptr; }));
+
   flush_context_.store(flush_context_pool_.data());
 
   // setup round-robin chain

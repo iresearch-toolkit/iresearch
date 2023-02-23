@@ -176,7 +176,7 @@ bool segment_writer::remove(doc_id_t doc_id) {
 
 segment_writer::segment_writer(ConstructToken, directory& dir,
                                const SegmentWriterOptions& options) noexcept
-  : wand_scorers_{options.wand_scorers},
+  : scorers_{options.scorers},
     sort_{options.column_info, {}},
     fields_{options.feature_info, cached_columns_, options.comparator},
     column_info_{&options.column_info},
@@ -271,7 +271,7 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   doc_map docmap;
   flush_state state{.dir = &dir_,
                     .name = seg_name_,
-                    .wand_scorers = wand_scorers_,
+                    .scorers = scorers_,
                     .doc_count = docs_cached()};
 
   if (fields_.comparator()) {

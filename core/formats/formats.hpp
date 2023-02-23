@@ -67,7 +67,7 @@ struct WanderatorOptions {
   bool strict{false};
 };
 
-using WandScorersView = std::span<const std::unique_ptr<Scorer>>;
+using ScorersView = std::span<const std::unique_ptr<Scorer>>;
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
@@ -449,7 +449,7 @@ struct flush_state {
   const doc_map* docmap{};
   const std::set<type_info::type_id>* features{};  // segment features
   std::string_view name;                           // segment name
-  WandScorersView wand_scorers;
+  ScorersView scorers;
   size_t doc_count;
   IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
 };

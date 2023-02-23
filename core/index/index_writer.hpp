@@ -151,7 +151,7 @@ using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
 // Scorers allowed to use in conjunction with wanderator.
 using WandScorers = SmallVector<std::unique_ptr<Scorer>, 2>;
-using WandScorersProvider = std::function<WandScorers()>;
+using ScorersProvider = std::function<WandScorers()>;
 
 // Options the the writer should use after creation
 struct IndexWriterOptions : public SegmentOptions {
@@ -169,7 +169,7 @@ struct IndexWriterOptions : public SegmentOptions {
   PayloadProvider meta_payload_provider;
 
   // Returns a list of wand scorers.
-  WandScorersProvider wand_provider;
+  ScorersProvider wand_provider;
 
   // Comparator defines physical order of documents in each segment
   // produced by an index_writer.
@@ -553,7 +553,7 @@ class IndexWriter : private util::noncopyable {
               const ColumnInfoProvider& column_info,
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
-              const WandScorersProvider& wand_provider,
+              const ScorersProvider& scorers_provider,
               std::shared_ptr<const DirectoryReaderImpl>&& committed_reader);
 
  private:
@@ -936,11 +936,10 @@ class IndexWriter : private util::noncopyable {
 
   // Return options for segment_writer
   SegmentWriterOptions GetSegmentWriterOptions() const noexcept {
-    return {
-      .column_info = column_info_,
-      .feature_info = feature_info_,
-      .wand_scorers = std::span{wand_scorers_.data(), wand_scorers_.size()},
-      .comparator = this->comparator_};
+    return {.column_info = column_info_,
+            .feature_info = feature_info_,
+            .scorers = std::span{scorers_.data(), scorers_.size()},
+            .comparator = this->comparator_};
   }
 
   // Return next segment identifier
@@ -962,7 +961,7 @@ class IndexWriter : private util::noncopyable {
 
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
-  WandScorers wand_scorers_;
+  WandScorers scorers_;
   const Comparer* comparator_;
   PayloadProvider meta_payload_provider_;  // provides payload for new segments
   format::ptr codec_;
