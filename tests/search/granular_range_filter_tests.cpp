@@ -1876,7 +1876,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::Sort::ptr, 1> scorers{
+    std::array<irs::ScorerFactory::ptr, 1> scorers{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
 
@@ -1928,7 +1928,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -1976,7 +1976,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     Docs docs{1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17};
     Costs costs{docs.size()};
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;
@@ -1996,7 +1996,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     Docs docs{2, 4, 6, 11, 12, 13, 14, 15, 16, 17, 1, 5, 7, 9, 10, 3, 8};
     Costs costs{docs.size()};
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;
@@ -2023,7 +2023,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 
     ASSERT_TRUE(max_stream.next());
 
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;
@@ -2088,7 +2088,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     irs::numeric_token_stream min_stream;
     min_stream.reset((double_t)begin);
 
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;

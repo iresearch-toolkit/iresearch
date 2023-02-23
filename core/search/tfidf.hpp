@@ -26,7 +26,7 @@
 
 namespace irs {
 
-class tfidf_sort : public Sort {
+class tfidf_sort : public ScorerFactory {
  public:
   using score_t = float_t;
 

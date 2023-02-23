@@ -31,9 +31,7 @@
 
 namespace irs {
 
-struct collector;
 struct data_output;
-struct ScorerBucket;
 struct IndexReader;
 struct SubReader;
 struct term_reader;
@@ -109,9 +107,10 @@ class TermCollector {
   virtual void write(data_output& out) const = 0;
 };
 
-// Base class for all prepared(compiled) sort entries.
-class Scorer {
- public:
+// Base class for all scorers.
+// Stats are meant to be trivially constructible and will be
+// zero initialized before usage.
+struct Scorer {
   using ptr = std::unique_ptr<Scorer>;
 
   virtual ~Scorer() = default;
@@ -194,15 +193,14 @@ struct ScorerBucket : util::noncopyable {
 static_assert(std::is_nothrow_move_constructible_v<ScorerBucket>);
 static_assert(std::is_nothrow_move_assignable_v<ScorerBucket>);
 
-// Base class for all user-side sort entries.
-// Stats are meant to be trivially constructible and will be
-// zero initialized before usage.
-class Sort {
+// FIXME(gnusi): Doesn't look very useful anymore, consider removing this
+// Factory class instantiating corresponding scorer.
+class ScorerFactory {
  public:
-  using ptr = std::unique_ptr<Sort>;
+  using ptr = std::unique_ptr<ScorerFactory>;
 
-  explicit Sort(const type_info& type) noexcept;
-  virtual ~Sort() = default;
+  explicit ScorerFactory(const type_info& type) noexcept;
+  virtual ~ScorerFactory() = default;
 
   constexpr type_info::type_id type() const noexcept { return type_; }
 
@@ -212,14 +210,14 @@ class Sort {
   type_info::type_id type_;
 };
 
-// Set of compiled sort entries
+// Set of compiled scorers
 class Scorers final : private util::noncopyable {
  public:
   static const Scorers kUnordered;
 
-  static Scorers Prepare(std::span<const Sort::ptr> order);
-  static Scorers Prepare(std::span<const Sort*> order);
-  static Scorers Prepare(const Sort& order) {
+  static Scorers Prepare(std::span<const ScorerFactory::ptr> order);
+  static Scorers Prepare(std::span<const ScorerFactory*> order);
+  static Scorers Prepare(const ScorerFactory& order) {
     const auto* p = &order;
     return Prepare(std::span{&p, 1});
   }
@@ -377,7 +375,7 @@ auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
 
 // Template score for base class for all prepared(compiled) sort entries
 template<typename StatsType>
-class PreparedSortBase : public Scorer {
+class ScorerBase : public Scorer {
  public:
   static_assert(std::is_trivially_constructible_v<StatsType>,
                 "StatsTypemust be trivially constructible");
@@ -407,7 +405,7 @@ class PreparedSortBase : public Scorer {
 };
 
 template<>
-class PreparedSortBase<void> : public Scorer {
+class ScorerBase<void> : public Scorer {
  public:
   FieldCollector::ptr prepare_field_collector() const override {
     return nullptr;

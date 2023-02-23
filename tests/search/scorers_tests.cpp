@@ -25,9 +25,9 @@
 #include "tests_shared.hpp"
 
 TEST(scorers_tests, duplicate_register) {
-  struct dummy_scorer : public irs::Sort {
+  struct dummy_scorer : public irs::ScorerFactory {
     static ptr make(std::string_view) { return ptr(new dummy_scorer()); }
-    dummy_scorer() : irs::Sort(irs::type<dummy_scorer>::get()) {}
+    dummy_scorer() : irs::ScorerFactory(irs::type<dummy_scorer>::get()) {}
 
     irs::Scorer::ptr prepare() const { return nullptr; }
   };

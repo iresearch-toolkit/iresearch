@@ -43,7 +43,7 @@ namespace sort {
 /// @class boost
 /// @brief boost scorer assign boost value to the particular document score
 ////////////////////////////////////////////////////////////////////////////////
-struct boost : public irs::Sort {
+struct boost : public irs::ScorerFactory {
   struct score_ctx final : public irs::score_ctx {
    public:
     explicit score_ctx(irs::score_t boost) noexcept : boost_(boost) {}
@@ -51,7 +51,7 @@ struct boost : public irs::Sort {
     irs::score_t boost_;
   };
 
-  class prepared : public irs::PreparedSortBase<void> {
+  class prepared : public irs::ScorerBase<void> {
    public:
     prepared() = default;
 
@@ -75,7 +75,7 @@ struct boost : public irs::Sort {
   };
 
   typedef irs::score_t score_t;
-  boost() : Sort(irs::type<boost>::get()) {}
+  boost() : ScorerFactory(irs::type<boost>::get()) {}
   virtual irs::Scorer::ptr prepare() const {
     return std::make_unique<boost::prepared>();
   }
@@ -84,8 +84,8 @@ struct boost : public irs::Sort {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief expose sort functionality through overidable lambdas
 //////////////////////////////////////////////////////////////////////////////
-struct custom_sort : public irs::Sort {
-  class prepared : public irs::PreparedSortBase<void> {
+struct custom_sort : public irs::ScorerFactory {
+  class prepared : public irs::ScorerBase<void> {
    public:
     class field_collector : public irs::FieldCollector {
      public:
@@ -237,7 +237,7 @@ struct custom_sort : public irs::Sort {
   std::function<void()> term_reset_;
   std::function<void()> field_reset_;
 
-  custom_sort() : Sort(irs::type<custom_sort>::get()) {}
+  custom_sort() : ScorerFactory(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return std::make_unique<custom_sort::prepared>(*this);
   }
@@ -246,12 +246,12 @@ struct custom_sort : public irs::Sort {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order by frequency, then if equal order by doc_id_t
 //////////////////////////////////////////////////////////////////////////////
-struct frequency_sort : public irs::Sort {
+struct frequency_sort : public irs::ScorerFactory {
   struct stats_t {
     irs::doc_id_t count;
   };
 
-  class prepared : public irs::PreparedSortBase<stats_t> {
+  class prepared : public irs::ScorerBase<stats_t> {
    public:
     struct term_collector : public irs::TermCollector {
       size_t docs_count{};
@@ -332,7 +332,7 @@ struct frequency_sort : public irs::Sort {
     }
   };
 
-  frequency_sort() : Sort(irs::type<frequency_sort>::get()) {}
+  frequency_sort() : ScorerFactory(irs::type<frequency_sort>::get()) {}
   virtual prepared::ptr prepare() const {
     return std::make_unique<frequency_sort::prepared>();
   }
@@ -380,21 +380,21 @@ class FilterTestCaseBase : public index_test_base {
 
   // Validate documents and its scores
   static void CheckQuery(const irs::filter& filter,
-                         std::span<const irs::Sort::ptr> order,
+                         std::span<const irs::ScorerFactory::ptr> order,
                          const ScoredDocs& expected,
                          const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate documents and its scores with test cases
   static void CheckQuery(const irs::filter& filter,
-                         std::span<const irs::Sort::ptr> order,
+                         std::span<const irs::ScorerFactory::ptr> order,
                          const std::vector<Tests>& tests,
                          const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate document order
   static void CheckQuery(const irs::filter& filter,
-                         std::span<const irs::Sort::ptr> order,
+                         std::span<const irs::ScorerFactory::ptr> order,
                          const std::vector<irs::doc_id_t>& expected,
                          const irs::IndexReader& index,
                          bool score_must_be_present = true,

@@ -63,7 +63,7 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       size_t collect_term_count = 0;
       size_t finish_count = 0;
 
-      std::array<irs::Sort::ptr, 1> order{
+      std::array<irs::ScorerFactory::ptr, 1> order{
         std::make_unique<tests::sort::custom_sort>()};
 
       auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
@@ -103,7 +103,7 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       Docs docs{31, 32, 1, 4, 9, 16, 21, 24, 26, 29};
       Costs costs{docs.size()};
 
-      irs::Sort::ptr scorer{std::make_unique<tests::sort::frequency_sort>()};
+      irs::ScorerFactory::ptr scorer{std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(make_filter("prefix", ""), std::span{&scorer, 1}, docs, rdr);
     }
@@ -125,7 +125,7 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       Docs docs{31, 32, 1, 4, 16, 21, 26, 29};
       Costs costs{docs.size()};
 
-      std::array<irs::Sort::ptr, 1> order{
+      std::array<irs::ScorerFactory::ptr, 1> order{
         std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(make_filter("prefix", "a"), order, docs, rdr);
@@ -136,7 +136,7 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       Docs docs{31, 32, 1, 4, 16, 21, 26, 29};
       Costs costs{docs.size()};
 
-      std::array<irs::Sort::ptr, 2> order{
+      std::array<irs::ScorerFactory::ptr, 2> order{
         std::make_unique<tests::sort::frequency_sort>(),
         std::make_unique<tests::sort::frequency_sort>()};
 

@@ -168,7 +168,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -218,7 +218,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -268,7 +268,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::Sort::ptr, 1> order{
+    std::array<irs::ScorerFactory::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -558,7 +558,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  std::array<irs::Sort::ptr, 1> order{irs::scorers::get(
+  std::array<irs::ScorerFactory::ptr, 1> order{irs::scorers::get(
     "bm25", irs::type<irs::text_format::json>::get(), std::string_view{})};
   ASSERT_NE(nullptr, order.front());
 

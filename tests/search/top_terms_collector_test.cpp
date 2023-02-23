@@ -53,8 +53,8 @@ struct type<::term_meta> : type<irs::term_meta> {};
 
 namespace {
 
-struct sort : irs::Sort {
-  sort() noexcept : irs::Sort(irs::type<Sort>::get()) {}
+struct sort : irs::ScorerFactory {
+  sort() noexcept : irs::ScorerFactory(irs::type<ScorerFactory>::get()) {}
 
   struct prepared final : irs::Scorer {
     struct field_collector final : irs::FieldCollector {

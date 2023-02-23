@@ -64,13 +64,13 @@ Filter& append(irs::boolean_filter& root, const std::string_view& name,
 namespace tests {
 namespace detail {
 
-struct basic_sort : irs::Sort {
-  static irs::Sort::ptr make(size_t i) {
-    return irs::Sort::ptr(new basic_sort(i));
+struct basic_sort : irs::ScorerFactory {
+  static irs::ScorerFactory::ptr make(size_t i) {
+    return irs::ScorerFactory::ptr(new basic_sort(i));
   }
 
   explicit basic_sort(size_t idx)
-    : irs::Sort(irs::type<basic_sort>::get()), idx(idx) {}
+    : irs::ScorerFactory(irs::type<basic_sort>::get()), idx(idx) {}
 
   struct basic_scorer final : irs::score_ctx {
     explicit basic_scorer(size_t idx) noexcept : idx(idx) {}
@@ -78,7 +78,7 @@ struct basic_sort : irs::Sort {
     size_t idx;
   };
 
-  struct prepared_sort final : irs::PreparedSortBase<void> {
+  struct prepared_sort final : irs::ScorerBase<void> {
     explicit prepared_sort(size_t idx) : idx(idx) {}
 
     irs::IndexFeatures features() const final {
@@ -1320,7 +1320,7 @@ TEST(boolean_query_estimation, or_filter) {
     // we need order to suppress optimization
     // which will clean include group and leave only 'all' filter
     tests::sort::boost impl;
-    const irs::Sort* sort{&impl};
+    const irs::ScorerFactory* sort{&impl};
 
     auto pord = irs::Scorers::Prepare(std::span{&sort, 1});
     auto prep = root.prepare(irs::SubReader::empty(), pord);
@@ -15422,7 +15422,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::all>();
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(5);
-    irs::Sort::ptr sort{std::make_unique<sort::custom_sort>()};
+    irs::ScorerFactory::ptr sort{std::make_unique<sort::custom_sort>()};
     CheckQuery(root, std::span{&sort, 1}, Docs{1}, rdr);
   }
 
@@ -15464,7 +15464,7 @@ TEST_P(boolean_filter_test_case, or_sequential) {
     root.add<irs::all>();
     append<irs::by_term>(root, "duplicated", "abcd");
     root.min_match_count(3);
-    irs::Sort::ptr sort{std::make_unique<sort::custom_sort>()};
+    irs::ScorerFactory::ptr sort{std::make_unique<sort::custom_sort>()};
     auto& impl = static_cast<sort::custom_sort&>(*sort);
     impl.scorer_score = [](auto doc, auto* score) { *score = doc; };
 
@@ -15832,7 +15832,7 @@ CheckQuery(root, Docs{5, 11, 21, 27, 31}, rdr);
     make_filter<irs::by_term>("duplicated", "abcd");
   // if 'all' will add at least 1 to score totals score will be 3 and expected
   // order will break
-  irs::Sort::ptr sort{std::make_unique<tests::sort::boost>()};
+  irs::ScorerFactory::ptr sort{std::make_unique<tests::sort::boost>()};
   CheckQuery(root, std::span{&sort, 1}, Docs{2, 1}, rdr);
 }
 }
@@ -16142,7 +16142,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
-    std::array<irs::Sort::ptr, 2> ord{std::make_unique<irs::tfidf_sort>(),
+    std::array<irs::ScorerFactory::ptr, 2> ord{std::make_unique<irs::tfidf_sort>(),
                                       std::make_unique<irs::bm25_sort>()};
 
     auto prepared_ord = irs::Scorers::Prepare(ord);

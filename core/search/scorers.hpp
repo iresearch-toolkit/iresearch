@@ -35,7 +35,7 @@ namespace irs {
 class scorer_registrar {
  public:
   scorer_registrar(const type_info& type, const type_info& args_format,
-                   Sort::ptr (*factory)(std::string_view args),
+                   ScorerFactory::ptr (*factory)(std::string_view args),
                    const char* source = nullptr);
   operator bool() const noexcept;
 
@@ -84,7 +84,7 @@ class scorers {
   ///        indirect call to <class>::make(...)
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   ////////////////////////////////////////////////////////////////////////////////
-  static Sort::ptr get(std::string_view name, const type_info& args_format,
+  static ScorerFactory::ptr get(std::string_view name, const type_info& args_format,
                        std::string_view args,
                        bool load_library = true) noexcept;
 

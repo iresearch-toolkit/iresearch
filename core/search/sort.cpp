@@ -74,9 +74,9 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-Sort::Sort(const type_info& type) noexcept : type_{type.id()} {}
+ScorerFactory::ScorerFactory(const type_info& type) noexcept : type_{type.id()} {}
 
-Scorers Scorers::Prepare(std::span<const Sort::ptr> order) {
+Scorers Scorers::Prepare(std::span<const ScorerFactory::ptr> order) {
   return std::apply(
     [](auto&&... args) {
       return Scorers{std::forward<decltype(args)>(args)...};
@@ -85,7 +85,7 @@ Scorers Scorers::Prepare(std::span<const Sort::ptr> order) {
                                   ptr_iterator{std::end(order)}));
 }
 
-Scorers Scorers::Prepare(std::span<const Sort*> order) {
+Scorers Scorers::Prepare(std::span<const ScorerFactory*> order) {
   return std::apply(
     [](auto&&... args) {
       return Scorers{std::forward<decltype(args)>(args)...};

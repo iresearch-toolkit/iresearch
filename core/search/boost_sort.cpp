@@ -25,7 +25,7 @@
 namespace irs {
 namespace {
 
-Sort::ptr make_json(std::string_view /*args*/) {
+ScorerFactory::ptr make_json(std::string_view /*args*/) {
   return std::make_unique<boost_sort>();
 }
 
@@ -40,7 +40,7 @@ struct volatile_boost_score_ctx final : score_ctx {
   const filter_boost* volatile_boost;
 };
 
-struct Prepared final : PreparedSortBase<void> {
+struct Prepared final : ScorerBase<void> {
   IndexFeatures features() const noexcept final { return IndexFeatures::NONE; }
 
   ScoreFunction prepare_scorer(const SubReader& /*segment*/,
@@ -67,7 +67,7 @@ struct Prepared final : PreparedSortBase<void> {
 
 void boost_sort::init() { REGISTER_SCORER_JSON(boost_sort, make_json); }
 
-boost_sort::boost_sort() noexcept : Sort{irs::type<boost_sort>::get()} {}
+boost_sort::boost_sort() noexcept : ScorerFactory{irs::type<boost_sort>::get()} {}
 
 Scorer::ptr boost_sort::prepare() const {
   // FIXME can avoid allocation

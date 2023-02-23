@@ -258,7 +258,7 @@ TEST(bitset_iterator_test, next) {
 
 TEST(bitset_iterator_test, seek) {
   const tests::sort::custom_sort impl;
-  const irs::Sort* sort = &impl;
+  const irs::ScorerFactory* sort = &impl;
   auto prepared_order = irs::Scorers::Prepare(std::span(&sort, 1));
 
   {

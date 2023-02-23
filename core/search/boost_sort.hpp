@@ -26,7 +26,7 @@
 
 namespace irs {
 
-struct boost_sort final : public Sort {
+struct boost_sort final : public ScorerFactory {
   static constexpr std::string_view type_name() noexcept {
     return "boostscore";
   }

@@ -38,7 +38,7 @@ namespace {
 const auto kSQRT = irs::cache_func<uint32_t, 2048>(
   0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
-irs::Sort::ptr make_from_object(const VPackSlice slice) {
+irs::ScorerFactory::ptr make_from_object(const VPackSlice slice) {
   IRS_ASSERT(slice.isObject());
 
   auto scorer = std::make_unique<irs::bm25_sort>();
@@ -82,7 +82,7 @@ irs::Sort::ptr make_from_object(const VPackSlice slice) {
   return scorer;
 }
 
-irs::Sort::ptr make_from_array(const VPackSlice slice) {
+irs::ScorerFactory::ptr make_from_array(const VPackSlice slice) {
   IRS_ASSERT(slice.isArray());
 
   VPackArrayIterator array(slice);
@@ -130,7 +130,7 @@ irs::Sort::ptr make_from_array(const VPackSlice slice) {
   return std::make_unique<irs::bm25_sort>(k, b);
 }
 
-irs::Sort::ptr make_vpack(const VPackSlice slice) {
+irs::ScorerFactory::ptr make_vpack(const VPackSlice slice) {
   switch (slice.type()) {
     case VPackValueType::Object:
       return make_from_object(slice);
@@ -143,7 +143,7 @@ irs::Sort::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::Sort::ptr make_vpack(std::string_view args) {
+irs::ScorerFactory::ptr make_vpack(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
     return std::make_unique<irs::bm25_sort>();
@@ -153,7 +153,7 @@ irs::Sort::ptr make_vpack(std::string_view args) {
   }
 }
 
-irs::Sort::ptr make_json(std::string_view args) {
+irs::ScorerFactory::ptr make_json(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
     return std::make_unique<irs::bm25_sort>();
@@ -473,7 +473,7 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
     std::forward<Args>(args)...);
 }
 
-class sort final : public irs::PreparedSortBase<bm25::stats> {
+class sort final : public irs::ScorerBase<bm25::stats> {
  public:
   sort(float_t k, float_t b, bool boost_as_score) noexcept
     : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
@@ -611,7 +611,7 @@ class sort final : public irs::PreparedSortBase<bm25::stats> {
 
 bm25_sort::bm25_sort(float_t k /*= 1.2f*/, float_t b /*= 0.75f*/,
                      bool boost_as_score /*= false*/) noexcept
-  : Sort{irs::type<bm25_sort>::get()},
+  : ScorerFactory{irs::type<bm25_sort>::get()},
     k_{k},
     b_{b},
     boost_as_score_{boost_as_score} {}

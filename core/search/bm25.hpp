@@ -26,7 +26,7 @@
 
 namespace irs {
 
-class bm25_sort : public Sort {
+class bm25_sort : public ScorerFactory {
  public:
   using score_t = float_t;
 

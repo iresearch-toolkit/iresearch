@@ -47,7 +47,7 @@ const auto kRSQRT = irs::cache_func<uint32_t, 2048>(1, [](uint32_t i) noexcept {
   return 1.f / std::sqrt(static_cast<float_t>(i));
 });
 
-irs::Sort::ptr make_from_bool(const VPackSlice slice) {
+irs::ScorerFactory::ptr make_from_bool(const VPackSlice slice) {
   IRS_ASSERT(slice.isBool());
 
   return std::make_unique<irs::tfidf_sort>(slice.getBool());
@@ -55,7 +55,7 @@ irs::Sort::ptr make_from_bool(const VPackSlice slice) {
 
 constexpr std::string_view WITH_NORMS_PARAM_NAME("withNorms");
 
-irs::Sort::ptr make_from_object(const VPackSlice slice) {
+irs::ScorerFactory::ptr make_from_object(const VPackSlice slice) {
   IRS_ASSERT(slice.isObject());
 
   auto scorer = std::make_unique<irs::tfidf_sort>();
@@ -79,7 +79,7 @@ irs::Sort::ptr make_from_object(const VPackSlice slice) {
   return scorer;
 }
 
-irs::Sort::ptr make_from_array(const VPackSlice slice) {
+irs::ScorerFactory::ptr make_from_array(const VPackSlice slice) {
   IRS_ASSERT(slice.isArray());
 
   VPackArrayIterator array = VPackArrayIterator(slice);
@@ -111,7 +111,7 @@ irs::Sort::ptr make_from_array(const VPackSlice slice) {
   return std::make_unique<irs::tfidf_sort>(norms);
 }
 
-irs::Sort::ptr make_vpack(const VPackSlice slice) {
+irs::ScorerFactory::ptr make_vpack(const VPackSlice slice) {
   switch (slice.type()) {
     case VPackValueType::Bool:
       return make_from_bool(slice);
@@ -127,7 +127,7 @@ irs::Sort::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::Sort::ptr make_vpack(std::string_view args) {
+irs::ScorerFactory::ptr make_vpack(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
     return std::make_unique<irs::tfidf_sort>();
@@ -137,7 +137,7 @@ irs::Sort::ptr make_vpack(std::string_view args) {
   }
 }
 
-irs::Sort::ptr make_json(std::string_view args) {
+irs::ScorerFactory::ptr make_json(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
     return std::make_unique<irs::tfidf_sort>();
@@ -360,7 +360,7 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
     std::forward<Args>(args)...);
 }
 
-class sort final : public irs::PreparedSortBase<tfidf::idf> {
+class sort final : public irs::ScorerBase<tfidf::idf> {
  public:
   explicit sort(bool normalize, bool boost_as_score) noexcept
     : normalize_{normalize}, boost_as_score_{boost_as_score} {}
@@ -467,7 +467,7 @@ class sort final : public irs::PreparedSortBase<tfidf::idf> {
 }  // namespace tfidf
 
 tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
-  : Sort{irs::type<tfidf_sort>::get()},
+  : ScorerFactory{irs::type<tfidf_sort>::get()},
     normalize_{normalize},
     boost_as_score_{boost_as_score} {}
 

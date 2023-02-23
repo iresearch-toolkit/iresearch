@@ -141,7 +141,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    irs::Sort::ptr impl{std::make_unique<tests::sort::custom_sort>()};
+    irs::ScorerFactory::ptr impl{std::make_unique<tests::sort::custom_sort>()};
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](
@@ -183,7 +183,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     const auto filter = make_filter(
       "prefix", {{"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f}});
 
-    irs::Sort::ptr impl{std::make_unique<irs::boost_sort>()};
+    irs::ScorerFactory::ptr impl{std::make_unique<irs::boost_sort>()};
     CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
   }
 
@@ -196,7 +196,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
       "prefix",
       {{"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f}});
 
-    irs::Sort::ptr impl{std::make_unique<irs::boost_sort>()};
+    irs::ScorerFactory::ptr impl{std::make_unique<irs::boost_sort>()};
     CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
   }
 }
@@ -464,7 +464,7 @@ TEST_P(terms_filter_test_case, min_match) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    irs::Sort::ptr impl{std::make_unique<tests::sort::custom_sort>()};
+    irs::ScorerFactory::ptr impl{std::make_unique<tests::sort::custom_sort>()};
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](

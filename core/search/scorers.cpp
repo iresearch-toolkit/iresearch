@@ -68,7 +68,7 @@ constexpr std::string_view kFileNamePrefix{"libscorer-"};
 
 class scorer_register
   : public irs::tagged_generic_register<
-      entry_key_t, irs::Sort::ptr (*)(std::string_view args), std::string_view,
+      entry_key_t, irs::ScorerFactory::ptr (*)(std::string_view args), std::string_view,
       scorer_register> {
  protected:
   std::string key_to_filename(const key_type& key) const final {
@@ -96,7 +96,7 @@ namespace irs {
                       entry_key_t(name, args_format), load_library);
 }
 
-/*static*/ Sort::ptr scorers::get(std::string_view name,
+/*static*/ ScorerFactory::ptr scorers::get(std::string_view name,
                                   const type_info& args_format,
                                   std::string_view args,
                                   bool load_library /*= true*/) noexcept {
@@ -140,7 +140,7 @@ namespace irs {
 
 scorer_registrar::scorer_registrar(const type_info& type,
                                    const type_info& args_format,
-                                   Sort::ptr (*factory)(std::string_view args),
+                                   ScorerFactory::ptr (*factory)(std::string_view args),
                                    const char* source /*= nullptr*/) {
   const auto source_ref =
     source ? std::string_view{source} : std::string_view{};
