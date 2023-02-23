@@ -798,10 +798,8 @@ void IndexWriter::Transaction::Reset() noexcept {
       ctx->flushed_update_contexts_.resize(docs_end);
       ctx->uncommitted_docs_ = docs_end;
     } else {
-      const auto docs_begin = it->GetDocsBegin();
       ctx->flushed_.erase(it, end);
-      ctx->flushed_update_contexts_.resize(docs_begin);
-      ctx->uncommitted_docs_ = docs_begin;
+      ctx->flushed_update_contexts_.resize(ctx->uncommitted_docs_);
     }
   }
 
@@ -1009,7 +1007,7 @@ void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& segment,
   segment = ActiveSegmentContext{};
   // add segment_context to freelist
   pending_segment_contexts_freelist_.push(*freelist_node);
-  // increment counter to release hold
+  // decrement counter to release hold
   segments_active.fetch_sub(1);
 }
 
@@ -1080,26 +1078,33 @@ void IndexWriter::SegmentContext::UpdateGeneration(uint64_t base) noexcept {
   // Update generations for insertions
   auto update_generation =
     [&](std::span<segment_writer::update_context> ctxs) noexcept {
-      for (auto begin = ctxs.begin() + uncommitted_docs_, end = ctxs.end();
-           begin < end; ++begin) {
+      for (auto& update : ctxs) {
         // Can be == to 'count' if inserts come after modification
-        IRS_ASSERT(begin->generation <= modification_queries_.size() -
+        IRS_ASSERT(update.generation <= modification_queries_.size() -
                                           uncommitted_modification_queries_);
-        begin->generation += base;
+        update.generation += base;
       }
     };
 
-  update_generation(flushed_update_contexts_);
+  auto commit_start = uncommitted_docs_;
+  if (commit_start < flushed_update_contexts_.size()) {
+    update_generation({flushed_update_contexts_.data() + commit_start,
+                       flushed_update_contexts_.size() - commit_start});
+    commit_start = 0;
+  } else {
+    commit_start -= flushed_update_contexts_.size();
+  }
 
   IRS_ASSERT(writer_);
-  if (writer_->initialized() && writer_->docs_cached() != 0) {
-    // update generations of segment_writer::doc_contexts
-    update_generation(writer_->docs_context());
+  if (auto docs = writer_->docs_context(); commit_start < docs.size()) {
+    IRS_ASSERT(writer_->initialized());
+    update_generation({docs.data() + commit_start, docs.size() - commit_start});
   }
 
   // Reset counters for reuse
   uncommitted_generation_ = 0;
-  uncommitted_docs_ = flushed_update_contexts_.size() + writer_->docs_cached();
+  last_trx_buffered_docs_ = writer_->docs_cached();
+  uncommitted_docs_ = flushed_update_contexts_.size() + last_trx_buffered_docs_;
   uncommitted_modification_queries_ = modification_queries_.size();
 }
 
@@ -1120,6 +1125,8 @@ uint64_t IndexWriter::SegmentContext::Flush() {
   const std::span ctxs = writer_->flush(writer_meta_, docs_mask);
 
   if (writer_meta_.meta.live_docs_count == 0) {
+    uncommitted_docs_ -= last_trx_buffered_docs_;
+    last_trx_buffered_docs_ = 0;
     return 0;  // Skip flushing an empty writer
   }
   IRS_ASSERT(writer_meta_.meta.live_docs_count <= writer_meta_.meta.docs_count);

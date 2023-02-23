@@ -244,7 +244,7 @@ class IndexWriter : private util::noncopyable {
    public:
     Document(FlushContext& ctx, std::shared_ptr<SegmentContext> segment,
              const segment_writer::update_context& update);
-    Document(Document&&) noexcept = default;
+    Document(Document&&) = default;
     ~Document() noexcept;
 
     Document& operator=(Document&&) = delete;
@@ -700,6 +700,14 @@ class IndexWriter : private util::noncopyable {
     segment_meta_generator_t meta_generator_;
     // sequential list of pending modification
     std::vector<ModificationContext> modification_queries_;
+
+    // '|...Fxx|....F....|F.....|F'
+    // F -- SegmentContext::Flush()
+    // | -- Transaction::Commit()
+    // xx -- docs remain cached on Transaction::Commit
+    // Part of uncommitted_docs_ which we need to remove from it,
+    // if new segment is empty
+    size_t last_trx_buffered_docs_{0};
 
     // Transaction::Commit was not called for these:
     size_t uncommitted_docs_;
