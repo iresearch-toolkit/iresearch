@@ -28,11 +28,11 @@ namespace irs {
 
 const score score::kNoScore;
 
-Scorers PrepareScorers(std::span<const OrderBucket> buckets,
+ScoreFunctions PrepareScorers(std::span<const OrderBucket> buckets,
                        const SubReader& segment, const term_reader& field,
                        const byte_type* stats_buf,
                        const attribute_provider& doc, score_t boost) {
-  Scorers scorers;
+  ScoreFunctions scorers;
   scorers.reserve(buckets.size());
 
   for (const auto& entry : buckets) {
@@ -55,7 +55,7 @@ Scorers PrepareScorers(std::span<const OrderBucket> buckets,
   return scorers;
 }
 
-ScoreFunction CompileScorers(Scorers&& scorers) {
+ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
   switch (scorers.size()) {
     case 0: {
       return ScoreFunction{};
@@ -85,10 +85,10 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
     }
     default: {
       struct Ctx final : score_ctx {
-        explicit Ctx(Scorers&& scorers) noexcept
+        explicit Ctx(ScoreFunctions&& scorers) noexcept
           : scorers{std::move(scorers)} {}
 
-        Scorers scorers;
+        ScoreFunctions scorers;
       };
 
       return ScoreFunction::Make<Ctx>(

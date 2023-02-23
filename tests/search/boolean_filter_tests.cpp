@@ -191,7 +191,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
  private:
   std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::cost est_;
-  irs::Scorers scorers_;
+  irs::ScoreFunctions scorers_;
   docids_t::const_iterator first_;
   docids_t::const_iterator last_;
   const irs::byte_type* stats_;

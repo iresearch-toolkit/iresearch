@@ -44,16 +44,16 @@ struct score : attribute, ScoreFunction {
   using ScoreFunction::operator=;
 };
 
-using Scorers = SmallVector<ScoreFunction, 2>;
+using ScoreFunctions = SmallVector<ScoreFunction, 2>;
 
 // Prepare scorer for each of the bucket.
-Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const SubReader& segment, const term_reader& field,
-                       const byte_type* stats, const attribute_provider& doc,
-                       score_t boost);
+ScoreFunctions PrepareScorers(std::span<const OrderBucket> buckets,
+                              const SubReader& segment,
+                              const term_reader& field, const byte_type* stats,
+                              const attribute_provider& doc, score_t boost);
 
 // Compiles a set of prepared scorers into a single score function.
-ScoreFunction CompileScorers(Scorers&& scorers);
+ScoreFunction CompileScorers(ScoreFunctions&& scorers);
 
 template<typename... Args>
 ScoreFunction CompileScore(Args&&... args) {
