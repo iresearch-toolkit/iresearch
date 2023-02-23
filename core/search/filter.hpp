@@ -46,7 +46,7 @@ enum class ExecutionMode : uint32_t {
 
 struct ExecutionContext {
   const SubReader& segment;
-  const Order& scorers;
+  const Scorers& scorers;
   const attribute_provider* ctx{};
   ExecutionMode mode{ExecutionMode::kAll};
 };
@@ -64,7 +64,7 @@ class filter {
     explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
 
     doc_iterator::ptr execute(const SubReader& segment,
-                              const Order& scorers = Order::kUnordered,
+                              const Scorers& scorers = Scorers::kUnordered,
                               ExecutionMode mode = ExecutionMode::kAll) const {
       return execute({.segment = segment, .scorers = scorers, .mode = mode});
     }
@@ -96,26 +96,26 @@ class filter {
 
   // boost - external boost
   virtual filter::prepared::ptr prepare(
-    const IndexReader& rdr, const Order& ord, score_t boost,
+    const IndexReader& rdr, const Scorers& ord, score_t boost,
     const attribute_provider* ctx) const = 0;
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 const attribute_provider* ctx) const {
     return prepare(rdr, ord, irs::kNoBoost, ctx);
   }
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost) const {
     return prepare(rdr, ord, boost, nullptr);
   }
 
   filter::prepared::ptr prepare(const IndexReader& rdr,
-                                const Order& ord) const {
+                                const Scorers& ord) const {
     return prepare(rdr, ord, irs::kNoBoost);
   }
 
   filter::prepared::ptr prepare(const IndexReader& rdr) const {
-    return prepare(rdr, Order::kUnordered);
+    return prepare(rdr, Scorers::kUnordered);
   }
 
   score_t boost() const noexcept { return boost_; }
@@ -196,7 +196,7 @@ class empty final : public filter {
  public:
   empty();
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 };

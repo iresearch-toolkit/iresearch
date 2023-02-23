@@ -114,7 +114,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  auto prepared_order = irs::Order::Prepare(
+  auto prepared_order = irs::Scorers::Prepare(
     irs::bm25_sort{irs::bm25_sort::K(), irs::bm25_sort::B(), true});
 
   auto reader = irs::DirectoryReader(dir(), codec());
@@ -386,7 +386,7 @@ TEST_P(bm25_test_case, test_phrase) {
 
   auto impl = irs::scorers::get(
     "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
-  auto prepared_order = irs::Order::Prepare(*impl);
+  auto prepared_order = irs::Scorers::Prepare(*impl);
 
   // read segment
   auto index = open_reader();
@@ -518,7 +518,7 @@ TEST_P(bm25_test_case, test_query) {
   irs::bm25_sort impl{irs::bm25_sort::K(), irs::bm25_sort::B(), true};
   const irs::Sort* sort{&impl};
 
-  auto prepared_order = irs::Order::Prepare(std::span{&sort, 1});
+  auto prepared_order = irs::Scorers::Prepare(std::span{&sort, 1});
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
@@ -1534,7 +1534,7 @@ TEST_P(bm25_test_case, test_order) {
   irs::bm25_sort sort;
   const irs::Sort* impl{&sort};
 
-  auto prepared_order = irs::Order::Prepare(std::span{&impl, 1});
+  auto prepared_order = irs::Scorers::Prepare(std::span{&impl, 1});
   ASSERT_EQ(sizeof(irs::score_t), prepared_order.score_size());
   ASSERT_EQ(1, prepared_order.buckets().size());
 

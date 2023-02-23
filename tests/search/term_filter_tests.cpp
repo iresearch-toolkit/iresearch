@@ -105,7 +105,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     filter.boost(0.f);
 
     // create order
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     // without boost
     {
@@ -487,7 +487,7 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       };
 
       std::set<irs::doc_id_t> expected{31, 32};
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 

@@ -205,7 +205,7 @@ proxy_filter::proxy_filter() noexcept
   : filter(irs::type<proxy_filter>::get()) {}
 
 filter::prepared::ptr proxy_filter::prepare(
-  const IndexReader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {
   if (!cache_ || !cache_->real_filter_) {
     IRS_ASSERT(false);

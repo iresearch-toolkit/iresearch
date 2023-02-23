@@ -76,20 +76,24 @@ REGISTER_ATTRIBUTE(filter_boost);
 
 Sort::Sort(const type_info& type) noexcept : type_{type.id()} {}
 
-Order Order::Prepare(std::span<const Sort::ptr> order) {
+Scorers Scorers::Prepare(std::span<const Sort::ptr> order) {
   return std::apply(
-    [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
-    ::irs::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                                 ptr_iterator{std::end(order)}));
+    [](auto&&... args) {
+      return Scorers{std::forward<decltype(args)>(args)...};
+    },
+    ::irs::Prepare<ScorerBuckets>(ptr_iterator{std::begin(order)},
+                                  ptr_iterator{std::end(order)}));
 }
 
-Order Order::Prepare(std::span<const Sort*> order) {
+Scorers Scorers::Prepare(std::span<const Sort*> order) {
   return std::apply(
-    [](auto&&... args) { return Order{std::forward<decltype(args)>(args)...}; },
-    ::irs::Prepare<OrderBuckets>(ptr_iterator{std::begin(order)},
-                                 ptr_iterator{std::end(order)}));
+    [](auto&&... args) {
+      return Scorers{std::forward<decltype(args)>(args)...};
+    },
+    ::irs::Prepare<ScorerBuckets>(ptr_iterator{std::begin(order)},
+                                  ptr_iterator{std::end(order)}));
 }
 
-const Order Order::kUnordered;
+const Scorers Scorers::kUnordered;
 
 }  // namespace irs

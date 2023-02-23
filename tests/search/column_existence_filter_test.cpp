@@ -85,7 +85,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -114,7 +114,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -146,7 +146,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -174,7 +174,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -205,7 +205,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -232,7 +232,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -259,7 +259,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -291,7 +291,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -320,7 +320,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -352,7 +352,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -380,7 +380,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -411,7 +411,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -438,7 +438,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -465,7 +465,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_name, false);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -498,7 +498,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -565,7 +565,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -608,7 +608,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -651,7 +651,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -691,7 +691,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_column_existence filter = make_filter(column_prefix, true);
 
-      auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+      auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
       ASSERT_EQ(1, rdr->size());
       auto& segment = (*rdr)[0];
@@ -751,7 +751,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
         *score = irs::score_t(doc & 0xAAAAAAAA);
       };
 
-      auto prepared_order = irs::Order::Prepare(sort);
+      auto prepared_order = irs::Scorers::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
       std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
@@ -840,7 +840,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
         *score = irs::score_t(doc & 0xAAAAAAAA);
       };
 
-      auto prepared_order = irs::Order::Prepare(sort);
+      auto prepared_order = irs::Scorers::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
       std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
@@ -928,7 +928,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
         *score = irs::score_t(doc & 0xAAAAAAAA);
       };
 
-      auto prepared_order = irs::Order::Prepare(sort);
+      auto prepared_order = irs::Scorers::Prepare(sort);
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
       std::multimap<irs::score_t, irs::doc_id_t> scored_result;
 
@@ -1454,7 +1454,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
     // target, expected seek result
     irs::by_column_existence filter = make_filter(target, false);
 
-    auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+    auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
     ASSERT_EQ(1, rdr->size());
     auto& segment = (*rdr)[0];
@@ -1480,7 +1480,7 @@ TEST_P(column_existence_long_filter_test_case, mixed_seeks) {
   {
     irs::by_column_existence filter = make_filter(target, false);
 
-    auto prepared = filter.prepare(*rdr, irs::Order::kUnordered);
+    auto prepared = filter.prepare(*rdr, irs::Scorers::kUnordered);
 
     ASSERT_EQ(1, rdr->size());
     auto& segment = (*rdr)[0];

@@ -35,7 +35,7 @@ struct boost_sort final : public Sort {
 
   boost_sort() noexcept;
 
-  PreparedSort::ptr prepare() const final;
+  Scorer::ptr prepare() const final;
 };
 
 }  // namespace irs

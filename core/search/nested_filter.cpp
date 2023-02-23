@@ -46,13 +46,13 @@ using namespace irs;
 
 static_assert(std::variant_size_v<ByNestedOptions::MatchType> == 2);
 
-const Order& GetOrder(const ByNestedOptions::MatchType& match,
-                      const Order& ord) noexcept {
+const Scorers& GetOrder(const ByNestedOptions::MatchType& match,
+                      const Scorers& ord) noexcept {
   return std::visit(
-    irs::Visitor{[&](Match v) noexcept -> const Order& {
-                   return kMatchNone == v ? Order::kUnordered : ord;
+    irs::Visitor{[&](Match v) noexcept -> const Scorers& {
+                   return kMatchNone == v ? Scorers::kUnordered : ord;
                  },
-                 [&ord](const DocIteratorProvider&) noexcept -> const Order& {
+                 [&ord](const DocIteratorProvider&) noexcept -> const Scorers& {
                    return ord;
                  }},
     match);
@@ -687,7 +687,7 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
 }
 
 filter::prepared::ptr ByNestedFilter::prepare(
-  const IndexReader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {
   auto& [parent, child, match, merge_type] = options();
 

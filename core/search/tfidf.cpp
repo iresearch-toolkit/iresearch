@@ -476,7 +476,7 @@ tfidf_sort::tfidf_sort(bool normalize, bool boost_as_score) noexcept
   REGISTER_SCORER_VPACK(tfidf_sort, make_vpack);  // match registration above
 }
 
-PreparedSort::ptr tfidf_sort::prepare() const {
+Scorer::ptr tfidf_sort::prepare() const {
   return std::make_unique<tfidf::sort>(normalize_, boost_as_score_);
 }
 

@@ -124,12 +124,12 @@ struct prepare : util::noncopyable {
     return filter::prepared::empty();
   }
 
-  prepare(const IndexReader& index, const Order& order, std::string_view field,
+  prepare(const IndexReader& index, const Scorers& order, std::string_view field,
           const score_t boost) noexcept
     : index(index), order(order), field(field), boost(boost) {}
 
   const IndexReader& index;
-  const irs::Order& order;
+  const irs::Scorers& order;
   const std::string_view field;
   const score_t boost;
 };
@@ -203,7 +203,7 @@ class phrase_term_visitor final : public filter_visitor,
 namespace irs {
 
 filter::prepared::ptr by_phrase::prepare(
-  const IndexReader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Scorers& ord, score_t boost,
   const attribute_provider* /*ctx*/) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
@@ -229,7 +229,7 @@ filter::prepared::ptr by_phrase::prepare(
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
-                                                       const Order& ord,
+                                                       const Scorers& ord,
                                                        score_t boost) const {
   const auto phrase_size = options().size();
   const auto is_ord_empty = ord.empty();
@@ -319,7 +319,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
-  const IndexReader& index, const Order& ord, score_t boost) const {
+  const IndexReader& index, const Scorers& ord, score_t boost) const {
   const auto phrase_size = options().size();
 
   // stats collectors

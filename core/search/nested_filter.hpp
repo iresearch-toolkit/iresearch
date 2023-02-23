@@ -111,7 +111,7 @@ class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
  public:
   using filter::prepare;
 
-  prepared::ptr prepare(const IndexReader& rdr, const Order& ord, score_t boost,
+  prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord, score_t boost,
                         const attribute_provider* /*ctx*/) const final;
 };
 

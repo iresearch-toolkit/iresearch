@@ -99,7 +99,7 @@ class collectors_base {
  public:
   using iterator_type = typename std::vector<Collector>::const_iterator;
 
-  explicit collectors_base(size_t size, const Order& order)
+  explicit collectors_base(size_t size, const Scorers& order)
     : collectors_(size), buckets_{order.buckets()} {}
 
   collectors_base(collectors_base&&) = default;
@@ -134,7 +134,7 @@ class collectors_base {
 
  protected:
   std::vector<Collector> collectors_;
-  std::span<const OrderBucket> buckets_;
+  std::span<const ScorerBucket> buckets_;
 };
 
 // Wrapper around FieldCollector which guarantees collector
@@ -165,7 +165,7 @@ static_assert(std::is_nothrow_move_assignable_v<field_collector_wrapper>);
 // all buckets
 class field_collectors : public collectors_base<field_collector_wrapper> {
  public:
-  explicit field_collectors(const Order& buckets);
+  explicit field_collectors(const Scorers& buckets);
   field_collectors(field_collectors&&) = default;
   field_collectors& operator=(field_collectors&&) = default;
 
@@ -221,7 +221,7 @@ static_assert(std::is_nothrow_move_assignable_v<term_collector_wrapper>);
 // all buckets
 class term_collectors : public collectors_base<term_collector_wrapper> {
  public:
-  term_collectors(const Order& buckets, size_t size);
+  term_collectors(const Scorers& buckets, size_t size);
   term_collectors(term_collectors&&) = default;
   term_collectors& operator=(term_collectors&&) = default;
 

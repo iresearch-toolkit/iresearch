@@ -92,7 +92,7 @@ class by_terms final : public filter_base<by_terms_options>,
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& index, const Order& order,
+  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& order,
                                 score_t boost,
                                 const attribute_provider* /*ctx*/) const final;
 };

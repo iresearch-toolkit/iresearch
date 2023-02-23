@@ -103,8 +103,8 @@ struct basic_sort : irs::Sort {
     size_t idx;
   };
 
-  irs::PreparedSort::ptr prepare() const final {
-    return irs::PreparedSort::ptr(new prepared_sort(idx));
+  irs::Scorer::ptr prepare() const final {
+    return irs::Scorer::ptr(new prepared_sort(idx));
   }
 
   size_t idx;
@@ -124,7 +124,7 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
   basic_doc_iterator(const docids_t::const_iterator& first,
                      const docids_t::const_iterator& last,
                      const irs::byte_type* stats = nullptr,
-                     const irs::Order& ord = irs::Order::kUnordered,
+                     const irs::Scorers& ord = irs::Scorers::kUnordered,
                      irs::score_t boost = irs::kNoBoost)
     : first_(first),
       last_(last),
@@ -225,7 +225,7 @@ std::vector<DocIterator> execute_all(
 
 template<typename DocIterator>
 std::vector<DocIterator> execute_all(
-  std::span<const std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs) {
+  std::span<const std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs) {
   const auto emptyBytesRef = irs::kEmptyStringView<irs::byte_type>;
   const irs::byte_type* stats = emptyBytesRef.data();
   std::vector<DocIterator> itrs;
@@ -274,7 +274,7 @@ struct boosted : public irs::filter {
   };
 
   irs::filter::prepared::ptr prepare(
-    const irs::IndexReader&, const irs::Order&, irs::score_t boost,
+    const irs::IndexReader&, const irs::Scorers&, irs::score_t boost,
     const irs::attribute_provider* /*ctx*/) const final {
     return irs::memory::make_managed<boosted::prepared>(docs,
                                                         this->boost() * boost);
@@ -295,7 +295,7 @@ TEST(boolean_query_boost, hierarchy) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     root.boost(value);
@@ -372,7 +372,7 @@ TEST(boolean_query_boost, hierarchy) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     root.boost(value);
@@ -468,7 +468,7 @@ TEST(boolean_query_boost, hierarchy) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::Or root;
     root.boost(value);
@@ -561,7 +561,7 @@ TEST(boolean_query_boost, and_filter) {
   {
     irs::And root;
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -573,7 +573,7 @@ TEST(boolean_query_boost, and_filter) {
     irs::And root;
     root.boost(value);
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -582,7 +582,7 @@ TEST(boolean_query_boost, and_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     {
@@ -608,7 +608,7 @@ TEST(boolean_query_boost, and_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     {
@@ -640,7 +640,7 @@ TEST(boolean_query_boost, and_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     {
@@ -680,7 +680,7 @@ TEST(boolean_query_boost, and_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     root.boost(value);
@@ -726,7 +726,7 @@ TEST(boolean_query_boost, and_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     {
@@ -770,7 +770,7 @@ TEST(boolean_query_boost, and_filter) {
 
   // unboosted root & several unboosted subqueries
   {
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::And root;
     {
@@ -818,7 +818,7 @@ TEST(boolean_query_boost, or_filter) {
   {
     irs::Or root;
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -830,7 +830,7 @@ TEST(boolean_query_boost, or_filter) {
     irs::Or root;
     root.boost(value);
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     ASSERT_EQ(irs::kNoBoost, prep->boost());
   }
@@ -839,7 +839,7 @@ TEST(boolean_query_boost, or_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::Or root;
     {
@@ -869,7 +869,7 @@ TEST(boolean_query_boost, or_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::Or root;
     {
@@ -901,7 +901,7 @@ TEST(boolean_query_boost, or_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::Or root;
     {
@@ -952,7 +952,7 @@ TEST(boolean_query_boost, or_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::Or root;
     root.boost(value);
@@ -1011,7 +1011,7 @@ TEST(boolean_query_boost, or_filter) {
   {
     const irs::score_t value = 5;
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::Or root;
 
@@ -1068,7 +1068,7 @@ TEST(boolean_query_boost, or_filter) {
 
   // unboosted root & several unboosted subqueries
   {
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
 
     irs::Or root;
     {
@@ -1157,7 +1157,7 @@ struct unestimated : public irs::filter {
     }
   };
 
-  filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
+  filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Scorers&,
                                 irs::score_t,
                                 const irs::attribute_provider*) const final {
     return irs::memory::make_managed<unestimated::prepared>();
@@ -1212,7 +1212,7 @@ struct estimated : public irs::filter {
     irs::cost::cost_t est;
   };
 
-  filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Order&,
+  filter::prepared::ptr prepare(const irs::IndexReader&, const irs::Scorers&,
                                 irs::score_t,
                                 const irs::attribute_provider*) const final {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
@@ -1236,7 +1236,7 @@ TEST(boolean_query_estimation, or_filter) {
     root.add<detail::estimated>().est = 1;
     root.add<detail::estimated>().est = 100;
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
 
@@ -1261,7 +1261,7 @@ TEST(boolean_query_estimation, or_filter) {
     root.add<detail::unestimated>();
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
@@ -1279,7 +1279,7 @@ TEST(boolean_query_estimation, or_filter) {
     root.add<detail::estimated>().est = 100;
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
 
@@ -1322,7 +1322,7 @@ TEST(boolean_query_estimation, or_filter) {
     tests::sort::boost impl;
     const irs::Sort* sort{&impl};
 
-    auto pord = irs::Order::Prepare(std::span{&sort, 1});
+    auto pord = irs::Scorers::Prepare(std::span{&sort, 1});
     auto prep = root.prepare(irs::SubReader::empty(), pord);
 
     auto docs = prep->execute(irs::SubReader::empty());
@@ -1350,7 +1350,7 @@ TEST(boolean_query_estimation, or_filter) {
   {
     irs::Or root;
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
@@ -1367,7 +1367,7 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<detail::estimated>().est = 1;
     root.add<detail::estimated>().est = 100;
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
 
@@ -1390,7 +1390,7 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<detail::unestimated>();
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
 
@@ -1418,7 +1418,7 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<detail::estimated>().est = 100;
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
 
@@ -1448,7 +1448,7 @@ TEST(boolean_query_estimation, and_filter) {
     root.add<irs::Not>().filter<detail::estimated>().est = 0;
     root.add<detail::unestimated>();
 
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
 
@@ -1466,7 +1466,7 @@ TEST(boolean_query_estimation, and_filter) {
   // empty case
   {
     irs::And root;
-    auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+    auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
     auto docs = prep->execute(irs::SubReader::empty());
     ASSERT_EQ(0, irs::cost::extract(*docs));
@@ -1811,10 +1811,10 @@ TEST(basic_disjunction_test, scored_seek_next) {
   // disjunction without order
   {
     std::vector<irs::doc_id_t> first{1, 2, 5, 7, 9, 11, 45};
-    auto prepared_first_order = irs::Order::Prepare(detail::basic_sort{1});
+    auto prepared_first_order = irs::Scorers::Prepare(detail::basic_sort{1});
 
     std::vector<irs::doc_id_t> last{1, 5, 6};
-    auto prepared_last_order = irs::Order::Prepare(detail::basic_sort{2});
+    auto prepared_last_order = irs::Scorers::Prepare(detail::basic_sort{2});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 0,
@@ -1867,11 +1867,11 @@ TEST(basic_disjunction_test, scored_seek_next) {
   {
     std::vector<irs::doc_id_t> first{1, 2, 5, 7, 9, 11, 45};
     detail::basic_sort first_order{1};
-    auto prepared_first_order = irs::Order::Prepare(first_order);
+    auto prepared_first_order = irs::Scorers::Prepare(first_order);
 
     std::vector<irs::doc_id_t> last{1, 5, 6};
     detail::basic_sort last_order{2};
-    auto prepared_last_order = irs::Order::Prepare(last_order);
+    auto prepared_last_order = irs::Scorers::Prepare(last_order);
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -1939,11 +1939,11 @@ TEST(basic_disjunction_test, scored_seek_next) {
   {
     std::vector<irs::doc_id_t> first{1, 2, 5, 7, 9, 11, 45};
     detail::basic_sort first_order{1};
-    auto prepared_first_order = irs::Order::Prepare(first_order);
+    auto prepared_first_order = irs::Scorers::Prepare(first_order);
 
     std::vector<irs::doc_id_t> last{1, 5, 6};
     detail::basic_sort last_order{2};
-    auto prepared_last_order = irs::Order::Prepare(last_order);
+    auto prepared_last_order = irs::Scorers::Prepare(last_order);
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -2146,7 +2146,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
   {
     std::vector<irs::doc_id_t> first{1, 2, 5, 7, 9, 11, 45};
     std::vector<irs::doc_id_t> last{1, 5, 6};
-    auto prepared_first_order = irs::Order::Prepare(detail::basic_sort{1});
+    auto prepared_first_order = irs::Scorers::Prepare(detail::basic_sort{1});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -2213,7 +2213,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
   // disjunction with order, first iterator with order, max
   {
     std::vector<irs::doc_id_t> first{1, 2, 5, 7, 9, 11, 45};
-    auto prepared_first_order = irs::Order::Prepare(detail::basic_sort{1});
+    auto prepared_first_order = irs::Scorers::Prepare(detail::basic_sort{1});
 
     std::vector<irs::doc_id_t> last{1, 5, 6};
 
@@ -2283,7 +2283,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
   {
     std::vector<irs::doc_id_t> first{1, 2, 5, 7, 9, 11, 45};
     std::vector<irs::doc_id_t> last{1, 5, 6};
-    auto prepared_last_order = irs::Order::Prepare(detail::basic_sort{1});
+    auto prepared_last_order = irs::Scorers::Prepare(detail::basic_sort{1});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -2351,7 +2351,7 @@ TEST(basic_disjunction_test, scored_seek_next) {
   {
     std::vector<irs::doc_id_t> first{1, 2, 5, 7, 9, 11, 45};
     std::vector<irs::doc_id_t> last{1, 5, 6};
-    auto prepared_last_order = irs::Order::Prepare(detail::basic_sort{1});
+    auto prepared_last_order = irs::Scorers::Prepare(detail::basic_sort{1});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -2984,13 +2984,13 @@ TEST(small_disjunction_test, seek_next) {
 TEST(small_disjunction_test, scored_seek_next) {
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 0,
@@ -3037,13 +3037,13 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores AGGREGATED score
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -3106,13 +3106,13 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores, MAX score
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -3175,13 +3175,13 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially with scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -3244,13 +3244,13 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially with scores, max scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -3313,12 +3313,12 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially without scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -3381,12 +3381,12 @@ TEST(small_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators partially without scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -3492,7 +3492,7 @@ TEST(block_disjunction_test, check_attributes) {
 
   // no scoring, order
   {
-    auto prepared = irs::Order::Prepare(irs::bm25_sort{});
+    auto prepared = irs::Scorers::Prepare(irs::bm25_sort{});
 
     using disjunction = irs::block_disjunction<
       irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
@@ -3512,7 +3512,7 @@ TEST(block_disjunction_test, check_attributes) {
 
   // scoring, order
   {
-    auto prepared = irs::Order::Prepare(irs::bm25_sort{});
+    auto prepared = irs::Scorers::Prepare(irs::bm25_sort{});
 
     using disjunction = irs::block_disjunction<
       irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
@@ -4016,13 +4016,13 @@ TEST(block_disjunction_test, next_scored) {
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
 
     {
-      std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+      std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
       docs.emplace_back(
         std::make_pair(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                       irs::Order::Prepare(detail::basic_sort{1})));
+                       irs::Scorers::Prepare(detail::basic_sort{1})));
 
       auto it_ptr = irs::ResoveMergeType(
-        irs::ScoreMergeType::kSum, irs::Order::kUnordered.buckets().size(),
+        irs::ScoreMergeType::kSum, irs::Scorers::kUnordered.buckets().size(),
         [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
           using disjunction = irs::block_disjunction<
             irs::doc_iterator::ptr, A,
@@ -4074,10 +4074,10 @@ TEST(block_disjunction_test, next_scored) {
       {11, 1.f}, {45, 1.f}, {65, 1.f}, {78, 1.f}, {127, 1.f}};
     std::vector<std::pair<irs::doc_id_t, irs::score_t>> result;
 
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::make_pair(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
-      irs::Order::Prepare(detail::basic_sort{1})));
+      irs::Scorers::Prepare(detail::basic_sort{1})));
     {
       auto it_ptr = irs::ResoveMergeType(
         irs::ScoreMergeType::kSum, 1,
@@ -4132,11 +4132,11 @@ TEST(block_disjunction_test, next_scored) {
       {11, 2.f}, {1145, 2.f}, {111165, 2.f}, {1111178, 2.f}, {111111127, 2.f}};
     std::vector<std::pair<irs::doc_id_t, irs::score_t>> result;
 
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145, 111165,
                                                 1111178, 111111127},
-                     irs::Order::Prepare(detail::basic_sort{2})));
+                     irs::Scorers::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
         irs::ScoreMergeType::kSum, 1,
@@ -4192,11 +4192,11 @@ TEST(block_disjunction_test, next_scored) {
       {9, 0}, {11, 0}, {12, 0}, {29, 0}, {45, 0}};
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
 
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
 
     {
       auto it_ptr = irs::ResoveMergeType(
@@ -4250,12 +4250,12 @@ TEST(block_disjunction_test, next_scored) {
       {1, 3},  {2, 3},  {5, 3},  {6, 0},  {7, 3},  {9, 3},   {11, 3},
       {12, 0}, {29, 0}, {45, 3}, {65, 3}, {78, 3}, {126, 0}, {127, 3}};
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::make_pair(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
-      irs::Order::Prepare(detail::basic_sort{3})));
+      irs::Scorers::Prepare(detail::basic_sort{3})));
     docs.emplace_back(std::make_pair(
-      std::vector<irs::doc_id_t>{1, 5, 6, 12, 29, 126}, irs::Order{}));
+      std::vector<irs::doc_id_t>{1, 5, 6, 12, 29, 126}, irs::Scorers{}));
     {
       auto it_ptr = irs::ResoveMergeType(
         irs::ScoreMergeType::kSum, 1,
@@ -4323,14 +4323,14 @@ TEST(block_disjunction_test, next_scored) {
                                                            {1111178, 3},
                                                            {111111127, 3}};
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145, 111165,
                                                 1111178, 111111127},
-                     irs::Order::Prepare(detail::basic_sort{3})));
+                     irs::Scorers::Prepare(detail::basic_sort{3})));
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29, 126},
-                     irs::Order::Prepare(detail::basic_sort{2})));
+                     irs::Scorers::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
         irs::ScoreMergeType::kSum, 1,
@@ -4398,14 +4398,14 @@ TEST(block_disjunction_test, next_scored) {
                                                            {1111178, 3},
                                                            {111111127, 3}};
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145, 111165,
                                                 1111178, 111111127},
-                     irs::Order::Prepare(detail::basic_sort{3})));
+                     irs::Scorers::Prepare(detail::basic_sort{3})));
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29, 126},
-                     irs::Order::Prepare(detail::basic_sort{2})));
+                     irs::Scorers::Prepare(detail::basic_sort{2})));
     {
       auto it_ptr = irs::ResoveMergeType(
         irs::ScoreMergeType::kMax, 1,
@@ -4460,14 +4460,14 @@ TEST(block_disjunction_test, next_scored) {
       {9, 4},      {11, 4},      {45, 0},        {1145, 4},
       {111165, 4}, {1111178, 4}, {111111127, 4}, {1111111127, 1}};
     std::vector<std::pair<irs::doc_id_t, size_t>> result;
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145,
                                                  111165, 1111178, 111111127},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1111111127},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     {
       auto it_ptr = irs::ResoveMergeType(
         irs::ScoreMergeType::kSum, 1,
@@ -4517,11 +4517,11 @@ TEST(block_disjunction_test, next_scored) {
 
   // same datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{5}));
+                      irs::Scorers::Prepare(detail::basic_sort{5}));
 
     std::vector<irs::doc_id_t> result;
     {
@@ -4572,9 +4572,9 @@ TEST(block_disjunction_test, next_scored) {
 
   // single dataset
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{24},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     std::vector<irs::doc_id_t> result;
     {
@@ -4624,11 +4624,11 @@ TEST(block_disjunction_test, next_scored) {
 
   // empty
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
     docs.emplace_back(std::vector<irs::doc_id_t>{},
-                      irs::Order::Prepare(detail::basic_sort{5}));
+                      irs::Scorers::Prepare(detail::basic_sort{5}));
     {
       auto it_ptr = irs::ResoveMergeType(
         irs::ScoreMergeType::kSum, 1,
@@ -4688,13 +4688,13 @@ TEST(block_disjunction_test, next_scored) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
 
     std::vector<std::pair<irs::doc_id_t, size_t>> expected{
       {1, 4}, {2, 4},  {5, 4},  {6, 2},  {7, 4},
@@ -4746,17 +4746,17 @@ TEST(block_disjunction_test, next_scored) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{16}));
+                      irs::Scorers::Prepare(detail::basic_sort{16}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{8}));
+                      irs::Scorers::Prepare(detail::basic_sort{8}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
     docs.emplace_back(std::vector<irs::doc_id_t>{256},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{11, 79, 101, 141, 1025, 1101},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
 
     std::vector<std::pair<irs::doc_id_t, size_t>> expected{
       {1, 28},  {2, 16},  {5, 28},   {6, 12},  {7, 16}, {9, 16},
@@ -4809,13 +4809,13 @@ TEST(block_disjunction_test, next_scored) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{2},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{3},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     std::vector<std::pair<irs::doc_id_t, size_t>> expected{
       {1, 1}, {2, 2}, {3, 4}};
@@ -4867,13 +4867,13 @@ TEST(block_disjunction_test, next_scored) {
 
   // same datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     std::vector<irs::doc_id_t> result;
     {
@@ -4924,13 +4924,13 @@ TEST(block_disjunction_test, next_scored) {
 
   // empty datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -4969,14 +4969,14 @@ TEST(block_disjunction_test, next_scored) {
 }
 
 TEST(block_disjunction_test, next_scored_two_blocks) {
-  auto order = [](size_t i) -> irs::Order {
-    return irs::Order::Prepare(detail::basic_sort{i});
+  auto order = [](size_t i) -> irs::Scorers {
+    return irs::Scorers::Prepare(detail::basic_sort{i});
   };
 
   // single iterator case, values fit 1 block
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::make_pair(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45}, order(1)));
 
@@ -5031,7 +5031,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   // single iterator case, values don't fit single block
   // disjunction score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::make_pair(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
       order(1)));
@@ -5089,7 +5089,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   // single iterator case, values don't fit single block, gap between block
   // disjunction score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145, 1264,
                                                 111165, 1111178, 111111127},
@@ -5149,11 +5149,11 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   // single block
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(2));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order());
+                      irs::Scorers());
     std::vector<std::pair<irs::doc_id_t, size_t>> expected{
       {1, 0}, {2, 0},  {5, 0},  {6, 0},  {7, 0},
       {9, 0}, {11, 0}, {12, 0}, {29, 0}, {45, 0}};
@@ -5206,12 +5206,12 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   // values don't fit single block
   // disjunction score, sub-iterators with partially with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::make_pair(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45, 65, 78, 127},
       order(3)));
     docs.emplace_back(std::make_pair(
-      std::vector<irs::doc_id_t>{1, 5, 6, 12, 29, 126}, irs::Order()));
+      std::vector<irs::doc_id_t>{1, 5, 6, 12, 29, 126}, irs::Scorers()));
 
     std::vector<std::pair<irs::doc_id_t, size_t>> expected{
       {1, 3},  {2, 3},  {5, 3},  {6, 0},  {7, 3},  {9, 3},   {11, 3},
@@ -5266,7 +5266,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // values don't fit single block, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145, 111165,
                                                 1111178, 111111127},
@@ -5341,7 +5341,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // values don't fit single block, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::make_pair(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145, 111165,
                                                 1111178, 111111127},
@@ -5416,12 +5416,12 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // disjunction score, sub-iterators partially with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 1145,
                                                  111165, 1111178, 111111127},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order());
+                      irs::Scorers());
     docs.emplace_back(std::vector<irs::doc_id_t>{1111111127}, order(1));
     std::vector<std::pair<irs::doc_id_t, size_t>> expected{
       {1, 4},      {2, 4},       {5, 4},         {7, 4},
@@ -5477,7 +5477,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // same datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
@@ -5531,7 +5531,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // single dataset
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{24}, order(4));
     std::vector<irs::doc_id_t> result;
     {
@@ -5581,7 +5581,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // empty
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(5));
     {
@@ -5655,7 +5655,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -5711,7 +5711,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(16));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(8));
@@ -5771,7 +5771,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1}, order(1));
     docs.emplace_back(std::vector<irs::doc_id_t>{2}, order(2));
     docs.emplace_back(std::vector<irs::doc_id_t>{3}, order(4));
@@ -5826,7 +5826,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // same datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(1));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
@@ -5883,7 +5883,7 @@ TEST(block_disjunction_test, next_scored_two_blocks) {
 
   // empty datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(1));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(2));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(4));
@@ -7616,8 +7616,8 @@ TEST(block_disjunction_test, seek_no_readahead) {
 }
 
 TEST(block_disjunction_test, seek_scored_no_readahead) {
-  auto order = [](size_t i) -> irs::Order {
-    return irs::Order::Prepare(detail::basic_sort{i});
+  auto order = [](size_t i) -> irs::Scorers {
+    return irs::Scorers::Prepare(detail::basic_sort{i});
   };
 
   struct seek_doc {
@@ -7659,7 +7659,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   // single iterator case, values fit 1 block
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 12, 29, 45},
                       order(4));
 
@@ -7718,7 +7718,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   // single iterator case, values don't fit single block
   // disjunction with score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127},
       order(4));
@@ -7780,7 +7780,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
   // single iterator case, values don't fit single block, gap between block
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145,
                                  111165, 1111178, 111111127},
@@ -7847,7 +7847,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -7904,7 +7904,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
   // empty datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(2));
 
@@ -7954,7 +7954,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -8008,7 +8008,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -8061,7 +8061,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -8118,12 +8118,12 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, order(1));
-    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{11, 79, 101, 141, 1025, 1101},
                       order(8));
 
@@ -8181,7 +8181,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
   // empty datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(8));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(2));
@@ -8231,7 +8231,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(8));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(4));
@@ -8288,15 +8288,15 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order());
+                      irs::Scorers());
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order());
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order());
-    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Order());
+                      irs::Scorers());
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers());
+    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Scorers());
     docs.emplace_back(std::vector<irs::doc_id_t>{11, 79, 101, 141, 1025, 1101},
-                      irs::Order());
+                      irs::Scorers());
 
     std::vector<seek_doc> expected{
       {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
@@ -8344,7 +8344,7 @@ TEST(block_disjunction_test, seek_scored_no_readahead) {
 
 TEST(block_disjunction_test, seek_scored_readahead) {
   auto order = [](size_t i) {
-    return irs::Order::Prepare(detail::basic_sort{i});
+    return irs::Scorers::Prepare(detail::basic_sort{i});
   };
 
   struct seek_doc {
@@ -8372,7 +8372,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   // single iterator case, values fit 1 block
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 12, 29, 45},
                       order(4));
 
@@ -8431,7 +8431,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   // single iterator case, values don't fit single block
   // disjunction with score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 78, 127},
       order(4));
@@ -8493,7 +8493,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
   // single iterator case, values don't fit single block, gap between block
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 12, 29, 45, 65, 127, 1145,
                                  111165, 1111178, 111111127},
@@ -8560,7 +8560,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -8618,7 +8618,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
   // empty datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(2));
 
@@ -8666,7 +8666,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -8720,7 +8720,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -8771,7 +8771,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
@@ -8828,12 +8828,12 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(2));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, order(1));
-    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Order{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{11, 79, 101, 141, 1025, 1101},
                       order(8));
 
@@ -8891,7 +8891,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
 
   // empty datasets
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(8));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(4));
     docs.emplace_back(std::vector<irs::doc_id_t>{}, order(2));
@@ -8941,7 +8941,7 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
                       order(8));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29}, order(4));
@@ -8998,15 +8998,15 @@ TEST(block_disjunction_test, seek_scored_readahead) {
   }
 
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order());
+                      irs::Scorers());
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order());
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order());
-    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Order());
+                      irs::Scorers());
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers());
+    docs.emplace_back(std::vector<irs::doc_id_t>{256}, irs::Scorers());
     docs.emplace_back(std::vector<irs::doc_id_t>{11, 79, 101, 141, 1025, 1101},
-                      irs::Order());
+                      irs::Scorers());
 
     std::vector<seek_doc> expected{
       {irs::doc_limits::invalid(), irs::doc_limits::invalid(), 1, 0},
@@ -10629,13 +10629,13 @@ TEST(block_disjunction_test, seek_next_no_readahead_two_blocks) {
 TEST(block_disjunction_test, scored_seek_next_no_readahead) {
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 0,
@@ -10685,13 +10685,13 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
   // disjunction with score, sub-iterators with scores, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -10756,13 +10756,13 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
   // disjunction with score, sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -10827,13 +10827,13 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
   // disjunction with score, sub-iterators with scores partially, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -10898,13 +10898,13 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
   // disjunction with score, sub-iterators with scores partially, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -10969,12 +10969,12 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
   // disjunction with score, sub-iterators without scores, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -11039,12 +11039,12 @@ TEST(block_disjunction_test, scored_seek_next_no_readahead) {
 
   // disjunction with score, sub-iterators without scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -11680,16 +11680,16 @@ TEST(disjunction_test, seek_next) {
 TEST(disjunction_test, scored_seek_next) {
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
-      irs::ScoreMergeType::kSum, irs::Order::kUnordered.buckets().size(),
+      irs::ScoreMergeType::kSum, irs::Scorers::kUnordered.buckets().size(),
       [&]<typename A>(A&& aggregator) mutable -> irs::doc_iterator::ptr {
         using disjunction = irs::disjunction<irs::doc_iterator::ptr, A>;
         using adapter = typename disjunction::adapter;
@@ -11733,13 +11733,13 @@ TEST(disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -11801,13 +11801,13 @@ TEST(disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -11869,13 +11869,13 @@ TEST(disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores partially, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -11937,13 +11937,13 @@ TEST(disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores partially, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -12005,12 +12005,12 @@ TEST(disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators without scores, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -12072,12 +12072,12 @@ TEST(disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators without scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -13294,13 +13294,13 @@ TEST(min_match_disjunction_test, match_count) {
 TEST(min_match_disjunction_test, scored_seek_next) {
   // disjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 0,
@@ -13348,13 +13348,13 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -13416,13 +13416,13 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -13484,13 +13484,13 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores partially, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -13552,15 +13552,15 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators with scores partially, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order::Prepare(detail::basic_sort{1}));
+                      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
-    auto prepared_order = irs::Order::Prepare(
+    auto prepared_order = irs::Scorers::Prepare(
       detail::basic_sort{std::numeric_limits<size_t>::max()});
 
     auto it_ptr = irs::ResoveMergeType(
@@ -13623,12 +13623,12 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators without scores, aggregate
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -13690,12 +13690,12 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 
   // disjunction with score, sub-iterators without scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 2, 5, 7, 9, 11, 45},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -14155,14 +14155,14 @@ TEST(conjunction_test, seek_next) {
 TEST(conjunction_test, scored_seek_next) {
   // conjunction with score, sub-iterators with scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14220,14 +14220,14 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction without score, sub-iterators with scores
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 0,
@@ -14273,16 +14273,16 @@ TEST(conjunction_test, scored_seek_next) {
   // conjunction with 4 sub-iterators with score, sub-iterators with scores,
   // aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{5}));
+                      irs::Scorers::Prepare(detail::basic_sort{5}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14340,14 +14340,14 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -14405,14 +14405,14 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, sub-iterators with scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14470,14 +14470,14 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order::Prepare(detail::basic_sort{2}));
+                      irs::Scorers::Prepare(detail::basic_sort{2}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -14535,13 +14535,13 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, 1 sub-iterator with scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14599,13 +14599,13 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, 1 sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -14663,14 +14663,14 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, 2 sub-iterators with scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14728,14 +14728,14 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, 2 sub-iterators with scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order::Prepare(detail::basic_sort{1}));
+      irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order{});
+                      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
-                      irs::Order::Prepare(detail::basic_sort{4}));
+                      irs::Scorers::Prepare(detail::basic_sort{4}));
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -14793,13 +14793,13 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, sub-iterators without scores, aggregation
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order{});
+      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14857,13 +14857,13 @@ TEST(conjunction_test, scored_seek_next) {
 
   // conjunction with score, sub-iterators without scores, max
   {
-    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Order>> docs;
+    std::vector<std::pair<std::vector<irs::doc_id_t>, irs::Scorers>> docs;
     docs.emplace_back(
       std::vector<irs::doc_id_t>{1, 2, 4, 5, 7, 8, 9, 11, 14, 45},
-      irs::Order{});
+      irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
-                      irs::Order{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Order{});
+                      irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -15605,7 +15605,7 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
       *score = doc;
     };
 
-    auto prepared_order = irs::Order::Prepare(sort);
+    auto prepared_order = irs::Scorers::Prepare(sort);
     auto prepared_filter = not_node.prepare(*rdr, prepared_order);
     std::multimap<irs::score_t, irs::doc_id_t, std::greater<>> scored_result;
 
@@ -15695,7 +15695,7 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
       *score = doc;
     };
 
-    auto prepared_order = irs::Order::Prepare(sort);
+    auto prepared_order = irs::Scorers::Prepare(sort);
     auto prepared_filter = root.prepare(*rdr, prepared_order);
     std::multimap<irs::score_t, irs::doc_id_t, std::greater<>> scored_result;
 
@@ -16145,7 +16145,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
     std::array<irs::Sort::ptr, 2> ord{std::make_unique<irs::tfidf_sort>(),
                                       std::make_unique<irs::bm25_sort>()};
 
-    auto prepared_ord = irs::Order::Prepare(ord);
+    auto prepared_ord = irs::Scorers::Prepare(ord);
     ASSERT_FALSE(prepared_ord.empty());
     ASSERT_EQ(2, prepared_ord.buckets().size());
 
@@ -16349,7 +16349,7 @@ TEST(And_test, optimize_all_filters) {
     root.add<irs::all>().boost(2.f);
     append<irs::by_term>(root, "test_field", "test_term");
 
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
     auto prepared = root.prepare(irs::SubReader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
     ASSERT_EQ(8.f, prepared->boost());
@@ -16360,7 +16360,7 @@ TEST(And_test, optimize_all_filters) {
     irs::And root;
     append<irs::by_term>(root, "test_field", "test_term");
     root.add<irs::all>().boost(5.f);
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
     auto prepared = root.prepare(irs::SubReader::empty(), pord);
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
     ASSERT_EQ(6.f, prepared->boost());
@@ -16368,7 +16368,7 @@ TEST(And_test, optimize_all_filters) {
 }
 
 TEST(And_test, not_boosted) {
-  auto pord = irs::Order::Prepare(tests::sort::boost{});
+  auto pord = irs::Scorers::Prepare(tests::sort::boost{});
   irs::And root;
   {
     auto& neg = root.add<irs::Not>();
@@ -16513,7 +16513,7 @@ TEST(Or_test, optimize_all_unscored) {
   root.add<irs::all>();
   root.add<irs::empty>();
 
-  auto prep = root.prepare(irs::SubReader::empty(), irs::Order::kUnordered);
+  auto prep = root.prepare(irs::SubReader::empty(), irs::Scorers::kUnordered);
 
   prep->execute(irs::SubReader::empty());
   ASSERT_EQ(
@@ -16539,7 +16539,7 @@ TEST(Or_test, optimize_all_scored) {
   root.add<irs::empty>();
   root.add<irs::all>();
   root.add<irs::empty>();
-  auto pord = irs::Order::Prepare(tests::sort::boost{});
+  auto pord = irs::Scorers::Prepare(tests::sort::boost{});
   auto prep = root.prepare(irs::SubReader::empty(), pord);
 
   prep->execute(irs::SubReader::empty());
@@ -16548,7 +16548,7 @@ TEST(Or_test, optimize_all_scored) {
 }
 
 TEST(Or_test, optimize_only_all_boosted) {
-  auto pord = irs::Order::Prepare(tests::sort::boost{});
+  auto pord = irs::Scorers::Prepare(tests::sort::boost{});
   irs::Or root;
   root.boost(2);
   root.add<irs::all>().boost(3);
@@ -16561,7 +16561,7 @@ TEST(Or_test, optimize_only_all_boosted) {
 }
 
 TEST(Or_test, boosted_not) {
-  auto pord = irs::Order::Prepare(tests::sort::boost{});
+  auto pord = irs::Scorers::Prepare(tests::sort::boost{});
   irs::Or root;
   {
     auto& neg = root.add<irs::Not>();

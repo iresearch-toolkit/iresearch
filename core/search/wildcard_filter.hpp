@@ -63,7 +63,7 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
  public:
   static ptr make();
 
-  static prepared::ptr prepare(const IndexReader& index, const Order& order,
+  static prepared::ptr prepare(const IndexReader& index, const Scorers& order,
                                score_t boost, std::string_view field,
                                bytes_view term, size_t scored_terms_limit);
 
@@ -71,7 +71,7 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& index, const Order& order,
+  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& order,
                                 score_t boost,
                                 const attribute_provider* /*ctx*/) const final {
     return prepare(index, order, this->boost() * boost, field(), options().term,

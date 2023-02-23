@@ -52,7 +52,7 @@ class column_existence_query : public irs::filter::prepared {
  protected:
   doc_iterator::ptr iterator(const SubReader& segment,
                              const column_reader& column,
-                             const Order& ord) const {
+                             const Scorers& ord) const {
     auto it = column.iterator(ColumnHint::kMask);
 
     if (IRS_UNLIKELY(!it)) {
@@ -132,7 +132,7 @@ class column_prefix_existence_query : public column_existence_query {
 namespace irs {
 
 filter::prepared::ptr by_column_existence::prepare(
-  const IndexReader& reader, const Order& order, score_t filter_boost,
+  const IndexReader& reader, const Scorers& order, score_t filter_boost,
   const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics

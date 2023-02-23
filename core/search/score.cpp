@@ -28,7 +28,7 @@ namespace irs {
 
 const score score::kNoScore;
 
-ScoreFunctions PrepareScorers(std::span<const OrderBucket> buckets,
+ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
                        const SubReader& segment, const term_reader& field,
                        const byte_type* stats_buf,
                        const attribute_provider& doc, score_t boost) {
@@ -103,7 +103,7 @@ ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
   }
 }
 
-void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
+void PrepareCollectors(std::span<const ScorerBucket> order, byte_type* stats_buf,
                        const IndexReader& index) {
   for (const auto& entry : order) {
     if (IRS_LIKELY(entry.bucket)) {

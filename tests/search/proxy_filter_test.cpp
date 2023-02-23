@@ -122,7 +122,7 @@ class doclist_test_filter : public filter {
   doclist_test_filter() noexcept
     : filter(irs::type<doclist_test_filter>::get()) {}
 
-  filter::prepared::ptr prepare(const IndexReader&, const Order&, score_t boost,
+  filter::prepared::ptr prepare(const IndexReader&, const Scorers&, score_t boost,
                                 const attribute_provider*) const final {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);

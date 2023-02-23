@@ -90,7 +90,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
           tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(0, collect_field_count);  // should not be executed
       ASSERT_EQ(0, collect_term_count);   // should not be executed
@@ -133,7 +133,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
           tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(2, collect_field_count);  // 1 field in 2 segments
       ASSERT_EQ(2, collect_term_count);   // 1 term in 2 segments
@@ -178,7 +178,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
           tests::sort::custom_sort::prepared::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(4, collect_field_count);  // 2 fields (1 per term since treated
                                           // as a disjunction) in 2 segments

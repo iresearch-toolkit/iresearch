@@ -29,7 +29,7 @@ TEST(scorers_tests, duplicate_register) {
     static ptr make(std::string_view) { return ptr(new dummy_scorer()); }
     dummy_scorer() : irs::Sort(irs::type<dummy_scorer>::get()) {}
 
-    irs::PreparedSort::ptr prepare() const { return nullptr; }
+    irs::Scorer::ptr prepare() const { return nullptr; }
   };
 
   static bool initial_expected = true;

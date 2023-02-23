@@ -150,7 +150,7 @@ using ProgressReportCallback =
 using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
 // Scorers allowed to use in conjunction with wanderator.
-using WandScorers = SmallVector<std::unique_ptr<PreparedSort>, 2>;
+using WandScorers = SmallVector<std::unique_ptr<Scorer>, 2>;
 using WandScorersProvider = std::function<WandScorers()>;
 
 // Options the the writer should use after creation

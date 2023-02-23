@@ -69,7 +69,7 @@ void boost_sort::init() { REGISTER_SCORER_JSON(boost_sort, make_json); }
 
 boost_sort::boost_sort() noexcept : Sort{irs::type<boost_sort>::get()} {}
 
-PreparedSort::ptr boost_sort::prepare() const {
+Scorer::ptr boost_sort::prepare() const {
   // FIXME can avoid allocation
   // TODO(MBkkt) managed_ptr? What exactly do you want?
   return std::make_unique<Prepared>();

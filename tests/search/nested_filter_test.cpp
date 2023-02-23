@@ -136,7 +136,7 @@ struct DocIdScorer : irs::Sort {
     }
   };
 
-  irs::PreparedSort::ptr prepare() const final {
+  irs::Scorer::ptr prepare() const final {
     return std::make_unique<Prepared>();
   }
 };
@@ -251,8 +251,8 @@ TEST(NestedFilterTest, CheckOptions) {
     ASSERT_EQ(opts0.hash(), opts2.hash());
 
     ASSERT_NE(opts0, MakeOptions("parent", "child", "443"));
-    ASSERT_NE(
-      opts0, MakeOptions("parent", "child", "442", irs::ScoreMergeType::kMax));
+    ASSERT_NE(opts0,
+              MakeOptions("parent", "child", "442", irs::ScoreMergeType::kMax));
     ASSERT_NE(opts0, MakeOptions("parent", "child", "442",
                                  irs::ScoreMergeType::kSum, irs::kMatchNone));
   }

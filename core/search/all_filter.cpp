@@ -50,7 +50,7 @@ class all_query : public filter::prepared {
 all::all() noexcept : filter(irs::type<all>::get()) {}
 
 filter::prepared::ptr all::prepare(const IndexReader& reader,
-                                   const Order& order, score_t filter_boost,
+                                   const Scorers& order, score_t filter_boost,
                                    const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics

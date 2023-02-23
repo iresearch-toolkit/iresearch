@@ -32,7 +32,7 @@
 namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::prepare(
-  const IndexReader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;
@@ -55,7 +55,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     }
     *disj.mutable_field() = this->field();
     disj.boost(this->boost());
-    return disj.prepare(rdr, irs::Order::kUnordered, boost, ctx);
+    return disj.prepare(rdr, irs::Scorers::kUnordered, boost, ctx);
   }
 
   NGramStates query_states{rdr.size()};

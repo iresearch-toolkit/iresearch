@@ -76,7 +76,7 @@ struct boost : public irs::Sort {
 
   typedef irs::score_t score_t;
   boost() : Sort(irs::type<boost>::get()) {}
-  virtual irs::PreparedSort::ptr prepare() const {
+  virtual irs::Scorer::ptr prepare() const {
     return std::make_unique<boost::prepared>();
   }
 };
@@ -408,7 +408,7 @@ class FilterTestCaseBase : public index_test_base {
 
   static void GetQueryResult(const irs::filter::prepared::ptr& q,
                              const irs::IndexReader& index,
-                             const irs::Order& ord, ScoredDocs& result,
+                             const irs::Scorers& ord, ScoredDocs& result,
                              Costs& result_costs,
                              std::string_view source_location);
 };

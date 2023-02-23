@@ -154,7 +154,7 @@ class BooleanQuery : public filter::prepared {
 
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(
-      {.segment = ctx.segment, .scorers = Order::kUnordered, .ctx = ctx.ctx},
+      {.segment = ctx.segment, .scorers = Scorers::kUnordered, .ctx = ctx.ctx},
       irs::ScoreMergeType::kSum, excl_begin, end);
 
     // got empty iterator for excluded
@@ -180,7 +180,7 @@ class BooleanQuery : public filter::prepared {
     }
   }
 
-  virtual void prepare(const IndexReader& rdr, const Order& ord, score_t boost,
+  virtual void prepare(const IndexReader& rdr, const Scorers& ord, score_t boost,
                        ScoreMergeType merge_type,
                        const attribute_provider* ctx,
                        std::span<const filter* const> incl,
@@ -200,7 +200,7 @@ class BooleanQuery : public filter::prepared {
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
       queries.emplace_back(
-        filter->prepare(rdr, Order::kUnordered, irs::kNoBoost, ctx));
+        filter->prepare(rdr, Scorers::kUnordered, irs::kNoBoost, ctx));
     }
 
     // nothrow block
@@ -329,7 +329,7 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
 }
 
 filter::prepared::ptr boolean_filter::prepare(
-  const IndexReader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {
   const auto size = filters_.size();
 
@@ -417,7 +417,7 @@ And::And() noexcept : boolean_filter{irs::type<And>::get()} {}
 
 filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl,
-                                   const IndexReader& rdr, const Order& ord,
+                                   const IndexReader& rdr, const Scorers& ord,
                                    score_t boost,
                                    const attribute_provider* ctx) const {
   // optimization step
@@ -488,7 +488,7 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
 
 Or::Or() noexcept : boolean_filter(irs::type<Or>::get()), min_match_count_(1) {}
 
-filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Order& ord,
+filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Scorers& ord,
                                   score_t boost,
                                   const attribute_provider* ctx) const {
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
@@ -502,7 +502,7 @@ filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Order& ord,
 
 filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
                                   std::vector<const filter*>& excl,
-                                  const IndexReader& rdr, const Order& ord,
+                                  const IndexReader& rdr, const Scorers& ord,
                                   score_t boost,
                                   const attribute_provider* ctx) const {
   boost *= this->boost();
@@ -598,7 +598,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
 
 Not::Not() noexcept : irs::filter{irs::type<Not>::get()} {}
 
-filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Order& ord,
+filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Scorers& ord,
                                    score_t boost,
                                    const attribute_provider* ctx) const {
   const auto res = optimize_not(*this);

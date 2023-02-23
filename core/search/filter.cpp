@@ -52,7 +52,7 @@ filter::prepared::ptr filter::prepared::empty() {
 
 empty::empty() : filter(irs::type<empty>::get()) {}
 
-filter::prepared::ptr empty::prepare(const IndexReader&, const Order&, score_t,
+filter::prepared::ptr empty::prepare(const IndexReader&, const Scorers&, score_t,
                                      const attribute_provider*) const {
   return memory::to_managed<filter::prepared>(kEmptyQuery);
 }

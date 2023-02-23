@@ -72,7 +72,7 @@ struct by_prefix_options : by_prefix_filter_options {
 ////////////////////////////////////////////////////////////////////////////////
 class by_prefix : public filter_base<by_prefix_options> {
  public:
-  static prepared::ptr prepare(const IndexReader& index, const Order& ord,
+  static prepared::ptr prepare(const IndexReader& index, const Scorers& ord,
                                score_t boost, std::string_view field,
                                bytes_view prefix, size_t scored_terms_limit);
 
@@ -81,7 +81,7 @@ class by_prefix : public filter_base<by_prefix_options> {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& index, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* /*ctx*/) const final {
     return prepare(index, ord, this->boost() * boost, field(), options().term,

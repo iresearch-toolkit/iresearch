@@ -47,7 +47,7 @@ struct score : attribute, ScoreFunction {
 using ScoreFunctions = SmallVector<ScoreFunction, 2>;
 
 // Prepare scorer for each of the bucket.
-ScoreFunctions PrepareScorers(std::span<const OrderBucket> buckets,
+ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
                               const SubReader& segment,
                               const term_reader& field, const byte_type* stats,
                               const attribute_provider& doc, score_t boost);
@@ -63,7 +63,7 @@ ScoreFunction CompileScore(Args&&... args) {
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,
 // e.g. for 'all' filter.
-void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
+void PrepareCollectors(std::span<const ScorerBucket> order, byte_type* stats,
                        const IndexReader& index);
 
 }  // namespace irs

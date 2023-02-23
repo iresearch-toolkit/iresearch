@@ -450,7 +450,7 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
                              score_t boost, const byte_type* stats,
                              size_t total_terms_count,
                              size_t min_match_count = 1,
-                             const Order& ord = Order::kUnordered)
+                             const Scorers& ord = Scorers::kUnordered)
     : NGramSimilarityDocIterator{std::move(itrs), total_terms_count,
                                  min_match_count, !ord.empty()} {
     if (!ord.empty()) {

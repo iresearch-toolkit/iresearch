@@ -119,7 +119,7 @@ class limited_sample_collector : private util::noncopyable {
   }
 
   // Finish collecting and evaluate stats
-  void score(const IndexReader& index, const Order& order,
+  void score(const IndexReader& index, const Scorers& order,
              std::vector<bstring>& stats) {
     if (!scored_terms_limit_) {
       return;  // nothing to score (optimization)
@@ -168,7 +168,7 @@ class limited_sample_collector : private util::noncopyable {
  private:
   struct stats_state {
     explicit stats_state(const IndexReader& index, const term_reader& field,
-                         const Order& order, uint32_t& state_offset)
+                         const Scorers& order, uint32_t& state_offset)
       : field_stats(order),
         term_stats(order, 1) {  // 1 term per bstring because a range is
                                 // treated as a disjunction

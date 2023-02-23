@@ -53,7 +53,7 @@ class index_output;
 struct data_input;
 struct index_input;
 struct postings_writer;
-struct PreparedSort;
+struct Scorer;
 
 using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
@@ -67,7 +67,7 @@ struct WanderatorOptions {
   bool strict{false};
 };
 
-using WandScorersView = std::span<const std::unique_ptr<PreparedSort>>;
+using WandScorersView = std::span<const std::unique_ptr<Scorer>>;
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 

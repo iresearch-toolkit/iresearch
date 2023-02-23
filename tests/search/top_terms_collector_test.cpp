@@ -56,7 +56,7 @@ namespace {
 struct sort : irs::Sort {
   sort() noexcept : irs::Sort(irs::type<Sort>::get()) {}
 
-  struct prepared final : irs::PreparedSort {
+  struct prepared final : irs::Scorer {
     struct field_collector final : irs::FieldCollector {
       uint64_t docs_with_field =
         0;  // number of documents containing the matched field (possibly
@@ -128,7 +128,7 @@ struct sort : irs::Sort {
     std::pair<size_t, size_t> stats_size() const final { return {0, 0}; }
   };
 
-  irs::PreparedSort::ptr prepare() const final {
+  irs::Scorer::ptr prepare() const final {
     return std::make_unique<prepared>();
   }
 };

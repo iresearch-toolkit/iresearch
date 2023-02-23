@@ -111,7 +111,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{true});
+  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{true});
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
@@ -384,7 +384,7 @@ TEST_P(tfidf_test_case, test_phrase) {
     add_segment(gen);
   }
 
-  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
+  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{false, true});
 
   // read segment
   auto index = open_reader();
@@ -518,7 +518,7 @@ TEST_P(tfidf_test_case, test_query) {
     add_segment(gen);
   }
 
-  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
+  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{false, true});
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
@@ -1470,7 +1470,7 @@ TEST_P(tfidf_test_case, test_order) {
   irs::by_term query;
   *query.mutable_field() = "field";
 
-  auto prepared_order = irs::Order::Prepare(irs::tfidf_sort{false, true});
+  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{false, true});
 
   uint64_t seq = 0;
   const auto* column = segment.column("seq");

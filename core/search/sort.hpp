@@ -33,7 +33,7 @@ namespace irs {
 
 struct collector;
 struct data_output;
-struct OrderBucket;
+struct ScorerBucket;
 struct IndexReader;
 struct SubReader;
 struct term_reader;
@@ -110,11 +110,11 @@ class TermCollector {
 };
 
 // Base class for all prepared(compiled) sort entries.
-class PreparedSort {
+class Scorer {
  public:
-  using ptr = std::unique_ptr<PreparedSort>;
+  using ptr = std::unique_ptr<Scorer>;
 
-  virtual ~PreparedSort() = default;
+  virtual ~Scorer() = default;
 
   // Store collected index statistics into 'stats' of the
   // current 'filter'
@@ -178,6 +178,22 @@ enum class ScoreMergeType {
   kMin
 };
 
+struct ScorerBucket : util::noncopyable {
+  ScorerBucket(Scorer::ptr&& bucket, size_t stats_offset) noexcept
+    : bucket(std::move(bucket)), stats_offset{stats_offset} {
+    IRS_ASSERT(this->bucket);
+  }
+
+  ScorerBucket(ScorerBucket&&) = default;
+  ScorerBucket& operator=(ScorerBucket&&) = default;
+
+  Scorer::ptr bucket;   // prepared score
+  size_t stats_offset;  // offset in stats buffer
+};
+
+static_assert(std::is_nothrow_move_constructible_v<ScorerBucket>);
+static_assert(std::is_nothrow_move_assignable_v<ScorerBucket>);
+
 // Base class for all user-side sort entries.
 // Stats are meant to be trivially constructible and will be
 // zero initialized before usage.
@@ -190,46 +206,30 @@ class Sort {
 
   constexpr type_info::type_id type() const noexcept { return type_; }
 
-  virtual PreparedSort::ptr prepare() const = 0;
+  virtual Scorer::ptr prepare() const = 0;
 
  private:
   type_info::type_id type_;
 };
 
-struct OrderBucket : util::noncopyable {
-  OrderBucket(PreparedSort::ptr&& bucket, size_t stats_offset) noexcept
-    : bucket(std::move(bucket)), stats_offset{stats_offset} {
-    IRS_ASSERT(this->bucket);
-  }
-
-  OrderBucket(OrderBucket&&) = default;
-  OrderBucket& operator=(OrderBucket&&) = default;
-
-  PreparedSort::ptr bucket;  // prepared score
-  size_t stats_offset;       // offset in stats buffer
-};
-
-static_assert(std::is_nothrow_move_constructible_v<OrderBucket>);
-static_assert(std::is_nothrow_move_assignable_v<OrderBucket>);
-
 // Set of compiled sort entries
-class Order final : private util::noncopyable {
+class Scorers final : private util::noncopyable {
  public:
-  static const Order kUnordered;
+  static const Scorers kUnordered;
 
-  static Order Prepare(std::span<const Sort::ptr> order);
-  static Order Prepare(std::span<const Sort*> order);
-  static Order Prepare(const Sort& order) {
+  static Scorers Prepare(std::span<const Sort::ptr> order);
+  static Scorers Prepare(std::span<const Sort*> order);
+  static Scorers Prepare(const Sort& order) {
     const auto* p = &order;
     return Prepare(std::span{&p, 1});
   }
 
-  Order() = default;
-  Order(Order&&) = default;
-  Order& operator=(Order&&) = default;
+  Scorers() = default;
+  Scorers(Scorers&&) = default;
+  Scorers& operator=(Scorers&&) = default;
 
   bool empty() const noexcept { return buckets_.empty(); }
-  std::span<const OrderBucket> buckets() const noexcept {
+  std::span<const ScorerBucket> buckets() const noexcept {
     return {buckets_.data(), buckets_.size()};
   }
   size_t score_size() const noexcept { return score_size_; }
@@ -237,16 +237,16 @@ class Order final : private util::noncopyable {
   IndexFeatures features() const noexcept { return features_; }
 
  private:
-  using OrderBuckets = SmallVector<OrderBucket, 2>;
+  using ScorerBuckets = SmallVector<ScorerBucket, 2>;
 
-  Order(OrderBuckets&& buckets, size_t stats_size,
-        IndexFeatures features) noexcept
+  Scorers(ScorerBuckets&& buckets, size_t stats_size,
+          IndexFeatures features) noexcept
     : buckets_{std::move(buckets)},
       score_size_(buckets_.size() * sizeof(score_t)),
       stats_size_{stats_size},
       features_{features} {}
 
-  OrderBuckets buckets_;
+  ScorerBuckets buckets_;
   size_t score_size_{};
   size_t stats_size_{};
   IndexFeatures features_{IndexFeatures::NONE};
@@ -377,7 +377,7 @@ auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
 
 // Template score for base class for all prepared(compiled) sort entries
 template<typename StatsType>
-class PreparedSortBase : public PreparedSort {
+class PreparedSortBase : public Scorer {
  public:
   static_assert(std::is_trivially_constructible_v<StatsType>,
                 "StatsTypemust be trivially constructible");
@@ -407,7 +407,7 @@ class PreparedSortBase : public PreparedSort {
 };
 
 template<>
-class PreparedSortBase<void> : public PreparedSort {
+class PreparedSortBase<void> : public Scorer {
  public:
   FieldCollector::ptr prepare_field_collector() const override {
     return nullptr;

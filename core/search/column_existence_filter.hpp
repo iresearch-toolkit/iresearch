@@ -51,7 +51,7 @@ class by_column_existence final
  public:
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 };

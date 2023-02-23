@@ -562,7 +562,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     "bm25", irs::type<irs::text_format::json>::get(), std::string_view{})};
   ASSERT_NE(nullptr, order.front());
 
-  auto prepared_order = irs::Order::Prepare(order);
+  auto prepared_order = irs::Scorers::Prepare(order);
 
   auto index = open_reader();
   ASSERT_NE(nullptr, index);

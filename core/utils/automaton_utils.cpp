@@ -390,7 +390,7 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
 
 filter::prepared::ptr prepare_automaton_filter(
   std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
-  const IndexReader& index, const Order& order, score_t boost) {
+  const IndexReader& index, const Scorers& order, score_t boost) {
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {

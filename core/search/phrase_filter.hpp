@@ -148,17 +148,17 @@ class by_phrase : public filter_base<by_phrase_options> {
  public:
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& index, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 
  private:
   filter::prepared::ptr fixed_prepare_collect(const IndexReader& index,
-                                              const Order& ord,
+                                              const Scorers& ord,
                                               score_t boost) const;
 
   filter::prepared::ptr variadic_prepare_collect(const IndexReader& index,
-                                                 const Order& ord,
+                                                 const Scorers& ord,
                                                  score_t boost) const;
 };
 

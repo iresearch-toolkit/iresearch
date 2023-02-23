@@ -195,7 +195,7 @@ class same_position_query : public filter::prepared {
 namespace irs {
 
 filter::prepared::ptr by_same_position::prepare(
-  const IndexReader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Scorers& ord, score_t boost,
   const attribute_provider* /*ctx*/) const {
   auto& terms = options().terms;
   const auto size = terms.size();

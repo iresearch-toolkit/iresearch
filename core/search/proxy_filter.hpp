@@ -46,7 +46,7 @@ class proxy_filter final : public filter {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order&,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers&,
                                 score_t boost,
                                 const attribute_provider*) const final;
 

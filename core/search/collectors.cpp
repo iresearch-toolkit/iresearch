@@ -53,7 +53,7 @@ field_collector_wrapper::noop() noexcept {
   return NOOP_FIELD_STATS;
 }
 
-field_collectors::field_collectors(const Order& order)
+field_collectors::field_collectors(const Scorers& order)
   : collectors_base<field_collector_wrapper>(order.buckets().size(), order) {
   auto collectors = collectors_.begin();
   for (auto& bucket : order.buckets()) {
@@ -104,7 +104,7 @@ term_collector_wrapper::noop() noexcept {
   return NOOP_TERM_STATS;
 }
 
-term_collectors::term_collectors(const Order& buckets, size_t size)
+term_collectors::term_collectors(const Scorers& buckets, size_t size)
   : collectors_base<term_collector_wrapper>(buckets.buckets().size() * size,
                                             buckets) {
   // add term collectors from each bucket

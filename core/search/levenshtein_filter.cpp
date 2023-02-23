@@ -197,7 +197,7 @@ bool collect_terms(const IndexReader& index, std::string_view field,
 }
 
 filter::prepared::ptr prepare_levenshtein_filter(
-  const IndexReader& index, const Order& order, score_t boost,
+  const IndexReader& index, const Scorers& order, score_t boost,
   std::string_view field, bytes_view prefix, bytes_view term,
   size_t terms_limit, const parametric_description& d) {
   field_collectors field_stats(order);
@@ -288,7 +288,7 @@ namespace irs {
 }
 
 /*static*/ filter::prepared::ptr by_edit_distance::prepare(
-  const IndexReader& index, const Order& order, score_t boost,
+  const IndexReader& index, const Scorers& order, score_t boost,
   std::string_view field, bytes_view term, size_t scored_terms_limit,
   byte_type max_distance, options_type::pdp_f provider,
   bool with_transpositions, bytes_view prefix) {

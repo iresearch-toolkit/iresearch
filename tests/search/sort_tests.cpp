@@ -102,7 +102,7 @@ struct aligned_scorer : public irs::Sort {
       index_features_(index_features_),
       empty_scorer_(empty_scorer) {}
 
-  irs::PreparedSort::ptr prepare() const final {
+  irs::Scorer::ptr prepare() const final {
     return std::make_unique<aligned_scorer<StatsType>::prepared>(
       index_features_, empty_scorer_);
   }
@@ -113,7 +113,7 @@ struct aligned_scorer : public irs::Sort {
 
 struct dummy_scorer0 : public irs::Sort {
   dummy_scorer0() : irs::Sort(irs::type<dummy_scorer0>::get()) {}
-  irs::PreparedSort::ptr prepare() const final { return nullptr; }
+  irs::Scorer::ptr prepare() const final { return nullptr; }
 };
 
 }  // namespace
@@ -122,10 +122,10 @@ TEST(sort_tests, static_const) {
   static_assert("irs::filter_boost" == irs::type<irs::filter_boost>::name());
   static_assert(irs::kNoBoost == irs::filter_boost().value);
 
-  ASSERT_TRUE(irs::Order::kUnordered.buckets().empty());
-  ASSERT_EQ(0, irs::Order::kUnordered.score_size());
-  ASSERT_EQ(0, irs::Order::kUnordered.stats_size());
-  ASSERT_EQ(irs::IndexFeatures::NONE, irs::Order::kUnordered.features());
+  ASSERT_TRUE(irs::Scorers::kUnordered.buckets().empty());
+  ASSERT_EQ(0, irs::Scorers::kUnordered.score_size());
+  ASSERT_EQ(0, irs::Scorers::kUnordered.stats_size());
+  ASSERT_EQ(irs::IndexFeatures::NONE, irs::Scorers::kUnordered.features());
 }
 
 TEST(sort_tests, prepare_order) {
@@ -140,7 +140,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{size_t{0}, size_t{0}},  // score: 0-0
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(1, prepared.buckets().size());
@@ -184,7 +184,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{2, 4},  // score: 4-7
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(3, prepared.buckets().size());
@@ -227,7 +227,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{2, 4},  // score: 4-7
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(3, prepared.buckets().size());
@@ -284,7 +284,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{2, 4},  // score: 4-7
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(3, prepared.buckets().size());
@@ -341,7 +341,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{2, 2}   // score: 2-2
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(3, prepared.buckets().size());
@@ -395,7 +395,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{1, 2}   // score: 2-3
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_EQ(2, prepared.buckets().size());
@@ -439,7 +439,7 @@ TEST(sort_tests, prepare_order) {
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>(
         irs::IndexFeatures::NONE, false)};
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::NONE, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(3, prepared.buckets().size());
@@ -497,7 +497,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{2, 12}  // score: 12-14
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(3, prepared.buckets().size());
@@ -558,7 +558,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{4, 49}   // score: 49-49
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(5, prepared.buckets().size());
@@ -609,7 +609,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{4, 45}   // score: 45-45
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(5, prepared.buckets().size());
@@ -660,7 +660,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{4, 44}   // score: 44-44
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ | irs::IndexFeatures::POS,
               prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
@@ -712,7 +712,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{4, 41}   // score: 41-41
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(5, prepared.buckets().size());
@@ -763,7 +763,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{4, 39}   // score: 39-39
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(5, prepared.buckets().size());
@@ -814,7 +814,7 @@ TEST(sort_tests, prepare_order) {
       std::pair{4, 39}   // score: 39-39
     };
 
-    auto prepared = irs::Order::Prepare(ord);
+    auto prepared = irs::Scorers::Prepare(ord);
     ASSERT_EQ(irs::IndexFeatures::FREQ, prepared.features());
     ASSERT_FALSE(prepared.buckets().empty());
     ASSERT_EQ(5, prepared.buckets().size());

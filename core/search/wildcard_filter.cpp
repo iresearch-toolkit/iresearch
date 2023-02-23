@@ -143,7 +143,7 @@ field_visitor by_wildcard::visitor(bytes_view term) {
 }
 
 /*static*/ filter::prepared::ptr by_wildcard::prepare(
-  const IndexReader& index, const Order& order, score_t boost,
+  const IndexReader& index, const Scorers& order, score_t boost,
   std::string_view field, bytes_view term, size_t scored_terms_limit) {
   bstring buf;
   return executeWildcard(

@@ -71,7 +71,7 @@ void visit(const SubReader& segment, const term_reader& reader,
 namespace irs {
 
 /*static*/ filter::prepared::ptr by_prefix::prepare(
-  const IndexReader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Scorers& ord, score_t boost,
   std::string_view field, bytes_view prefix, size_t scored_terms_limit) {
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(

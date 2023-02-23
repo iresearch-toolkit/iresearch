@@ -621,7 +621,7 @@ bm25_sort::bm25_sort(float_t k /*= 1.2f*/, float_t b /*= 0.75f*/,
   REGISTER_SCORER_VPACK(bm25_sort, make_vpack);  // match registration above
 }
 
-PreparedSort::ptr bm25_sort::prepare() const {
+Scorer::ptr bm25_sort::prepare() const {
   return std::make_unique<bm25::sort>(k_, b_, boost_as_score_);
 }
 

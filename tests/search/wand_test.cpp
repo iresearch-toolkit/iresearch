@@ -62,7 +62,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
     return lhs.score > rhs.score;
   };
 
-  auto scorers = irs::Order::Prepare(scorer);
+  auto scorers = irs::Scorers::Prepare(scorer);
   EXPECT_FALSE(scorers.empty());
   auto query = filter.prepare(index, scorers);
   EXPECT_NE(nullptr, query);
