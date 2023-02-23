@@ -71,7 +71,7 @@ class segment_writer : util::noncopyable {
 
  public:
   struct update_context {
-    size_t generation;
+    uint64_t generation;
     size_t update_id;
   };
 

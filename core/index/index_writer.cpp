@@ -143,7 +143,7 @@ void RemoveFromExistingSegment(
 bool RemoveFromImportedSegment(
   std::span<IndexWriter::ModificationContext> modifications,
   const SubReader& reader, document_mask& docs_mask,
-  size_t min_modification_generation) {
+  uint64_t min_modification_generation) {
   IRS_ASSERT(!modifications.empty());
   bool modified = false;
 
@@ -1064,7 +1064,7 @@ IndexWriter::SegmentContext::SegmentContext(
 
 void IndexWriter::SegmentContext::UpdateGeneration(uint64_t base) noexcept {
   IRS_ASSERT(writer_);
-  IRS_ASSERT(writer_->docs_cached() <= doc_limits::eof());
+  IRS_ASSERT(writer_->docs_cached() < doc_limits::eof());
 
   // Update generations of modification queries
   std::for_each(
@@ -1073,9 +1073,8 @@ void IndexWriter::SegmentContext::UpdateGeneration(uint64_t base) noexcept {
       // Must be < than 'count' since inserts come after modification
       IRS_ASSERT(v.generation < modification_queries_.size() -
                                   uncommitted_modification_queries_);
-
       // Update to flush_context generation
-      const_cast<size_t&>(v.generation) += base;
+      v.generation += base;
     });
 
   // Update generations for insertions

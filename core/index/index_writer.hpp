@@ -421,7 +421,7 @@ class IndexWriter : private util::noncopyable {
 
     // keep a handle to the filter for the case when this object has ownership
     std::shared_ptr<const irs::filter> filter;
-    size_t generation;
+    uint64_t generation;
     // this is an update modification (as opposed to remove)
     bool update;
     bool seen{false};
@@ -566,7 +566,7 @@ class IndexWriter : private util::noncopyable {
 
   struct ImportContext {
     ImportContext(
-      IndexSegment&& segment, size_t generation, FileRefs&& refs,
+      IndexSegment&& segment, uint64_t generation, FileRefs&& refs,
       Consolidation&& consolidation_candidates,
       std::shared_ptr<const SegmentReaderImpl>&& reader,
       std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
@@ -580,7 +580,7 @@ class IndexWriter : private util::noncopyable {
           .candidates = std::move(consolidation_candidates),
           .merger = std::move(merger)} {}
 
-    ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+    ImportContext(IndexSegment&& segment, uint64_t generation, FileRefs&& refs,
                   Consolidation&& consolidation_candidates,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
                   std::shared_ptr<const DirectoryReaderImpl>&&
@@ -593,7 +593,7 @@ class IndexWriter : private util::noncopyable {
           .consolidation_reader = std::move(consolidation_reader),
           .candidates = std::move(consolidation_candidates)} {}
 
-    ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+    ImportContext(IndexSegment&& segment, uint64_t generation, FileRefs&& refs,
                   Consolidation&& consolidation_candidates,
                   std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
       : generation{generation},
@@ -602,14 +602,14 @@ class IndexWriter : private util::noncopyable {
         reader{std::move(reader)},
         consolidation_ctx{.candidates = std::move(consolidation_candidates)} {}
 
-    ImportContext(IndexSegment&& segment, size_t generation, FileRefs&& refs,
+    ImportContext(IndexSegment&& segment, uint64_t generation, FileRefs&& refs,
                   std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
       : generation{generation},
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)} {}
 
-    ImportContext(IndexSegment&& segment, size_t generation,
+    ImportContext(IndexSegment&& segment, uint64_t generation,
                   std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
       : generation{generation},
         segment{std::move(segment)},
@@ -620,7 +620,7 @@ class IndexWriter : private util::noncopyable {
     ImportContext& operator=(const ImportContext&) = delete;
     ImportContext& operator=(ImportContext&&) = delete;
 
-    const size_t generation;
+    const uint64_t generation;
     IndexSegment segment;
     FileRefs refs;
     std::shared_ptr<const SegmentReaderImpl> reader;
@@ -703,7 +703,7 @@ class IndexWriter : private util::noncopyable {
 
     // Transaction::Commit was not called for these:
     size_t uncommitted_docs_;
-    size_t uncommitted_generation_;
+    uint64_t uncommitted_generation_;
     size_t uncommitted_modification_queries_;
 
     std::unique_ptr<segment_writer> writer_;
@@ -796,7 +796,7 @@ class IndexWriter : private util::noncopyable {
     using SegmentMask = absl::flat_hash_set<const SubReader*>;
 
     // current modification/update generation
-    std::atomic_size_t generation_{0};
+    std::atomic_uint64_t generation_{0};
     // ref tracking directory used by this context (tracks all/only
     // refs for this context)
     RefTrackingDirectory::ptr dir_;
