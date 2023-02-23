@@ -479,17 +479,18 @@ class postings_writer_base : public irs::postings_writer {
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)>
     alloc_{meta_pool_};
   SkipWriter skip_;
-  version10::term_meta last_state_;  // last final term state
-  version10::documents docs_;        // bit set of all processed documents
-  index_output::ptr doc_out_;        // postings (doc + freq)
-  index_output::ptr pos_out_;        // positions
-  index_output::ptr pay_out_;        // payload (payl + offs)
-  doc_buffer doc_;                   // document stream
-  pos_buffer pos_;                   // proximity stream
-  pay_buffer pay_;                   // payloads and offsets stream
-  uint32_t* buf_;                    // buffer for encoding
-  attributes attrs_;                 // set of attributes
-  Features features_;                // features supported by current field
+  version10::term_meta last_state_;  // Last final term state
+  version10::documents docs_;        // Bit set of all processed documents
+  index_output::ptr doc_out_;        // Postings (doc + freq)
+  index_output::ptr pos_out_;        // Positions
+  index_output::ptr pay_out_;        // Payload (pay + offs)
+  doc_buffer doc_;                   // Document stream
+  pos_buffer pos_;                   // Proximity stream
+  pay_buffer pay_;                   // Payloads and offsets stream
+  uint32_t* buf_;                    // Buffer for encoding
+  attributes attrs_;                 // Set of attributes
+  ScorersView scorers_;              // List of wand scorers
+  Features features_;                // Features supported by current field
   const PostingsFormat postings_format_version_;
   const TermsFormat terms_format_version_;
 };
@@ -535,33 +536,34 @@ void postings_writer_base::prepare(index_output& out,
 
   std::string name;
 
-  // prepare document stream
+  // Prepare document stream
   prepare_output(name, doc_out_, state, kDocExt, kDocFormatName,
                  static_cast<int32_t>(postings_format_version_));
 
   if (IndexFeatures::NONE != (state.index_features & IndexFeatures::POS)) {
-    // prepare proximity stream
+    // Prepare proximity stream
     pos_.reset();
     prepare_output(name, pos_out_, state, kPosExt, kPosFormatName,
                    static_cast<int32_t>(postings_format_version_));
 
     if (IndexFeatures::NONE !=
         (state.index_features & (IndexFeatures::PAY | IndexFeatures::OFFS))) {
-      // prepare payload stream
+      // Prepare payload stream
       pay_.reset();
       prepare_output(name, pay_out_, state, kPayExt, kPayFormatName,
                      static_cast<int32_t>(postings_format_version_));
     }
   }
 
+  scorers_ = state.scorers;
   skip_.Prepare(kMaxSkipLevels, state.doc_count,
                 state.dir->attributes().allocator());
 
   format_utils::write_header(out, kTermsFormatName,
                              static_cast<int32_t>(terms_format_version_));
-  out.write_vint(skip_.Skip0());  // write postings block size
+  out.write_vint(skip_.Skip0());  // Write postings block size
 
-  // prepare documents bitset
+  // Prepare documents bitset
   docs_.value.reset(doc_limits::min() + state.doc_count);
 }
 
@@ -807,30 +809,34 @@ class postings_writer final : public postings_writer_base {
   void begin_doc(doc_id_t id, uint32_t freq);
 
   struct {
-    doc_id_t
-      docs[FormatTraits::block_size()]{};  // buffer to store document deltas
-    uint32_t
-      freqs[FormatTraits::block_size()]{};  // buffer to store frequencies
-    doc_id_t skip_doc[kMaxSkipLevels]{};    // buffer to store skip documents
-    uint64_t skip_ptr[kMaxSkipLevels]{};    // buffer to store skip pointers
+    // Buffer for document deltas
+    doc_id_t docs[FormatTraits::block_size()]{};
+    // Buffer for frequencies
+    uint32_t freqs[FormatTraits::block_size()]{};
+    // Buffer for skip documents
+    doc_id_t skip_doc[kMaxSkipLevels]{};
+    // Buffer for skip pointers
+    uint64_t skip_ptr[kMaxSkipLevels]{};
   } doc_buf_;
   struct {
-    uint32_t
-      buf[FormatTraits::block_size()]{};  // buffer to store position deltas
-    uint64_t skip_ptr[kMaxSkipLevels]{};  // buffer to store skip pointers
+    // Buffer for position deltas
+    uint32_t buf[FormatTraits::block_size()]{};
+    // Buffer for skip pointers
+    uint64_t skip_ptr[kMaxSkipLevels]{};
   } prox_buf_;
   struct {
-    uint32_t pay_sizes[FormatTraits::block_size()]{};       // buffer to store
-                                                            // payloads sizes
-    uint32_t offs_start_buf[FormatTraits::block_size()]{};  // buffer to store
-                                                            // start offsets
-    uint32_t offs_len_buf[FormatTraits::block_size()]{};    // buffer to store
-                                                            // offset lengths
-    uint64_t skip_ptr[kMaxSkipLevels]{};  // buffer to store skip pointers
+    // Buffer for payloads sizes
+    uint32_t pay_sizes[FormatTraits::block_size()]{};
+    // Buffer for start offsets
+    uint32_t offs_start_buf[FormatTraits::block_size()]{};
+    // Buffer for offset lengths
+    uint32_t offs_len_buf[FormatTraits::block_size()]{};
+    // Buffer for skip pointers
+    uint64_t skip_ptr[kMaxSkipLevels]{};
   } pay_buf_;
   struct {
-    uint32_t
-      buf[FormatTraits::block_size()];  // buffer for encoding (worst case)
+    // Buffer for encoding (worst case)
+    uint32_t buf[FormatTraits::block_size()];
   } encbuf_;
   std::array<skip_score_stats, kMaxSkipLevels> score_levels_;
   bool volatile_attributes_;
