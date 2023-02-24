@@ -52,14 +52,14 @@ class MergeWriter : public util::noncopyable {
 
   MergeWriter() noexcept;
 
-  explicit MergeWriter(directory& dir, const ColumnInfoProvider& column_info,
-                       const FeatureInfoProvider& feature_info,
-                       const Comparer* comparator = nullptr) noexcept
-    : dir_(dir),
-      column_info_(&column_info),
-      feature_info_(&feature_info),
-      comparator_(comparator) {
-    IRS_ASSERT(column_info);
+  explicit MergeWriter(directory& dir,
+                       const SegmentWriterOptions& options) noexcept
+    : dir_{dir},
+      column_info_{&options.column_info},
+      feature_info_{&options.feature_info},
+      scorers_{options.scorers},
+      comparator_{options.comparator} {
+    IRS_ASSERT(column_info_);
   }
   MergeWriter(MergeWriter&&) = default;
   MergeWriter& operator=(MergeWriter&&) = delete;
@@ -91,9 +91,10 @@ class MergeWriter : public util::noncopyable {
 
   directory& dir_;
   std::vector<ReaderCtx> readers_;
-  const ColumnInfoProvider* column_info_;
-  const FeatureInfoProvider* feature_info_;
-  const Comparer* comparator_;
+  const ColumnInfoProvider* column_info_{};
+  const FeatureInfoProvider* feature_info_{};
+  ScorersView scorers_;
+  const Comparer* const comparator_{};
 };
 
 static_assert(std::is_nothrow_move_constructible_v<MergeWriter>);

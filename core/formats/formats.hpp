@@ -45,6 +45,7 @@
 
 namespace irs {
 
+struct Comparer;
 struct SegmentMeta;
 struct field_meta;
 struct flush_state;
@@ -68,6 +69,13 @@ struct WanderatorOptions {
 };
 
 using ScorersView = std::span<const std::unique_ptr<Scorer>>;
+
+struct SegmentWriterOptions {
+  const ColumnInfoProvider& column_info;
+  const FeatureInfoProvider& feature_info;
+  ScorersView scorers;
+  const Comparer* const comparator{};
+};
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 

@@ -409,7 +409,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
   ASSERT_TRUE(feature_info);
 
   auto reader = irs::DirectoryReader(dir, codec_ptr);
-  irs::MergeWriter writer(dir, column_info, feature_info);
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info};
+  irs::MergeWriter writer(dir, options);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -821,7 +823,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
   ASSERT_TRUE(feature_info);
 
   auto reader = irs::DirectoryReader(dir, codec_ptr);
-  irs::MergeWriter writer(dir, column_info, feature_info);
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info};
+  irs::MergeWriter writer(dir, options);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(2, reader[0].docs_count());
@@ -2161,7 +2165,9 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   const auto feature_info = default_feature_info();
   ASSERT_TRUE(feature_info);
 
-  irs::MergeWriter writer(dir, column_info, feature_info);
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info};
+  irs::MergeWriter writer(dir, options);
   writer.Reset(reader.begin(), reader.end());
   ASSERT_TRUE(writer.Flush(index_segment));
 
@@ -2662,7 +2668,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
 
     irs::memory_directory dir;
     irs::SegmentMeta index_segment;
-    irs::MergeWriter writer(dir, column_info, feature_info);
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info};
+    irs::MergeWriter writer(dir, options);
     writer.Reset(reader.begin(), reader.end());
 
     index_segment.codec = codec_ptr;
@@ -2718,7 +2726,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::memory_directory dir;
     irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress;
-    irs::MergeWriter writer(dir, column_info, feature_info);
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info};
+    irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
     writer.Reset(reader.begin(), reader.end());
@@ -2740,7 +2750,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::memory_directory dir;
     irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress = []() -> bool { return false; };
-    irs::MergeWriter writer(dir, column_info, feature_info);
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info};
+    irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
     writer.Reset(reader.begin(), reader.end());
@@ -2769,7 +2781,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
       ++progress_call_count;
       return true;
     };
-    irs::MergeWriter writer(dir, column_info, feature_info);
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info};
+    irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
     writer.Reset(reader.begin(), reader.end());
@@ -2798,7 +2812,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::MergeWriter::FlushProgress progress = [&call_count]() -> bool {
       return --call_count;
     };
-    irs::MergeWriter writer(dir, column_info, feature_info);
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info};
+    irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
     index_segment.name = "merged";
@@ -2872,7 +2888,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
       &reader[0]   // assume 0 is segment with string field
     };
 
-    irs::MergeWriter writer(dir, column_info, feature_info);
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info};
+    irs::MergeWriter writer(dir, options);
     writer.Reset(segments.begin(), segments.end());
 
     irs::SegmentMeta index_segment;
@@ -2887,7 +2905,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
       &reader[1]   // assume 1 is segment with string field
     };
 
-    irs::MergeWriter writer(dir, column_info, feature_info);
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info};
+    irs::MergeWriter writer(dir, options);
     writer.Reset(segments.begin(), segments.end());
 
     irs::SegmentMeta index_segment;
@@ -2906,8 +2926,8 @@ TEST_P(merge_writer_test_case, EnsureDocBlocksNotMixed) {
 
 TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   std::string field("title");
-  std::string field2("trigger");  // field present in all docs with same term ->
-                                  // will trigger out of order
+  std::string field2("trigger");  // field present in all docs with same term
+                                  // -> will trigger out of order
   std::string value2{"AAA"};
   std::string data1("A");
   std::string data2("C");
@@ -2958,10 +2978,10 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
     AssertSnapshotEquality(writer->GetSnapshot(),
                            irs::DirectoryReader(dir, codec_ptr));
 
-    // this missing doc will trigger sorting error in merge writer as it will be
-    // mapped to eof and block all documents from same segment to be written in
-    // correct order. to trigger error documents from second segment need
-    // docuemnt from first segment to maintain merged order
+    // this missing doc will trigger sorting error in merge writer as it will
+    // be mapped to eof and block all documents from same segment to be
+    // written in correct order. to trigger error documents from second
+    // segment need docuemnt from first segment to maintain merged order
     irs::filter::ptr query = MakeByTerm(field, "A");
     writer->GetBatch().Remove(std::move(query));
     writer->Commit();
@@ -2982,7 +3002,9 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   const auto feature_info = default_feature_info();
   ASSERT_TRUE(feature_info);
 
-  irs::MergeWriter writer(dir, column_info, feature_info, &test_comparer);
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info};
+  irs::MergeWriter writer(dir, options);
   writer.Reset(reader.begin(), reader.end());
 
   irs::SegmentMeta index_segment;
@@ -4134,7 +4156,9 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   const auto feature_info = default_feature_info();
   ASSERT_TRUE(feature_info);
 
-  irs::MergeWriter writer(dir, column_info, feature_info);
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info};
+  irs::MergeWriter writer(dir, options);
   writer.Reset(reader.begin(), reader.end());
   ASSERT_TRUE(writer.Flush(index_segment));
 

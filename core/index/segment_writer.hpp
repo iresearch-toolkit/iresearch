@@ -59,13 +59,6 @@ enum class Action {
 
 ENABLE_BITMASK_ENUM(Action);
 
-struct SegmentWriterOptions {
-  const ColumnInfoProvider& column_info;
-  const FeatureInfoProvider& feature_info;
-  ScorersView scorers;
-  const Comparer* const comparator{};
-};
-
 // Interface for an index writer over a directory
 // an object that represents a single ongoing transaction
 // non-thread safe

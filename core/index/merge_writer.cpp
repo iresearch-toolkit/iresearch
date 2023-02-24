@@ -1319,11 +1319,7 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter() noexcept
-  : dir_(NoopDirectory::instance()),
-    column_info_(nullptr),
-    feature_info_(nullptr),
-    comparator_(nullptr) {}
+MergeWriter::MergeWriter() noexcept : dir_(NoopDirectory::instance()) {}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1416,12 +1412,12 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  flush_state state;
-  state.dir = &dir;
-  state.doc_count = segment.docs_count;
-  state.features = &fields_features;
-  state.index_features = index_features;
-  state.name = segment.name;
+  const flush_state state{.dir = &dir,
+                          .features = &fields_features,
+                          .name = segment.name,
+                          .scorers = scorers_,
+                          .doc_count = segment.docs_count,
+                          .index_features = index_features};
 
   // write field meta and field term data
   if (!write_fields(cs, remapping_itrs, state, segment, *feature_info_,

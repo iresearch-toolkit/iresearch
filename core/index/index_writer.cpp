@@ -1576,7 +1576,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
   RefTrackingDirectory dir{dir_};  // Track references for new segment
 
-  MergeWriter merger{dir, column_info_, feature_info_, comparator_};
+  MergeWriter merger{dir, GetSegmentWriterOptions()};
   merger.Reset(candidates.begin(), candidates.end());
 
   // We do not persist segment meta since some removals may come later
@@ -1827,7 +1827,7 @@ bool IndexWriter::Import(const IndexReader& reader,
   segment.meta.name = file_name(NextSegmentId());
   segment.meta.codec = codec;
 
-  MergeWriter merger(dir, column_info_, feature_info_, comparator_);
+  MergeWriter merger{dir, GetSegmentWriterOptions()};
   merger.Reset(reader.begin(), reader.end());
 
   if (!merger.Flush(segment.meta, progress)) {
