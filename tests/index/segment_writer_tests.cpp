@@ -616,9 +616,8 @@ TEST_F(segment_writer_tests, reorder) {
     irs::IndexSegment index_segment;
     irs::document_mask docs_mask;
     index_segment.meta.codec = default_codec();
-    writer->flush(index_segment, docs_mask);
+    auto docs_context = writer->flush(index_segment, docs_mask);
     ASSERT_TRUE(docs_mask.empty());
-    auto docs_context = writer->docs_context();
     ASSERT_EQ(docs_context.size(), kLen);
     for (size_t i = 0; i < kLen; ++i) {
       EXPECT_EQ(expected[i], docs_context[i].generation);

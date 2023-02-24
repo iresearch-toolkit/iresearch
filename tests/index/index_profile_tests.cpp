@@ -373,10 +373,9 @@ class index_profile_test_case : public tests::index_test_base {
     std::cout << "Path to timing log: " << path.string() << std::endl;
 
     auto reader = irs::DirectoryReader(dir(), codec());
-    ASSERT_EQ(
-      true,
-      1 <= reader.size());  // not all commits might produce a new segment,
-                            // some might merge with concurrent commits
+    // not all commits might produce a new segment,
+    ASSERT_LE(1, reader.size());
+    // some might merge with concurrent commits
     ASSERT_TRUE(writer_commit_count * thread_count + writer_import_count >=
                 reader.size());  // worst case each thread is concurrently
                                  // populating its own segment for every commit

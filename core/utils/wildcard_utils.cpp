@@ -57,7 +57,7 @@ WildcardType wildcard_type(bytes_view expr) noexcept {
   const auto* char_begin = expr.data();
   const auto* end = expr.data() + expr.size();
 
-  for (size_t i = 0; char_begin < end; ++i) {
+  while (char_begin < end) {
     const size_t char_length = utf8_utils::cp_length_msb(*char_begin);
     const auto char_end = char_begin + char_length;
 

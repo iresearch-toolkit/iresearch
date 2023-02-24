@@ -146,10 +146,14 @@ enum Types : uint64_t {
   kTypesRot13_7 = 1 << 3,
 };
 
+// #define IRESEARCH_ONLY_MEMORY
+
 template<uint64_t Type>
 constexpr auto getDirectories() {
   constexpr auto kCount = std::popcount(Type);
-#ifdef IRESEARCH_URING
+#ifdef IRESEARCH_ONLY_MEMORY
+  std::array<dir_param_f, kCount * 1> data;
+#elif defined(IRESEARCH_URING)
   std::array<dir_param_f, kCount * 4> data;
 #else
   std::array<dir_param_f, kCount * 3> data;
@@ -157,27 +161,33 @@ constexpr auto getDirectories() {
   auto* p = data.data();
   if constexpr (Type & kTypesDefault) {
     *p++ = &tests::directory<&tests::memory_directory>;
+#ifndef IRESEARCH_ONLY_MEMORY
 #ifdef IRESEARCH_URING
     *p++ = &tests::directory<&tests::async_directory>;
 #endif
     *p++ = &tests::directory<&tests::mmap_directory>;
     *p++ = &tests::directory<&tests::fs_directory>;
+#endif
   }
   if constexpr (Type & kTypesRot13_16) {
     *p++ = &tests::rot13_directory<&tests::memory_directory, 16>;
+#ifndef IRESEARCH_ONLY_MEMORY
 #ifdef IRESEARCH_URING
     *p++ = &tests::rot13_directory<&tests::async_directory, 16>;
 #endif
     *p++ = &tests::rot13_directory<&tests::mmap_directory, 16>;
     *p++ = &tests::rot13_directory<&tests::fs_directory, 16>;
+#endif
   }
   if constexpr (Type & kTypesRot13_7) {
     *p++ = &tests::rot13_directory<&tests::memory_directory, 7>;
+#ifndef IRESEARCH_ONLY_MEMORY
 #ifdef IRESEARCH_URING
     *p++ = &tests::rot13_directory<&tests::async_directory, 7>;
 #endif
     *p++ = &tests::rot13_directory<&tests::mmap_directory, 7>;
     *p++ = &tests::rot13_directory<&tests::fs_directory, 7>;
+#endif
   }
   return data;
 }

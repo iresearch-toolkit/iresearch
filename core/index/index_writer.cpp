@@ -143,7 +143,7 @@ void RemoveFromExistingSegment(
 bool RemoveFromImportedSegment(
   std::span<IndexWriter::ModificationContext> modifications,
   const SubReader& reader, document_mask& docs_mask,
-  size_t min_modification_generation) {
+  uint64_t min_modification_generation) {
   IRS_ASSERT(!modifications.empty());
   bool modified = false;
 
@@ -632,20 +632,6 @@ IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
     flush_ctx_{flush_ctx},
     pending_segment_context_offset_{pending_segment_context_offset},
     segments_active_{&segments_active} {
-#ifdef IRESEARCH_DEBUG
-  if (flush_ctx) {
-    // ensure there are no active struct update operations
-    // (only needed for IRS_ASSERT)
-    // cppcheck-suppress unreadVariable
-    std::lock_guard lock{flush_ctx->mutex_};
-
-    // IRS_ASSERT that flush_ctx and ctx are compatible
-    IRS_ASSERT(
-      flush_ctx->pending_segment_contexts_[pending_segment_context_offset_]
-        .segment_ == ctx_);
-  }
-#endif
-
   if (ctx_) {
     // track here since guaranteed to have 1 ref per active
     // segment
@@ -654,24 +640,20 @@ IndexWriter::ActiveSegmentContext::ActiveSegmentContext(
 }
 
 IndexWriter::ActiveSegmentContext::~ActiveSegmentContext() {
-  if (ctx_) {
-    // track here since guaranteed to have 1 ref per active
-    // segment
-    segments_active_->fetch_sub(1);
+  if (ctx_ == nullptr) {
+    return;
   }
-
-  if (flush_ctx_) {
+  // track here since guaranteed to have 1 ref per active segment
+  segments_active_->fetch_sub(1);
+  if (flush_ctx_ != nullptr) {
     ctx_.reset();
-
-    try {
-      std::lock_guard lock{flush_ctx_->mutex_};
+    std::unique_lock lock{flush_ctx_->mutex_, std::try_to_lock};
+    if (lock.owns_lock()) {
+      // ignore if lock failed because it implies that FlushAll() is not waiting
+      // for a notification or someone else will make notification
       flush_ctx_->pending_segment_context_cond_.notify_all();
-    } catch (...) {
-      // lock may throw
     }
-  }  // FIXME TODO remove once col_writer tail is fixed to flush() multiple
-     // times without overwrite (since then the tail will be in a different
-     // context)
+  }
 }
 
 IndexWriter::ActiveSegmentContext& IndexWriter::ActiveSegmentContext::operator=(
@@ -700,20 +682,16 @@ IndexWriter::Document::Document(FlushContext& ctx,
     update_id_{update.update_id} {
   IRS_ASSERT(segment_);
   IRS_ASSERT(segment_->writer_);
-  const auto uncomitted_doc_id_begin =
-    segment_->uncomitted_doc_id_begin_ >
-        segment_->flushed_update_contexts_.size()
-      // uncomitted start in 'writer_'
-      ? (segment_->uncomitted_doc_id_begin_ -
+  const size_t rollback_begin =
+    segment_->uncommitted_docs_ >= segment_->flushed_update_contexts_.size()
+      // uncommitted start in 'writer_'
+      ? (segment_->uncommitted_docs_ -
          segment_->flushed_update_contexts_.size())
       // uncommitted start in 'flushed_'
-      : doc_limits::min();
-  IRS_ASSERT(uncomitted_doc_id_begin <=
-             writer_.docs_cached() + doc_limits::min());
-  // ensure reset() will be noexcept
-  ++segment_->active_count_;
-  const auto rollback_extra =
-    writer_.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin;
+      : 0;
+  IRS_ASSERT(rollback_begin <= writer_.docs_cached());
+  segment_->active_count_.fetch_add(1);
+  const auto rollback_extra = writer_.docs_cached() - rollback_begin;
   writer_.begin(update, rollback_extra);  // ensure reset() will be noexcept
   segment_->buffered_docs_.store(writer_.docs_cached(),
                                  std::memory_order_relaxed);
@@ -733,22 +711,18 @@ IndexWriter::Document::~Document() noexcept {
     writer_.rollback();
   }
 
-  if (!*this && update_id_ != kNonUpdateRecord) {
+  if (!writer_.valid() && update_id_ != kNonUpdateRecord) {
     // mark invalid
     segment_->modification_queries_[update_id_].filter = nullptr;
   }
 
   // optimization to notify any ongoing flush_all() operations so they wake up
   // earlier
-  if (1 == segment_->active_count_.fetch_sub(1)) {
-    // lock due to context modification and notification, note:
-    // std::mutex::try_lock() does not throw exceptions as per documentation
-    // @see https://en.cppreference.com/w/cpp/named_req/Mutex
+  if (segment_->active_count_.fetch_sub(1) == 1) {
     std::unique_lock lock{ctx_.mutex_, std::try_to_lock};
-
     if (lock.owns_lock()) {
-      // ignore if lock failed because it implies that
-      // flush_all() is not waiting for a notification
+      // ignore if lock failed because it implies that FlushAll() is not waiting
+      // for a notification or someone else will make notification
       ctx_.pending_segment_context_cond_.notify_all();
     }
   }
@@ -786,7 +760,7 @@ bool IndexWriter::Transaction::Commit() noexcept {
     // FIXME move emplace into active_segment_context destructor commit segment
     const auto& flush_ctx = writer_.GetFlushContext();
     IRS_ASSERT(flush_ctx);
-    flush_ctx->emplace(std::move(segment_), first_operation_tick_);
+    flush_ctx->Emplace(std::move(segment_), first_operation_tick_);
     return true;
   } catch (...) {
     Reset();  // abort segment
@@ -804,83 +778,57 @@ void IndexWriter::Transaction::Reset() noexcept {
   }
 
   // rollback modification queries
-  std::for_each(std::begin(ctx->modification_queries_) +
-                  ctx->uncomitted_modification_queries_,
-                std::end(ctx->modification_queries_),
-                [](ModificationContext& ctx) noexcept {
-                  // mark invalid
-                  ctx.filter = nullptr;
-                });
+  std::for_each(
+    ctx->modification_queries_.begin() + ctx->uncommitted_modification_queries_,
+    ctx->modification_queries_.end(), [](ModificationContext& ctx) noexcept {
+      ctx.filter = nullptr;  // mark invalid
+    });
 
   auto& flushed_update_contexts = ctx->flushed_update_contexts_;
 
-  // find and mask/truncate uncomitted tail
-  for (size_t i = 0, count = ctx->flushed_.size(), flushed_docs_count = 0;
-       i < count; ++i) {
-    auto& segment = ctx->flushed_[i];
-    auto flushed_docs_start = flushed_docs_count;
-
-    // sum of all previous SegmentMeta::docs_count
-    // including this meta
-    flushed_docs_count += segment.meta.docs_count;
-
-    if (flushed_docs_count <=
-        ctx->uncomitted_doc_id_begin_ - doc_limits::min()) {
-      continue;  // all documents in this this index_meta have been committed
-    }
-
-    auto docs_mask_tail_doc_id =
-      ctx->uncomitted_doc_id_begin_ - flushed_docs_start;
-
-    IRS_ASSERT(docs_mask_tail_doc_id <= segment.meta.live_docs_count);
-    IRS_ASSERT(docs_mask_tail_doc_id <= std::numeric_limits<doc_id_t>::max());
-    segment.docs_mask_tail_doc_id = doc_id_t(docs_mask_tail_doc_id);
-
-    if (docs_mask_tail_doc_id - doc_limits::min() >= segment.meta.docs_count) {
-      ctx->flushed_.resize(i);  // truncate including current empty meta
+  // find and mask/truncate uncommitted tail
+  const auto end = ctx->flushed_.end();
+  auto it = std::find_if(ctx->flushed_.begin(), end, [&](const auto& flushed) {
+    return ctx->uncommitted_docs_ < flushed.GetDocsEnd();
+  });
+  if (it != end) {
+    if (it->SetCommitted(ctx->uncommitted_docs_)) {
+      const auto docs_end = it->GetDocsEnd();
+      ctx->flushed_.erase(it + 1, end);
+      ctx->flushed_update_contexts_.resize(docs_end);
+      ctx->uncommitted_docs_ = docs_end;
     } else {
-      ctx->flushed_.resize(i + 1);  // truncate starting from subsequent meta
+      ctx->flushed_.erase(it, end);
+      ctx->flushed_update_contexts_.resize(ctx->uncommitted_docs_);
     }
-
-    IRS_ASSERT(flushed_update_contexts.size() >= flushed_docs_count);
-    // truncate 'flushed_update_contexts_'
-    flushed_update_contexts.resize(flushed_docs_count);
-    // reset to start of 'writer_'
-    ctx->uncomitted_doc_id_begin_ =
-      flushed_update_contexts.size() + doc_limits::min();
-
-    break;
   }
 
   if (!ctx->writer_) {
-    IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() ==
-               flushed_update_contexts.size());
+    IRS_ASSERT(ctx->uncommitted_docs_ == flushed_update_contexts.size());
     ctx->buffered_docs_.store(flushed_update_contexts.size(),
                               std::memory_order_relaxed);
-
     return;  // nothing to reset
   }
 
   auto& writer = *(ctx->writer_);
   auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
 
-  IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= writer.docs_cached());
-  // update_contexts located inside th writer
-  IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() >=
-             flushed_update_contexts.size());
-  IRS_ASSERT(ctx->uncomitted_doc_id_begin_ - doc_limits::min() <=
-             flushed_update_contexts.size() + writer_docs);
-  ctx->buffered_docs_.store(flushed_update_contexts.size() + writer_docs,
-                            std::memory_order_relaxed);
+  IRS_ASSERT(writer.docs_cached() < doc_limits::eof());
+  // update_contexts located inside the writer
+  IRS_ASSERT(flushed_update_contexts.size() <= ctx->uncommitted_docs_);
+  const size_t uncommitted_docs_count =
+    flushed_update_contexts.size() + writer_docs;
+  IRS_ASSERT(ctx->uncommitted_docs_ <= uncommitted_docs_count);
+  ctx->buffered_docs_.store(uncommitted_docs_count, std::memory_order_relaxed);
 
   // rollback document insertions
   // cannot segment_writer::reset(...) since documents_context::reset() noexcept
-  for (auto doc_id =
-              ctx->uncomitted_doc_id_begin_ - flushed_update_contexts.size(),
+  for (auto doc_id = ctx->uncommitted_docs_ - flushed_update_contexts.size() +
+                     doc_limits::min(),
             doc_id_end = writer_docs + doc_limits::min();
        doc_id < doc_id_end; ++doc_id) {
-    IRS_ASSERT(doc_id <= std::numeric_limits<doc_id_t>::max());
-    writer.remove(doc_id_t(doc_id));
+    IRS_ASSERT(doc_id < doc_limits::eof());
+    writer.remove(static_cast<doc_id_t>(doc_id));
   }
 }
 
@@ -901,7 +849,7 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
   bool disable_flush) {
   auto ctx = writer_.GetFlushContext();
 
-  // refresh segment if required (guarded by flush_context::flush_mutex_)
+  // refresh segment if required (guarded by FlushContext::context_mutex_)
 
   while (!segment_.ctx()) {  // no segment (lazy initialized)
     segment_ = writer_.GetSegmentContext(*ctx);
@@ -911,8 +859,8 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
 
     // must unlock/relock flush_context before retrying to get a new segment so
     // as to avoid a deadlock due to a read-write-read situation for
-    // flush_context::flush_mutex_ with threads trying to lock
-    // flush_context::flush_mutex_ to return their segment_context
+    // FlushContext::context_mutex_ with threads trying to lock
+    // FlushContext::context_mutex_ to return their segment_context
     if (!segment_.ctx()) {
       ctx.reset();  // reset before reacquiring
       ctx = writer_.GetFlushContext();
@@ -958,217 +906,109 @@ IndexWriter::FlushContextPtr IndexWriter::Transaction::UpdateSegment(
   return ctx;
 }
 
-void IndexWriter::FlushContext::emplace(ActiveSegmentContext&& segment,
+void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& segment,
                                         uint64_t generation_base) {
-  if (!segment.ctx_) {
+  if (segment.ctx_ == nullptr) {
     return;  // nothing to do
   }
 
-  auto& flush_ctx = segment.flush_ctx_;
+  auto* flush_ctx = segment.flush_ctx_;
+  const bool is_null = flush_ctx == nullptr;
+  const bool is_this = flush_ctx == this;
 
-  // failure may indicate a dangling 'document' instance
-  IRS_ASSERT(
-    // +1 for 'active_segment_context::ctx_'
-    (!flush_ctx && segment.ctx_.use_count() == 1) ||
-    // +1 for 'active_segment_context::ctx_' (flush_context switching made a
-    // full-circle)
-    (this == flush_ctx && segment.ctx_->dirty_.load() &&
-     segment.ctx_.use_count() == 1) ||
-    // +1 for 'active_segment_context::ctx_',
-    // +1 for 'pending_segment_context::segment_'
-    (this == flush_ctx && !segment.ctx_->dirty_.load() &&
-     segment.ctx_.use_count() == 2) ||
-    // +1 for 'active_segment_context::ctx_',
-    // +1 for 'pending_segment_context::segment_'
-    (this != flush_ctx && flush_ctx && segment.ctx_.use_count() == 2) ||
-    // +1 for 'active_segment_context::ctx_',
-    // +0 for 'pending_segment_context::segment_' that was already cleared
-    (this != flush_ctx && flush_ctx && segment.ctx_.use_count() == 1));
-
-  Freelist::node_type* freelist_node = nullptr;
-  size_t modification_count{};
   auto& ctx = *(segment.ctx_);
-
   // prevent concurrent flush related modifications,
   // i.e. if segment is also owned by another flush_context
   std::unique_lock flush_lock{ctx.flush_mutex_, std::defer_lock};
+  if (!is_null && !is_this) {
+    ctx.dirty_.store(true);
+    flush_lock.lock();
+  }
 
-  {
-    // pending_segment_contexts_ may be asynchronously read
-    std::lock_guard lock{mutex_};
-
-    // update pending_segment_context
-    // this segment_context has not yet been seen by this flush_context
-    // or was marked dirty implies flush_context switching making a full-circle
-    if (this != flush_ctx || ctx.dirty_) {
-      freelist_node = &pending_segment_contexts_.emplace_back(
-        segment.ctx_, pending_segment_contexts_.size());
-
-      // mark segment as non-reusable if it was peviously registered with a
-      // different flush_context NOTE: 'ctx.dirty_' implies flush_context
-      // switching making a full-circle
-      //       and this emplace(...) call being the first and only call for this
-      //       segment (not given out again via free-list) so no 'dirty_' check
-      if (flush_ctx && this != flush_ctx) {
-        ctx.dirty_ = true;
-        // 'segment.flush_ctx_' may be asynchronously flushed
-        flush_lock.lock();
-        // thread-safe because pending_segment_contexts_ is a deque
-        IRS_ASSERT(
-          flush_ctx
-            ->pending_segment_contexts_[segment.pending_segment_context_offset_]
-            .segment_ == segment.ctx_);
-        // ^^^ FIXME TODO remove last line
-        /* FIXME TODO uncomment once col_writer tail is written correctly (need
-        to track tail in new segment
-        // if this segment is still referenced by the previous flush_context
-        then
-        // store 'pending_segment_contexts_' and
-        'uncomitted_modification_queries_'
-        // in the previous flush_context because they will be modified lower
-        down if (segment.ctx_.use_count() != 2) {
-          IRS_ASSERT(segment.flush_ctx_->pending_segment_contexts_.size() >
-        segment.pending_segment_context_offset_);
-          IRS_ASSERT(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_
-        == segment.ctx_); // thread-safe because pending_segment_contexts_ is a
-        deque
-          IRS_ASSERT(segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].segment_.use_count()
-        == 3); // +1 for the reference in 'pending_segment_contexts_', +1 for
-        the reference in other flush_context 'pending_segment_contexts_', +1 for
-        the reference in 'active_segment_context'
-          segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].doc_id_end_
-        = ctx.uncomitted_doc_id_begin_;
-          segment.flush_ctx_->pending_segment_contexts_[segment.pending_segment_context_offset_].modification_offset_end_
-        = ctx.uncomitted_modification_queries_;
-        }
-        */
-      }
-
-      if (flush_ctx && this != flush_ctx) {
-        pending_segment_contexts_.pop_back();
-        freelist_node = nullptr;
-      }  // FIXME TODO remove this condition once col_writer tail is written
-         // correctly
+  // NOTE: if the first uncommitted operation is a removal operation then it
+  //       is fully valid for its 'committed' generation value to equal the
+  //       generation of the last 'committed' insert operation since removals
+  //       are applied to documents with generation <= removal
+  IRS_ASSERT(ctx.uncommitted_modification_queries_ <=
+             ctx.modification_queries_.size());
+  const size_t modification_count =
+    ctx.modification_queries_.size() - ctx.uncommitted_modification_queries_;
+  if (generation_base == 0) {
+    // atomic increment to end of unique generation range
+    // fetch_add return start of generation range
+    if (is_null) {
+      generation_base = generation_.fetch_add(modification_count);
     } else {
-      // the segment is present in this flush_context
-      // 'pending_segment_contexts_'
-      IRS_ASSERT(pending_segment_contexts_.size() >
-                 segment.pending_segment_context_offset_);
-      IRS_ASSERT(
-        pending_segment_contexts_[segment.pending_segment_context_offset_]
-          .segment_ == segment.ctx_);
-      // +1 for the reference in 'pending_segment_contexts_',
-      // +1 for the reference in 'active_segment_context'
-      IRS_ASSERT(
-        pending_segment_contexts_[segment.pending_segment_context_offset_]
-          .segment_.use_count() == 2);
-      freelist_node =
-        &(pending_segment_contexts_[segment.pending_segment_context_offset_]);
-    }
-
-    // NOTE: if the first uncommitted operation is a removal operation then it
-    //       is fully valid for its 'committed' generation value to equal the
-    //       generation of the last 'committed' insert operation since removals
-    //       are applied to documents with generation <= removal
-    IRS_ASSERT(ctx.uncomitted_modification_queries_ <=
-               ctx.modification_queries_.size());
-    modification_count =
-      ctx.modification_queries_.size() - ctx.uncomitted_modification_queries_;
-    if (!generation_base) {
-      if (flush_ctx && this != flush_ctx) {
-        generation_base = flush_ctx->generation_ += modification_count;
-      } else {
-        // FIXME remove this condition once col_writer tail is written
-        // correctly
-
-        // atomic increment to end of unique generation range
-        generation_base = generation_ += modification_count;
-      }
-      generation_base -= modification_count;  // start of generation range
+      generation_base = flush_ctx->generation_.fetch_add(modification_count);
     }
   }
 
-  // noexcept state update operations below here
-  // no need for segment lock since flush_all() operates on values < '*_end_'
-  // update generation of segment operation
+  // Update generation of segment operation
+  ctx.UpdateGeneration(generation_base);
 
-  // update generations of modification_queries_
-  std::for_each(
-    std::begin(ctx.modification_queries_) +
-      ctx.uncomitted_modification_queries_,
-    std::end(ctx.modification_queries_),
-    [generation_base, modification_count](ModificationContext& v) noexcept {
-      // must be < modification_count since inserts come after
-      // modification
-      IRS_ASSERT(v.generation < modification_count);
-      IRS_IGNORE(modification_count);
-
-      // update to flush_context generation
-      const_cast<size_t&>(v.generation) += generation_base;
-    });
-
-  auto update_generation = [uncomitted_doc_id_begin =
-                              ctx.uncomitted_doc_id_begin_ - doc_limits::min(),
-                            modification_count, generation_base](
-                             std::span<segment_writer::update_context> ctxs) {
-    // update generations of segment_context::flushed_update_contexts_
-    for (size_t i = uncomitted_doc_id_begin, end = ctxs.size(); i < end; ++i) {
-      // can == modification_count if inserts come  after
-      // modification
-      IRS_ASSERT(ctxs[i].generation <= modification_count);
-      IRS_IGNORE(modification_count);
-      // update to flush_context generation
-      ctxs[i].generation += generation_base;
-    }
-  };
-
-  auto& flushed_update_contexts = ctx.flushed_update_contexts_;
-
-  // update generations of segment_context::flushed_update_contexts_
-  update_generation(flushed_update_contexts);
-
-  IRS_ASSERT(ctx.writer_);
-  IRS_ASSERT(ctx.writer_->docs_cached() <= doc_limits::eof());
-  auto& writer = *(ctx.writer_);
-  const auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
-
-  // update generations of segment_writer::doc_contexts
-  if (writer_docs) {
-    update_generation(writer.docs_context());
-  }
-
-  // reset counters for segment reuse
-
-  ctx.uncomitted_generation_offset_ = 0;
-  ctx.uncomitted_doc_id_begin_ =
-    flushed_update_contexts.size() + writer_docs + doc_limits::min();
-  ctx.uncomitted_modification_queries_ = ctx.modification_queries_.size();
-
-  if (!freelist_node) {
-    // FIXME remove this condition once col_writer tail is writteng correctly
+  if (flush_lock.owns_lock()) {
     return;
   }
 
-  // do not reuse segments that are present in another flush_context
-  if (!ctx.dirty_) {
-    IRS_ASSERT(freelist_node);
-    // +1 for 'active_segment_context::ctx_', +1 for
-    IRS_ASSERT(segment.ctx_.use_count() == 2);
-    // 'pending_segment_context::segment_'
-    auto& segments_active = *(segment.segments_active_);
-    // release hold (delcare before aquisition since operator++() is noexcept)
-    Finally segments_active_decrement = [&segments_active]() noexcept {
-      segments_active.fetch_sub(1);
-    };
-    // increment counter to hold reservation while segment_context is being
-    // released and added to the freelist
-    segments_active.fetch_add(1);
-    // reset before adding to freelist to garantee proper use_count() in
-    // get_segment_context(...)
-    segment = ActiveSegmentContext{};
-    // add segment_context to free-list
-    pending_segment_contexts_freelist_.push(*freelist_node);
+  // pending_segment_contexts_ may be asynchronously read
+  std::lock_guard lock{mutex_};
+
+  const bool is_dirty = ctx.dirty_.load();
+
+#ifdef IRESEARCH_DEBUG
+  // failure may indicate a dangling 'document' instance
+  [[maybe_unused]] const auto use_count = segment.ctx_.use_count();
+  IRS_ASSERT(
+    // +1 for 'active_segment_context::ctx_'
+    (is_null && use_count == 1) ||
+    // +1 for 'active_segment_context::ctx_'
+    // (flush_context switching made a full-circle)
+    (is_this && is_dirty && use_count == 1) ||
+    // +1 for 'active_segment_context::ctx_',
+    // +1 for 'pending_segment_context::segment_'
+    (is_this && !is_dirty && use_count == 2) ||
+    // +1 for 'active_segment_context::ctx_',
+    // +1 for 'pending_segment_context::segment_'
+    (!is_null && !is_this && use_count == 2) ||
+    // +1 for 'active_segment_context::ctx_',
+    // +0 for 'pending_segment_context::segment_' that was already cleared
+    (!is_null && !is_this && use_count == 1));
+#endif
+
+  Freelist::node_type* freelist_node = nullptr;
+  // this segment_context has not yet been seen by this flush_context
+  // or was marked dirty implies flush_context switching making a full-circle
+  if (is_dirty || is_null) {
+    freelist_node = &pending_segment_contexts_.emplace_back(
+      segment.ctx_, pending_segment_contexts_.size());
+  } else {
+    IRS_ASSERT(is_this);
+    // the segment is present in this flush_context 'pending_segment_contexts_'
+    IRS_ASSERT(segment.pending_segment_context_offset_ <
+               pending_segment_contexts_.size());
+    auto& segment_context =
+      pending_segment_contexts_[segment.pending_segment_context_offset_];
+    IRS_ASSERT(segment_context.segment_ == segment.ctx_);
+    freelist_node = &segment_context;
   }
+  // do not reuse segments that are present in another flush_context
+  if (is_dirty) {
+    return;
+  }
+  // +1 for 'active_segment_context::ctx_'
+  // +1 for 'pending_segment_context::segment_'
+  IRS_ASSERT(segment.ctx_.use_count() == 2);
+  auto& segments_active = *(segment.segments_active_);
+  // increment counter to hold reservation while segment_context is being
+  // released and added to the freelist
+  segments_active.fetch_add(1);
+  // reset before adding to freelist to guarantee proper use_count() in
+  // GetSegmentContext(...)
+  segment = ActiveSegmentContext{};
+  // add segment_context to freelist
+  pending_segment_contexts_freelist_.push(*freelist_node);
+  // decrement counter to release hold
+  segments_active.fetch_sub(1);
 }
 
 bool IndexWriter::FlushContext::AddToPending(ActiveSegmentContext& segment) {
@@ -1184,7 +1024,7 @@ bool IndexWriter::FlushContext::AddToPending(ActiveSegmentContext& segment) {
   return true;
 }
 
-void IndexWriter::FlushContext::reset() noexcept {
+void IndexWriter::FlushContext::Reset() noexcept {
   // reset before returning to pool
   for (auto& entry : pending_segment_contexts_) {
     if (auto& segment = entry.segment_; segment.use_count() == 1) {
@@ -1212,41 +1052,96 @@ IndexWriter::SegmentContext::SegmentContext(
     dirty_(false),
     dir_(dir),
     meta_generator_(std::move(meta_generator)),
-    uncomitted_doc_id_begin_(doc_limits::min()),
-    uncomitted_generation_offset_(0),
-    uncomitted_modification_queries_(0),
+    uncommitted_docs_(0),
+    uncommitted_generation_(0),
+    uncommitted_modification_queries_(0),
     writer_{segment_writer::make(dir_, segment_writer_options)} {
   IRS_ASSERT(meta_generator_);
 }
 
+void IndexWriter::SegmentContext::UpdateGeneration(uint64_t base) noexcept {
+  IRS_ASSERT(writer_);
+  IRS_ASSERT(writer_->docs_cached() < doc_limits::eof());
+
+  // Update generations of modification queries
+  std::for_each(
+    modification_queries_.begin() + uncommitted_modification_queries_,
+    modification_queries_.end(), [&](ModificationContext& v) noexcept {
+      // Must be < than 'count' since inserts come after modification
+      IRS_ASSERT(v.generation < modification_queries_.size() -
+                                  uncommitted_modification_queries_);
+      // Update to flush_context generation
+      v.generation += base;
+    });
+
+  // Update generations for insertions
+  auto update_generation =
+    [&](std::span<segment_writer::update_context> ctxs) noexcept {
+      for (auto& update : ctxs) {
+        // Can be == to 'count' if inserts come after modification
+        IRS_ASSERT(update.generation <= modification_queries_.size() -
+                                          uncommitted_modification_queries_);
+        update.generation += base;
+      }
+    };
+
+  auto commit_start = uncommitted_docs_;
+  if (commit_start < flushed_update_contexts_.size()) {
+    update_generation({flushed_update_contexts_.data() + commit_start,
+                       flushed_update_contexts_.size() - commit_start});
+    commit_start = 0;
+  } else {
+    commit_start -= flushed_update_contexts_.size();
+  }
+
+  IRS_ASSERT(writer_);
+  if (auto docs = writer_->docs_context(); commit_start < docs.size()) {
+    IRS_ASSERT(writer_->initialized());
+    update_generation({docs.data() + commit_start, docs.size() - commit_start});
+  }
+
+  // Reset counters for reuse
+  uncommitted_generation_ = 0;
+  last_trx_buffered_docs_ = writer_->docs_cached();
+  uncommitted_docs_ = flushed_update_contexts_.size() + last_trx_buffered_docs_;
+  uncommitted_modification_queries_ = modification_queries_.size();
+}
+
 uint64_t IndexWriter::SegmentContext::Flush() {
-  // must be already locked to prevent concurrent flush related modifications
+  // Must be already locked to prevent concurrent flush related modifications
   IRS_ASSERT(!flush_mutex_.try_lock());
 
-  if (!writer_ || !writer_->initialized() || !writer_->docs_cached()) {
-    return 0;  // skip flushing an empty writer
+  if (!writer_ || !writer_->initialized() || writer_->docs_cached() == 0) {
+    return 0;  // Skip flushing an empty writer
   }
 
   IRS_ASSERT(writer_->docs_cached() <= doc_limits::eof());
 
-  auto& segment = flushed_.emplace_back(std::move(writer_meta_.meta));
+  // Ensure writer is reset
+  Finally reset_writer = [&]() noexcept { writer_->reset(); };
 
+  document_mask docs_mask;
+  const std::span ctxs = writer_->flush(writer_meta_, docs_mask);
+
+  if (writer_meta_.meta.live_docs_count == 0) {
+    uncommitted_docs_ -= last_trx_buffered_docs_;
+    last_trx_buffered_docs_ = 0;
+    return 0;  // Skip flushing an empty writer
+  }
+  IRS_ASSERT(writer_meta_.meta.live_docs_count <= writer_meta_.meta.docs_count);
+  IRS_ASSERT(writer_meta_.meta.docs_count == ctxs.size());
+
+  flushed_.emplace_back(std::move(writer_meta_), std::move(docs_mask),
+                        flushed_update_contexts_.size());
   try {
-    writer_->flush(segment, segment.docs_mask);
-
-    const std::span ctxs{writer_->docs_context()};
     flushed_update_contexts_.insert(flushed_update_contexts_.end(),
                                     ctxs.begin(), ctxs.end());
   } catch (...) {
-    // failed to flush segment
     flushed_.pop_back();
-
     throw;
   }
 
-  auto const tick = writer_->tick();
-  writer_->reset();  // mark segment as already flushed
-  return tick;
+  return writer_->tick();
 }
 
 IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
@@ -1259,7 +1154,7 @@ IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
 segment_writer::update_context IndexWriter::SegmentContext::MakeUpdateContext(
   const filter& filter) {
   // increment generation due to removal
-  auto generation = ++uncomitted_generation_offset_;
+  auto generation = ++uncommitted_generation_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
@@ -1272,7 +1167,7 @@ segment_writer::update_context IndexWriter::SegmentContext::MakeUpdateContext(
   std::shared_ptr<const filter> filter) {
   IRS_ASSERT(filter);
   // increment generation due to removal
-  auto generation = ++uncomitted_generation_offset_;
+  auto generation = ++uncommitted_generation_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
@@ -1285,7 +1180,7 @@ segment_writer::update_context IndexWriter::SegmentContext::MakeUpdateContext(
   filter::ptr&& filter) {
   IRS_ASSERT(filter);
   // increment generation due to removal
-  auto generation = ++uncomitted_generation_offset_;
+  auto generation = ++uncommitted_generation_;
   auto update_id = modification_queries_.size();
 
   // -1 for previous generation
@@ -1298,14 +1193,14 @@ void IndexWriter::SegmentContext::Prepare() {
   IRS_ASSERT(writer_);
 
   if (!writer_->initialized()) {
-    writer_meta_ = IndexSegment{.meta = meta_generator_()};
+    writer_meta_.filename.clear();
+    writer_meta_.meta = meta_generator_();
     writer_->reset(writer_meta_.meta);
   }
 }
 
 void IndexWriter::SegmentContext::Remove(const filter& filter) {
-  modification_queries_.emplace_back(filter, uncomitted_generation_offset_++,
-                                     false);
+  modification_queries_.emplace_back(filter, uncommitted_generation_++, false);
 }
 
 void IndexWriter::SegmentContext::Remove(std::shared_ptr<const filter> filter) {
@@ -1314,7 +1209,7 @@ void IndexWriter::SegmentContext::Remove(std::shared_ptr<const filter> filter) {
   }
 
   modification_queries_.emplace_back(std::move(filter),
-                                     uncomitted_generation_offset_++, false);
+                                     uncommitted_generation_++, false);
 }
 
 void IndexWriter::SegmentContext::Remove(filter::ptr&& filter) {
@@ -1323,7 +1218,7 @@ void IndexWriter::SegmentContext::Remove(filter::ptr&& filter) {
   }
 
   modification_queries_.emplace_back(std::move(filter),
-                                     uncomitted_generation_offset_++, false);
+                                     uncommitted_generation_++, false);
 }
 
 void IndexWriter::SegmentContext::Reset(bool store_flushed) noexcept {
@@ -1336,9 +1231,9 @@ void IndexWriter::SegmentContext::Reset(bool store_flushed) noexcept {
     flushed_update_contexts_.clear();
   }
   modification_queries_.clear();
-  uncomitted_doc_id_begin_ = doc_limits::min();
-  uncomitted_generation_offset_ = 0;
-  uncomitted_modification_queries_ = 0;
+  uncommitted_docs_ = flushed_update_contexts_.size();
+  uncommitted_generation_ = 0;
+  uncommitted_modification_queries_ = 0;
 
   if (writer_->initialized()) {
     writer_->reset();  // try to reduce number of files flushed below
@@ -1971,7 +1866,7 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
   if (!shared) {
     for (;;) {
       // lock ctx exchange (write-lock)
-      std::unique_lock lock{ctx->flush_mutex_};
+      std::unique_lock lock{ctx->context_mutex_};
 
       // acquire the current flush_context and its lock
       if (!flush_context_.compare_exchange_strong(ctx, ctx->next_context_)) {
@@ -1982,16 +1877,16 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
       lock.release();
 
       return {ctx, [](FlushContext* ctx) noexcept -> void {
-                std::unique_lock lock{ctx->flush_mutex_, std::adopt_lock};
+                std::unique_lock lock{ctx->context_mutex_, std::adopt_lock};
                 // reset context and make ready for reuse
-                ctx->reset();
+                ctx->Reset();
               }};
     }
   }
 
   for (;;) {
     // lock current ctx (read-lock)
-    std::shared_lock lock{ctx->flush_mutex_, std::try_to_lock};
+    std::shared_lock lock{ctx->context_mutex_, std::try_to_lock};
 
     if (!lock) {
       std::this_thread::yield();    // allow flushing thread to finish exchange
@@ -2013,7 +1908,7 @@ IndexWriter::FlushContextPtr IndexWriter::GetFlushContext(
     lock.release();
 
     return {ctx, [](FlushContext* ctx) noexcept -> void {
-              std::shared_lock lock{ctx->flush_mutex_, std::adopt_lock};
+              std::shared_lock lock{ctx->context_mutex_, std::adopt_lock};
             }};
   }
 }
@@ -2031,8 +1926,8 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext(
   // no free segment_context available and maximum number of segments reached
   // must return to caller so as to unlock/relock flush_context before retrying
   // to get a new segment so as to avoid a deadlock due to a read-write-read
-  // situation for flush_context::flush_mutex_ with threads trying to lock
-  // flush_context::flush_mutex_ to return their segment_context
+  // situation for FlushContext::context_mutex_ with threads trying to lock
+  // FlushContext::context_mutex_ to return their segment_context
   if (const auto segment_count_max = segment_limits_.segment_count_max.load();
       segment_count_max &&
       // '<' to account for +1 reservation
@@ -2045,8 +1940,7 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext(
   if (auto* freelist_node = ctx.pending_segment_contexts_freelist_.pop();
       freelist_node) {
     const auto& segment =
-      static_cast<FlushContext::PendindSegmentContext*>(freelist_node)
-        ->segment_;
+      static_cast<PendindSegmentContext*>(freelist_node)->segment_;
 
     // +1 for the reference in 'pending_segment_contexts_'
     IRS_ASSERT(segment.use_count() == 1);
@@ -2083,48 +1977,43 @@ IndexWriter::FlushPending(FlushContext& ctx,
   std::vector<std::unique_lock<std::mutex>> segment_flush_locks;
   segment_flush_locks.reserve(ctx.pending_segment_contexts_.size());
 
+  // mark the 'segment_context' as dirty so that it will not be reused if this
+  // 'flush_context' once again becomes the active context while the
+  // 'segment_context' handle is still held by GetBatch()
+  for (auto& entry : ctx.pending_segment_contexts_) {
+    entry.segment_->dirty_.store(true);
+  }
+
+  // wait for the segment to no longer be active
+  // i.e. wait for all ongoing document operations to finish (insert/replace)
+  // the segment will not be given out again by the active 'flush_context'
+  // because it was started by a different 'flush_context', i.e. by 'ctx'
   for (auto& entry : ctx.pending_segment_contexts_) {
     auto& segment = entry.segment_;
-
-    // mark the 'segment_context' as dirty so that it will not be reused if this
-    // 'flush_context' once again becomes the active context while the
-    // 'segment_context' handle is still held by GetBatch()
-    segment->dirty_.store(true);
-
-    // wait for the segment to no longer be active
-    // i.e. wait for all ongoing document operations to finish (insert/replace)
-    // the segment will not be given out again by the active 'flush_context'
-    // because it was started by a different 'flush_context', i.e. by 'ctx'
-
     // FIXME remove this condition once col_writer tail is written correctly
     while (segment->active_count_.load() || segment.use_count() != 1) {
       // arbitrary sleep interval
       ctx.pending_segment_context_cond_.wait_for(ctx_lock, 50ms);
     }
+  }
 
-    // prevent concurrent modification of segment_context properties during
-    // flush_context::emplace(...)
-    // FIXME flush_all() blocks flush_context::emplace(...) and
-    // insert()/remove()/replace()
+  // prevent concurrent modification of segment_context properties during
+  // flush_context::emplace(...)
+  // FIXME flush_all() blocks flush_context::emplace(...) and
+  // insert()/remove()/replace()
+  for (auto& entry : ctx.pending_segment_contexts_) {
+    auto& segment = entry.segment_;
     segment_flush_locks.emplace_back(segment->flush_mutex_);
 
     // force a flush of the underlying segment_writer
     max_tick = std::max(segment->Flush(), max_tick);
-
-    // may be std::numeric_limits<size_t>::max() if SegmentMeta only in this
-    // flush_context
-    entry.doc_id_end_ =
-      std::min(segment->uncomitted_doc_id_begin_, entry.doc_id_end_);
-    entry.modification_offset_end_ =
-      std::min(segment->uncomitted_modification_queries_,
-               entry.modification_offset_end_);
   }
 
   return {std::move(segment_flush_locks), max_tick};
 }
 
 IndexWriter::PendingContext IndexWriter::FlushAll(
-  ProgressReportCallback const& progress_callback) {
+  uint64_t tick, ProgressReportCallback const& progress_callback) {
   REGISTER_TIMER_DETAILED();
 
   auto const& progress =
@@ -2201,23 +2090,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     // mask documents matching filters from segment_contexts (i.e. from new
     // operations)
     for (auto& modifications : ctx->pending_segment_contexts_) {
-      // modification_queries_ range
-      // [flush_segment_context::modification_offset_begin_,
-      // segment_context::uncomitted_modification_queries_)
-      const auto begin = modifications.modification_offset_begin_;
-      const auto end = modifications.modification_offset_end_;
+      const std::span modification_queries{
+        modifications.segment_->modification_queries_};
 
-      IRS_ASSERT(begin <= end);
-      IRS_ASSERT(end <= modifications.segment_->modification_queries_.size());
-
-      const size_t size = end - begin;
-
-      if (!size) {
+      if (modification_queries.empty()) {
         continue;
       }
-
-      const std::span modification_queries{
-        modifications.segment_->modification_queries_.data() + begin, size};
 
       // FIXME(gnusi): optimize PK queries
       RemoveFromExistingSegment(deleted_docs, modification_queries,
@@ -2356,23 +2234,12 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
       // mask documents matching filters from segment_contexts (i.e. from new
       // operations)
       for (auto& modifications : ctx->pending_segment_contexts_) {
-        // modification_queries_ range
-        // [flush_segment_context::modification_offset_begin_,
-        // segment_context::uncomitted_modification_queries_)
-        auto begin = modifications.modification_offset_begin_;
-        auto end = modifications.modification_offset_end_;
+        const std::span modification_queries{
+          modifications.segment_->modification_queries_};
 
-        IRS_ASSERT(begin <= end);
-        IRS_ASSERT(end <= modifications.segment_->modification_queries_.size());
-
-        const size_t size = end - begin;
-
-        if (!size) {
+        if (modification_queries.empty()) {
           continue;  // Nothing to do
         }
-
-        const std::span modification_queries{
-          modifications.segment_->modification_queries_.data() + begin, size};
 
         // FIXME(gnusi): optimize PK queries
         docs_mask_modified |= RemoveFromImportedSegment(
@@ -2465,7 +2332,7 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
     std::vector<FlushSegmentContext> segment_ctxs;
     size_t current_pending_segment_context_segments = 0;
 
-    // proces all segments that have been seen by the current flush_context
+    // process all segments that have been seen by the current flush_context
     for (auto& pending_segment_context : ctx->pending_segment_contexts_) {
       const auto& segment = pending_segment_context.segment_;
 
@@ -2473,14 +2340,11 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
         continue;  // skip empty segments
       }
 
-      size_t flushed_docs_count = 0;
       // was updated after flush
-      auto flushed_doc_id_end = pending_segment_context.doc_id_end_;
-      IRS_ASSERT(pending_segment_context.doc_id_begin_ <= flushed_doc_id_end);
-      IRS_ASSERT(flushed_doc_id_end - doc_limits::min() <=
+      IRS_ASSERT(segment->uncommitted_docs_ ==
                  segment->flushed_update_contexts_.size());
 
-      // process individually each flushed SegmentMeta from the segment_context
+      // process individually each flushed SegmentMeta from the SegmentContext
       for (auto& flushed : segment->flushed_) {
         // report progress
         progress("Stage 3: Creating new segments",
@@ -2488,43 +2352,8 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
                  total_pending_segment_context_segments);
         ++current_pending_segment_context_segments;
 
-        const auto flushed_docs_start = flushed_docs_count;
-
-        // sum of all previous SegmentMeta::docs_count including this meta
-        flushed_docs_count += flushed.meta.docs_count;
-
-        if (!flushed.meta.live_docs_count /* empty SegmentMeta */
-            // SegmentMeta fully before the start of this flush_context
-            || flushed_doc_id_end - doc_limits::min() <= flushed_docs_start
-            // SegmentMeta fully after the start of this flush_context
-            || pending_segment_context.doc_id_begin_ - doc_limits::min() >=
-                 flushed_docs_count) {
-          continue;
-        }
-
-        // 0-based
-        auto update_contexts_begin =
-          std::max(pending_segment_context.doc_id_begin_ - doc_limits::min(),
-                   flushed_docs_start);
-        // 0-based
-        auto update_contexts_end =
-          std::min(flushed_doc_id_end - doc_limits::min(), flushed_docs_count);
-        IRS_ASSERT(update_contexts_begin <= update_contexts_end);
-        // beginning doc_id in this SegmentMeta
-        auto valid_doc_id_begin =
-          update_contexts_begin - flushed_docs_start + doc_limits::min();
-        auto valid_doc_id_end =
-          std::min(update_contexts_end - flushed_docs_start + doc_limits::min(),
-                   static_cast<size_t>(flushed.docs_mask_tail_doc_id));
-        IRS_ASSERT(valid_doc_id_begin <= valid_doc_id_end);
-
-        if (valid_doc_id_begin == valid_doc_id_end) {
-          continue;  // empty segment since head+tail == 'docs_count'
-        }
-
-        const std::span flush_update_contexts{
-          segment->flushed_update_contexts_.data() + flushed_docs_start,
-          flushed.meta.docs_count};
+        IRS_ASSERT(flushed.meta.live_docs_count != 0);
+        IRS_ASSERT(flushed.meta.live_docs_count <= flushed.meta.docs_count);
 
         auto reader =
           SegmentReaderImpl::Open(dir, flushed.meta, reader_options);
@@ -2537,48 +2366,38 @@ IndexWriter::PendingContext IndexWriter::FlushAll(
             flushed.meta.name, "', error: failed to open segment")};
         }
 
+        // beginning doc_id in this SegmentMeta
+        const auto valid_doc_id_begin = doc_limits::min();
+        const auto valid_doc_id_end = flushed.GetValidEnd();
+        IRS_ASSERT(valid_doc_id_begin < valid_doc_id_end);
+
         auto& flush_segment_ctx = segment_ctxs.emplace_back(
           std::move(reader), std::move(flushed), std::move(flushed.docs_mask),
-          valid_doc_id_begin, valid_doc_id_end, flush_update_contexts,
+          valid_doc_id_begin, valid_doc_id_end,
+          flushed.GetContexts(segment->flushed_update_contexts_),
           segment->modification_queries_);
 
         // read document_mask as was originally flushed
         // could be due to truncated records due to rollback of uncommitted data
         auto& docs_mask = flush_segment_ctx.docs_mask_;
 
-        // add doc_ids before start of this flush_context to document_mask
-        for (size_t doc_id = doc_limits::min(); doc_id < valid_doc_id_begin;
-             ++doc_id) {
-          IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
-          docs_mask.emplace(static_cast<doc_id_t>(doc_id));
-        }
-
         // add tail doc_ids not part of this flush_context to documents_mask
         // (including truncated)
-        for (size_t doc_id = valid_doc_id_end,
-                    doc_id_end = flushed.meta.docs_count + doc_limits::min();
+        for (doc_id_t doc_id = valid_doc_id_end,
+                      doc_id_end = flushed.meta.docs_count + doc_limits::min();
              doc_id < doc_id_end; ++doc_id) {
-          IRS_ASSERT(std::numeric_limits<doc_id_t>::max() >= doc_id);
-          docs_mask.emplace(static_cast<doc_id_t>(doc_id));
+          docs_mask.emplace(doc_id);
         }
 
         // mask documents matching filters from all flushed segment_contexts
         // (i.e. from new operations)
         for (auto& modifications : ctx->pending_segment_contexts_) {
-          const auto begin = modifications.modification_offset_begin_;
-          const auto end = modifications.modification_offset_end_;
+          const std::span modification_queries(
+            modifications.segment_->modification_queries_);
 
-          IRS_ASSERT(begin <= end);
-          IRS_ASSERT(end <=
-                     modifications.segment_->modification_queries_.size());
-          const size_t size = end - begin;
-
-          if (!size) {
+          if (modification_queries.empty()) {
             continue;  // Nothing to do
           }
-
-          const std::span modification_queries(
-            modifications.segment_->modification_queries_.data() + begin, size);
 
           // FIXME(gnusi): optimize PK queries
           RemoveFromNewSegment(modification_queries, flush_segment_ctx);
@@ -2690,7 +2509,7 @@ void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
   IRS_ASSERT(pending_state_.Valid());
 }
 
-bool IndexWriter::Start(ProgressReportCallback const& progress) {
+bool IndexWriter::Start(uint64_t tick, ProgressReportCallback const& progress) {
   IRS_ASSERT(!commit_lock_.try_lock());  // already locked
 
   REGISTER_TIMER_DETAILED();
@@ -2700,7 +2519,7 @@ bool IndexWriter::Start(ProgressReportCallback const& progress) {
     return false;
   }
 
-  auto to_commit = FlushAll(progress);
+  auto to_commit = FlushAll(tick, progress);
 
   if (to_commit.Empty()) {
     // Nothing to commit, no transaction started
