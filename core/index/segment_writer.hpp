@@ -71,7 +71,7 @@ class segment_writer : util::noncopyable {
 
  public:
   struct update_context {
-    size_t generation;
+    uint64_t generation;
     size_t update_id;
   };
 
@@ -82,8 +82,6 @@ class segment_writer : util::noncopyable {
   // begin document-write transaction
   // Return doc_id_t as per doc_limits
   doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
-
-  std::span<update_context> docs_context() noexcept { return docs_context_; }
 
   template<Action action, typename Field>
   bool insert(Field&& field) {
@@ -146,7 +144,10 @@ class segment_writer : util::noncopyable {
     valid_ = false;
   }
 
-  void flush(IndexSegment& segment, document_mask& docs_mask);
+  std::span<update_context> docs_context() noexcept { return docs_context_; }
+
+  std::span<update_context> flush(IndexSegment& segment,
+                                  document_mask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t docs_cached() const noexcept { return docs_context_.size(); }
@@ -379,7 +380,7 @@ class segment_writer : util::noncopyable {
   columnstore_writer::ptr col_writer_;
   TrackingDirectory dir_;
   uint64_t tick_{0};
-  bool initialized_;
+  bool initialized_{false};
   bool valid_{true};  // current state
 };
 

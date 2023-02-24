@@ -183,8 +183,7 @@ segment_writer::segment_writer(ConstructToken, directory& dir,
   : sort_(column_info, {}),
     fields_(feature_info, cached_columns_, comparator),
     column_info_(&column_info),
-    dir_(dir),
-    initialized_(false) {}
+    dir_(dir) {}
 
 bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
@@ -269,7 +268,8 @@ document_mask segment_writer::get_doc_mask(const doc_map& docmap) {
   return docs_mask;
 }
 
-void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
+std::span<segment_writer::update_context> segment_writer::flush(
+  IndexSegment& segment, document_mask& docs_mask) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(docs_mask.empty());
 
@@ -326,6 +326,8 @@ void segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   // We intentionally don't write document mask here as it might
   // be changed by removals accumulated in IndexWriter.
   index_utils::FlushIndexSegment(dir_, segment);
+
+  return docs_context_;
 }
 
 void segment_writer::reset() noexcept {
