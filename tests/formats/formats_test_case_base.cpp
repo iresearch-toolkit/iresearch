@@ -779,12 +779,13 @@ TEST_P(format_test_case, fields_read_write) {
 
   // write fields
   {
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 100;
-    state.name = "segment_name";
-    state.features = &features;
-    state.index_features = field.index_features;
+    irs::flush_state state{
+      .dir = &dir(),
+      .features = &features,
+      .name = "segment_name",
+      .doc_count = 100,
+      .index_features = field.index_features,
+    };
 
     // should use sorted terms on write
     terms<sorted_terms_t::iterator> terms(sorted_terms.begin(),
@@ -1208,10 +1209,11 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
       stream.write_bytes(payload.data(), payload.size());
     }
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = id - 1;
-    state.name = seg.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = seg.name,
+      .doc_count = id - 1,
+    };
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -1263,10 +1265,11 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
       column_handler(id);
     }
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = MAX_DOC;
-    state.name = seg.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = seg.name,
+      .doc_count = MAX_DOC,
+    };
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -1319,10 +1322,11 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     // we don't support irs::type_limits<<irs::type_t::doc_id_t>::eof() key
     // value
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = segment.docs_count;
-    state.name = segment.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = segment.name,
+      .doc_count = segment.docs_count,
+    };
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -1582,10 +1586,11 @@ TEST_P(format_test_case, columns_rw_empty) {
       writer->push_column(lz4_column_info(), column_finalizer(43)).first;
     ASSERT_EQ(1, column1_id);
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = meta0.docs_count;
-    state.name = meta0.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = meta0.name,
+      .doc_count = meta0.docs_count,
+    };
 
     ASSERT_FALSE(writer->commit(state));  // flush empty columns
   }
@@ -1666,10 +1671,11 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
       ++seg.docs_count;
     }
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = seg.docs_count;
-    state.name = seg.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = seg.name,
+      .doc_count = seg.docs_count,
+    };
 
     ASSERT_TRUE(writer->commit(state));
 
@@ -1755,10 +1761,11 @@ TEST_P(format_test_case, columns_rw_big_document) {
       ++segment.docs_count;
     }
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = segment.docs_count;
-    state.name = segment.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = segment.name,
+      .doc_count = segment.docs_count,
+    };
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -1927,10 +1934,11 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     }
 
     {
-      irs::flush_state state;
-      state.dir = &dir();
-      state.doc_count = seg_1.docs_count;
-      state.name = seg_1.name;
+      irs::flush_state state{
+        .dir = &dir(),
+        .name = seg_1.name,
+        .doc_count = seg_1.docs_count,
+      };
 
       ASSERT_TRUE(writer->commit(state));
     }
@@ -1963,10 +1971,11 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     }
 
     {
-      irs::flush_state state;
-      state.dir = &dir();
-      state.doc_count = seg_2.docs_count;
-      state.name = seg_2.name;
+      irs::flush_state state{
+        .dir = &dir(),
+        .name = seg_2.name,
+        .doc_count = seg_2.docs_count,
+      };
 
       ASSERT_TRUE(writer->commit(state));
     }
@@ -1997,10 +2006,11 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     }
 
     {
-      irs::flush_state state;
-      state.dir = &dir();
-      state.doc_count = seg_3.docs_count;
-      state.name = seg_3.name;
+      irs::flush_state state{
+        .dir = &dir(),
+        .name = seg_3.name,
+        .doc_count = seg_3.docs_count,
+      };
 
       ASSERT_TRUE(writer->commit(state));
     }
@@ -2213,10 +2223,11 @@ TEST_P(format_test_case, columns_rw_typed) {
       ++meta.docs_count;
     }
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = meta.docs_count;
-    state.name = meta.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = meta.name,
+      .doc_count = meta.docs_count,
+    };
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -2460,10 +2471,11 @@ TEST_P(format_test_case, columns_issue700) {
                          str.size());
     }
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = meta.docs_count;
-    state.name = meta.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = meta.name,
+      .doc_count = meta.docs_count,
+    };
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -2536,10 +2548,11 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
       }
     }
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = meta0.docs_count;
-    state.name = meta0.name;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = meta0.name,
+      .doc_count = meta0.docs_count,
+    };
 
     ASSERT_TRUE(writer->commit(state));
   }
@@ -2735,700 +2748,708 @@ TEST_P(format_test_case, columns_rw) {
     }
 
     // column==field2
-    {                                   // rollback
-     {auto& stream = field2_writer(1);  // doc==1
-    irs::write_string(stream, std::string_view("invalid_string"));
-    stream.reset();  // rollback changes
-    stream.reset();  // rollback changes
-  }
-  {
-    auto& stream = field2_writer(1);  // doc==1
-    irs::write_string(stream, std::string_view("field2_doc1"));
-  }
-}
-
-// column==field0, rollback
-{
-  auto& stream = field0_writer(2);  // doc==2
-  irs::write_string(stream, std::string_view("field0_doc1"));
-  stream.reset();
-}
-
-// column==field0
-{
-  auto& stream = field0_writer(2);  // doc==2
-  irs::write_string(stream, std::string_view("field0_doc2"));
-}
-
-// column==field0
-{
-  auto& stream = field0_writer(33);  // doc==33
-  irs::write_string(stream, std::string_view("field0_doc33"));
-}
-
-// column==field1, multivalued attribute
-{
-  // Get stream by the same key. In this case written values
-  // will be concatenated and accessible via the specified key
-  // (e.g. 'field1_doc12_1', 'field1_doc12_2' in this case)
-  {
-    auto& stream = field1_writer(12);  // doc==12
-    irs::write_string(stream, std::string_view("field1_doc12_1"));
-  }
-  {
-    auto& stream = field1_writer(12);  // doc==12
-    irs::write_string(stream, std::string_view("field1_doc12_2"));
-  }
-}
-
-irs::flush_state state;
-state.dir = &dir();
-state.doc_count = meta0.docs_count;
-state.name = meta0.name;
-
-ASSERT_TRUE(writer->commit(state));
-}  // namespace tests
-
-// write _2 segment, reuse writer
-{
-  writer->prepare(dir(), meta1);
-
-  auto field0 = writer->push_column(lz4_column_info(), {});
-  segment1_field0_id = field0.first;
-  auto& field0_writer = field0.second;
-  ASSERT_EQ(0, segment1_field0_id);
-  auto field1 = writer->push_column(lz4_column_info(), {});
-  segment1_field1_id = field1.first;
-  auto& field1_writer = field1.second;
-  ASSERT_EQ(1, segment1_field1_id);
-  auto field2 = writer->push_column(lz4_column_info(), {});
-  segment1_field2_id = field2.first;
-  auto& field2_writer = field2.second;
-  ASSERT_EQ(2, segment1_field2_id);
-
-  // column==field3
-  {
-    auto& stream = field2_writer(1);  // doc==1
-    irs::write_string(stream, std::string_view("segment_2_field3_doc0"));
-  }
-
-  // column==field1, multivalued attribute
-  {
-    auto& stream = field0_writer(1);  // doc==1
-    irs::write_string(stream, std::string_view("segment_2_field1_doc0"));
-  }
-
-  // column==field2, rollback
-  {
-    auto& stream = field1_writer(1);
-    irs::write_string(stream, std::string_view("segment_2_field2_doc0"));
-    stream.reset();  // rollback
-  }
-
-  // column==field3, rollback
-  {
-    auto& stream = field2_writer(2);  // doc==2
-    irs::write_string(stream, std::string_view("segment_2_field0_doc1"));
-    stream.reset();  // rollback
-  }
-
-  // colum==field1
-  {
-    auto& stream = field0_writer(12);  // doc==12
-    irs::write_string(stream, std::string_view("segment_2_field1_doc12"));
-  }
-
-  // colum==field3
-  {
-    auto& stream = field2_writer(23);  // doc==23
-    irs::write_string(stream, std::string_view("segment_2_field3_doc23"));
-    stream.reset();  // rollback
-  }
-
-  irs::flush_state state;
-  state.dir = &dir();
-  state.doc_count = meta1.docs_count;
-  state.name = meta1.name;
-
-  ASSERT_TRUE(writer->commit(state));
-}
-
-// read columns values from segment _1
-{
-  auto reader = codec()->get_columnstore_reader();
-  ASSERT_TRUE(reader->prepare(dir(), meta0));
-
-  // try to get invalild column
-  ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid()));
-
-  // check field4
-  {
-    auto column_reader = reader->column(segment0_field4_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto column = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, column);
-    auto* actual_value = irs::get<irs::payload>(*column);
-    ASSERT_NE(nullptr, actual_value);
-
-    ASSERT_EQ(1, column->seek(1));  // check doc==1, column==field4
-    ASSERT_EQ("field4_doc_min",
-              irs::to_string<std::string_view>(actual_value->value.data()));
-  }
-
-  // visit field0 values (not cached)
-  {
-    std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-      {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
-
-    auto visitor = [&expected_values](irs::doc_id_t doc,
-                                      irs::bytes_view value) {
-      const auto actual_value = irs::to_string<std::string_view>(value.data());
-
-      auto it = expected_values.find(actual_value);
-      if (it == expected_values.end()) {
-        // can't find value
-        return false;
-      }
-
-      if (it->second != doc) {
-        // wrong document
-        return false;
-      }
-
-      expected_values.erase(it);
-      return true;
-    };
-
-    auto column = reader->column(segment0_field0_id);
-    ASSERT_NE(nullptr, column);
-    ASSERT_TRUE(visit(*column, visitor));
-    ASSERT_TRUE(expected_values.empty());
-  }
-
-  // partailly visit field0 values (not cached)
-  {
-    std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-      {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
-
-    size_t calls_count = 0;
-    auto visitor = [&expected_values, &calls_count](irs::doc_id_t doc,
-                                                    irs::bytes_view in) {
-      ++calls_count;
-
-      if (calls_count > 2) {
-        // break the loop
-        return false;
-      }
-
-      const auto actual_value = irs::to_string<std::string_view>(in.data());
-
-      auto it = expected_values.find(actual_value);
-      if (it == expected_values.end()) {
-        // can't find value
-        return false;
-      }
-
-      if (it->second != doc) {
-        // wrong document
-        return false;
-      }
-
-      expected_values.erase(it);
-      return true;
-    };
-
-    auto column = reader->column(segment0_field0_id);
-    ASSERT_NE(nullptr, column);
-    ASSERT_FALSE(visit(*column, visitor));
-    ASSERT_FALSE(expected_values.empty());
-    ASSERT_EQ(1, expected_values.size());
-    ASSERT_NE(expected_values.end(), expected_values.find("field0_doc33"));
-  }
-
-  // check field0
-  {
-    auto column_reader = reader->column(segment0_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-
-    // read (not cached)
     {
+      (void)1;
+      // rollback
+      {
+        auto& stream = field2_writer(1);  // doc==1
+        irs::write_string(stream, std::string_view("invalid_string"));
+        stream.reset();                   // rollback changes
+        stream.reset();                   // rollback changes
+      }
+      {
+        auto& stream = field2_writer(1);  // doc==1
+        irs::write_string(stream, std::string_view("field2_doc1"));
+      }
+    }
+
+    // column==field0, rollback
+    {
+      auto& stream = field0_writer(2);  // doc==2
+      irs::write_string(stream, std::string_view("field0_doc1"));
+      stream.reset();
+    }
+
+    // column==field0
+    {
+      auto& stream = field0_writer(2);  // doc==2
+      irs::write_string(stream, std::string_view("field0_doc2"));
+    }
+
+    // column==field0
+    {
+      auto& stream = field0_writer(33);  // doc==33
+      irs::write_string(stream, std::string_view("field0_doc33"));
+    }
+
+    // column==field1, multivalued attribute
+    {
+      // Get stream by the same key. In this case written values
+      // will be concatenated and accessible via the specified key
+      // (e.g. 'field1_doc12_1', 'field1_doc12_2' in this case)
+      {
+        auto& stream = field1_writer(12);  // doc==12
+        irs::write_string(stream, std::string_view("field1_doc12_1"));
+      }
+      {
+        auto& stream = field1_writer(12);  // doc==12
+        irs::write_string(stream, std::string_view("field1_doc12_2"));
+      }
+    }
+
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = meta0.name,
+      .doc_count = meta0.docs_count,
+    };
+
+    ASSERT_TRUE(writer->commit(state));
+  }
+
+  // write _2 segment, reuse writer
+  {
+    writer->prepare(dir(), meta1);
+
+    auto field0 = writer->push_column(lz4_column_info(), {});
+    segment1_field0_id = field0.first;
+    auto& field0_writer = field0.second;
+    ASSERT_EQ(0, segment1_field0_id);
+    auto field1 = writer->push_column(lz4_column_info(), {});
+    segment1_field1_id = field1.first;
+    auto& field1_writer = field1.second;
+    ASSERT_EQ(1, segment1_field1_id);
+    auto field2 = writer->push_column(lz4_column_info(), {});
+    segment1_field2_id = field2.first;
+    auto& field2_writer = field2.second;
+    ASSERT_EQ(2, segment1_field2_id);
+
+    // column==field3
+    {
+      auto& stream = field2_writer(1);  // doc==1
+      irs::write_string(stream, std::string_view("segment_2_field3_doc0"));
+    }
+
+    // column==field1, multivalued attribute
+    {
+      auto& stream = field0_writer(1);  // doc==1
+      irs::write_string(stream, std::string_view("segment_2_field1_doc0"));
+    }
+
+    // column==field2, rollback
+    {
+      auto& stream = field1_writer(1);
+      irs::write_string(stream, std::string_view("segment_2_field2_doc0"));
+      stream.reset();  // rollback
+    }
+
+    // column==field3, rollback
+    {
+      auto& stream = field2_writer(2);  // doc==2
+      irs::write_string(stream, std::string_view("segment_2_field0_doc1"));
+      stream.reset();                   // rollback
+    }
+
+    // colum==field1
+    {
+      auto& stream = field0_writer(12);  // doc==12
+      irs::write_string(stream, std::string_view("segment_2_field1_doc12"));
+    }
+
+    // colum==field3
+    {
+      auto& stream = field2_writer(23);  // doc==23
+      irs::write_string(stream, std::string_view("segment_2_field3_doc23"));
+      stream.reset();                    // rollback
+    }
+
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = meta1.name,
+      .doc_count = meta1.docs_count,
+    };
+
+    ASSERT_TRUE(writer->commit(state));
+  }
+
+  // read columns values from segment _1
+  {
+    auto reader = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader->prepare(dir(), meta0));
+
+    // try to get invalild column
+    ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid()));
+
+    // check field4
+    {
+      auto column_reader = reader->column(segment0_field4_id);
+      ASSERT_NE(nullptr, column_reader);
       auto column = column_reader->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, column);
       auto* actual_value = irs::get<irs::payload>(*column);
       ASSERT_NE(nullptr, actual_value);
 
+      ASSERT_EQ(1, column->seek(1));  // check doc==1, column==field4
+      ASSERT_EQ("field4_doc_min",
+                irs::to_string<std::string_view>(actual_value->value.data()));
+    }
+
+    // visit field0 values (not cached)
+    {
+      std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
+        {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+
+      auto visitor = [&expected_values](irs::doc_id_t doc,
+                                        irs::bytes_view value) {
+        const auto actual_value =
+          irs::to_string<std::string_view>(value.data());
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        expected_values.erase(it);
+        return true;
+      };
+
+      auto column = reader->column(segment0_field0_id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(visit(*column, visitor));
+      ASSERT_TRUE(expected_values.empty());
+    }
+
+    // partailly visit field0 values (not cached)
+    {
+      std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
+        {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+
+      size_t calls_count = 0;
+      auto visitor = [&expected_values, &calls_count](irs::doc_id_t doc,
+                                                      irs::bytes_view in) {
+        ++calls_count;
+
+        if (calls_count > 2) {
+          // break the loop
+          return false;
+        }
+
+        const auto actual_value = irs::to_string<std::string_view>(in.data());
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        expected_values.erase(it);
+        return true;
+      };
+
+      auto column = reader->column(segment0_field0_id);
+      ASSERT_NE(nullptr, column);
+      ASSERT_FALSE(visit(*column, visitor));
+      ASSERT_FALSE(expected_values.empty());
+      ASSERT_EQ(1, expected_values.size());
+      ASSERT_NE(expected_values.end(), expected_values.find("field0_doc33"));
+    }
+
+    // check field0
+    {
+      auto column_reader = reader->column(segment0_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+
+      // read (not cached)
+      {
+        auto column = column_reader->iterator(irs::ColumnHint::kNormal);
+        ASSERT_NE(nullptr, column);
+        auto* actual_value = irs::get<irs::payload>(*column);
+        ASSERT_NE(nullptr, actual_value);
+
+        ASSERT_EQ(1, column->seek(1));  // check doc==1, column==field0
+        ASSERT_EQ("field0_doc0",
+                  irs::to_string<std::string_view>(actual_value->value.data()));
+        ASSERT_EQ(33, column->seek(5));   // doc without value in field0
+        ASSERT_EQ(33, column->seek(33));  // check doc==33, column==field0
+        ASSERT_EQ("field0_doc33",
+                  irs::to_string<std::string_view>(actual_value->value.data()));
+      }
+
+      // read (cached)
+      {
+        auto column = column_reader->iterator(irs::ColumnHint::kNormal);
+        ASSERT_NE(nullptr, column);
+        auto* actual_value = irs::get<irs::payload>(*column);
+        ASSERT_NE(nullptr, actual_value);
+
+        ASSERT_EQ(1, column->seek(1));  // check doc==0, column==field0
+        ASSERT_EQ("field0_doc0",
+                  irs::to_string<std::string_view>(actual_value->value.data()));
+        ASSERT_EQ(33, column->seek(5));   // doc without value in field0
+        ASSERT_EQ(33, column->seek(33));  // check doc==33, column==field0
+        ASSERT_EQ("field0_doc33",
+                  irs::to_string<std::string_view>(actual_value->value.data()));
+      }
+    }
+
+    // visit field0 values (cached)
+    {
+      std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
+        {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+
+      auto visitor = [&expected_values](irs::doc_id_t doc,
+                                        const irs::bytes_view& in) {
+        const auto actual_value = irs::to_string<std::string_view>(in.data());
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        expected_values.erase(it);
+        return true;
+      };
+
+      auto column_reader = reader->column(segment0_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_TRUE(visit(*column_reader, visitor));
+      ASSERT_TRUE(expected_values.empty());
+    }
+
+    // iterate over field0 values (cached)
+    {
+      auto column_reader = reader->column(segment0_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
+        {{"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+
+      size_t i = 0;
+      for (; it->next(); ++i) {
+        const auto& expected_value = expected_values[i];
+        const auto actual_str_value =
+          irs::to_string<std::string_view>(payload->value.data());
+
+        ASSERT_EQ(expected_value.second, it->value());
+        ASSERT_EQ(expected_value.first, actual_str_value);
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(i, expected_values.size());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+
+    // seek over field0 values (cached)
+    {
+      auto column_reader = reader->column(segment0_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<
+        std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
+        expected_values = {{"field0_doc0", {0, 1}},
+                           {"field0_doc2", {2, 2}},
+                           {"field0_doc33", {22, 33}},
+                           {"field0_doc33", {33, 33}}};
+
+      for (auto& expected : expected_values) {
+        const auto expected_doc = expected.second.second;
+        const auto expected_value = expected.first;
+
+        ASSERT_EQ(expected_doc, it->seek(expected_doc));
+        ASSERT_EQ(expected_value,
+                  irs::to_string<std::string_view>(payload->value.data()));
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+
+    // iterate over field1 values (not cached)
+    {
+      auto column_reader = reader->column(segment0_field1_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<std::pair<std::vector<std::string_view>, irs::doc_id_t>>
+        expected_values = {{{"field1_doc0", "field1_doc0_1"}, 1},
+                           {{"field1_doc12_1", "field1_doc12_2"}, 12}};
+
+      size_t i = 0;
+      for (; it->next(); ++i) {
+        const auto& expected_value = expected_values[i];
+
+        std::vector<std::string_view> actual_str_values;
+        actual_str_values.push_back(
+          irs::to_string<std::string_view>(payload->value.data()));
+        actual_str_values.push_back(irs::to_string<std::string_view>(
+          reinterpret_cast<const irs::byte_type*>(
+            actual_str_values.back().data() +
+            actual_str_values.back().size())));
+
+        ASSERT_EQ(expected_value.second, it->value());
+        ASSERT_EQ(expected_value.first, actual_str_values);
+      }
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(i, expected_values.size());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+
+    // seek over field1 values (cached)
+    {
+      auto column_reader = reader->column(segment0_field1_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<std::pair<std::vector<std::string_view>,
+                            std::pair<irs::doc_id_t, irs::doc_id_t>>>
+        expected_values = {{{"field1_doc0", "field1_doc0_1"}, {0, 1}},
+                           {{"field1_doc12_1", "field1_doc12_2"}, {1, 12}},
+                           {{"field1_doc12_1", "field1_doc12_2"}, {3, 12}},
+                           {{"field1_doc12_1", "field1_doc12_2"}, {12, 12}}};
+
+      for (auto& expected : expected_values) {
+        const auto expected_doc = expected.second.second;
+        const auto& expected_value = expected.first;
+
+        ASSERT_EQ(expected_doc, it->seek(expected_doc));
+
+        std::vector<std::string_view> actual_str_values;
+        actual_str_values.push_back(
+          irs::to_string<std::string_view>(payload->value.data()));
+        actual_str_values.push_back(irs::to_string<std::string_view>(
+          reinterpret_cast<const irs::byte_type*>(
+            actual_str_values.back().data() +
+            actual_str_values.back().size())));
+
+        ASSERT_EQ(expected_value, actual_str_values);
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+
+    // check field1 (multiple values per document - cached)
+    {
+      irs::bytes_view_input in;
+      auto column_reader = reader->column(segment0_field1_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto column = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
+
+      // read compound column value
+      // check doc==0, column==field1
+      ASSERT_EQ(1, column->seek(1));
+      in.reset(actual_value->value);
+      ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
+      ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
+
+      ASSERT_EQ(12, column->seek(2));
+
+      // read overwritten compund value
+      // check doc==12, column==field1
+      ASSERT_EQ(12, column->seek(12));
+      in.reset(actual_value->value);
+      ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
+      ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
+
+      ASSERT_TRUE(irs::doc_limits::eof(column->seek(13)));
+    }
+
+    // visit empty column
+    {
+      size_t calls_count = 0;
+      auto visitor = [&calls_count](irs::doc_id_t /*doc*/,
+                                    const irs::bytes_view& /*in*/) {
+        ++calls_count;
+        return true;
+      };
+
+      auto column_reader = reader->column(segment0_empty_column_id);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_TRUE(visit(*column_reader, visitor));
+      ASSERT_EQ(0, calls_count);
+    }
+
+    // iterate over empty column
+    {
+      auto column_reader = reader->column(segment0_empty_column_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      ASSERT_TRUE(!irs::get<irs::payload>(*it));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+    }
+
+    // visit field2 values (field after an the field)
+    {
+      std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
+        {"field2_doc1", 1},
+      };
+
+      auto visitor = [&expected_values](irs::doc_id_t doc,
+                                        const irs::bytes_view& in) {
+        const auto actual_value = irs::to_string<std::string_view>(in.data());
+
+        auto it = expected_values.find(actual_value);
+        if (it == expected_values.end()) {
+          // can't find value
+          return false;
+        }
+
+        if (it->second != doc) {
+          // wrong document
+          return false;
+        }
+
+        expected_values.erase(it);
+        return true;
+      };
+
+      auto column_reader = reader->column(segment0_field2_id);
+      ASSERT_NE(nullptr, column_reader);
+      ASSERT_TRUE(visit(*column_reader, visitor));
+      ASSERT_TRUE(expected_values.empty());
+    }
+
+    // iterate over field2 values (not cached)
+    {
+      auto column_reader = reader->column(segment0_field2_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
+        {{"field2_doc1", 1}};
+
+      size_t i = 0;
+      for (; it->next(); ++i) {
+        const auto& expected_value = expected_values[i];
+        const auto actual_str_value =
+          irs::to_string<std::string_view>(payload->value.data());
+
+        ASSERT_EQ(expected_value.second, it->value());
+        ASSERT_EQ(expected_value.first, actual_str_value);
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(i, expected_values.size());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+
+    // seek over field2 values (cached)
+    {
+      auto column_reader = reader->column(segment0_field2_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<
+        std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
+        expected_values = {{"field2_doc1", {1, 1}}};
+
+      for (auto& expected : expected_values) {
+        const auto expected_doc = expected.second.second;
+        const auto expected_value = expected.first;
+
+        ASSERT_EQ(expected_doc, it->seek(expected_doc));
+        const auto actual_str_value =
+          irs::to_string<std::string_view>(payload->value.data());
+        ASSERT_EQ(expected_value, actual_str_value);
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+  }
+
+  // read columns values from segment _2
+  {
+    auto reader = codec()->get_columnstore_reader();
+    ASSERT_TRUE(reader->prepare(dir(), meta1));
+
+    // try to read invalild column
+    { ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid())); }
+
+    // iterate over field0 values (not cached)
+    {
+      auto column_reader = reader->column(segment1_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
+        {{"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
+
+      size_t i = 0;
+      for (; it->next(); ++i) {
+        const auto& expected_value = expected_values[i];
+        const auto actual_str_value =
+          irs::to_string<std::string_view>(payload->value.data());
+
+        ASSERT_EQ(expected_value.second, it->value());
+        ASSERT_EQ(expected_value.first, actual_str_value);
+      }
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(i, expected_values.size());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+
+    // seek over field0 values (cached)
+    {
+      auto column_reader = reader->column(segment1_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
+
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      std::vector<
+        std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
+        expected_values = {{"segment_2_field1_doc0", {0, 1}},
+                           {"segment_2_field1_doc12", {12, 12}}};
+
+      for (auto& expected : expected_values) {
+        const auto expected_doc = expected.second.second;
+        const auto expected_value = expected.first;
+
+        ASSERT_EQ(expected_doc, it->seek(expected_doc));
+        const auto actual_str_value =
+          irs::to_string<std::string_view>(payload->value.data());
+        ASSERT_EQ(expected_value, actual_str_value);
+      }
+
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(13));
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
+    }
+
+    // check field0 (cached)
+    {
+      auto column_reader = reader->column(segment1_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto column = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, column);
+      auto* actual_value = irs::get<irs::payload>(*column);
+      ASSERT_NE(nullptr, actual_value);
       ASSERT_EQ(1, column->seek(1));  // check doc==1, column==field0
-      ASSERT_EQ("field0_doc0",
+      ASSERT_EQ("segment_2_field1_doc0",
                 irs::to_string<std::string_view>(actual_value->value.data()));
-      ASSERT_EQ(33, column->seek(5));   // doc without value in field0
-      ASSERT_EQ(33, column->seek(33));  // check doc==33, column==field0
-      ASSERT_EQ("field0_doc33",
+      ASSERT_EQ(12, column->seek(12));  // check doc==12, column==field1
+      ASSERT_EQ("segment_2_field1_doc12",
                 irs::to_string<std::string_view>(actual_value->value.data()));
     }
 
-    // read (cached)
+    // iterate over field0 values (cached)
     {
-      auto column = column_reader->iterator(irs::ColumnHint::kNormal);
-      ASSERT_NE(nullptr, column);
-      auto* actual_value = irs::get<irs::payload>(*column);
-      ASSERT_NE(nullptr, actual_value);
+      auto column_reader = reader->column(segment1_field0_id);
+      ASSERT_NE(nullptr, column_reader);
+      auto it = column_reader->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, it);
 
-      ASSERT_EQ(1, column->seek(1));  // check doc==0, column==field0
-      ASSERT_EQ("field0_doc0",
-                irs::to_string<std::string_view>(actual_value->value.data()));
-      ASSERT_EQ(33, column->seek(5));   // doc without value in field0
-      ASSERT_EQ(33, column->seek(33));  // check doc==33, column==field0
-      ASSERT_EQ("field0_doc33",
-                irs::to_string<std::string_view>(actual_value->value.data()));
-    }
-  }
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_FALSE(!payload);
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
 
-  // visit field0 values (cached)
-  {
-    std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-      {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
+      std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values =
+        {{"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
 
-    auto visitor = [&expected_values](irs::doc_id_t doc,
-                                      const irs::bytes_view& in) {
-      const auto actual_value = irs::to_string<std::string_view>(in.data());
+      size_t i = 0;
+      for (; it->next(); ++i) {
+        const auto& expected_value = expected_values[i];
+        const auto actual_str_value =
+          irs::to_string<std::string_view>(payload->value.data());
 
-      auto it = expected_values.find(actual_value);
-      if (it == expected_values.end()) {
-        // can't find value
-        return false;
+        ASSERT_EQ(expected_value.second, it->value());
+        ASSERT_EQ(expected_value.first, actual_str_value);
       }
 
-      if (it->second != doc) {
-        // wrong document
-        return false;
-      }
-
-      expected_values.erase(it);
-      return true;
-    };
-
-    auto column_reader = reader->column(segment0_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-    ASSERT_TRUE(visit(*column_reader, visitor));
-    ASSERT_TRUE(expected_values.empty());
-  }
-
-  // iterate over field0 values (cached)
-  {
-    auto column_reader = reader->column(segment0_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values = {
-      {"field0_doc0", 1}, {"field0_doc2", 2}, {"field0_doc33", 33}};
-
-    size_t i = 0;
-    for (; it->next(); ++i) {
-      const auto& expected_value = expected_values[i];
-      const auto actual_str_value =
-        irs::to_string<std::string_view>(payload->value.data());
-
-      ASSERT_EQ(expected_value.second, it->value());
-      ASSERT_EQ(expected_value.first, actual_str_value);
+      ASSERT_FALSE(it->next());
+      ASSERT_EQ(i, expected_values.size());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
+      ASSERT_EQ(irs::bytes_view{}, payload->value);
     }
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(i, expected_values.size());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
   }
-
-  // seek over field0 values (cached)
-  {
-    auto column_reader = reader->column(segment0_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<
-      std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
-      expected_values = {{"field0_doc0", {0, 1}},
-                         {"field0_doc2", {2, 2}},
-                         {"field0_doc33", {22, 33}},
-                         {"field0_doc33", {33, 33}}};
-
-    for (auto& expected : expected_values) {
-      const auto expected_doc = expected.second.second;
-      const auto expected_value = expected.first;
-
-      ASSERT_EQ(expected_doc, it->seek(expected_doc));
-      ASSERT_EQ(expected_value,
-                irs::to_string<std::string_view>(payload->value.data()));
-    }
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-
-  // iterate over field1 values (not cached)
-  {
-    auto column_reader = reader->column(segment0_field1_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<std::pair<std::vector<std::string_view>, irs::doc_id_t>>
-      expected_values = {{{"field1_doc0", "field1_doc0_1"}, 1},
-                         {{"field1_doc12_1", "field1_doc12_2"}, 12}};
-
-    size_t i = 0;
-    for (; it->next(); ++i) {
-      const auto& expected_value = expected_values[i];
-
-      std::vector<std::string_view> actual_str_values;
-      actual_str_values.push_back(
-        irs::to_string<std::string_view>(payload->value.data()));
-      actual_str_values.push_back(irs::to_string<std::string_view>(
-        reinterpret_cast<const irs::byte_type*>(
-          actual_str_values.back().data() + actual_str_values.back().size())));
-
-      ASSERT_EQ(expected_value.second, it->value());
-      ASSERT_EQ(expected_value.first, actual_str_values);
-    }
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(i, expected_values.size());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-
-  // seek over field1 values (cached)
-  {
-    auto column_reader = reader->column(segment0_field1_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<std::pair<std::vector<std::string_view>,
-                          std::pair<irs::doc_id_t, irs::doc_id_t>>>
-      expected_values = {{{"field1_doc0", "field1_doc0_1"}, {0, 1}},
-                         {{"field1_doc12_1", "field1_doc12_2"}, {1, 12}},
-                         {{"field1_doc12_1", "field1_doc12_2"}, {3, 12}},
-                         {{"field1_doc12_1", "field1_doc12_2"}, {12, 12}}};
-
-    for (auto& expected : expected_values) {
-      const auto expected_doc = expected.second.second;
-      const auto& expected_value = expected.first;
-
-      ASSERT_EQ(expected_doc, it->seek(expected_doc));
-
-      std::vector<std::string_view> actual_str_values;
-      actual_str_values.push_back(
-        irs::to_string<std::string_view>(payload->value.data()));
-      actual_str_values.push_back(irs::to_string<std::string_view>(
-        reinterpret_cast<const irs::byte_type*>(
-          actual_str_values.back().data() + actual_str_values.back().size())));
-
-      ASSERT_EQ(expected_value, actual_str_values);
-    }
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-
-  // check field1 (multiple values per document - cached)
-  {
-    irs::bytes_view_input in;
-    auto column_reader = reader->column(segment0_field1_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto column = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, column);
-    auto* actual_value = irs::get<irs::payload>(*column);
-    ASSERT_NE(nullptr, actual_value);
-
-    // read compound column value
-    // check doc==0, column==field1
-    ASSERT_EQ(1, column->seek(1));
-    in.reset(actual_value->value);
-    ASSERT_EQ("field1_doc0", irs::read_string<std::string>(in));
-    ASSERT_EQ("field1_doc0_1", irs::read_string<std::string>(in));
-
-    ASSERT_EQ(12, column->seek(2));
-
-    // read overwritten compund value
-    // check doc==12, column==field1
-    ASSERT_EQ(12, column->seek(12));
-    in.reset(actual_value->value);
-    ASSERT_EQ("field1_doc12_1", irs::read_string<std::string>(in));
-    ASSERT_EQ("field1_doc12_2", irs::read_string<std::string>(in));
-
-    ASSERT_TRUE(irs::doc_limits::eof(column->seek(13)));
-  }
-
-  // visit empty column
-  {
-    size_t calls_count = 0;
-    auto visitor = [&calls_count](irs::doc_id_t /*doc*/,
-                                  const irs::bytes_view& /*in*/) {
-      ++calls_count;
-      return true;
-    };
-
-    auto column_reader = reader->column(segment0_empty_column_id);
-    ASSERT_NE(nullptr, column_reader);
-    ASSERT_TRUE(visit(*column_reader, visitor));
-    ASSERT_EQ(0, calls_count);
-  }
-
-  // iterate over empty column
-  {
-    auto column_reader = reader->column(segment0_empty_column_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    ASSERT_TRUE(!irs::get<irs::payload>(*it));
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-  }
-
-  // visit field2 values (field after an the field)
-  {
-    std::unordered_map<std::string_view, irs::doc_id_t> expected_values = {
-      {"field2_doc1", 1},
-    };
-
-    auto visitor = [&expected_values](irs::doc_id_t doc,
-                                      const irs::bytes_view& in) {
-      const auto actual_value = irs::to_string<std::string_view>(in.data());
-
-      auto it = expected_values.find(actual_value);
-      if (it == expected_values.end()) {
-        // can't find value
-        return false;
-      }
-
-      if (it->second != doc) {
-        // wrong document
-        return false;
-      }
-
-      expected_values.erase(it);
-      return true;
-    };
-
-    auto column_reader = reader->column(segment0_field2_id);
-    ASSERT_NE(nullptr, column_reader);
-    ASSERT_TRUE(visit(*column_reader, visitor));
-    ASSERT_TRUE(expected_values.empty());
-  }
-
-  // iterate over field2 values (not cached)
-  {
-    auto column_reader = reader->column(segment0_field2_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values = {
-      {"field2_doc1", 1}};
-
-    size_t i = 0;
-    for (; it->next(); ++i) {
-      const auto& expected_value = expected_values[i];
-      const auto actual_str_value =
-        irs::to_string<std::string_view>(payload->value.data());
-
-      ASSERT_EQ(expected_value.second, it->value());
-      ASSERT_EQ(expected_value.first, actual_str_value);
-    }
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(i, expected_values.size());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-
-  // seek over field2 values (cached)
-  {
-    auto column_reader = reader->column(segment0_field2_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<
-      std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
-      expected_values = {{"field2_doc1", {1, 1}}};
-
-    for (auto& expected : expected_values) {
-      const auto expected_doc = expected.second.second;
-      const auto expected_value = expected.first;
-
-      ASSERT_EQ(expected_doc, it->seek(expected_doc));
-      const auto actual_str_value =
-        irs::to_string<std::string_view>(payload->value.data());
-      ASSERT_EQ(expected_value, actual_str_value);
-    }
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-}
-
-// read columns values from segment _2
-{
-  auto reader = codec()->get_columnstore_reader();
-  ASSERT_TRUE(reader->prepare(dir(), meta1));
-
-  // try to read invalild column
-  { ASSERT_EQ(nullptr, reader->column(irs::field_limits::invalid())); }
-
-  // iterate over field0 values (not cached)
-  {
-    auto column_reader = reader->column(segment1_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values = {
-      {"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
-
-    size_t i = 0;
-    for (; it->next(); ++i) {
-      const auto& expected_value = expected_values[i];
-      const auto actual_str_value =
-        irs::to_string<std::string_view>(payload->value.data());
-
-      ASSERT_EQ(expected_value.second, it->value());
-      ASSERT_EQ(expected_value.first, actual_str_value);
-    }
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(i, expected_values.size());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-
-  // seek over field0 values (cached)
-  {
-    auto column_reader = reader->column(segment1_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<
-      std::pair<std::string_view, std::pair<irs::doc_id_t, irs::doc_id_t>>>
-      expected_values = {{"segment_2_field1_doc0", {0, 1}},
-                         {"segment_2_field1_doc12", {12, 12}}};
-
-    for (auto& expected : expected_values) {
-      const auto expected_doc = expected.second.second;
-      const auto expected_value = expected.first;
-
-      ASSERT_EQ(expected_doc, it->seek(expected_doc));
-      const auto actual_str_value =
-        irs::to_string<std::string_view>(payload->value.data());
-      ASSERT_EQ(expected_value, actual_str_value);
-    }
-
-    ASSERT_EQ(irs::doc_limits::eof(), it->seek(13));
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-
-  // check field0 (cached)
-  {
-    auto column_reader = reader->column(segment1_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto column = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, column);
-    auto* actual_value = irs::get<irs::payload>(*column);
-    ASSERT_NE(nullptr, actual_value);
-    ASSERT_EQ(1, column->seek(1));  // check doc==1, column==field0
-    ASSERT_EQ("segment_2_field1_doc0",
-              irs::to_string<std::string_view>(actual_value->value.data()));
-    ASSERT_EQ(12, column->seek(12));  // check doc==12, column==field1
-    ASSERT_EQ("segment_2_field1_doc12",
-              irs::to_string<std::string_view>(actual_value->value.data()));
-  }
-
-  // iterate over field0 values (cached)
-  {
-    auto column_reader = reader->column(segment1_field0_id);
-    ASSERT_NE(nullptr, column_reader);
-    auto it = column_reader->iterator(irs::ColumnHint::kNormal);
-    ASSERT_NE(nullptr, it);
-
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_FALSE(!payload);
-    ASSERT_EQ(irs::doc_limits::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-
-    std::vector<std::pair<std::string_view, irs::doc_id_t>> expected_values = {
-      {"segment_2_field1_doc0", 1}, {"segment_2_field1_doc12", 12}};
-
-    size_t i = 0;
-    for (; it->next(); ++i) {
-      const auto& expected_value = expected_values[i];
-      const auto actual_str_value =
-        irs::to_string<std::string_view>(payload->value.data());
-
-      ASSERT_EQ(expected_value.second, it->value());
-      ASSERT_EQ(expected_value.first, actual_str_value);
-    }
-
-    ASSERT_FALSE(it->next());
-    ASSERT_EQ(i, expected_values.size());
-    ASSERT_EQ(irs::doc_limits::eof(), it->value());
-    ASSERT_EQ(irs::bytes_view{}, payload->value);
-  }
-}
 }
 
 TEST_P(format_test_case, document_mask_rw) {
@@ -3580,13 +3601,14 @@ TEST_P(format_test_case_with_encryption,
 
     const std::set<irs::type_info::type_id> features;
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.docmap = nullptr;
-    state.features = &features;
-    state.name = meta.name;
-    state.doc_count = 3;
-    state.index_features = irs::IndexFeatures::NONE;
+    irs::flush_state state{
+      .dir = &dir(),
+      .docmap = nullptr,
+      .features = &features,
+      .name = meta.name,
+      .doc_count = 3,
+      .index_features = irs::IndexFeatures::NONE,
+    };
 
     writer->commit(state);
   }
@@ -3673,11 +3695,12 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
   {
     const irs::feature_set_t features{irs::type<irs::Norm>::id()};
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 100;
-    state.name = "segment_name";
-    state.features = &features;
+    irs::flush_state state{
+      .dir = &dir(),
+      .features = &features,
+      .name = "segment_name",
+      .doc_count = 100,
+    };
 
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(
@@ -3832,4 +3855,4 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
     ASSERT_TRUE(expectedName.empty());
   }
 }
-}
+}  // namespace tests

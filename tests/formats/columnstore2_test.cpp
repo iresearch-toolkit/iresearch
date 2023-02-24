@@ -148,9 +148,10 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   auto finalizer = [](auto&) {
     // Must not be called
@@ -175,9 +176,10 @@ TEST_P(columnstore2_test_case, empty_column) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   irs::columnstore2::writer writer(version(), consolidation());
   writer.prepare(dir(), meta);
@@ -281,9 +283,10 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -428,9 +431,10 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
   meta.name = "test_m";
   const bool has_encryption = bool(dir().attributes().encryption());
 
-  irs::flush_state state;
-  state.doc_count = MAX;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = MAX,
+  };
   int64_t memory{0};
   auto mem = [&memory](int64_t diff) noexcept {
     memory += diff;
@@ -488,9 +492,10 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
   meta.name = "test";
   const bool has_encryption = bool(dir().attributes().encryption());
 
-  irs::flush_state state;
-  state.doc_count = MAX;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = MAX,
+  };
   int64_t memory{0};
   auto mem = [&memory](int64_t diff) noexcept {
     memory += diff;
@@ -553,9 +558,10 @@ TEST_P(columnstore2_test_case, sparse_column) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -770,9 +776,10 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -950,9 +957,10 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
@@ -1134,9 +1142,10 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
@@ -1319,9 +1328,10 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   constexpr std::string_view kValue{"aaaaaaaaaaaaaaaaaaaaaaaaaaa"};
   static_assert(kValue.size() == 27);
@@ -1506,9 +1516,10 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   constexpr std::string_view kValue{"aaaaaaaaaaaaaaaaaaaaaaaaaaa"};
   static_assert(kValue.size() == 27);
@@ -1690,9 +1701,10 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -1846,9 +1858,10 @@ TEST_P(columnstore2_test_case, dense_column) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -2049,9 +2062,10 @@ TEST_P(columnstore2_test_case, dense_column_range) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -2227,9 +2241,10 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
   meta.name = "test_m";
   const bool has_encryption = bool(dir().attributes().encryption());
 
-  irs::flush_state state;
-  state.doc_count = MAX;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = MAX,
+  };
   int64_t memory{0};
   auto mem = [&memory](int64_t diff) noexcept {
     memory += diff;
@@ -2305,9 +2320,10 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
   meta.name = "test_mr";
   const bool has_encryption = bool(dir().attributes().encryption());
 
-  irs::flush_state state;
-  state.doc_count = MAX;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = MAX,
+  };
   int64_t memory{0};
   auto mem = [&memory](int64_t diff) noexcept {
     memory += diff;
@@ -2388,9 +2404,10 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -2702,9 +2719,10 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -2883,9 +2901,10 @@ TEST_P(columnstore2_test_case, empty_columns) {
   irs::SegmentMeta meta;
   meta.name = "test";
 
-  irs::flush_state state;
-  state.doc_count = kMax;
-  state.name = meta.name;
+  irs::flush_state state{
+    .name = meta.name,
+    .doc_count = kMax,
+  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());

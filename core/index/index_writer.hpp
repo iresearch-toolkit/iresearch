@@ -306,8 +306,8 @@ class IndexWriter : private util::noncopyable {
 
     Transaction(Transaction&& other) noexcept
       : segment_{std::move(other.segment_)},
-        last_operation_tick_{std::exchange(other.last_operation_tick_, 0)},
-        first_operation_tick_(std::exchange(other.first_operation_tick_, 0)),
+        last_trx_tick_{std::exchange(other.last_trx_tick_, 0)},
+        first_trx_tick_{std::exchange(other.first_trx_tick_, 0)},
 #ifdef IRESEARCH_DEBUG
         segment_use_count_{std::exchange(other.segment_use_count_, 0)},
 #endif
@@ -376,11 +376,11 @@ class IndexWriter : private util::noncopyable {
     // noexcept because all insertions reserve enough space for rollback
     void Reset() noexcept;
 
-    void SetLastTick(uint64_t tick) noexcept { last_operation_tick_ = tick; }
-    uint64_t GetLastTick() const noexcept { return last_operation_tick_; }
+    void SetLastTick(uint64_t tick) noexcept { last_trx_tick_ = tick; }
+    uint64_t GetLastTick() const noexcept { return last_trx_tick_; }
 
-    void SetFirstTick(uint64_t tick) noexcept { first_operation_tick_ = tick; }
-    uint64_t GetFirstTick() const noexcept { return first_operation_tick_; }
+    void SetFirstTick(uint64_t tick) noexcept { first_trx_tick_ = tick; }
+    uint64_t GetFirstTick() const noexcept { return first_trx_tick_; }
 
     // Register underlying segment to be flushed with the upcoming index commit
     void ForceFlush();
@@ -393,8 +393,8 @@ class IndexWriter : private util::noncopyable {
 
     // the segment_context used for storing changes (lazy-initialized)
     ActiveSegmentContext segment_;
-    uint64_t last_operation_tick_{0};   // transaction commit tick
-    uint64_t first_operation_tick_{0};  // transaction tick
+    uint64_t last_trx_tick_{0};   // transaction commit tick
+    uint64_t first_trx_tick_{0};  // transaction tick
 #ifdef IRESEARCH_DEBUG
     // segment_.ctx().use_count() at constructor/destructor time must equal
     long segment_use_count_{0};
@@ -631,39 +631,42 @@ class IndexWriter : private util::noncopyable {
 
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
-    explicit FlushedSegment(IndexSegment&& segment, document_mask&& docs_mask,
+    explicit FlushedSegment(IndexSegment&& segment, doc_map&& old2new,
+                            document_mask&& docs_mask,
                             size_t docs_begin) noexcept
       : IndexSegment{std::move(segment)},
+        old2new{std::move(old2new)},
         docs_mask{std::move(docs_mask)},
-        docs_begin{docs_begin} {}
+        docs_begin_{docs_begin} {}
 
-    size_t GetDocsBegin() const noexcept { return docs_begin; }
-    size_t GetDocsEnd() const noexcept { return docs_begin + meta.docs_count; }
+    size_t GetDocsBegin() const noexcept { return docs_begin_; }
+    size_t GetDocsEnd() const noexcept { return docs_begin_ + meta.docs_count; }
 
     bool SetCommitted(size_t committed) noexcept {
       IRS_ASSERT(committed < GetDocsEnd());
-      docs_mask_valid_end =
-        static_cast<doc_id_t>(committed - docs_begin + doc_limits::min());
-      return docs_begin != committed;
+      docs_mask_valid_end_ =
+        static_cast<doc_id_t>(committed - docs_begin_ + doc_limits::min());
+      return docs_begin_ != committed;
     }
     doc_id_t GetValidEnd() const noexcept {
       return std::min(
         static_cast<doc_id_t>(meta.docs_count) + doc_limits::min(),
-        docs_mask_valid_end);
+        docs_mask_valid_end_);
     }
 
     std::span<segment_writer::update_context> GetContexts(
       std::span<segment_writer::update_context> all) const noexcept {
-      return {all.data() + docs_begin, meta.docs_count};
+      return {all.data() + docs_begin_, meta.docs_count};
     }
 
+    doc_map old2new;
     // Flushed segment removals
     document_mask docs_mask;
 
    private:
     // starting doc_id that should be added to docs_mask
-    doc_id_t docs_mask_valid_end{doc_limits::eof()};
-    size_t docs_begin;
+    doc_id_t docs_mask_valid_end_{doc_limits::eof()};
+    size_t docs_begin_;
   };
 
   // The segment writer and its associated ref tracking directory
@@ -835,7 +838,8 @@ class IndexWriter : private util::noncopyable {
     ~FlushContext() noexcept { Reset(); }
 
     // add the segment to this flush_context
-    void Emplace(ActiveSegmentContext&& segment, uint64_t first_operation_tick);
+    void Emplace(ActiveSegmentContext&& segment, uint64_t first_trx_tick,
+                 uint64_t last_trx_tick);
 
     // add the segment to this flush_context pending segments
     // but not to freelist. So this segment would be waited upon flushing
@@ -939,7 +943,7 @@ class IndexWriter : private util::noncopyable {
   std::atomic_uint64_t seg_counter_;  // segment counter
   uint64_t last_gen_;                 // last committed index meta generation
   index_meta_writer::ptr writer_;
-  index_lock::ptr write_lock_;  // exclusive write lock for directory
+  index_lock::ptr write_lock_;        // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
 };
 

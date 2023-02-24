@@ -541,6 +541,22 @@ void reorder(std::span<tests::document const*> docs,
   }
 }
 
+std::vector<irs::segment_writer::update_context> reorder(
+  std::span<irs::segment_writer::update_context> ctxs,
+  const irs::doc_map& docmap) {
+  std::vector<irs::segment_writer::update_context> new_ctxs;
+  new_ctxs.resize(ctxs.size());
+  for (size_t i = 0, size = ctxs.size(); i < size; ++i) {
+    if (docmap.empty()) {
+      new_ctxs[i] = ctxs[i];
+    } else {
+      new_ctxs[docmap[i + irs::doc_limits::min()] - irs::doc_limits::min()] =
+        ctxs[i];
+    }
+  }
+  return new_ctxs;
+}
+
 TEST_F(segment_writer_tests, reorder) {
   tests::json_doc_generator gen(
     resource("simple_sequential.json"),
@@ -599,9 +615,9 @@ TEST_F(segment_writer_tests, reorder) {
     irs::IndexSegment index_segment;
     irs::document_mask docs_mask;
     index_segment.meta.codec = default_codec();
-    auto docs_context = writer->flush(index_segment, docs_mask);
+    auto old2new = writer->flush(index_segment, docs_mask);
     ASSERT_TRUE(docs_mask.empty());
-    ASSERT_EQ(docs_context.size(), kLen);
+    const auto docs_context = reorder(writer->docs_context(), old2new);
     for (size_t i = 0; i < kLen; ++i) {
       EXPECT_EQ(expected[i], docs_context[i].generation);
       EXPECT_EQ(expected[i], docs_context[i].update_id);
