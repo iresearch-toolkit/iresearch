@@ -20,4 +20,4 @@ jobs:
           mkdir -p build 
           git diff --diff-filter=ACMRT --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- core/ tests/ > build/DIFF
       - name: clang-format
-        uses: iresearch-toolkit/clang-format-action@1.0.4
+        uses: iresearch-toolkit/clang-format-action@1.0.5
