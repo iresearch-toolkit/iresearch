@@ -528,7 +528,7 @@ class StringComparer final : public irs::Comparer {
   }
 };
 
-void reorder(std::span<tests::document const*> docs,
+void reorder(std::span<const tests::document*> docs,
              std::span<irs::segment_writer::update_context> ctxs,
              std::vector<size_t> order) {
   for (size_t i = 0; i < order.size(); ++i) {
@@ -569,7 +569,7 @@ TEST_F(segment_writer_tests, reorder) {
       }
     });
   static constexpr size_t kLen = 5;
-  std::array<tests::document const*, kLen> docs;
+  std::array<const tests::document*, kLen> docs;
   std::array<irs::segment_writer::update_context, kLen> ctxs;
   for (size_t i = 0; i < kLen; ++i) {
     docs[i] = gen.next();

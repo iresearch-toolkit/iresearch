@@ -444,8 +444,8 @@ class format {
 struct flush_state {
   directory* const dir{};
   const doc_map* docmap{};
-  const std::set<type_info::type_id>* features{};     // segment features
-  const std::string_view name;                        // segment name
+  const std::set<type_info::type_id>* features{};  // segment features
+  const std::string_view name;                     // segment name
   const size_t doc_count;
   IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
 };

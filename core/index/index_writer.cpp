@@ -1049,7 +1049,7 @@ bool IndexWriter::FlushContext::AddToPending(ActiveSegmentContext& segment) {
     return false;
   }
   std::lock_guard lock{mutex_};
-  auto const size_before = pending_segment_contexts_.size();
+  const auto size_before = pending_segment_contexts_.size();
   pending_segment_contexts_.emplace_back(segment.ctx_, size_before);
   segment.flush_ctx_ = this;
   segment.pending_segment_context_offset_ = size_before;
@@ -2047,10 +2047,10 @@ IndexWriter::FlushPending(FlushContext& ctx,
 }
 
 IndexWriter::PendingContext IndexWriter::FlushAll(
-  uint64_t tick, ProgressReportCallback const& progress_callback) {
+  uint64_t tick, const ProgressReportCallback& progress_callback) {
   REGISTER_TIMER_DETAILED();
 
-  auto const& progress =
+  const auto& progress =
     (progress_callback != nullptr ? progress_callback : kNoProgress);
 
   IndexMeta pending_meta;
@@ -2530,7 +2530,7 @@ void IndexWriter::StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
   IRS_ASSERT(pending_state_.Valid());
 }
 
-bool IndexWriter::Start(uint64_t tick, ProgressReportCallback const& progress) {
+bool IndexWriter::Start(uint64_t tick, const ProgressReportCallback& progress) {
   IRS_ASSERT(!commit_lock_.try_lock());  // already locked
 
   REGISTER_TIMER_DETAILED();

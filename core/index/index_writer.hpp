@@ -502,7 +502,7 @@ class IndexWriter : private util::noncopyable {
   // payload arbitrary user supplied data to store in the index
   // Returns true if transaction has been successflully started.
   bool Begin(uint64_t tick = std::numeric_limits<uint64_t>::max(),
-             ProgressReportCallback const& progress = {}) {
+             const ProgressReportCallback& progress = {}) {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{commit_lock_};
 
@@ -525,7 +525,7 @@ class IndexWriter : private util::noncopyable {
   // relatively lightweight operation.
   // FIXME(gnusi): Commit() should return committed index snapshot
   bool Commit(uint64_t tick = std::numeric_limits<uint64_t>::max(),
-              ProgressReportCallback const& progress = {}) {
+              const ProgressReportCallback& progress = {}) {
     // cppcheck-suppress unreadVariable
     std::lock_guard lock{commit_lock_};
 
@@ -885,7 +885,7 @@ class IndexWriter : private util::noncopyable {
     FlushContext& ctx, std::unique_lock<std::mutex>& ctx_lock);
 
   PendingContext FlushAll(uint64_t tick,
-                          ProgressReportCallback const& progress_callback);
+                          const ProgressReportCallback& progress_callback);
 
   FlushContextPtr GetFlushContext(bool shared = true);
 
@@ -901,7 +901,7 @@ class IndexWriter : private util::noncopyable {
   void InitMeta(IndexMeta& meta, uint64_t tick) const;
 
   // Start transaction
-  bool Start(uint64_t tick, ProgressReportCallback const& progress);
+  bool Start(uint64_t tick, const ProgressReportCallback& progress);
   void StartImpl(FlushContextPtr&& ctx, DirectoryMeta&& to_commit,
                  std::vector<SegmentReader>&& readers,
                  std::vector<std::string_view>&& files_to_sync);
@@ -943,7 +943,7 @@ class IndexWriter : private util::noncopyable {
   std::atomic_uint64_t seg_counter_;  // segment counter
   uint64_t last_gen_;                 // last committed index meta generation
   index_meta_writer::ptr writer_;
-  index_lock::ptr write_lock_;        // exclusive write lock for directory
+  index_lock::ptr write_lock_;  // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
 };
 

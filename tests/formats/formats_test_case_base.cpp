@@ -199,10 +199,10 @@ auto MakeByTerm(std::string_view name, std::string_view value) {
 TEST_P(format_test_case, directory_artifact_cleaner) {
   tests::json_doc_generator gen{resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory};
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
   auto query_doc1 = MakeByTerm("name", "A");
   auto query_doc2 = MakeByTerm("name", "B");
   auto query_doc3 = MakeByTerm("name", "C");
@@ -2754,8 +2754,8 @@ TEST_P(format_test_case, columns_rw) {
       {
         auto& stream = field2_writer(1);  // doc==1
         irs::write_string(stream, std::string_view("invalid_string"));
-        stream.reset();                   // rollback changes
-        stream.reset();                   // rollback changes
+        stream.reset();  // rollback changes
+        stream.reset();  // rollback changes
       }
       {
         auto& stream = field2_writer(1);  // doc==1
@@ -2846,7 +2846,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto& stream = field2_writer(2);  // doc==2
       irs::write_string(stream, std::string_view("segment_2_field0_doc1"));
-      stream.reset();                   // rollback
+      stream.reset();  // rollback
     }
 
     // colum==field1
@@ -2859,7 +2859,7 @@ TEST_P(format_test_case, columns_rw) {
     {
       auto& stream = field2_writer(23);  // doc==23
       irs::write_string(stream, std::string_view("segment_2_field3_doc23"));
-      stream.reset();                    // rollback
+      stream.reset();  // rollback
     }
 
     irs::flush_state state{
@@ -3635,7 +3635,7 @@ TEST_P(format_test_case_with_encryption, read_zero_block_encryption) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   // replace encryption
   ASSERT_NE(nullptr, dir().attributes().encryption());
@@ -3738,7 +3738,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   ASSERT_NE(nullptr, dir().attributes().encryption());
 
@@ -3767,7 +3767,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_non_encrypted) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   ASSERT_NE(nullptr, dir().attributes().encryption());
 
@@ -3797,7 +3797,7 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   dir().attributes() = irs::directory_attributes{0, nullptr};
 

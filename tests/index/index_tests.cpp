@@ -1015,7 +1015,7 @@ class index_test_case : public tests::index_test_base {
       auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
       ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                          doc2->stored.begin(), doc2->stored.end()));
-      ASSERT_TRUE(writer->Begin());     // prepare for commit tx #1
+      ASSERT_TRUE(writer->Begin());  // prepare for commit tx #1
       writer->Commit();
       AssertSnapshotEquality(*writer);  // commit tx #1
       auto file_count = 0;
@@ -2608,7 +2608,7 @@ TEST_P(index_test_case, writer_begin_clear) {
     ASSERT_TRUE(writer->Begin());  // start transaction
     ASSERT_EQ(0, writer->BufferedDocs());
 
-    writer->Clear();                // rollback and clear index contents
+    writer->Clear();  // rollback and clear index contents
     ASSERT_EQ(0, writer->BufferedDocs());
     ASSERT_FALSE(writer->Begin());  // nothing to commit
 
@@ -2671,7 +2671,7 @@ TEST_P(index_test_case, writer_commit_clear) {
       ASSERT_NE(reader.begin(), reader.end());
     }
 
-    writer->Clear();                // clear index contents
+    writer->Clear();  // clear index contents
     ASSERT_EQ(0, writer->BufferedDocs());
     ASSERT_FALSE(writer->Begin());  // nothing to commit
 
@@ -7519,8 +7519,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       irs::index_utils::ConsolidateCount())));  // nothing to consolidate
     ASSERT_TRUE(writer->Consolidate(
-      check_consolidating_segments));           // check segments registered for
-                                                // consolidation
+      check_consolidating_segments));  // check segments registered for
+                                       // consolidation
     writer->Commit();
     AssertSnapshotEquality(*writer);
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));
@@ -7737,7 +7737,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     AssertSnapshotEquality(*writer);                   // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir));  // segments_3
 
-    dir.intermediate_commits_lock.unlock();            // finish consolidation
+    dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
 
     // finished consolidation holds a reference to segments_3
@@ -7913,14 +7913,14 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     AssertSnapshotEquality(*writer);                   // commit transaction
     ASSERT_EQ(1, irs::directory_cleaner::clean(dir));  // segments_3
 
-    dir.intermediate_commits_lock.unlock();            // finish consolidation
+    dir.intermediate_commits_lock.unlock();  // finish consolidation
     consolidation_thread.join();  // wait for the consolidation to complete
     ASSERT_EQ(2 * count - 1 + 1,
               irs::directory_cleaner::clean(
                 dir));  // files from segment 1 and 3 (without segment meta)
                         // + segments_3
     writer->Commit();
-    AssertSnapshotEquality(*writer);                // commit consolidation
+    AssertSnapshotEquality(*writer);  // commit consolidation
     ASSERT_EQ(0,
               irs::directory_cleaner::clean(dir));  // consolidation failed
 
@@ -8414,7 +8414,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
       irs::index_utils::ConsolidateCount())));  // consolidate
     writer->Commit();
-    AssertSnapshotEquality(*writer);            // commit transaction
+    AssertSnapshotEquality(*writer);  // commit transaction
 
     auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(0, reader.size());
@@ -8614,7 +8614,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     writer->Commit();
     AssertSnapshotEquality(
-      *writer);                      // commit transaction (will commit nothing)
+      *writer);  // commit transaction (will commit nothing)
     ASSERT_EQ(1 + count, irs::directory_cleaner::clean(
                            dir()));  // +1 for corresponding segments_* file
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
@@ -8815,7 +8815,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
 
     ASSERT_EQ(0, irs::directory_cleaner::clean(dir()));  // segments_1
     ASSERT_TRUE(writer->Consolidate(irs::index_utils::MakePolicy(
-      irs::index_utils::ConsolidateCount())));           // consolidate
+      irs::index_utils::ConsolidateCount())));  // consolidate
 
     // check consolidating segments
     expected_consolidating_segments = {0, 1};
@@ -9288,7 +9288,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(writer->Consolidate(check_consolidating_segments));
 
     writer->Commit();
-    AssertSnapshotEquality(*writer);                  // commit pending merge
+    AssertSnapshotEquality(*writer);  // commit pending merge
     ASSERT_EQ(1 + 1 + count,
               irs::directory_cleaner::clean(dir()));  // segments_2
 
@@ -9626,7 +9626,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     AssertSnapshotEquality(*writer);  // commit pending merge
     ASSERT_EQ(count + 2 + 2,  // +2 for  segments_2 + stale segment 1 meta
               irs::directory_cleaner::clean(
-                dir()));      // +1 for segments, +1 for segment 1 doc mask
+                dir()));  // +1 for segments, +1 for segment 1 doc mask
 
     // check consolidating segments
     expected_consolidating_segments = {};
@@ -9951,7 +9951,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
         auto& segment = reader[0];
         const auto* column = segment.column("name");
         ASSERT_NE(nullptr, column);
-        ASSERT_EQ(4, segment.docs_count());    // total count of documents
+        ASSERT_EQ(4, segment.docs_count());  // total count of documents
         ASSERT_EQ(2,
                   segment.live_docs_count());  // total count of live documents
         auto terms = segment.field("same");
@@ -13782,7 +13782,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     {
       std::unordered_set<std::string_view> expectedName = {"A", "B", "C", "D"};
 
-      auto& segment = reader[0];        // assume 0 is id of first segment
+      auto& segment = reader[0];  // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(),
                 segment.docs_count());  // total count of documents
       auto terms = segment.field("same");
@@ -13809,7 +13809,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     {
       std::unordered_set<std::string_view> expectedName = {"E"};
 
-      auto& segment = reader[1];        // assume 1 is id of second segment
+      auto& segment = reader[1];  // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(),
                 segment.docs_count());  // total count of documents
       auto terms = segment.field("same");
@@ -13859,7 +13859,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];        // assume 0 is id of first/only segment
+    auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(),
               segment.docs_count());  // total count of documents
     auto terms = segment.field("same");
@@ -13908,7 +13908,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     {
       std::unordered_set<std::string_view> expectedName = {"A"};
 
-      auto& segment = reader[0];        // assume 0 is id of first segment
+      auto& segment = reader[0];  // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size(),
                 segment.docs_count());  // total count of documents
       auto terms = segment.field("same");
@@ -13991,7 +13991,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];        // assume 0 is id of first/only segment
+    auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(),
               segment.docs_count());  // total count of documents
     auto terms = segment.field("same");
@@ -14049,7 +14049,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     {
       std::unordered_set<std::string_view> expectedName = {"A"};
 
-      auto& segment = reader[0];        // assume 0 is id of first segment
+      auto& segment = reader[0];  // assume 0 is id of first segment
       ASSERT_EQ(expectedName.size() + 3,
                 segment.docs_count());  // total count of documents (+3 ==
                                         // B, C, D masked)
@@ -14078,7 +14078,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     {
       std::unordered_set<std::string_view> expectedName = {"E"};
 
-      auto& segment = reader[1];        // assume 1 is id of second segment
+      auto& segment = reader[1];  // assume 1 is id of second segment
       ASSERT_EQ(expectedName.size(),
                 segment.docs_count());  // total count of documents
       auto terms = segment.field("same");
@@ -14134,7 +14134,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
 
     auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(1, reader.size());
-    auto& segment = reader[0];        // assume 0 is id of first/only segment
+    auto& segment = reader[0];  // assume 0 is id of first/only segment
     ASSERT_EQ(expectedName.size(),
               segment.docs_count());  // total count of documents
     auto terms = segment.field("same");

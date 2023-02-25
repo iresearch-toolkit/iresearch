@@ -328,7 +328,7 @@ class SortingCompoundDocIterator : public doc_iterator {
     bool operator()(const size_t i) const {
       IRS_ASSERT(i < itrs_->size());
       auto& doc_it = (*itrs_)[i];
-      auto const& map = doc_it.second.get();
+      const auto& map = doc_it.second.get();
       while (doc_it.first->next()) {
         if (!doc_limits::eof(map(doc_it.first->value()))) {
           return true;
@@ -1676,7 +1676,7 @@ bool MergeWriter::Flush(SegmentMeta& segment,
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(segment.codec);  // Must be set outside
 
-  bool result = false;        // Flush result
+  bool result = false;  // Flush result
 
   Finally segment_invalidator = [&result, &segment]() noexcept {
     if (IRS_UNLIKELY(!result)) {
