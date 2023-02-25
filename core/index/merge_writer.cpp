@@ -1313,8 +1313,9 @@ const MergeWriter::FlushProgress kProgressNoop = []() { return true; };
 }  // namespace
 
 MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
-  : reader{reader},
-    doc_map{[](doc_id_t) noexcept { return doc_limits::eof(); }} {
+  : reader{reader}, doc_map{[](doc_id_t) noexcept {
+      return doc_limits::eof();
+    }} {
   IRS_ASSERT(this->reader);
 }
 
