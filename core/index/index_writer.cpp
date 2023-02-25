@@ -119,8 +119,8 @@ struct FlushSegmentContext {
     } else {
       update_docs_mask([&](doc_id_t old_id) { return old2new_[old_id]; });
 
-      new2old_.resize(old2new.size());
-      for (doc_id_t old_id = 0; const auto new_id : old2new) {
+      new2old_.resize(old2new_.size());
+      for (doc_id_t old_id = 0; const auto new_id : old2new_) {
         new2old_[new_id] = old_id++;
       }
     }
@@ -1886,7 +1886,7 @@ bool IndexWriter::Import(const IndexReader& reader,
 
   ctx->pending_segments_.emplace_back(
     std::move(segment),
-    ctx->generation_.load(),      // current modification generation
+    ctx->generation_.load(),  // current modification generation
     std::move(refs),
     std::move(imported_reader));  // do not forget to track refs
 
