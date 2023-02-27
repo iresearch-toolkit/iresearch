@@ -1066,11 +1066,11 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
                 });
 
   auto update_generation = [&](std::span<segment_writer::update_context> ctxs) {
-    for (auto& ctx : ctxs) {
+    for (auto& ctx_i : ctxs) {
       // can == modification_count if inserts come after modification
-      assert(ctxs[i].generation <= modification_count);
+      assert(ctx_i.generation <= modification_count);
       // update to flush_context generation
-      ctx.generation += generation_base;
+      ctx_i.generation += generation_base;
     }
   };
 
