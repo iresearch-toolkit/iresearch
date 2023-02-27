@@ -1086,8 +1086,9 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
     commit_start -= flushed_update_contexts.size();
   }
 
+  auto const writer_docs = ctx.writer_->docs_cached();
   assert(ctx.writer_);
-  assert(ctx.writer_->docs_cached() <= doc_limits::eof());
+  assert(writer_docs <= doc_limits::eof());
   if (auto docs = ctx.writer_->docs_context(); commit_start < docs.size()) {
     IRS_ASSERT(writer_->initialized());
     update_generation({docs.data() + commit_start, docs.size() - commit_start});
@@ -1096,8 +1097,8 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   // reset counters for segment reuse
 
   ctx.uncomitted_generation_offset_ = 0;
-  ctx.uncomitted_doc_id_begin_ =
-    flushed_update_contexts.size() + writer_docs + doc_limits::min();
+  ctx.uncomitted_doc_id_begin_ = flushed_update_contexts.size() +
+                                 writer_docs + doc_limits::min();
   ctx.uncomitted_modification_queries_ = ctx.modification_queries_.size();
 
   if (!freelist_node) {
