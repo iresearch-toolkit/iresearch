@@ -655,7 +655,17 @@ TEST_P(Format15TestCase, LongPostingsThreshold100) {
   AssertPostings(docs, kThreshold);
 }
 
+TEST_P(Format15TestCase, MediumPostingsThreshold0) {
+  static constexpr size_t kCount = 319;
+  static_assert(kCount > kVersion10PostingsWriterBlockSize);
+  static constexpr uint32_t kThreshold = 0;
+  const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
+
+  AssertPostings(docs, kThreshold);
+}
+
 TEST_P(Format15TestCase, LongPostingsThreshold0) {
+  GTEST_SKIP() << "too long for our CI";
   static constexpr size_t kCount = 10000;
   static constexpr uint32_t kThreshold = 0;
   const auto docs = GenerateDocs(kCount, 50.f, 13.f, 1);
@@ -663,14 +673,14 @@ TEST_P(Format15TestCase, LongPostingsThreshold0) {
   AssertPostings(docs, kThreshold);
 }
 
-/* Long test
 TEST_P(Format15TestCase, VeryLongPostingsThreshold0) {
+  GTEST_SKIP() << "too long for our CI";
   static constexpr size_t kCount = size_t{1} << 15;
   static constexpr uint32_t kThreshold = 0;
   const auto docs = GenerateDocs(kCount, 1000.f, 20.f, 2);
 
   AssertPostings(docs, kThreshold);
-}*/
+}
 
 static constexpr auto kTestDirs15 =
   tests::getDirectories<tests::kTypesDefault>();

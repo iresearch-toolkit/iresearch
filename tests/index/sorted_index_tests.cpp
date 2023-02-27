@@ -533,8 +533,8 @@ TEST_P(SortedIndexTestCase, reader_components) {
       }
     }};
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   irs::IndexWriterOptions opts;
   opts.comparator = &comparer;
@@ -1728,9 +1728,9 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
 
   auto query_doc1 = MakeByTerm("name", "A");
   auto query_doc2 = MakeByTerm("name", "B");
@@ -1783,6 +1783,102 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
     ASSERT_EQ(docs->value(), values->seek(docs->value()));
     ASSERT_EQ("C",
               irs::to_string<std::string_view>(actual_value->value.data()));
+    ASSERT_FALSE(docs->next());
+  }
+}
+
+bool Insert(irs::IndexWriter::Transaction& ctx, const tests::document* d) {
+  auto doc = ctx.Insert();
+  if (d->sorted && !doc.Insert<irs::Action::STORE_SORTED>(*d->sorted)) {
+    return false;
+  }
+  return doc.Insert<irs::Action::INDEX>(d->indexed.begin(), d->indexed.end()) &&
+         doc.Insert<irs::Action::STORE>(d->stored.begin(), d->stored.end());
+}
+
+TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx_flush) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      if (name == "name" && data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.sorted = field;
+        doc.insert(field);
+      }
+    });
+
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
+  const tests::document* doc6 = gen.next();
+  const tests::document* doc7 = gen.next();
+
+  auto query_doc1 = MakeByTerm("name", "A");
+  auto query_doc2 = MakeByTerm("name", "B");
+
+  {
+    StringComparer comparer;
+
+    // open writer
+    irs::IndexWriterOptions opts;
+    opts.comparator = &comparer;
+    opts.features = features();
+    auto writer = open_writer(irs::OM_CREATE, opts);
+    ASSERT_NE(nullptr, writer);
+    ASSERT_EQ(&comparer, writer->Comparator());
+    writer->Options({.segment_docs_max = 6});
+    {
+      auto batch = writer->GetBatch();
+      ASSERT_TRUE(Insert(batch, doc1));
+      batch.Remove(*(query_doc1));
+      ASSERT_TRUE(Insert(batch, doc2));
+      batch.Remove(*(query_doc2));
+      ASSERT_TRUE(Insert(batch, doc3));
+      ASSERT_TRUE(batch.Commit());
+    }
+    {
+      auto batch = writer->GetBatch();
+      ASSERT_TRUE(Insert(batch, doc4));
+      ASSERT_TRUE(Insert(batch, doc5));
+      ASSERT_TRUE(Insert(batch, doc6));
+      ASSERT_TRUE(Insert(batch, doc7));  // Flush triggered here, before insert
+      ASSERT_TRUE(batch.Commit());
+    }
+    ASSERT_TRUE(writer->Commit());
+    AssertSnapshotEquality(*writer);
+  }
+
+  // Check consolidated segment
+  {
+    auto reader = irs::DirectoryReader(dir(), codec());
+    ASSERT_TRUE(reader);
+    EXPECT_EQ(2, reader.size());
+    EXPECT_EQ(7, reader->docs_count());
+    EXPECT_EQ(5, reader->live_docs_count());
+
+    // Check segment 0
+    auto& segment = reader[0];
+    const auto* column = segment.sort();
+    ASSERT_NE(nullptr, column);
+    ASSERT_TRUE(irs::IsNull(column->name()));
+    ASSERT_EQ(0, column->payload().size());
+    auto values = column->iterator(irs::ColumnHint::kNormal);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+    auto terms = segment.field("name");
+    ASSERT_NE(nullptr, terms);
+    auto docs = segment.docs_iterator();
+    for (const char expected_char : std::string_view{"FEDC", 4}) {
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(docs->value(), values->seek(docs->value()));
+      std::string_view expected_str{&expected_char, 1};
+      EXPECT_EQ(expected_str,
+                irs::to_string<std::string_view>(actual_value->value.data()));
+    }
     ASSERT_FALSE(docs->next());
   }
 }
@@ -2738,7 +2834,7 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
     });
 
   static constexpr size_t kLen = 5;
-  std::array<std::pair<size_t, tests::document const*>, kLen> insert_docs;
+  std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
   for (size_t i = 0; i < kLen; ++i) {
     insert_docs[i] = {i, gen.next()};
   }

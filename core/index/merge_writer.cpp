@@ -328,7 +328,7 @@ class SortingCompoundDocIterator : public doc_iterator {
     bool operator()(const size_t i) const {
       IRS_ASSERT(i < itrs_->size());
       auto& doc_it = (*itrs_)[i];
-      auto const& map = doc_it.second.get();
+      const auto& map = doc_it.second.get();
       while (doc_it.first->next()) {
         if (!doc_limits::eof(map(doc_it.first->value()))) {
           return true;
@@ -1416,12 +1416,13 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  flush_state state;
-  state.dir = &dir;
-  state.doc_count = segment.docs_count;
-  state.features = &fields_features;
-  state.index_features = index_features;
-  state.name = segment.name;
+  flush_state state{
+    .dir = &dir,
+    .features = &fields_features,
+    .name = segment.name,
+    .doc_count = segment.docs_count,
+    .index_features = index_features,
+  };
 
   // write field meta and field term data
   if (!write_fields(cs, remapping_itrs, state, segment, *feature_info_,
@@ -1645,12 +1646,13 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  flush_state state;
-  state.dir = &dir;
-  state.doc_count = segment.docs_count;
-  state.index_features = index_features;
-  state.features = &fields_features;
-  state.name = segment.name;
+  flush_state state{
+    .dir = &dir,
+    .features = &fields_features,
+    .name = segment.name,
+    .doc_count = segment.docs_count,
+    .index_features = index_features,
+  };
 
   // write field meta and field term data
   if (!write_fields(cs, sorting_doc_it, state, segment, *feature_info_,
