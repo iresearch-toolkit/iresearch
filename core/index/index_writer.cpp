@@ -1077,7 +1077,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   auto& flushed_update_contexts = ctx.flushed_update_contexts_;
 
   // update generations of segment_context::flushed_update_contexts_
-  size_t commit_start = uncomitted_doc_id_begin_ - doc_limits::min();
+  size_t commit_start = ctx.uncomitted_doc_id_begin_ - doc_limits::min();
   if (commit_start < flushed_update_contexts.size()) {
     update_generation({flushed_update_contexts.data() + commit_start,
                        flushed_update_contexts.size() - commit_start});
