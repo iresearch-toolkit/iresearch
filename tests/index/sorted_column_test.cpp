@@ -35,7 +35,7 @@
 namespace {
 
 struct Comparator final : irs::comparer {
-  int compare(irs::bytes_ref lhs,
+  int CompareImpl(irs::bytes_ref lhs,
               irs::bytes_ref rhs) const noexcept override {
     const auto* plhs = lhs.data();
     const auto* prhs = rhs.data();

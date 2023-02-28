@@ -33,7 +33,7 @@ bool sorted_column::flush_sparse_primary(
   doc_id_t docs_count, const comparer& compare) {
   auto comparer = [&](const std::pair<doc_id_t, size_t>& lhs,
                       const std::pair<doc_id_t, size_t>& rhs) -> int {
-    return compare(get_value(&lhs), get_value(&rhs));
+    return compare.Compare(get_value(&lhs), get_value(&rhs));
   };
 
   if (std::is_sorted(index_.begin(), index_.end() - 1,

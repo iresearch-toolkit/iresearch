@@ -394,7 +394,8 @@ void index_segment::sort(const irs::comparer& comparator) {
 
   std::stable_sort(sort_.begin(), sort_.end(),
                    [&comparator](const auto& lhs, const auto& rhs) {
-                     return comparator(std::get<0>(lhs), std::get<0>(rhs)) < 0;
+                     return comparator.Compare(std::get<0>(lhs),
+                                               std::get<0>(rhs)) < 0;
                    });
 
   irs::doc_id_t new_doc_id = irs::doc_limits::min();

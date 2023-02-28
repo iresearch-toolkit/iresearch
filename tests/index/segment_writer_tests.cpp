@@ -138,10 +138,10 @@ TEST_F(segment_writer_tests, invalid_actions) {
 #endif
 
 struct Comparator final : irs::comparer {
-  int compare(irs::bytes_view lhs, irs::bytes_view rhs) const noexcept final {
-    EXPECT_FALSE(irs::IsNull(lhs));
-    EXPECT_FALSE(irs::IsNull(rhs));
-    return lhs.compare(rhs);
+  int CompareImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) const noexcept final {
+    EXPECT_FALSE(lhs.null());
+    EXPECT_FALSE(rhs.null());
+    return compare(lhs, rhs);
   }
 };
 
@@ -516,14 +516,14 @@ TEST_F(segment_writer_tests, index_field) {
 }
 
 struct StringComparer final : irs::comparer {
-  int compare(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
+  int CompareImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
     EXPECT_FALSE(lhs.null());
     EXPECT_FALSE(rhs.null());
 
     const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.data());
     const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.data());
 
-    return lhs_value.compare(rhs_value);
+    return compare(lhs_value, rhs_value);
   }
 };
 
@@ -572,7 +572,7 @@ TEST_F(segment_writer_tests, reorder) {
 
     auto column_info = default_column_info();
     auto feature_info = default_feature_info();
-    string_comparer less;
+    StringComparer less;
 
     irs::memory_directory dir;
     auto writer =

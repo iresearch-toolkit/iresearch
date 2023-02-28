@@ -99,11 +99,11 @@ class test_feature_writer final : public irs::feature_writer {
 
 struct binary_comparer final : public irs::comparer {
  protected:
-  int compare(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
+  int CompareImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
     EXPECT_FALSE(lhs.null());
     EXPECT_FALSE(rhs.null());
 
-    return lhs.compare(rhs);
+    return compare(lhs, rhs);
   }
 };
 

@@ -1076,7 +1076,7 @@ class MinHeapContext {
     const bytes_ref lhs_value = lhs.payload->value;
     const bytes_ref rhs_value = rhs.payload->value;
 
-    if (const auto r = (*compare_)(lhs_value, rhs_value); r) {
+    if (const auto r = compare_->Compare(lhs_value, rhs_value); r) {
       return r > 0;
     }
 
