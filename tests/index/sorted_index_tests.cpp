@@ -111,28 +111,37 @@ class SortedEuroparlDocTemplate : public tests::europarl_doc_template {
   std::vector<irs::type_info::type_id> field_features_;
 };
 
-struct StringComparer : irs::comparer {
-  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+struct StringComparer final : irs::comparer {
+  int CompareImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
     EXPECT_FALSE(lhs.null());
     EXPECT_FALSE(rhs.null());
 
     const auto lhs_value = irs::to_string<irs::bytes_ref>(lhs.data());
     const auto rhs_value = irs::to_string<irs::bytes_ref>(rhs.data());
 
-    return lhs_value > rhs_value;
+    return compare(rhs_value, lhs_value);
   }
 };
 
-struct LongComparer : irs::comparer {
-  virtual bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
+struct LongComparer final : irs::comparer {
+  int CompareImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
     EXPECT_FALSE(lhs.null());
     EXPECT_FALSE(rhs.null());
 
     auto* plhs = lhs.data();
+    const auto lhs_value = irs::zig_zag_decode64(irs::vread<uint64_t>(plhs));
     auto* prhs = rhs.data();
+    const auto rhs_value = irs::zig_zag_decode64(irs::vread<uint64_t>(prhs));
 
-    return irs::zig_zag_decode64(irs::vread<uint64_t>(plhs)) <
-           irs::zig_zag_decode64(irs::vread<uint64_t>(prhs));
+    if (lhs_value < rhs_value) {
+      return -1;
+    }
+
+    if (rhs_value < lhs_value) {
+      return 1;
+    }
+
+    return 0;
   }
 };
 
@@ -370,10 +379,10 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
       }
     });
 
-  StringComparer less;
+  StringComparer compare;
 
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &compare;
   opts.features = features();
 
   add_segment(gen, irs::OM_CREATE, opts);  // add segment
@@ -407,10 +416,10 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-      std::sort(column_payload.begin(), column_payload.end(),
-                [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                  return less(lhs, rhs);
-                });
+      std::stable_sort(column_payload.begin(), column_payload.end(),
+                       [&](const irs::bstring& lhs, const irs::bstring& rhs) {
+                         return compare.Compare(lhs, rhs) < 0;
+                       });
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
@@ -466,10 +475,10 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
         }
       }
 
-      std::sort(column_docs.begin(), column_docs.end(),
-                [&less](const doc& lhs, const doc& rhs) {
-                  return less(lhs.order, rhs.order);
-                });
+      std::stable_sort(column_docs.begin(), column_docs.end(),
+                       [&](const doc& lhs, const doc& rhs) {
+                         return compare.Compare(lhs.order, rhs.order) < 0;
+                       });
 
       auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
@@ -538,15 +547,15 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
   constexpr std::pair<size_t, size_t> segment_offsets[]{{0, 15}, {15, 17}};
 
-  StringComparer less;
+  StringComparer compare;
 
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &compare;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&less, writer->comparator());
+  ASSERT_EQ(&compare, writer->comparator());
 
   // Add segment 0
   {
@@ -594,10 +603,10 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
         ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-        std::sort(column_payload.begin(), column_payload.end(),
-                  [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                    return less(lhs, rhs);
-                  });
+        std::stable_sort(column_payload.begin(), column_payload.end(),
+                         [&](const irs::bstring& lhs, const irs::bstring& rhs) {
+                           return compare.Compare(lhs, rhs) < 0;
+                         });
 
         auto& sorted_column = *segment.sort();
         ASSERT_EQ(segment.docs_count(), sorted_column.size());
@@ -656,10 +665,10 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
           }
         }
 
-        std::sort(column_docs.begin(), column_docs.end(),
-                  [&less](const doc& lhs, const doc& rhs) {
-                    return less(lhs.order, rhs.order);
-                  });
+        std::stable_sort(column_docs.begin(), column_docs.end(),
+                         [&](const doc& lhs, const doc& rhs) {
+                           return compare.Compare(lhs.order, rhs.order) < 0;
+                         });
 
         auto* column_meta = segment.column(column_name);
         ASSERT_NE(nullptr, column_meta);
@@ -769,10 +778,10 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-      std::sort(column_payload.begin(), column_payload.end(),
-                [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                  return less(lhs, rhs);
-                });
+      std::stable_sort(column_payload.begin(), column_payload.end(),
+                       [&](const irs::bstring& lhs, const irs::bstring& rhs) {
+                         return compare.Compare(lhs, rhs) < 0;
+                       });
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
@@ -830,10 +839,10 @@ TEST_P(SortedIndexTestCase, simple_sequential_consolidate) {
         }
       }
 
-      std::sort(column_docs.begin(), column_docs.end(),
-                [&less](const doc& lhs, const doc& rhs) {
-                  return less(lhs.order, rhs.order);
-                });
+      std::stable_sort(column_docs.begin(), column_docs.end(),
+                       [&](const doc& lhs, const doc& rhs) {
+                         return compare.Compare(lhs.order, rhs.order) < 0;
+                       });
 
       auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
@@ -903,9 +912,9 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
       }
     });
 
-  LongComparer less;
+  LongComparer comparer;
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &comparer;
   opts.features = features();
 
   add_segment(gen, irs::OM_CREATE, opts);  // add segment
@@ -938,10 +947,10 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
 
       ASSERT_EQ(column_payload.size(), segment.docs_count());
 
-      std::sort(column_payload.begin(), column_payload.end(),
-                [&less](const irs::bstring& lhs, const irs::bstring& rhs) {
-                  return less(lhs, rhs);
-                });
+      std::stable_sort(column_payload.begin(), column_payload.end(),
+                       [&](const irs::bstring& lhs, const irs::bstring& rhs) {
+                         return comparer.Compare(lhs, rhs) < 0;
+                       });
 
       auto& sorted_column = *segment.sort();
       ASSERT_EQ(segment.docs_count(), sorted_column.size());
@@ -999,10 +1008,10 @@ TEST_P(SortedIndexTestCase, simple_sequential_already_sorted) {
         }
       }
 
-      std::sort(column_docs.begin(), column_docs.end(),
-                [&less](const doc& lhs, const doc& rhs) {
-                  return less(lhs.order, rhs.order);
-                });
+      std::stable_sort(column_docs.begin(), column_docs.end(),
+                       [&](const doc& lhs, const doc& rhs) {
+                         return comparer.Compare(lhs.order, rhs.order) < 0;
+                       });
 
       auto* column_meta = segment.column(column_name);
       ASSERT_NE(nullptr, column_meta);
@@ -1049,10 +1058,10 @@ TEST_P(SortedIndexTestCase, europarl) {
   SortedEuroparlDocTemplate doc("date", field_features());
   tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
 
-  LongComparer less;
+  LongComparer comparer;
 
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &comparer;
   opts.features = features();
 
   add_segment(gen, irs::OM_CREATE, opts);
@@ -1075,14 +1084,14 @@ TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
   same.value("A");
 
   // Open writer
-  StringComparer less;
+  StringComparer comparer;
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&less, writer->comparator());
+  ASSERT_EQ(&comparer, writer->comparator());
 
   // Write documents
   {
@@ -1173,16 +1182,16 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_dense) {
   auto* doc2 = gen.next();  // name == 'C'
   auto* doc3 = gen.next();  // name == 'D'
 
-  StringComparer less;
+  StringComparer comparer;
 
   // open writer
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&less, writer->comparator());
+  ASSERT_EQ(&comparer, writer->comparator());
 
   // Segment 0
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
@@ -1376,15 +1385,15 @@ TEST_P(SortedIndexTestCase,
   ASSERT_FALSE(empty_field.value().null());
   ASSERT_TRUE(empty_field.value().empty());
 
-  StringComparer less;
+  StringComparer comparer;
 
   // open writer
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &comparer;
   opts.features = features();
   auto writer = open_writer(irs::OM_CREATE, opts);
   ASSERT_NE(nullptr, writer);
-  ASSERT_EQ(&less, writer->comparator());
+  ASSERT_EQ(&comparer, writer->comparator());
 
   // segment 0
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
@@ -1648,15 +1657,15 @@ TEST_P(SortedIndexTestCase, doc_removal_same_key_within_trx) {
   auto query_doc2 = MakeByTerm("name", "B");
 
   {
-    StringComparer less;
+    StringComparer comparer;
 
     // open writer
     irs::index_writer::init_options opts;
-    opts.comparator = &less;
+    opts.comparator = &comparer;
     opts.features = features();
     auto writer = open_writer(irs::OM_CREATE, opts);
     ASSERT_NE(nullptr, writer);
-    ASSERT_EQ(&less, writer->comparator());
+    ASSERT_EQ(&comparer, writer->comparator());
 
     ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                        doc1->stored.begin(), doc1->stored.end(), doc1->sorted));
@@ -1721,9 +1730,9 @@ TEST_P(SortedIndexTestCase,
   auto* doc2 = gen.next();  // name == 'C'
   auto* doc3 = gen.next();  // name == 'D'
 
-  StringComparer less;
+  StringComparer comparer;
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
@@ -1920,9 +1929,9 @@ TEST_P(SortedIndexTestCase, check_document_order_after_consolidation_sparse) {
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  StringComparer less;
+  StringComparer comparer;
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &comparer;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
@@ -2154,9 +2163,9 @@ TEST_P(SortedIndexTestCase,
   auto* doc5 = gen.next();  // name == 'F'
   auto* doc6 = gen.next();  // name == 'G'
 
-  StringComparer less;
+  StringComparer compare;
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &compare;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
@@ -2392,9 +2401,9 @@ TEST_P(SortedIndexTestCase,
     filter = MakeByTerm(kName, field->value());
   }
 
-  StringComparer less;
+  StringComparer compare;
   irs::index_writer::init_options opts;
-  opts.comparator = &less;
+  opts.comparator = &compare;
   opts.features = features();
 
   auto writer = open_writer(irs::OM_CREATE, opts);
@@ -2662,13 +2671,13 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
       do {
         in_store.fill(false);
         // open writer
-        StringComparer less;
+        StringComparer compare;
         irs::index_writer::init_options opts;
-        opts.comparator = &less;
+        opts.comparator = &compare;
         opts.features = features();
         auto writer = open_writer(irs::OM_CREATE, opts);
         ASSERT_NE(nullptr, writer);
-        ASSERT_EQ(&less, writer->comparator());
+        ASSERT_EQ(&compare, writer->comparator());
         for (size_t i = 0; i < kLen; ++i) {
           {
             auto ctx = writer->documents();

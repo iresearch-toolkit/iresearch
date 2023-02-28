@@ -97,16 +97,13 @@ class test_feature_writer final : public irs::feature_writer {
   uint32_t value_;
 };
 
-struct binary_comparer : public irs::comparer {
+struct binary_comparer final : public irs::comparer {
  protected:
-  bool less(irs::bytes_ref lhs, irs::bytes_ref rhs) const override {
-    if (rhs.null() != lhs.null()) {
-      return lhs.null();
-    }
-    if (!lhs.null()) {
-      return lhs < rhs;
-    }
-    return false;
+  int CompareImpl(irs::bytes_ref lhs, irs::bytes_ref rhs) const final {
+    EXPECT_FALSE(lhs.null());
+    EXPECT_FALSE(rhs.null());
+
+    return compare(lhs, rhs);
   }
 };
 
