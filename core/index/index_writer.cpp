@@ -1090,7 +1090,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
   assert(ctx.writer_);
   assert(writer_docs <= doc_limits::eof());
   if (auto docs = ctx.writer_->docs_context(); commit_start < docs.size()) {
-    IRS_ASSERT(writer_->initialized());
+    assert(ctx.writer_->initialized());
     update_generation({docs.data() + commit_start, docs.size() - commit_start});
   }
 
