@@ -55,7 +55,7 @@ class format_10_test_case : public tests::format_test_case {
   };
 
   void AssertFrequencyAndPositions(irs::doc_iterator& expected,
-                                      irs::doc_iterator& actual) {
+                                   irs::doc_iterator& actual) {
     auto* expected_freq = irs::get_mutable<irs::frequency>(&expected);
     auto* actual_freq = irs::get_mutable<irs::frequency>(&actual);
     ASSERT_EQ(!expected_freq, !actual_freq);
@@ -114,11 +114,12 @@ class format_10_test_case : public tests::format_test_case {
 
     // write postings for field
     {
-      irs::flush_state state;
-      state.dir = dir.get();
-      state.doc_count = docs.back().first + 1;
-      state.name = "segment_name";
-      state.index_features = field.index_features;
+      irs::flush_state state{
+        .dir = dir.get(),
+        .name = "segment_name",
+        .doc_count = docs.back().first + 1,
+        .index_features = field.index_features,
+      };
 
       auto out = dir->create("attributes");
       ASSERT_FALSE(!out);
@@ -303,11 +304,12 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 
   // write postings
   {
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 100;
-    state.name = "segment_name";
-    state.index_features = field.index_features;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "segment_name",
+      .doc_count = 100,
+      .index_features = field.index_features,
+    };
 
     auto out = dir().create("attributes");
     ASSERT_FALSE(!out);
@@ -466,11 +468,12 @@ TEST_P(format_10_test_case, postings_read_write) {
 
   // write postings
   {
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 150;
-    state.name = "segment_name";
-    state.index_features = field.index_features;
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "segment_name",
+      .doc_count = 150,
+      .index_features = field.index_features,
+    };
 
     auto out = dir().create("attributes");
     ASSERT_FALSE(!out);
@@ -614,12 +617,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     field.name = "field";
     field.index_features = features;
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 10000;
-    state.name = "0";
-    state.index_features =
-      field.index_features;  // all possible features in segment
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "0",
+      .doc_count = 10000,
+      // all possible features in segment
+      .index_features = field.index_features,
+    };
 
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
@@ -642,12 +646,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     field.name = "field";
     field.index_features = features;
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 10000;
-    state.name = "1";
-    state.index_features =
-      field.index_features;  // all possible features in segment
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "1",
+      .doc_count = 10000,
+      // all possible features in segment
+      .index_features = field.index_features,
+    };
 
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
@@ -670,12 +675,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     field.name = "field";
     field.index_features = features;
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 10000;
-    state.name = "2";
-    state.index_features =
-      field.index_features;  // all possible features in segment
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "2",
+      .doc_count = 10000,
+      // all possible features in segment
+      .index_features = field.index_features,
+    };
 
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
@@ -697,12 +703,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     field.name = "field";
     field.index_features = features;
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 10000;
-    state.name = "3";
-    state.index_features =
-      field.index_features;  // all possible features in segment
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "3",
+      .doc_count = 10000,
+      // all possible features in segment
+      .index_features = field.index_features,
+    };
 
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
@@ -723,12 +730,13 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     field.name = "field";
     field.index_features = features;
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 10000;
-    state.name = "4";
-    state.index_features =
-      field.index_features;  // all possible features in segment
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "4",
+      .doc_count = 10000,
+      // all possible features in segment
+      .index_features = field.index_features,
+    };
 
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
@@ -749,10 +757,11 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     field.name = "field";
     field.index_features = features;
 
-    irs::flush_state state;
-    state.dir = &dir();
-    state.doc_count = 10000;
-    state.name = "5";
+    irs::flush_state state{
+      .dir = &dir(),
+      .name = "5",
+      .doc_count = 10000,
+    };
 
     auto out = dir().create(std::string("postings") + state.name.data());
     ASSERT_FALSE(!out);
@@ -787,10 +796,11 @@ TEST_P(format_10_test_case, ires336) {
   tests::format_test_case::terms<decltype(terms.begin())> trms(
     terms.begin(), terms.end(), docs.begin(), docs.end());
 
-  irs::flush_state flush_state;
-  flush_state.dir = dir.get();
-  flush_state.doc_count = 10000;
-  flush_state.name = segment_name;
+  irs::flush_state flush_state{
+    .dir = dir.get(),
+    .name = segment_name,
+    .doc_count = 10000,
+  };
 
   irs::field_meta field_meta;
   field_meta.name = field;

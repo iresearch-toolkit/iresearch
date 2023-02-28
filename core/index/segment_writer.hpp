@@ -145,8 +145,7 @@ class segment_writer : util::noncopyable {
 
   std::span<update_context> docs_context() noexcept { return docs_context_; }
 
-  std::span<update_context> flush(IndexSegment& segment,
-                                  document_mask& docs_mask);
+  doc_map flush(IndexSegment& segment, document_mask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t docs_cached() const noexcept { return docs_context_.size(); }
@@ -360,7 +359,7 @@ class segment_writer : util::noncopyable {
   // Flushes document mask to directory, returns number of masked documens
   document_mask get_doc_mask(const doc_map& docmap);
   // Flushes indexed fields to directory
-  void flush_fields(flush_state& docmap);
+  void FlushFields(flush_state& state);
 
   ScorersView scorers_;
   std::deque<cached_column> cached_columns_;  // pointers remain valid

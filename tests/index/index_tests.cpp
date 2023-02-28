@@ -32,6 +32,7 @@
 #include "index/norm.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/term_filter.hpp"
+#include "store/fs_directory.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/delta_compression.hpp"
@@ -310,12 +311,12 @@ class index_test_case : public tests::index_test_base {
         }
       });
 
-    tests::document const* doc1 = gen.next();
-    tests::document const* doc2 = gen.next();
-    tests::document const* doc3 = gen.next();
-    tests::document const* doc4 = gen.next();
-    tests::document const* doc5 = gen.next();
-    tests::document const* doc6 = gen.next();
+    const tests::document* doc1 = gen.next();
+    const tests::document* doc2 = gen.next();
+    const tests::document* doc3 = gen.next();
+    const tests::document* doc4 = gen.next();
+    const tests::document* doc5 = gen.next();
+    const tests::document* doc6 = gen.next();
 
     // test import/insert/deletes/existing all empty after clear
     {
@@ -827,7 +828,7 @@ class index_test_case : public tests::index_test_base {
       auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_APPEND);
       tests::json_doc_generator gen(resource("simple_sequential.json"),
                                     &tests::generic_json_field_factory);
-      tests::document const* doc1 = gen.next();
+      const tests::document* doc1 = gen.next();
       ASSERT_EQ(0, writer->BufferedDocs());
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
@@ -852,7 +853,7 @@ class index_test_case : public tests::index_test_base {
         irs::IndexWriter::Make(dir(), codec(), irs::OM_APPEND | irs::OM_CREATE);
       tests::json_doc_generator gen(resource("simple_sequential.json"),
                                     &tests::generic_json_field_factory);
-      tests::document const* doc1 = gen.next();
+      const tests::document* doc1 = gen.next();
       ASSERT_EQ(0, writer->BufferedDocs());
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
@@ -881,8 +882,8 @@ class index_test_case : public tests::index_test_base {
           doc.insert(std::make_shared<tests::string_field>(name, data.str));
         }
       });
-    tests::document const* doc1 = gen.next();
-    tests::document const* doc2 = gen.next();
+    const tests::document* doc1 = gen.next();
+    const tests::document* doc2 = gen.next();
 
     auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
 
@@ -974,9 +975,9 @@ class index_test_case : public tests::index_test_base {
     tests::json_doc_generator gen(resource("simple_sequential.json"),
                                   &tests::generic_json_field_factory);
 
-    tests::document const* doc1 = gen.next();
-    tests::document const* doc2 = gen.next();
-    tests::document const* doc3 = gen.next();
+    const tests::document* doc1 = gen.next();
+    const tests::document* doc2 = gen.next();
+    const tests::document* doc3 = gen.next();
 
     {
       auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
@@ -2191,10 +2192,10 @@ class index_test_case : public tests::index_test_base {
 
       tests::json_doc_generator gen(resource("simple_sequential.json"),
                                     &tests::generic_json_field_factory);
-      tests::document const* doc1 = gen.next();
-      tests::document const* doc2 = gen.next();
-      tests::document const* doc3 = gen.next();
-      tests::document const* doc4 = gen.next();
+      const tests::document* doc1 = gen.next();
+      const tests::document* doc2 = gen.next();
+      const tests::document* doc3 = gen.next();
+      const tests::document* doc4 = gen.next();
 
       auto writer =
         irs::IndexWriter::Make(override_dir, codec(), irs::OM_APPEND);
@@ -2222,10 +2223,10 @@ class index_test_case : public tests::index_test_base {
 
       tests::json_doc_generator gen(resource("simple_sequential.json"),
                                     &tests::generic_json_field_factory);
-      tests::document const* doc1 = gen.next();
-      tests::document const* doc2 = gen.next();
-      tests::document const* doc3 = gen.next();
-      tests::document const* doc4 = gen.next();
+      const tests::document* doc1 = gen.next();
+      const tests::document* doc2 = gen.next();
+      const tests::document* doc3 = gen.next();
+      const tests::document* doc4 = gen.next();
 
       auto writer =
         irs::IndexWriter::Make(override_dir, codec(), irs::OM_APPEND);
@@ -2461,8 +2462,8 @@ TEST_P(index_test_case, s2sequence) {
 TEST_P(index_test_case, reopen_reader_after_writer_is_closed) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   irs::DirectoryReader reader0;
   irs::DirectoryReader reader1;
@@ -2553,7 +2554,7 @@ TEST_P(index_test_case, writer_begin_clear_empty_index) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   {
     auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
@@ -2580,7 +2581,7 @@ TEST_P(index_test_case, writer_begin_clear) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   {
     auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
@@ -2649,7 +2650,7 @@ TEST_P(index_test_case, writer_commit_clear) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   {
     auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
@@ -2728,6 +2729,9 @@ TEST_P(index_test_case, europarl_docs_automaton) {
 }
 
 TEST_P(index_test_case, europarl_docs_big) {
+  if (dynamic_cast<irs::FSDirectory*>(&dir()) != nullptr) {
+    GTEST_SKIP() << "too long for our CI";
+  }
   {
     tests::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
@@ -2736,18 +2740,11 @@ TEST_P(index_test_case, europarl_docs_big) {
   assert_index();
 }
 
-#ifndef IRESEARCH_DEBUG
-
-// TEST_P(index_test_case, europarl_docs_big) {
-//   {
-//     tests::europarl_doc_template doc;
-//     tests::delim_doc_generator gen(resource("europarl.subset.big.txt"), doc);
-//     add_segment(gen);
-//   }
-//   assert_index();
-// }
-
 TEST_P(index_test_case, europarl_docs_big_automaton) {
+#ifdef IRESEARCH_DEBUG
+  GTEST_SKIP() << "too long for our CI";
+#endif
+
   {
     tests::europarl_doc_template doc;
     tests::delim_doc_generator gen(resource("europarl.subset.txt"), doc);
@@ -2775,8 +2772,6 @@ TEST_P(index_test_case, europarl_docs_big_automaton) {
     assert_index(0, &matcher);
   }
 }
-
-#endif
 
 TEST_P(index_test_case, docs_bit_union) {
   docs_bit_union(irs::IndexFeatures::NONE);
@@ -2940,8 +2935,8 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   // remove added docs, add same docs again commit separate thread before end of
   // add
@@ -3078,10 +3073,10 @@ TEST_P(index_test_case, document_context) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
 
   struct {
     std::condition_variable cond;
@@ -4615,15 +4610,15 @@ TEST_P(index_test_case, doc_removal) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
-  tests::document const* doc7 = gen.next();
-  tests::document const* doc8 = gen.next();
-  tests::document const* doc9 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
+  const tests::document* doc6 = gen.next();
+  const tests::document* doc7 = gen.next();
+  const tests::document* doc8 = gen.next();
+  const tests::document* doc9 = gen.next();
 
   // new segment: add
   {
@@ -5169,10 +5164,10 @@ TEST_P(index_test_case, doc_update) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
 
   // new segment update (as reference)
   {
@@ -5860,10 +5855,10 @@ TEST_P(index_test_case, import_reader) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
 
   // add a reader with 1 segment no docs
   {
@@ -6293,10 +6288,10 @@ TEST_P(index_test_case, refresh_reader) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
 
   // initial state (1st segment 2 docs)
   {
@@ -6686,8 +6681,8 @@ TEST_P(index_test_case, segment_column_user_system) {
                 true, false);
   }
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   irs::IndexWriterOptions opts;
   opts.features = features_with_norms();
@@ -7426,7 +7421,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   // segment 1
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
@@ -7487,8 +7482,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   constexpr irs::IndexFeatures all_features =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
@@ -7639,10 +7634,10 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
 
   constexpr irs::IndexFeatures all_features =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
@@ -8389,9 +8384,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
 
   // 2-phase: clear + consolidate
   {
@@ -8558,11 +8553,11 @@ TEST_P(index_test_case, segment_consolidate_commit) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
 
   constexpr irs::IndexFeatures all_features =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
@@ -9104,12 +9099,12 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
+  const tests::document* doc6 = gen.next();
 
   constexpr irs::IndexFeatures all_features =
     irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
@@ -12775,12 +12770,12 @@ TEST_P(index_test_case, segment_consolidate) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
+  const tests::document* doc6 = gen.next();
 
   auto always_merge =
     irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
@@ -13662,12 +13657,12 @@ TEST_P(index_test_case, segment_consolidate_policy) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
+  const tests::document* doc6 = gen.next();
 
   // bytes size policy (merge)
   {
@@ -14263,8 +14258,8 @@ TEST_P(index_test_case, segment_options) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   // segment_count_max
   {
@@ -16227,8 +16222,8 @@ TEST_P(index_test_case_11, consolidate_old_format) {
         doc.insert(std::make_shared<tests::string_field>(name, data.str));
       }
     });
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   auto validate_codec = [&](auto codec, size_t size) {
     auto reader = irs::DirectoryReader(dir());
@@ -16274,7 +16269,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   irs::IndexWriterOptions writer_options;
   uint64_t payload_committed_tick{0};

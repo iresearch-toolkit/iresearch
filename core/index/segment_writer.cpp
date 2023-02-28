@@ -49,19 +49,6 @@ namespace {
   return true;
 }
 
-// Please will be accurate with trying to make this function in-place
-// During my small research I consider it's impossible without mutable docmap
-void reorder(std::vector<segment_writer::update_context>& ctxs,
-             const doc_map& docmap) {
-  std::vector<segment_writer::update_context> new_ctxs;
-  new_ctxs.resize(ctxs.size());
-  for (size_t i = 0, size = ctxs.size(); i < size; ++i) {
-    new_ctxs[docmap[i + doc_limits::min()] - doc_limits::min()] =
-      std::move(ctxs[i]);
-  }
-  ctxs = std::move(new_ctxs);
-}
-
 }  // namespace
 
 segment_writer::stored_column::stored_column(
@@ -221,14 +208,13 @@ column_output& segment_writer::stream(const hashed_string_view& name,
     ->writer(doc_id);
 }
 
-void segment_writer::flush_fields(flush_state& state) {
+void segment_writer::FlushFields(flush_state& state) {
   IRS_ASSERT(field_writer_);
 
   try {
     fields_.flush(*field_writer_, state);
   } catch (...) {
     field_writer_.reset();  // invalidate field writer
-
     throw;
   }
 }
@@ -262,8 +248,7 @@ document_mask segment_writer::get_doc_mask(const doc_map& docmap) {
   return docs_mask;
 }
 
-std::span<segment_writer::update_context> segment_writer::flush(
-  IndexSegment& segment, document_mask& docs_mask) {
+doc_map segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(docs_mask.empty());
 
@@ -275,10 +260,11 @@ std::span<segment_writer::update_context> segment_writer::flush(
                     .scorers = scorers_,
                     .doc_count = docs_cached()};
 
-  if (fields_.comparator()) {
-    std::tie(docmap, sort_.id) =
-      sort_.stream.flush(*col_writer_, std::move(sort_.finalizer),
-                         doc_id_t(docs_cached()), *fields_.comparator());
+  doc_map docmap;
+  if (fields_.comparator() != nullptr) {
+    std::tie(docmap, sort_.id) = sort_.stream.flush(
+      *col_writer_, std::move(sort_.finalizer),
+      static_cast<doc_id_t>(state.doc_count), *fields_.comparator());
 
     // flush all cached columns
     irs::sorted_column::flush_buffer_t buffer;
@@ -293,7 +279,6 @@ std::span<segment_writer::update_context> segment_writer::flush(
 
     if (!docmap.empty()) {
       state.docmap = &docmap;
-      reorder(docs_context_, docmap);
     }
   }
 
@@ -301,18 +286,20 @@ std::span<segment_writer::update_context> segment_writer::flush(
   meta.column_store = col_writer_->commit(state);
 
   // flush fields metadata & inverted data,
-  if (docs_cached()) {
-    flush_fields(state);
+  if (state.doc_count != 0) {
+    FlushFields(state);
   }
 
-  // get non-empty document mask
-  if (docs_mask_.any()) {
+  // TODO(MBkkt) Move docs_mask_ remapping to the end of FlashAll Stage 4.
+  //  In such case we will avoid all old2new remappings, only new2old remain.
+  //  Also it will be lazy in such case.
+  if (docs_mask_.any()) {  // get non-empty document mask
     docs_mask = get_doc_mask(docmap);
   }
 
   // update segment metadata
-  IRS_ASSERT(docs_cached() >= docs_mask.size());
-  meta.docs_count = docs_cached();
+  IRS_ASSERT(docs_mask.size() <= state.doc_count);
+  meta.docs_count = state.doc_count;
   meta.live_docs_count = meta.docs_count - docs_mask.size();
   meta.files = dir_.FlushTracked(meta.byte_size);
 
@@ -320,7 +307,7 @@ std::span<segment_writer::update_context> segment_writer::flush(
   // be changed by removals accumulated in IndexWriter.
   index_utils::FlushIndexSegment(dir_, segment);
 
-  return docs_context_;
+  return docmap;
 }
 
 void segment_writer::reset() noexcept {

@@ -543,7 +543,7 @@ class StringComparer final : public irs::Comparer {
   }
 };
 
-void reorder(std::span<tests::document const*> docs,
+void reorder(std::span<const tests::document*> docs,
              std::span<irs::segment_writer::update_context> ctxs,
              std::vector<size_t> order) {
   for (size_t i = 0; i < order.size(); ++i) {
@@ -554,6 +554,22 @@ void reorder(std::span<tests::document const*> docs,
       std::swap(new_i, order[new_i]);
     }
   }
+}
+
+std::vector<irs::segment_writer::update_context> reorder(
+  std::span<irs::segment_writer::update_context> ctxs,
+  const irs::doc_map& docmap) {
+  std::vector<irs::segment_writer::update_context> new_ctxs;
+  new_ctxs.resize(ctxs.size());
+  for (size_t i = 0, size = ctxs.size(); i < size; ++i) {
+    if (docmap.empty()) {
+      new_ctxs[i] = ctxs[i];
+    } else {
+      new_ctxs[docmap[i + irs::doc_limits::min()] - irs::doc_limits::min()] =
+        ctxs[i];
+    }
+  }
+  return new_ctxs;
 }
 
 TEST_F(segment_writer_tests, reorder) {
@@ -568,7 +584,7 @@ TEST_F(segment_writer_tests, reorder) {
       }
     });
   static constexpr size_t kLen = 5;
-  std::array<tests::document const*, kLen> docs;
+  std::array<const tests::document*, kLen> docs;
   std::array<irs::segment_writer::update_context, kLen> ctxs;
   for (size_t i = 0; i < kLen; ++i) {
     docs[i] = gen.next();
@@ -616,9 +632,9 @@ TEST_F(segment_writer_tests, reorder) {
     irs::IndexSegment index_segment;
     irs::document_mask docs_mask;
     index_segment.meta.codec = default_codec();
-    auto docs_context = writer->flush(index_segment, docs_mask);
+    auto old2new = writer->flush(index_segment, docs_mask);
     ASSERT_TRUE(docs_mask.empty());
-    ASSERT_EQ(docs_context.size(), kLen);
+    const auto docs_context = reorder(writer->docs_context(), old2new);
     for (size_t i = 0; i < kLen; ++i) {
       EXPECT_EQ(expected[i], docs_context[i].generation);
       EXPECT_EQ(expected[i], docs_context[i].update_id);
