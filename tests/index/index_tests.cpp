@@ -16145,6 +16145,35 @@ TEST_P(index_test_case_11, initial_two_phase_commit_payload_revert) {
   ASSERT_EQ(reader, reader.reopen());
 }
 
+TEST_P(index_test_case_11, flushed_generation_update) {
+  tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                &tests::generic_json_field_factory);
+  const tests::document* doc0 = gen.next();
+  const tests::document* doc1 = gen.next();
+  irs::index_writer::init_options writer_options;
+  writer_options.segment_docs_max = 1;
+  auto writer = open_writer(irs::OM_CREATE, writer_options);
+  {
+      auto trx = writer->documents();
+      {
+        auto doc = trx.insert();
+        doc.insert<irs::Action::INDEX>(doc0->indexed.begin(), doc0->indexed.end());
+      }
+      trx.remove(MakeByTerm("name", "B"));
+  }
+  { 
+      auto trx = writer->documents();
+     {
+       auto doc = trx.insert();
+       doc.insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                     doc1->indexed.end());
+      }
+  }
+  writer->commit();
+  auto reader = irs::directory_reader::open(dir());
+  ASSERT_EQ(reader->live_docs_count(), 2);
+}
+
 TEST_P(index_test_case_11, initial_commit_payload_revert) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);

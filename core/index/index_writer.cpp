@@ -1065,40 +1065,40 @@ void index_writer::flush_context::emplace(active_segment_context&& segment,
                   const_cast<size_t&>(v.generation) += generation_base;
                 });
 
-  auto update_generation = [uncomitted_doc_id_begin =
-                              ctx.uncomitted_doc_id_begin_ - doc_limits::min(),
-                            modification_count, generation_base](
-                             std::span<segment_writer::update_context> ctxs) {
-    // update generations of segment_context::flushed_update_contexts_
-    for (size_t i = uncomitted_doc_id_begin, end = ctxs.size(); i < end; ++i) {
-      // can == modification_count if inserts come  after
-      // modification
-      assert(ctxs[i].generation <= modification_count);
+  auto update_generation = [&](std::span<segment_writer::update_context> ctxs) {
+    for (auto& ctx_i : ctxs) {
+      // can == modification_count if inserts come after modification
+      assert(ctx_i.generation <= modification_count);
       // update to flush_context generation
-      ctxs[i].generation += generation_base;
+      ctx_i.generation += generation_base;
     }
   };
 
   auto& flushed_update_contexts = ctx.flushed_update_contexts_;
 
   // update generations of segment_context::flushed_update_contexts_
-  update_generation(flushed_update_contexts);
+  size_t commit_start = ctx.uncomitted_doc_id_begin_ - doc_limits::min();
+  if (commit_start < flushed_update_contexts.size()) {
+    update_generation({flushed_update_contexts.data() + commit_start,
+                       flushed_update_contexts.size() - commit_start});
+    commit_start = 0;
+  } else {
+    commit_start -= flushed_update_contexts.size();
+  }
 
+  auto const writer_docs = ctx.writer_->docs_cached();
   assert(ctx.writer_);
-  assert(ctx.writer_->docs_cached() <= doc_limits::eof());
-  auto& writer = *(ctx.writer_);
-  const auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
-
-  // update generations of segment_writer::doc_contexts
-  if (writer_docs) {
-    update_generation(writer.docs_context());
+  assert(writer_docs <= doc_limits::eof());
+  if (auto docs = ctx.writer_->docs_context(); commit_start < docs.size()) {
+    IRS_ASSERT(writer_->initialized());
+    update_generation({docs.data() + commit_start, docs.size() - commit_start});
   }
 
   // reset counters for segment reuse
 
   ctx.uncomitted_generation_offset_ = 0;
-  ctx.uncomitted_doc_id_begin_ =
-    flushed_update_contexts.size() + writer_docs + doc_limits::min();
+  ctx.uncomitted_doc_id_begin_ = flushed_update_contexts.size() +
+                                 writer_docs + doc_limits::min();
   ctx.uncomitted_modification_queries_ = ctx.modification_queries_.size();
 
   if (!freelist_node) {
