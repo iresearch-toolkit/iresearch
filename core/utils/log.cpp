@@ -313,8 +313,7 @@ bool file_line_addr2line(irs::logger::level_t level, const char* obj,
 
   return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
 }
-#else
-#ifndef DISABLE_EXECINFO
+#elif !defined(DISABLE_EXECINFO)
 bool file_line_addr2line(irs::logger::level_t level, const char* obj,
                          const char* addr, int fd) {
   auto pid = fork();
@@ -345,10 +344,7 @@ bool file_line_addr2line(irs::logger::level_t level, const char* obj,
 
   return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
 }
-#endif
-#endif
 
-#ifndef DISABLE_EXECINFO
 bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj,
                    const char* addr) {
   char* suffix;
