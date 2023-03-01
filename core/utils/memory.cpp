@@ -22,7 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _MSC_VER
+#ifndef DISABLE_EXECINFO
 #include <execinfo.h>  // for backtrace(...)
+#endif
+
+#include <cstddef>  // needed for __GLIBC__
 
 #if !defined(__APPLE__) && defined(__GLIBC__)
 #include <malloc.h>
@@ -66,11 +70,13 @@ Topmost releasable block (keepcost):   %u\n\
 
   malloc_stats();  // output malloc_stats to stderr
 #endif
+#ifndef DISABLE_EXECINFO
   // output stacktrace
   void* frames_buf[128];  // arbitrary size
 
   backtrace_symbols_fd(frames_buf, backtrace(frames_buf, std::size(frames_buf)),
                        fileno(stderr));
+#endif
 #endif
 }
 

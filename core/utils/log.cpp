@@ -36,7 +36,9 @@
 #else
 #include <cxxabi.h>  // for abi::__cxa_demangle(...)
 #include <dlfcn.h>   // for dladdr(...)
+#ifndef DISABLE_EXECINFO
 #include <execinfo.h>
+#endif
 #include <sys/wait.h>  // for waitpid(...)
 #include <unistd.h>    // for STDIN_FILENO/STDOUT_FILENO/STDERR_FILENO
 
@@ -71,14 +73,14 @@ MSVC_ONLY(__pragma(warning(
 
 MSVC_ONLY(__pragma(warning(pop)))
 
-void noop_log_appender(void*, char const*, char const*, int,
-                       irs::logger::level_t, char const*,
+void noop_log_appender(void*, const char*, const char*, int,
+                       irs::logger::level_t, const char*,
                        size_t /* message_len */) {}
 
 constexpr const char* LOG_LEVELS[]{"FATAL", "ERROR", "WARN",
                                    "INFO",  "DEBUG", "TRACE"};
-void fd_log_appender(void* context, char const* function, char const* file,
-                     int line, irs::logger::level_t level, char const* message,
+void fd_log_appender(void* context, const char* function, const char* file,
+                     int line, irs::logger::level_t level, const char* message,
                      size_t /* message_len */) {
   FILE* fd = reinterpret_cast<FILE*>(context);
   if (fd != nullptr) {
@@ -169,10 +171,12 @@ class logger_ctx : public irs::singleton<logger_ctx> {
   irs::logger::level_t stack_trace_level_;
 };
 
+#ifndef DISABLE_EXECINFO
 typedef std::function<void(const char* file, size_t line, const char* fn)>
   bfd_callback_type_t;
 bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj,
                    void* addr);  // predeclaration
+#endif
 bool stack_trace_libunwind(irs::logger::level_t level,
                            int output_pipe);  // predeclaration
 
@@ -309,7 +313,7 @@ bool file_line_addr2line(irs::logger::level_t level, const char* obj,
 
   return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
 }
-#else
+#elif !defined(DISABLE_EXECINFO)
 bool file_line_addr2line(irs::logger::level_t level, const char* obj,
                          const char* addr, int fd) {
   auto pid = fork();
@@ -340,7 +344,6 @@ bool file_line_addr2line(irs::logger::level_t level, const char* obj,
 
   return 0 < waitpid(pid, &status, 0) && !WEXITSTATUS(status);
 }
-#endif
 
 bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj,
                    const char* addr) {
@@ -362,6 +365,7 @@ std::shared_ptr<char> proc_name_demangle(const char* symbol) {
 
   return buf && !status ? std::move(buf) : nullptr;
 }
+#endif
 
 #if defined(__APPLE__)
 bool stack_trace_gdb(irs::logger::level_t level, int fd) {
@@ -425,7 +429,9 @@ bool stack_trace_gdb(irs::logger::level_t level, int fd) {
 }
 #endif
 
-void stack_trace_posix(irs::logger::level_t level, int out_pipe) {
+void stack_trace_posix([[maybe_unused]] irs::logger::level_t level,
+                       [[maybe_unused]] int out_pipe) {
+#ifndef DISABLE_EXECINFO
   auto* out = fdopen(out_pipe, "w");
   if (out == nullptr) {
     IR_LOG_FORMATED(level,
@@ -588,9 +594,11 @@ void stack_trace_posix(irs::logger::level_t level, int out_pipe) {
   close(pipefd[0]);
   std::fprintf(out, "\n");
   std::fflush(out);
+#endif
 }
 #endif
 
+#ifndef DISABLE_EXECINFO
 #if defined(USE_LIBBFD)
 bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj,
                    void* addr) {
@@ -646,6 +654,7 @@ bool file_line_bfd(const bfd_callback_type_t& callback, const char* obj,
 bool file_line_bfd(const bfd_callback_type_t&, const char*, void*) {
   return false;
 }
+#endif
 #endif
 
 #if defined(USE_LIBUNWIND)
@@ -909,7 +918,10 @@ void stack_trace(level_t level, const std::exception_ptr& eptr) {
 }
 
 #ifndef _MSC_VER
-void stack_trace_nomalloc(level_t level, int fd, size_t skip) {
+void stack_trace_nomalloc([[maybe_unused]] level_t level,
+                          [[maybe_unused]] int fd,
+                          [[maybe_unused]] size_t skip) {
+#ifndef DISABLE_EXECINFO
   if (!enabled(level)) {
     return;  // skip generating trace if logging is disabled for this level
              // altogether
@@ -924,6 +936,7 @@ void stack_trace_nomalloc(level_t level, int fd, size_t skip) {
     std::lock_guard lock{mtx};
     backtrace_symbols_fd(frames_buf + skip, frames_count - skip, fd);
   }
+#endif
 }
 #endif
 
