@@ -58,7 +58,7 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
     stats_align = std::max(stats_align, bucket_stats_align);
 
     stats_size = memory::align_up(stats_size, bucket_stats_align);
-    features |= prepared->features();
+    features |= prepared->index_features();
 
     buckets.emplace_back(std::move(prepared), stats_size);
 
@@ -74,7 +74,8 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
 
 REGISTER_ATTRIBUTE(filter_boost);
 
-ScorerFactory::ScorerFactory(const type_info& type) noexcept : type_{type.id()} {}
+ScorerFactory::ScorerFactory(const type_info& type) noexcept
+  : type_{type.id()} {}
 
 Scorers Scorers::Prepare(std::span<const ScorerFactory::ptr> order) {
   return std::apply(

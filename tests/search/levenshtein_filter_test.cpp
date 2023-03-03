@@ -183,8 +183,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       ++collect_term_count;
     };
     scorer.collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::IndexReader&,
-                      const irs::FieldCollector*,
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
@@ -233,8 +232,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       ++collect_term_count;
     };
     scorer.collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::IndexReader&,
-                      const irs::FieldCollector*,
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
@@ -283,8 +281,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
       ++collect_term_count;
     };
     scorer.collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::IndexReader&,
-                      const irs::FieldCollector*,
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {

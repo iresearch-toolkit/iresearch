@@ -26,6 +26,7 @@
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
+#include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -478,8 +479,7 @@ class sort final : public irs::ScorerBase<bm25::stats> {
   sort(float_t k, float_t b, bool boost_as_score) noexcept
     : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
 
-  void collect(byte_type* stats_buf, const irs::IndexReader& /*index*/,
-               const irs::FieldCollector* field,
+  void collect(byte_type* stats_buf, const irs::FieldCollector* field,
                const irs::TermCollector* term) const final {
     auto& stats = stats_cast(stats_buf);
 
@@ -500,7 +500,7 @@ class sort final : public irs::ScorerBase<bm25::stats> {
 
     // - stats were already initialized
     // - BM15 without norms
-    if (b_ == 0.f) {
+    if (IsBM15()) {
       stats.norm_const = 1.f;
       return;
     }
@@ -521,7 +521,18 @@ class sort final : public irs::ScorerBase<bm25::stats> {
     }
   }
 
-  IndexFeatures features() const noexcept final { return IndexFeatures::FREQ; }
+  IndexFeatures index_features() const noexcept final {
+    return IndexFeatures::FREQ;
+  }
+
+  std::span<const type_info::type_id> features() const noexcept final {
+    if (!IsBM15()) {
+      static const irs::type_info::type_id kFeature{irs::type<Norm2>::id()};
+      return {&kFeature, 1};
+    }
+
+    return {};
+  }
 
   FieldCollector::ptr prepare_field_collector() const final {
     return std::make_unique<field_collector>();
@@ -547,7 +558,7 @@ class sort final : public irs::ScorerBase<bm25::stats> {
     auto& stats = stats_cast(query_stats);
     auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
-    if (b_ != 0.f) {
+    if (!IsBM15()) {
       auto* doc = irs::get<document>(doc_attrs);
 
       if (IRS_UNLIKELY(!doc)) {
@@ -597,11 +608,18 @@ class sort final : public irs::ScorerBase<bm25::stats> {
     return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, stats, freq);
   }
 
+  WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
+    return std::make_unique<WandWriterImpl<FreqProducer>>(*this, max_levels);
+  }
+
   TermCollector::ptr prepare_term_collector() const final {
     return std::make_unique<term_collector>();
   }
 
  private:
+  // Norms are not needed for BM15
+  bool IsBM15() const noexcept { return b_ == 0.f; }
+
   float_t k_;
   float_t b_;
   bool boost_as_score_;

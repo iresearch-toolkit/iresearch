@@ -183,11 +183,10 @@ class field_collectors : public collectors_base<field_collector_wrapper> {
   // current 'filter'
   // stats out-parameter to store statistics for later use in
   // calls to score(...)
-  // index the full index to collect statistics on
   // Note called once on the 'index' for every term matched by a filter
   //       calling collect(...) on each of its segments
   // Note if not matched terms then called exactly once
-  void finish(byte_type* stats_buf, const IndexReader& index) const;
+  void finish(byte_type* stats_buf) const;
 };
 
 static_assert(std::is_nothrow_move_constructible_v<field_collectors>);

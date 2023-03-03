@@ -58,7 +58,7 @@ filter::prepared::ptr all::prepare(const IndexReader& reader,
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = stats.data();
 
-  PrepareCollectors(order.buckets(), stats_buf, reader);
+  PrepareCollectors(order.buckets(), stats_buf);
 
   return memory::make_managed<all_query>(std::move(stats),
                                          this->boost() * filter_boost);

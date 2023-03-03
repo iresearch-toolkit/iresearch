@@ -63,7 +63,6 @@ ScoreFunction CompileScore(Args&&... args) {
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,
 // e.g. for 'all' filter.
-void PrepareCollectors(std::span<const ScorerBucket> order, byte_type* stats,
-                       const IndexReader& index);
+void PrepareCollectors(std::span<const ScorerBucket> order, byte_type* stats);
 
 }  // namespace irs

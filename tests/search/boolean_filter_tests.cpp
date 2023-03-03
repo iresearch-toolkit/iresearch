@@ -81,8 +81,14 @@ struct basic_sort : irs::ScorerFactory {
   struct prepared_sort final : irs::ScorerBase<void> {
     explicit prepared_sort(size_t idx) : idx(idx) {}
 
-    irs::IndexFeatures features() const final {
+    irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;
+    }
+    std::span<const irs::type_info::type_id> features() const noexcept final {
+      return {};
+    }
+    irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
+      return nullptr;
     }
 
     irs::ScoreFunction prepare_scorer(const irs::SubReader&,
@@ -13628,7 +13634,8 @@ TEST(min_match_disjunction_test, scored_seek_next) {
                       irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
                       irs::Scorers{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29},
+                      irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -13695,7 +13702,8 @@ TEST(min_match_disjunction_test, scored_seek_next) {
                       irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 12, 29},
                       irs::Scorers{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29}, irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 5, 6, 9, 29},
+                      irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -14541,7 +14549,8 @@ TEST(conjunction_test, scored_seek_next) {
       irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
                       irs::Scorers{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
+                      irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14605,7 +14614,8 @@ TEST(conjunction_test, scored_seek_next) {
       irs::Scorers::Prepare(detail::basic_sort{1}));
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
                       irs::Scorers{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
+                      irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -14799,7 +14809,8 @@ TEST(conjunction_test, scored_seek_next) {
       irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
                       irs::Scorers{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
+                      irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
@@ -14863,7 +14874,8 @@ TEST(conjunction_test, scored_seek_next) {
       irs::Scorers{});
     docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 6, 8, 12, 14, 29},
                       irs::Scorers{});
-    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14}, irs::Scorers{});
+    docs.emplace_back(std::vector<irs::doc_id_t>{1, 4, 5, 8, 14},
+                      irs::Scorers{});
 
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
@@ -15166,15 +15178,15 @@ TEST_P(boolean_filter_test_case, or_sequential_multiple_segments) {
     tests::json_doc_generator gen(resource("simple_sequential.json"),
                                   &tests::generic_json_field_factory);
 
-    tests::document const* doc1 = gen.next();
-    tests::document const* doc2 = gen.next();
-    tests::document const* doc3 = gen.next();
-    tests::document const* doc4 = gen.next();
-    tests::document const* doc5 = gen.next();
-    tests::document const* doc6 = gen.next();
-    tests::document const* doc7 = gen.next();
-    tests::document const* doc8 = gen.next();
-    tests::document const* doc9 = gen.next();
+    const tests::document* doc1 = gen.next();
+    const tests::document* doc2 = gen.next();
+    const tests::document* doc3 = gen.next();
+    const tests::document* doc4 = gen.next();
+    const tests::document* doc5 = gen.next();
+    const tests::document* doc6 = gen.next();
+    const tests::document* doc7 = gen.next();
+    const tests::document* doc8 = gen.next();
+    const tests::document* doc9 = gen.next();
 
     auto writer = open_writer();
 
@@ -15595,10 +15607,11 @@ TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
                                     const irs::attribute_provider&) -> void {
       ++collector_collect_term_count;
     };
-    sort.collectors_collect_ =
-      [&collector_finish_count](
-        irs::byte_type*, const irs::IndexReader&, const irs::FieldCollector*,
-        const irs::TermCollector*) -> void { ++collector_finish_count; };
+    sort.collectors_collect_ = [&collector_finish_count](
+                                 irs::byte_type*, const irs::FieldCollector*,
+                                 const irs::TermCollector*) -> void {
+      ++collector_finish_count;
+    };
     sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
                                               irs::score_t* score) {
       ++scorer_score_count;
@@ -15685,10 +15698,11 @@ TEST_P(boolean_filter_test_case, not_sequential_ordered) {
                                     const irs::attribute_provider&) -> void {
       ++collector_collect_term_count;
     };
-    sort.collectors_collect_ =
-      [&collector_finish_count](
-        irs::byte_type*, const irs::IndexReader&, const irs::FieldCollector*,
-        const irs::TermCollector*) -> void { ++collector_finish_count; };
+    sort.collectors_collect_ = [&collector_finish_count](
+                                 irs::byte_type*, const irs::FieldCollector*,
+                                 const irs::TermCollector*) -> void {
+      ++collector_finish_count;
+    };
     sort.scorer_score = [&scorer_score_count](irs::doc_id_t doc,
                                               irs::score_t* score) -> void {
       ++scorer_score_count;
@@ -16142,8 +16156,8 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
-    std::array<irs::ScorerFactory::ptr, 2> ord{std::make_unique<irs::tfidf_sort>(),
-                                      std::make_unique<irs::bm25_sort>()};
+    std::array<irs::ScorerFactory::ptr, 2> ord{
+      std::make_unique<irs::tfidf_sort>(), std::make_unique<irs::bm25_sort>()};
 
     auto prepared_ord = irs::Scorers::Prepare(ord);
     ASSERT_FALSE(prepared_ord.empty());

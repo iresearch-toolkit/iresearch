@@ -315,6 +315,36 @@ class skip_score_stats {
   uint32_t freq_{};
 };
 
+struct WandWriter {
+  irs::WandWriter::ptr writer;
+  bool valid{false};
+};
+
+bool CanUseWand(const Scorer& scorer, IndexFeatures index_features,
+                const irs::feature_map_t& features) noexcept {
+  if (index_features != (scorer.index_features() & index_features)) {
+    return false;
+  }
+
+  for (const irs::type_info::type_id feature : scorer.features()) {
+    if (!features.contains(feature)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+std::vector<WandWriter> PrepareWandWriters(ScorersView scorers,
+                                           size_t max_levels) {
+  std::vector<WandWriter> writers(scorers.size());
+  auto scorer = scorers.begin();
+  for (auto& [writer, _] : writers) {
+    writer = (*scorer)->prepare_wand_writer(max_levels);
+  }
+  return writers;
+}
+
 enum class TermsFormat : int32_t { MIN = 0, MAX = MIN };
 
 enum class PostingsFormat : int32_t {
@@ -399,8 +429,10 @@ class postings_writer_base : public irs::postings_writer {
     return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
   }
 
-  void begin_field(IndexFeatures features) final {
-    features_.Reset(features);
+  void begin_field(IndexFeatures index_features,
+                   const irs::feature_map_t& features) final {
+    features_.Reset(index_features);
+    RefillWriters(index_features, features);
     docs_.value.clear();
     last_state_.clear();
   }
@@ -470,10 +502,19 @@ class postings_writer_base : public irs::postings_writer {
     alloc_.deallocate(state);
   }
 
-  void write_skip(size_t level, memory_index_output& out) const;
-  void begin_term();
-  void end_term(version10::term_meta& meta);
-  void end_doc();
+  void WriteSkip(size_t level, memory_index_output& out) const;
+  void BeginTerm();
+  void EndTerm(version10::term_meta& meta);
+  void EndDocument();
+  void RefillWriters(IndexFeatures index_features,
+                     const irs::feature_map_t& features);
+
+  template<typename Func>
+  void ApplyWriters(Func&& func) {
+    for (auto* writer : valid_writers_) {
+      func(*writer);
+    }
+  }
 
   memory::memory_pool<> meta_pool_;
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)>
@@ -490,13 +531,30 @@ class postings_writer_base : public irs::postings_writer {
   uint32_t* buf_;                    // Buffer for encoding
   attributes attrs_;                 // Set of attributes
   ScorersView scorers_;              // List of wand scorers
-  Features features_;                // Features supported by current field
+  std::vector<WandWriter> writers_;  // List of wand writers
+  std::vector<irs::WandWriter*> valid_writers_;  // Valid wand writers
+  Features features_;  // Features supported by current field
   const PostingsFormat postings_format_version_;
   const TermsFormat terms_format_version_;
 };
 
-void postings_writer_base::write_skip(size_t level,
-                                      memory_index_output& out) const {
+void postings_writer_base::RefillWriters(IndexFeatures index_features,
+                                         const irs::feature_map_t& features) {
+  IRS_ASSERT(scorers_.size() == writers_.size());
+
+  valid_writers_.clear();
+  auto scorer = scorers_.begin();
+  for (auto& [writer, valid] : writers_) {
+    valid = writer && CanUseWand(**scorer, index_features, features);
+    if (valid) {
+      valid_writers_.emplace_back(writer.get());
+    }
+    ++scorer;
+  }
+}
+
+void postings_writer_base::WriteSkip(size_t level,
+                                     memory_index_output& out) const {
   const doc_id_t doc_delta = doc_.block_last;  //- doc_.skip_doc[level];
   const uint64_t doc_ptr = doc_out_->file_pointer();
 
@@ -555,13 +613,17 @@ void postings_writer_base::prepare(index_output& out,
     }
   }
 
-  scorers_ = state.scorers;
   skip_.Prepare(kMaxSkipLevels, state.doc_count,
                 state.dir->attributes().allocator());
 
   format_utils::write_header(out, kTermsFormatName,
                              static_cast<int32_t>(terms_format_version_));
   out.write_vint(skip_.Skip0());  // Write postings block size
+
+  // Prepare wand writers
+  writers_ = PrepareWandWriters(state.scorers, kMaxSkipLevels);
+  scorers_ = state.scorers;
+  valid_writers_.reserve(writers_.size());
 
   // Prepare documents bitset
   docs_.value.reset(doc_limits::min() + state.doc_count);
@@ -610,7 +672,7 @@ void postings_writer_base::end() {
   }
 }
 
-void postings_writer_base::begin_term() {
+void postings_writer_base::BeginTerm() {
   doc_.start = doc_out_->file_pointer();
   std::fill_n(doc_.skip_ptr, kMaxSkipLevels, doc_.start);
   if (features_.HasPosition()) {
@@ -629,7 +691,7 @@ void postings_writer_base::begin_term() {
   skip_.Reset();
 }
 
-void postings_writer_base::end_doc() {
+void postings_writer_base::EndDocument() {
   if (doc_.full()) {
     doc_.block_last = doc_.last;
     doc_.end = doc_out_->file_pointer();
@@ -651,7 +713,7 @@ void postings_writer_base::end_doc() {
   }
 }
 
-void postings_writer_base::end_term(version10::term_meta& meta) {
+void postings_writer_base::EndTerm(version10::term_meta& meta) {
   if (meta.docs_count == 0) {
     return;  // no documents to write
   }
@@ -805,8 +867,8 @@ class postings_writer final : public postings_writer_base {
   irs::postings_writer::state write(irs::doc_iterator& docs) final;
 
  private:
-  void add_position(uint32_t pos);
-  void begin_doc(doc_id_t id, uint32_t freq);
+  void AddPosition(uint32_t pos);
+  void BeginDocument(doc_id_t id, uint32_t freq);
 
   struct {
     // Buffer for document deltas
@@ -838,12 +900,11 @@ class postings_writer final : public postings_writer_base {
     // Buffer for encoding (worst case)
     uint32_t buf[FormatTraits::block_size()];
   } encbuf_;
-  std::array<skip_score_stats, kMaxSkipLevels> score_levels_;
   bool volatile_attributes_;
 };
 
 template<typename FormatTraits>
-void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
+void postings_writer<FormatTraits>::BeginDocument(doc_id_t id, uint32_t freq) {
   if (IRS_LIKELY(doc_.last < id)) {
     doc_.push(id, freq);
 
@@ -872,7 +933,7 @@ void postings_writer<FormatTraits>::begin_doc(doc_id_t id, uint32_t freq) {
 }
 
 template<typename FormatTraits>
-void postings_writer<FormatTraits>::add_position(uint32_t pos) {
+void postings_writer<FormatTraits>::AddPosition(uint32_t pos) {
   // at least positions stream should be created
   IRS_ASSERT(features_.HasPosition() && pos_out_);
   IRS_ASSERT(!attrs_.offs_ || attrs_.offs_->start <= attrs_.offs_->end);
@@ -920,23 +981,43 @@ void postings_writer<FormatTraits>::add_position(uint32_t pos) {
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
+static const frequency kNoFreq{};
+
+struct PostingAttributes final : attribute_provider {
+  const document* doc;
+  const frequency* freq{&kNoFreq};
+
+  attribute* get_mutable(type_info::type_id type) noexcept final {
+    if (type == irs::type<document>::id()) {
+      return const_cast<document*>(doc);
+    }
+
+    if (type == irs::type<frequency>::id() && freq != &kNoFreq) {
+      return const_cast<frequency*>(freq);
+    }
+
+    return nullptr;
+  }
+};
+
 template<typename FormatTraits>
 irs::postings_writer::state postings_writer<FormatTraits>::write(
   irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
 
-  auto* doc = irs::get<document>(docs);
+  PostingAttributes cur_attrs;
+  cur_attrs.doc = irs::get<document>(docs);
 
-  if (!doc) {
+  if (IRS_UNLIKELY(!cur_attrs.doc)) {
     IRS_ASSERT(false);
     throw illegal_argument{"'document' attribute is missing"};
   }
 
-  const frequency* freq{};
-
-  auto refresh = [this, &freq, no_freq = frequency{}](auto& attrs) noexcept {
+  auto refresh = [this, &cur_attrs](auto& attrs) noexcept {
     attrs_.reset(attrs);
-    freq = attrs_.freq_ ? attrs_.freq_ : &no_freq;
+    if (attrs_.freq_) {
+      cur_attrs.freq = attrs_.freq_;
+    }
   };
 
   if (!volatile_attributes_) {
@@ -951,63 +1032,60 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
 
-  begin_term();
+  BeginTerm();
   if constexpr (FormatTraits::wand()) {
-    for (auto& level : score_levels_) {
-      level.reset();
-    }
+    ApplyWriters([&](auto& writer) { writer.Reset(cur_attrs); });
   }
 
   uint32_t docs_count = 0;
   uint32_t total_freq = 0;
 
   while (docs.next()) {
-    const auto did = doc->value;
+    const auto did = cur_attrs.doc->value;
     IRS_ASSERT(doc_limits::valid(did));
-    IRS_ASSERT(freq);
-    const uint32_t freqv = freq->value;
+    IRS_ASSERT(cur_attrs.freq);
+    const uint32_t freqv = cur_attrs.freq->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
       skip_.Skip(docs_count, [this](size_t level, memory_index_output& out) {
-        write_skip(level, out);
+        WriteSkip(level, out);
 
         if constexpr (FormatTraits::wand()) {
-          if (features_.HasFrequency()) {
-            auto& score = score_levels_[level];
-
-            if (level < score_levels_.size() - 1) {
-              // accumulate score on less granular level
-              score_levels_[level + 1].add(score);
-            }
-            score.write(out);
-            score.reset();
-          }
+          // FIXME(gnusi): optimize for 1 writer case? compile? maybe just 1
+          // composite wand writer?
+          ApplyWriters([&](auto& writer) {
+            const byte_type size = writer.Size(level);
+            IRS_ASSERT(size <= irs::WandWriter::kMaxSize);
+            out.write_byte(size);  // FIXME(gnusi): write termination marker
+          });
+          ApplyWriters([&](auto& writer) { writer.Write(level, out); });
         }
       });
     }
 
-    begin_doc(did, freqv);
+    BeginDocument(did, freqv);
+
     if constexpr (FormatTraits::wand()) {
-      score_levels_.front().add(freqv);
+      ApplyWriters([](auto& writer) { writer.Update(); });
     }
 
     IRS_ASSERT(attrs_.pos_);
     while (attrs_.pos_->next()) {
       IRS_ASSERT(pos_limits::valid(attrs_.pos_->value()));
-      add_position(attrs_.pos_->value());
+      AddPosition(attrs_.pos_->value());
     }
 
     ++docs_count;
     total_freq += freqv;
 
-    end_doc();
+    EndDocument();
   }
 
   // FIXME(gnusi): do we need to write terminal skip if present?
 
   meta->docs_count = docs_count;
   meta->freq = total_freq;
-  end_term(*meta);
+  EndTerm(*meta);
 
   return make_state(*meta.release());
 }

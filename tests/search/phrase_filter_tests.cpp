@@ -5611,8 +5611,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
       ++collect_term_count;
     };
     sort.collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::IndexReader&,
-                      const irs::FieldCollector*,
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
       return std::make_unique<
@@ -6006,8 +6005,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
       ++collect_term_count;
     };
     sort.collectors_collect_ =
-      [&finish_count](irs::byte_type*, const irs::IndexReader&,
-                      const irs::FieldCollector*,
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
       return std::make_unique<

@@ -260,7 +260,6 @@ doc_map segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
                     .scorers = scorers_,
                     .doc_count = docs_cached()};
 
-  doc_map docmap;
   if (fields_.comparator() != nullptr) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
       *col_writer_, std::move(sort_.finalizer),

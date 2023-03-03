@@ -55,6 +55,7 @@ struct data_input;
 struct index_input;
 struct postings_writer;
 struct Scorer;
+struct WandWriter;
 
 using document_mask = absl::flat_hash_set<doc_id_t>;
 using doc_map = std::vector<doc_id_t>;
@@ -103,7 +104,7 @@ struct postings_writer : attribute_provider {
   class releaser {
    public:
     explicit releaser(postings_writer* owner = nullptr) noexcept
-      : owner_(owner) {}
+      : owner_{owner} {}
 
     inline void operator()(term_meta* meta) const noexcept;
 
@@ -114,9 +115,11 @@ struct postings_writer : attribute_provider {
   typedef std::unique_ptr<term_meta, releaser> state;
 
   virtual ~postings_writer() = default;
-  /* out - corresponding terms utils/utstream */
+  // out - corresponding terms stream
   virtual void prepare(index_output& out, const flush_state& state) = 0;
-  virtual void begin_field(IndexFeatures features) = 0;
+  virtual void begin_field(
+    IndexFeatures index_features,
+    const std::map<irs::type_info::type_id, field_id>& features) = 0;
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
@@ -125,9 +128,7 @@ struct postings_writer : attribute_provider {
  protected:
   friend struct term_meta;
 
-  state make_state(term_meta& meta) noexcept {
-    return state(&meta, releaser(this));
-  }
+  state make_state(term_meta& meta) noexcept { return {&meta, releaser{this}}; }
 
   virtual void release(term_meta* meta) noexcept = 0;
 };

@@ -34,7 +34,8 @@
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
-#include "scorers.hpp"
+#include "search/scorers.hpp"
+#include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
 
@@ -258,7 +259,6 @@ struct idf final {
   float_t value;
 };
 
-constexpr idf kDefaultIdf{.value = 1.f};
 constexpr frequency kEmptyFreq;
 
 struct ScoreContext : public irs::score_ctx {
@@ -365,8 +365,7 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
   explicit sort(bool normalize, bool boost_as_score) noexcept
     : normalize_{normalize}, boost_as_score_{boost_as_score} {}
 
-  void collect(byte_type* stats_buf, const irs::IndexReader& /*index*/,
-               const irs::FieldCollector* field,
+  void collect(byte_type* stats_buf, const irs::FieldCollector* field,
                const irs::TermCollector* term) const final {
     auto& idf = stats_cast(stats_buf);
 
@@ -383,17 +382,28 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
     // TODO(MBkkt) SEARCH-444 IRS_ASSERT(idf.value >= 0.f);
   }
 
-  IndexFeatures features() const noexcept final { return IndexFeatures::FREQ; }
+  IndexFeatures index_features() const noexcept final {
+    return IndexFeatures::FREQ;
+  }
+
+  std::span<const type_info::type_id> features() const noexcept final {
+    if (normalize_) {
+      static const irs::type_info::type_id kFeature{irs::type<Norm2>::id()};
+      return {&kFeature, 1};
+    }
+
+    return {};
+  }
 
   FieldCollector::ptr prepare_field_collector() const final {
     return std::make_unique<field_collector>();
   }
 
-  virtual ScoreFunction prepare_scorer(const SubReader& segment,
-                                       const term_reader& field,
-                                       const byte_type* stats_buf,
-                                       const attribute_provider& doc_attrs,
-                                       score_t boost) const final {
+  ScoreFunction prepare_scorer(const SubReader& segment,
+                               const term_reader& field,
+                               const byte_type* stats_buf,
+                               const attribute_provider& doc_attrs,
+                               score_t boost) const final {
     auto* freq = irs::get<frequency>(doc_attrs);
 
     if (!freq) {
@@ -406,7 +416,7 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
       return ScoreFunction::Constant(boost);
     }
 
-    const auto& stats = stats_buf ? stats_cast(stats_buf) : kDefaultIdf;
+    const auto& stats = stats_cast(stats_buf);
     auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
     // add norm attribute if requested
@@ -457,6 +467,19 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
 
   TermCollector::ptr prepare_term_collector() const final {
     return std::make_unique<term_collector>();
+  }
+
+  WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
+    auto make = [&]<bool HasNorms>(std::integral_constant<bool, HasNorms>) {
+      return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
+        *this, max_levels);
+    };
+
+    if (normalize_) {
+      return make(std::true_type{});
+    } else {
+      return make(std::false_type{});
+    }
   }
 
  private:

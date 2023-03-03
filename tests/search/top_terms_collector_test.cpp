@@ -101,12 +101,19 @@ struct sort : irs::ScorerFactory {
       void write(irs::data_output&) const final {}
     };
 
-    void collect(irs::byte_type*, const irs::IndexReader&,
-                 const irs::FieldCollector*,
+    void collect(irs::byte_type*, const irs::FieldCollector*,
                  const irs::TermCollector*) const final {}
 
-    irs::IndexFeatures features() const final {
+    irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;
+    }
+
+    std::span<const irs::type_info::type_id> features() const noexcept final {
+      return {};
+    }
+
+    irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
+      return nullptr;
     }
 
     irs::FieldCollector::ptr prepare_field_collector() const final {

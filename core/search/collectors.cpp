@@ -83,8 +83,7 @@ void field_collectors::collect(const SubReader& segment,
   }
 }
 
-void field_collectors::finish(byte_type* stats_buf,
-                              const IndexReader& index) const {
+void field_collectors::finish(byte_type* stats_buf) const {
   // special case where term statistics collection is not applicable
   // e.g. by_column_existence filter
   IRS_ASSERT(buckets_.size() == collectors_.size());
@@ -95,7 +94,7 @@ void field_collectors::finish(byte_type* stats_buf,
 
     sort.bucket->collect(
       stats_buf + sort.stats_offset,  // where stats for bucket start
-      index, collectors_[i].get(), nullptr);
+      collectors_[i].get(), nullptr);
   }
 }
 
@@ -212,8 +211,8 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       IRS_ASSERT(field_collectors.front());
       IRS_ASSERT(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset, index,
-        field_collectors.front(), collectors_[term_idx].get());
+        stats_buf + buckets_.front().stats_offset, field_collectors.front(),
+        collectors_[term_idx].get());
     } break;
     case 2: {
       term_idx *= bucket_count;
@@ -221,13 +220,13 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       IRS_ASSERT(field_collectors.front());
       IRS_ASSERT(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset, index,
-        field_collectors.front(), collectors_[term_idx].get());
+        stats_buf + buckets_.front().stats_offset, field_collectors.front(),
+        collectors_[term_idx].get());
 
       IRS_ASSERT(field_collectors.back());
       IRS_ASSERT(buckets_.back().bucket);
       buckets_.back().bucket->collect(stats_buf + buckets_.back().stats_offset,
-                                      index, field_collectors.back(),
+                                      field_collectors.back(),
                                       collectors_[term_idx + 1].get());
     } break;
     default: {
@@ -236,8 +235,8 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       // cppcheck-suppress shadowFunction
       auto begin = field_collectors.begin();
       for (auto& bucket : buckets_) {
-        bucket.bucket->collect(stats_buf + bucket.stats_offset, index,
-                               begin->get(), collectors_[term_idx++].get());
+        bucket.bucket->collect(stats_buf + bucket.stats_offset, begin->get(),
+                               collectors_[term_idx++].get());
         ++begin;
       }
     } break;

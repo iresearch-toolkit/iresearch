@@ -307,7 +307,8 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_TRUE(prepared->features().empty());
   }
 
   // with norms (as args)
@@ -317,7 +318,11 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(
+      (std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()}),
+      std::vector<irs::type_info::type_id>(prepared->features().begin(),
+                                           prepared->features().end()));
   }
 
   // with norms
@@ -328,7 +333,11 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(
+      (std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()}),
+      std::vector<irs::type_info::type_id>(prepared->features().begin(),
+                                           prepared->features().end()));
   }
 
   // without norms (as args)
@@ -338,7 +347,8 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_TRUE(prepared->features().empty());
   }
 
   // without norms
@@ -349,7 +359,8 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_TRUE(prepared->features().empty());
   }
 }
 

@@ -68,8 +68,7 @@ struct aligned_scorer : public irs::ScorerFactory {
     irs::TermCollector::ptr prepare_term_collector() const final {
       return nullptr;
     }
-    void collect(irs::byte_type*, const irs::IndexReader&,
-                 const irs::FieldCollector*,
+    void collect(irs::byte_type*, const irs::FieldCollector*,
                  const irs::TermCollector*) const final {
       // NOOP
     }
@@ -84,7 +83,15 @@ struct aligned_scorer : public irs::ScorerFactory {
       return irs::ScoreFunction::Empty();
     }
 
-    irs::IndexFeatures features() const final { return index_features_; }
+    irs::IndexFeatures index_features() const final { return index_features_; }
+
+    std::span<const irs::type_info::type_id> features() const final {
+      return {};
+    }
+
+    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
+      return nullptr;
+    }
 
     irs::IndexFeatures index_features_;
     bool empty_scorer_;

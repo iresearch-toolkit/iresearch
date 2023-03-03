@@ -942,8 +942,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     ++collect_term_count;
   };
   scorer.collectors_collect_ =
-    [&finish_count](irs::byte_type*, const irs::IndexReader&,
-                    const irs::FieldCollector*,
+    [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
     return std::make_unique<
@@ -1017,8 +1016,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     ++collect_term_count;
   };
   scorer.collectors_collect_ =
-    [&finish_count](irs::byte_type*, const irs::IndexReader&,
-                    const irs::FieldCollector*,
+    [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
     return std::make_unique<

@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <set>
+
 #include "index/index_features.hpp"
 #include "search/score_function.hpp"
 #include "utils/attribute_provider.hpp"
@@ -33,6 +35,7 @@ namespace irs {
 
 struct data_output;
 struct IndexReader;
+class memory_index_output;
 struct SubReader;
 struct term_reader;
 
@@ -80,8 +83,7 @@ class FieldCollector {
 // Object used for collecting index statistics, for a specific matched
 // term of a field, that are required by the scorer for scoring
 // individual documents.
-class TermCollector {
- public:
+struct TermCollector {
   using ptr = std::unique_ptr<TermCollector>;
 
   virtual ~TermCollector() = default;
@@ -107,6 +109,22 @@ class TermCollector {
   virtual void write(data_output& out) const = 0;
 };
 
+struct WandWriter {
+  using ptr = std::unique_ptr<WandWriter>;
+
+  static constexpr byte_type kMaxSize = 127;
+
+  virtual ~WandWriter() = default;
+
+  virtual void Reset(const attribute_provider& attrs) = 0;
+
+  virtual void Update() = 0;
+
+  virtual void Write(size_t level, memory_index_output& out) = 0;
+
+  virtual byte_type Size(size_t level) const = 0;
+};
+
 // Base class for all scorers.
 // Stats are meant to be trivially constructible and will be
 // zero initialized before usage.
@@ -119,7 +137,6 @@ struct Scorer {
   // current 'filter'
   // `filter_attrs` is out-parameter to store statistics for later use in
   // calls to score(...).
-  // `index` is the full index to collect statistics on
   // `field` is the field level statistics collector as returned from
   //  prepare_field_collector()
   // `term` is the term level statistics collector as returned from
@@ -131,12 +148,13 @@ struct Scorer {
   // Called exactly once if field/term collection is not applicable,
   // e.g. collecting statistics over the columnstore.
   // Called after all calls to collector::collect(...) on each segment.
-  virtual void collect(byte_type* stats, const IndexReader& index,
-                       const FieldCollector* field,
+  virtual void collect(byte_type* stats, const FieldCollector* field,
                        const TermCollector* term) const = 0;
 
   // The index features required for proper operation of this sort::prepared
-  virtual IndexFeatures features() const = 0;
+  virtual IndexFeatures index_features() const = 0;
+
+  virtual std::span<const type_info::type_id> features() const = 0;
 
   // Create an object to be used for collecting index statistics, one
   // instance per matched field.
@@ -154,6 +172,10 @@ struct Scorer {
   // instance per matched term.
   // Returns nullptr == no statistics collection required.
   virtual TermCollector::ptr prepare_term_collector() const = 0;
+
+  // Create an object to be used for writing wand entries to the skip list.
+  // max_levels - max number of levels in the skip list
+  virtual WandWriter::ptr prepare_wand_writer(size_t max_levels) const = 0;
 
   // Number of bytes (first) and alignment (first) required to store stats
   // Alignment must satisfy the following requirements:
@@ -413,10 +435,8 @@ class ScorerBase<void> : public Scorer {
 
   TermCollector::ptr prepare_term_collector() const override { return nullptr; }
 
-  void collect(byte_type*, const IndexReader&, const FieldCollector*,
-               const TermCollector*) const override {
-    // NOOP
-  }
+  void collect(byte_type*, const FieldCollector*,
+               const TermCollector*) const override {}
 
   inline std::pair<size_t, size_t> stats_size() const noexcept final {
     return {size_t{0}, size_t{0}};

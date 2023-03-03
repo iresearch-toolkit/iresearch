@@ -55,8 +55,16 @@ struct boost : public irs::ScorerFactory {
    public:
     prepared() = default;
 
-    irs::IndexFeatures features() const noexcept final {
+    irs::IndexFeatures index_features() const noexcept final {
       return irs::IndexFeatures::NONE;
+    }
+
+    std::span<const irs::type_info::type_id> features() const noexcept final {
+      return {};
+    }
+
+    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
+      return nullptr;
     }
 
     irs::ScoreFunction prepare_scorer(
@@ -165,16 +173,19 @@ struct custom_sort : public irs::ScorerFactory {
 
     prepared(const custom_sort& sort) : sort_(sort) {}
 
-    void collect(irs::byte_type* filter_attrs, const irs::IndexReader& index,
-                 const irs::FieldCollector* field,
+    void collect(irs::byte_type* filter_attrs, const irs::FieldCollector* field,
                  const irs::TermCollector* term) const final {
       if (sort_.collectors_collect_) {
-        sort_.collectors_collect_(filter_attrs, index, field, term);
+        sort_.collectors_collect_(filter_attrs, field, term);
       }
     }
 
-    irs::IndexFeatures features() const final {
+    irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;
+    }
+
+    std::span<const irs::type_info::type_id> features() const noexcept final {
+      return {};
     }
 
     irs::FieldCollector::ptr prepare_field_collector() const final {
@@ -183,6 +194,10 @@ struct custom_sort : public irs::ScorerFactory {
       }
 
       return std::make_unique<field_collector>(sort_);
+    }
+
+    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
+      return nullptr;
     }
 
     irs::ScoreFunction prepare_scorer(
@@ -224,8 +239,8 @@ struct custom_sort : public irs::ScorerFactory {
   std::function<void(const irs::SubReader&, const irs::term_reader&,
                      const irs::attribute_provider&)>
     collector_collect_term;
-  std::function<void(irs::byte_type*, const irs::IndexReader&,
-                     const irs::FieldCollector*, const irs::TermCollector*)>
+  std::function<void(irs::byte_type*, const irs::FieldCollector*,
+                     const irs::TermCollector*)>
     collectors_collect_;
   std::function<irs::FieldCollector::ptr()> prepare_field_collector_;
   std::function<irs::ScoreFunction(
@@ -285,7 +300,7 @@ struct frequency_sort : public irs::ScorerFactory {
 
     prepared() = default;
 
-    void collect(irs::byte_type* stats_buf, const irs::IndexReader& /*index*/,
+    void collect(irs::byte_type* stats_buf,
                  const irs::FieldCollector* /*field*/,
                  const irs::TermCollector* term) const final {
       auto* term_ptr = dynamic_cast<const term_collector*>(term);
@@ -296,12 +311,20 @@ struct frequency_sort : public irs::ScorerFactory {
       }
     }
 
-    irs::IndexFeatures features() const final {
+    irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;
+    }
+
+    std::span<const irs::type_info::type_id> features() const noexcept final {
+      return {};
     }
 
     irs::FieldCollector::ptr prepare_field_collector() const final {
       return nullptr;  // do not need to collect stats
+    }
+
+    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
+      return nullptr;
     }
 
     irs::ScoreFunction prepare_scorer(const irs::SubReader&,

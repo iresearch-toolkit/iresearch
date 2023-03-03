@@ -41,7 +41,15 @@ struct volatile_boost_score_ctx final : score_ctx {
 };
 
 struct Prepared final : ScorerBase<void> {
-  IndexFeatures features() const noexcept final { return IndexFeatures::NONE; }
+  IndexFeatures index_features() const noexcept final {
+    return IndexFeatures::NONE;
+  }
+
+  std::span<const type_info::type_id> features() const noexcept final {
+    return {};
+  }
+
+  WandWriter::ptr prepare_wand_writer(size_t) const final { return nullptr; }
 
   ScoreFunction prepare_scorer(const SubReader& /*segment*/,
                                const term_reader& /*field*/,
@@ -67,7 +75,8 @@ struct Prepared final : ScorerBase<void> {
 
 void boost_sort::init() { REGISTER_SCORER_JSON(boost_sort, make_json); }
 
-boost_sort::boost_sort() noexcept : ScorerFactory{irs::type<boost_sort>::get()} {}
+boost_sort::boost_sort() noexcept
+  : ScorerFactory{irs::type<boost_sort>::get()} {}
 
 Scorer::ptr boost_sort::prepare() const {
   // FIXME can avoid allocation

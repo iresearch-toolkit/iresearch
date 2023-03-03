@@ -128,7 +128,7 @@ class format_10_test_case : public tests::format_test_case {
       // prepare writer
       writer->prepare(*out, state);
 
-      writer->begin_field(features);
+      writer->begin_field(features, field.features);
 
       // write postings for term
       {
@@ -318,7 +318,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     writer->prepare(*out, state);
 
     // begin field
-    writer->begin_field(field.index_features);
+    writer->begin_field(field.index_features, field.features);
 
     // write postings for term0
     {
@@ -482,7 +482,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     writer->prepare(*out, state);
 
     // begin field
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
 
     // write postings for term0
     {
@@ -631,7 +631,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -660,7 +660,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -689,7 +689,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -717,7 +717,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -744,7 +744,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -769,7 +769,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }

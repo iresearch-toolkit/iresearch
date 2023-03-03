@@ -79,6 +79,7 @@
 #include "index/index_meta.hpp"
 #include "index/norm.hpp"
 #include "store/memory_directory.hpp"
+#include "search/sort.hpp"
 #include "store/store_utils.hpp"
 #include "utils/automaton.hpp"
 #include "utils/encryption.hpp"
@@ -846,25 +847,26 @@ class field_writer final : public irs::field_writer {
  private:
   static constexpr size_t DEFAULT_SIZE = 8;
 
-  void begin_field(IndexFeatures field);
+  void BeginField(IndexFeatures index_features,
+                  const irs::feature_map_t& features);
 
-  void end_field(std::string_view name, IndexFeatures index_features,
-                 const irs::feature_map_t& features, uint64_t total_doc_freq,
-                 uint64_t total_term_freq, size_t doc_count);
+  void EndField(std::string_view name, IndexFeatures index_features,
+                const irs::feature_map_t& features, uint64_t total_doc_freq,
+                uint64_t total_term_freq, size_t doc_count);
 
   // prefix - prefix length (in last_term)
   // begin - index of the first entry in the block
   // end - index of the last entry in the block
   // meta - block metadata
   // label - block lead label (if present)
-  void write_block(size_t prefix, size_t begin, size_t end, byte_type meta,
-                   uint16_t label);
+  void WriteBlock(size_t prefix, size_t begin, size_t end, byte_type meta,
+                  uint16_t label);
 
   // prefix - prefix length ( in last_term
   // count - number of entries to write into block
-  void write_blocks(size_t prefix, size_t count);
+  void WriteBlocks(size_t prefix, size_t count);
 
-  void push(bytes_view term);
+  void Push(bytes_view term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
 #ifdef __cpp_lib_memory_resource
@@ -892,8 +894,8 @@ class field_writer final : public irs::field_writer {
   const bool consolidation_;
 };
 
-void field_writer::write_block(size_t prefix, size_t begin, size_t end,
-                               irs::byte_type meta, uint16_t label) {
+void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
+                              irs::byte_type meta, uint16_t label) {
   IRS_ASSERT(end > begin);
 
   // begin of the block
@@ -993,7 +995,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
   }
 }
 
-void field_writer::write_blocks(size_t prefix, size_t count) {
+void field_writer::WriteBlocks(size_t prefix, size_t count) {
   // only root node able to write whole stack
   IRS_ASSERT(prefix || count == stack_.size());
   IRS_ASSERT(blocks_.empty());
@@ -1028,7 +1030,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
       if (block_size >= min_block_size_ &&
           end - block_start > max_block_size_) {
         block_meta::floor(meta, block_size < count);
-        write_block(prefix, block_start, i, meta, next_label);
+        WriteBlock(prefix, block_start, i, meta, next_label);
         next_label = label;
         block_meta::reset(meta);
         block_start = i;
@@ -1045,7 +1047,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   // write remaining block
   if (block_start < end) {
     block_meta::floor(meta, end - block_start < count);
-    write_block(prefix, block_start, end, meta, next_label);
+    WriteBlock(prefix, block_start, end, meta, next_label);
   }
 
   // merge blocks into 1st block
@@ -1063,7 +1065,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   }
 }
 
-void field_writer::push(bytes_view term) {
+void field_writer::Push(bytes_view term) {
   const irs::bytes_view last = last_term_;
   const size_t limit = std::min(last.size(), term.size());
 
@@ -1077,7 +1079,7 @@ void field_writer::push(bytes_view term) {
     --i;  // should use it here as we use size_t
     const size_t top = stack_.size() - prefixes_[i];
     if (top > min_block_size_) {
-      write_blocks(i + 1, top);
+      WriteBlocks(i + 1, top);
       prefixes_[i] -= (top - 1);
     }
   }
@@ -1187,7 +1189,7 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
                          const irs::feature_map_t& features,
                          term_iterator& terms) {
   REGISTER_TIMER_DETAILED();
-  begin_field(index_features);
+  BeginField(index_features, features);
 
   uint64_t sum_dfreq = 0;
   uint64_t sum_tfreq = 0;
@@ -1210,7 +1212,7 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
       sum_dfreq += meta->docs_count;
 
       const bytes_view term = terms.value();
-      push(term);
+      Push(term);
 
       // push term to the top of the stack
       stack_.emplace_back(term, std::move(meta), consolidation_);
@@ -1227,32 +1229,30 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
     }
   }
 
-  end_field(name, index_features, features, sum_dfreq, sum_tfreq,
-            docs->value.count());
+  EndField(name, index_features, features, sum_dfreq, sum_tfreq,
+           docs->value.count());
 }
 
-void field_writer::begin_field(IndexFeatures features) {
+void field_writer::BeginField(IndexFeatures index_features,
+                              const irs::feature_map_t& features) {
   IRS_ASSERT(terms_out_);
   IRS_ASSERT(index_out_);
 
-  // at the beginning of the field
-  // there should be no pending
-  // entries at all
+  // At the beginning of the field there should be no pending entries at all
   IRS_ASSERT(stack_.empty());
 
-  // reset first field term
+  // Reset first field term
   min_term_.first = false;
   min_term_.second.clear();
   term_count_ = 0;
 
-  pw_->begin_field(features);
+  pw_->begin_field(index_features, features);
 }
 
-void field_writer::end_field(std::string_view name,
-                             IndexFeatures index_features,
-                             const irs::feature_map_t& features,
-                             uint64_t total_doc_freq, uint64_t total_term_freq,
-                             size_t doc_count) {
+void field_writer::EndField(std::string_view name, IndexFeatures index_features,
+                            const irs::feature_map_t& features,
+                            uint64_t total_doc_freq, uint64_t total_term_freq,
+                            size_t doc_count) {
   IRS_ASSERT(terms_out_);
   IRS_ASSERT(index_out_);
   if (!term_count_) {
@@ -1261,10 +1261,10 @@ void field_writer::end_field(std::string_view name,
   }
 
   // cause creation of all final blocks
-  push(kEmptyStringView<irs::byte_type>);
+  Push(kEmptyStringView<irs::byte_type>);
 
   // write root block with empty prefix
-  write_blocks(0, stack_.size());
+  WriteBlocks(0, stack_.size());
   IRS_ASSERT(1 == stack_.size());
 
   // write field meta

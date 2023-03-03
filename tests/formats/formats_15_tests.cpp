@@ -266,7 +266,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
     irs::write_string(*out, std::string_view("file_header"));
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, irs::feature_map_t{});
 
     postings it{docs, features};
     term_meta = writer->write(it);
