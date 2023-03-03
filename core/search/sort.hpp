@@ -37,6 +37,7 @@ struct data_output;
 struct IndexReader;
 class memory_index_output;
 struct SubReader;
+struct ColumnProvider;
 struct term_reader;
 
 // Represents no boost value.
@@ -116,7 +117,12 @@ struct WandWriter {
 
   virtual ~WandWriter() = default;
 
-  virtual void Reset(const attribute_provider& attrs) = 0;
+  virtual bool Prepare(
+    const ColumnProvider& reader,
+    const std::map<irs::type_info::type_id, field_id>& features,
+    const attribute_provider& attrs) = 0;
+
+  virtual void Reset() = 0;
 
   virtual void Update() = 0;
 
@@ -154,19 +160,17 @@ struct Scorer {
   // The index features required for proper operation of this sort::prepared
   virtual IndexFeatures index_features() const = 0;
 
-  virtual std::span<const type_info::type_id> features() const = 0;
-
   // Create an object to be used for collecting index statistics, one
   // instance per matched field.
   // Returns nullptr == no statistics collection required
   virtual FieldCollector::ptr prepare_field_collector() const = 0;
 
   // Create a stateful scorer used for computation of document scores
-  virtual ScoreFunction prepare_scorer(const SubReader& segment,
-                                       const term_reader& field,
-                                       const byte_type* stats,
-                                       const attribute_provider& doc_attrs,
-                                       score_t boost) const = 0;
+  virtual ScoreFunction prepare_scorer(
+    const ColumnProvider& segment,
+    const std::map<irs::type_info::type_id, field_id>& features,
+    const byte_type* stats, const attribute_provider& doc_attrs,
+    score_t boost) const = 0;
 
   // Create an object to be used for collecting index statistics, one
   // instance per matched term.

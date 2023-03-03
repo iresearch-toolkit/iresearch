@@ -954,9 +954,9 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   };
   scorer.prepare_scorer =
     [&frequency, &filter_boost](
-      const irs::SubReader& /*segment*/, const irs::term_reader& /*term*/,
-      const irs::byte_type* /*stats_buf*/, const irs::attribute_provider& attr,
-      irs::score_t) -> irs::ScoreFunction {
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*term*/, const irs::byte_type* /*stats_buf*/,
+      const irs::attribute_provider& attr, irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
     return irs::ScoreFunction::Make<test_score_ctx>(
@@ -1028,9 +1028,9 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   };
   scorer.prepare_scorer =
     [&frequency, &filter_boost](
-      const irs::SubReader& /*segment*/, const irs::term_reader& /*term*/,
-      const irs::byte_type* /*stats_buf*/, const irs::attribute_provider& attr,
-      irs::score_t) -> irs::ScoreFunction {
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*term*/, const irs::byte_type* /*stats_buf*/,
+      const irs::attribute_provider& attr, irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
     return irs::ScoreFunction::Make<test_score_ctx>(

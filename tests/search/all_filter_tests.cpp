@@ -134,9 +134,10 @@ TEST_P(all_filter_test_case, all_order) {
     sort.prepare_field_collector_ = []() -> irs::FieldCollector::ptr {
       return nullptr;
     };
-    sort.prepare_scorer =
-      [](const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
-         const irs::attribute_provider&, irs::score_t) -> irs::ScoreFunction {
+    sort.prepare_scorer = [](const irs::ColumnProvider&,
+                             const irs::feature_map_t&, const irs::byte_type*,
+                             const irs::attribute_provider&,
+                             irs::score_t) -> irs::ScoreFunction {
       return irs::ScoreFunction::Invalid();
     };
     sort.prepare_term_collector_ = []() -> irs::TermCollector::ptr {

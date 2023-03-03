@@ -59,16 +59,12 @@ struct boost : public irs::ScorerFactory {
       return irs::IndexFeatures::NONE;
     }
 
-    std::span<const irs::type_info::type_id> features() const noexcept final {
-      return {};
-    }
-
     irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
       return nullptr;
     }
 
     irs::ScoreFunction prepare_scorer(
-      const irs::SubReader&, const irs::term_reader&,
+      const irs::ColumnProvider&, const irs::feature_map_t& /*features*/,
       const irs::byte_type* /*query_attrs*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t boost) const final {
@@ -154,8 +150,8 @@ struct custom_sort : public irs::ScorerFactory {
     };
 
     struct scorer final : public irs::score_ctx {
-      scorer(const custom_sort& sort, const irs::SubReader& segment_reader,
-             const irs::term_reader& term_reader,
+      scorer(const custom_sort& sort, const irs::ColumnProvider& segment_reader,
+             const irs::feature_map_t& term_reader,
              const irs::byte_type* filter_node_attrs,
              const irs::attribute_provider& document_attrs)
         : document_attrs_(document_attrs),
@@ -166,9 +162,9 @@ struct custom_sort : public irs::ScorerFactory {
 
       const irs::attribute_provider& document_attrs_;
       const irs::byte_type* filter_node_attrs_;
-      const irs::SubReader& segment_reader_;
+      const irs::ColumnProvider& segment_reader_;
       const custom_sort& sort_;
-      const irs::term_reader& term_reader_;
+      const irs::feature_map_t& term_reader_;
     };
 
     prepared(const custom_sort& sort) : sort_(sort) {}
@@ -184,10 +180,6 @@ struct custom_sort : public irs::ScorerFactory {
       return irs::IndexFeatures::NONE;
     }
 
-    std::span<const irs::type_info::type_id> features() const noexcept final {
-      return {};
-    }
-
     irs::FieldCollector::ptr prepare_field_collector() const final {
       if (sort_.prepare_field_collector_) {
         return sort_.prepare_field_collector_();
@@ -201,7 +193,8 @@ struct custom_sort : public irs::ScorerFactory {
     }
 
     irs::ScoreFunction prepare_scorer(
-      const irs::SubReader& segment_reader, const irs::term_reader& term_reader,
+      const irs::ColumnProvider& segment_reader,
+      const irs::feature_map_t& term_reader,
       const irs::byte_type* filter_node_attrs,
       const irs::attribute_provider& document_attrs,
       irs::score_t boost) const final {
@@ -244,8 +237,8 @@ struct custom_sort : public irs::ScorerFactory {
     collectors_collect_;
   std::function<irs::FieldCollector::ptr()> prepare_field_collector_;
   std::function<irs::ScoreFunction(
-    const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
-    const irs::attribute_provider&, irs::score_t)>
+    const irs::ColumnProvider&, const irs::feature_map_t&,
+    const irs::byte_type*, const irs::attribute_provider&, irs::score_t)>
     prepare_scorer;
   std::function<irs::TermCollector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t, irs::score_t*)> scorer_score;
@@ -315,10 +308,6 @@ struct frequency_sort : public irs::ScorerFactory {
       return irs::IndexFeatures::NONE;
     }
 
-    std::span<const irs::type_info::type_id> features() const noexcept final {
-      return {};
-    }
-
     irs::FieldCollector::ptr prepare_field_collector() const final {
       return nullptr;  // do not need to collect stats
     }
@@ -327,8 +316,8 @@ struct frequency_sort : public irs::ScorerFactory {
       return nullptr;
     }
 
-    irs::ScoreFunction prepare_scorer(const irs::SubReader&,
-                                      const irs::term_reader&,
+    irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
+                                      const irs::feature_map_t&,
                                       const irs::byte_type* stats_buf,
                                       const irs::attribute_provider& doc_attrs,
                                       irs::score_t /*boost*/) const final {

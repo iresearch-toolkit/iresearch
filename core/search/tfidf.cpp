@@ -386,21 +386,12 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
     return IndexFeatures::FREQ;
   }
 
-  std::span<const type_info::type_id> features() const noexcept final {
-    if (normalize_) {
-      static const irs::type_info::type_id kFeature{irs::type<Norm2>::id()};
-      return {&kFeature, 1};
-    }
-
-    return {};
-  }
-
   FieldCollector::ptr prepare_field_collector() const final {
     return std::make_unique<field_collector>();
   }
 
-  ScoreFunction prepare_scorer(const SubReader& segment,
-                               const term_reader& field,
+  ScoreFunction prepare_scorer(const ColumnProvider& segment,
+                               const irs::feature_map_t& features,
                                const byte_type* stats_buf,
                                const attribute_provider& doc_attrs,
                                score_t boost) const final {
@@ -433,8 +424,6 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
         return MakeScoreFunction<NormScoreContext<Norm>>(
           filter_boost, std::move(norm), boost, stats, freq);
       };
-
-      const auto& features = field.meta().features;
 
       if (auto it = features.find(irs::type<Norm2>::id());
           it != features.end()) {

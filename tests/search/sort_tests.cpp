@@ -73,8 +73,8 @@ struct aligned_scorer : public irs::ScorerFactory {
       // NOOP
     }
     irs::ScoreFunction prepare_scorer(
-      const irs::SubReader& /*segment*/, const irs::term_reader& /*field*/,
-      const irs::byte_type* /*stats*/,
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*field*/, const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t /*boost*/) const final {
       if (empty_scorer_) {
@@ -84,10 +84,6 @@ struct aligned_scorer : public irs::ScorerFactory {
     }
 
     irs::IndexFeatures index_features() const final { return index_features_; }
-
-    std::span<const irs::type_info::type_id> features() const final {
-      return {};
-    }
 
     irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
       return nullptr;

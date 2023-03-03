@@ -487,10 +487,10 @@ TEST_P(terms_filter_test_case, min_match) {
       return std::make_unique<
         tests::sort::custom_sort::prepared::term_collector>(*scorer);
     };
-    scorer->prepare_scorer = [](const irs::SubReader&, const irs::term_reader&,
-                                const irs::byte_type*,
-                                const irs::attribute_provider& attrs,
-                                irs::score_t boost) -> irs::ScoreFunction {
+    scorer->prepare_scorer =
+      [](const irs::ColumnProvider&, const irs::feature_map_t&,
+         const irs::byte_type*, const irs::attribute_provider& attrs,
+         irs::score_t boost) -> irs::ScoreFunction {
       struct ScoreCtx final : public irs::score_ctx {
         ScoreCtx(const irs::document* doc, irs::score_t boost) noexcept
           : doc{doc}, boost{boost} {}

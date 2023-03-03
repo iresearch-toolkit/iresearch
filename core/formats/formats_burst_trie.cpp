@@ -3427,7 +3427,7 @@ class dumper : util::noncopyable {
     out_ << "|\n";
     indent();
     out_ << "V\n";
-  };
+  }
 
   void pop_block(const block_iterator& block) {
     indent_ -= 2;

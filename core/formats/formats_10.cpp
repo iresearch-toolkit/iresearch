@@ -320,21 +320,6 @@ struct WandWriter {
   bool valid{false};
 };
 
-bool CanUseWand(const Scorer& scorer, IndexFeatures index_features,
-                const irs::feature_map_t& features) noexcept {
-  if (index_features != (scorer.index_features() & index_features)) {
-    return false;
-  }
-
-  for (const irs::type_info::type_id feature : scorer.features()) {
-    if (!features.contains(feature)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 std::vector<WandWriter> PrepareWandWriters(ScorersView scorers,
                                            size_t max_levels) {
   std::vector<WandWriter> writers(scorers.size());
@@ -384,7 +369,6 @@ enum class PostingsFormat : int32_t {
 //  |       block#0       | |      block#1        | |vInts|
 //  d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
 //                          ^                       ^       (level 0 skip point)
-
 class postings_writer_base : public irs::postings_writer {
  public:
   static constexpr uint32_t kMaxSkipLevels = 10;
@@ -432,7 +416,7 @@ class postings_writer_base : public irs::postings_writer {
   void begin_field(IndexFeatures index_features,
                    const irs::feature_map_t& features) final {
     features_.Reset(index_features);
-    RefillWriters(index_features, features);
+    PrepareWriters(features);
     docs_.value.clear();
     last_state_.clear();
   }
@@ -471,11 +455,26 @@ class postings_writer_base : public irs::postings_writer {
     bool has_pay_{};
   };
 
-  struct attributes {
+  struct Attributes final : attribute_provider {
+    irs::document doc_;
+    irs::frequency freq_value_;
+
     const frequency* freq_{};
     irs::position* pos_{};
     const offset* offs_{};
     const payload* pay_{};
+
+    attribute* get_mutable(type_info::type_id type) noexcept final {
+      if (type == irs::type<document>::id()) {
+        return &doc_;
+      }
+
+      if (type == irs::type<frequency>::id()) {
+        return const_cast<frequency*>(freq_);
+      }
+
+      return nullptr;
+    }
 
     void reset(attribute_provider& attrs) noexcept {
       pos_ = irs::position::empty();
@@ -506,8 +505,7 @@ class postings_writer_base : public irs::postings_writer {
   void BeginTerm();
   void EndTerm(version10::term_meta& meta);
   void EndDocument();
-  void RefillWriters(IndexFeatures index_features,
-                     const irs::feature_map_t& features);
+  void PrepareWriters(const irs::feature_map_t& features);
 
   template<typename Func>
   void ApplyWriters(Func&& func) {
@@ -529,8 +527,7 @@ class postings_writer_base : public irs::postings_writer {
   pos_buffer pos_;                   // Proximity stream
   pay_buffer pay_;                   // Payloads and offsets stream
   uint32_t* buf_;                    // Buffer for encoding
-  attributes attrs_;                 // Set of attributes
-  ScorersView scorers_;              // List of wand scorers
+  Attributes attrs_;                 // Set of attributes
   std::vector<WandWriter> writers_;  // List of wand writers
   std::vector<irs::WandWriter*> valid_writers_;  // Valid wand writers
   Features features_;  // Features supported by current field
@@ -538,18 +535,23 @@ class postings_writer_base : public irs::postings_writer {
   const TermsFormat terms_format_version_;
 };
 
-void postings_writer_base::RefillWriters(IndexFeatures index_features,
-                                         const irs::feature_map_t& features) {
-  IRS_ASSERT(scorers_.size() == writers_.size());
+// FIXME(gnusi): remove
+struct EmptyColumnProvider : ColumnProvider {
+  const irs::column_reader* column(field_id) const { return nullptr; }
+
+  const irs::column_reader* column(std::string_view) const { return nullptr; }
+} kEmptyColumnProvider;
+
+void postings_writer_base::PrepareWriters(const irs::feature_map_t& features) {
+  // Make frequency avaliable for Prepare
+  attrs_.freq_ = features_.HasFrequency() ? &attrs_.freq_value_ : nullptr;
 
   valid_writers_.clear();
-  auto scorer = scorers_.begin();
   for (auto& [writer, valid] : writers_) {
-    valid = writer && CanUseWand(**scorer, index_features, features);
+    valid = writer && writer->Prepare(kEmptyColumnProvider, features, attrs_);
     if (valid) {
       valid_writers_.emplace_back(writer.get());
     }
-    ++scorer;
   }
 }
 
@@ -622,7 +624,6 @@ void postings_writer_base::prepare(index_output& out,
 
   // Prepare wand writers
   writers_ = PrepareWandWriters(state.scorers, kMaxSkipLevels);
-  scorers_ = state.scorers;
   valid_writers_.reserve(writers_.size());
 
   // Prepare documents bitset
@@ -868,7 +869,7 @@ class postings_writer final : public postings_writer_base {
 
  private:
   void AddPosition(uint32_t pos);
-  void BeginDocument(doc_id_t id, uint32_t freq);
+  void BeginDocument();
 
   struct {
     // Buffer for document deltas
@@ -904,9 +905,9 @@ class postings_writer final : public postings_writer_base {
 };
 
 template<typename FormatTraits>
-void postings_writer<FormatTraits>::BeginDocument(doc_id_t id, uint32_t freq) {
-  if (IRS_LIKELY(doc_.last < id)) {
-    doc_.push(id, freq);
+void postings_writer<FormatTraits>::BeginDocument() {
+  if (const auto id = attrs_.doc_.value; IRS_LIKELY(doc_.last < id)) {
+    doc_.push(id, attrs_.freq_value_.value);
 
     if (doc_.full()) {
       // FIXME do aligned?
@@ -914,19 +915,18 @@ void postings_writer<FormatTraits>::BeginDocument(doc_id_t id, uint32_t freq) {
                                                             doc_.block_last);
       FormatTraits::write_block(*doc_out_, doc_.docs.data(), buf_);
       if (attrs_.freq_) {
-        IRS_ASSERT(freq);
         FormatTraits::write_block(*doc_out_, doc_.freqs.data(), buf_);
       }
     }
 
     docs_.value.set(id);
 
-    // first position offsets now is format dependent
+    // First position offsets now is format dependent
     pos_.last = FormatTraits::pos_min();
     pay_.last = 0;
   } else {
     throw index_error{
-      absl::StrCat("While beginning doc_ in postings_writer, error: "
+      absl::StrCat("While beginning document in postings_writer, error: "
                    "docs out of order '",
                    id, "' < '", doc_.last, "'")};
   }
@@ -981,42 +981,22 @@ void postings_writer<FormatTraits>::AddPosition(uint32_t pos) {
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-static const frequency kNoFreq{};
-
-struct PostingAttributes final : attribute_provider {
-  const document* doc;
-  const frequency* freq{&kNoFreq};
-
-  attribute* get_mutable(type_info::type_id type) noexcept final {
-    if (type == irs::type<document>::id()) {
-      return const_cast<document*>(doc);
-    }
-
-    if (type == irs::type<frequency>::id() && freq != &kNoFreq) {
-      return const_cast<frequency*>(freq);
-    }
-
-    return nullptr;
-  }
-};
-
 template<typename FormatTraits>
 irs::postings_writer::state postings_writer<FormatTraits>::write(
   irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
 
-  PostingAttributes cur_attrs;
-  cur_attrs.doc = irs::get<document>(docs);
+  const auto* doc = irs::get<document>(docs);
 
-  if (IRS_UNLIKELY(!cur_attrs.doc)) {
+  if (IRS_UNLIKELY(!doc)) {
     IRS_ASSERT(false);
     throw illegal_argument{"'document' attribute is missing"};
   }
 
-  auto refresh = [this, &cur_attrs](auto& attrs) noexcept {
+  auto refresh = [this, no_freq = frequency{}](auto& attrs) noexcept {
     attrs_.reset(attrs);
-    if (attrs_.freq_) {
-      cur_attrs.freq = attrs_.freq_;
+    if (!attrs_.freq_) {
+      attrs_.freq_ = &no_freq;
     }
   };
 
@@ -1034,17 +1014,17 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   BeginTerm();
   if constexpr (FormatTraits::wand()) {
-    ApplyWriters([&](auto& writer) { writer.Reset(cur_attrs); });
+    ApplyWriters([&](auto& writer) { writer.Reset(); });
   }
 
   uint32_t docs_count = 0;
   uint32_t total_freq = 0;
 
   while (docs.next()) {
-    const auto did = cur_attrs.doc->value;
-    IRS_ASSERT(doc_limits::valid(did));
-    IRS_ASSERT(cur_attrs.freq);
-    const uint32_t freqv = cur_attrs.freq->value;
+    IRS_ASSERT(doc_limits::valid(doc->value));
+    IRS_ASSERT(attrs_.freq_);
+    attrs_.doc_.value = doc->value;
+    attrs_.freq_value_.value = attrs_.freq_->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
       skip_.Skip(docs_count, [this](size_t level, memory_index_output& out) {
@@ -1063,21 +1043,17 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
       });
     }
 
-    BeginDocument(did, freqv);
-
+    BeginDocument();
     if constexpr (FormatTraits::wand()) {
       ApplyWriters([](auto& writer) { writer.Update(); });
     }
-
     IRS_ASSERT(attrs_.pos_);
     while (attrs_.pos_->next()) {
       IRS_ASSERT(pos_limits::valid(attrs_.pos_->value()));
       AddPosition(attrs_.pos_->value());
     }
-
     ++docs_count;
-    total_freq += freqv;
-
+    total_freq += attrs_.freq_value_.value;
     EndDocument();
   }
 

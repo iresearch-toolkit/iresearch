@@ -108,10 +108,6 @@ struct sort : irs::ScorerFactory {
       return irs::IndexFeatures::NONE;
     }
 
-    std::span<const irs::type_info::type_id> features() const noexcept final {
-      return {};
-    }
-
     irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
       return nullptr;
     }
@@ -125,8 +121,8 @@ struct sort : irs::ScorerFactory {
     }
 
     irs::ScoreFunction prepare_scorer(
-      const irs::SubReader& /*segment*/, const irs::term_reader& /*field*/,
-      const irs::byte_type* /*stats*/,
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*field*/, const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t /*boost*/) const final {
       return irs::ScoreFunction::Invalid();

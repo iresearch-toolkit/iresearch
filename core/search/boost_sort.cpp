@@ -45,17 +45,13 @@ struct Prepared final : ScorerBase<void> {
     return IndexFeatures::NONE;
   }
 
-  std::span<const type_info::type_id> features() const noexcept final {
-    return {};
-  }
-
   WandWriter::ptr prepare_wand_writer(size_t) const final { return nullptr; }
 
-  ScoreFunction prepare_scorer(const SubReader& /*segment*/,
-                               const term_reader& /*field*/,
-                               const byte_type* /*stats*/,
-                               const irs::attribute_provider& attrs,
-                               irs::score_t boost) const final {
+  ScoreFunction prepare_scorer(
+    const ColumnProvider& /*segment*/,
+    const std::map<irs::type_info::type_id, field_id>& /*features*/,
+    const byte_type* /*stats*/, const irs::attribute_provider& attrs,
+    irs::score_t boost) const final {
     const auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
     if (volatile_boost == nullptr) {

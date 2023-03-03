@@ -48,7 +48,7 @@ using ScoreFunctions = SmallVector<ScoreFunction, 2>;
 
 // Prepare scorer for each of the bucket.
 ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
-                              const SubReader& segment,
+                              const ColumnProvider& segment,
                               const term_reader& field, const byte_type* stats,
                               const attribute_provider& doc, score_t boost);
 

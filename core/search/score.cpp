@@ -22,6 +22,8 @@
 
 #include "score.hpp"
 
+#include "formats/formats.hpp"
+#include "index/field_meta.hpp"
 #include "shared.hpp"
 
 namespace irs {
@@ -29,7 +31,7 @@ namespace irs {
 const score score::kNoScore;
 
 ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
-                              const SubReader& segment,
+                              const ColumnProvider& segment,
                               const term_reader& field,
                               const byte_type* stats_buf,
                               const attribute_provider& doc, score_t boost) {
@@ -43,8 +45,9 @@ ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
       continue;
     }
 
-    auto scorer = bucket.prepare_scorer(
-      segment, field, stats_buf + entry.stats_offset, doc, boost);
+    auto scorer =
+      bucket.prepare_scorer(segment, field.meta().features,
+                            stats_buf + entry.stats_offset, doc, boost);
 
     if (IRS_LIKELY(scorer)) {
       scorers.emplace_back(std::move(scorer));

@@ -110,15 +110,12 @@ struct DocIdScorer : irs::ScorerFactory {
     irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;
     }
-    std::span<const irs::type_info::type_id> features() const noexcept final {
-      return {};
-    }
     irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
       return nullptr;
     }
 
-    irs::ScoreFunction prepare_scorer(const irs::SubReader&,
-                                      const irs::term_reader&,
+    irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
+                                      const irs::feature_map_t&,
                                       const irs::byte_type*,
                                       const irs::attribute_provider& attrs,
                                       irs::score_t) const final {

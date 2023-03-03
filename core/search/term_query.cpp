@@ -22,6 +22,7 @@
 
 #include "term_query.hpp"
 
+#include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "search/prepared_state_visitor.hpp"
 #include "search/score.hpp"
@@ -52,8 +53,8 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
         *state->cookie, ord.features(),
         {.factory = [&, bucket = ord.buckets().front().bucket.get()](
                       const attribute_provider& attrs) -> ScoreFunction {
-           return bucket->prepare_scorer(rdr, *state->reader, stats_.c_str(),
-                                         attrs, boost());
+           return bucket->prepare_scorer(rdr, state->reader->meta().features,
+                                         stats_.c_str(), attrs, boost());
          },
          .strict = (ctx.mode == ExecutionMode::kStrictTop)});
     } else {

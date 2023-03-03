@@ -39,8 +39,12 @@ class WandWriterImpl final : public WandWriter {
     IRS_ASSERT(!score_levels_.empty());
   }
 
-  void Reset(const attribute_provider& attrs) noexcept final {
-    // producer_.Prepare(attrs);
+  bool Prepare(const ColumnProvider& reader, const feature_map_t& features,
+               const attribute_provider& attrs) final {
+    return producer_.Prepare(reader, features, attrs);
+  }
+
+  void Reset() noexcept final {
     for (auto& level : score_levels_) {
       level = {};
     }
@@ -102,13 +106,10 @@ class ValueProducerBase {
   }
 
  protected:
-  // FIXME(gnusi):
-  //   * SubReader -> ColumnProvider
-  //   * term_reader -> features_t
-  bool Prepare(const SubReader& reader, const term_reader& field,
+  bool Prepare(const ColumnProvider& reader, const feature_map_t& features,
                const attribute_provider& attrs) {
     func_ =
-      scorer_->prepare_scorer(reader, field, stats_.data(), attrs, kNoBoost);
+      scorer_->prepare_scorer(reader, features, stats_.data(), attrs, kNoBoost);
     return static_cast<bool>(func_);
   }
 
@@ -137,7 +138,7 @@ class FreqNormProducer : public ValueProducerBase {
 
   explicit FreqNormProducer(const Scorer& scorer) : ValueProducerBase{scorer} {}
 
-  bool Prepare(const SubReader& reader, const term_reader& field,
+  bool Prepare(const ColumnProvider& reader, const feature_map_t& features,
                const attribute_provider& attrs) {
     freq_ = irs::get<frequency>(attrs);
 
@@ -145,8 +146,14 @@ class FreqNormProducer : public ValueProducerBase {
       return false;
     }
 
-    // FIXME(gnusi):
-    return ValueProducerBase::Prepare(reader, field, attrs);
+    auto norm = features.find(irs::type<Norm2>::id());
+
+    if (norm == features.end() || !field_limits::valid(norm->second)) {
+      return false;
+    }
+
+    // FIXME(gnusi): norms
+    return ValueProducerBase::Prepare(reader, features, attrs);
   }
 
   Value GetValue() const noexcept { return {.freq = freq_->value}; }
@@ -171,10 +178,7 @@ class FreqProducer : public ValueProducerBase {
 
   explicit FreqProducer(const Scorer& scorer) : ValueProducerBase{scorer} {}
 
-  // FIXME(gnusi):
-  //   * SubReader -> ColumnProvider
-  //   * term_reader -> features_t
-  bool Prepare(const SubReader& reader, const term_reader& field,
+  bool Prepare(const ColumnProvider& reader, const feature_map_t& features,
                const attribute_provider& attrs) {
     freq_ = irs::get<frequency>(attrs);
 
@@ -182,7 +186,7 @@ class FreqProducer : public ValueProducerBase {
       return false;
     }
 
-    return ValueProducerBase::Prepare(reader, field, attrs);
+    return ValueProducerBase::Prepare(reader, features, attrs);
   }
 
   Value GetValue() const noexcept { return {.freq = freq_->value}; }
