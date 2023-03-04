@@ -48,15 +48,15 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   IRS_ASSERT(reader);
 
   auto docs = [&]() -> irs::doc_iterator::ptr {
-    if (ctx.mode != ExecutionMode::kAll && !ord.empty()) {
+    if (ctx.wand.Enabled()) {
       return reader->wanderator(
         *state->cookie, ord.features(),
-        {.factory = [&, bucket = ord.buckets().front().bucket.get()](
-                      const attribute_provider& attrs) -> ScoreFunction {
-           return bucket->prepare_scorer(rdr, state->reader->meta().features,
-                                         stats_.c_str(), attrs, boost());
+        {.factory = [&](const attribute_provider& attrs,
+                        const Scorer& scorer) -> ScoreFunction {
+           return scorer.prepare_scorer(rdr, state->reader->meta().features,
+                                        stats_.c_str(), attrs, boost());
          },
-         .strict = (ctx.mode == ExecutionMode::kStrictTop)});
+         .wand = ctx.wand});
     } else {
       return reader->postings(*state->cookie, ord.features());
     }

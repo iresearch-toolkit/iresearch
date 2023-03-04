@@ -47,7 +47,7 @@ using namespace irs;
 static_assert(std::variant_size_v<ByNestedOptions::MatchType> == 2);
 
 const Scorers& GetOrder(const ByNestedOptions::MatchType& match,
-                      const Scorers& ord) noexcept {
+                        const Scorers& ord) noexcept {
   return std::visit(
     irs::Visitor{[&](Match v) noexcept -> const Scorers& {
                    return kMatchNone == v ? Scorers::kUnordered : ord;
@@ -638,7 +638,7 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
   auto child = child_->execute({.segment = rdr,
                                 .scorers = GetOrder(match_, ord),
                                 .ctx = ctx.ctx,
-                                .mode = ExecutionMode::kAll});
+                                .wand = {}});
 
   if (IRS_UNLIKELY(!child)) {
     return doc_iterator::empty();

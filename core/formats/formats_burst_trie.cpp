@@ -655,7 +655,7 @@ inline void prepare_output(std::string& str, index_output::ptr& out,
 }
 
 inline int32_t prepare_input(std::string& str, index_input::ptr& in,
-                             irs::IOAdvice advice, const reader_state& state,
+                             irs::IOAdvice advice, const ReaderState& state,
                              std::string_view ext, std::string_view format,
                              const int32_t min_ver, const int32_t max_ver,
                              int64_t* checksum = nullptr) {
@@ -2978,8 +2978,7 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  void prepare(const directory& dir, const SegmentMeta& meta,
-               const document_mask& mask) final;
+  void prepare(const ReaderState& state) final;
 
   const irs::term_reader* field(std::string_view field) const final;
   irs::field_iterator::ptr iterator() const final;
@@ -3135,6 +3134,8 @@ class field_reader final : public irs::field_reader {
     doc_iterator::ptr wanderator(const seek_cookie& cookie,
                                  IndexFeatures features,
                                  const WanderatorOptions& options) const final {
+      // FIXME(gnusi): remap index
+
       return owner_->pr_->wanderator(meta().index_features, features,
                                      down_cast<::cookie>(cookie).meta, options);
     }
@@ -3162,22 +3163,15 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
   IRS_ASSERT(pr_);
 }
 
-void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
-                           const document_mask& /*mask*/) {
-  std::string filename;
-
-  feature_map_t feature_map;
-  IndexFeatures features{IndexFeatures::NONE};
-  reader_state state;
-
-  state.dir = &dir;
-  state.meta = &meta;
+void field_reader::prepare(const ReaderState& state) {
+  IRS_ASSERT(state.dir);
+  IRS_ASSERT(state.meta);
 
   // check index header
   index_input::ptr index_in;
 
   int64_t checksum = 0;
-
+  std::string filename;
   const auto term_index_version = burst_trie::Version(prepare_input(
     filename, index_in, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE,
     state, field_writer::TERMS_INDEX_EXT, field_writer::FORMAT_TERMS_INDEX,
@@ -3202,7 +3196,7 @@ void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
     index_in->seek(ptr);
   }
 
-  auto* enc = dir.attributes().encryption();
+  auto* enc = state.dir->attributes().encryption();
   encryption::stream::ptr index_in_cipher;
 
   if (term_index_version > burst_trie::Version::MIN) {
@@ -3217,6 +3211,8 @@ void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
     }
   }
 
+  feature_map_t feature_map;
+  IndexFeatures features{IndexFeatures::NONE};
   if (IRS_LIKELY(term_index_version >= burst_trie::Version::IMMUTABLE_FST)) {
     read_segment_features(*index_in, features, feature_map);
   } else {
@@ -3227,6 +3223,8 @@ void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
   if (term_index_version <= burst_trie::Version::ENCRYPTION_MIN) {
     fields_ = vector_fst_readers{};
   }
+
+  const auto& meta = *state.meta;
 
   std::visit(
     [&](auto& fields) {

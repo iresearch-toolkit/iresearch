@@ -24,9 +24,8 @@
 
 #include <functional>
 
+#include "index/index_reader_options.hpp"
 #include "index/iterators.hpp"
-#include "search/sort.hpp"
-#include "shared.hpp"
 #include "utils/hash_utils.hpp"
 
 #include <absl/container/node_hash_map.h>
@@ -36,19 +35,11 @@ namespace irs {
 struct IndexReader;
 struct PreparedStateVisitor;
 
-enum class ExecutionMode : uint32_t {
-  // Access all documents
-  kAll = 0,
-  // Access only top matched documents
-  kTop,
-  kStrictTop
-};
-
 struct ExecutionContext {
   const SubReader& segment;
   const Scorers& scorers;
   const attribute_provider* ctx{};
-  ExecutionMode mode{ExecutionMode::kAll};
+  WandContext wand;
 };
 
 // Base class for all user-side filters
@@ -63,10 +54,10 @@ class filter {
 
     explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
 
-    doc_iterator::ptr execute(const SubReader& segment,
-                              const Scorers& scorers = Scorers::kUnordered,
-                              ExecutionMode mode = ExecutionMode::kAll) const {
-      return execute({.segment = segment, .scorers = scorers, .mode = mode});
+    doc_iterator::ptr execute(
+      const SubReader& segment,
+      const Scorers& scorers = Scorers::kUnordered) const {
+      return execute({.segment = segment, .scorers = scorers});
     }
 
     virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;

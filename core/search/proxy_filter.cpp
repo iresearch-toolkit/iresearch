@@ -45,7 +45,7 @@ class lazy_filter_bitset : private util::noncopyable {
     real_doc_itr_ = segment.mask(filter.execute({.segment = segment,
                                                  .scorers = ctx.scorers,
                                                  .ctx = ctx.ctx,
-                                                 .mode = ctx.mode}));
+                                                 .wand = ctx.wand}));
     words_ = bitset::bits_to_words(bits);
     cost_ = cost::extract(*real_doc_itr_);
     set_ = std::make_unique<word_t[]>(words_);

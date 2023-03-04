@@ -26,12 +26,7 @@
 #include <unordered_set>
 
 #include "analysis/token_attributes.hpp"
-#include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
-#include "search/cost.hpp"
-#include "store/memory_directory.hpp"
-#include "tests_shared.hpp"
-#include "utils/version_utils.hpp"
 
 namespace tests {
 

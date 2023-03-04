@@ -742,10 +742,10 @@ void assert_docs(const irs::term_iterator& expected_term,
     // FIXME(gnusi)
     const irs::WanderatorOptions options{
       .factory =
-        [](const irs::attribute_provider&) {
+        [](const irs::attribute_provider&, const irs::Scorer& score) {
           return irs::ScoreFunction::Default(1);
         },
-      .strict = false};
+      .wand = {.index = 0, .strict = false}};
 
     return actual_terms.wanderator(*actual_cookie, requested_features, options);
   });

@@ -804,7 +804,7 @@ TEST_P(format_test_case, fields_read_write) {
 
     irs::document_mask docs_mask;
     auto reader = codec()->get_field_reader();
-    reader->prepare(dir(), meta, docs_mask);
+    reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta});
     ASSERT_EQ(1, reader->size());
 
     // check terms
@@ -3722,12 +3722,14 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
 
   // can't open encrypted index without encryption
   dir().attributes() = irs::directory_attributes{0, nullptr};
-  ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
+  ASSERT_THROW(reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta}),
+               irs::index_error);
 
   // can't open encrypted index with wrong encryption
   dir().attributes() =
     irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(6)};
-  ASSERT_THROW(reader->prepare(dir(), meta, docs_mask), irs::index_error);
+  ASSERT_THROW(reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta}),
+               irs::index_error);
 }
 
 TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {

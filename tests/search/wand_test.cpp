@@ -76,7 +76,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
 
   for (size_t left = limit, segment_id = 0; const auto& segment : index) {
     auto docs = query->execute(irs::ExecutionContext{
-      .segment = segment, .scorers = scorers, .mode = mode});
+      .segment = segment, .scorers = scorers, .wand = mode});
     EXPECT_NE(nullptr, docs);
 
     const auto* doc = irs::get<irs::document>(*docs);

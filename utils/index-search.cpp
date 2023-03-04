@@ -446,10 +446,12 @@ void prepareTasks(std::vector<task_t>& buf, std::istream& in,
   }
 }
 
-static constexpr frozen::map<std::string_view, irs::ExecutionMode, 3>
-  kSearchModes = {{"all", irs::ExecutionMode::kAll},
-                  {"strictWand", irs::ExecutionMode::kStrictTop},
-                  {"wand", irs::ExecutionMode::kTop}};
+enum class ExecutionMode { kAll, kStrictTop, kTop };
+
+static constexpr frozen::map<std::string_view, ExecutionMode, 3> kSearchModes =
+  {{"all", ExecutionMode::kAll},
+   {"strictWand", ExecutionMode::kStrictTop},
+   {"wand", ExecutionMode::kTop}};
 
 static constexpr frozen::map<std::string_view, irs::type_info, 2> kTextFormats =
   {
@@ -469,7 +471,7 @@ int search(std::string_view path, std::string_view dir_type,
   irs::default_pdp(2, false);
   irs::default_pdp(2, true);
 
-  irs::ExecutionMode mode{irs::ExecutionMode::kAll};
+  ExecutionMode mode{ExecutionMode::kAll};
 
   if (auto it = kSearchModes.find(mode_arg); it == kSearchModes.end()) {
     std::cerr << "Unknown search mode '" << mode_arg << "'" << std::endl;
@@ -477,6 +479,14 @@ int search(std::string_view path, std::string_view dir_type,
   } else {
     mode = it->second;
   }
+
+  const irs::WandContext wand = [&]() -> irs::WandContext {
+    if (mode == ExecutionMode::kAll) {
+      return {};
+    }
+
+    return {.index = 0, .strict = (mode == ExecutionMode::kStrictTop)};
+  }();
 
   auto arg_format_itr = kTextFormats.find(scorer_arg_format);
 
@@ -630,7 +640,7 @@ int search(std::string_view path, std::string_view dir_type,
   // indexer threads
   for (size_t i = search_threads; i; --i) {
     thread_pool.run([&task_provider, &reader, &order, limit, &out, csv,
-                     scored_terms_limit, mode]() -> void {
+                     scored_terms_limit, wand]() -> void {
       static const std::string analyzer_name("text");
       static const std::string analyzer_args(
         "{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", "
@@ -676,7 +686,8 @@ int search(std::string_view path, std::string_view dir_type,
 
           irs::score_threshold tmp;
           for (auto left = limit; auto& segment : reader) {
-            auto docs = filter->execute(segment, order, mode);
+            auto docs = filter->execute(irs::ExecutionContext{
+              .segment = segment, .scorers = order, .wand = wand});
             IRS_ASSERT(docs);
 
             const irs::document* doc = irs::get<irs::document>(*docs);

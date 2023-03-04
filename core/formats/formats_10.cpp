@@ -170,7 +170,7 @@ void prepare_output(std::string& str, index_output::ptr& out,
 }
 
 void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
-                   const reader_state& state, std::string_view ext,
+                   const ReaderState& state, std::string_view ext,
                    std::string_view format, const int32_t min_ver,
                    const int32_t max_ver) {
   IRS_ASSERT(!in);
@@ -2337,10 +2337,10 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   // Hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<wanderator>;
 
-  wanderator(const ScoreFunctionFactory& factory)
+  wanderator(const ScoreFunctionFactory& factory, const Scorer& scorer)
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
             ReadSkip{}},
-      scorer_{factory(*this)} {
+      scorer_{factory(*this, scorer)} {
     IRS_ASSERT(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
@@ -3210,7 +3210,7 @@ bool DocumentMaskReader::read(const directory& dir, const SegmentMeta& meta,
 
 class postings_reader_base : public irs::postings_reader {
  public:
-  void prepare(index_input& in, const reader_state& state,
+  void prepare(index_input& in, const ReaderState& state,
                IndexFeatures features) final;
 
   size_t decode(const byte_type* in, IndexFeatures field_features,
@@ -3220,13 +3220,14 @@ class postings_reader_base : public irs::postings_reader {
   explicit postings_reader_base(size_t block_size) noexcept
     : block_size_{block_size} {}
 
-  size_t block_size_;
+  ScorersView scorers_;
   index_input::ptr doc_in_;
   index_input::ptr pos_in_;
   index_input::ptr pay_in_;
+  size_t block_size_;
 };
 
-void postings_reader_base::prepare(index_input& in, const reader_state& state,
+void postings_reader_base::prepare(index_input& in, const ReaderState& state,
                                    IndexFeatures features) {
   std::string buf;
 
@@ -3379,8 +3380,23 @@ class postings_reader final : public postings_reader_base {
     const term_meta& meta,
     [[maybe_unused]] const WanderatorOptions& options) final {
     if constexpr (FormatTraits::wand()) {
-      if (meta.docs_count <= FormatTraits::block_size() ||
-          IndexFeatures::NONE == (field_features & IndexFeatures::FREQ)) {
+      const auto* scorer = [&]() -> const Scorer* {
+        if (meta.docs_count <= FormatTraits::block_size() ||
+            scorers_.size() <= options.wand.index) {
+          return nullptr;
+        }
+
+        const auto& scorer = *scorers_[options.wand.index];
+        const auto scorer_features = scorer.index_features();
+
+        if (scorer_features != (field_features & scorer_features)) {
+          return nullptr;
+        }
+
+        return &scorer;
+      }();
+
+      if (!scorer) {
         // No need to use wanderator
         //  * for short lists
         //  * if term frequency isn't tracked
@@ -3395,14 +3411,14 @@ class postings_reader final : public postings_reader_base {
               std::integral_constant<bool, Strict>) -> irs::doc_iterator::ptr {
             auto it = memory::make_managed<
               ::wanderator<IteratorTraits, FieldTraits, Strict>>(
-              options.factory);
+              options.factory, *scorer);
 
             it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
 
             return it;
           };
 
-          if (options.strict) {
+          if (options.wand.strict) {
             return make(std::true_type{});
           } else {
             return make(std::false_type{});

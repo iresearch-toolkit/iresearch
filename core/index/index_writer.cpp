@@ -1288,11 +1288,9 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  const ScorersProvider& scorers_provider,
   std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
   : feature_info_{feature_info},
     column_info_{column_info},
-    scorers_{scorers_provider ? scorers_provider() : WandScorers{}},
     comparator_{comparator},
     meta_payload_provider_{meta_payload_provider},
     codec_{std::move(codec)},
@@ -1311,8 +1309,6 @@ IndexWriter::IndexWriter(
   IRS_ASSERT(column_info);   // ensured by 'make'
   IRS_ASSERT(feature_info);  // ensured by 'make'
   IRS_ASSERT(codec_);
-  IRS_ASSERT(std::all_of(scorers_.begin(), scorers_.end(),
-                         [](const auto& v) { return v != nullptr; }));
 
   flush_context_.store(flush_context_pool_.data());
 
@@ -1367,13 +1363,17 @@ void IndexWriter::Clear(uint64_t tick) {
   consolidating_segments_.clear();
 }
 
-IndexWriter::ptr IndexWriter::Make(
-  directory& dir, format::ptr codec, OpenMode mode,
-  const IndexWriterOptions& opts /*= init_options()*/) {
+IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
+                                   OpenMode mode,
+                                   const IndexWriterOptions& options) {
+  IRS_ASSERT(std::all_of(options.reader_options.scorers.begin(),
+                         options.reader_options.scorers.end(),
+                         [](const auto& v) { return v != nullptr; }));
+
   index_lock::ptr lock;
   index_file_refs::ref_t lock_ref;
 
-  if (opts.lock_repository) {
+  if (options.lock_repository) {
     // lock the directory
     lock = dir.make_lock(kWriteLockName);
     // will be created by try_lock
@@ -1427,14 +1427,15 @@ IndexWriter::ptr IndexWriter::Make(
 
     return std::make_shared<const DirectoryReaderImpl>(
       dir, std::move(codec), opts, std::move(meta), std::move(readers));
-  }(dir, codec, std::move(meta), opts.reader_options);
+  }(dir, codec, std::move(meta), options.reader_options);
 
   auto writer = std::make_shared<IndexWriter>(
     ConstructToken{}, std::move(lock), std::move(lock_ref), dir,
-    std::move(codec), opts.segment_pool_size, SegmentOptions{opts},
-    opts.comparator, opts.column_info ? opts.column_info : kDefaultColumnInfo,
-    opts.features ? opts.features : kDefaultFeatureInfo,
-    opts.meta_payload_provider, opts.wand_provider, std::move(reader));
+    std::move(codec), options.segment_pool_size, SegmentOptions{options},
+    options.comparator,
+    options.column_info ? options.column_info : kDefaultColumnInfo,
+    options.features ? options.features : kDefaultFeatureInfo,
+    options.meta_payload_provider, std::move(reader));
 
   // Remove non-index files from directory
   directory_utils::RemoveAllUnreferenced(dir);
@@ -2005,6 +2006,13 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext(
   }
 
   return {segment_ctx, segments_active_};
+}
+
+SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
+  return {.column_info = column_info_,
+          .feature_info = feature_info_,
+          .scorers = committed_reader_->Options().scorers,
+          .comparator = this->comparator_};
 }
 
 std::pair<std::vector<std::unique_lock<std::mutex>>, uint64_t>

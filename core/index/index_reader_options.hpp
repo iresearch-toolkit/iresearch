@@ -25,6 +25,8 @@
 #include <function2/function2.hpp>
 #include <functional>
 
+#include "search/sort.hpp"
+
 namespace irs {
 
 struct SegmentMeta;
@@ -35,12 +37,30 @@ using ColumnWarmupCallback =
   std::function<bool(const SegmentMeta& meta, const field_reader& fields,
                      const column_reader& column)>;
 
-// should never throw as may be used in dtors
+// Should never throw as may be used in dtors
 using MemoryAccountingFunc = fu2::function<bool(int64_t) noexcept>;
 
+// Scorers allowed to use in conjunction with wanderator.
+using ScorersView = std::span<const std::unique_ptr<Scorer>>;
+
+struct WandContext {
+  static constexpr auto kDisable = std::numeric_limits<size_t>::max();
+
+  bool Enabled() const noexcept { return index != kDisable; }
+
+  // Index of the scorer to use for optimization.
+  // Optimization is turned off by default.
+  size_t index{kDisable};
+  bool strict{false};
+};
+
 struct IndexReaderOptions {
-  ColumnWarmupCallback warmup_columns{};
-  MemoryAccountingFunc pinned_memory_accounting{};
+  ColumnWarmupCallback warmup_columns;
+
+  MemoryAccountingFunc pinned_memory_accounting;
+
+  // A list of wand scorers.
+  ScorersView scorers;
 
   // Open inverted index
   bool index{true};

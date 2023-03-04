@@ -37,7 +37,6 @@
 #include "store/directory.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/automaton_decl.hpp"
-#include "utils/io_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/type_info.hpp"
 
@@ -49,7 +48,7 @@ struct Comparer;
 struct SegmentMeta;
 struct field_meta;
 struct flush_state;
-struct reader_state;
+struct ReaderState;
 class index_output;
 struct data_input;
 struct index_input;
@@ -62,14 +61,12 @@ using doc_map = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
 using ScoreFunctionFactory =
-  std::function<ScoreFunction(const attribute_provider&)>;
+  std::function<ScoreFunction(const attribute_provider&, const Scorer&)>;
 
 struct WanderatorOptions {
   ScoreFunctionFactory factory;
-  bool strict{false};
+  WandContext wand;
 };
-
-using ScorersView = std::span<const std::unique_ptr<Scorer>>;
 
 struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
@@ -157,7 +154,7 @@ struct postings_reader {
 
   // in - corresponding stream
   // features - the set of features available for segment
-  virtual void prepare(index_input& in, const reader_state& state,
+  virtual void prepare(index_input& in, const ReaderState& state,
                        IndexFeatures features) = 0;
 
   // Parses input block "in" and populate "attrs" collection with
@@ -269,8 +266,7 @@ struct field_reader {
 
   virtual ~field_reader() = default;
 
-  virtual void prepare(const directory& dir, const SegmentMeta& meta,
-                       const document_mask& mask) = 0;
+  virtual void prepare(const ReaderState& stat) = 0;
 
   virtual const term_reader* field(std::string_view field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
@@ -456,16 +452,20 @@ class format {
 struct flush_state {
   directory* const dir{};
   const doc_map* docmap{};
-  const std::set<type_info::type_id>* features{};  // segment features
-  const std::string_view name;                     // segment name
+  // Accumulated segment features
+  const std::set<type_info::type_id>* features{};
+  // Segment name
+  std::string_view name;
   ScorersView scorers;
   size_t doc_count;
-  IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
+  // Accumulated segment index features
+  IndexFeatures index_features{IndexFeatures::NONE};
 };
 
-struct reader_state {
+struct ReaderState {
   const directory* dir;
   const SegmentMeta* meta;
+  ScorersView scorers;
 };
 
 namespace formats {
