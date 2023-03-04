@@ -147,7 +147,7 @@ class format_10_test_case : public tests::format_test_case {
       irs::SegmentMeta meta;
       meta.name = "segment_name";
 
-      irs::reader_state state;
+      irs::ReaderState state;
       state.dir = dir.get();
       state.meta = &meta;
 
@@ -372,7 +372,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::reader_state state;
+    irs::ReaderState state;
     state.dir = &dir();
     state.meta = &meta;
 
@@ -517,7 +517,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::reader_state state;
+    irs::ReaderState state;
     state.dir = &dir();
     state.meta = &meta;
 

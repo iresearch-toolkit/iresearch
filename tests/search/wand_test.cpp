@@ -40,8 +40,9 @@ struct Doc {
 class WandTestCase : public tests::index_test_base {
  public:
   std::vector<Doc> Collect(const irs::IndexReader& index,
-                           const irs::filter& filter, const irs::ScorerFactory& scorer,
-                           size_t limit, bool use_wand);
+                           const irs::filter& filter,
+                           const irs::ScorerFactory& scorer, size_t limit,
+                           bool use_wand);
 
   void AssertResults(const irs::IndexReader& index, const irs::filter& filter,
                      const irs::ScorerFactory& scorer, size_t limit);
@@ -49,8 +50,8 @@ class WandTestCase : public tests::index_test_base {
 
 std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
                                        const irs::filter& filter,
-                                       const irs::ScorerFactory& scorer, size_t limit,
-                                       bool use_wand) {
+                                       const irs::ScorerFactory& scorer,
+                                       size_t limit, bool use_wand) {
   struct ScoredDoc : Doc {
     ScoredDoc(size_t segment, irs::doc_id_t doc, float score)
       : Doc{segment, doc}, score{score} {}
@@ -67,8 +68,8 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
   auto query = filter.prepare(index, scorers);
   EXPECT_NE(nullptr, query);
 
-  const auto mode =
-    (use_wand ? irs::ExecutionMode::kTop : irs::ExecutionMode::kAll);
+  const irs::WandContext mode{.index =
+                                use_wand ? 0 : irs::WandContext::kDisable};
 
   irs::score_threshold tmp;
   std::vector<ScoredDoc> sorted;
@@ -131,7 +132,8 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
 
 void WandTestCase::AssertResults(const irs::IndexReader& index,
                                  const irs::filter& filter,
-                                 const irs::ScorerFactory& scorer, size_t limit) {
+                                 const irs::ScorerFactory& scorer,
+                                 size_t limit) {
   auto wand_result = Collect(index, filter, scorer, limit, true);
   auto result = Collect(index, filter, scorer, limit, false);
   ASSERT_EQ(result, wand_result);
