@@ -2314,6 +2314,25 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
   }
 }
 
+template<size_t Value>
+struct Extent {
+  Extent(size_t) noexcept {}
+
+  static constexpr size_t Get() noexcept { return Value; }
+};
+
+template<>
+struct Extent<std::numeric_limits<size_t>::max()> {
+  Extent(size_t value) noexcept : value{value} {}
+
+  constexpr size_t Get() const noexcept { return value; }
+
+  size_t value;
+};
+
+template<bool Strict>
+struct WanderatorTraits {};
+
 // WAND iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
@@ -2345,7 +2364,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
 
-    skip_.Reader().SetScoreFunction(factory);
+    skip_.Reader().SetScoreFunction(factory, scorer);
     std::get<score>(attrs_).Reset(*absl::bit_cast<score_ctx*>(&score_),
                                   [](score_ctx* ctx, score_t* res) noexcept {
                                     *res = *absl::bit_cast<score_t*>(ctx);
@@ -2384,8 +2403,9 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
    public:
     ReadSkip() : skip_levels_(1), skip_scores_(1) {}
 
-    void SetScoreFunction(const ScoreFunctionFactory& factory) {
-      func_ = factory(ctx_);
+    void SetScoreFunction(const ScoreFunctionFactory& factory,
+                          const Scorer& scorer) {
+      func_ = factory(ctx_, scorer);
     }
 
     void EnsureSorted() const noexcept;
@@ -3409,6 +3429,8 @@ class postings_reader final : public postings_reader_base {
           auto make =
             [&]<bool Strict>(
               std::integral_constant<bool, Strict>) -> irs::doc_iterator::ptr {
+            // FIXME(gnusi): optimize single iterator case,
+
             auto it = memory::make_managed<
               ::wanderator<IteratorTraits, FieldTraits, Strict>>(
               options.factory, *scorer);

@@ -23,11 +23,45 @@
 #include "formats/formats_10.hpp"
 #include "formats/formats_10_attributes.hpp"
 #include "formats_test_case_base.hpp"
-#include "store/directory_attributes.hpp"
-#include "store/mmap_directory.hpp"
+#include "search/wand_writer.hpp"
 #include "tests_shared.hpp"
 
 namespace {
+
+struct EmptyColumnProvider : irs::ColumnProvider {
+  const irs::column_reader* column(irs::field_id) const final {
+    return nullptr;
+  }
+  const irs::column_reader* column(std::string_view) const final {
+    return nullptr;
+  }
+};
+
+struct FreqScorer : irs::ScorerBase<void> {
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::FREQ;
+  }
+
+  irs::ScoreFunction prepare_scorer(
+    const irs::ColumnProvider&,
+    const std::map<irs::type_info::type_id, irs::field_id>&,
+    const irs::byte_type*, const irs::attribute_provider& attrs,
+    irs::score_t) const final {
+    auto* freq = irs::get<irs::frequency>(attrs);
+    EXPECT_NE(nullptr, freq);
+
+    return irs::ScoreFunction{
+      reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        *res = reinterpret_cast<irs::frequency*>(ctx)->value;
+      }};
+  }
+
+  irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const {
+    return std::make_unique<irs::WandWriterImpl<irs::FreqProducer>>(*this,
+                                                                    max_levels);
+  }
+};
 
 class FreqThresholdDocIterator : public irs::doc_iterator {
  public:
@@ -278,7 +312,9 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   irs::SegmentMeta meta;
   meta.name = "segment_name";
 
-  const irs::reader_state state{.dir = &dir, .meta = &meta};
+  const irs::Scorer::ptr scorer = std::make_unique<FreqScorer>();
+  const irs::ReaderState state{
+    .dir = &dir, .meta = &meta, .scorers = std::span{&scorer, 1}};
 
   auto in = dir.open("attributes", irs::IOAdvice::NORMAL);
   EXPECT_FALSE(!in);
@@ -331,17 +367,12 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   bool strict) {
   const irs::WanderatorOptions options{
     .factory =
-      [](const irs::attribute_provider& attrs) {
-        auto* freq = irs::get<irs::frequency>(attrs);
-        EXPECT_NE(nullptr, freq);
-
-        return irs::ScoreFunction{
-          reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            *res = reinterpret_cast<irs::frequency*>(ctx)->value;
-          }};
+      [](const irs::attribute_provider& attrs, const irs::Scorer& scorer) {
+        return scorer.prepare_scorer(EmptyColumnProvider{},
+                                     irs::feature_map_t{}, nullptr, attrs,
+                                     irs::kNoBoost);
       },
-    .strict = strict};
+    .wand = {.index = 0, .strict = strict}};
 
   auto actual = reader.wanderator(field_features, features, meta, options);
   EXPECT_NE(nullptr, actual);
