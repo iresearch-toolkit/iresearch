@@ -286,16 +286,13 @@ class bytes_output : public data_output {
   bstring* buf_;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class bytes_view_input
-//////////////////////////////////////////////////////////////////////////////
 class bytes_view_input : public index_input {
  public:
   bytes_view_input() = default;
   explicit bytes_view_input(bytes_view data) noexcept
     : data_(data), pos_(data_.data()) {}
 
-  void skip(size_t size) noexcept {
+  void skip(size_t size) noexcept final {
     IRS_ASSERT(pos_ + size <= data_.data() + data_.size());
     pos_ += size;
   }

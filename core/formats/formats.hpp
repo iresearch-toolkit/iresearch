@@ -176,7 +176,8 @@ struct postings_reader {
   // Returns document iterator for a specified 'cookie' and 'features'
   virtual doc_iterator::ptr iterator(IndexFeatures field_features,
                                      IndexFeatures required_features,
-                                     const term_meta& meta) = 0;
+                                     const term_meta& meta,
+                                     byte_type wand_count) = 0;
 
   virtual doc_iterator::ptr wanderator(IndexFeatures field_features,
                                        IndexFeatures required_features,

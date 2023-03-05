@@ -1362,10 +1362,10 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
 
+  uint32_t WandCount() const noexcept { return wand_count_; }
+
  protected:
   uint32_t WandIndex(size_t i) const noexcept;
-
-  uint32_t WandCount() const noexcept { return wand_count_; }
 
  private:
   field_meta field_;
@@ -2027,10 +2027,10 @@ void block_iterator::reset() {
 // Base class for term_iterator and automaton_term_iterator
 class term_iterator_base : public seek_term_iterator {
  public:
-  term_iterator_base(const field_meta& field, postings_reader& postings,
+  term_iterator_base(const term_reader_base& field, postings_reader& postings,
                      irs::encryption::stream* terms_cipher,
                      payload* pay = nullptr)
-    : field_(&field), postings_(&postings), terms_cipher_(terms_cipher) {
+    : field_{&field}, postings_{&postings}, terms_cipher_{terms_cipher} {
     std::get<attribute_ptr<payload>>(attrs_) = pay;
   }
 
@@ -2057,17 +2057,19 @@ class term_iterator_base : public seek_term_iterator {
     std::tuple<version10::term_meta, term_attribute, attribute_ptr<payload>>;
 
   void read_impl(block_iterator& it) {
-    it.load_data(*field_, std::get<version10::term_meta>(attrs_), *postings_);
+    it.load_data(field_->meta(), std::get<version10::term_meta>(attrs_),
+                 *postings_);
   }
 
   doc_iterator::ptr postings_impl(block_iterator* it,
                                   IndexFeatures features) const {
     auto& meta = std::get<version10::term_meta>(attrs_);
-
+    const auto& field_meta = field_->meta();
     if (it) {
-      it->load_data(*field_, meta, *postings_);
+      it->load_data(field_meta, meta, *postings_);
     }
-    return postings_->iterator(field_->index_features, features, meta);
+    return postings_->iterator(field_meta.index_features, features, meta,
+                               field_->WandCount());
   }
 
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
@@ -2081,10 +2083,10 @@ class term_iterator_base : public seek_term_iterator {
   }
   void reset_value() noexcept { std::get<term_attribute>(attrs_).value = {}; }
 
-  const field_meta& field() const noexcept { return *field_; }
+  const field_meta& field() const noexcept { return field_->meta(); }
 
   mutable attributes attrs_;
-  const field_meta* field_;
+  const term_reader_base* field_;
   postings_reader* postings_;
   irs::encryption::stream* terms_cipher_;
   bstring term_buf_;
@@ -2101,13 +2103,13 @@ class term_iterator : public term_iterator_base {
   using weight_t = typename FST::Weight;
   using stateid_t = typename FST::StateId;
 
-  term_iterator(const field_meta& field, postings_reader& postings,
+  term_iterator(const term_reader_base& field, postings_reader& postings,
                 const index_input& terms_in,
                 irs::encryption::stream* terms_cipher, const FST& fst)
-    : term_iterator_base(field, postings, terms_cipher, nullptr),
-      terms_in_source_(&terms_in),
-      fst_(&fst),
-      matcher_(&fst, fst::MATCH_INPUT) {  // pass pointer to avoid copying FST
+    : term_iterator_base{field, postings, terms_cipher, nullptr},
+      terms_in_source_{&terms_in},
+      fst_{&fst},
+      matcher_{&fst, fst::MATCH_INPUT} {  // pass pointer to avoid copying FST
   }
 
   bool next() final;
@@ -2482,7 +2484,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
 template<typename FST>
 class single_term_iterator : public seek_term_iterator {
  public:
-  explicit single_term_iterator(const field_meta& field,
+  explicit single_term_iterator(const term_reader_base& field,
                                 postings_reader& postings,
                                 index_input::ptr&& terms_in,
                                 irs::encryption::stream* terms_cipher,
@@ -2519,7 +2521,8 @@ class single_term_iterator : public seek_term_iterator {
   }
 
   doc_iterator::ptr postings(IndexFeatures features) const final {
-    return postings_->iterator(field_->index_features, features, meta_);
+    return postings_->iterator(field_->meta().index_features, features, meta_,
+                               field_->WandCount());
   }
 
   const version10::term_meta& meta() const noexcept { return meta_; }
@@ -2532,7 +2535,7 @@ class single_term_iterator : public seek_term_iterator {
   index_input::ptr terms_in_;
   irs::encryption::stream* cipher_;
   postings_reader* postings_;
-  const field_meta* field_;
+  const term_reader_base* field_;
   const FST* fst_;
 };
 
@@ -2586,7 +2589,7 @@ bool single_term_iterator<FST>::seek(bytes_view term) {
   cur_block.load(*terms_in_, cipher_);
 
   if (SeekResult::FOUND == cur_block.scan_to_term(term, [](auto, auto) {})) {
-    cur_block.load_data(*field_, meta_, *postings_);
+    cur_block.load_data(field_->meta(), meta_, *postings_);
     value_.value = term;
     return true;
   }
@@ -2652,17 +2655,18 @@ class fst_arc_matcher {
 template<typename FST>
 class automaton_term_iterator : public term_iterator_base {
  public:
-  automaton_term_iterator(const field_meta& field, postings_reader& postings,
+  automaton_term_iterator(const term_reader_base& field,
+                          postings_reader& postings,
                           index_input::ptr&& terms_in,
                           irs::encryption::stream* terms_cipher, const FST& fst,
                           automaton_table_matcher& matcher)
-    : term_iterator_base(field, postings, terms_cipher, &payload_),
-      terms_in_(std::move(terms_in)),
-      fst_(&fst),
-      acceptor_(&matcher.GetFst()),
-      matcher_(&matcher),
-      fst_matcher_(&fst, fst::MATCH_INPUT),
-      sink_(matcher.sink()) {
+    : term_iterator_base{field, postings, terms_cipher, &payload_},
+      terms_in_{std::move(terms_in)},
+      fst_{&fst},
+      acceptor_{&matcher.GetFst()},
+      matcher_{&matcher},
+      fst_matcher_{&fst, fst::MATCH_INPUT},
+      sink_{matcher.sink()} {
     IRS_ASSERT(terms_in_);
     IRS_ASSERT(fst::kNoStateId != acceptor_->Start());
     IRS_ASSERT(acceptor_->NumArcs(acceptor_->Start()));
@@ -3047,17 +3051,17 @@ class field_reader final : public irs::field_reader {
         }
 
         return memory::make_managed<single_term_iterator<FST>>(
-          meta(), *owner_->pr_, std::move(terms_in),
+          *this, *owner_->pr_, std::move(terms_in),
           owner_->terms_in_cipher_.get(), *fst_);
       }
 
       return memory::make_managed<term_iterator<FST>>(
-        meta(), *owner_->pr_, *owner_->terms_in_,
-        owner_->terms_in_cipher_.get(), *fst_);
+        *this, *owner_->pr_, *owner_->terms_in_, owner_->terms_in_cipher_.get(),
+        *fst_);
     }
 
     term_meta term(bytes_view term) const final {
-      single_term_iterator<FST> it{meta(), *owner_->pr_,
+      single_term_iterator<FST> it{*this, *owner_->pr_,
                                    owner_->terms_in_->reopen(),
                                    owner_->terms_in_cipher_.get(), *fst_};
 
@@ -3071,7 +3075,7 @@ class field_reader final : public irs::field_reader {
         return 0;
       }
 
-      single_term_iterator<FST> it{meta(), *owner_->pr_,
+      single_term_iterator<FST> it{*this, *owner_->pr_,
                                    owner_->terms_in_->reopen(),
                                    owner_->terms_in_cipher_.get(), *fst_};
 
@@ -3148,14 +3152,15 @@ class field_reader final : public irs::field_reader {
       }
 
       return memory::make_managed<automaton_term_iterator<FST>>(
-        meta(), *owner_->pr_, std::move(terms_in),
+        *this, *owner_->pr_, std::move(terms_in),
         owner_->terms_in_cipher_.get(), *fst_, matcher);
     }
 
     doc_iterator::ptr postings(const seek_cookie& cookie,
                                IndexFeatures features) const final {
       return owner_->pr_->iterator(meta().index_features, features,
-                                   down_cast<::cookie>(cookie).meta);
+                                   down_cast<::cookie>(cookie).meta,
+                                   WandCount());
     }
 
     doc_iterator::ptr wanderator(const seek_cookie& cookie,

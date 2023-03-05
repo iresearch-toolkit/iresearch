@@ -303,18 +303,8 @@ class skip_score_stats {
   static uint32_t read(index_input& in) { return in.read_vint(); }
 };
 
-void SkipWandData(index_input& stream, byte_type count) {
-  uint64_t skip = 0;
-  for (; count; --count) {
-    skip += stream.read_byte();
-  }
-  // FIXME(gnusi): Implement skip for stream
-  stream.seek(stream.file_pointer() + skip);
-}
-
 std::vector<irs::WandWriter::ptr> PrepareWandWriters(ScorersView scorers,
                                                      size_t max_levels) {
-  // We support up to 64 scorers per field
   scorers = scorers.subspan(0, kMaxScorers);
 
   std::vector<irs::WandWriter::ptr> writers(scorers.size());
@@ -1940,27 +1930,43 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
   }
 }
 
-template<size_t Value>
-struct Extent {
-  Extent(size_t) noexcept {}
+static constexpr size_t kDynamicValue = std::numeric_limits<byte_type>::max();
+static_assert(kMaxScorers < kDynamicValue);
 
-  static constexpr size_t Get() noexcept { return Value; }
+template<byte_type Value>
+struct Extent {
+  static constexpr byte_type GetExtent() noexcept { return Value; }
 };
 
 template<>
-struct Extent<std::numeric_limits<size_t>::max()> {
-  Extent(size_t value) noexcept : value{value} {}
+struct Extent<kDynamicValue> {
+  Extent(byte_type value) noexcept : value{value} {}
 
-  constexpr size_t Get() const noexcept { return value; }
+  constexpr byte_type GetExtent() const noexcept { return value; }
 
-  size_t value;
+  byte_type value;
 };
+
+template<typename Func>
+auto ResoveExtent(byte_type extent, Func&& func) {
+  switch (extent) {
+    case 0:
+      return std::forward<Func>(func)(Extent<0>{});
+    case 1:
+      return std::forward<Func>(func)(Extent<1>{});
+    case 2:
+      return std::forward<Func>(func)(Extent<2>{});
+    default:
+      return std::forward<Func>(func)(Extent<kDynamicValue>{extent});
+  }
+}
 
 // Iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
-template<typename IteratorTraits, typename FieldTraits>
-class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
+template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
+class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits>,
+                     private WandExtent {
  private:
   static_assert(IteratorTraits::block_size() <=
                 std::numeric_limits<doc_id_t>::max());
@@ -1977,8 +1983,9 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   // hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<doc_iterator>;
 
-  doc_iterator()
-    : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
+  doc_iterator(WandExtent extent)
+    : WandExtent{extent},
+      skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
             ReadSkip{}} {
     IRS_ASSERT(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
@@ -2110,6 +2117,8 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     SkipState* prev_{};  // Pointer to skip context used by skip reader
   };
 
+  void SkipWandData(index_input& stream);
+
   void seek_to_block(doc_id_t target);
 
   uint64_t skip_offs_{};
@@ -2118,8 +2127,40 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   doc_id_t docs_count_{};
 };
 
-template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
+template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
+void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::SkipWandData(
+  index_input& stream) {
+  if constexpr (!FieldTraits::wand()) {
+    return;
+  }
+
+  const auto count = WandExtent::GetExtent();
+
+  if (count == 0) {
+    return;
+  }
+
+  uint64_t skip{};
+
+  switch (count) {
+    case 1:
+      skip = stream.read_byte();
+      break;
+    case 2:
+      skip = stream.read_byte() + stream.read_byte();
+      break;
+    default:
+      for (; count; --count) {
+        skip += stream.read_byte();
+      }
+      break;
+  }
+
+  stream.skip(skip);
+}
+
+template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
+void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::ReadSkip::Read(
   size_t level, index_input& in) {
   auto& next = skip_levels_[level];
 
@@ -2128,13 +2169,14 @@ void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
 
   ReadState<FieldTraits>(next, in);
 
-  if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
-    SkipWandData(in, 0);  // FIXME(gnusi):
+  if constexpr (FieldTraits::wand()) {
+    SkipWandData(in);
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Seal(size_t level) {
+template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
+void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::ReadSkip::Seal(
+  size_t level) {
   auto& next = skip_levels_[level];
 
   // Store previous step on the same level
@@ -2144,8 +2186,8 @@ void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Seal(size_t level) {
   next.doc = doc_limits::eof();
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator<IteratorTraits, FieldTraits>::prepare(
+template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
+void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::prepare(
   const term_meta& meta, const index_input* doc_in,
   [[maybe_unused]] const index_input* pos_in,
   [[maybe_unused]] const index_input* pay_in) {
@@ -2219,8 +2261,9 @@ void doc_iterator<IteratorTraits, FieldTraits>::prepare(
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
+template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
+doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
+  doc_id_t target) {
   auto& doc = std::get<document>(attrs_);
 
   if (IRS_UNLIKELY(target <= doc.value)) {
@@ -2282,8 +2325,9 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits>::seek(doc_id_t target) {
   return doc.value;
 }
 
-template<typename IteratorTraits, typename FieldTraits>
-void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
+template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
+void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek_to_block(
+  doc_id_t target) {
   // Ensured by caller
   IRS_ASSERT(skip_.Reader().UpperBound() < target);
 
@@ -2481,7 +2525,8 @@ template<typename IteratorTraits, typename FieldTraits, bool Strict>
 void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Init(
   const version10::term_meta& term_state, size_t num_levels,
   score_threshold& threshold) {
-  // Don't use wanderator for short posting lists, must be ensured by the caller
+  // Don't use wanderator for short posting lists, must be ensured by the
+  // caller
   IRS_ASSERT(term_state.docs_count > IteratorTraits::block_size());
 
   skip_levels_.resize(num_levels);
@@ -2573,7 +2618,8 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::prepare(
   IRS_ASSERT(!IteratorTraits::payload() ||
              IteratorTraits::payload() == FieldTraits::payload());
 
-  // Don't use wanderator for short posting lists, must be ensured by the caller
+  // Don't use wanderator for short posting lists, must be ensured by the
+  // caller
   IRS_ASSERT(meta.docs_count > IteratorTraits::block_size());
   IRS_ASSERT(this->begin_ == std::end(this->buf_.docs));
 
@@ -2760,8 +2806,8 @@ struct IndexMetaWriter final : public index_meta_writer {
     IRS_ASSERT(version_ >= kFormatMin && version <= kFormatMax);
   }
 
-  // FIXME(gnusi): Better to split prepare into 2 methods and pass meta by const
-  // reference
+  // FIXME(gnusi): Better to split prepare into 2 methods and pass meta by
+  // const reference
   bool prepare(directory& dir, IndexMeta& meta, std::string& pending_filename,
                std::string& filename) final;
   bool commit() final;
@@ -3164,7 +3210,8 @@ size_t DocumentMaskWriter::write(directory& dir, const SegmentMeta& meta,
     throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
-  // segment can't have more than std::numeric_limits<uint32_t>::max() documents
+  // segment can't have more than std::numeric_limits<uint32_t>::max()
+  // documents
   IRS_ASSERT(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
   const auto count = static_cast<uint32_t>(docs_mask.size());
 
@@ -3370,17 +3417,23 @@ class postings_reader final : public postings_reader_base {
 
   irs::doc_iterator::ptr iterator(IndexFeatures field_features,
                                   IndexFeatures required_features,
-                                  const term_meta& meta) final {
+                                  const term_meta& meta,
+                                  byte_type wand_count) final {
     if (const auto docs_count = meta.docs_count; docs_count > 1) {
       return iterator_impl(
         field_features, required_features,
-        [&meta, this]<typename IteratorTraits, typename FieldTraits>() {
-          auto it =
-            memory::make_managed<doc_iterator<IteratorTraits, FieldTraits>>();
+        [&]<typename IteratorTraits, typename FieldTraits>() {
+          return ResoveExtent(
+            wand_count,
+            [&]<typename Extent>(Extent&& extent) -> irs::doc_iterator::ptr {
+              auto it = memory::make_managed<
+                doc_iterator<IteratorTraits, FieldTraits, Extent>>(
+                std::forward<Extent>(extent));
 
-          it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
+              it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
 
-          return it;
+              return it;
+            });
         });
     } else if (docs_count == 1) {
       return iterator_impl(
