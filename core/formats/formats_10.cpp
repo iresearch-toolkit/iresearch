@@ -2387,6 +2387,18 @@ void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek_to_block(
   }
 }
 
+template<byte_type I>
+struct Index : Extent<I> {};
+
+template<typename Func>
+auto ResoveIndex(byte_type index, Func&& func) {
+  if (index == 0) {
+    return std::forward<Func>(func)(Index<0>{});
+  }
+
+  return std::forward<Func>(func)(Index<kDynamicValue>{index});
+}
+
 // WAND iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
@@ -3546,7 +3558,7 @@ class postings_reader final : public postings_reader_base {
       return iterator_impl(
         field_features, required_features,
         [&]<typename IteratorTraits, typename FieldTraits>() {
-          return ResoveExtent(
+          return ResoveIndex(
             info.mapped_index, [&]<typename WandIndex>(WandIndex index) {
               return ResoveExtent(
                 info.count, [&]<typename WandExtent>(WandExtent extent) {
