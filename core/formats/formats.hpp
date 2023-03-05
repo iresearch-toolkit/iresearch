@@ -156,7 +156,7 @@ struct postings_reader {
   using term_provider_f = std::function<const term_meta*()>;
 
   struct WandInfo {
-    uint32_t mapped_index;
+    byte_type mapped_index;
     byte_type count;
   };
 

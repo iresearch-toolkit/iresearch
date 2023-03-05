@@ -68,8 +68,8 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
   auto query = filter.prepare(index, scorers);
   EXPECT_NE(nullptr, query);
 
-  const irs::WandContext mode{.index =
-                                use_wand ? 0 : irs::WandContext::kDisable};
+  const irs::WandContext mode{.index = use_wand ? irs::byte_type{0}
+                                                : irs::WandContext::kDisable};
 
   irs::score_threshold tmp;
   std::vector<ScoredDoc> sorted;

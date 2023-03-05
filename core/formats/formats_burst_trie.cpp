@@ -1362,10 +1362,10 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
 
-  uint32_t WandCount() const noexcept { return wand_count_; }
+  byte_type WandCount() const noexcept { return wand_count_; }
 
  protected:
-  uint32_t WandIndex(size_t i) const noexcept;
+  byte_type WandIndex(byte_type i) const noexcept;
 
  private:
   field_meta field_;
@@ -1379,7 +1379,7 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   frequency freq_;  // total term freq
 };
 
-uint32_t term_reader_base::WandIndex(size_t i) const noexcept {
+byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
   if (i >= bits_required<uint64_t>()) {
     return WandContext::kDisable;
   }
@@ -1390,7 +1390,7 @@ uint32_t term_reader_base::WandIndex(size_t i) const noexcept {
     return WandContext::kDisable;
   }
 
-  return std::popcount(wand_mask_ & (mask - 1));
+  return static_cast<byte_type>(std::popcount(wand_mask_ & (mask - 1)));
 }
 
 void term_reader_base::prepare(burst_trie::Version version, index_input& in,
@@ -1416,7 +1416,7 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
 
   if (IRS_LIKELY(version >= burst_trie::Version::WAND)) {
     wand_mask_ = in.read_long();
-    wand_count_ = std::popcount(wand_mask_);
+    wand_count_ = static_cast<byte_type>(std::popcount(wand_mask_));
   }
 }
 

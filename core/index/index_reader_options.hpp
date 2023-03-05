@@ -48,13 +48,13 @@ using ScorersView = std::span<const std::unique_ptr<Scorer>>;
 static constexpr size_t kMaxScorers = bits_required<uint64_t>();
 
 struct WandContext {
-  static constexpr auto kDisable = std::numeric_limits<uint32_t>::max();
+  static constexpr auto kDisable = std::numeric_limits<byte_type>::max();
 
   bool Enabled() const noexcept { return index != kDisable; }
 
   // Index of the scorer to use for optimization.
   // Optimization is turned off by default.
-  uint32_t index{kDisable};
+  byte_type index{kDisable};
   bool strict{false};
 };
 
