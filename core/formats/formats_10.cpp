@@ -1964,9 +1964,9 @@ auto ResoveExtent(byte_type extent, Func&& func) {
 template<typename Func>
 auto ResoveBool(byte_type strict, Func&& func) {
   if (strict) {
-    return std::forward<func>(std::true_type{});
+    return std::forward<Func>(func)(std::true_type{});
   } else {
-    return std::forward<func>(std::false_type{});
+    return std::forward<Func>(func)(std::false_type{});
   }
 }
 
@@ -3546,23 +3546,26 @@ class postings_reader final : public postings_reader_base {
       return iterator_impl(
         field_features, required_features,
         [&]<typename IteratorTraits, typename FieldTraits>() {
-          return ResoveExtent(info.mapped_index, [&]<typename WandIndex>(
-                                                   WandIndex index) {
-            return ResoveExtent(info.count, [&]<typename WandExtent>(
-                                              WandExtent extent) {
-              return ResoveBool<bool Strict>(
-                       std::integral_constant<bool, Strict>)
-                ->irs::doc_iterator::ptr {
-                auto it = memory::make_managed<::wanderator<
-                  IteratorTraits, FieldTraits, WandIndex, WandExtent, Strict>>(
-                  options.factory, *scorer, index, count);
+          return ResoveExtent(
+            info.mapped_index, [&]<typename WandIndex>(WandIndex index) {
+              return ResoveExtent(
+                info.count, [&]<typename WandExtent>(WandExtent extent) {
+                  return ResoveBool(
+                    ctx.strict,
+                    [&]<bool Strict>(std::integral_constant<bool, Strict>)
+                      -> irs::doc_iterator::ptr {
+                      auto it = memory::make_managed<
+                        ::wanderator<IteratorTraits, FieldTraits, WandIndex,
+                                     WandExtent, Strict>>(
+                        options.factory, *scorer, index, extent);
 
-                it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
+                      it->prepare(meta, doc_in_.get(), pos_in_.get(),
+                                  pay_in_.get());
 
-                return it;
-              }
+                      return it;
+                    });
+                });
             });
-          });
         });
     } else {
       return iterator(field_features, required_features, meta, info.count);
