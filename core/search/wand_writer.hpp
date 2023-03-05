@@ -162,6 +162,21 @@ class FreqNormProducer : public ValueProducerBase {
   const irs::frequency* freq_{};
 };
 
+class FreqNormSource final : public WandSource {
+ public:
+  attribute* get_mutable(type_info::type_id type) final {
+    if (irs::type<frequency>::id() == type) {
+      return &freq_;
+    }
+    return nullptr;
+  }
+
+  void Read(data_input& in) final { freq_.value = in.read_vint(); }
+
+ private:
+  frequency freq_;
+};
+
 class FreqProducer : public ValueProducerBase {
  public:
   struct Value {
@@ -195,8 +210,26 @@ class FreqProducer : public ValueProducerBase {
   const frequency* freq_{};
 };
 
+class FreqSource final : public WandSource {
+ public:
+  attribute* get_mutable(type_info::type_id type) final {
+    if (irs::type<frequency>::id() == type) {
+      return &freq_;
+    }
+    return nullptr;
+  }
+
+  void Read(data_input& in) final { freq_.value = in.read_vint(); }
+
+ private:
+  frequency freq_;
+};
+
 template<bool HasNorms>
 using WandProducer =
   std::conditional_t<HasNorms, FreqNormProducer, FreqProducer>;
+
+template<bool HasNorms>
+using WandAttributes = std::conditional_t<HasNorms, FreqNormSource, FreqSource>;
 
 }  // namespace irs

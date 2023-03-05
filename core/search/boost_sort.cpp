@@ -45,8 +45,6 @@ struct Prepared final : ScorerBase<void> {
     return IndexFeatures::NONE;
   }
 
-  WandWriter::ptr prepare_wand_writer(size_t) const final { return nullptr; }
-
   ScoreFunction prepare_scorer(
     const ColumnProvider& /*segment*/,
     const std::map<irs::type_info::type_id, field_id>& /*features*/,

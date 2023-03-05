@@ -84,9 +84,6 @@ struct basic_sort : irs::ScorerFactory {
     irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;
     }
-    irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
-      return nullptr;
-    }
 
     irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
                                       const irs::feature_map_t&,

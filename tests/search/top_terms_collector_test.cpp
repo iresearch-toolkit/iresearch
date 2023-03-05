@@ -108,9 +108,11 @@ struct sort : irs::ScorerFactory {
       return irs::IndexFeatures::NONE;
     }
 
-    irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
+    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
       return nullptr;
     }
+
+    irs::WandSource::ptr prepare_wand_source() const final { return nullptr; }
 
     irs::FieldCollector::ptr prepare_field_collector() const final {
       return std::make_unique<field_collector>();

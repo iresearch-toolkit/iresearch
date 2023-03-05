@@ -293,12 +293,6 @@ struct pay_buffer : skip_buffer {
   uint32_t last{};           // last start offset
 };                           // pay_buffer
 
-// Buffer carrying competitive block scores
-class skip_score_stats {
- public:
-  static uint32_t read(index_input& in) { return in.read_vint(); }
-};
-
 std::vector<irs::WandWriter::ptr> PrepareWandWriters(ScorersView scorers,
                                                      size_t max_levels) {
   scorers = scorers.subspan(0, kMaxScorers);
@@ -1946,7 +1940,7 @@ struct Extent<kDynamicValue> {
 };
 
 template<typename Func>
-auto ResoveExtent(byte_type extent, Func&& func) {
+auto ResolveExtent(byte_type extent, Func&& func) {
   switch (extent) {
     case 0:
       return std::forward<Func>(func)(Extent<0>{0});
@@ -1954,15 +1948,6 @@ auto ResoveExtent(byte_type extent, Func&& func) {
       return std::forward<Func>(func)(Extent<1>{0});
     default:
       return std::forward<Func>(func)(Extent<kDynamicValue>{extent});
-  }
-}
-
-template<typename Func>
-auto ResoveBool(byte_type strict, Func&& func) {
-  if (strict) {
-    return std::forward<Func>(func)(std::true_type{});
-  } else {
-    return std::forward<Func>(func)(std::false_type{});
   }
 }
 
@@ -2406,13 +2391,11 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   wanderator(const ScoreFunctionFactory& factory, const Scorer& scorer,
              WandIndex index, WandExtent extent)
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
-            ReadSkip{index, extent}},
+            ReadSkip{factory, scorer, index, extent}},
       scorer_{factory(*this, scorer)} {
     IRS_ASSERT(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
-
-    skip_.Reader().SetScoreFunction(factory, scorer);
     std::get<score>(attrs_).Reset(*absl::bit_cast<score_ctx*>(&score_),
                                   [](score_ctx* ctx, score_t* res) noexcept {
                                     *res = *absl::bit_cast<score_t*>(ctx);
@@ -2449,14 +2432,15 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   class ReadSkip {
    public:
-    ReadSkip(WandIndex index, WandExtent extent)
-      : skip_levels_(1), skip_scores_(1), index_{index}, extent_{extent} {
+    ReadSkip(const ScoreFunctionFactory& factory, const Scorer& scorer,
+             WandIndex index, WandExtent extent)
+      : ctx_{scorer.prepare_wand_source()},
+        func_{factory(*ctx_, scorer)},
+        skip_levels_(1),
+        skip_scores_(1),
+        index_{index},
+        extent_{extent} {
       IRS_ASSERT(extent_.GetExtent() > 0);
-    }
-
-    void SetScoreFunction(const ScoreFunctionFactory& factory,
-                          const Scorer& scorer) {
-      func_ = factory(ctx_, scorer);
     }
 
     void EnsureSorted() const noexcept;
@@ -2478,7 +2462,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     SkipState& State() noexcept { return prev_skip_; }
 
    private:
-    SkipScoreContext ctx_;
+    WandSource::ptr ctx_;
     ScoreFunction func_;
     std::vector<SkipState> skip_levels_;
     std::vector<score_t> skip_scores_;
@@ -2586,7 +2570,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
 
   if (IRS_LIKELY(extent == 1)) {
     in.read_byte();
-    ctx_.freq.value = skip_score_stats::read(in);
+    ctx_->Read(in);
     func_(&skip_scores_[level]);
   } else {
     const auto [scorer_offset, block_offset] = [&]() {
@@ -2611,7 +2595,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
     if (scorer_offset) {
       in.skip(scorer_offset);
     }
-    ctx_.freq.value = skip_score_stats::read(in);
+    ctx_->Read(in);
     func_(&skip_scores_[level]);
     if (block_offset) {
       in.skip(block_offset);
@@ -3482,7 +3466,7 @@ class postings_reader final : public postings_reader_base {
       return iterator_impl(
         field_features, required_features,
         [&]<typename IteratorTraits, typename FieldTraits>() {
-          return ResoveExtent(
+          return ResolveExtent(
             wand_count,
             [&]<typename Extent>(Extent&& extent) -> irs::doc_iterator::ptr {
               auto it = memory::make_managed<
@@ -3544,9 +3528,9 @@ class postings_reader final : public postings_reader_base {
       return iterator_impl(
         field_features, required_features,
         [&]<typename IteratorTraits, typename FieldTraits>() {
-          return ResoveExtent(info.count, [&]<typename WandExtent>(
-                                            WandExtent extent) {
-            return ResoveBool(
+          return ResolveExtent(info.count, [&]<typename WandExtent>(
+                                             WandExtent extent) {
+            return ResolveBool(
               ctx.strict,
               [&]<bool Strict>(std::integral_constant<bool, Strict>)
                 -> irs::doc_iterator::ptr {

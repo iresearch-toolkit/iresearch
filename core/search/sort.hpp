@@ -110,6 +110,12 @@ struct TermCollector {
   virtual void write(data_output& out) const = 0;
 };
 
+struct WandSource : attribute_provider {
+  using ptr = std::unique_ptr<WandSource>;
+
+  virtual void Read(data_input& in) = 0;
+};
+
 struct WandWriter {
   using ptr = std::unique_ptr<WandWriter>;
 
@@ -180,6 +186,8 @@ struct Scorer {
   // Create an object to be used for writing wand entries to the skip list.
   // max_levels - max number of levels in the skip list
   virtual WandWriter::ptr prepare_wand_writer(size_t max_levels) const = 0;
+
+  virtual WandSource::ptr prepare_wand_source() const = 0;
 
   // Number of bytes (first) and alignment (first) required to store stats
   // Alignment must satisfy the following requirements:
@@ -408,6 +416,10 @@ class ScorerBase : public Scorer {
 
   using stats_t = StatsType;
 
+  WandWriter::ptr prepare_wand_writer(size_t) const override { return nullptr; }
+
+  WandSource::ptr prepare_wand_source() const override { return nullptr; }
+
   IRS_FORCE_INLINE static const stats_t& stats_cast(
     const byte_type* buf) noexcept {
     IRS_ASSERT(buf);
@@ -438,6 +450,10 @@ class ScorerBase<void> : public Scorer {
   }
 
   TermCollector::ptr prepare_term_collector() const override { return nullptr; }
+
+  WandWriter::ptr prepare_wand_writer(size_t) const override { return nullptr; }
+
+  WandSource::ptr prepare_wand_source() const override { return nullptr; }
 
   void collect(byte_type*, const FieldCollector*,
                const TermCollector*) const override {}

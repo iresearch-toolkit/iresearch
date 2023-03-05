@@ -459,16 +459,22 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
   }
 
   WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
-    auto make = [&]<bool HasNorms>(std::integral_constant<bool, HasNorms>) {
-      return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
-        *this, max_levels);
-    };
+    return ResolveBool(
+      normalize_,
+      [&]<bool HasNorms>(
+        std::integral_constant<bool, HasNorms>) -> WandWriter::ptr {
+        return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
+          *this, max_levels);
+      });
+  }
 
-    if (normalize_) {
-      return make(std::true_type{});
-    } else {
-      return make(std::false_type{});
-    }
+  WandSource::ptr prepare_wand_source() const final {
+    return ResolveBool(
+      normalize_,
+      [&]<bool HasNorms>(
+        std::integral_constant<bool, HasNorms>) -> WandSource::ptr {
+        return std::make_unique<WandAttributes<HasNorms>>();
+      });
   }
 
  private:

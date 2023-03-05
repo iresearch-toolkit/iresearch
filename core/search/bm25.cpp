@@ -598,7 +598,22 @@ class sort final : public irs::ScorerBase<bm25::stats> {
   }
 
   WandWriter::ptr prepare_wand_writer(size_t max_levels) const final {
-    return std::make_unique<WandWriterImpl<FreqProducer>>(*this, max_levels);
+    return ResolveBool(
+      !IsBM15(),
+      [&]<bool HasNorms>(
+        std::integral_constant<bool, HasNorms>) -> WandWriter::ptr {
+        return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
+          *this, max_levels);
+      });
+  }
+
+  WandSource::ptr prepare_wand_source() const final {
+    return ResolveBool(
+      !IsBM15(),
+      [&]<bool HasNorms>(
+        std::integral_constant<bool, HasNorms>) -> WandSource::ptr {
+        return std::make_unique<WandAttributes<HasNorms>>();
+      });
   }
 
   TermCollector::ptr prepare_term_collector() const final {

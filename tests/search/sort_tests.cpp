@@ -85,10 +85,6 @@ struct aligned_scorer : public irs::ScorerFactory {
 
     irs::IndexFeatures index_features() const final { return index_features_; }
 
-    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
-      return nullptr;
-    }
-
     irs::IndexFeatures index_features_;
     bool empty_scorer_;
   };

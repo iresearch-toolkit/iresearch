@@ -61,6 +61,10 @@ struct FreqScorer : irs::ScorerBase<void> {
     return std::make_unique<irs::WandWriterImpl<irs::FreqProducer>>(*this,
                                                                     max_levels);
   }
+
+  irs::WandSource::ptr prepare_wand_source() const {
+    return std::make_unique<irs::FreqSource>();
+  }
 };
 
 class FreqThresholdDocIterator : public irs::doc_iterator {

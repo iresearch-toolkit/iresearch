@@ -39,9 +39,9 @@ class [[nodiscard]] Finally {
 
   // If you need some of it, please use absl::Cleanup
   Finally(Finally&&) = delete;
-  Finally(Finally const&) = delete;
+  Finally(const Finally&) = delete;
   Finally& operator=(Finally&&) = delete;
-  Finally& operator=(Finally const&) = delete;
+  Finally& operator=(const Finally&) = delete;
 
   Finally(Func&& func) : func_{std::move(func)} {}
 
@@ -115,5 +115,14 @@ struct Visitor : Visitors... {
 
 template<typename... T>
 Visitor(T...) -> Visitor<std::decay_t<T>...>;
+
+template<typename Func>
+auto ResolveBool(byte_type value, Func&& func) {
+  if (value) {
+    return std::forward<Func>(func)(std::true_type{});
+  } else {
+    return std::forward<Func>(func)(std::false_type{});
+  }
+}
 
 }  // namespace irs

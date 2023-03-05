@@ -59,10 +59,6 @@ struct boost : public irs::ScorerFactory {
       return irs::IndexFeatures::NONE;
     }
 
-    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
-      return nullptr;
-    }
-
     irs::ScoreFunction prepare_scorer(
       const irs::ColumnProvider&, const irs::feature_map_t& /*features*/,
       const irs::byte_type* /*query_attrs*/,
@@ -188,10 +184,6 @@ struct custom_sort : public irs::ScorerFactory {
       return std::make_unique<field_collector>(sort_);
     }
 
-    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
-      return nullptr;
-    }
-
     irs::ScoreFunction prepare_scorer(
       const irs::ColumnProvider& segment_reader,
       const irs::feature_map_t& term_reader,
@@ -310,10 +302,6 @@ struct frequency_sort : public irs::ScorerFactory {
 
     irs::FieldCollector::ptr prepare_field_collector() const final {
       return nullptr;  // do not need to collect stats
-    }
-
-    irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
-      return nullptr;
     }
 
     irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
