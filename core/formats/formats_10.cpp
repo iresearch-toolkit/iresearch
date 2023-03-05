@@ -3474,10 +3474,12 @@ class postings_reader final : public postings_reader_base {
       }();
 
       if (!scorer) {
+        // FIXME(gnusi): wand simulation
+
         // No need to use wanderator
         //  * for short lists
         //  * field doesn't support required features
-        return iterator(field_features, required_features, meta);
+        return iterator(field_features, required_features, meta, info.count);
       }
 
       return iterator_impl(
@@ -3504,7 +3506,7 @@ class postings_reader final : public postings_reader_base {
           }
         });
     } else {
-      return iterator(field_features, required_features, meta);
+      return iterator(field_features, required_features, meta, info.count);
     }
   }
 
