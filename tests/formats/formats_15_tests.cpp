@@ -366,15 +366,15 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   irs::IndexFeatures features, const irs::term_meta& meta, uint32_t threshold,
   bool strict) {
   const irs::WanderatorOptions options{
-    .factory =
-      [](const irs::attribute_provider& attrs, const irs::Scorer& scorer) {
-        return scorer.prepare_scorer(EmptyColumnProvider{},
-                                     irs::feature_map_t{}, nullptr, attrs,
-                                     irs::kNoBoost);
-      },
-    .wand = {.index = 0, .strict = strict}};
+    .factory = [](const irs::attribute_provider& attrs,
+                  const irs::Scorer& scorer) {
+      return scorer.prepare_scorer(EmptyColumnProvider{}, irs::feature_map_t{},
+                                   nullptr, attrs, irs::kNoBoost);
+    }};
 
-  auto actual = reader.wanderator(field_features, features, meta, options);
+  auto actual = reader.wanderator(field_features, features, meta, options,
+                                  {.index = 0, .strict = strict},
+                                  {.mapped_index = 0, .count = 1});
   EXPECT_NE(nullptr, actual);
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());

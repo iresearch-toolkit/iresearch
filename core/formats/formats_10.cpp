@@ -300,21 +300,17 @@ struct pay_buffer : skip_buffer {
 // Buffer carrying competitive block scores
 class skip_score_stats {
  public:
-  static void skip(index_input& in) { in.read_vint(); }
-
   static uint32_t read(index_input& in) { return in.read_vint(); }
-
-  void add(uint32_t value) noexcept { freq_ = std::max(value, freq_); }
-
-  void add(skip_score_stats rhs) noexcept { add(rhs.freq_); }
-
-  void reset() noexcept { freq_ = 0; }
-
-  void write(memory_index_output& out) const { out.write_vint(freq_); }
-
- private:
-  uint32_t freq_{};
 };
+
+void SkipWandData(index_input& stream, byte_type count) {
+  uint64_t skip = 0;
+  for (; count; --count) {
+    skip += stream.read_byte();
+  }
+  // FIXME(gnusi): Implement skip for stream
+  stream.seek(stream.file_pointer() + skip);
+}
 
 std::vector<irs::WandWriter::ptr> PrepareWandWriters(ScorersView scorers,
                                                      size_t max_levels) {
@@ -1944,6 +1940,22 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
   }
 }
 
+template<size_t Value>
+struct Extent {
+  Extent(size_t) noexcept {}
+
+  static constexpr size_t Get() noexcept { return Value; }
+};
+
+template<>
+struct Extent<std::numeric_limits<size_t>::max()> {
+  Extent(size_t value) noexcept : value{value} {}
+
+  constexpr size_t Get() const noexcept { return value; }
+
+  size_t value;
+};
+
 // Iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
@@ -2100,10 +2112,10 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   void seek_to_block(doc_id_t target);
 
-  doc_id_t docs_count_{};
   uint64_t skip_offs_{};
   SkipReader<ReadSkip> skip_;
   attributes attrs_;
+  doc_id_t docs_count_{};
 };
 
 template<typename IteratorTraits, typename FieldTraits>
@@ -2117,7 +2129,7 @@ void doc_iterator<IteratorTraits, FieldTraits>::ReadSkip::Read(
   ReadState<FieldTraits>(next, in);
 
   if constexpr (FieldTraits::wand() && FieldTraits::frequency()) {
-    skip_score_stats::skip(in);
+    SkipWandData(in, 0);  // FIXME(gnusi):
   }
 }
 
@@ -2321,25 +2333,6 @@ void doc_iterator<IteratorTraits, FieldTraits>::seek_to_block(doc_id_t target) {
                                    postings_writer_base::kMaxSkipLevels, "].")};
   }
 }
-
-template<size_t Value>
-struct Extent {
-  Extent(size_t) noexcept {}
-
-  static constexpr size_t Get() noexcept { return Value; }
-};
-
-template<>
-struct Extent<std::numeric_limits<size_t>::max()> {
-  Extent(size_t value) noexcept : value{value} {}
-
-  constexpr size_t Get() const noexcept { return value; }
-
-  size_t value;
-};
-
-template<bool Strict>
-struct WanderatorTraits {};
 
 // WAND iterator over posting list.
 // IteratorTraits defines requested features.
