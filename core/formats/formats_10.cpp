@@ -1961,6 +1961,15 @@ auto ResoveExtent(byte_type extent, Func&& func) {
   }
 }
 
+template<typename Func>
+auto ResoveBool(byte_type strict, Func&& func) {
+  if (strict) {
+    return std::forward<func>(std::true_type{});
+  } else {
+    return std::forward<func>(std::false_type{});
+  }
+}
+
 // Iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
@@ -2107,6 +2116,8 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits>,
     }
 
    private:
+    void SkipWandData(index_input& stream);
+
     void Enable() noexcept {
       IRS_ASSERT(!skip_levels_.empty());
       IRS_ASSERT(doc_limits::eof(skip_levels_.back().doc));
@@ -2117,8 +2128,6 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits>,
     SkipState* prev_{};  // Pointer to skip context used by skip reader
   };
 
-  void SkipWandData(index_input& stream);
-
   void seek_to_block(doc_id_t target);
 
   uint64_t skip_offs_{};
@@ -2128,13 +2137,13 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits>,
 };
 
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
-void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::SkipWandData(
-  index_input& stream) {
+void doc_iterator<IteratorTraits, FieldTraits,
+                  WandExtent>::ReadSkip::SkipWandData(index_input& stream) {
   if constexpr (!FieldTraits::wand()) {
     return;
   }
 
-  const auto count = WandExtent::GetExtent();
+  constexpr auto count = WandExtent::GetExtent();
 
   if (count == 0) {
     return;
@@ -2381,8 +2390,11 @@ void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek_to_block(
 // WAND iterator over posting list.
 // IteratorTraits defines requested features.
 // FieldTraits defines requested features.
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
+                   private WandIndex,
+                   private WandExtent {
  private:
   static_assert(FieldTraits::wand());
   static_assert(IteratorTraits::block_size() <=
@@ -2401,8 +2413,11 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   // Hide 'ptr' defined in irs::doc_iterator
   using ptr = memory::managed_ptr<wanderator>;
 
-  wanderator(const ScoreFunctionFactory& factory, const Scorer& scorer)
-    : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
+  wanderator(const ScoreFunctionFactory& factory, const Scorer& scorer,
+             WandIndex index, WandExtent extent)
+    : WandIndex{index},
+      WandExtent{extent},
+      skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
             ReadSkip{}},
       scorer_{factory(*this, scorer)} {
     IRS_ASSERT(
@@ -2466,6 +2481,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       CopyState<IteratorTraits>(next, prev_skip_);
     }
     void Read(size_t level, index_input& in);
+    void ReadWandData(size_t level, index_input& in);
     void Seal(size_t level);
     size_t AdjustLevel(size_t level) const noexcept;
     SkipState& State() noexcept { return prev_skip_; }
@@ -2510,9 +2526,10 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   score_t score_;
 };
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::EnsureSorted()
-  const noexcept {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                Strict>::ReadSkip::EnsureSorted() const noexcept {
   IRS_ASSERT(std::is_sorted(
     std::begin(skip_levels_), std::end(skip_levels_),
     [](const auto& lhs, const auto& rhs) { return lhs.doc > rhs.doc; }));
@@ -2521,10 +2538,12 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::EnsureSorted()
                    [](const auto& lhs, const auto& rhs) { return lhs > rhs; }));
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Init(
-  const version10::term_meta& term_state, size_t num_levels,
-  score_threshold& threshold) {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                Strict>::ReadSkip::Init(const version10::term_meta& term_state,
+                                        size_t num_levels,
+                                        score_threshold& threshold) {
   // Don't use wanderator for short posting lists, must be ensured by the
   // caller
   IRS_ASSERT(term_state.docs_count > IteratorTraits::block_size());
@@ -2539,8 +2558,9 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Init(
   CopyState<IteratorTraits>(top, term_state);
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-bool wanderator<IteratorTraits, FieldTraits,
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+bool wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
                 Strict>::ReadSkip::IsLessThanUpperBound(doc_id_t target)
   const noexcept {
   if constexpr (FieldTraits::frequency()) {
@@ -2551,9 +2571,11 @@ bool wanderator<IteratorTraits, FieldTraits,
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-bool wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::IsLess(
-  size_t level, doc_id_t target) const noexcept {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+bool wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                Strict>::ReadSkip::IsLess(size_t level,
+                                          doc_id_t target) const noexcept {
   if constexpr (FieldTraits::frequency()) {
     return skip_levels_[level].doc < target ||
            ScoreLess(skip_scores_[level], threshold_->value);
@@ -2562,9 +2584,47 @@ bool wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::IsLess(
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Read(
-  size_t level, index_input& in) {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                Strict>::ReadSkip::ReadWandData(size_t level, index_input& in) {
+  constexpr auto index = WandIndex::GetExtent();
+  constexpr auto extent = WandExtent::GetExtent();
+  IRS_ASSERT(extent);
+  IRS_ASSERT(index < extent);
+
+  if constexpr (index == 0) {
+    in.read_byte();
+  } else {
+    decltype(index) i = 0;
+
+    uint64_t scorer_offset = 0;
+    for (; i < index; ++i) {
+      scorer_offset += in.read_byte();
+    }
+
+    IRS_ASSERT(scorer_offset);
+    in.skip(scorer_offset);
+  }
+
+  ctx_.freq.value = skip_score_stats::read(in);
+  func_(&skip_scores_[level]);
+
+  if constexpr (extent > 1) {
+    uint64_t block_offset = 0;
+    for (auto i = index; i < extent - 1; ++i) {
+      block_offset += in.read_byte();
+    }
+    if (index < extent - 1) {
+      in.skip(block_offset);
+    }
+  }
+}
+
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                Strict>::ReadSkip::Read(size_t level, index_input& in) {
   auto& last = prev_skip_;
   auto& next = skip_levels_[level];
 
@@ -2572,25 +2632,23 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Read(
   CopyState<IteratorTraits>(last, next);
 
   ReadState<FieldTraits>(next, in);
-
-  if constexpr (FieldTraits::frequency()) {
-    ctx_.freq.value = skip_score_stats::read(in);
-    func_(&skip_scores_[level]);
-  }
+  ReadWandData(level, in);
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-size_t wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::AdjustLevel(
-  size_t level) const noexcept {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+size_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                  Strict>::ReadSkip::AdjustLevel(size_t level) const noexcept {
   while (level && skip_levels_[level].doc >= skip_levels_[level - 1].doc) {
     --level;
   }
   return level;
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Seal(
-  size_t level) {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                Strict>::ReadSkip::Seal(size_t level) {
   auto& last = prev_skip_;
   auto& next = skip_levels_[level];
 
@@ -2604,11 +2662,13 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::ReadSkip::Seal(
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-void wanderator<IteratorTraits, FieldTraits, Strict>::prepare(
-  const term_meta& meta, const index_input* doc_in,
-  [[maybe_unused]] const index_input* pos_in,
-  [[maybe_unused]] const index_input* pay_in) {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                Strict>::prepare(const term_meta& meta,
+                                 const index_input* doc_in,
+                                 [[maybe_unused]] const index_input* pos_in,
+                                 [[maybe_unused]] const index_input* pay_in) {
   IRS_ASSERT(!IteratorTraits::frequency() ||
              IteratorTraits::frequency() == FieldTraits::frequency());
   IRS_ASSERT(!IteratorTraits::position() ||
@@ -2697,9 +2757,10 @@ void wanderator<IteratorTraits, FieldTraits, Strict>::prepare(
   }
 }
 
-template<typename IteratorTraits, typename FieldTraits, bool Strict>
-doc_id_t wanderator<IteratorTraits, FieldTraits, Strict>::seek(
-  doc_id_t target) {
+template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
+         typename WandExtent, bool Strict>
+doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
+                    Strict>::seek(doc_id_t target) {
   auto& doc = std::get<document>(attrs_);
 
   if (IRS_UNLIKELY(target <= doc.value)) {
@@ -3485,25 +3546,23 @@ class postings_reader final : public postings_reader_base {
       return iterator_impl(
         field_features, required_features,
         [&]<typename IteratorTraits, typename FieldTraits>() {
-          auto make =
-            [&]<bool Strict>(
-              std::integral_constant<bool, Strict>) -> irs::doc_iterator::ptr {
-            // FIXME(gnusi): optimize single iterator case,
+          return ResoveExtent(info.mapped_index, [&]<typename WandIndex>(
+                                                   WandIndex index) {
+            return ResoveExtent(info.count, [&]<typename WandExtent>(
+                                              WandExtent extent) {
+              return ResoveBool<bool Strict>(
+                       std::integral_constant<bool, Strict>)
+                ->irs::doc_iterator::ptr {
+                auto it = memory::make_managed<::wanderator<
+                  IteratorTraits, FieldTraits, WandIndex, WandExtent, Strict>>(
+                  options.factory, *scorer, index, count);
 
-            auto it = memory::make_managed<
-              ::wanderator<IteratorTraits, FieldTraits, Strict>>(
-              options.factory, *scorer);
+                it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
 
-            it->prepare(meta, doc_in_.get(), pos_in_.get(), pay_in_.get());
-
-            return it;
-          };
-
-          if (ctx.strict) {
-            return make(std::true_type{});
-          } else {
-            return make(std::false_type{});
-          }
+                return it;
+              }
+            });
+          });
         });
     } else {
       return iterator(field_features, required_features, meta, info.count);
