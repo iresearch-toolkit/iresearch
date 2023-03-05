@@ -65,7 +65,6 @@ using ScoreFunctionFactory =
 
 struct WanderatorOptions {
   ScoreFunctionFactory factory;
-  WandContext wand;
 };
 
 struct SegmentWriterOptions {
@@ -95,7 +94,7 @@ struct term_meta : attribute {
   uint32_t freq = 0;
 };
 
-struct postings_writer : attribute_provider {
+struct postings_writer {
   using ptr = std::unique_ptr<postings_writer>;
 
   class releaser {
@@ -109,7 +108,12 @@ struct postings_writer : attribute_provider {
     postings_writer* owner_;
   };
 
-  typedef std::unique_ptr<term_meta, releaser> state;
+  using state = std::unique_ptr<term_meta, releaser>;
+
+  struct FieldStats {
+    uint64_t wand_mask;
+    doc_id_t docs_count;
+  };
 
   virtual ~postings_writer() = default;
   // out - corresponding terms stream
@@ -120,6 +124,7 @@ struct postings_writer : attribute_provider {
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
+  virtual FieldStats end_field() = 0;
   virtual void end() = 0;
 
  protected:
@@ -150,6 +155,11 @@ struct postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
   using term_provider_f = std::function<const term_meta*()>;
 
+  struct WandInfo {
+    uint32_t mapped_index;
+    byte_type count;
+  };
+
   virtual ~postings_reader() = default;
 
   // in - corresponding stream
@@ -171,7 +181,8 @@ struct postings_reader {
   virtual doc_iterator::ptr wanderator(IndexFeatures field_features,
                                        IndexFeatures required_features,
                                        const term_meta& meta,
-                                       const WanderatorOptions& options) = 0;
+                                       const WanderatorOptions& options,
+                                       WandContext ctx, WandInfo info) = 0;
 
   // Evaluates a union of all docs denoted by attribute supplied via a
   // speciified 'provider'. Each doc is represented by a bit in a
@@ -241,9 +252,10 @@ struct term_reader : public attribute_provider {
   virtual doc_iterator::ptr postings(const seek_cookie& cookie,
                                      IndexFeatures features) const = 0;
 
-  virtual doc_iterator::ptr wanderator(
-    const seek_cookie& cookie, IndexFeatures features,
-    const WanderatorOptions& options) const = 0;
+  virtual doc_iterator::ptr wanderator(const seek_cookie& cookie,
+                                       IndexFeatures features,
+                                       const WanderatorOptions& options,
+                                       WandContext context) const = 0;
 
   // Returns field metadata.
   virtual const field_meta& meta() const = 0;

@@ -41,6 +41,9 @@ enum class Version : int32_t {
   // * Pluggable field features support
   IMMUTABLE_FST = 2,
 
+  // * WAND support
+  WAND = 3,
+
   // Max supported version
   MAX = IMMUTABLE_FST
 };

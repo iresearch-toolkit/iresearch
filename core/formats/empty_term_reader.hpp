@@ -60,7 +60,8 @@ class empty_term_reader final : public irs::term_reader {
   }
 
   doc_iterator::ptr wanderator(const seek_cookie&, IndexFeatures,
-                               const WanderatorOptions&) const noexcept final {
+                               const WanderatorOptions&,
+                               WandContext) const noexcept final {
     return doc_iterator::empty();
   }
 

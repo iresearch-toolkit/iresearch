@@ -46,6 +46,7 @@ extern "C" {
 #include "store/store_utils.hpp"
 #include "utils/attribute_helper.hpp"
 #include "utils/bitpack.hpp"
+#include "utils/bitset.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/encryption.hpp"
 #include "utils/log.hpp"
@@ -315,16 +316,14 @@ class skip_score_stats {
   uint32_t freq_{};
 };
 
-struct WandWriter {
-  irs::WandWriter::ptr writer;
-  bool valid{false};
-};
+std::vector<irs::WandWriter::ptr> PrepareWandWriters(ScorersView scorers,
+                                                     size_t max_levels) {
+  // We support up to 64 scorers per field
+  scorers = scorers.subspan(0, kMaxScorers);
 
-std::vector<WandWriter> PrepareWandWriters(ScorersView scorers,
-                                           size_t max_levels) {
-  std::vector<WandWriter> writers(scorers.size());
+  std::vector<irs::WandWriter::ptr> writers(scorers.size());
   auto scorer = scorers.begin();
-  for (auto& [writer, _] : writers) {
+  for (auto& writer : writers) {
     writer = (*scorer)->prepare_wand_writer(max_levels);
   }
   return writers;
@@ -409,16 +408,19 @@ class postings_writer_base : public irs::postings_writer {
   }
 
  public:
-  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    return irs::type<version10::documents>::id() == type ? &docs_ : nullptr;
-  }
-
   void begin_field(IndexFeatures index_features,
                    const irs::feature_map_t& features) final {
     features_.Reset(index_features);
     PrepareWriters(features);
-    docs_.value.clear();
+    docs_.clear();
     last_state_.clear();
+  }
+
+  FieldStats end_field() noexcept {
+    const auto count = docs_.count();
+    IRS_ASSERT(count < doc_limits::eof());
+    return {.wand_mask = writers_mask_,
+            .docs_count = static_cast<doc_id_t>(count)};
   }
 
   void begin_block() final {
@@ -518,18 +520,19 @@ class postings_writer_base : public irs::postings_writer {
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)>
     alloc_{meta_pool_};
   SkipWriter skip_;
-  version10::term_meta last_state_;  // Last final term state
-  version10::documents docs_;        // Bit set of all processed documents
-  index_output::ptr doc_out_;        // Postings (doc + freq)
-  index_output::ptr pos_out_;        // Positions
-  index_output::ptr pay_out_;        // Payload (pay + offs)
-  doc_buffer doc_;                   // Document stream
-  pos_buffer pos_;                   // Proximity stream
-  pay_buffer pay_;                   // Payloads and offsets stream
-  uint32_t* buf_;                    // Buffer for encoding
-  Attributes attrs_;                 // Set of attributes
-  std::vector<WandWriter> writers_;  // List of wand writers
+  version10::term_meta last_state_;            // Last final term state
+  bitset docs_;                                // Set of all processed documents
+  index_output::ptr doc_out_;                  // Postings (doc + freq)
+  index_output::ptr pos_out_;                  // Positions
+  index_output::ptr pay_out_;                  // Payload (pay + offs)
+  doc_buffer doc_;                             // Document stream
+  pos_buffer pos_;                             // Proximity stream
+  pay_buffer pay_;                             // Payloads and offsets stream
+  uint32_t* buf_;                              // Buffer for encoding
+  Attributes attrs_;                           // Set of attributes
+  std::vector<irs::WandWriter::ptr> writers_;  // List of wand writers
   std::vector<irs::WandWriter*> valid_writers_;  // Valid wand writers
+  uint64_t writers_mask_{};
   Features features_;  // Features supported by current field
   const PostingsFormat postings_format_version_;
   const TermsFormat terms_format_version_;
@@ -546,12 +549,17 @@ void postings_writer_base::PrepareWriters(const irs::feature_map_t& features) {
   // Make frequency avaliable for Prepare
   attrs_.freq_ = features_.HasFrequency() ? &attrs_.freq_value_ : nullptr;
 
+  writers_mask_ = 0;
   valid_writers_.clear();
-  for (auto& [writer, valid] : writers_) {
-    valid = writer && writer->Prepare(kEmptyColumnProvider, features, attrs_);
+
+  for (size_t i = 0; auto& writer : writers_) {
+    const bool valid =
+      writer && writer->Prepare(kEmptyColumnProvider, features, attrs_);
     if (valid) {
+      irs::set_bit(writers_mask_, i);
       valid_writers_.emplace_back(writer.get());
     }
+    ++i;
   }
 }
 
@@ -627,7 +635,7 @@ void postings_writer_base::prepare(index_output& out,
   valid_writers_.reserve(writers_.size());
 
   // Prepare documents bitset
-  docs_.value.reset(doc_limits::min() + state.doc_count);
+  docs_.reset(doc_limits::min() + state.doc_count);
 }
 
 void postings_writer_base::encode(data_output& out,
@@ -919,7 +927,7 @@ void postings_writer<FormatTraits>::BeginDocument() {
       }
     }
 
-    docs_.value.set(id);
+    docs_.set(id);
 
     // First position offsets now is format dependent
     pos_.last = FormatTraits::pos_min();
@@ -3311,6 +3319,8 @@ void postings_reader_base::prepare(index_input& in, const ReaderState& state,
                    "invalid block size '",
                    block_size, "', expected '", block_size_, "'")};
   }
+
+  scorers_ = state.scorers.subspan(0, kMaxScorers);
 }
 
 size_t postings_reader_base::decode(const byte_type* in, IndexFeatures features,
@@ -3397,16 +3407,17 @@ class postings_reader final : public postings_reader_base {
 
   irs::doc_iterator::ptr wanderator(
     IndexFeatures field_features, IndexFeatures required_features,
-    const term_meta& meta,
-    [[maybe_unused]] const WanderatorOptions& options) final {
+    const term_meta& meta, [[maybe_unused]] const WanderatorOptions& options,
+    WandContext ctx, WandInfo info) final {
     if constexpr (FormatTraits::wand()) {
       const auto* scorer = [&]() -> const Scorer* {
         if (meta.docs_count <= FormatTraits::block_size() ||
-            scorers_.size() <= options.wand.index) {
+            info.mapped_index == irs::WandContext::kDisable ||
+            scorers_.size() <= ctx.index) {
           return nullptr;
         }
 
-        const auto& scorer = *scorers_[options.wand.index];
+        const auto& scorer = *scorers_[ctx.index];
         const auto scorer_features = scorer.index_features();
 
         if (scorer_features != (field_features & scorer_features)) {
@@ -3419,7 +3430,7 @@ class postings_reader final : public postings_reader_base {
       if (!scorer) {
         // No need to use wanderator
         //  * for short lists
-        //  * if term frequency isn't tracked
+        //  * field doesn't support required features
         return iterator(field_features, required_features, meta);
       }
 
@@ -3440,7 +3451,7 @@ class postings_reader final : public postings_reader_base {
             return it;
           };
 
-          if (options.wand.strict) {
+          if (ctx.strict) {
             return make(std::true_type{});
           } else {
             return make(std::false_type{});
@@ -3877,7 +3888,7 @@ class format14 : public format13 {
 
   format14() noexcept : format13(irs::type<format14>::get()) {}
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
   irs::columnstore_writer::ptr get_columnstore_writer(
     bool consolidation) const final;
@@ -3890,7 +3901,7 @@ class format14 : public format13 {
 static const ::format14 FORMAT14_INSTANCE;
 
 irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
-  return burst_trie::make_writer(burst_trie::Version::MAX,
+  return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
                                  get_postings_writer(consolidation),
                                  consolidation);
 }
@@ -3920,6 +3931,8 @@ class format15 : public format14 {
 
   format15() noexcept : format14(irs::type<format15>::get()) {}
 
+  irs::field_writer::ptr get_field_writer(bool consolidation) const;
+
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
@@ -3928,6 +3941,12 @@ class format15 : public format14 {
 };
 
 static const ::format15 FORMAT15_INSTANCE;
+
+irs::field_writer::ptr format15::get_field_writer(bool consolidation) const {
+  return burst_trie::make_writer(burst_trie::Version::WAND,
+                                 get_postings_writer(consolidation),
+                                 consolidation);
+}
 
 irs::postings_writer::ptr format15::get_postings_writer(
   bool consolidation) const {
@@ -4065,7 +4084,7 @@ class format14simd : public format13simd {
     bool consolidation) const final;
   columnstore_reader::ptr get_columnstore_reader() const final;
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const override;
 
  protected:
   explicit format14simd(const irs::type_info& type) noexcept
@@ -4076,7 +4095,7 @@ static const ::format14simd FORMAT14SIMD_INSTANCE;
 
 irs::field_writer::ptr format14simd::get_field_writer(
   bool consolidation) const {
-  return burst_trie::make_writer(burst_trie::Version::MAX,
+  return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
                                  get_postings_writer(consolidation),
                                  consolidation);
 }
@@ -4106,6 +4125,8 @@ class format15simd : public format14simd {
 
   format15simd() noexcept : format14simd(irs::type<format15simd>::get()) {}
 
+  irs::field_writer::ptr get_field_writer(bool consolidation) const;
+
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
@@ -4115,6 +4136,13 @@ class format15simd : public format14simd {
 };
 
 static const ::format15simd FORMAT15SIMD_INSTANCE;
+
+irs::field_writer::ptr format15simd::get_field_writer(
+  bool consolidation) const {
+  return burst_trie::make_writer(burst_trie::Version::WAND,
+                                 get_postings_writer(consolidation),
+                                 consolidation);
+}
 
 irs::postings_writer::ptr format15simd::get_postings_writer(
   bool consolidation) const {

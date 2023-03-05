@@ -886,7 +886,6 @@ class field_writer final : public irs::field_writer {
   std::vector<size_t> prefixes_;
   std::pair<bool, volatile_byte_ref> min_term_;  // current min term in a block
   volatile_byte_ref max_term_;                   // current max term in a block
-  uint64_t term_count_;                          // count of terms
   size_t fields_count_{};
   const burst_trie::Version version_;
   const uint32_t min_block_size_;
@@ -1103,7 +1102,6 @@ field_writer::field_writer(
     pw_(std::move(pw)),
     fst_buf_(new fst_buffer()),
     prefixes_(DEFAULT_SIZE, 0),
-    term_count_(0),
     version_(version),
     min_block_size_(min_block_size),
     max_block_size_(max_block_size),
@@ -1132,7 +1130,6 @@ void field_writer::prepare(const flush_state& state) {
   stack_.clear();
   stats_.reset();
   suffix_.reset();
-  term_count_ = 0;
   fields_count_ = 0;
 
   std::string filename;
@@ -1191,14 +1188,12 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
   REGISTER_TIMER_DETAILED();
   BeginField(index_features, features);
 
+  uint64_t term_count = 0;
   uint64_t sum_dfreq = 0;
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists =
     IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
-
-  auto* docs = irs::get<version10::documents>(*pw_);
-  IRS_ASSERT(docs);
 
   for (; terms.next();) {
     auto postings = terms.postings(index_features);
@@ -1224,13 +1219,11 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
 
       max_term_.assign(term, consolidation_);
 
-      // increase processed term count
-      ++term_count_;
+      ++term_count;
     }
   }
 
-  EndField(name, index_features, features, sum_dfreq, sum_tfreq,
-           docs->value.count());
+  EndField(name, index_features, features, sum_dfreq, sum_tfreq, term_count);
 }
 
 void field_writer::BeginField(IndexFeatures index_features,
@@ -1244,7 +1237,6 @@ void field_writer::BeginField(IndexFeatures index_features,
   // Reset first field term
   min_term_.first = false;
   min_term_.second.clear();
-  term_count_ = 0;
 
   pw_->begin_field(index_features, features);
 }
@@ -1252,13 +1244,16 @@ void field_writer::BeginField(IndexFeatures index_features,
 void field_writer::EndField(std::string_view name, IndexFeatures index_features,
                             const irs::feature_map_t& features,
                             uint64_t total_doc_freq, uint64_t total_term_freq,
-                            size_t doc_count) {
+                            uint64_t term_count) {
   IRS_ASSERT(terms_out_);
   IRS_ASSERT(index_out_);
-  if (!term_count_) {
+
+  if (!term_count) {
     // nothing to write
     return;
   }
+
+  const auto [wand_mask, doc_count] = pw_->end_field();
 
   // cause creation of all final blocks
   Push(kEmptyStringView<irs::byte_type>);
@@ -1275,13 +1270,16 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
     write_field_features_legacy(feature_map_, *index_out_, index_features,
                                 features);
   }
-  index_out_->write_vlong(term_count_);
+  index_out_->write_vlong(term_count);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
   write_string<irs::bytes_view>(*index_out_, min_term_.second);
   write_string<irs::bytes_view>(*index_out_, max_term_);
   if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     index_out_->write_vlong(total_term_freq);
+  }
+  if (IRS_LIKELY(version_ >= burst_trie::Version::WAND)) {
+    index_out_->write_long(wand_mask);
   }
 
   // build fst
@@ -1364,16 +1362,36 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
 
+ protected:
+  uint32_t WandIndex(size_t i) const noexcept;
+
+  uint32_t WandCount() const noexcept { return wand_count_; }
+
  private:
+  field_meta field_;
   bstring min_term_;
   bstring max_term_;
   uint64_t terms_count_;
   uint64_t doc_count_;
   uint64_t doc_freq_;
+  uint64_t wand_mask_{};
+  uint32_t wand_count_{};
   frequency freq_;  // total term freq
-  frequency* pfreq_{};
-  field_meta field_;
 };
+
+uint32_t term_reader_base::WandIndex(size_t i) const noexcept {
+  if (i >= bits_required<uint64_t>()) {
+    return WandContext::kDisable;
+  }
+
+  const uint64_t mask{uint64_t{1} << i};
+
+  if (0 == (wand_mask_ & mask)) {
+    return WandContext::kDisable;
+  }
+
+  return std::popcount(wand_mask_ & (mask - 1));
+}
 
 void term_reader_base::prepare(burst_trie::Version version, index_input& in,
                                const feature_map_t& feature_map) {
@@ -1392,15 +1410,24 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
   min_term_ = read_string<bstring>(in);
   max_term_ = read_string<bstring>(in);
 
-  if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::FREQ == (field_.index_features & IndexFeatures::FREQ)) {
     freq_.value = in.read_vlong();
-    pfreq_ = &freq_;
+  }
+
+  if (IRS_LIKELY(version >= burst_trie::Version::WAND)) {
+    wand_mask_ = in.read_long();
+    wand_count_ = std::popcount(wand_mask_);
   }
 }
 
 attribute* term_reader_base::get_mutable(
   irs::type_info::type_id type) noexcept {
-  return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
+  if (IndexFeatures::FREQ == (field_.index_features & IndexFeatures::FREQ) &&
+      irs::type<irs::frequency>::id() == type) {
+    return &freq_;
+  }
+
+  return nullptr;
 }
 
 class block_iterator : util::noncopyable {
@@ -3133,11 +3160,12 @@ class field_reader final : public irs::field_reader {
 
     doc_iterator::ptr wanderator(const seek_cookie& cookie,
                                  IndexFeatures features,
-                                 const WanderatorOptions& options) const final {
-      // FIXME(gnusi): remap index
-
-      return owner_->pr_->wanderator(meta().index_features, features,
-                                     down_cast<::cookie>(cookie).meta, options);
+                                 const WanderatorOptions& options,
+                                 WandContext ctx) const final {
+      return owner_->pr_->wanderator(
+        meta().index_features, features, down_cast<::cookie>(cookie).meta,
+        options, ctx,
+        {.mapped_index = WandIndex(ctx.index), .count = WandCount()});
     }
 
    private:

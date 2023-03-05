@@ -53,10 +53,10 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
         *state->cookie, ord.features(),
         {.factory = [&](const attribute_provider& attrs,
                         const Scorer& scorer) -> ScoreFunction {
-           return scorer.prepare_scorer(rdr, state->reader->meta().features,
-                                        stats_.c_str(), attrs, boost());
-         },
-         .wand = ctx.wand});
+          return scorer.prepare_scorer(rdr, state->reader->meta().features,
+                                       stats_.c_str(), attrs, boost());
+        }},
+        ctx.wand);
     } else {
       return reader->postings(*state->cookie, ord.features());
     }
