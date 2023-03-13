@@ -427,7 +427,6 @@ target_link_libraries(iresearch-static
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
   PUBLIC absl::crc32c
-  PUBLIC yaclib
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}

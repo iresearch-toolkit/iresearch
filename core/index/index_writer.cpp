@@ -661,7 +661,7 @@ IndexWriter::ActiveSegmentContext::~ActiveSegmentContext() {
   segment_.reset();
   segments_active_->fetch_sub(1, std::memory_order_relaxed);
   if (flush_ != nullptr) {
-    flush_->pending_wg_.Done();
+    flush_->pending_.Done();
   }
 }
 
@@ -818,7 +818,7 @@ void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& active) {
     return;
   }
 
-  std::lock_guard lock{mutex_};
+  std::lock_guard lock{pending_.Mutex()};
   auto* node = [&] {
     if (is_null) {
       return &pending_segments_.emplace_back(std::move(active.segment_),
@@ -834,13 +834,13 @@ void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& active) {
 }
 
 void IndexWriter::FlushContext::AddToPending(ActiveSegmentContext& active) {
-  std::lock_guard lock{mutex_};
+  std::lock_guard lock{pending_.Mutex()};
   const auto size_before = pending_segments_.size();
   IRS_ASSERT(active.segment_ != nullptr);
   pending_segments_.emplace_back(active.segment_, size_before);
   active.flush_ = this;
   active.pending_segment_offset_ = size_before;
-  pending_wg_.Add();
+  pending_.Add();
 }
 
 void IndexWriter::FlushContext::Reset() noexcept {
@@ -887,9 +887,6 @@ void IndexWriter::Cleanup(FlushContext& curr, FlushContext* next) noexcept {
 }
 
 uint64_t IndexWriter::FlushContext::FlushPending(uint64_t tick) {
-  pending_wg_.Done();
-  pending_wg_.Wait();
-  pending_wg_.Reset(1);
   // if tick is not equal uint64_max, as result of bad_alloc it's possible here
   // that not all segments which should be committed by next FlushContext
   // (fully or partially) will be moved to it.
@@ -929,7 +926,7 @@ uint64_t IndexWriter::FlushContext::FlushPending(uint64_t tick) {
   }
 
   if (to_next_pending_segments != 0) {
-    std::lock_guard lock{next_->mutex_};
+    std::lock_guard lock{next_->pending_.Mutex()};
     for (auto& entry : pending_segments_) {
       if (auto& segment = entry.segment_; segment != nullptr) {
         IRS_ASSERT(tick < segment->first_tick_);
@@ -1191,7 +1188,7 @@ void IndexWriter::Clear(uint64_t tick) {
 
   to_commit.ctx = SwitchFlushContext();
   // Ensure there are no active struct update operations
-  std::lock_guard ctx_lock{to_commit.ctx->mutex_};
+  std::lock_guard ctx_lock{to_commit.ctx->pending_.Mutex()};
   // TODO(MBkkt) Wait while all on going transaction finish?
 
   Abort();  // Abort any already opened transaction
@@ -1295,7 +1292,7 @@ uint64_t IndexWriter::BufferedDocs() const {
   auto ctx = GetFlushContext();
   // 'pending_used_segment_contexts_'/'pending_free_segment_contexts_'
   // may be modified
-  std::lock_guard lock{ctx->mutex_};
+  std::lock_guard lock{ctx->pending_.Mutex()};
 
   for (const auto& entry : ctx->pending_segments_) {
     IRS_ASSERT(entry.segment_ != nullptr);
@@ -1534,7 +1531,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
       auto ctx = GetFlushContext();
       // lock due to context modification
-      std::lock_guard ctx_lock{ctx->mutex_};
+      std::lock_guard ctx_lock{ctx->pending_.Mutex()};
 
       // can release commit lock, we guarded against commit by
       // locked flush context
@@ -1576,7 +1573,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
       auto ctx = GetFlushContext();
       // lock due to context modification
-      std::lock_guard ctx_lock{ctx->mutex_};
+      std::lock_guard ctx_lock{ctx->pending_.Mutex()};
 
       // can release commit lock, we guarded against commit by
       // locked flush context
@@ -1721,7 +1718,7 @@ bool IndexWriter::Import(const IndexReader& reader,
 
   auto flush = GetFlushContext();
   // lock due to context modification
-  std::lock_guard lock{flush->mutex_};
+  std::lock_guard lock{flush->pending_.Mutex()};
 
   // IMPORTANT NOTE!
   // Will be committed in the upcoming Commit
@@ -1794,7 +1791,7 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
     auto flush = GetFlushContext();
     auto* freelist_node = flush->pending_freelist_.pop();
     if (freelist_node != nullptr) {
-      flush->pending_wg_.Add();
+      flush->pending_.Add();
       return {static_cast<PendingSegmentContext*>(freelist_node)->segment_,
               segments_active_, flush.get(), freelist_node->value};
     }
@@ -1838,7 +1835,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
   auto ctx = SwitchFlushContext();
   // TODO(MBkkt) It looks like lock mutex_ completely unnecessary
   // ensure there are no active struct update operations
-  std::unique_lock lock{ctx->mutex_};
+  std::unique_lock lock{ctx->pending_.Mutex()};
+  ctx->pending_.Wait(lock);
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
   // are properly tracked in 'modification_queries_'

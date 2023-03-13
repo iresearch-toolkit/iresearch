@@ -26,7 +26,6 @@
 #include <atomic>
 #include <functional>
 #include <string_view>
-#include <yaclib/algo/wait_group.hpp>
 
 #include "formats/formats.hpp"
 #include "index/column_info.hpp"
@@ -783,9 +782,6 @@ class IndexWriter : private util::noncopyable {
     std::vector<std::shared_ptr<SegmentContext>> segments_;
     CachedReaders cached_;
 
-    // guard for the current context during struct update operations,
-    // e.g. import_contexts_, pending_segment_contexts_
-    std::mutex mutex_;
     // complete segments to be added during next commit (import)
     std::vector<ImportContext> imports_;
     // segment writers with data pending for next commit
@@ -795,7 +791,36 @@ class IndexWriter : private util::noncopyable {
     std::deque<PendingSegmentContext> pending_segments_;
     // entries from 'pending_segments_' that are available for reuse
     Freelist pending_freelist_;
-    yaclib::WaitGroup<> pending_wg_{1};
+    // TODO(MBkkt) Considered to replace with YACLib in ArangoDB 3.11+ or ...
+    struct WaitGroup {
+      std::mutex& Mutex() noexcept { return m_; }
+
+      void Add() noexcept { counter_.fetch_add(1, std::memory_order_relaxed); }
+
+      void Done() noexcept {
+        if (counter_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+          std::lock_guard lock{m_};
+          cv_.notify_one();
+        }
+      }
+
+      void Wait(std::unique_lock<std::mutex>& lock) noexcept {
+        IRS_ASSERT(lock.mutex() == &m_);
+        IRS_ASSERT(lock.owns_lock());
+        if (counter_.fetch_sub(1, std::memory_order_acq_rel) != 1) {
+          do {
+            cv_.wait(lock);
+            // relaxed probably enough
+          } while (counter_.load(std::memory_order_acquire) != 0);
+        }
+        counter_.store(1, std::memory_order_relaxed);
+      }
+
+     private:
+      std::atomic_size_t counter_{1};
+      std::mutex m_;
+      std::condition_variable cv_;
+    } pending_;
 
     // set of segments to be removed from the index upon commit
     ConsolidatingSegments segment_mask_;
