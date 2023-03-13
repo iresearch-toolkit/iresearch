@@ -185,6 +185,7 @@ TEST(bitset_tests, reset) {
   const auto* prev_data = bs.data();
 
   // reset to smaller size
+  const auto old_words = words;
   words = 2;
   size = 89;
 
@@ -193,7 +194,7 @@ TEST(bitset_tests, reset) {
   ASSERT_EQ(size, bs.size());
   ASSERT_EQ(words, bs.words());
   ASSERT_EQ(prev_data, bs.data());  // storage haven't changed
-  ASSERT_EQ(sizeof(bitset::word_t) * 8 * words, bs.capacity());
+  ASSERT_EQ(sizeof(bitset::word_t) * 8 * old_words, bs.capacity());
   ;
   ASSERT_EQ(0, bs.count());
   ASSERT_TRUE(bs.none());  // content cleared

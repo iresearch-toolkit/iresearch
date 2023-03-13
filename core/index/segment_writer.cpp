@@ -21,11 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "segment_writer.hpp"
+#include "index/segment_writer.hpp"
 
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_stream.hpp"
-#include "index/norm.hpp"
 #include "index_meta.hpp"
 #include "shared.hpp"
 #include "store/store_utils.hpp"
@@ -74,28 +73,26 @@ segment_writer::stored_column::stored_column(
   }
 }
 
-doc_id_t segment_writer::begin(const update_context& ctx,
-                               size_t reserve_rollback_extra /*= 0*/) {
-  IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
+doc_id_t segment_writer::begin(DocContext ctx) {
+  IRS_ASSERT(LastDocId() < doc_limits::eof());
   valid_ = true;
   doc_.clear();  // clear norm fields
 
-  if (docs_mask_.capacity() <= docs_mask_.size() + 1 + reserve_rollback_extra) {
-    // reserve space for potential rollback
+  const auto needed_docs = buffered_docs() + 1;
+
+  if (needed_docs >= docs_mask_.set.capacity()) {
     // reserve in blocks of power-of-2
-    docs_mask_.reserve(
-      math::roundup_power2(docs_mask_.size() + 1 + reserve_rollback_extra));
+    docs_mask_.set.reserve(math::roundup_power2(needed_docs));
   }
 
-  if (docs_context_.size() >= docs_context_.capacity()) {
+  if (needed_docs >= docs_context_.capacity()) {
     // reserve in blocks of power-of-2
-    docs_context_.reserve(math::roundup_power2(docs_context_.size() + 1));
+    docs_context_.reserve(math::roundup_power2(needed_docs));
   }
 
   docs_context_.emplace_back(ctx);
 
-  // -1 for 0-based offset
-  return doc_id_t(docs_cached() + doc_limits::min() - 1);
+  return LastDocId();
 }
 
 std::unique_ptr<segment_writer> segment_writer::make(
@@ -106,61 +103,61 @@ std::unique_ptr<segment_writer> segment_writer::make(
 }
 
 size_t segment_writer::memory_active() const noexcept {
-  const auto docs_mask_extra =
-    (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
-      ? sizeof(bitvector::word_t)
-      : 0;
-
   auto column_cache_active =
-    std::accumulate(columns_.begin(), columns_.end(), size_t(0),
+    std::accumulate(columns_.begin(), columns_.end(), size_t{0},
                     [](size_t lhs, const stored_column& rhs) noexcept {
                       return lhs + rhs.name.size() + sizeof(rhs);
                     });
 
   column_cache_active +=
-    std::accumulate(std::begin(cached_columns_), std::end(cached_columns_),
-                    column_cache_active, [](const auto lhs, const auto& rhs) {
+    std::accumulate(cached_columns_.begin(), cached_columns_.end(), size_t{0},
+                    [](size_t lhs, const cached_column& rhs) {
                       return lhs + rhs.stream.memory_active();
                     });
 
-  return (docs_context_.size() * sizeof(update_context)) +
-         (docs_mask_.size() / 8 + docs_mask_extra)  // FIXME too rough
-         + fields_.memory_active() + sort_.stream.memory_active() +
+  return docs_context_.size() * sizeof(DocContext) +
+         bitset::bits_to_words(docs_mask_.count) * sizeof(bitset::word_t) +
+         fields_.memory_active() + sort_.stream.memory_active() +
          column_cache_active;
 }
 
 size_t segment_writer::memory_reserved() const noexcept {
-  const auto docs_mask_extra =
-    (0 != (docs_mask_.size() % sizeof(bitvector::word_t)))
-      ? sizeof(bitvector::word_t)
-      : 0;
-
   auto column_cache_reserved =
     columns_.capacity() * sizeof(decltype(columns_)::value_type);
 
   column_cache_reserved +=
-    std::accumulate(std::begin(cached_columns_), std::end(cached_columns_),
-                    column_cache_reserved, [](const auto lhs, const auto& rhs) {
-                      return lhs + rhs.stream.memory_reserved();
+    std::accumulate(columns_.begin(), columns_.end(), size_t{0},
+                    [](size_t lhs, const stored_column& rhs) noexcept {
+                      return lhs + rhs.name.size();
+                    });
+
+  column_cache_reserved +=
+    std::accumulate(cached_columns_.begin(), cached_columns_.end(), size_t{0},
+                    [](size_t lhs, const cached_column& rhs) {
+                      return lhs + rhs.stream.memory_active() + sizeof(rhs);
                     });
 
   return sizeof(segment_writer) +
-         (sizeof(update_context) * docs_context_.size()) +
-         (sizeof(bitvector) + docs_mask_.size() / 8 + docs_mask_extra) +
+         docs_context_.capacity() * sizeof(DocContext) +
+         docs_mask_.set.capacity() / bits_required<char>() +
          fields_.memory_reserved() + sort_.stream.memory_reserved() +
          column_cache_reserved;
 }
 
-bool segment_writer::remove(doc_id_t doc_id) {
-  if (!doc_limits::valid(doc_id) ||
-      (doc_id - doc_limits::min()) >= docs_cached() ||
-      docs_mask_.test(doc_id - doc_limits::min())) {
+bool segment_writer::remove(doc_id_t doc_id) noexcept {
+  if (!doc_limits::valid(doc_id)) {
     return false;
   }
-
-  docs_mask_.set(doc_id - doc_limits::min());
-
-  return true;
+  const auto doc = doc_id - doc_limits::min();
+  if (buffered_docs() <= doc) {
+    return false;
+  }
+  if (docs_mask_.set.size() <= doc) {
+    docs_mask_.set.resize</*Reserve=*/false>(doc + 1);
+  }
+  const bool inserted = docs_mask_.set.try_set(doc);
+  docs_mask_.count += static_cast<size_t>(inserted);
+  return inserted;
 }
 
 segment_writer::segment_writer(ConstructToken, directory& dir,
@@ -218,46 +215,15 @@ void segment_writer::FlushFields(flush_state& state) {
     throw;
   }
 }
-
-document_mask segment_writer::get_doc_mask(const doc_map& docmap) {
-  document_mask docs_mask;
-  docs_mask.reserve(docs_mask_.size());
-
-  auto visit = [&](auto&& visitor) {
-    for (size_t doc_id = 0, doc_id_end = docs_mask_.size(); doc_id < doc_id_end;
-         ++doc_id) {
-      if (docs_mask_.test(doc_id)) {
-        const auto idx = doc_id + doc_limits::min();
-        IRS_ASSERT(idx < doc_limits::eof());
-        visitor(idx);
-      }
-    }
-  };
-
-  if (docmap.empty()) {
-    visit([&docs_mask](size_t doc) {
-      docs_mask.emplace(static_cast<doc_id_t>(doc));
-    });
-  } else {
-    visit([&docs_mask, &docmap](size_t doc) {
-      IRS_ASSERT(docmap[doc] < doc_limits::eof());
-      docs_mask.emplace(docmap[doc]);
-    });
-  }
-
-  return docs_mask;
-}
-
-doc_map segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
+[[nodiscard]] doc_map segment_writer::flush(IndexSegment& segment,
+                                            DocsMask& docs_mask) {
   REGISTER_TIMER_DETAILED();
-  IRS_ASSERT(docs_mask.empty());
-
   auto& meta = segment.meta;
 
   flush_state state{
     .dir = &dir_,
     .name = seg_name_,
-    .doc_count = docs_cached(),
+    .doc_count = buffered_docs(),
   };
 
   doc_map docmap;
@@ -290,17 +256,14 @@ doc_map segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
     FlushFields(state);
   }
 
-  // TODO(MBkkt) Move docs_mask_ remapping to the end of FlashAll Stage 4.
-  //  In such case we will avoid all old2new remappings, only new2old remain.
-  //  Also it will be lazy in such case.
-  if (docs_mask_.any()) {  // get non-empty document mask
-    docs_mask = get_doc_mask(docmap);
-  }
+  // get document mask
+  IRS_ASSERT(docs_mask_.set.count() == docs_mask_.count);
+  docs_mask = std::move(docs_mask_);
+  docs_mask_.count = 0;
 
   // update segment metadata
-  IRS_ASSERT(docs_mask.size() <= state.doc_count);
   meta.docs_count = state.doc_count;
-  meta.live_docs_count = meta.docs_count - docs_mask.size();
+  meta.live_docs_count = meta.docs_count - docs_mask.count;
   meta.files = dir_.FlushTracked(meta.byte_size);
 
   // We intentionally don't write document mask here as it might
@@ -312,10 +275,10 @@ doc_map segment_writer::flush(IndexSegment& segment, document_mask& docs_mask) {
 
 void segment_writer::reset() noexcept {
   initialized_ = false;
-  tick_ = 0;
   dir_.ClearTracked();
   docs_context_.clear();
-  docs_mask_.clear();
+  docs_mask_.set.clear();
+  docs_mask_.count = 0;
   fields_.reset();
   columns_.clear();
   cached_columns_.clear();  // FIXME(@gnusi): we loose all per-column buffers

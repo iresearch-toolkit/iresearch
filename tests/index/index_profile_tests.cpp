@@ -410,14 +410,13 @@ class index_profile_test_case : public tests::index_test_base {
       }
     }
 
-    ASSERT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count);
-    ASSERT_EQ(imported_docs_count, import_docs_count);
-    ASSERT_TRUE(imported_docs_count == num_import_threads ||
-                imported_docs_count);  // at least some imports took place if
-                                       // import enabled
-    ASSERT_TRUE(updated_docs_count == num_update_threads ||
-                updated_docs_count);  // at least some updates took place if
-                                      // update enabled
+    EXPECT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count)
+      << parsed_docs_count << " " << imported_docs_count;
+    EXPECT_EQ(imported_docs_count, import_docs_count);
+    // at least some imports took place if import enabled
+    EXPECT_TRUE(imported_docs_count != 0 || num_import_threads == 0);
+    // at least some updates took place if update enabled
+    EXPECT_TRUE(updated_docs_count != 0 || num_update_threads == 0);
   }
 
   void profile_bulk_index_dedicated_cleanup(size_t num_threads,

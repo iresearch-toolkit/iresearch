@@ -802,7 +802,7 @@ TEST_P(format_test_case, fields_read_write) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::document_mask docs_mask;
+    irs::DocumentMask docs_mask;
     auto reader = codec()->get_field_reader();
     reader->prepare(dir(), meta, docs_mask);
     ASSERT_EQ(1, reader->size());
@@ -3453,7 +3453,7 @@ TEST_P(format_test_case, columns_rw) {
 }
 
 TEST_P(format_test_case, document_mask_rw) {
-  const irs::document_mask mask_set = {1, 4, 5, 7, 10, 12};
+  const irs::DocumentMask mask_set = {1, 4, 5, 7, 10, 12};
   irs::SegmentMeta meta;
   meta.name = "_1";
   meta.version = 42;
@@ -3468,7 +3468,7 @@ TEST_P(format_test_case, document_mask_rw) {
   // read document_mask
   {
     auto reader = codec()->get_document_mask_reader();
-    irs::document_mask expected;
+    irs::DocumentMask expected;
     EXPECT_TRUE(reader->read(dir(), meta, expected));
     for (auto id : mask_set) {
       EXPECT_EQ(1, expected.erase(id));
@@ -3715,7 +3715,7 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
 
   irs::SegmentMeta meta;
   meta.name = "segment_name";
-  irs::document_mask docs_mask;
+  irs::DocumentMask docs_mask;
 
   auto reader = codec()->get_field_reader();
   ASSERT_NE(nullptr, reader);

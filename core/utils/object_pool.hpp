@@ -78,7 +78,7 @@ class concurrent_stack : private util::noncopyable {
         return nullptr;
       }
 
-      new_head.node = head.node->next.load(std::memory_order_relaxed);
+      new_head.node = head.node->next.load(std::memory_order_acquire);
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(
       head, new_head, std::memory_order_acquire, std::memory_order_relaxed));
@@ -91,7 +91,7 @@ class concurrent_stack : private util::noncopyable {
     concurrent_node new_head{&new_node};
 
     do {
-      new_node.next.store(head.node, std::memory_order_relaxed);
+      new_node.next.store(head.node, std::memory_order_release);
 
       new_head.version = head.version + 1;
     } while (!head_.compare_exchange_weak(

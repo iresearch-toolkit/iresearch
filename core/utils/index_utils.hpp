@@ -83,7 +83,7 @@ struct ConsolidateTier {
 
 ConsolidationPolicy MakePolicy(const ConsolidateTier& options);
 
-void ReadDocumentMask(document_mask& docs_mask, const directory& dir,
+void ReadDocumentMask(DocumentMask& docs_mask, const directory& dir,
                       const SegmentMeta& meta);
 
 // Writes segment_meta to the supplied directory

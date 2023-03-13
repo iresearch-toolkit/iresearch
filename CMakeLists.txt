@@ -234,7 +234,7 @@ endif ()
 find_package(BFD) # optional
 
 if (BFD_FOUND)
-  add_definitions(-DUSE_LIBBFD)
+  #add_definitions(-DUSE_LIBBFD)
 else ()
   set(BFD_INCLUDE_DIR "")
   set(BFD_SHARED_LIBS "")

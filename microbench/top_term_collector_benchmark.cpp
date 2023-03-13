@@ -121,7 +121,7 @@ struct SubReader final : irs::SubReader {
   const irs::column_reader* column(std::string_view) const override {
     return nullptr;
   }
-  const irs::document_mask* docs_mask() const noexcept final { return nullptr; }
+  const irs::DocumentMask* docs_mask() const noexcept final { return nullptr; }
   irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
