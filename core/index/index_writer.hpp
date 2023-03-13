@@ -230,7 +230,7 @@ class IndexWriter : private util::noncopyable {
  public:
   // Additional information required for remove/replace requests
   struct QueryContext {
-    using FilterPtr = std::shared_ptr<const filter>;
+    using FilterPtr = std::shared_ptr<const irs::filter>;
 
     QueryContext() = default;
 
@@ -241,9 +241,9 @@ class IndexWriter : private util::noncopyable {
       : filter{std::move(filter)}, tick{tick}, data{data} {
       IRS_ASSERT(this->filter != nullptr);
     }
-    QueryContext(const filter& filter, uint64_t tick, size_t data)
+    QueryContext(const irs::filter& filter, uint64_t tick, size_t data)
       : QueryContext{{FilterPtr{}, &filter}, tick, data} {}
-    QueryContext(filter::ptr&& filter, uint64_t tick, size_t data)
+    QueryContext(irs::filter::ptr&& filter, uint64_t tick, size_t data)
       : QueryContext{FilterPtr{std::move(filter)}, tick, data} {}
 
     // keep a handle to the filter for the case when this object has ownership
