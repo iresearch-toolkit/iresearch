@@ -267,7 +267,6 @@ set(IResearch_core_headers
   ./utils/numeric_utils.hpp
   ./utils/version_utils.hpp
   ./utils/bitset.hpp
-  ./utils/bitvector.hpp
   ./utils/type_id.hpp
   ./shared.hpp
   ./types.hpp
