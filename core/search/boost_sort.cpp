@@ -63,6 +63,10 @@ struct Prepared final : ScorerBase<void> {
       },
       volatile_boost, boost);
   }
+
+  bool equals(Scorer const& other) const noexcept final {
+    return other.type() == type();
+  }
 };
 
 }  // namespace

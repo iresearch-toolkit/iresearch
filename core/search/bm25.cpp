@@ -28,6 +28,7 @@
 #include "index/norm.hpp"
 #include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
+#include "utils/misc.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
@@ -618,6 +619,15 @@ class sort final : public irs::ScorerBase<bm25::stats> {
 
   TermCollector::ptr prepare_term_collector() const final {
     return std::make_unique<term_collector>();
+  }
+
+  bool equals(Scorer const& other) const noexcept final {
+    if (other.type() != type()) {
+      return false;
+    }
+    const auto& p = down_cast<sort>(other);
+    return p.k_ == k_ &&
+           p.b_ == b_;
   }
 
  private:

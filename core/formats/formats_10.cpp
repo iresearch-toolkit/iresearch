@@ -442,7 +442,7 @@ class postings_writer_base : public irs::postings_writer {
     const offset* offs_{};
     const payload* pay_{};
 
-    attribute* get_mutable(type_info::type_id type) noexcept final {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept final {
       if (type == irs::type<document>::id()) {
         return &doc_;
       }

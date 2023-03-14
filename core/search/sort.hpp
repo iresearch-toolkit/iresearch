@@ -194,6 +194,13 @@ struct Scorer {
   //   - be a power of 2
   //   - be less or equal than alignof(MAX_ALIGN_T))
   virtual std::pair<size_t, size_t> stats_size() const = 0;
+
+  virtual bool equals(Scorer const& other) const noexcept = 0;
+
+  constexpr type_info::type_id type() const noexcept { return type_; }
+
+private:
+  type_info::type_id type_;
 };
 
 // Possible variants of merging multiple scores

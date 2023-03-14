@@ -477,6 +477,14 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
       });
   }
 
+  bool equals(Scorer const& other) const noexcept final {
+    if (other.type() != type()) {
+      return false;
+    }
+    const auto& p = down_cast<sort>(other);
+    return p.normalize_ == normalize_;
+  }
+
  private:
   bool normalize_;
   bool boost_as_score_;
