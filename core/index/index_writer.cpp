@@ -852,7 +852,6 @@ void IndexWriter::FlushContext::Reset() noexcept {
     }
   }
 
-  dir_->clear_refs();
   imports_.clear();
   cached_.clear();
   segments_.clear();
@@ -863,10 +862,8 @@ void IndexWriter::FlushContext::Reset() noexcept {
       segment->Reset();
     }
   }
-
-  while (pending_freelist_.pop() != nullptr) {
-  }
-  pending_segments_.clear();
+  ClearPending();
+  dir_->clear_refs();
 }
 
 void IndexWriter::Cleanup(FlushContext& curr, FlushContext* next) noexcept {
@@ -942,7 +939,7 @@ uint64_t IndexWriter::FlushContext::FlushPending(uint64_t tick) {
     IRS_ASSERT(entry.segment_ == nullptr);
   }
 #endif
-  pending_segments_.clear();
+  ClearPending();
   return flushed_tick;
 }
 

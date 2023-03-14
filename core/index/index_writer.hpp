@@ -784,6 +784,13 @@ class IndexWriter : private util::noncopyable {
 
     // complete segments to be added during next commit (import)
     std::vector<ImportContext> imports_;
+
+    void ClearPending() noexcept {
+      while (pending_freelist_.pop() != nullptr) {
+      }
+      pending_segments_.clear();
+    }
+
     // segment writers with data pending for next commit
     // (all segments that have been used by this flush_context)
     // must be std::deque to guarantee that element memory location does
