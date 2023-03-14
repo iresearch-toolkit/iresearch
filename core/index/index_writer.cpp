@@ -903,7 +903,6 @@ uint64_t IndexWriter::FlushContext::FlushPending(uint64_t tick) {
   auto& next_segments = next_->segments_;
   IRS_ASSERT(next_segments.empty());
   size_t to_next_pending_segments = 0;
-  // TODO(MBkkt) committed_tick_?
   uint64_t flushed_tick = writer_limits::kMinTick;
   for (auto& entry : pending_segments_) {
     auto& segment = entry.segment_;
@@ -1834,6 +1833,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
   // ensure there are no active struct update operations
   std::unique_lock lock{ctx->pending_.Mutex()};
   ctx->pending_.Wait(lock);
+  lock.unlock();
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
   // are properly tracked in 'modification_queries_'
