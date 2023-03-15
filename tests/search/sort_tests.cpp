@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2017 ArangoDB GmbH, Cologne, Germany
@@ -60,7 +60,8 @@ struct aligned_scorer : public irs::ScorerFactory {
    public:
     explicit prepared(irs::IndexFeatures index_features,
                       bool empty_scorer) noexcept
-      : empty_scorer_(empty_scorer), index_features_(index_features) {}
+      : ScorerBase(irs::type<prepared>::get()), empty_scorer_(empty_scorer),
+        index_features_(index_features) {}
 
     irs::FieldCollector::ptr prepare_field_collector() const final {
       return nullptr;

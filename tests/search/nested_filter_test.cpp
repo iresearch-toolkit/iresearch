@@ -111,6 +111,8 @@ struct DocIdScorer : irs::ScorerFactory {
       return irs::IndexFeatures::NONE;
     }
 
+    Prepared() : ScorerBase(irs::type<Prepared>::get()) {}
+
     irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
                                       const irs::feature_map_t&,
                                       const irs::byte_type*,

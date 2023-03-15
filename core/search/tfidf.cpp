@@ -363,7 +363,7 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
 class sort final : public irs::ScorerBase<tfidf::idf> {
  public:
   explicit sort(bool normalize, bool boost_as_score) noexcept
-    : normalize_{normalize}, boost_as_score_{boost_as_score} {}
+    :  ScorerBase(irs::type<sort>::get()), normalize_{normalize}, boost_as_score_{boost_as_score} {}
 
   void collect(byte_type* stats_buf, const irs::FieldCollector* field,
                const irs::TermCollector* term) const final {
@@ -478,7 +478,7 @@ class sort final : public irs::ScorerBase<tfidf::idf> {
   }
 
   bool equals(Scorer const& other) const noexcept final {
-    if (other.type() != type()) {
+    if (!Scorer::equals(other)) {
       return false;
     }
     const auto& p = down_cast<sort>(other);

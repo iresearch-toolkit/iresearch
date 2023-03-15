@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -79,7 +79,7 @@ struct basic_sort : irs::ScorerFactory {
   };
 
   struct prepared_sort final : irs::ScorerBase<void> {
-    explicit prepared_sort(size_t idx) : idx(idx) {}
+    explicit prepared_sort(size_t idx) : ScorerBase(irs::type<prepared_sort>::get()), idx(idx) {}
 
     irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;

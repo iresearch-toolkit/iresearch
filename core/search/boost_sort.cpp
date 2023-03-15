@@ -41,6 +41,9 @@ struct volatile_boost_score_ctx final : score_ctx {
 };
 
 struct Prepared final : ScorerBase<void> {
+
+  Prepared() :  ScorerBase(irs::type<Prepared>::get()) {}
+
   IndexFeatures index_features() const noexcept final {
     return IndexFeatures::NONE;
   }
@@ -62,10 +65,6 @@ struct Prepared final : ScorerBase<void> {
         *res = state.volatile_boost->value * state.boost;
       },
       volatile_boost, boost);
-  }
-
-  bool equals(Scorer const& other) const noexcept final {
-    return other.type() == type();
   }
 };
 
