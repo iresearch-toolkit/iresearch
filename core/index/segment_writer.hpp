@@ -157,7 +157,6 @@ class segment_writer : util::noncopyable {
   void reset(const SegmentMeta& meta);
 
   doc_id_t LastDocId() const noexcept {
-    IRS_ASSERT(0 <= buffered_docs());
     IRS_ASSERT(buffered_docs() <= doc_limits::eof());
     return doc_limits::min() + buffered_docs() - 1;
   }

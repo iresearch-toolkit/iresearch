@@ -59,6 +59,7 @@ bool visit(const irs::column_reader& reader,
 class index_profile_test_case : public tests::index_test_base {
  private:
   std::atomic_uint64_t tick_{irs::writer_limits::kMinTick + 1};
+  std::mutex commit_mutex;
   bool onTick_{false};
 
   void TransactionTick(irs::IndexWriter::Transaction& trx) {
@@ -127,7 +128,6 @@ class index_profile_test_case : public tests::index_test_base {
     auto total_threads = thread_count + num_import_threads + num_update_threads;
     irs::async_utils::thread_pool thread_pool(total_threads, total_threads);
     std::mutex mutex;
-    std::mutex commit_mutex;
 
     if (!writer) {
       irs::IndexWriterOptions options;
@@ -138,7 +138,7 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     // initialize reader data source for import threads
-    {
+    if (num_import_threads != 0) {
       auto import_writer =
         irs::IndexWriter::Make(import_dir, codec(), irs::OM_CREATE);
 
@@ -163,6 +163,7 @@ class index_profile_test_case : public tests::index_test_base {
       }
 
       {
+        std::unique_lock commit_lock{commit_mutex};
         REGISTER_TIMER_NAMED_DETAILED("init - commit");
         import_writer->Commit(CommitTick());
       }
@@ -176,9 +177,9 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register insertion jobs
       for (size_t i = 0; i < thread_count; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, thread_count, i,
-                         writer_batch_size, &parsed_docs_count,
-                         &writer_commit_count, &import_again, this] {
+        thread_pool.run([&mutex, &writer, thread_count, i, writer_batch_size,
+                         &parsed_docs_count, &writer_commit_count,
+                         &import_again, this] {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -229,8 +230,7 @@ class index_profile_test_case : public tests::index_test_base {
             }
 
             if (count >= writer_batch_size) {
-              auto commit_lock =
-                std::unique_lock(commit_mutex, std::try_to_lock);
+              std::unique_lock commit_lock{commit_mutex, std::try_to_lock};
 
               // break commit chains by skipping commit if one is already in
               // progress
@@ -249,6 +249,7 @@ class index_profile_test_case : public tests::index_test_base {
           }
 
           {
+            std::unique_lock commit_lock{commit_mutex};
             REGISTER_TIMER_NAMED_DETAILED("commit");
             writer->Commit(CommitTick());
           }
@@ -287,9 +288,8 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register update jobs
       for (size_t i = 0; i < num_update_threads; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i,
-                         update_skip, writer_batch_size, &writer_commit_count,
-                         this] {
+        thread_pool.run([&mutex, &writer, num_update_threads, i, update_skip,
+                         writer_batch_size, &writer_commit_count, this] {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -370,8 +370,7 @@ class index_profile_test_case : public tests::index_test_base {
             }
 
             if (count >= writer_batch_size) {
-              auto commit_lock =
-                std::unique_lock{commit_mutex, std::try_to_lock};
+              std::unique_lock commit_lock{commit_mutex, std::try_to_lock};
 
               // break commit chains by skipping commit if one is already in
               // progress
@@ -390,6 +389,7 @@ class index_profile_test_case : public tests::index_test_base {
           }
 
           {
+            std::unique_lock commit_lock{commit_mutex};
             REGISTER_TIMER_NAMED_DETAILED("commit");
             writer->Commit(CommitTick());
           }
@@ -402,8 +402,11 @@ class index_profile_test_case : public tests::index_test_base {
     thread_pool.stop();
 
     // ensure all data have been committed
-    writer->Commit(CommitTick());
-    EXPECT_FALSE(writer->Commit());
+    {
+      std::unique_lock commit_lock{commit_mutex};
+      writer->Commit(CommitTick());
+      EXPECT_FALSE(writer->Commit());
+    }
 
     auto path = test_dir();
 
@@ -507,6 +510,7 @@ class index_profile_test_case : public tests::index_test_base {
         [commit_interval, &working, &writer, &writer_commit_count, this] {
           while (working.load()) {
             {
+              std::unique_lock commit_lock{commit_mutex};
               REGISTER_TIMER_NAMED_DETAILED("commit");
               writer->Commit(CommitTick());
             }
@@ -556,9 +560,17 @@ class index_profile_test_case : public tests::index_test_base {
     thread_pool.stop();
     // ensure there are no consolidation-pending segments
     // left in 'consolidating_segments_' before applying the final consolidation
-    writer->Commit(CommitTick());
+    {
+      std::unique_lock commit_lock{commit_mutex};
+      writer->Commit(CommitTick());
+      EXPECT_FALSE(writer->Commit());
+    }
     ASSERT_TRUE(writer->Consolidate(policy));
-    writer->Commit(CommitTick());
+    {
+      std::unique_lock commit_lock{commit_mutex};
+      writer->Commit(CommitTick());
+      EXPECT_FALSE(writer->Commit());
+    }
 
     struct dummy_doc_template_t
       : public tests::csv_doc_generator::doc_template {

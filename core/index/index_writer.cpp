@@ -74,6 +74,7 @@ struct FlushedSegmentContext {
 
   std::shared_ptr<const SegmentReaderImpl> reader;
   IndexWriter::SegmentContext& segment;
+  IndexWriter::FlushedSegment& flushed;
 
   DocumentMask MakeDocumentMask(uint64_t tick) {
     const auto begin = flushed.GetDocsBegin();
@@ -94,8 +95,6 @@ struct FlushedSegmentContext {
     }
     return partially_committed_mask;
   }
-
-  const IndexSegment& GetIndexSegment() const { return flushed; }
 
   void Remove(IndexWriter::QueryContext& query);
   void MaskUnusedReplace(uint64_t first_tick, uint64_t last_tick);
@@ -160,8 +159,6 @@ struct FlushedSegmentContext {
   doc_id_t Old2New(auto old_doc) const noexcept {
     return Translate(flushed.old2new, old_doc);
   }
-
-  IndexWriter::FlushedSegment& flushed;
 };
 
 // Apply any document removals based on filters in the segment.
@@ -883,7 +880,8 @@ void IndexWriter::Cleanup(FlushContext& curr, FlushContext* next) noexcept {
   }
 }
 
-uint64_t IndexWriter::FlushContext::FlushPending(uint64_t tick) {
+uint64_t IndexWriter::FlushContext::FlushPending(uint64_t committed_tick,
+                                                 uint64_t tick) {
   // if tick is not equal uint64_max, as result of bad_alloc it's possible here
   // that not all segments which should be committed by next FlushContext
   // (fully or partially) will be moved to it.
@@ -903,13 +901,14 @@ uint64_t IndexWriter::FlushContext::FlushPending(uint64_t tick) {
   auto& next_segments = next_->segments_;
   IRS_ASSERT(next_segments.empty());
   size_t to_next_pending_segments = 0;
-  uint64_t flushed_tick = writer_limits::kMinTick;
+  uint64_t flushed_tick = committed_tick;
   for (auto& entry : pending_segments_) {
     auto& segment = entry.segment_;
     IRS_ASSERT(segment != nullptr);
     const auto first_tick = segment->first_tick_;
     const auto last_tick = segment->last_tick_;
     if (first_tick <= tick) {
+      IRS_ASSERT(committed_tick < first_tick);
       flushed_tick = std::max(flushed_tick, last_tick);
       segment->Flush();
       if (tick < last_tick) {
@@ -1837,14 +1836,16 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
   // are properly tracked in 'modification_queries_'
-  const auto flushed_tick = std::max(committed_tick_, ctx->FlushPending(tick));
+  const auto flushed_tick = ctx->FlushPending(committed_tick_, tick);
 
   std::unique_lock cleanup_lock{consolidation_lock_, std::defer_lock};
   Finally cleanup = [&]() noexcept {
     if (ctx == nullptr) {
       return;
     }
-    cleanup_lock.lock();
+    if (!cleanup_lock.owns_lock()) {
+      cleanup_lock.lock();
+    }
     Cleanup(*ctx);
   };
 
@@ -2166,6 +2167,9 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
         if (auto it = ctx->cached_.find(&flushed); it != ctx->cached_.end()) {
           IRS_ASSERT(it->second != nullptr);
           IRS_ASSERT(flushed_first_tick <= committed_tick_);
+          // We don't support case when segment is committed partially more than
+          // one time. Because it's useless and ineffective.
+          IRS_ASSERT(flushed_last_tick <= tick);
           // find existing reader
           reader = std::make_shared<const SegmentReaderImpl>(
             *it->second, flushed.meta, DocumentMask{});
@@ -2211,13 +2215,12 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
       if (segment_ctx.segment.has_replace_) {
         segment_ctx.MaskUnusedReplace(committed_tick_, tick);
       }
-      const auto& index_segment = segment_ctx.GetIndexSegment();
       auto document_mask = segment_ctx.MakeDocumentMask(tick);
-      if (index_segment.meta.docs_count == document_mask.size()) {
+      if (segment_ctx.flushed.meta.docs_count == document_mask.size()) {
         continue;
       }
       // TODO(MBkkt) we can avoid copy if it is last usage of FlushedSegment
-      auto new_segment = index_segment;
+      IndexSegment new_segment = segment_ctx.flushed;
 
       if (!document_mask.empty()) {  // Write non-empty document mask
         WriteDocumentMask(dir, new_segment.meta, document_mask);

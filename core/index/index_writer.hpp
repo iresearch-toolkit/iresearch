@@ -843,7 +843,7 @@ class IndexWriter : private util::noncopyable {
     // but not to freelist. So this segment would be waited upon flushing
     void AddToPending(ActiveSegmentContext& active);
 
-    uint64_t FlushPending(uint64_t tick);
+    uint64_t FlushPending(uint64_t committed_tick, uint64_t tick);
 
     void Reset() noexcept;
   };
