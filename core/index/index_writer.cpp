@@ -1718,7 +1718,8 @@ bool IndexWriter::Import(const IndexReader& reader,
   // IMPORTANT NOTE!
   // Will be committed in the upcoming Commit
   // even if tick is greater than Commit tick
-  // TODO(MBkkt) can be fixed
+  // TODO(MBkkt) Can be fixed: needs to add overload with external tick and
+  // moving not suited import segments to the next FlushContext in PrepareFlush
   flush->imports_.emplace_back(
     std::move(segment), tick_.load(std::memory_order_relaxed), std::move(refs),
     std::move(imported_reader));  // do not forget to track refs

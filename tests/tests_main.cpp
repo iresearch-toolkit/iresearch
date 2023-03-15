@@ -65,6 +65,8 @@
 #include "utils/network_utils.hpp"
 #include "utils/runtime_utils.hpp"
 
+#include <absl/strings/str_cat.h>
+
 #ifdef _MSC_VER
 // +1 for \0 at end of string
 #define mkdtemp(templ)                                                    \
