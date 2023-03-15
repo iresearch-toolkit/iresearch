@@ -351,8 +351,7 @@ void __cxa_throw(void* ex, void* info, void (*dest)(void*)) {
 #endif
 
 void test_base::SetUp() {
-  namespace tst = ::testing;
-  const tst::TestInfo* ti = tst::UnitTest::GetInstance()->current_test_info();
+  const auto* ti = ::testing::UnitTest::GetInstance()->current_test_info();
 
   if (!ti) {
     throw std::runtime_error("not a test suite");
@@ -360,14 +359,23 @@ void test_base::SetUp() {
 
   test_case_dir_ = test_results_dir();
 
-  if (::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0) {
-    test_case_dir_ /=
-      std::string("iteration ").append(std::to_string(iteration()));
+  if (::testing::FLAGS_gtest_repeat < 0 || 1 < ::testing::FLAGS_gtest_repeat) {
+    test_case_dir_ /= absl::StrCat("iteration ", iteration());
   }
 
   test_case_dir_ /= ti->test_case_name();
   (test_dir_ = test_case_dir_) /= ti->name();
-  irs::file_utils::mkdir(test_dir_.c_str(), false);
+  std::filesystem::create_directories(test_dir_);
+}
+
+void test_base::TearDown() {
+  if (!test_dir_.empty() && !::testing::Test::HasFailure()) {
+    auto path = test_dir_;
+    do {
+      std::filesystem::remove(path);
+      path = path.parent_path();
+    } while (std::filesystem::is_empty(path));
+  }
 }
 
 int main(int argc, char* argv[]) {
