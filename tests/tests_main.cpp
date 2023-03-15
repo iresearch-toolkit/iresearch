@@ -369,12 +369,12 @@ void test_base::SetUp() {
 }
 
 void test_base::TearDown() {
-  if (!test_dir_.empty() && !::testing::Test::HasFailure()) {
+  if (!test_dir_.empty()) {
     auto path = test_dir_;
-    do {
+    while (std::filesystem::is_empty(path)) {
       std::filesystem::remove(path);
       path = path.parent_path();
-    } while (std::filesystem::is_empty(path));
+    }
   }
 }
 
