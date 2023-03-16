@@ -815,7 +815,7 @@ TEST_P(format_10_test_case, ires336) {
   irs::SegmentMeta meta;
   meta.name = segment_name;
 
-  irs::document_mask docs_mask;
+  irs::DocumentMask docs_mask;
   auto fr = get_codec()->get_field_reader();
   fr->prepare(*dir, meta, docs_mask);
 

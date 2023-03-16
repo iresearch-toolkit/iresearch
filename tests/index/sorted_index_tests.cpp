@@ -2930,6 +2930,123 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
   }
 }
 
+TEST_P(SortedIndexStressTestCase, commit_on_tick) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      if (name == "name" && data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.sorted = field;
+        doc.insert(field);
+      }
+    });
+
+  static constexpr size_t kLen = 8;
+  std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
+  for (size_t i = 0; i < kLen; ++i) {
+    insert_docs[i] = {i, gen.next()};
+  }
+  std::array<bool, kLen> in_store;
+  std::array<char, kLen> results{'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'};
+  for (size_t commit = 0; commit < (1 << kLen); ++commit) {
+    for (size_t reset = 0; reset < (1 << kLen); ++reset) {
+      in_store.fill(false);
+      uint64_t insert_time = irs::writer_limits::kMinTick + 1;
+      uint64_t commit_time = insert_time;
+      // open writer
+      StringComparer compare;
+      irs::IndexWriterOptions opts;
+      opts.segment_docs_max = 2;
+      opts.comparator = &compare;
+      opts.features = features();
+      auto writer = open_writer(irs::OM_CREATE, opts);
+      ASSERT_NE(nullptr, writer);
+      ASSERT_EQ(&compare, writer->Comparator());
+      {
+        auto ctx = writer->GetBatch();
+        for (size_t i = 0; i < kLen; ++i) {
+          {
+            auto doc = ctx.Insert();
+            ASSERT_TRUE(doc.Insert<irs::Action::STORE_SORTED>(
+              *insert_docs[i].second->sorted));
+            ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(
+              insert_docs[i].second->indexed.begin(),
+              insert_docs[i].second->indexed.end()));
+            ASSERT_TRUE(doc.Insert<irs::Action::STORE>(
+              insert_docs[i].second->stored.begin(),
+              insert_docs[i].second->stored.end()));
+          }
+          if (((reset >> i) & 1U) == 1U) {
+            ctx.Abort();
+          } else {
+            ctx.Commit(++insert_time);
+            in_store[insert_docs[i].first] = true;
+          }
+          if (((commit >> i) & 1U) == 1U) {
+            writer->Commit(commit_time);
+            commit_time = insert_time;
+            AssertSnapshotEquality(*writer);
+          }
+        }
+      }
+      size_t in_store_count = 0;
+      for (auto v : in_store) {
+        in_store_count += static_cast<size_t>(v);
+      }
+      writer->Commit(insert_time);
+      AssertSnapshotEquality(*writer);
+
+      auto reader = writer->GetSnapshot();
+      ASSERT_TRUE(reader);
+      EXPECT_EQ(in_store_count, reader->live_docs_count());
+      EXPECT_LE(in_store_count, reader->docs_count());
+      EXPECT_LE(reader->docs_count(), kLen);
+
+      writer->Consolidate(MakePolicy(irs::index_utils::ConsolidateCount{}));
+      writer->Commit(insert_time);
+      AssertSnapshotEquality(*writer);
+
+      writer = nullptr;
+
+      // Check consolidated segment
+      reader = irs::DirectoryReader(dir(), codec());
+      ASSERT_TRUE(reader);
+      if (in_store_count == 0) {
+        ASSERT_EQ(0, reader.size());
+        ASSERT_EQ(0, reader->docs_count());
+        ASSERT_EQ(0, reader->live_docs_count());
+        continue;
+      }
+      ASSERT_EQ(1, reader.size());
+      EXPECT_EQ(in_store_count, reader->docs_count());
+      EXPECT_EQ(in_store_count, reader->live_docs_count());
+      const auto& segment = reader[0];
+      const auto* column = segment.sort();
+      ASSERT_NE(nullptr, column);
+      ASSERT_TRUE(irs::IsNull(column->name()));
+      ASSERT_EQ(0, column->payload().size());
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      const auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      const auto* terms = segment.field("name");
+      ASSERT_NE(nullptr, terms);
+      auto docs = segment.docs_iterator();
+      for (size_t i = kLen; i > 0; --i) {
+        if (!in_store[i - 1]) {
+          continue;
+        }
+        ASSERT_TRUE(docs->next());
+        ASSERT_EQ(docs->value(), values->seek(docs->value()));
+        EXPECT_EQ(results[i - 1], irs::to_string<std::string_view>(
+                                    actual_value->value.data())[0]);
+      }
+      ASSERT_FALSE(docs->next());
+    }
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
   SortedIndexStressTest, SortedIndexStressTestCase,
   ::testing::Combine(

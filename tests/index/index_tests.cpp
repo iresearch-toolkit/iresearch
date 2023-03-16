@@ -108,7 +108,7 @@ class SubReaderMock final : public irs::SubReader {
 
   // Live & deleted docs
 
-  const irs::document_mask* docs_mask() const final { return nullptr; }
+  const irs::DocumentMask* docs_mask() const final { return nullptr; }
 
   // Returns an iterator over live documents in current segment.
   irs::doc_iterator::ptr docs_iterator() const final {
@@ -4694,8 +4694,6 @@ TEST_P(index_test_case, doc_removal) {
     ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                        doc2->stored.begin(), doc2->stored.end()));
     writer->GetBatch().Remove(std::move(query_doc1));
-    writer->GetBatch().Remove(
-      std::unique_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -4731,8 +4729,6 @@ TEST_P(index_test_case, doc_removal) {
                        doc2->stored.begin(), doc2->stored.end()));
     writer->GetBatch().Remove(
       std::shared_ptr<irs::filter>(std::move(query_doc1)));
-    writer->GetBatch().Remove(
-      std::shared_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -4922,8 +4918,6 @@ TEST_P(index_test_case, doc_removal) {
     ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
                        doc3->stored.begin(), doc3->stored.end()));
     writer->GetBatch().Remove(std::move(query_doc2));
-    writer->GetBatch().Remove(
-      std::unique_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -4989,8 +4983,6 @@ TEST_P(index_test_case, doc_removal) {
     ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
                        doc4->stored.begin(), doc4->stored.end()));
     writer->GetBatch().Remove(std::move(query_doc1_doc3));
-    writer->GetBatch().Remove(
-      std::shared_ptr<irs::filter>(nullptr));  // test nullptr filter ignored
     writer->Commit();
     AssertSnapshotEquality(*writer);
 
@@ -5168,6 +5160,71 @@ TEST_P(index_test_case, doc_update) {
   const tests::document* doc2 = gen.next();
   const tests::document* doc3 = gen.next();
   const tests::document* doc4 = gen.next();
+
+  // another shitty case for update
+  {
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc2 = MakeByTerm("name", "B");
+    auto query_doc3 = MakeByTerm("name", "C");
+    auto query_doc4 = MakeByTerm("name", "D");
+    auto query_doc5 = MakeByTerm("name", "E");
+    auto writer = open_writer();
+
+    auto trx1 = writer->GetBatch();
+    auto trx2 = writer->GetBatch();
+    auto trx3 = writer->GetBatch();
+    auto trx4 = writer->GetBatch();
+
+    {
+      auto doc = trx1.Insert();
+      doc.Insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                     doc1->indexed.end());
+      doc.Insert<irs::Action::STORE>(doc1->stored.begin(), doc1->stored.end());
+    }
+    {
+      auto doc = trx1.Insert();
+      doc.Insert<irs::Action::INDEX>(doc2->indexed.begin(),
+                                     doc2->indexed.end());
+      doc.Insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
+      trx1.Remove(*query_doc2);
+    }
+    {
+      auto doc = trx3.Insert();
+      doc.Insert<irs::Action::INDEX>(doc2->indexed.begin(),
+                                     doc2->indexed.end());
+      doc.Insert<irs::Action::STORE>(doc2->stored.begin(), doc2->stored.end());
+    }
+    {
+      auto doc = trx4.Replace(*query_doc2);
+      doc.Insert<irs::Action::INDEX>(doc3->indexed.begin(),
+                                     doc3->indexed.end());
+      doc.Insert<irs::Action::STORE>(doc3->stored.begin(), doc3->stored.end());
+    }
+    {
+      auto doc = trx2.Replace(*query_doc3);
+      doc.Insert<irs::Action::INDEX>(doc4->indexed.begin(),
+                                     doc4->indexed.end());
+      doc.Insert<irs::Action::STORE>(doc4->stored.begin(), doc4->stored.end());
+    }
+
+    // only to deterministic emulate such situation,
+    // it's possible without RegisterFlush
+    trx1.RegisterFlush();
+    trx4.RegisterFlush();
+    trx2.RegisterFlush();
+    trx3.RegisterFlush();
+    trx1.Commit();
+    trx3.Commit();
+    trx4.Commit();
+    trx2.Commit();
+
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
+
+    auto reader = irs::DirectoryReader(dir(), codec());
+    EXPECT_EQ(reader.size(), 2);
+    EXPECT_EQ(reader.live_docs_count(), 2);
+  }
 
   // new segment update (as reference)
   {
@@ -5441,7 +5498,7 @@ TEST_P(index_test_case, doc_update) {
     AssertSnapshotEquality(*writer);
 
     auto reader = irs::DirectoryReader(dir(), codec());
-    ASSERT_EQ(1, reader.size());
+    ASSERT_EQ(1, reader.size()) << reader.live_docs_count();
     auto& segment = reader[0];  // assume 0 is id of first/only segment
     const auto* column = segment.column("name");
     ASSERT_NE(nullptr, column);
@@ -15977,19 +16034,6 @@ TEST_P(index_test_case_10, commit_payload) {
   {
     const uint64_t expected_tick = 42;
 
-    // insert document (trx 0)
-    {
-      auto trx = writer->GetBatch();
-      auto doc = trx.Insert();
-      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
-                                     doc0->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
-      ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
-    }
-
     // insert document (trx 1)
     {
       auto trx = writer->GetBatch();
@@ -15998,9 +16042,18 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
+      trx.Commit(expected_tick - 10);
+    }
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->GetBatch();
+      auto doc = trx.Insert();
+      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      trx.Commit(expected_tick);
     }
 
     payload_committed_tick = 0;
@@ -16030,19 +16083,6 @@ TEST_P(index_test_case_10, commit_payload) {
   {
     const uint64_t expected_tick = 42;
 
-    // insert document (trx 0)
-    {
-      auto trx = writer->GetBatch();
-      auto doc = trx.Insert();
-      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
-                                     doc0->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
-      ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
-    }
-
     // insert document (trx 1)
     {
       auto trx = writer->GetBatch();
@@ -16051,9 +16091,18 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
+      trx.Commit(expected_tick - 10);
+    }
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->GetBatch();
+      auto doc = trx.Insert();
+      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      trx.Commit(expected_tick);
     }
 
     payload_committed_tick = 0;
@@ -16072,7 +16121,7 @@ TEST_P(index_test_case_10, commit_payload) {
 
   // commit with a reverted payload
   {
-    const uint64_t expected_tick = 0;
+    const uint64_t expected_tick = 1;
 
     // insert document (trx 0)
     {
@@ -16082,9 +16131,7 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
     // insert document (trx 1)
@@ -16095,12 +16142,10 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
-    payload_committed_tick = 0;
+    payload_committed_tick = 1;
 
     ASSERT_TRUE(writer->Begin());
     ASSERT_EQ(expected_tick, payload_committed_tick);
@@ -16124,7 +16169,7 @@ TEST_P(index_test_case_10, commit_payload) {
 
   // commit with empty payload
   {
-    const uint64_t expected_tick = 0;
+    const uint64_t expected_tick = 1;
 
     // insert document (trx 0)
     {
@@ -16134,9 +16179,7 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
     // insert document (trx 1)
@@ -16147,9 +16190,7 @@ TEST_P(index_test_case_10, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
     payload_committed_tick = 42;
@@ -16572,19 +16613,6 @@ TEST_P(index_test_case_11, commit_payload) {
   {
     const uint64_t expected_tick = 42;
 
-    // insert document (trx 0)
-    {
-      auto trx = writer->GetBatch();
-      auto doc = trx.Insert();
-      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
-                                     doc0->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
-      ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
-    }
-
     // insert document (trx 1)
     {
       auto trx = writer->GetBatch();
@@ -16593,9 +16621,18 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
+      trx.Commit(expected_tick - 10);
+    }
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->GetBatch();
+      auto doc = trx.Insert();
+      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      trx.Commit(expected_tick);
     }
 
     payload_committed_tick = 0;
@@ -16625,19 +16662,6 @@ TEST_P(index_test_case_11, commit_payload) {
   {
     const uint64_t expected_tick = 42;
 
-    // insert document (trx 0)
-    {
-      auto trx = writer->GetBatch();
-      auto doc = trx.Insert();
-      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
-                                     doc0->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
-      ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
-    }
-
     // insert document (trx 1)
     {
       auto trx = writer->GetBatch();
@@ -16646,9 +16670,18 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick - 1);
-      ASSERT_EQ(expected_tick - 1, trx.GetLastTick());
+      trx.Commit(expected_tick - 10);
+    }
+
+    // insert document (trx 0)
+    {
+      auto trx = writer->GetBatch();
+      auto doc = trx.Insert();
+      doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
+                                     doc0->indexed.end());
+      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      ASSERT_TRUE(doc);
+      trx.Commit(expected_tick);
     }
 
     payload_committed_tick = 0;
@@ -16669,7 +16702,7 @@ TEST_P(index_test_case_11, commit_payload) {
 
   // commit with a reverted payload
   {
-    const uint64_t expected_tick = 0;
+    const uint64_t expected_tick = 1;
 
     // insert document (trx 0)
     {
@@ -16679,9 +16712,7 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
     // insert document (trx 1)
@@ -16692,12 +16723,10 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
-    payload_committed_tick = 0;
+    payload_committed_tick = 1;
 
     input_payload =
       irs::ViewCast<irs::byte_type>(std::string_view(reader.Meta().filename));
@@ -16722,7 +16751,7 @@ TEST_P(index_test_case_11, commit_payload) {
 
   // commit with empty payload
   {
-    const uint64_t expected_tick = 0;
+    const uint64_t expected_tick = 1;
 
     // insert document (trx 0)
     {
@@ -16732,9 +16761,7 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
     // insert document (trx 1)
@@ -16745,9 +16772,7 @@ TEST_P(index_test_case_11, commit_payload) {
                                      doc0->indexed.end());
       doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
       ASSERT_TRUE(doc);
-      ASSERT_EQ(0, trx.GetLastTick());
-      trx.SetLastTick(expected_tick);
-      ASSERT_EQ(expected_tick, trx.GetLastTick());
+      trx.Commit(expected_tick);
     }
 
     payload_committed_tick = 42;
@@ -16819,7 +16844,6 @@ TEST_P(index_test_case_11, testExternalGeneration) {
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->GetBatch();
-    trx.SetFirstTick(1);
     {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
@@ -16837,11 +16861,10 @@ TEST_P(index_test_case_11, testExternalGeneration) {
     // subcontext with remove
     {
       auto trx2 = writer->GetBatch();
-      trx2.SetFirstTick(3);
       trx2.Remove(MakeByTerm("name", "A"));
-      trx2.SetLastTick(4);
+      trx2.Commit(4);
     }
-    trx.SetLastTick(3);
+    trx.Commit(3);
   }
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
@@ -16865,7 +16888,6 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->GetBatch();
-    trx.SetFirstTick(1);
     {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
@@ -16883,11 +16905,10 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
     // subcontext with remove
     {
       auto trx2 = writer->GetBatch();
-      trx2.SetFirstTick(2);
       trx2.Remove(MakeByTerm("name", "A"));
-      trx2.SetLastTick(4);
+      trx2.Commit(4);
     }
-    trx.SetLastTick(3);
+    trx.Commit(3);
   }
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
@@ -16911,7 +16932,6 @@ TEST_P(index_test_case_11, testExternalGenerationRemoveBeforeInsert) {
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto trx = writer->GetBatch();
-    trx.SetFirstTick(2);
     {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
@@ -16929,11 +16949,10 @@ TEST_P(index_test_case_11, testExternalGenerationRemoveBeforeInsert) {
     // subcontext with remove
     {
       auto trx2 = writer->GetBatch();
-      trx2.SetFirstTick(1);
       trx2.Remove(MakeByTerm("name", "A"));
-      trx2.SetLastTick(2);
+      trx2.Commit(2);
     }
-    trx.SetLastTick(4);
+    trx.Commit(4);
   }
   ASSERT_TRUE(writer->Begin());
   writer->Commit();

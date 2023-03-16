@@ -2979,7 +2979,7 @@ class field_reader final : public irs::field_reader {
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
   void prepare(const directory& dir, const SegmentMeta& meta,
-               const document_mask& mask) final;
+               const DocumentMask& mask) final;
 
   const irs::term_reader* field(std::string_view field) const final;
   irs::field_iterator::ptr iterator() const final;
@@ -3163,7 +3163,7 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
 }
 
 void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
-                           const document_mask& /*mask*/) {
+                           const DocumentMask& /*mask*/) {
   std::string filename;
 
   feature_map_t feature_map;

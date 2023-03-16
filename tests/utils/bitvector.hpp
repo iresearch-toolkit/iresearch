@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "bitset.hpp"
+#include "utils/bitset.hpp"
 
 namespace irs {
 
@@ -32,12 +32,13 @@ namespace irs {
 ////////////////////////////////////////////////////////////////////////////////
 class bitvector final {
  public:
-  typedef bitset::word_t word_t;
+  using word_t = bitset::word_t;
 
   bitvector() = default;
-  explicit bitvector(size_t bits) : size_(bits) { resize(bits); }
+  explicit bitvector(size_t bits) : size_{bits} { resize(bits); }
   bitvector(const bitvector& other) { *this = other; }
-  bitvector(bitvector&& other) noexcept { *this = std::move(other); }
+  bitvector(bitvector&& other) noexcept
+    : set_{std::move(other.set_)}, size_{std::exchange(other.size_, 0)} {}
 
   bool operator==(const bitvector& rhs) const noexcept {
     if (this->size() != rhs.size()) {
@@ -46,8 +47,6 @@ class bitvector final {
 
     return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
   }
-
-  operator const bitset&() const { return set_; }
 
   bitvector& operator=(const bitvector& other) {
     if (this != &other) {
@@ -70,8 +69,7 @@ class bitvector final {
   bitvector& operator=(bitvector&& other) noexcept {
     if (this != &other) {
       set_ = std::move(other.set_);
-      size_ = std::move(other.size_);
-      other.size_ = 0;
+      size_ = std::exchange(other.size_, 0);
     }
 
     return *this;
@@ -334,9 +332,14 @@ class bitvector final {
     return true;
   }
 
+  void To(bitset& set) noexcept {
+    set = std::move(set_);
+    size_ = 0;
+  }
+
  private:
   bitset set_;
-  size_t size_{};  // number of bits requested in a bitset
+  size_t size_{0};  // number of bits requested in a bitset
 };
 
 static_assert(std::is_nothrow_move_constructible_v<bitvector>);

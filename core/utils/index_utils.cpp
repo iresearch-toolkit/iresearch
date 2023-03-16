@@ -484,7 +484,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateTier& options) {
   };
 }
 
-void ReadDocumentMask(irs::document_mask& docs_mask, const irs::directory& dir,
+void ReadDocumentMask(irs::DocumentMask& docs_mask, const irs::directory& dir,
                       const irs::SegmentMeta& meta) {
   if (!irs::HasRemovals(meta)) {
     return;  // nothing to read

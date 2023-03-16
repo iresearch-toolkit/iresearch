@@ -59,7 +59,7 @@ class SegmentReader final : public SubReader {
 
   doc_iterator::ptr docs_iterator() const final;
 
-  const document_mask* docs_mask() const final;
+  const DocumentMask* docs_mask() const final;
 
   // FIXME find a better way to mask documents
   doc_iterator::ptr mask(doc_iterator::ptr&& it) const final;

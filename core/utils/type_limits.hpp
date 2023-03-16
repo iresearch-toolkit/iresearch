@@ -25,51 +25,58 @@
 
 #include "types.hpp"
 
+// TODO(MBkkt) Make constant instead of function
+// TODO(MBkkt) rename to irs::limits::some
 namespace irs {
+namespace address_limits {
 
-struct address_limits {
-  constexpr static uint64_t invalid() noexcept {
-    return std::numeric_limits<uint64_t>::max();
-  }
-  constexpr static bool valid(uint64_t addr) noexcept {
-    return invalid() != addr;
-  }
-};
+constexpr uint64_t invalid() noexcept {
+  return std::numeric_limits<uint64_t>::max();
+}
+constexpr bool valid(uint64_t addr) noexcept { return invalid() != addr; }
 
-struct doc_limits {
-  constexpr static doc_id_t eof() noexcept {
-    return std::numeric_limits<doc_id_t>::max();
-  }
-  constexpr static bool eof(doc_id_t id) noexcept { return eof() == id; }
-  constexpr static doc_id_t invalid() noexcept { return 0; }
-  constexpr static doc_id_t(min)() noexcept {
-    return 1;  // > invalid()
-  }
-  constexpr static bool valid(doc_id_t id) noexcept { return invalid() != id; }
-};
+}  // namespace address_limits
+namespace doc_limits {
 
-struct field_limits {
-  constexpr static field_id invalid() noexcept {
-    return std::numeric_limits<field_id>::max();
-  }
-  constexpr static bool valid(field_id id) noexcept { return invalid() != id; }
-};
+constexpr doc_id_t eof() noexcept {
+  return std::numeric_limits<doc_id_t>::max();
+}
+constexpr bool eof(doc_id_t id) noexcept { return eof() == id; }
+constexpr doc_id_t invalid() noexcept { return 0; }
+constexpr doc_id_t(min)() noexcept { return 1; }
+constexpr bool valid(doc_id_t id) noexcept { return invalid() != id; }
 
-struct index_gen_limits {
-  constexpr static uint64_t invalid() noexcept { return 0; }
-  constexpr static bool valid(uint64_t id) noexcept { return invalid() != id; }
-};
+}  // namespace doc_limits
+namespace field_limits {
 
-struct pos_limits {
-  constexpr static uint32_t invalid() noexcept { return 0; }
-  constexpr static bool valid(uint32_t pos) noexcept {
-    return invalid() != pos;
-  }
-  constexpr static uint32_t eof() noexcept {
-    return std::numeric_limits<uint32_t>::max();
-  }
-  constexpr static bool eof(uint32_t pos) noexcept { return eof() == pos; }
-  constexpr static uint32_t(min)() noexcept { return 1; }
-};
+constexpr field_id invalid() noexcept {
+  return std::numeric_limits<field_id>::max();
+}
+constexpr bool valid(field_id id) noexcept { return invalid() != id; }
 
+}  // namespace field_limits
+namespace index_gen_limits {
+
+constexpr uint64_t invalid() noexcept { return 0; }
+constexpr bool valid(uint64_t id) noexcept { return invalid() != id; }
+
+}  // namespace index_gen_limits
+namespace pos_limits {
+
+constexpr uint32_t invalid() noexcept { return 0; }
+constexpr bool valid(uint32_t pos) noexcept { return invalid() != pos; }
+constexpr uint32_t eof() noexcept {
+  return std::numeric_limits<uint32_t>::max();
+}
+constexpr bool eof(uint32_t pos) noexcept { return eof() == pos; }
+constexpr uint32_t(min)() noexcept { return 1; }
+
+}  // namespace pos_limits
+namespace writer_limits {
+
+inline constexpr uint64_t kMinTick = 0;
+inline constexpr uint64_t kMaxTick = std::numeric_limits<uint64_t>::max();
+inline constexpr size_t kInvalidOffset = std::numeric_limits<size_t>::max();
+
+}  // namespace writer_limits
 }  // namespace irs
