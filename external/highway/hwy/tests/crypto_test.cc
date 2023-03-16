@@ -1,4 +1,5 @@
 // Copyright 2021 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/crypto_test.cc"
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/tests/test_util-inl.h"
 
@@ -74,7 +75,7 @@ class TestAES {
     }
 
     for (size_t i = 0; i < 256; i += N) {
-      const auto in = Iota(d, i);
+      const auto in = Iota(d, static_cast<T>(i));
       HWY_ASSERT_VEC_EQ(d, expected.get() + i, detail::SubBytes(in));
     }
   }
@@ -89,11 +90,17 @@ class TestAES {
         0x42, 0xCA, 0x6B, 0x99, 0x7A, 0x5C, 0x58, 0x16};
     const auto test = LoadDup128(d, test_lanes);
 
+    // = ShiftRow result
+    alignas(16) constexpr uint8_t expected_sr_lanes[16] = {
+        0x09, 0x28, 0x7F, 0x47, 0x6F, 0x74, 0x6A, 0xBF,
+        0x2C, 0x4A, 0x62, 0x04, 0xDA, 0x08, 0xE3, 0xEE};
+    const auto expected_sr = LoadDup128(d, expected_sr_lanes);
+
     // = MixColumn result
-    alignas(16) constexpr uint8_t expected0_lanes[16] = {
+    alignas(16) constexpr uint8_t expected_mc_lanes[16] = {
         0x52, 0x9F, 0x16, 0xC2, 0x97, 0x86, 0x15, 0xCA,
         0xE0, 0x1A, 0xAE, 0x54, 0xBA, 0x1A, 0x26, 0x59};
-    const auto expected0 = LoadDup128(d, expected0_lanes);
+    const auto expected_mc = LoadDup128(d, expected_mc_lanes);
 
     // = KeyAddition result
     alignas(16) constexpr uint8_t expected_lanes[16] = {
@@ -103,17 +110,20 @@ class TestAES {
 
     alignas(16) uint8_t key_lanes[16];
     for (size_t i = 0; i < 16; ++i) {
-      key_lanes[i] = expected0_lanes[i] ^ expected_lanes[i];
+      key_lanes[i] = expected_mc_lanes[i] ^ expected_lanes[i];
     }
     const auto round_key = LoadDup128(d, key_lanes);
 
-    HWY_ASSERT_VEC_EQ(d, expected0, AESRound(test, Zero(d)));
+    HWY_ASSERT_VEC_EQ(d, expected_mc, AESRound(test, Zero(d)));
     HWY_ASSERT_VEC_EQ(d, expected, AESRound(test, round_key));
+    HWY_ASSERT_VEC_EQ(d, expected_sr, AESLastRound(test, Zero(d)));
+    HWY_ASSERT_VEC_EQ(d, Xor(expected_sr, round_key),
+                      AESLastRound(test, round_key));
 
     TestSBox(t, d);
   }
 };
-HWY_NOINLINE void TestAllAES() { ForGE128Vectors<TestAES>()(uint8_t()); }
+HWY_NOINLINE void TestAllAES() { ForGEVectors<128, TestAES>()(uint8_t()); }
 
 #else
 HWY_NOINLINE void TestAllAES() {}
@@ -123,7 +133,7 @@ struct TestCLMul {
   template <typename T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     // needs 64 bit lanes and 128-bit result
-#if HWY_TARGET != HWY_SCALAR && HWY_CAP_INTEGER64
+#if HWY_TARGET != HWY_SCALAR && HWY_HAVE_INTEGER64
     const size_t N = Lanes(d);
     if (N == 1) return;
 
@@ -482,8 +492,8 @@ struct TestCLMul {
     const size_t padded = RoundUpTo(kCLMulNum, N);
     auto expected_lower = AllocateAligned<T>(padded);
     auto expected_upper = AllocateAligned<T>(padded);
-    memcpy(expected_lower.get(), kCLMulLower, kCLMulNum * sizeof(T));
-    memcpy(expected_upper.get(), kCLMulUpper, kCLMulNum * sizeof(T));
+    CopyBytes<kCLMulNum * sizeof(T)>(kCLMulLower, expected_lower.get());
+    CopyBytes<kCLMulNum * sizeof(T)>(kCLMulUpper, expected_upper.get());
     const size_t padding_size = (padded - kCLMulNum) * sizeof(T);
     memset(expected_lower.get() + kCLMulNum, 0, padding_size);
     memset(expected_upper.get() + kCLMulNum, 0, padding_size);
@@ -525,7 +535,7 @@ struct TestCLMul {
   }
 };
 
-HWY_NOINLINE void TestAllCLMul() { ForGE128Vectors<TestCLMul>()(uint64_t()); }
+HWY_NOINLINE void TestAllCLMul() { ForGEVectors<128, TestCLMul>()(uint64_t()); }
 
 // NOLINTNEXTLINE(google-readability-namespace-comments)
 }  // namespace HWY_NAMESPACE
@@ -539,11 +549,5 @@ HWY_BEFORE_TEST(HwyCryptoTest);
 HWY_EXPORT_AND_TEST_P(HwyCryptoTest, TestAllAES);
 HWY_EXPORT_AND_TEST_P(HwyCryptoTest, TestAllCLMul);
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif

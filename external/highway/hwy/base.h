@@ -1,4 +1,5 @@
 // Copyright 2020 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -20,10 +21,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <atomic>
-#include <cfloat>
-
 #include "hwy/detect_compiler_arch.h"
+#include "hwy/highway_export.h"
+
+#if HWY_COMPILER_MSVC
+#include <string.h>  // memcpy
+#endif
+#if HWY_ARCH_X86
+#include <atomic>
+#endif
 
 //------------------------------------------------------------------------------
 // Compiler-specific definitions
@@ -56,7 +62,13 @@
 #else
 
 #define HWY_RESTRICT __restrict__
+// force inlining without optimization enabled creates very inefficient code
+// that can cause compiler timeout
+#ifdef __OPTIMIZE__
 #define HWY_INLINE inline __attribute__((always_inline))
+#else
+#define HWY_INLINE inline
+#endif
 #define HWY_NOINLINE __attribute__((noinline))
 #define HWY_FLATTEN __attribute__((flatten))
 #define HWY_NORETURN __attribute__((noreturn))
@@ -122,6 +134,44 @@
 #define HWY_MIN(a, b) ((a) < (b) ? (a) : (b))
 #define HWY_MAX(a, b) ((a) > (b) ? (a) : (b))
 
+#if HWY_COMPILER_GCC_ACTUAL
+// nielskm: GCC does not support '#pragma GCC unroll' without the factor.
+#define HWY_UNROLL(factor) HWY_PRAGMA(GCC unroll factor)
+#define HWY_DEFAULT_UNROLL HWY_UNROLL(4)
+#elif HWY_COMPILER_CLANG || HWY_COMPILER_ICC || HWY_COMPILER_ICX
+#define HWY_UNROLL(factor) HWY_PRAGMA(unroll factor)
+#define HWY_DEFAULT_UNROLL HWY_UNROLL()
+#else
+#define HWY_UNROLL(factor)
+#define HWY_DEFAULT_UNROLL
+#endif
+
+// Tell a compiler that the expression always evaluates to true.
+// The expression should be free from any side effects.
+// Some older compilers may have trouble with complex expressions, therefore
+// it is advisable to split multiple conditions into separate assume statements,
+// and manually check the generated code.
+// OK but could fail:
+//   HWY_ASSUME(x == 2 && y == 3);
+// Better:
+//   HWY_ASSUME(x == 2);
+//   HWY_ASSUME(y == 3);
+#if defined(__has_cpp_attribute) && __has_cpp_attribute(assume)
+#define HWY_ASSUME(expr) [[assume(expr)]]
+#elif HWY_COMPILER_MSVC || HWY_COMPILER_ICC
+#define HWY_ASSUME(expr) __assume(expr)
+// __builtin_assume() was added in clang 3.6.
+#elif HWY_COMPILER_CLANG && HWY_HAS_BUILTIN(__builtin_assume)
+#define HWY_ASSUME(expr) __builtin_assume(expr)
+// __builtin_unreachable() was added in GCC 4.5, but __has_builtin() was added
+// later, so check for the compiler version directly.
+#elif HWY_COMPILER_GCC_ACTUAL >= 405
+#define HWY_ASSUME(expr) \
+  ((expr) ? static_cast<void>(0) : __builtin_unreachable())
+#else
+#define HWY_ASSUME(expr) static_cast<void>(0)
+#endif
+
 // Compile-time fence to prevent undesirable code reordering. On Clang x86, the
 // typical asm volatile("" : : : "memory") has no effect, whereas atomic fence
 // does, without generating code.
@@ -146,13 +196,38 @@
     }                                     \
   } while (0)
 
+#if HWY_HAS_FEATURE(memory_sanitizer) || defined(MEMORY_SANITIZER)
+#define HWY_IS_MSAN 1
+#else
+#define HWY_IS_MSAN 0
+#endif
+
+#if HWY_HAS_FEATURE(address_sanitizer) || defined(ADDRESS_SANITIZER)
+#define HWY_IS_ASAN 1
+#else
+#define HWY_IS_ASAN 0
+#endif
+
+#if HWY_HAS_FEATURE(thread_sanitizer) || defined(THREAD_SANITIZER)
+#define HWY_IS_TSAN 1
+#else
+#define HWY_IS_TSAN 0
+#endif
+
+// MSAN may cause lengthy build times or false positives e.g. in AVX3 DemoteTo.
+// You can disable MSAN by adding this attribute to the function that fails.
+#if HWY_IS_MSAN
+#define HWY_ATTR_NO_MSAN __attribute__((no_sanitize_memory))
+#else
+#define HWY_ATTR_NO_MSAN
+#endif
+
 // For enabling HWY_DASSERT and shortening tests in slower debug builds
 #if !defined(HWY_IS_DEBUG_BUILD)
 // Clang does not define NDEBUG, but it and GCC define __OPTIMIZE__, and recent
 // MSVC defines NDEBUG (if not, could instead check _DEBUG).
-#if (!defined(__OPTIMIZE__) && !defined(NDEBUG)) ||            \
-    defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
-    defined(THREAD_SANITIZER) || defined(__clang_analyzer__)
+#if (!defined(__OPTIMIZE__) && !defined(NDEBUG)) || HWY_IS_ASAN || \
+    HWY_IS_MSAN || HWY_IS_TSAN || defined(__clang_analyzer__)
 #define HWY_IS_DEBUG_BUILD 1
 #else
 #define HWY_IS_DEBUG_BUILD 0
@@ -165,10 +240,6 @@
 #define HWY_DASSERT(condition) \
   do {                         \
   } while (0)
-#endif
-
-#if defined(HWY_EMULATE_SVE)
-class FarmFloat16;
 #endif
 
 namespace hwy {
@@ -188,7 +259,9 @@ static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 16;
 //------------------------------------------------------------------------------
 // Alignment
 
-// For stack-allocated partial arrays or LoadDup128.
+// Potentially useful for LoadDup128 and capped vectors. In other cases, arrays
+// should be allocated dynamically via aligned_allocator.h because Lanes() may
+// exceed the stack size.
 #if HWY_ARCH_X86
 #define HWY_ALIGN_MAX alignas(64)
 #elif HWY_ARCH_RVV && defined(__riscv_vector)
@@ -203,44 +276,111 @@ static constexpr HWY_MAYBE_UNUSED size_t kMaxVectorSize = 16;
 // Match [u]int##_t naming scheme so rvv-inl.h macros can obtain the type name
 // by concatenating base type and bits.
 
-// RVV already has a builtin type and the GCC intrinsics require it.
-#if (HWY_ARCH_RVV && HWY_COMPILER_GCC && defined(__riscv_vector)) || \
-    (HWY_ARCH_ARM && (__ARM_FP & 2))
-#define HWY_NATIVE_FLOAT16 1
-#else
-#define HWY_NATIVE_FLOAT16 0
-#endif
-
-#if defined(HWY_EMULATE_SVE)
-using float16_t = FarmFloat16;
-#elif HWY_NATIVE_FLOAT16
-using float16_t = __fp16;
-// Clang does not allow __fp16 arguments, but scalar.h requires LaneType
-// arguments, so use a wrapper.
-// TODO(janwas): replace with _Float16 when that is supported?
-#else
 #pragma pack(push, 1)
+
+// ACLE (https://gcc.gnu.org/onlinedocs/gcc/Half-Precision.html):
+// always supported on aarch64, for v7 only if -mfp16-format is given.
+#if ((HWY_ARCH_ARM_A64 || (__ARM_FP & 2)) && HWY_COMPILER_GCC)
+using float16_t = __fp16;
+// C11 extension ISO/IEC TS 18661-3:2015 but not supported on all targets.
+// Required for Clang RVV if the float16 extension is used.
+#elif HWY_ARCH_RVV && HWY_COMPILER_CLANG && defined(__riscv_zvfh)
+using float16_t = _Float16;
+// Otherwise emulate
+#else
 struct float16_t {
   uint16_t bits;
 };
-#pragma pack(pop)
 #endif
+
+struct bfloat16_t {
+  uint16_t bits;
+};
+
+#pragma pack(pop)
 
 using float32_t = float;
 using float64_t = double;
 
+#pragma pack(push, 1)
+
+// Aligned 128-bit type. Cannot use __int128 because clang doesn't yet align it:
+// https://reviews.llvm.org/D86310
+struct alignas(16) uint128_t {
+  uint64_t lo;  // little-endian layout
+  uint64_t hi;
+};
+
+// 64 bit key plus 64 bit value. Faster than using uint128_t when only the key
+// field is to be compared (Lt128Upper instead of Lt128).
+struct alignas(16) K64V64 {
+  uint64_t value;  // little-endian layout
+  uint64_t key;
+};
+
+// 32 bit key plus 32 bit value. Allows vqsort recursions to terminate earlier
+// than when considering both to be a 64-bit key.
+struct alignas(8) K32V32 {
+  uint32_t value;  // little-endian layout
+  uint32_t key;
+};
+
+#pragma pack(pop)
+
+static inline HWY_MAYBE_UNUSED bool operator<(const uint128_t& a,
+                                              const uint128_t& b) {
+  return (a.hi == b.hi) ? a.lo < b.lo : a.hi < b.hi;
+}
+// Required for std::greater.
+static inline HWY_MAYBE_UNUSED bool operator>(const uint128_t& a,
+                                              const uint128_t& b) {
+  return b < a;
+}
+static inline HWY_MAYBE_UNUSED bool operator==(const uint128_t& a,
+                                               const uint128_t& b) {
+  return a.lo == b.lo && a.hi == b.hi;
+}
+
+static inline HWY_MAYBE_UNUSED bool operator<(const K64V64& a,
+                                              const K64V64& b) {
+  return a.key < b.key;
+}
+// Required for std::greater.
+static inline HWY_MAYBE_UNUSED bool operator>(const K64V64& a,
+                                              const K64V64& b) {
+  return b < a;
+}
+static inline HWY_MAYBE_UNUSED bool operator==(const K64V64& a,
+                                               const K64V64& b) {
+  return a.key == b.key;
+}
+
+static inline HWY_MAYBE_UNUSED bool operator<(const K32V32& a,
+                                              const K32V32& b) {
+  return a.key < b.key;
+}
+// Required for std::greater.
+static inline HWY_MAYBE_UNUSED bool operator>(const K32V32& a,
+                                              const K32V32& b) {
+  return b < a;
+}
+static inline HWY_MAYBE_UNUSED bool operator==(const K32V32& a,
+                                               const K32V32& b) {
+  return a.key == b.key;
+}
+
 //------------------------------------------------------------------------------
 // Controlling overload resolution (SFINAE)
 
-template <bool Condition, class T>
+template <bool Condition>
 struct EnableIfT {};
-template <class T>
-struct EnableIfT<true, T> {
-  using type = T;
+template <>
+struct EnableIfT<true> {
+  using type = void;
 };
 
-template <bool Condition, class T = void>
-using EnableIf = typename EnableIfT<Condition, T>::type;
+template <bool Condition>
+using EnableIf = typename EnableIfT<Condition>::type;
 
 template <typename T, typename U>
 struct IsSameT {
@@ -261,11 +401,12 @@ HWY_API constexpr bool IsSame() {
 // vectors of AT MOST this many bits.
 //
 // Note that enabling for exactly 128 bits is unnecessary because a function can
-// simply be overloaded with Vec128<T> and Full128<T> descriptor. Enabling for
-// other sizes (e.g. 64 bit) can be achieved with Simd<T, 8 / sizeof(T)>.
+// simply be overloaded with Vec128<T> and/or Full128<T> tag. Enabling for other
+// sizes (e.g. 64 bit) can be achieved via Simd<T, 8 / sizeof(T), 0>.
 #define HWY_IF_LE128(T, N) hwy::EnableIf<N * sizeof(T) <= 16>* = nullptr
 #define HWY_IF_LE64(T, N) hwy::EnableIf<N * sizeof(T) <= 8>* = nullptr
 #define HWY_IF_LE32(T, N) hwy::EnableIf<N * sizeof(T) <= 4>* = nullptr
+#define HWY_IF_GE32(T, N) hwy::EnableIf<N * sizeof(T) >= 4>* = nullptr
 #define HWY_IF_GE64(T, N) hwy::EnableIf<N * sizeof(T) >= 8>* = nullptr
 #define HWY_IF_GE128(T, N) hwy::EnableIf<N * sizeof(T) >= 16>* = nullptr
 #define HWY_IF_GT128(T, N) hwy::EnableIf<(N * sizeof(T) > 16)>* = nullptr
@@ -280,6 +421,14 @@ HWY_API constexpr bool IsSame() {
   hwy::EnableIf<sizeof(T) == (bytes)>* = nullptr
 #define HWY_IF_NOT_LANE_SIZE(T, bytes) \
   hwy::EnableIf<sizeof(T) != (bytes)>* = nullptr
+// bit_array = 0x102 means 1 or 8 bytes. There is no NONE_OF because it sounds
+// too similar. If you want the opposite of this (2 or 4 bytes), ask for those
+// bits explicitly (0x14) instead of attempting to 'negate' 0x102.
+#define HWY_IF_LANE_SIZE_ONE_OF(T, bit_array) \
+  hwy::EnableIf<((size_t{1} << sizeof(T)) & (bit_array)) != 0>* = nullptr
+
+#define HWY_IF_LANES_PER_BLOCK(T, N, LANES) \
+  hwy::EnableIf<HWY_MIN(sizeof(T) * N, 16) / sizeof(T) == (LANES)>* = nullptr
 
 // Empty struct used as a size tag type.
 template <size_t N>
@@ -298,98 +447,6 @@ template <class T>
 using RemoveConst = typename RemoveConstT<T>::type;
 
 //------------------------------------------------------------------------------
-// Type traits
-
-template <typename T>
-constexpr bool IsFloat() {
-  // Cannot use T(1.25) != T(1) for float16_t, which can only be converted to or
-  // from a float, not compared.
-  return IsSame<T, float>() || IsSame<T, double>();
-}
-
-template <typename T>
-constexpr bool IsSigned() {
-  return T(0) > T(-1);
-}
-template <>
-constexpr bool IsSigned<float16_t>() {
-  return true;
-}
-
-// Largest/smallest representable integer values.
-template <typename T>
-constexpr T LimitsMax() {
-  static_assert(!IsFloat<T>(), "Only for integer types");
-  return IsSigned<T>() ? T((1ULL << (sizeof(T) * 8 - 1)) - 1)
-                       : static_cast<T>(~0ull);
-}
-template <typename T>
-constexpr T LimitsMin() {
-  static_assert(!IsFloat<T>(), "Only for integer types");
-  return IsSigned<T>() ? T(-1) - LimitsMax<T>() : T(0);
-}
-
-// Largest/smallest representable value (integer or float). This naming avoids
-// confusion with numeric_limits<float>::min() (the smallest positive value).
-template <typename T>
-constexpr T LowestValue() {
-  return LimitsMin<T>();
-}
-template <>
-constexpr float LowestValue<float>() {
-  return -FLT_MAX;
-}
-template <>
-constexpr double LowestValue<double>() {
-  return -DBL_MAX;
-}
-
-template <typename T>
-constexpr T HighestValue() {
-  return LimitsMax<T>();
-}
-template <>
-constexpr float HighestValue<float>() {
-  return FLT_MAX;
-}
-template <>
-constexpr double HighestValue<double>() {
-  return DBL_MAX;
-}
-
-// Returns bitmask of the exponent field in IEEE binary32/64.
-template <typename T>
-constexpr T ExponentMask() {
-  static_assert(sizeof(T) == 0, "Only instantiate the specializations");
-  return 0;
-}
-template <>
-constexpr uint32_t ExponentMask<uint32_t>() {
-  return 0x7F800000;
-}
-template <>
-constexpr uint64_t ExponentMask<uint64_t>() {
-  return 0x7FF0000000000000ULL;
-}
-
-// Returns 1 << mantissa_bits as a floating-point number. All integers whose
-// absolute value are less than this can be represented exactly.
-template <typename T>
-constexpr T MantissaEnd() {
-  static_assert(sizeof(T) == 0, "Only instantiate the specializations");
-  return 0;
-}
-template <>
-constexpr float MantissaEnd<float>() {
-  return 8388608.0f;  // 1 << 23
-}
-template <>
-constexpr double MantissaEnd<double>() {
-  // floating point literal with p52 requires C++17.
-  return 4503599627370496.0;  // 1 << 52
-}
-
-//------------------------------------------------------------------------------
 // Type relations
 
 namespace detail {
@@ -401,12 +458,14 @@ struct Relations<uint8_t> {
   using Unsigned = uint8_t;
   using Signed = int8_t;
   using Wide = uint16_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int8_t> {
   using Unsigned = uint8_t;
   using Signed = int8_t;
   using Wide = int16_t;
+  enum { is_signed = 1, is_float = 0 };
 };
 template <>
 struct Relations<uint16_t> {
@@ -414,6 +473,7 @@ struct Relations<uint16_t> {
   using Signed = int16_t;
   using Wide = uint32_t;
   using Narrow = uint8_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int16_t> {
@@ -421,6 +481,7 @@ struct Relations<int16_t> {
   using Signed = int16_t;
   using Wide = int32_t;
   using Narrow = int8_t;
+  enum { is_signed = 1, is_float = 0 };
 };
 template <>
 struct Relations<uint32_t> {
@@ -429,6 +490,7 @@ struct Relations<uint32_t> {
   using Float = float;
   using Wide = uint64_t;
   using Narrow = uint16_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int32_t> {
@@ -437,13 +499,16 @@ struct Relations<int32_t> {
   using Float = float;
   using Wide = int64_t;
   using Narrow = int16_t;
+  enum { is_signed = 1, is_float = 0 };
 };
 template <>
 struct Relations<uint64_t> {
   using Unsigned = uint64_t;
   using Signed = int64_t;
   using Float = double;
+  using Wide = uint128_t;
   using Narrow = uint32_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<int64_t> {
@@ -451,6 +516,13 @@ struct Relations<int64_t> {
   using Signed = int64_t;
   using Float = double;
   using Narrow = int32_t;
+  enum { is_signed = 1, is_float = 0 };
+};
+template <>
+struct Relations<uint128_t> {
+  using Unsigned = uint128_t;
+  using Narrow = uint64_t;
+  enum { is_signed = 0, is_float = 0 };
 };
 template <>
 struct Relations<float16_t> {
@@ -458,6 +530,14 @@ struct Relations<float16_t> {
   using Signed = int16_t;
   using Float = float16_t;
   using Wide = float;
+  enum { is_signed = 1, is_float = 1 };
+};
+template <>
+struct Relations<bfloat16_t> {
+  using Unsigned = uint16_t;
+  using Signed = int16_t;
+  using Wide = float;
+  enum { is_signed = 1, is_float = 1 };
 };
 template <>
 struct Relations<float> {
@@ -466,6 +546,7 @@ struct Relations<float> {
   using Float = float;
   using Wide = double;
   using Narrow = float16_t;
+  enum { is_signed = 1, is_float = 1 };
 };
 template <>
 struct Relations<double> {
@@ -473,6 +554,7 @@ struct Relations<double> {
   using Signed = int64_t;
   using Float = double;
   using Narrow = float;
+  enum { is_signed = 1, is_float = 1 };
 };
 
 template <size_t N>
@@ -499,6 +581,10 @@ struct TypeFromSize<8> {
   using Signed = int64_t;
   using Float = double;
 };
+template <>
+struct TypeFromSize<16> {
+  using Unsigned = uint128_t;
+};
 
 }  // namespace detail
 
@@ -523,6 +609,175 @@ template <size_t N>
 using SignedFromSize = typename detail::TypeFromSize<N>::Signed;
 template <size_t N>
 using FloatFromSize = typename detail::TypeFromSize<N>::Float;
+
+// Avoid confusion with SizeTag where the parameter is a lane size.
+using UnsignedTag = SizeTag<0>;
+using SignedTag = SizeTag<0x100>;  // integer
+using FloatTag = SizeTag<0x200>;
+
+template <typename T, class R = detail::Relations<T>>
+constexpr auto TypeTag() -> hwy::SizeTag<((R::is_signed + R::is_float) << 8)> {
+  return hwy::SizeTag<((R::is_signed + R::is_float) << 8)>();
+}
+
+// For when we only want to distinguish FloatTag from everything else.
+using NonFloatTag = SizeTag<0x400>;
+
+template <typename T, class R = detail::Relations<T>>
+constexpr auto IsFloatTag() -> hwy::SizeTag<(R::is_float ? 0x200 : 0x400)> {
+  return hwy::SizeTag<(R::is_float ? 0x200 : 0x400)>();
+}
+
+//------------------------------------------------------------------------------
+// Type traits
+
+template <typename T>
+HWY_API constexpr bool IsFloat() {
+  // Cannot use T(1.25) != T(1) for float16_t, which can only be converted to or
+  // from a float, not compared.
+  return IsSame<T, float>() || IsSame<T, double>();
+}
+
+template <typename T>
+HWY_API constexpr bool IsSigned() {
+  return T(0) > T(-1);
+}
+template <>
+constexpr bool IsSigned<float16_t>() {
+  return true;
+}
+template <>
+constexpr bool IsSigned<bfloat16_t>() {
+  return true;
+}
+
+// Largest/smallest representable integer values.
+template <typename T>
+HWY_API constexpr T LimitsMax() {
+  static_assert(!IsFloat<T>(), "Only for integer types");
+  using TU = MakeUnsigned<T>;
+  return static_cast<T>(IsSigned<T>() ? (static_cast<TU>(~0ull) >> 1)
+                                      : static_cast<TU>(~0ull));
+}
+template <typename T>
+HWY_API constexpr T LimitsMin() {
+  static_assert(!IsFloat<T>(), "Only for integer types");
+  return IsSigned<T>() ? T(-1) - LimitsMax<T>() : T(0);
+}
+
+// Largest/smallest representable value (integer or float). This naming avoids
+// confusion with numeric_limits<float>::min() (the smallest positive value).
+template <typename T>
+HWY_API constexpr T LowestValue() {
+  return LimitsMin<T>();
+}
+template <>
+constexpr float LowestValue<float>() {
+  return -3.402823466e+38F;
+}
+template <>
+constexpr double LowestValue<double>() {
+  return -1.7976931348623158e+308;
+}
+
+template <typename T>
+HWY_API constexpr T HighestValue() {
+  return LimitsMax<T>();
+}
+template <>
+constexpr float HighestValue<float>() {
+  return 3.402823466e+38F;
+}
+template <>
+constexpr double HighestValue<double>() {
+  return 1.7976931348623158e+308;
+}
+
+// Difference between 1.0 and the next representable value.
+template <typename T>
+HWY_API constexpr T Epsilon() {
+  return 1;
+}
+template <>
+constexpr float Epsilon<float>() {
+  return 1.192092896e-7f;
+}
+template <>
+constexpr double Epsilon<double>() {
+  return 2.2204460492503131e-16;
+}
+
+// Returns width in bits of the mantissa field in IEEE binary32/64.
+template <typename T>
+constexpr int MantissaBits() {
+  static_assert(sizeof(T) == 0, "Only instantiate the specializations");
+  return 0;
+}
+template <>
+constexpr int MantissaBits<float>() {
+  return 23;
+}
+template <>
+constexpr int MantissaBits<double>() {
+  return 52;
+}
+
+// Returns the (left-shifted by one bit) IEEE binary32/64 representation with
+// the largest possible (biased) exponent field. Used by IsInf.
+template <typename T>
+constexpr MakeSigned<T> MaxExponentTimes2() {
+  return -(MakeSigned<T>{1} << (MantissaBits<T>() + 1));
+}
+
+// Returns bitmask of the sign bit in IEEE binary32/64.
+template <typename T>
+constexpr MakeUnsigned<T> SignMask() {
+  return MakeUnsigned<T>{1} << (sizeof(T) * 8 - 1);
+}
+
+// Returns bitmask of the exponent field in IEEE binary32/64.
+template <typename T>
+constexpr MakeUnsigned<T> ExponentMask() {
+  return (~(MakeUnsigned<T>{1} << MantissaBits<T>()) + 1) & ~SignMask<T>();
+}
+
+// Returns bitmask of the mantissa field in IEEE binary32/64.
+template <typename T>
+constexpr MakeUnsigned<T> MantissaMask() {
+  return (MakeUnsigned<T>{1} << MantissaBits<T>()) - 1;
+}
+
+// Returns 1 << mantissa_bits as a floating-point number. All integers whose
+// absolute value are less than this can be represented exactly.
+template <typename T>
+constexpr T MantissaEnd() {
+  static_assert(sizeof(T) == 0, "Only instantiate the specializations");
+  return 0;
+}
+template <>
+constexpr float MantissaEnd<float>() {
+  return 8388608.0f;  // 1 << 23
+}
+template <>
+constexpr double MantissaEnd<double>() {
+  // floating point literal with p52 requires C++17.
+  return 4503599627370496.0;  // 1 << 52
+}
+
+// Returns width in bits of the exponent field in IEEE binary32/64.
+template <typename T>
+constexpr int ExponentBits() {
+  // Exponent := remaining bits after deducting sign and mantissa.
+  return 8 * sizeof(T) - 1 - MantissaBits<T>();
+}
+
+// Returns largest value of the biased exponent field in IEEE binary32/64,
+// right-shifted so that the LSB is bit zero. Example: 0xFF for float.
+// This is expressed as a signed integer for more efficient comparison.
+template <typename T>
+constexpr MakeSigned<T> MaxExponentField() {
+  return (MakeSigned<T>{1} << ExponentBits<T>()) - 1;
+}
 
 //------------------------------------------------------------------------------
 // Helper functions
@@ -557,7 +812,7 @@ HWY_API size_t Num0BitsBelowLS1Bit_Nonzero64(const uint64_t x) {
 #else   // HWY_ARCH_X86_64
   // _BitScanForward64 not available
   uint32_t lsb = static_cast<uint32_t>(x & 0xFFFFFFFF);
-  unsigned long index;
+  unsigned long index;  // NOLINT
   if (lsb == 0) {
     uint32_t msb = static_cast<uint32_t>(x >> 32u);
     _BitScanForward(&index, msb);
@@ -572,23 +827,93 @@ HWY_API size_t Num0BitsBelowLS1Bit_Nonzero64(const uint64_t x) {
 #endif  // HWY_COMPILER_MSVC
 }
 
+// Undefined results for x == 0.
+HWY_API size_t Num0BitsAboveMS1Bit_Nonzero32(const uint32_t x) {
+#if HWY_COMPILER_MSVC
+  unsigned long index;  // NOLINT
+  _BitScanReverse(&index, x);
+  return 31 - index;
+#else   // HWY_COMPILER_MSVC
+  return static_cast<size_t>(__builtin_clz(x));
+#endif  // HWY_COMPILER_MSVC
+}
+
+HWY_API size_t Num0BitsAboveMS1Bit_Nonzero64(const uint64_t x) {
+#if HWY_COMPILER_MSVC
+#if HWY_ARCH_X86_64
+  unsigned long index;  // NOLINT
+  _BitScanReverse64(&index, x);
+  return 63 - index;
+#else   // HWY_ARCH_X86_64
+  // _BitScanReverse64 not available
+  const uint32_t msb = static_cast<uint32_t>(x >> 32u);
+  unsigned long index;  // NOLINT
+  if (msb == 0) {
+    const uint32_t lsb = static_cast<uint32_t>(x & 0xFFFFFFFF);
+    _BitScanReverse(&index, lsb);
+    return 63 - index;
+  } else {
+    _BitScanReverse(&index, msb);
+    return 31 - index;
+  }
+#endif  // HWY_ARCH_X86_64
+#else   // HWY_COMPILER_MSVC
+  return static_cast<size_t>(__builtin_clzll(x));
+#endif  // HWY_COMPILER_MSVC
+}
+
 HWY_API size_t PopCount(uint64_t x) {
-#if HWY_COMPILER_CLANG || HWY_COMPILER_GCC
+#if HWY_COMPILER_GCC  // includes clang
   return static_cast<size_t>(__builtin_popcountll(x));
-#elif HWY_COMPILER_MSVC && HWY_ARCH_X86_64
+  // This instruction has a separate feature flag, but is often called from
+  // non-SIMD code, so we don't want to require dynamic dispatch. It was first
+  // supported by Intel in Nehalem (SSE4.2), but MSVC only predefines a macro
+  // for AVX, so check for that.
+#elif HWY_COMPILER_MSVC && HWY_ARCH_X86_64 && defined(__AVX__)
   return _mm_popcnt_u64(x);
-#elif HWY_COMPILER_MSVC && HWY_ARCH_X86_32
-  return _mm_popcnt_u32(uint32_t(x)) + _mm_popcnt_u32(uint32_t(x >> 32));
+#elif HWY_COMPILER_MSVC && HWY_ARCH_X86_32 && defined(__AVX__)
+  return _mm_popcnt_u32(static_cast<uint32_t>(x & 0xFFFFFFFFu)) +
+         _mm_popcnt_u32(static_cast<uint32_t>(x >> 32));
 #else
-  x -= ((x >> 1) & 0x55555555U);
-  x = (((x >> 2) & 0x33333333U) + (x & 0x33333333U));
-  x = (((x >> 4) + x) & 0x0F0F0F0FU);
+  x -= ((x >> 1) & 0x5555555555555555ULL);
+  x = (((x >> 2) & 0x3333333333333333ULL) + (x & 0x3333333333333333ULL));
+  x = (((x >> 4) + x) & 0x0F0F0F0F0F0F0F0FULL);
   x += (x >> 8);
   x += (x >> 16);
   x += (x >> 32);
-  x = x & 0x0000007FU;
-  return (unsigned int)x;
+  return static_cast<size_t>(x & 0x7Fu);
 #endif
+}
+
+// Skip HWY_API due to GCC "function not considered for inlining". Previously
+// such errors were caused by underlying type mismatches, but it's not clear
+// what is still mismatched despite all the casts.
+template <typename TI>
+/*HWY_API*/ constexpr size_t FloorLog2(TI x) {
+  return x == TI{1}
+             ? 0
+             : static_cast<size_t>(FloorLog2(static_cast<TI>(x >> 1)) + 1);
+}
+
+template <typename TI>
+/*HWY_API*/ constexpr size_t CeilLog2(TI x) {
+  return x == TI{1}
+             ? 0
+             : static_cast<size_t>(FloorLog2(static_cast<TI>(x - 1)) + 1);
+}
+
+template <typename T>
+HWY_INLINE constexpr T AddWithWraparound(hwy::FloatTag /*tag*/, T t, size_t n) {
+  return t + static_cast<T>(n);
+}
+
+template <typename T>
+HWY_INLINE constexpr T AddWithWraparound(hwy::NonFloatTag /*tag*/, T t,
+                                         size_t n) {
+  using TU = MakeUnsigned<T>;
+  return static_cast<T>(
+      static_cast<TU>(static_cast<TU>(t) + static_cast<TU>(n)) &
+      hwy::LimitsMax<TU>());
 }
 
 #if HWY_COMPILER_MSVC && HWY_ARCH_X86_64
@@ -615,23 +940,55 @@ HWY_API uint64_t Mul128(uint64_t a, uint64_t b, uint64_t* HWY_RESTRICT upper) {
 #endif
 }
 
+#if HWY_COMPILER_MSVC
+#pragma intrinsic(memcpy)
+#pragma intrinsic(memset)
+#endif
+
 // The source/destination must not overlap/alias.
 template <size_t kBytes, typename From, typename To>
 HWY_API void CopyBytes(const From* from, To* to) {
 #if HWY_COMPILER_MSVC
-  const uint8_t* HWY_RESTRICT from_bytes =
-      reinterpret_cast<const uint8_t*>(from);
-  uint8_t* HWY_RESTRICT to_bytes = reinterpret_cast<uint8_t*>(to);
-  for (size_t i = 0; i < kBytes; ++i) {
-    to_bytes[i] = from_bytes[i];
-  }
+  memcpy(to, from, kBytes);
 #else
-  // Avoids horrible codegen on Clang (series of PINSRB)
-  __builtin_memcpy(to, from, kBytes);
+  __builtin_memcpy(
+      static_cast<void*>(to), static_cast<const void*>(from), kBytes);
 #endif
 }
 
-HWY_NORETURN void HWY_FORMAT(3, 4)
+// Same as CopyBytes, but for same-sized objects; avoids a size argument.
+template <typename From, typename To>
+HWY_API void CopySameSize(const From* HWY_RESTRICT from, To* HWY_RESTRICT to) {
+  static_assert(sizeof(From) == sizeof(To), "");
+  CopyBytes<sizeof(From)>(from, to);
+}
+
+template <size_t kBytes, typename To>
+HWY_API void ZeroBytes(To* to) {
+#if HWY_COMPILER_MSVC
+  memset(to, 0, kBytes);
+#else
+  __builtin_memset(to, 0, kBytes);
+#endif
+}
+
+HWY_API float F32FromBF16(bfloat16_t bf) {
+  uint32_t bits = bf.bits;
+  bits <<= 16;
+  float f;
+  CopySameSize(&bits, &f);
+  return f;
+}
+
+HWY_API bfloat16_t BF16FromF32(float f) {
+  uint32_t bits;
+  CopySameSize(&f, &bits);
+  bfloat16_t bf;
+  bf.bits = static_cast<uint16_t>(bits >> 16);
+  return bf;
+}
+
+HWY_DLLEXPORT HWY_NORETURN void HWY_FORMAT(3, 4)
     Abort(const char* file, int line, const char* format, ...);
 
 }  // namespace hwy

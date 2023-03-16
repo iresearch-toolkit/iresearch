@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,6 +15,11 @@
 
 #include "hwy/nanobenchmark.h"
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS  // before inttypes.h
+#endif
+#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include <random>
@@ -44,8 +50,9 @@ void MeasureDiv(const FuncInput (&inputs)[N]) {
   params.max_evals = kMaxEvals;
   const size_t num_results = Measure(&Div, nullptr, inputs, N, results, params);
   for (size_t i = 0; i < num_results; ++i) {
-    printf("%5zu: %6.2f ticks; MAD=%4.2f%%\n", results[i].input,
-           results[i].ticks, results[i].variability * 100.0);
+    printf("%5" PRIu64 ": %6.2f ticks; MAD=%4.2f%%\n",
+           static_cast<uint64_t>(results[i].input), results[i].ticks,
+           results[i].variability * 100.0);
   }
 }
 
@@ -54,7 +61,7 @@ std::mt19937 rng;
 // A function whose runtime depends on rng.
 FuncOutput Random(const void* /*arg*/, FuncInput in) {
   const size_t r = rng() & 0xF;
-  uint32_t ret = in;
+  FuncOutput ret = static_cast<FuncOutput>(in);
   for (size_t i = 0; i < r; ++i) {
     ret /= ((rng() & 1) + 2);
   }
@@ -85,9 +92,3 @@ TEST(NanobenchmarkTest, RunAll) {
 
 }  // namespace
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}

@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +18,10 @@
 #include <string.h>  // memcmp
 
 #include "hwy/aligned_allocator.h"
-#include "hwy/base.h"
 
 #undef HWY_TARGET_INCLUDE
 #define HWY_TARGET_INCLUDE "tests/logical_test.cc"
-#include "hwy/foreach_target.h"
+#include "hwy/foreach_target.h"  // IWYU pragma: keep
 #include "hwy/highway.h"
 #include "hwy/tests/test_util-inl.h"
 
@@ -29,11 +29,10 @@ HWY_BEFORE_NAMESPACE();
 namespace hwy {
 namespace HWY_NAMESPACE {
 
-struct TestLogicalInteger {
+struct TestNot {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const auto v0 = Zero(d);
-    const auto vi = Iota(d, 0);
     const auto ones = VecFromMask(d, Eq(v0, v0));
     const auto v1 = Set(d, 1);
     const auto vnot1 = Set(d, T(~T(1)));
@@ -42,51 +41,35 @@ struct TestLogicalInteger {
     HWY_ASSERT_VEC_EQ(d, ones, Not(v0));
     HWY_ASSERT_VEC_EQ(d, v1, Not(vnot1));
     HWY_ASSERT_VEC_EQ(d, vnot1, Not(v1));
-
-    HWY_ASSERT_VEC_EQ(d, v0, And(v0, vi));
-    HWY_ASSERT_VEC_EQ(d, v0, And(vi, v0));
-    HWY_ASSERT_VEC_EQ(d, vi, And(vi, vi));
-
-    HWY_ASSERT_VEC_EQ(d, vi, Or(v0, vi));
-    HWY_ASSERT_VEC_EQ(d, vi, Or(vi, v0));
-    HWY_ASSERT_VEC_EQ(d, vi, Or(vi, vi));
-
-    HWY_ASSERT_VEC_EQ(d, vi, Xor(v0, vi));
-    HWY_ASSERT_VEC_EQ(d, vi, Xor(vi, v0));
-    HWY_ASSERT_VEC_EQ(d, v0, Xor(vi, vi));
-
-    HWY_ASSERT_VEC_EQ(d, vi, AndNot(v0, vi));
-    HWY_ASSERT_VEC_EQ(d, v0, AndNot(vi, v0));
-    HWY_ASSERT_VEC_EQ(d, v0, AndNot(vi, vi));
-
-    auto v = vi;
-    v = And(v, vi);
-    HWY_ASSERT_VEC_EQ(d, vi, v);
-    v = And(v, v0);
-    HWY_ASSERT_VEC_EQ(d, v0, v);
-
-    v = Or(v, vi);
-    HWY_ASSERT_VEC_EQ(d, vi, v);
-    v = Or(v, v0);
-    HWY_ASSERT_VEC_EQ(d, vi, v);
-
-    v = Xor(v, vi);
-    HWY_ASSERT_VEC_EQ(d, v0, v);
-    v = Xor(v, v0);
-    HWY_ASSERT_VEC_EQ(d, v0, v);
   }
 };
 
-HWY_NOINLINE void TestAllLogicalInteger() {
-  ForIntegerTypes(ForPartialVectors<TestLogicalInteger>());
+HWY_NOINLINE void TestAllNot() {
+  ForIntegerTypes(ForPartialVectors<TestNot>());
 }
 
-struct TestLogicalFloat {
+struct TestLogical {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
     const auto v0 = Zero(d);
     const auto vi = Iota(d, 0);
 
+    auto v = vi;
+    v = And(v, vi);
+    HWY_ASSERT_VEC_EQ(d, vi, v);
+    v = And(v, v0);
+    HWY_ASSERT_VEC_EQ(d, v0, v);
+
+    v = Or(v, vi);
+    HWY_ASSERT_VEC_EQ(d, vi, v);
+    v = Or(v, v0);
+    HWY_ASSERT_VEC_EQ(d, vi, v);
+
+    v = Xor(v, vi);
+    HWY_ASSERT_VEC_EQ(d, v0, v);
+    v = Xor(v, v0);
+    HWY_ASSERT_VEC_EQ(d, v0, v);
+
     HWY_ASSERT_VEC_EQ(d, v0, And(v0, vi));
     HWY_ASSERT_VEC_EQ(d, v0, And(vi, v0));
     HWY_ASSERT_VEC_EQ(d, vi, And(vi, vi));
@@ -103,26 +86,37 @@ struct TestLogicalFloat {
     HWY_ASSERT_VEC_EQ(d, v0, AndNot(vi, v0));
     HWY_ASSERT_VEC_EQ(d, v0, AndNot(vi, vi));
 
-    auto v = vi;
-    v = And(v, vi);
-    HWY_ASSERT_VEC_EQ(d, vi, v);
-    v = And(v, v0);
-    HWY_ASSERT_VEC_EQ(d, v0, v);
+    HWY_ASSERT_VEC_EQ(d, v0, Or3(v0, v0, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, Or3(v0, vi, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, Or3(v0, v0, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, Or3(v0, vi, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, Or3(vi, v0, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, Or3(vi, vi, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, Or3(vi, v0, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, Or3(vi, vi, vi));
 
-    v = Or(v, vi);
-    HWY_ASSERT_VEC_EQ(d, vi, v);
-    v = Or(v, v0);
-    HWY_ASSERT_VEC_EQ(d, vi, v);
+    HWY_ASSERT_VEC_EQ(d, v0, Xor3(v0, v0, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, Xor3(v0, vi, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, Xor3(v0, v0, vi));
+    HWY_ASSERT_VEC_EQ(d, v0, Xor3(v0, vi, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, Xor3(vi, v0, v0));
+    HWY_ASSERT_VEC_EQ(d, v0, Xor3(vi, vi, v0));
+    HWY_ASSERT_VEC_EQ(d, v0, Xor3(vi, v0, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, Xor3(vi, vi, vi));
 
-    v = Xor(v, vi);
-    HWY_ASSERT_VEC_EQ(d, v0, v);
-    v = Xor(v, v0);
-    HWY_ASSERT_VEC_EQ(d, v0, v);
+    HWY_ASSERT_VEC_EQ(d, v0, OrAnd(v0, v0, v0));
+    HWY_ASSERT_VEC_EQ(d, v0, OrAnd(v0, vi, v0));
+    HWY_ASSERT_VEC_EQ(d, v0, OrAnd(v0, v0, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, OrAnd(v0, vi, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, OrAnd(vi, v0, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, OrAnd(vi, vi, v0));
+    HWY_ASSERT_VEC_EQ(d, vi, OrAnd(vi, v0, vi));
+    HWY_ASSERT_VEC_EQ(d, vi, OrAnd(vi, vi, vi));
   }
 };
 
-HWY_NOINLINE void TestAllLogicalFloat() {
-  ForFloatTypes(ForPartialVectors<TestLogicalFloat>());
+HWY_NOINLINE void TestAllLogical() {
+  ForAllTypes(ForPartialVectors<TestLogical>());
 }
 
 struct TestCopySign {
@@ -158,26 +152,6 @@ struct TestCopySign {
 
 HWY_NOINLINE void TestAllCopySign() {
   ForFloatTypes(ForPartialVectors<TestCopySign>());
-}
-
-struct TestZeroIfNegative {
-  template <class T, class D>
-  HWY_NOINLINE void operator()(T /*unused*/, D d) {
-    const auto v0 = Zero(d);
-    const auto vp = Iota(d, 1);
-    const auto vn = Iota(d, T(-1E5));  // assumes N < 10^5
-
-    // Zero and positive remain unchanged
-    HWY_ASSERT_VEC_EQ(d, v0, ZeroIfNegative(v0));
-    HWY_ASSERT_VEC_EQ(d, vp, ZeroIfNegative(vp));
-
-    // Negative are all replaced with zero
-    HWY_ASSERT_VEC_EQ(d, v0, ZeroIfNegative(vn));
-  }
-};
-
-HWY_NOINLINE void TestAllZeroIfNegative() {
-  ForFloatTypes(ForPartialVectors<TestZeroIfNegative>());
 }
 
 struct TestBroadcastSignBit {
@@ -234,16 +208,11 @@ HWY_NOINLINE void TestAllTestBit() {
 struct TestPopulationCount {
   template <class T, class D>
   HWY_NOINLINE void operator()(T /*unused*/, D d) {
-#if HWY_TARGET == HWY_RVV || HWY_IS_DEBUG_BUILD
-    constexpr size_t kNumTests = 1 << 14;
-#else
-    constexpr size_t kNumTests = 1 << 20;
-#endif
     RandomState rng;
     size_t N = Lanes(d);
     auto data = AllocateAligned<T>(N);
     auto popcnt = AllocateAligned<T>(N);
-    for (size_t i = 0; i < kNumTests / N; i++) {
+    for (size_t i = 0; i < AdjustedReps(1 << 18) / N; i++) {
       for (size_t i = 0; i < N; i++) {
         data[i] = static_cast<T>(rng());
         popcnt[i] = static_cast<T>(PopCount(data[i]));
@@ -266,19 +235,12 @@ HWY_AFTER_NAMESPACE();
 
 namespace hwy {
 HWY_BEFORE_TEST(HwyLogicalTest);
-HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllLogicalInteger);
-HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllLogicalFloat);
+HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllNot);
+HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllLogical);
 HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllCopySign);
-HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllZeroIfNegative);
 HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllBroadcastSignBit);
 HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllTestBit);
 HWY_EXPORT_AND_TEST_P(HwyLogicalTest, TestAllPopulationCount);
 }  // namespace hwy
-
-// Ought not to be necessary, but without this, no tests run on RVV.
-int main(int argc, char **argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
-}
 
 #endif
