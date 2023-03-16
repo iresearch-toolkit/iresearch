@@ -106,7 +106,7 @@ TEST_F(segment_writer_tests, invalid_actions) {
 
   // store + store sorted
   {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_FALSE(
@@ -118,7 +118,7 @@ TEST_F(segment_writer_tests, invalid_actions) {
 
   // store + store sorted
   {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_FALSE(
@@ -188,7 +188,7 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
   ASSERT_EQ(0, writer_unsorted->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer_sorted->begin(ctx);
     ASSERT_TRUE(writer_sorted->valid());
     ASSERT_TRUE(writer_sorted->insert<irs::Action::STORE>(field));
@@ -248,7 +248,7 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_FALSE(writer->insert<irs::Action::STORE_SORTED>(field));
@@ -296,7 +296,7 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_TRUE(writer->insert<irs::Action::STORE_SORTED>(field));
@@ -344,7 +344,7 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_TRUE(writer->insert<irs::Action::STORE>(field));
@@ -389,7 +389,7 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_TRUE(writer->insert<irs::Action::STORE>(field));
@@ -440,7 +440,7 @@ TEST_F(segment_writer_tests, memory_index_field) {
   ASSERT_EQ(0, writer->memory_active());
 
   for (size_t i = 0; i < 100; ++i) {
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     writer->begin(ctx);
     ASSERT_TRUE(writer->valid());
     ASSERT_TRUE(writer->insert<irs::Action::INDEX>(field));
@@ -487,7 +487,7 @@ TEST_F(segment_writer_tests, index_field) {
     auto writer = irs::segment_writer::make(dir, options);
     writer->reset(segment);
 
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     token_stream_mock stream;
     field_t field(stream);
     irs::term_attribute term;
@@ -515,7 +515,7 @@ TEST_F(segment_writer_tests, index_field) {
     auto writer = irs::segment_writer::make(dir, options);
     writer->reset(segment);
 
-    irs::segment_writer::update_context ctx;
+    irs::segment_writer::DocContext ctx;
     token_stream_mock stream;
     field_t field(stream);
     irs::increment inc;
@@ -544,7 +544,7 @@ class StringComparer final : public irs::Comparer {
 };
 
 void reorder(std::span<const tests::document*> docs,
-             std::span<irs::segment_writer::update_context> ctxs,
+             std::span<irs::segment_writer::DocContext> ctxs,
              std::vector<size_t> order) {
   for (size_t i = 0; i < order.size(); ++i) {
     auto new_i = order[i];
@@ -556,10 +556,9 @@ void reorder(std::span<const tests::document*> docs,
   }
 }
 
-std::vector<irs::segment_writer::update_context> reorder(
-  std::span<irs::segment_writer::update_context> ctxs,
-  const irs::doc_map& docmap) {
-  std::vector<irs::segment_writer::update_context> new_ctxs;
+std::vector<irs::segment_writer::DocContext> reorder(
+  std::span<irs::segment_writer::DocContext> ctxs, const irs::doc_map& docmap) {
+  std::vector<irs::segment_writer::DocContext> new_ctxs;
   new_ctxs.resize(ctxs.size());
   for (size_t i = 0, size = ctxs.size(); i < size; ++i) {
     if (docmap.empty()) {
@@ -585,10 +584,10 @@ TEST_F(segment_writer_tests, reorder) {
     });
   static constexpr size_t kLen = 5;
   std::array<const tests::document*, kLen> docs;
-  std::array<irs::segment_writer::update_context, kLen> ctxs;
+  std::array<irs::segment_writer::DocContext, kLen> ctxs;
   for (size_t i = 0; i < kLen; ++i) {
     docs[i] = gen.next();
-    ctxs[i] = {i, i};
+    ctxs[i] = {i};
   }
   const std::vector<size_t> expected{0, 1, 2, 3, 4};
   auto cases = std::array<std::vector<size_t>, 5>{
@@ -630,14 +629,14 @@ TEST_F(segment_writer_tests, reorder) {
     // we don't count stored field without comparator
     ASSERT_GT(writer->memory_active(), 0);
     irs::IndexSegment index_segment;
-    irs::document_mask docs_mask;
+    irs::DocsMask docs_mask;
     index_segment.meta.codec = default_codec();
     auto old2new = writer->flush(index_segment, docs_mask);
-    ASSERT_TRUE(docs_mask.empty());
+    ASSERT_TRUE(docs_mask.count == 0);
+    ASSERT_TRUE(docs_mask.set.count() == 0);
     const auto docs_context = reorder(writer->docs_context(), old2new);
     for (size_t i = 0; i < kLen; ++i) {
-      EXPECT_EQ(expected[i], docs_context[i].generation);
-      EXPECT_EQ(expected[i], docs_context[i].update_id);
+      EXPECT_EQ(expected[i], docs_context[i].tick);
     }
 
     writer->reset();

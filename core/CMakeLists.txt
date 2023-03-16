@@ -267,7 +267,6 @@ set(IResearch_core_headers
   ./utils/numeric_utils.hpp
   ./utils/version_utils.hpp
   ./utils/bitset.hpp
-  ./utils/bitvector.hpp
   ./utils/type_id.hpp
   ./shared.hpp
   ./types.hpp
@@ -426,7 +425,7 @@ target_link_libraries(iresearch-static
   ${URING_LIBRARIES}
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
-  absl::crc32c
+  PUBLIC absl::crc32c
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}

@@ -34,16 +34,20 @@ namespace irs {
 
 // Reader holds file refs to files from the segment.
 class SegmentReaderImpl final : public SubReader {
+  struct PrivateTag final {
+    explicit PrivateTag() = default;
+  };
+
  public:
   static std::shared_ptr<const SegmentReaderImpl> Open(
     const directory& dir, const SegmentMeta& meta,
     const IndexReaderOptions& warmup);
 
-  SegmentReaderImpl(const directory& dir, const SegmentMeta& meta,
+  SegmentReaderImpl(PrivateTag, const directory& dir, const SegmentMeta& meta,
                     const IndexReaderOptions& opts);
 
   SegmentReaderImpl(const SegmentReaderImpl& rhs, const SegmentMeta& meta,
-                    document_mask&& doc_mask);
+                    DocumentMask&& doc_mask);
   ~SegmentReaderImpl();
 
   const directory& Dir() const noexcept { return *dir_; }
@@ -57,7 +61,7 @@ class SegmentReaderImpl final : public SubReader {
 
   column_iterator::ptr columns() const final;
 
-  const document_mask* docs_mask() const final { return &docs_mask_; }
+  const DocumentMask* docs_mask() const final { return &docs_mask_; }
 
   doc_iterator::ptr docs_iterator() const final;
 
@@ -91,7 +95,7 @@ class SegmentReaderImpl final : public SubReader {
   };
 
   std::vector<index_file_refs::ref_t> file_refs_;
-  document_mask docs_mask_;
+  DocumentMask docs_mask_;
   std::shared_ptr<Data> data_;
   SegmentInfo info_;
   const directory* dir_;

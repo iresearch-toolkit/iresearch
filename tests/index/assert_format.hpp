@@ -212,7 +212,7 @@ class index_segment : irs::util::noncopyable {
   std::set<field*> doc_fields_;
   field_map_t fields_;
   columns_t columns_;
-  irs::document_mask doc_mask_;
+  irs::DocumentMask doc_mask_;
   irs::bstring buf_;
   irs::doc_id_t count_{};
   irs::doc_id_t empty_count_{};

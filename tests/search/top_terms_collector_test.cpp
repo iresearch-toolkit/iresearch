@@ -218,7 +218,7 @@ struct sub_reader final : irs::SubReader {
   }
   const irs::SegmentInfo& Meta() const final { return info; }
 
-  const irs::document_mask* docs_mask() const final { return nullptr; }
+  const irs::DocumentMask* docs_mask() const final { return nullptr; }
 
   irs::column_iterator::ptr columns() const final {
     return irs::column_iterator::empty();

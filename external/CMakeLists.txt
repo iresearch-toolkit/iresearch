@@ -121,8 +121,8 @@ if (NOT TARGET absl::base)
 
   if ("${ABSL_ROOT}" STREQUAL "")
     message("ABSL_ROOT not set. Pulling abseil-cpp submodule.")
-    UpdateModule(${GIT_EXECUTABLE} "external/abseil-cpp" ${CMAKE_SOURCE_DIR} "README.md")
-    set(ABSL_ROOT ${CMAKE_SOURCE_DIR}/external/abseil-cpp)
+    UpdateModule(${GIT_EXECUTABLE} "external/abseil-cpp" "${CMAKE_CURRENT_SOURCE_DIR}/.." "README.md")
+    set(ABSL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../external/abseil-cpp")
   endif ()
 
   if ("${ABSL_ROOT}" STREQUAL "")
@@ -149,8 +149,8 @@ if (NOT TARGET velocypack)
 
   if ("${VPACK_ROOT}" STREQUAL "")
     message("VPACK_ROOT not set. Pulling velocypack submodule.")
-    UpdateModule(${GIT_EXECUTABLE} "external/velocypack" ${CMAKE_SOURCE_DIR} "README.md")
-    set(VPACK_ROOT ${CMAKE_SOURCE_DIR}/external/velocypack)
+    UpdateModule(${GIT_EXECUTABLE} "external/velocypack" "${CMAKE_CURRENT_SOURCE_DIR}/.." "README.md")
+    set(VPACK_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../external/velocypack")
   endif ()
 
   if ("${VPACK_ROOT}" STREQUAL "")

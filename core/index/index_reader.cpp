@@ -34,7 +34,7 @@ struct EmptySubReader final : SubReader {
   const column_reader* column(field_id) const final { return nullptr; }
   const column_reader* column(std::string_view) const final { return nullptr; }
   const SegmentInfo& Meta() const final { return kEmptyInfo; }
-  const irs::document_mask* docs_mask() const final { return nullptr; }
+  const irs::DocumentMask* docs_mask() const final { return nullptr; }
   irs::doc_iterator::ptr docs_iterator() const final {
     return irs::doc_iterator::empty();
   }

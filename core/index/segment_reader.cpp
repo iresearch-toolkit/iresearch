@@ -83,7 +83,7 @@ column_iterator::ptr SegmentReader::columns() const { return impl_->columns(); }
 
 const SegmentInfo& SegmentReader::Meta() const { return impl_->Meta(); }
 
-const document_mask* SegmentReader::docs_mask() const {
+const DocumentMask* SegmentReader::docs_mask() const {
   return impl_->docs_mask();
 }
 

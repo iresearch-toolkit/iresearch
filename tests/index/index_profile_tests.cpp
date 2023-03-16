@@ -57,7 +57,30 @@ bool visit(const irs::column_reader& reader,
 }  // namespace
 
 class index_profile_test_case : public tests::index_test_base {
+ private:
+  std::atomic_uint64_t tick_{irs::writer_limits::kMinTick + 1};
+  std::mutex commit_mutex;
+  bool onTick_{false};
+
+  void TransactionTick(irs::IndexWriter::Transaction& trx) {
+    if (onTick_) {
+      trx.RegisterFlush();
+      trx.Commit(tick_.fetch_add(2) + 2);
+    } else {
+      trx.Commit();
+    }
+  }
+
+  uint64_t CommitTick() noexcept {
+    if (onTick_) {
+      return tick_.load();
+    }
+    return irs::writer_limits::kMaxTick;
+  }
+
  public:
+  void SetOnTick(bool value) noexcept { onTick_ = value; }
+
   void profile_bulk_index(size_t num_insert_threads, size_t num_import_threads,
                           size_t num_update_threads, size_t batch_size,
                           irs::IndexWriter::ptr writer = nullptr,
@@ -105,7 +128,6 @@ class index_profile_test_case : public tests::index_test_base {
     auto total_threads = thread_count + num_import_threads + num_update_threads;
     irs::async_utils::thread_pool thread_pool(total_threads, total_threads);
     std::mutex mutex;
-    std::mutex commit_mutex;
 
     if (!writer) {
       irs::IndexWriterOptions options;
@@ -116,7 +138,7 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     // initialize reader data source for import threads
-    {
+    if (num_import_threads != 0) {
       auto import_writer =
         irs::IndexWriter::Make(import_dir, codec(), irs::OM_CREATE);
 
@@ -128,14 +150,22 @@ class index_profile_test_case : public tests::index_test_base {
 
         for (const tests::document* doc; (doc = import_gen.next());) {
           REGISTER_TIMER_NAMED_DETAILED("init - insert");
-          insert(*import_writer, doc->indexed.begin(), doc->indexed.end(),
-                 doc->stored.begin(), doc->stored.end());
+          auto ctx = import_writer->GetBatch();
+          {
+            auto d = ctx.Insert();
+            EXPECT_TRUE(d.Insert<irs::Action::INDEX>(doc->indexed.begin(),
+                                                     doc->indexed.end()));
+            EXPECT_TRUE(d.Insert<irs::Action::STORE>(doc->stored.begin(),
+                                                     doc->stored.end()));
+          }
+          TransactionTick(ctx);
         }
       }
 
       {
+        std::unique_lock commit_lock{commit_mutex};
         REGISTER_TIMER_NAMED_DETAILED("init - commit");
-        import_writer->Commit();
+        import_writer->Commit(CommitTick());
       }
 
       REGISTER_TIMER_NAMED_DETAILED("init - open");
@@ -147,9 +177,9 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register insertion jobs
       for (size_t i = 0; i < thread_count; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, thread_count, i,
-                         writer_batch_size, &parsed_docs_count,
-                         &writer_commit_count, &import_again]() -> void {
+        thread_pool.run([&mutex, &writer, thread_count, i, writer_batch_size,
+                         &parsed_docs_count, &writer_commit_count,
+                         &import_again, this] {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -186,15 +216,21 @@ class index_profile_test_case : public tests::index_test_base {
 
             {
               REGISTER_TIMER_NAMED_DETAILED("load");
-              ASSERT_TRUE(tests::insert(
-                *writer, csv_doc_template.indexed.begin(),
-                csv_doc_template.indexed.end(), csv_doc_template.stored.begin(),
-                csv_doc_template.stored.end()));
+              auto ctx = writer->GetBatch();
+              {
+                auto d = ctx.Insert();
+                EXPECT_TRUE(
+                  d.Insert<irs::Action::INDEX>(csv_doc_template.indexed.begin(),
+                                               csv_doc_template.indexed.end()));
+                EXPECT_TRUE(
+                  d.Insert<irs::Action::STORE>(csv_doc_template.stored.begin(),
+                                               csv_doc_template.stored.end()));
+              }
+              TransactionTick(ctx);
             }
 
             if (count >= writer_batch_size) {
-              auto commit_lock =
-                std::unique_lock(commit_mutex, std::try_to_lock);
+              std::unique_lock commit_lock{commit_mutex, std::try_to_lock};
 
               // break commit chains by skipping commit if one is already in
               // progress
@@ -204,7 +240,7 @@ class index_profile_test_case : public tests::index_test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer->Commit();
+                writer->Commit(CommitTick());
               }
 
               count = 0;
@@ -213,8 +249,9 @@ class index_profile_test_case : public tests::index_test_base {
           }
 
           {
+            std::unique_lock commit_lock{commit_mutex};
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer->Commit();
+            writer->Commit(CommitTick());
           }
 
           ++writer_commit_count;
@@ -251,9 +288,8 @@ class index_profile_test_case : public tests::index_test_base {
 
       // register update jobs
       for (size_t i = 0; i < num_update_threads; ++i) {
-        thread_pool.run([&mutex, &commit_mutex, &writer, num_update_threads, i,
-                         update_skip, writer_batch_size,
-                         &writer_commit_count]() -> void {
+        thread_pool.run([&mutex, &writer, num_update_threads, i, update_skip,
+                         writer_batch_size, &writer_commit_count, this] {
           {
             // wait for all threads to be registered
             std::lock_guard<std::mutex> lock(mutex);
@@ -318,15 +354,23 @@ class index_profile_test_case : public tests::index_test_base {
                 std::make_shared<tests::string_field>("updated"));
 
               REGISTER_TIMER_NAMED_DETAILED("update");
-              update(
-                *writer, std::move(filter), csv_doc_template.indexed.begin(),
-                csv_doc_template.indexed.end(), csv_doc_template.stored.begin(),
-                csv_doc_template.stored.end());
+              {
+                auto ctx = writer->GetBatch();
+                {
+                  auto d = ctx.Replace(std::move(filter));
+                  EXPECT_TRUE(d.Insert<irs::Action::INDEX>(
+                    csv_doc_template.indexed.begin(),
+                    csv_doc_template.indexed.end()));
+                  EXPECT_TRUE(d.Insert<irs::Action::STORE>(
+                    csv_doc_template.stored.begin(),
+                    csv_doc_template.stored.end()));
+                }
+                TransactionTick(ctx);
+              }
             }
 
             if (count >= writer_batch_size) {
-              auto commit_lock =
-                std::unique_lock{commit_mutex, std::try_to_lock};
+              std::unique_lock commit_lock{commit_mutex, std::try_to_lock};
 
               // break commit chains by skipping commit if one is already in
               // progress
@@ -336,7 +380,7 @@ class index_profile_test_case : public tests::index_test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer->Commit();
+                writer->Commit(CommitTick());
               }
 
               count = 0;
@@ -345,8 +389,9 @@ class index_profile_test_case : public tests::index_test_base {
           }
 
           {
+            std::unique_lock commit_lock{commit_mutex};
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer->Commit();
+            writer->Commit(CommitTick());
           }
 
           ++writer_commit_count;
@@ -356,8 +401,12 @@ class index_profile_test_case : public tests::index_test_base {
 
     thread_pool.stop();
 
-    // ensure all data have been commited
-    writer->Commit();
+    // ensure all data have been committed
+    {
+      std::unique_lock commit_lock{commit_mutex};
+      writer->Commit(CommitTick());
+      EXPECT_FALSE(writer->Commit());
+    }
 
     auto path = test_dir();
 
@@ -405,19 +454,18 @@ class index_profile_test_case : public tests::index_test_base {
 
       column = reader[i].column("updated");
       if (column) {
-        // field insterted by updater threads
+        // field inserted by updater threads
         visit(*column, updated_visitor);
       }
     }
 
-    ASSERT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count);
-    ASSERT_EQ(imported_docs_count, import_docs_count);
-    ASSERT_TRUE(imported_docs_count == num_import_threads ||
-                imported_docs_count);  // at least some imports took place if
-                                       // import enabled
-    ASSERT_TRUE(updated_docs_count == num_update_threads ||
-                updated_docs_count);  // at least some updates took place if
-                                      // update enabled
+    EXPECT_EQ(parsed_docs_count + imported_docs_count, indexed_docs_count)
+      << parsed_docs_count << " " << imported_docs_count;
+    EXPECT_EQ(imported_docs_count, import_docs_count);
+    // at least some imports took place if import enabled
+    EXPECT_TRUE(imported_docs_count != 0 || num_import_threads == 0);
+    // at least some updates took place if update enabled
+    EXPECT_TRUE(updated_docs_count != 0 || num_update_threads == 0);
   }
 
   void profile_bulk_index_dedicated_cleanup(size_t num_threads,
@@ -459,11 +507,12 @@ class index_profile_test_case : public tests::index_test_base {
 
     for (size_t i = 0; i < commit_threads; ++i) {
       thread_pool.run(
-        [commit_interval, &working, &writer, &writer_commit_count]() -> void {
+        [commit_interval, &working, &writer, &writer_commit_count, this] {
           while (working.load()) {
             {
+              std::unique_lock commit_lock{commit_mutex};
               REGISTER_TIMER_NAMED_DETAILED("commit");
-              writer->Commit();
+              writer->Commit(CommitTick());
             }
             ++writer_commit_count;
             std::this_thread::sleep_for(
@@ -509,11 +558,19 @@ class index_profile_test_case : public tests::index_test_base {
     }
 
     thread_pool.stop();
-    writer->Commit();  // ensure there are no consolidation-pending segments
-                       // left in 'consolidating_segments_' before applying the
-                       // final consolidation
+    // ensure there are no consolidation-pending segments
+    // left in 'consolidating_segments_' before applying the final consolidation
+    {
+      std::unique_lock commit_lock{commit_mutex};
+      writer->Commit(CommitTick());
+      EXPECT_FALSE(writer->Commit());
+    }
     ASSERT_TRUE(writer->Consolidate(policy));
-    writer->Commit();
+    {
+      std::unique_lock commit_lock{commit_mutex};
+      writer->Commit(CommitTick());
+      EXPECT_FALSE(writer->Commit());
+    }
 
     struct dummy_doc_template_t
       : public tests::csv_doc_generator::doc_template {
@@ -594,6 +651,86 @@ TEST_P(index_profile_test_case, profile_bulk_index_multithread_update_full_mt) {
 
 TEST_P(index_profile_test_case,
        profile_bulk_index_multithread_update_batched_mt) {
+  profile_bulk_index(16, 0, 5, 10000);  // 5 does not divide evenly into 16
+}
+
+TEST_P(index_profile_test_case, profile_bulk_index_singlethread_full_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(0, 0, 0, 0);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_singlethread_batched_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(0, 0, 0, 10000);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_cleanup_mt_tick) {
+  SetOnTick(true);
+  tests::dir_param_f factory;
+  std::tie(factory, std::ignore) = GetParam();
+
+  profile_bulk_index_dedicated_cleanup(16, 10000, 100);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_consolidate_mt_tick) {
+  SetOnTick(true);
+  // a lot of threads cause a lot of contention for the segment pool
+  profile_bulk_index_dedicated_consolidate(8, 10000, 500);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_dedicated_commit_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index_dedicated_commit(16, 1, 1000);
+}
+
+TEST_P(index_profile_test_case, profile_bulk_index_multithread_full_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(16, 0, 0, 0);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_batched_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(16, 0, 0, 10000);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_import_full_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(12, 4, 0, 0);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_import_batched_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(12, 4, 0, 10000);
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_import_update_full_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(9, 7, 5, 0);  // 5 does not divide evenly into 9 or 7
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_import_update_batched_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(9, 7, 5, 10000);  // 5 does not divide evenly into 9 or 7
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_update_full_mt_tick) {
+  SetOnTick(true);
+  profile_bulk_index(16, 0, 5, 0);  // 5 does not divide evenly into 16
+}
+
+TEST_P(index_profile_test_case,
+       profile_bulk_index_multithread_update_batched_mt_tick) {
+  SetOnTick(true);
   profile_bulk_index(16, 0, 5, 10000);  // 5 does not divide evenly into 16
 }
 

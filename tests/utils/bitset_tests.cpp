@@ -26,6 +26,38 @@
 
 using namespace irs;
 
+TEST(bitset_tests, resize) {
+  bitset b;
+  b.resize(10);
+  EXPECT_TRUE(b.none());
+  EXPECT_TRUE(b.try_set(8));
+  EXPECT_EQ(b.count(), 1);
+  b.resize(9);
+  EXPECT_FALSE(b.try_set(8));
+  EXPECT_EQ(b.count(), 1);
+  b.resize(16);
+  EXPECT_FALSE(b.try_set(8));
+  EXPECT_EQ(b.count(), 1);
+}
+
+TEST(bitset_tests, try_set) {
+  bitset b{10};
+  EXPECT_TRUE(b.try_set(0));
+  EXPECT_FALSE(b.try_set(0));
+  EXPECT_TRUE(b.try_set(9));
+  EXPECT_TRUE(b.try_set(3));
+  EXPECT_FALSE(b.try_set(0));
+  EXPECT_FALSE(b.try_set(9));
+  EXPECT_EQ(b.count(), 3);
+  b.resize(20);
+  EXPECT_FALSE(b.try_set(0));
+  EXPECT_FALSE(b.try_set(9));
+  EXPECT_TRUE(b.try_set(17));
+  EXPECT_TRUE(b.try_set(10));
+  EXPECT_TRUE(b.try_set(19));
+  EXPECT_EQ(b.count(), 6);
+}
+
 TEST(bitset_tests, static_functions) {
   // word index for the specified bit
   ASSERT_EQ(0, bitset::word(0));
@@ -185,6 +217,7 @@ TEST(bitset_tests, reset) {
   const auto* prev_data = bs.data();
 
   // reset to smaller size
+  const auto old_words = words;
   words = 2;
   size = 89;
 
@@ -193,7 +226,7 @@ TEST(bitset_tests, reset) {
   ASSERT_EQ(size, bs.size());
   ASSERT_EQ(words, bs.words());
   ASSERT_EQ(prev_data, bs.data());  // storage haven't changed
-  ASSERT_EQ(sizeof(bitset::word_t) * 8 * words, bs.capacity());
+  ASSERT_EQ(sizeof(bitset::word_t) * 8 * old_words, bs.capacity());
   ;
   ASSERT_EQ(0, bs.count());
   ASSERT_TRUE(bs.none());  // content cleared

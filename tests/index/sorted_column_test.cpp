@@ -27,7 +27,6 @@
 #include "index/comparer.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
-#include "utils/bitvector.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/lz4compression.hpp"
 #include "utils/type_limits.hpp"

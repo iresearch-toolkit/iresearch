@@ -210,19 +210,36 @@ class allocator_deleter {
 
 template<typename Alloc>
 class allocator_array_deallocator {
- public:
-  using allocator_type = Alloc;
-  using pointer = typename std::allocator_traits<allocator_type>::pointer;
+  using traits_t = std::allocator_traits<Alloc>;
 
-  allocator_array_deallocator(const allocator_type& alloc, size_t size)
+ public:
+  using allocator_type = typename traits_t::allocator_type;
+  using pointer = typename traits_t::pointer;
+
+  static_assert(std::is_nothrow_move_constructible_v<allocator_type>);
+  static_assert(std::is_nothrow_move_assignable_v<allocator_type>);
+
+  allocator_array_deallocator(const allocator_type& alloc, size_t size) noexcept
     : alloc_{alloc}, size_{size} {}
 
   void operator()(pointer p) noexcept {
-    using traits_t = std::allocator_traits<allocator_type>;
-
-    // deallocate storage
     traits_t::deallocate(alloc_, p, size_);
   }
+
+  allocator_array_deallocator(allocator_array_deallocator&& other) noexcept
+    : alloc_{std::move(other.alloc_)}, size_{std::exchange(other.size_, 0)} {}
+
+  allocator_array_deallocator& operator=(
+    allocator_array_deallocator&& other) noexcept {
+    if (this != &other) {
+      alloc_ = std::move(other.alloc_);
+      size_ = std::exchange(other.size_, 0);
+    }
+    return *this;
+  }
+
+  allocator_type& alloc() noexcept { return alloc_; }
+  size_t size() const noexcept { return size_; }
 
  private:
   IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
@@ -231,24 +248,24 @@ class allocator_array_deallocator {
 
 template<typename Alloc>
 class allocator_array_deleter {
+  using traits_t = std::allocator_traits<Alloc>;
+
  public:
-  using allocator_type = Alloc;
-  using pointer = typename std::allocator_traits<allocator_type>::pointer;
+  using allocator_type = typename traits_t::allocator_type;
+  using pointer = typename traits_t::pointer;
 
   allocator_array_deleter(const allocator_type& alloc, size_t size)
     : alloc_{alloc}, size_{size} {}
 
   void operator()(pointer p) noexcept {
-    using traits_t = std::allocator_traits<allocator_type>;
-
-    // destroy objects
     for (auto begin = p, end = p + size_; begin != end; ++begin) {
       traits_t::destroy(alloc_, begin);
     }
-
-    // deallocate storage
     traits_t::deallocate(alloc_, p, size_);
   }
+
+  allocator_type& alloc() noexcept { return alloc_; }
+  size_t size() const noexcept { return size_; }
 
  private:
   IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
@@ -355,40 +372,44 @@ managed_ptr<Base> make_managed(Args&&... args) {
 }
 
 template<typename T, typename Alloc, typename... Types>
-inline std::enable_if_t<!std::is_array_v<T>,
-                        std::unique_ptr<T, allocator_deleter<Alloc>>>
+inline std::enable_if_t<
+  !std::is_array_v<T>,
+  std::unique_ptr<T, allocator_deleter<std::remove_cv_t<Alloc>>>>
 allocate_unique(Alloc& alloc, Types&&... Args) {
-  typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
-  typedef typename traits_t::pointer pointer;
+  using traits_t = std::allocator_traits<std::remove_cv_t<Alloc>>;
+  using pointer = typename traits_t::pointer;
+  using allocator_type = typename traits_t::allocator_type;
+  using deleter_t = allocator_deleter<allocator_type>;
 
-  pointer p = alloc.allocate(1);  // allocate space for 1 object
+  // allocate space for 1 object
+  pointer p = alloc.allocate(1);
 
   try {
-    traits_t::construct(alloc, p,
-                        std::forward<Types>(Args)...);  // construct object
+    // construct object
+    traits_t::construct(alloc, p, std::forward<Types>(Args)...);
   } catch (...) {
-    alloc.deallocate(
-      p, 1);  // free allocated storage in case of any error during construction
+    // free allocated storage in case of any error during construction
+    alloc.deallocate(p, 1);
     throw;
   }
 
-  return std::unique_ptr<T, allocator_deleter<Alloc>>(
-    p, allocator_deleter<Alloc>(alloc));
+  return std::unique_ptr<T, deleter_t>{p, deleter_t{alloc}};
 }
 
-template<typename T, typename Alloc>
-std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0,
-                 std::unique_ptr<T, allocator_array_deleter<Alloc>>>
-allocate_unique(Alloc& alloc, size_t size) {
-  typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
-  typedef typename traits_t::pointer pointer;
-  typedef allocator_array_deleter<Alloc> deleter_t;
-  typedef std::unique_ptr<T, deleter_t> unique_ptr_t;
+template<
+  typename T, typename Alloc,
+  typename = std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0>>
+auto allocate_unique(Alloc& alloc, size_t size) {
+  using traits_t = std::allocator_traits<std::remove_cv_t<Alloc>>;
+  using pointer = typename traits_t::pointer;
+  using allocator_type = typename traits_t::allocator_type;
+  using deleter_t = allocator_array_deleter<allocator_type>;
+  using unique_ptr_t = std::unique_ptr<T, deleter_t>;
 
   pointer p = nullptr;
 
   if (!size) {
-    return unique_ptr_t(p, deleter_t(alloc, size));
+    return unique_ptr_t{p, deleter_t{alloc, size}};
   }
 
   p = alloc.allocate(size);  // allocate space for 'size' object
@@ -410,31 +431,32 @@ allocate_unique(Alloc& alloc, size_t size) {
     throw;
   }
 
-  return unique_ptr_t(p, deleter_t(alloc, size));
+  return unique_ptr_t{p, deleter_t{alloc, size}};
 }
 
 // do not construct objects in a block
-struct allocate_only_tag {};
-static const auto allocate_only = allocate_only_tag();
+struct allocate_only_tag final {};
+inline constexpr allocate_only_tag allocate_only{};
 
-template<typename T, typename Alloc>
-std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0,
-                 std::unique_ptr<T, allocator_array_deallocator<Alloc>>>
-allocate_unique(Alloc& alloc, size_t size, allocate_only_tag /*tag*/) {
-  typedef std::allocator_traits<typename std::remove_cv<Alloc>::type> traits_t;
-  typedef typename traits_t::pointer pointer;
-  typedef allocator_array_deallocator<Alloc> deleter_t;
-  typedef std::unique_ptr<T, deleter_t> unique_ptr_t;
+template<
+  typename T, typename Alloc,
+  typename = std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0>>
+auto allocate_unique(Alloc& alloc, size_t size, allocate_only_tag /*tag*/) {
+  using traits_t = std::allocator_traits<std::remove_cv_t<Alloc>>;
+  using pointer = typename traits_t::pointer;
+  using allocator_type = typename traits_t::allocator_type;
+  using deleter_t = allocator_array_deallocator<allocator_type>;
+  using unique_ptr_t = std::unique_ptr<T, deleter_t>;
 
   pointer p = nullptr;
 
   if (!size) {
-    return unique_ptr_t(p, deleter_t(alloc, size));
+    return unique_ptr_t{p, deleter_t{alloc, size}};
   }
 
   p = alloc.allocate(size);  // allocate space for 'size' object
 
-  return unique_ptr_t(p, deleter_t(alloc, size));
+  return unique_ptr_t{p, deleter_t{alloc, size}};
 }
 
 // Decline wrong syntax
