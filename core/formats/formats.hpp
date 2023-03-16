@@ -44,7 +44,7 @@
 
 namespace irs {
 
-struct Comparer;
+class Comparer;
 struct SegmentMeta;
 struct field_meta;
 struct flush_state;
