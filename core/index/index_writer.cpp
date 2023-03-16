@@ -284,14 +284,15 @@ void FlushedSegmentContext::MaskUnusedReplace(uint64_t first_tick,
   const std::span docs{segment.flushed_docs_.data() + begin,
                        segment.flushed_docs_.data() + end};
   for (const auto& doc : docs) {
-    if (doc.tick <= first_tick) {
+    if (doc.query_id == writer_limits::kInvalidOffset ||
+        doc.tick <= first_tick) {
       continue;
     }
     if (last_tick < doc.tick) {
       break;
     }
-    if (doc.query_id != writer_limits::kInvalidOffset &&
-        !segment.queries_[doc.query_id].IsDone()) {
+    IRS_ASSERT(doc.query_id < segment.queries_.size());
+    if (!segment.queries_[doc.query_id].IsDone()) {
       const auto new_doc =
         Old2New(static_cast<size_t>(&doc - docs.data()) + doc_limits::min());
       flushed.document_mask.insert(new_doc);
@@ -1086,7 +1087,10 @@ void IndexWriter::SegmentContext::Rollback() noexcept {
     last_committed_tick = flushed_docs_.back().tick;
   }
   std::for_each(docs.begin() + committed_buffered_docs_, docs.end(),
-                [&](auto& doc) { doc.tick = last_committed_tick; });
+                [&](auto& doc) {
+                  doc.tick = last_committed_tick;
+                  doc.query_id = writer_limits::kInvalidOffset;
+                });
 
   committed_buffered_docs_ = buffered_docs;
 }
