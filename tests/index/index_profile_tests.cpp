@@ -65,7 +65,7 @@ class index_profile_test_case : public tests::index_test_base {
   void TransactionTick(irs::IndexWriter::Transaction& trx) {
     if (onTick_) {
       trx.RegisterFlush();
-      trx.Commit(tick_.fetch_add(1) + 1);
+      trx.Commit(tick_.fetch_add(2) + 2);
     } else {
       trx.Commit();
     }

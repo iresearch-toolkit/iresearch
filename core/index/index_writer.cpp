@@ -909,6 +909,10 @@ uint64_t IndexWriter::FlushContext::FlushPending(uint64_t committed_tick,
     const auto first_tick = segment->first_tick_;
     const auto last_tick = segment->last_tick_;
     if (first_tick <= tick) {
+      // This assert is really paranoid, it's not required just try to detect
+      // situation when we commit on tick but forgot to call RegisterFlush().
+      // This assert can work only if any transaction which committed after last
+      // Commit will has greater first tick than committed tick.
       IRS_ASSERT(committed_tick < first_tick);
       flushed_tick = std::max(flushed_tick, last_tick);
       segment->Flush();
