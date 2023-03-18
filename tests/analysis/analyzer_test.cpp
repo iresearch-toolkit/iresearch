@@ -69,11 +69,9 @@ using namespace tests;
 // -----------------------------------------------------------------------------
 
 TEST_F(analyzer_test, duplicate_register) {
-  struct dummy_analyzer : public irs::analysis::analyzer {
+  struct dummy_analyzer : public irs::analysis::TypedAnalyzer<dummy_analyzer> {
     static ptr make(std::string_view) { return ptr(new dummy_analyzer()); }
     static bool normalize(std::string_view, std::string&) { return true; }
-    dummy_analyzer()
-      : irs::analysis::analyzer(irs::type<dummy_analyzer>::get()) {}
     irs::attribute* get_mutable(irs::type_info::type_id) final {
       return nullptr;
     }

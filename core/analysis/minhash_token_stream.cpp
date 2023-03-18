@@ -446,9 +446,7 @@ namespace irs::analysis {
 }
 
 MinHashTokenStream::MinHashTokenStream(Options&& opts)
-  : analysis::analyzer{irs::type<MinHashTokenStream>::get()},
-    opts_{std::move(opts)},
-    minhash_{opts.num_hashes} {
+  : opts_{std::move(opts)}, minhash_{opts.num_hashes} {
   if (!opts_.analyzer) {
     // Fallback to default implementation
     opts_.analyzer = std::make_unique<string_token_stream>();

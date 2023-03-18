@@ -250,9 +250,7 @@ void collation_token_stream::state_deleter_t::operator()(
 }
 
 collation_token_stream::collation_token_stream(const options_t& options)
-  : analyzer{irs::type<collation_token_stream>::get()},
-    state_{new state_t(options)},
-    term_eof_{true} {}
+  : state_{new state_t(options)}, term_eof_{true} {}
 
 bool collation_token_stream::reset(std::string_view data) {
   if (!state_->collator) {

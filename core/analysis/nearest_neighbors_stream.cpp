@@ -225,8 +225,7 @@ nearest_neighbors_stream::set_model_provider(
 
 nearest_neighbors_stream::nearest_neighbors_stream(const options& options,
                                                    model_ptr model) noexcept
-  : analyzer{irs::type<nearest_neighbors_stream>::get()},
-    model_{std::move(model)},
+  : model_{std::move(model)},
     neighbors_it_{neighbors_.end()},
     n_tokens_{0},
     current_token_ind_{0},

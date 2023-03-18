@@ -31,23 +31,24 @@ class analyzer : public token_stream {
  public:
   using ptr = std::unique_ptr<analyzer>;
 
-  explicit analyzer(const type_info& type) noexcept;
-
   virtual bool reset(std::string_view data) = 0;
 
-  constexpr type_info::type_id type() const noexcept { return type_; }
-
- private:
-  type_info::type_id type_;
+  virtual irs::type_info::type_id type() const noexcept = 0;
 };
 
-class empty_analyzer final : public analyzer {
+template<typename Impl>
+class TypedAnalyzer : public analyzer {
+ public:
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<Impl>::id();
+  }
+};
+
+class empty_analyzer final : public TypedAnalyzer<empty_analyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "empty_analyzer";
   }
-
-  empty_analyzer() noexcept;
 
   attribute* get_mutable(irs::type_info::type_id) final { return nullptr; }
 

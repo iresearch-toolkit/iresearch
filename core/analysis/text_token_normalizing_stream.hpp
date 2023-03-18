@@ -38,8 +38,9 @@ namespace analysis {
 ///        token, i.e. case conversion and accent removal
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class normalizing_token_stream final : public analyzer,
-                                       private util::noncopyable {
+class normalizing_token_stream final
+  : public TypedAnalyzer<normalizing_token_stream>,
+    private util::noncopyable {
  public:
   enum case_convert_t { LOWER, NONE, UPPER };
 
@@ -63,9 +64,8 @@ class normalizing_token_stream final : public analyzer,
   bool reset(std::string_view data) final;
 
  private:
-  using attributes =
-    std::tuple<increment, offset,
-               term_attribute>;  // token value with evaluated quotes
+  // token value with evaluated quotes
+  using attributes = std::tuple<increment, offset, term_attribute>;
 
   struct state_t;
   struct state_deleter_t {

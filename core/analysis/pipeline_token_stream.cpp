@@ -305,8 +305,7 @@ namespace analysis {
 
 pipeline_token_stream::pipeline_token_stream(
   pipeline_token_stream::options_t&& options)
-  : analyzer{irs::type<pipeline_token_stream>::get()},
-    attrs_{{},
+  : attrs_{{},
            options.empty()
              ? nullptr
              : irs::get_mutable<term_attribute>(options.back().get()),

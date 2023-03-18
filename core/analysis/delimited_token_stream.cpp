@@ -260,8 +260,7 @@ namespace irs {
 namespace analysis {
 
 delimited_token_stream::delimited_token_stream(std::string_view delimiter)
-  : analyzer(irs::type<delimited_token_stream>::get()),
-    delim_(ViewCast<byte_type>(delimiter)) {
+  : delim_(ViewCast<byte_type>(delimiter)) {
   if (!irs::IsNull(delim_)) {
     delim_buf_ = delim_;  // keep a local copy of the delimiter
     delim_ = delim_buf_;  // update the delimter to point at the local copy

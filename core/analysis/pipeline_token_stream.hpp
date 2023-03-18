@@ -32,11 +32,9 @@
 namespace irs {
 namespace analysis {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class pipeline_token_stream
-/// @brief an analyser capable of chaining other analyzers
-////////////////////////////////////////////////////////////////////////////////
-class pipeline_token_stream final : public analyzer, private util::noncopyable {
+// An analyser capable of chaining other analyzers
+class pipeline_token_stream final : public TypedAnalyzer<pipeline_token_stream>,
+                                    private util::noncopyable {
  public:
   using options_t = std::vector<irs::analysis::analyzer::ptr>;
 

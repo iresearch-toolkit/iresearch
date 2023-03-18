@@ -31,15 +31,11 @@
 
 namespace {
 
-class ArrayStream final : public irs::analysis::analyzer {
+class ArrayStream final : public irs::analysis::TypedAnalyzer<ArrayStream> {
  public:
-  explicit ArrayStream(std::string_view data, const std::string_view* begin,
-                       const std::string_view* end) noexcept
-    : irs::analysis::analyzer{irs::type<ArrayStream>::get()},
-      data_{data},
-      begin_{begin},
-      it_{end},
-      end_{end} {}
+  ArrayStream(std::string_view data, const std::string_view* begin,
+              const std::string_view* end) noexcept
+    : data_{data}, begin_{begin}, it_{end}, end_{end} {}
 
   bool next() final {
     if (it_ == end_) {

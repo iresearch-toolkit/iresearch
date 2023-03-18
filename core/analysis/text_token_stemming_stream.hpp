@@ -39,7 +39,8 @@ namespace analysis {
 ///        for supported languages
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class stemming_token_stream final : public analyzer, private util::noncopyable {
+class stemming_token_stream final : public TypedAnalyzer<stemming_token_stream>,
+                                    private util::noncopyable {
  public:
   struct options_t {
     icu::Locale locale;

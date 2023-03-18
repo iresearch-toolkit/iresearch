@@ -33,12 +33,11 @@
 namespace irs {
 namespace analysis {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief an analyzer capable of masking the input, treated as a single token,
-///        if it is present in the configured list
-////////////////////////////////////////////////////////////////////////////////
-class token_stopwords_stream final : public analyzer,
-                                     private util::noncopyable {
+// An analyzer capable of masking the input, treated as a single token,
+// if it is present in the configured list
+class token_stopwords_stream final
+  : public TypedAnalyzer<token_stopwords_stream>,
+    private util::noncopyable {
  public:
   using stopwords_set = absl::flat_hash_set<std::string>;
 
