@@ -168,7 +168,7 @@ class format_test_case : public index_test_base {
     constexpr std::string_view kOldFormats[]{"1_0"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
+                              codec()->type()().name());
     return std::end(kOldFormats) == it;
   }
 
@@ -178,7 +178,7 @@ class format_test_case : public index_test_base {
                                              "1_3simd"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
+                              codec()->type()().name());
     return std::end(kOldFormats) == it;
   }
 

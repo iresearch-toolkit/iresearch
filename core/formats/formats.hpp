@@ -438,7 +438,6 @@ class format {
  public:
   using ptr = std::shared_ptr<const format>;
 
-  explicit format(const type_info& type) noexcept : type_(type) {}
   virtual ~format() = default;
 
   virtual index_meta_writer::ptr get_index_meta_writer() const = 0;
@@ -457,10 +456,7 @@ class format {
     bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
-  const type_info& type() const { return type_; }
-
- private:
-  type_info type_;
+  virtual irs::type_info::type_id type() const noexcept = 0;
 };
 
 struct flush_state {

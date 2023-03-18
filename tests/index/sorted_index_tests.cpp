@@ -228,7 +228,7 @@ class SortedIndexTestCase : public tests::index_test_base {
 
     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
                                               std::end(kOldFormats),
-                                              codec()->type().name());
+                                              codec()->type()().name());
   }
 
   irs::FeatureInfoProvider features() {
