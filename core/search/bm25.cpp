@@ -28,6 +28,7 @@
 #include "index/norm.hpp"
 #include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
+#include "utils/misc.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
@@ -477,7 +478,7 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
 class sort final : public irs::ScorerBase<bm25::stats> {
  public:
   sort(float_t k, float_t b, bool boost_as_score) noexcept
-    : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
+    : ScorerBase(irs::type<sort>::get()), k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
 
   void collect(byte_type* stats_buf, const irs::FieldCollector* field,
                const irs::TermCollector* term) const final {
@@ -618,6 +619,15 @@ class sort final : public irs::ScorerBase<bm25::stats> {
 
   TermCollector::ptr prepare_term_collector() const final {
     return std::make_unique<term_collector>();
+  }
+
+  bool equals(Scorer const& other) const noexcept final {
+    if (!Scorer::equals(other)) {
+      return false;
+    }
+    const auto& p = down_cast<sort>(other);
+    return p.k_ == k_ &&
+           p.b_ == b_;
   }
 
  private:

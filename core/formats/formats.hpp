@@ -44,7 +44,7 @@
 
 namespace irs {
 
-struct Comparer;
+class Comparer;
 struct SegmentMeta;
 struct field_meta;
 struct flush_state;
@@ -468,9 +468,9 @@ struct flush_state {
   // Accumulated segment features
   const std::set<type_info::type_id>* features{};
   // Segment name
-  std::string_view name;
+  const std::string_view name;  // segment name
   ScorersView scorers;
-  size_t doc_count;
+  const size_t doc_count;
   // Accumulated segment index features
   IndexFeatures index_features{IndexFeatures::NONE};
 };

@@ -143,6 +143,9 @@ struct WandWriter {
 struct Scorer {
   using ptr = std::unique_ptr<Scorer>;
 
+
+  Scorer(const type_info& type) : type_{type.id()} {};
+
   virtual ~Scorer() = default;
 
   // Store collected index statistics into 'stats' of the
@@ -194,6 +197,13 @@ struct Scorer {
   //   - be a power of 2
   //   - be less or equal than alignof(MAX_ALIGN_T))
   virtual std::pair<size_t, size_t> stats_size() const = 0;
+
+  virtual bool equals(Scorer const& other) const noexcept {
+    return type_ == other.type_;
+  }
+
+private:
+  type_info::type_id type_;
 };
 
 // Possible variants of merging multiple scores
@@ -414,6 +424,8 @@ class ScorerBase : public Scorer {
   static_assert(std::is_trivially_constructible_v<StatsType>,
                 "StatsTypemust be trivially constructible");
 
+  ScorerBase(const type_info& type) : Scorer(type) {}
+
   using stats_t = StatsType;
 
   WandWriter::ptr prepare_wand_writer(size_t) const override { return nullptr; }
@@ -448,6 +460,8 @@ class ScorerBase<void> : public Scorer {
   FieldCollector::ptr prepare_field_collector() const override {
     return nullptr;
   }
+
+  ScorerBase(const type_info& type) : Scorer(type) {}
 
   TermCollector::ptr prepare_term_collector() const override { return nullptr; }
 

@@ -53,7 +53,7 @@ struct boost : public irs::ScorerFactory {
 
   class prepared : public irs::ScorerBase<void> {
    public:
-    prepared() = default;
+    prepared() : ScorerBase(irs::type<prepared>::get()) = default;
 
     irs::IndexFeatures index_features() const noexcept final {
       return irs::IndexFeatures::NONE;
@@ -163,7 +163,7 @@ struct custom_sort : public irs::ScorerFactory {
       const irs::feature_map_t& term_reader_;
     };
 
-    prepared(const custom_sort& sort) : sort_(sort) {}
+    prepared(const custom_sort& sort) : ScorerBase(irs::type<prepared>::get()), sort_(sort) {}
 
     void collect(irs::byte_type* filter_attrs, const irs::FieldCollector* field,
                  const irs::TermCollector* term) const final {
@@ -283,7 +283,7 @@ struct frequency_sort : public irs::ScorerFactory {
       const irs::doc_id_t* docs_count;
     };
 
-    prepared() = default;
+    prepared() : ScorerBase(irs::type<prepared>::get()) {}
 
     void collect(irs::byte_type* stats_buf,
                  const irs::FieldCollector* /*field*/,

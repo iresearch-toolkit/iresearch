@@ -905,7 +905,7 @@ class IndexWriter : private util::noncopyable {
   FlushContextPtr GetFlushContext() const noexcept;
   FlushContextPtr SwitchFlushContext() noexcept;
 
-  // return a usable segment or a nullptr segment if retry is required
+  // Return a usable segment or a nullptr segment if retry is required
   // (e.g. no free segments available)
   ActiveSegmentContext GetSegmentContext();
 

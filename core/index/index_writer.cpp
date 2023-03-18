@@ -1826,7 +1826,8 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
   }
 
   return {segment_ctx, segments_active_};
-} catch (...) {
+}  // namespace irs
+catch (...) {
   segments_active_.fetch_sub(1, std::memory_order_relaxed);
   throw;
 }
@@ -1929,7 +1930,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
       continue;
     }
 
-    // We don't want to call clear here because even for empty map it costs O(n)
+    // We don't want to call clear here because even for empty map it costs
+    // O(n)
     IRS_ASSERT(deleted_docs.empty());
 
     // mask documents matching filters from segment_contexts
@@ -2040,7 +2042,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
         if (!success) {
           // Consolidated segment has docs missing from 'segments'
           IR_FRMT_WARN(
-            "Failed to finish merge for segment '%s', due to removed documents "
+            "Failed to finish merge for segment '%s', due to removed "
+            "documents "
             "still present the consolidation candidates",
             meta.name.c_str());
 
@@ -2057,9 +2060,9 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
       // pending consolidation request
       import_candidates_count += candidates.size();
     } else {
-      // During consolidation doc_mask could be already populated even for just
-      // merged segment. Pending already imported/consolidated segment, apply
-      // removals mask documents matching filters from segment_contexts
+      // During consolidation doc_mask could be already populated even for
+      // just merged segment. Pending already imported/consolidated segment,
+      // apply removals mask documents matching filters from segment_contexts
       // (i.e. from new operations)
       apply_all_queries([&](QueryContext& query) {
         // skip queries which not affect this
@@ -2187,8 +2190,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
         if (auto it = ctx->cached_.find(&flushed); it != ctx->cached_.end()) {
           IRS_ASSERT(it->second != nullptr);
           IRS_ASSERT(flushed_first_tick <= committed_tick_);
-          // We don't support case when segment is committed partially more than
-          // one time. Because it's useless and ineffective.
+          // We don't support case when segment is committed partially more
+          // than one time. Because it's useless and ineffective.
           IRS_ASSERT(flushed_last_tick <= tick);
           // find existing reader
           reader = std::make_shared<const SegmentReaderImpl>(
@@ -2269,9 +2272,11 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
   }
 #endif
 
-  // TODO(MBkkt) In general looks useful to iterate here over all segments which
+  // TODO(MBkkt) In general looks useful to iterate here over all segments
+  // which
   //  partially committed, and free query memory which already was applied.
-  //  But when I start thinking about rollback stuff it looks almost impossible
+  //  But when I start thinking about rollback stuff it looks almost
+  //  impossible
 
   auto files_to_sync =
     GetFilesToSync(pending_meta.segments, partial_sync, partial_sync_threshold);
@@ -2401,7 +2406,8 @@ void IndexWriter::Finish() {
   auto lock = pending_state_.StartReset(*this, true);
   IRS_ASSERT(pending_state_.tick != writer_limits::kMaxTick);
   committed_tick_ = pending_state_.tick;
-  // after this line transaction is successful (only noexcept operations below)
+  // after this line transaction is successful (only noexcept operations
+  // below)
   std::atomic_store_explicit(&committed_reader_,
                              std::move(pending_state_.commit),
                              std::memory_order_release);

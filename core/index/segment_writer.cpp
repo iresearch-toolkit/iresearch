@@ -174,8 +174,7 @@ bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
 
   auto* slot = fields_.emplace(name, index_features, features, *col_writer_);
 
-  // invert only if new field index features are a subset of slot index
-  // features
+  // invert only if new field index features are a subset of slot index features
   IRS_ASSERT(IsSubsetOf(features, slot->meta().features));
   if (IsSubsetOf(index_features, slot->requested_features()) &&
       slot->invert(tokens, doc)) {
@@ -220,12 +219,14 @@ void segment_writer::FlushFields(flush_state& state) {
   REGISTER_TIMER_DETAILED();
   auto& meta = segment.meta;
 
-  doc_map docmap;
-  flush_state state{.dir = &dir_,
-                    .name = seg_name_,
-                    .scorers = scorers_,
-                    .doc_count = buffered_docs()};
+  flush_state state{
+    .dir = &dir_,
+    .name = seg_name_,
+    .scorers = scorers_,
+    .doc_count = buffered_docs(),
+  };
 
+  doc_map docmap;
   if (fields_.comparator() != nullptr) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
       *col_writer_, std::move(sort_.finalizer),
