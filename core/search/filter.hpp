@@ -76,11 +76,10 @@ class filter {
 
   using ptr = std::unique_ptr<filter>;
 
-  explicit filter(const type_info& type) noexcept;
   virtual ~filter() = default;
 
   virtual size_t hash() const noexcept {
-    return std::hash<type_info::type_id>()(type_);
+    return std::hash<type_info::type_id>()(type());
   }
 
   bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
@@ -116,16 +115,15 @@ class filter {
     return *this;
   }
 
-  type_info::type_id type() const noexcept { return type_; }
+  virtual type_info::type_id type() const noexcept = 0;
 
  protected:
   virtual bool equals(const filter& rhs) const noexcept {
-    return type_ == rhs.type_;
+    return type() == rhs.type();
   }
 
  private:
-  score_t boost_;
-  type_info::type_id type_;
+  score_t boost_{kNoBoost};
 };
 
 // boost::hash_combine support
@@ -138,13 +136,15 @@ class filter_with_options : public filter {
   using options_type = Options;
   using filter_type = typename options_type::filter_type;
 
-  filter_with_options() : filter(irs::type<filter_type>::get()) {}
-
   const options_type& options() const noexcept { return options_; }
   options_type* mutable_options() noexcept { return &options_; }
 
   size_t hash() const noexcept override {
     return hash_combine(filter::hash(), options_.hash());
+  }
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<filter_type>::id();
   }
 
  protected:
@@ -185,11 +185,13 @@ class filter_base : public filter_with_options<Options> {
 // Filter which returns no documents
 class empty final : public filter {
  public:
-  empty();
-
   filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<empty>::id();
+  }
 };
 
 struct filter_visitor;

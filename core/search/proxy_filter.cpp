@@ -201,9 +201,6 @@ class proxy_query : public filter::prepared {
   mutable proxy_filter::cache_ptr cache_;
 };
 
-proxy_filter::proxy_filter() noexcept
-  : filter(irs::type<proxy_filter>::get()) {}
-
 filter::prepared::ptr proxy_filter::prepare(
   const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {

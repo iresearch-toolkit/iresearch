@@ -42,8 +42,6 @@ class proxy_filter final : public filter {
  public:
   using cache_ptr = std::shared_ptr<proxy_query_cache>;
 
-  proxy_filter() noexcept;
-
   using filter::prepare;
 
   filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers&,
@@ -60,6 +58,10 @@ class proxy_filter final : public filter {
   proxy_filter& set_cache(cache_ptr cache) noexcept {
     cache_ = std::move(cache);
     return *this;
+  }
+
+  irs::type_info::type_id type() const noexcept override {
+    return irs::type<proxy_filter>::id();
   }
 
  private:

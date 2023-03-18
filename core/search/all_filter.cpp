@@ -47,8 +47,6 @@ class all_query : public filter::prepared {
   bstring stats_;
 };
 
-all::all() noexcept : filter(irs::type<all>::get()) {}
-
 filter::prepared::ptr all::prepare(const IndexReader& reader,
                                    const Scorers& order, score_t filter_boost,
                                    const attribute_provider* /*ctx*/) const {

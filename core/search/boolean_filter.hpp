@@ -70,7 +70,6 @@ class boolean_filter : public filter, public AllDocsProvider {
                                 const attribute_provider* ctx) const override;
 
  protected:
-  explicit boolean_filter(const type_info& type) noexcept;
   bool equals(const filter& rhs) const noexcept final;
 
   virtual filter::prepared::ptr prepare(
@@ -90,9 +89,11 @@ class boolean_filter : public filter, public AllDocsProvider {
 // Represents conjunction
 class And final : public boolean_filter {
  public:
-  And() noexcept;
-
   using filter::prepare;
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<And>::id();
+  }
 
  protected:
   filter::prepared::ptr prepare(std::vector<const filter*>& incl,
@@ -105,8 +106,6 @@ class And final : public boolean_filter {
 // Represents disjunction
 class Or final : public boolean_filter {
  public:
-  Or() noexcept;
-
   // Return minimum number of subqueries which must be satisfied
   size_t min_match_count() const { return min_match_count_; }
 
@@ -121,6 +120,8 @@ class Or final : public boolean_filter {
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 
+  type_info::type_id type() const noexcept final { return irs::type<Or>::id(); }
+
  protected:
   filter::prepared::ptr prepare(std::vector<const filter*>& incl,
                                 std::vector<const filter*>& excl,
@@ -129,14 +130,12 @@ class Or final : public boolean_filter {
                                 const attribute_provider* ctx) const final;
 
  private:
-  size_t min_match_count_;
+  size_t min_match_count_{1};
 };
 
 // Represents negation
 class Not : public filter, public AllDocsProvider {
  public:
-  Not() noexcept;
-
   const irs::filter* filter() const { return filter_.get(); }
 
   template<typename T>
@@ -166,6 +165,10 @@ class Not : public filter, public AllDocsProvider {
                                 const attribute_provider* ctx) const final;
 
   size_t hash() const noexcept final;
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<Not>::id();
+  }
 
  protected:
   bool equals(const irs::filter& rhs) const noexcept final;

@@ -180,8 +180,8 @@ class BooleanQuery : public filter::prepared {
     }
   }
 
-  virtual void prepare(const IndexReader& rdr, const Scorers& ord, score_t boost,
-                       ScoreMergeType merge_type,
+  virtual void prepare(const IndexReader& rdr, const Scorers& ord,
+                       score_t boost, ScoreMergeType merge_type,
                        const attribute_provider* ctx,
                        std::span<const filter* const> incl,
                        std::span<const filter* const> excl) {
@@ -306,8 +306,6 @@ class MinMatchQuery : public BooleanQuery {
   size_t min_match_count_;
 };
 
-boolean_filter::boolean_filter(const type_info& type) noexcept : filter{type} {}
-
 size_t boolean_filter::hash() const noexcept {
   size_t seed = 0;
 
@@ -413,8 +411,6 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
   }
 }
 
-And::And() noexcept : boolean_filter{irs::type<And>::get()} {}
-
 filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl,
                                    const IndexReader& rdr, const Scorers& ord,
@@ -485,8 +481,6 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
   q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
   return q;
 }
-
-Or::Or() noexcept : boolean_filter(irs::type<Or>::get()), min_match_count_(1) {}
 
 filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Scorers& ord,
                                   score_t boost,
@@ -595,8 +589,6 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
   return q;
 }
-
-Not::Not() noexcept : irs::filter{irs::type<Not>::get()} {}
 
 filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Scorers& ord,
                                    score_t boost,

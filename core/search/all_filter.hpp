@@ -29,13 +29,15 @@ namespace irs {
 // Filter returning all documents
 class all : public filter {
  public:
-  all() noexcept;
-
   using filter::prepare;
 
   filter::prepared::ptr prepare(const IndexReader& reader, const Scorers& order,
                                 score_t filter_boost,
                                 const attribute_provider* ctx) const final;
+
+  irs::type_info::type_id type() const noexcept override {
+    return irs::type<all>::id();
+  }
 };
 
 }  // namespace irs

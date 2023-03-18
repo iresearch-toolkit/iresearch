@@ -79,7 +79,8 @@ struct basic_sort : irs::ScorerFactory {
   };
 
   struct prepared_sort final : irs::ScorerBase<void> {
-    explicit prepared_sort(size_t idx) : ScorerBase(irs::type<prepared_sort>::get()), idx(idx) {}
+    explicit prepared_sort(size_t idx)
+      : ScorerBase(irs::type<prepared_sort>::get()), idx(idx) {}
 
     irs::IndexFeatures index_features() const final {
       return irs::IndexFeatures::NONE;
@@ -280,7 +281,9 @@ struct boosted : public irs::filter {
                                                         this->boost() * boost);
   }
 
-  boosted() : filter(irs::type<boosted>::get()) {}
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<boosted>::id();
+  }
 
   basic_doc_iterator::docids_t docs;
   static unsigned execute_count;
@@ -1163,7 +1166,9 @@ struct unestimated : public irs::filter {
     return irs::memory::make_managed<unestimated::prepared>();
   }
 
-  unestimated() : filter(irs::type<unestimated>::get()) {}
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<unestimated>::id();
+  }
 };
 
 struct estimated : public irs::filter {
@@ -1218,7 +1223,9 @@ struct estimated : public irs::filter {
     return irs::memory::make_managed<estimated::prepared>(est, &evaluated);
   }
 
-  explicit estimated() : filter(irs::type<estimated>::get()) {}
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<estimated>::id();
+  }
 
   mutable bool evaluated = false;
   irs::cost::cost_t est{};

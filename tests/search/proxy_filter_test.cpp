@@ -119,10 +119,12 @@ size_t doclist_test_query::executes_{0};
 
 class doclist_test_filter : public filter {
  public:
-  doclist_test_filter() noexcept
-    : filter(irs::type<doclist_test_filter>::get()) {}
+  static size_t get_prepares() noexcept { return prepares_; }
 
-  filter::prepared::ptr prepare(const IndexReader&, const Scorers&, score_t boost,
+  static void reset_prepares() noexcept { prepares_ = 0; }
+
+  filter::prepared::ptr prepare(const IndexReader&, const Scorers&,
+                                score_t boost,
                                 const attribute_provider*) const final {
     ++prepares_;
     return memory::make_managed<doclist_test_query>(documents_, boost);
@@ -133,9 +135,9 @@ class doclist_test_filter : public filter {
     documents_ = documents;
   }
 
-  static size_t get_prepares() noexcept { return prepares_; }
-
-  static void reset_prepares() noexcept { prepares_ = 0; }
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<doclist_test_filter>::id();
+  }
 
  private:
   std::vector<doc_id_t> documents_;
@@ -168,7 +170,7 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
     doclist_test_filter::reset_prepares();
   }
 
-  void verify_filter(std::vector<doc_id_t> const& expected, size_t line) {
+  void verify_filter(const std::vector<doc_id_t>& expected, size_t line) {
     SCOPED_TRACE(::testing::Message("Failed on line: ") << line);
     irs::proxy_filter::cache_ptr cache;
     for (size_t i = 0; i < 3; ++i) {
