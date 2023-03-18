@@ -624,7 +624,7 @@ class IndexWriter : private util::noncopyable {
  public:
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
-    explicit FlushedSegment(IndexSegment&& segment, doc_map&& old2new,
+    explicit FlushedSegment(IndexSegment&& segment, DocMap&& old2new,
                             DocsMask&& docs_mask, size_t docs_begin) noexcept
       : IndexSegment{std::move(segment)},
         old2new{std::move(old2new)},
@@ -642,8 +642,8 @@ class IndexWriter : private util::noncopyable {
       return docs_begin_ != committed;
     }
 
-    doc_map old2new;
-    doc_map new2old;
+    DocMap old2new;
+    DocMap new2old;
     // Flushed segment removals
     DocsMask docs_mask;
     DocumentMask document_mask;

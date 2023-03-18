@@ -143,8 +143,7 @@ struct WandWriter {
 struct Scorer {
   using ptr = std::unique_ptr<Scorer>;
 
-
-  Scorer(const type_info& type) : type_{type.id()} {};
+  explicit Scorer(const type_info& type) noexcept : type_{type.id()} {};
 
   virtual ~Scorer() = default;
 
@@ -198,11 +197,11 @@ struct Scorer {
   //   - be less or equal than alignof(MAX_ALIGN_T))
   virtual std::pair<size_t, size_t> stats_size() const = 0;
 
-  virtual bool equals(Scorer const& other) const noexcept {
+  virtual bool equals(const Scorer& other) const noexcept {
     return type_ == other.type_;
   }
 
-private:
+ private:
   type_info::type_id type_;
 };
 

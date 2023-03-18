@@ -38,7 +38,7 @@ struct EmptyColumnProvider : irs::ColumnProvider {
 };
 
 struct FreqScorer : irs::ScorerBase<void> {
-  FreqScorer() :  ScorerBase(irs::type<FreqScorer>::get()) {}
+  FreqScorer() : ScorerBase(irs::type<FreqScorer>::get()) {}
   irs::IndexFeatures index_features() const final {
     return irs::IndexFeatures::FREQ;
   }
@@ -317,9 +317,11 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   irs::SegmentMeta meta;
   meta.name = "segment_name";
 
-  const irs::Scorer::ptr scorer = std::make_unique<FreqScorer>();
+  FreqScorer scorer;
+  const irs::Scorer* scorer_ptr = &scorer;
+
   const irs::ReaderState state{
-    .dir = &dir, .meta = &meta, .scorers = std::span{&scorer, 1}};
+    .dir = &dir, .meta = &meta, .scorers = std::span{&scorer_ptr, 1}};
 
   auto in = dir.open("attributes", irs::IOAdvice::NORMAL);
   EXPECT_FALSE(!in);

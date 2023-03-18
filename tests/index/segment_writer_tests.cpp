@@ -557,7 +557,7 @@ void reorder(std::span<const tests::document*> docs,
 }
 
 std::vector<irs::segment_writer::DocContext> reorder(
-  std::span<irs::segment_writer::DocContext> ctxs, const irs::doc_map& docmap) {
+  std::span<irs::segment_writer::DocContext> ctxs, const irs::DocMap& docmap) {
   std::vector<irs::segment_writer::DocContext> new_ctxs;
   new_ctxs.resize(ctxs.size());
   for (size_t i = 0, size = ctxs.size(); i < size; ++i) {

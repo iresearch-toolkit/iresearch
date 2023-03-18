@@ -214,26 +214,25 @@ void segment_writer::FlushFields(flush_state& state) {
     throw;
   }
 }
-[[nodiscard]] doc_map segment_writer::flush(IndexSegment& segment,
-                                            DocsMask& docs_mask) {
+
+[[nodiscard]] DocMap segment_writer::flush(IndexSegment& segment,
+                                           DocsMask& docs_mask) {
   REGISTER_TIMER_DETAILED();
   auto& meta = segment.meta;
 
-  flush_state state{
-    .dir = &dir_,
-    .name = seg_name_,
-    .scorers = scorers_,
-    .doc_count = buffered_docs(),
-  };
+  flush_state state{.dir = &dir_,
+                    .name = seg_name_,
+                    .scorers = scorers_,
+                    .doc_count = buffered_docs()};
 
-  doc_map docmap;
+  DocMap docmap;
   if (fields_.comparator() != nullptr) {
     std::tie(docmap, sort_.id) = sort_.stream.flush(
       *col_writer_, std::move(sort_.finalizer),
       static_cast<doc_id_t>(state.doc_count), *fields_.comparator());
 
     // flush all cached columns
-    irs::sorted_column::flush_buffer_t buffer;
+    irs::sorted_column::FlushBuffer buffer;
     for (auto& column : cached_columns_) {
       if (IRS_LIKELY(!field_limits::valid(*column.id))) {
         *column.id = column.stream.flush(

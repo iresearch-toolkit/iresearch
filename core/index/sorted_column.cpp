@@ -29,7 +29,7 @@
 namespace irs {
 
 bool sorted_column::flush_sparse_primary(
-  doc_map& docmap, const columnstore_writer::values_writer_f& writer,
+  DocMap& docmap, const columnstore_writer::values_writer_f& writer,
   doc_id_t docs_count, const Comparer& compare) {
   auto comparer = [&](const auto& lhs, const auto& rhs) {
     return compare.Compare(get_value(&lhs), get_value(&rhs));
@@ -90,7 +90,7 @@ bool sorted_column::flush_sparse_primary(
   return true;
 }
 
-std::pair<doc_map, field_id> sorted_column::flush(
+std::pair<DocMap, field_id> sorted_column::flush(
   columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
   doc_id_t docs_count, const Comparer& compare) {
   IRS_ASSERT(index_.size() <= docs_count);
@@ -103,7 +103,7 @@ std::pair<doc_map, field_id> sorted_column::flush(
   // temporarily push sentinel
   index_.emplace_back(doc_limits::eof(), data_buf_.size());
 
-  doc_map docmap;
+  DocMap docmap;
   auto [column_id, column_writer] =
     writer.push_column(info_, std::move(finalizer));
 
@@ -126,8 +126,8 @@ void sorted_column::flush_already_sorted(
 }
 
 bool sorted_column::flush_dense(
-  const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
-  flush_buffer_t& buffer) {
+  const columnstore_writer::values_writer_f& writer, const DocMap& docmap,
+  FlushBuffer& buffer) {
   IRS_ASSERT(!docmap.empty());
 
   const size_t total = docmap.size() - 1;  // -1 for first element
@@ -157,8 +157,8 @@ bool sorted_column::flush_dense(
 }
 
 void sorted_column::flush_sparse(
-  const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
-  flush_buffer_t& buffer) {
+  const columnstore_writer::values_writer_f& writer, const DocMap& docmap,
+  FlushBuffer& buffer) {
   IRS_ASSERT(!docmap.empty());
 
   const size_t size = index_.size() - 1;  // -1 for sentinel
@@ -183,7 +183,7 @@ void sorted_column::flush_sparse(
 
 field_id sorted_column::flush(columnstore_writer& writer,
                               columnstore_writer::column_finalizer_f finalizer,
-                              const doc_map& docmap, flush_buffer_t& buffer) {
+                              const DocMap& docmap, FlushBuffer& buffer) {
   IRS_ASSERT(docmap.size() < irs::doc_limits::eof());
 
   if (IRS_UNLIKELY(index_.empty())) {

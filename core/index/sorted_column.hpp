@@ -30,13 +30,11 @@
 
 namespace irs {
 
-using doc_map = std::vector<doc_id_t>;
-
 class Comparer;
 
 class sorted_column final : public column_output, private util::noncopyable {
  public:
-  using flush_buffer_t = std::vector<std::pair<doc_id_t, doc_id_t>>;
+  using FlushBuffer = std::vector<std::pair<doc_id_t, doc_id_t>>;
 
   explicit sorted_column(const ColumnInfo& info) : info_{info} {}
 
@@ -74,7 +72,7 @@ class sorted_column final : public column_output, private util::noncopyable {
 
   // 1st - doc map (old->new), empty -> already sorted
   // 2nd - flushed column identifier
-  std::pair<doc_map, field_id> flush(
+  std::pair<DocMap, field_id> flush(
     columnstore_writer& writer,
     columnstore_writer::column_finalizer_f header_writer,
     doc_id_t docs_count,  // total number of docs in segment
@@ -82,7 +80,7 @@ class sorted_column final : public column_output, private util::noncopyable {
 
   field_id flush(columnstore_writer& writer,
                  columnstore_writer::column_finalizer_f header_writer,
-                 const doc_map& docmap, flush_buffer_t& buffer);
+                 const DocMap& docmap, FlushBuffer& buffer);
 
   size_t memory_active() const noexcept {
     return data_buf_.size() +
@@ -107,7 +105,7 @@ class sorted_column final : public column_output, private util::noncopyable {
     const auto end = (value + 1)->second;
 
     return {data_buf_.c_str() + begin, end - begin};
-  };
+  }
 
   void write_value(data_output& out,
                    const std::pair<doc_id_t, size_t>* value) const {
@@ -115,17 +113,17 @@ class sorted_column final : public column_output, private util::noncopyable {
     out.write_bytes(payload.data(), payload.size());
   }
 
-  bool flush_sparse_primary(doc_map& docmap,
+  bool flush_sparse_primary(DocMap& docmap,
                             const columnstore_writer::values_writer_f& writer,
                             doc_id_t docs_count, const Comparer& compare);
 
   void flush_already_sorted(const columnstore_writer::values_writer_f& writer);
 
   bool flush_dense(const columnstore_writer::values_writer_f& writer,
-                   const doc_map& docmap, flush_buffer_t& buffer);
+                   const DocMap& docmap, FlushBuffer& buffer);
 
   void flush_sparse(const columnstore_writer::values_writer_f& writer,
-                    const doc_map& docmap, flush_buffer_t& buffer);
+                    const DocMap& docmap, FlushBuffer& buffer);
 
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
   // doc_id + offset in 'data_buf_'

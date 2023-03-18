@@ -528,7 +528,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 class term_iterator : public irs::term_iterator {
  public:
   explicit term_iterator(fields_data::postings_ref_t& postings,
-                         const doc_map* docmap) noexcept
+                         const DocMap* docmap) noexcept
     : postings_(&postings), doc_map_(docmap) {}
 
   void reset(const field_data& field, bytes_view min, bytes_view max) {
@@ -634,7 +634,7 @@ class term_iterator : public irs::term_iterator {
   fields_data::postings_ref_t::const_iterator next_;
   fields_data::postings_ref_t::const_iterator it_;
   const field_data* field_{};
-  const doc_map* doc_map_{};
+  const DocMap* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
 };
@@ -649,7 +649,7 @@ class term_reader final : public irs::basic_term_reader,
                           private util::noncopyable {
  public:
   explicit term_reader(fields_data::postings_ref_t& postings,
-                       const doc_map* docmap) noexcept
+                       const DocMap* docmap) noexcept
     : it_(postings, docmap) {}
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }

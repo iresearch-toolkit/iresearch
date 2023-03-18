@@ -60,7 +60,8 @@ struct aligned_scorer : public irs::ScorerFactory {
    public:
     explicit prepared(irs::IndexFeatures index_features,
                       bool empty_scorer) noexcept
-      : ScorerBase(irs::type<prepared>::get()), empty_scorer_(empty_scorer),
+      : irs::ScorerBase<StatsType>(irs::type<prepared>::get()),
+        empty_scorer_(empty_scorer),
         index_features_(index_features) {}
 
     irs::FieldCollector::ptr prepare_field_collector() const final {

@@ -146,7 +146,7 @@ class segment_writer : util::noncopyable {
 
   std::span<DocContext> docs_context() noexcept { return docs_context_; }
 
-  [[nodiscard]] doc_map flush(IndexSegment& segment, DocsMask& docs_mask);
+  [[nodiscard]] DocMap flush(IndexSegment& segment, DocsMask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t buffered_docs() const noexcept { return docs_context_.size(); }

@@ -101,6 +101,8 @@ struct sort : irs::ScorerFactory {
       void write(irs::data_output&) const final {}
     };
 
+    prepared() : irs::Scorer{irs::type<prepared>::get()} {}
+
     void collect(irs::byte_type*, const irs::FieldCollector*,
                  const irs::TermCollector*) const final {}
 
