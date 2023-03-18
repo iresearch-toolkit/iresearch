@@ -3230,7 +3230,7 @@ class DocumentMaskWriter : public document_mask_writer {
   std::string filename(const SegmentMeta& meta) const final;
 
   size_t write(directory& dir, const SegmentMeta& meta,
-               const document_mask& docs_mask) final;
+               const DocumentMask& docs_mask) final;
 };
 
 template<>
@@ -3245,7 +3245,7 @@ std::string DocumentMaskWriter::filename(const SegmentMeta& meta) const {
 }
 
 size_t DocumentMaskWriter::write(directory& dir, const SegmentMeta& meta,
-                                 const document_mask& docs_mask) {
+                                 const DocumentMask& docs_mask) {
   const auto filename = file_name<document_mask_writer>(meta);
   auto out = dir.create(filename);
 
@@ -3272,11 +3272,11 @@ size_t DocumentMaskWriter::write(directory& dir, const SegmentMeta& meta,
 class DocumentMaskReader : public document_mask_reader {
  public:
   bool read(const directory& dir, const SegmentMeta& meta,
-            document_mask& docs_mask) final;
+            DocumentMask& docs_mask) final;
 };
 
 bool DocumentMaskReader::read(const directory& dir, const SegmentMeta& meta,
-                              document_mask& docs_mask) {
+                              DocumentMask& docs_mask) {
   const auto in_name = file_name<document_mask_writer>(meta);
 
   bool exists;

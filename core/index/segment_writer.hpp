@@ -28,7 +28,7 @@
 #include "field_data.hpp"
 #include "formats/formats.hpp"
 #include "sorted_column.hpp"
-#include "utils/bitvector.hpp"
+#include "utils/bitset.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/noncopyable.hpp"
@@ -59,20 +59,25 @@ enum class Action {
 
 ENABLE_BITMASK_ENUM(Action);
 
+struct DocsMask final {
+  bitset set;
+  uint32_t count{0};
+};
+
 // Interface for an index writer over a directory
 // an object that represents a single ongoing transaction
 // non-thread safe
 class segment_writer : util::noncopyable {
  private:
   // Disallow using public constructor
-  struct ConstructToken {
+  struct ConstructToken final {
     explicit ConstructToken() = default;
   };
 
  public:
-  struct update_context {
-    uint64_t generation;
-    size_t update_id;
+  struct DocContext final {
+    uint64_t tick{0};
+    size_t query_id{writer_limits::kInvalidOffset};
   };
 
   static std::unique_ptr<segment_writer> make(
@@ -80,7 +85,7 @@ class segment_writer : util::noncopyable {
 
   // begin document-write transaction
   // Return doc_id_t as per doc_limits
-  doc_id_t begin(const update_context& ctx, size_t reserve_rollback_extra = 0);
+  doc_id_t begin(DocContext ctx);
 
   template<Action action, typename Field>
   bool insert(Field&& field) {
@@ -129,33 +134,31 @@ class segment_writer : util::noncopyable {
 
   // doc_id the document id as returned by begin(...)
   // Return success
-  bool remove(doc_id_t doc_id);
+  bool remove(doc_id_t doc_id) noexcept;
 
   // Rollback document-write transaction,
   // implicitly noexcept since we reserve memory in 'begin'
-  void rollback() {
+  void rollback() noexcept {
     // mark as removed since not fully inserted
-
-    // user should check return of begin() != eof()
-    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
-    // -1 for 0-based offset
-    remove(doc_id_t(docs_cached() + doc_limits::min() - 1));
+    remove(LastDocId());
     valid_ = false;
   }
 
-  std::span<update_context> docs_context() noexcept { return docs_context_; }
+  std::span<DocContext> docs_context() noexcept { return docs_context_; }
 
-  doc_map flush(IndexSegment& segment, document_mask& docs_mask);
+  [[nodiscard]] doc_map flush(IndexSegment& segment, DocsMask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
-  size_t docs_cached() const noexcept { return docs_context_.size(); }
+  size_t buffered_docs() const noexcept { return docs_context_.size(); }
   bool initialized() const noexcept { return initialized_; }
   bool valid() const noexcept { return valid_; }
   void reset() noexcept;
   void reset(const SegmentMeta& meta);
 
-  void tick(uint64_t tick) noexcept { tick_ = tick; }
-  uint64_t tick() const noexcept { return tick_; }
+  doc_id_t LastDocId() const noexcept {
+    IRS_ASSERT(buffered_docs() <= doc_limits::eof());
+    return doc_limits::min() + buffered_docs() - 1;
+  }
 
   segment_writer(ConstructToken, directory& dir,
                  const SegmentWriterOptions& options) noexcept;
@@ -214,7 +217,7 @@ class segment_writer : util::noncopyable {
     explicit sorted_column(
       const ColumnInfoProvider& column_info,
       columnstore_writer::column_finalizer_f finalizer) noexcept
-      : stream(column_info({})),  // compression for sorted column
+      : stream{column_info({})},  // compression for sorted column
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};
@@ -273,9 +276,8 @@ class segment_writer : util::noncopyable {
       static_cast<std::string_view>(field.name())};
 
     // user should check return of begin() != eof()
-    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
-    // -1 for 0-based offset
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
+    IRS_ASSERT(LastDocId() < doc_limits::eof());
+    const auto doc_id = LastDocId();
 
     return store(field_name, doc_id, field);
   }
@@ -285,9 +287,8 @@ class segment_writer : util::noncopyable {
     REGISTER_TIMER_DETAILED();
 
     // user should check return of begin() != eof()
-    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
-    // -1 for 0-based offset
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
+    IRS_ASSERT(LastDocId() < doc_limits::eof());
+    const auto doc_id = LastDocId();
 
     return store_sorted(doc_id, field);
   }
@@ -304,9 +305,8 @@ class segment_writer : util::noncopyable {
     const IndexFeatures index_features = field.index_features();
 
     // user should check return of begin() != eof()
-    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
-    // -1 for 0-based offset
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
+    IRS_ASSERT(LastDocId() < doc_limits::eof());
+    const auto doc_id = LastDocId();
 
     return index(field_name, doc_id, index_features, features, tokens);
   }
@@ -323,9 +323,8 @@ class segment_writer : util::noncopyable {
     const IndexFeatures index_features = field.index_features();
 
     // user should check return of begin() != eof()
-    IRS_ASSERT(docs_cached() + doc_limits::min() - 1 < doc_limits::eof());
-    // -1 for 0-based offset
-    const auto doc_id = doc_id_t(docs_cached() + doc_limits::min() - 1);
+    IRS_ASSERT(LastDocId() < doc_limits::eof());
+    const auto doc_id = LastDocId();
 
     if (IRS_UNLIKELY(
           !index(field_name, doc_id, index_features, features, tokens))) {
@@ -356,17 +355,15 @@ class segment_writer : util::noncopyable {
     }
   }
 
-  // Flushes document mask to directory, returns number of masked documens
-  document_mask get_doc_mask(const doc_map& docmap);
   // Flushes indexed fields to directory
   void FlushFields(flush_state& state);
 
   ScorersView scorers_;
   std::deque<cached_column> cached_columns_;  // pointers remain valid
   sorted_column sort_;
-  std::vector<update_context> docs_context_;
+  std::vector<DocContext> docs_context_;
   // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
-  bitvector docs_mask_;
+  DocsMask docs_mask_;
   fields_data fields_;
   stored_columns columns_;
   std::vector<const stored_column*> sorted_columns_;
@@ -376,7 +373,6 @@ class segment_writer : util::noncopyable {
   const ColumnInfoProvider* column_info_;
   columnstore_writer::ptr col_writer_;
   TrackingDirectory dir_;
-  uint64_t tick_{0};
   bool initialized_{false};
   bool valid_{true};  // current state
 };

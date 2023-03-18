@@ -68,7 +68,7 @@ class AllIterator : public doc_iterator {
 
 class MaskDocIterator : public doc_iterator {
  public:
-  MaskDocIterator(doc_iterator::ptr&& it, const document_mask& mask) noexcept
+  MaskDocIterator(doc_iterator::ptr&& it, const DocumentMask& mask) noexcept
     : mask_{mask}, it_{std::move(it)} {}
 
   bool next() final {
@@ -100,14 +100,14 @@ class MaskDocIterator : public doc_iterator {
   }
 
  private:
-  const document_mask& mask_;  // excluded document ids
+  const DocumentMask& mask_;  // excluded document ids
   doc_iterator::ptr it_;
 };
 
 class MaskedDocIterator : public doc_iterator, private util::noncopyable {
  public:
   MaskedDocIterator(doc_id_t begin, doc_id_t end,
-                    const document_mask& docs_mask) noexcept
+                    const DocumentMask& docs_mask) noexcept
     : docs_mask_{docs_mask}, end_{end}, next_{begin} {}
 
   bool next() final {
@@ -138,7 +138,7 @@ class MaskedDocIterator : public doc_iterator, private util::noncopyable {
   doc_id_t value() const final { return current_.value; }
 
  private:
-  const document_mask& docs_mask_;
+  const DocumentMask& docs_mask_;
   document current_;
   const doc_id_t end_;  // past last valid doc_id
   doc_id_t next_;
@@ -164,7 +164,8 @@ std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
   const IndexReaderOptions& opts) {
   auto& codec = *meta.codec;
 
-  auto reader = std::make_shared<SegmentReaderImpl>(dir, meta, opts);
+  auto reader =
+    std::make_shared<SegmentReaderImpl>(PrivateTag{}, dir, meta, opts);
 
   // read document mask
   if (opts.doc_mask) {
@@ -257,7 +258,7 @@ std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
 
 SegmentReaderImpl::~SegmentReaderImpl() = default;
 
-SegmentReaderImpl::SegmentReaderImpl(const directory& dir,
+SegmentReaderImpl::SegmentReaderImpl(PrivateTag, const directory& dir,
                                      const SegmentMeta& meta,
                                      const IndexReaderOptions& opts)
   : file_refs_{GetRefs(dir, meta)},
@@ -268,7 +269,7 @@ SegmentReaderImpl::SegmentReaderImpl(const directory& dir,
 
 SegmentReaderImpl::SegmentReaderImpl(const SegmentReaderImpl& rhs,
                                      const SegmentMeta& meta,
-                                     document_mask&& docs_mask)
+                                     DocumentMask&& docs_mask)
   : file_refs_{GetRefs(rhs.Dir(), meta)},
     docs_mask_{std::move(docs_mask)},
     data_{rhs.data_},
@@ -335,7 +336,7 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
   const SegmentMeta& meta) const {
   IRS_ASSERT(this->Meta().version != meta.version);
 
-  document_mask docs_mask;
+  DocumentMask docs_mask;
 
   // read document mask
   if (Options().doc_mask) {

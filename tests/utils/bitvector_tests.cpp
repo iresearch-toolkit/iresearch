@@ -21,8 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "bitvector.hpp"
 #include "tests_shared.hpp"
-#include "utils/bitvector.hpp"
 
 TEST(bitvector_tests, ctor) {
   // zero size bitvector

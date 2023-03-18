@@ -25,11 +25,10 @@
 #include <cstring>
 #include <memory>
 
-#include "bit_utils.hpp"
-#include "math_utils.hpp"
-#include "memory.hpp"
-#include "noncopyable.hpp"
 #include "shared.hpp"
+#include "utils/bit_utils.hpp"
+#include "utils/math_utils.hpp"
+#include "utils/memory.hpp"
 
 namespace irs {
 
@@ -46,7 +45,7 @@ class dynamic_bitset {
 
   constexpr IRS_FORCE_INLINE static size_t bits_to_words(size_t bits) noexcept {
     return bits / bits_required<word_t>() +
-           size_t(0 != (bits % bits_required<word_t>()));
+           static_cast<size_t>((bits % bits_required<word_t>()) != 0);
   }
 
   // returns corresponding bit index within a word for the
@@ -65,67 +64,75 @@ class dynamic_bitset {
     return i * bits_required<word_t>();
   }
 
-  dynamic_bitset(const Alloc& alloc = Alloc())
-    : alloc_{alloc},
-      data_{static_cast<typename word_ptr_t::pointer>(
-              nullptr),  // workaround for broken check in MSVC2015
-            word_ptr_deleter_t{alloc_, 0}} {}
+  dynamic_bitset(const Alloc& alloc = Alloc{})
+    : data_{nullptr, word_ptr_deleter_t{alloc, 0}} {}
 
-  explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc())
+  explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc{})
     : dynamic_bitset{alloc} {
     reset(bits);
   }
 
-  dynamic_bitset(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_constructible_v<allocator_type>)
-    : alloc_{std::move(alloc_)},
-      bits_{rhs.bits_},
-      words_{rhs.words_},
-      data_{std::move(rhs.data_)} {
-    rhs.bits_ = 0;
-    rhs.words_ = 0;
-  }
+  dynamic_bitset(dynamic_bitset&& rhs) noexcept
+    : data_{std::move(rhs.data_)},
+      words_{std::exchange(rhs.words_, 0)},
+      bits_{std::exchange(rhs.bits_, 0)} {}
 
-  dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept(
-    std::is_nothrow_move_assignable_v<allocator_type>) {
+  dynamic_bitset& operator=(dynamic_bitset&& rhs) noexcept {
     if (this != &rhs) {
-      alloc_ = std::move(rhs.alloc_);
-      bits_ = rhs.bits_;
-      words_ = rhs.words_;
       data_ = std::move(rhs.data_);
-      rhs.bits_ = 0;
-      rhs.words_ = 0;
+      words_ = std::exchange(rhs.words_, 0);
+      bits_ = std::exchange(rhs.bits_, 0);
     }
 
     return *this;
   }
 
-  void reset(size_t bits) {
-    const auto num_words = bits_to_words(bits);
+  void reserve(size_t bits) { reserve_words(bits_to_words(bits)); }
 
-    if (num_words > words_) {
-      data_ = memory::allocate_unique<word_t[]>(alloc_, num_words,
-                                                memory::allocate_only);
+  template<bool Reserve = true>
+  void resize(size_t bits) noexcept(!Reserve) {
+    const auto new_words = bits_to_words(bits);
+    if constexpr (Reserve) {
+      reserve_words(new_words);
+    } else {
+      IRS_ASSERT(bits <= capacity());
+      IRS_ASSERT(new_words <= capacity_words());
+    }
+    const auto old_words = words_;
+    words_ = new_words;
+    clear_offset(old_words);
+    bits_ = bits;
+    sanitize();
+  }
+
+  void reset(size_t bits) {
+    const auto new_words = bits_to_words(bits);
+
+    if (new_words > capacity_words()) {
+      data_ = memory::allocate_unique<word_t[]>(
+        data_.get_deleter().alloc(), new_words, memory::allocate_only);
     }
 
-    words_ = num_words;
+    words_ = new_words;
     bits_ = bits;
     clear();
   }
 
   bool operator==(const dynamic_bitset& rhs) const noexcept {
-    if (this->size() != rhs.size()) {
+    if (bits_ != rhs.bits_) {
       return false;
     }
-
-    return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
+    IRS_ASSERT(words_ == rhs.words_);
+    return 0 == std::memcmp(data(), rhs.data(), words_ * sizeof(word_t));
   }
 
   // number of bits in bitset
   size_t size() const noexcept { return bits_; }
 
   // capacity in bits
-  size_t capacity() const noexcept { return bits_required<word_t>() * words_; }
+  size_t capacity() const noexcept {
+    return bits_required<word_t>() * capacity_words();
+  }
 
   size_t words() const noexcept { return words_; }
 
@@ -144,21 +151,46 @@ class dynamic_bitset {
     memset(&value, sizeof(value));
   }
 
-  void memset(const void* src, size_t size) noexcept {
-    std::memcpy(data_.get(), src, std::min(size, words() * sizeof(word_t)));
-    sanitize();
+  void memset(const void* src, size_t byte_size) noexcept {
+    byte_size = std::min(byte_size, words_ * sizeof(word_t));
+    if (byte_size != 0) {
+      // passing nullptr to `std::memcpy` is undefined behavior
+      IRS_ASSERT(data_ != nullptr);
+      IRS_ASSERT(src != nullptr);
+      std::memcpy(data_.get(), src, byte_size);
+      sanitize();
+    }
   }
 
-  void set(size_t i) noexcept { set_bit(data_[word(i)], bit(i)); }
+  void set(size_t i) noexcept {
+    IRS_ASSERT(i < bits_);
+    set_bit(data_[word(i)], bit(i));
+  }
 
-  void unset(size_t i) noexcept { unset_bit(data_[word(i)], bit(i)); }
+  void unset(size_t i) noexcept {
+    IRS_ASSERT(i < bits_);
+    unset_bit(data_[word(i)], bit(i));
+  }
 
   void reset(size_t i, bool set) noexcept {
+    IRS_ASSERT(i < bits_);
     set_bit(data_[word(i)], bit(i), set);
   }
 
   bool test(size_t i) const noexcept {
+    IRS_ASSERT(i < bits_);
     return check_bit(data_[word(i)], bit(i));
+  }
+
+  bool try_set(size_t i) noexcept {
+    IRS_ASSERT(i < bits_);
+    auto& data = data_[word(i)];
+    const auto mask = word_t{1} << bit(i);
+    if ((data & mask) != 0) {
+      return false;
+    }
+    data |= mask;
+    return true;
   }
 
   bool any() const noexcept {
@@ -167,36 +199,54 @@ class dynamic_bitset {
 
   bool none() const noexcept { return !any(); }
 
-  bool all() const noexcept { return (count() == size()); }
+  bool all() const noexcept { return count() == bits_; }
 
-  void clear() noexcept {
-    if (data_) {
-      // passing nullptr to `std::memset` is undefined behavior
-      std::memset(data_.get(), 0, sizeof(word_t) * words_);
+  void clear() noexcept { clear_offset(0); }
+
+  // counts bits set
+  size_t count() const noexcept { return math::popcount(begin(), end()); }
+
+ private:
+  size_t capacity_words() const noexcept { return data_.get_deleter().size(); }
+
+  void reserve_words(size_t words) {
+    if (words > capacity_words()) {
+      auto new_data = memory::allocate_unique<word_t[]>(
+        data_.get_deleter().alloc(), words, memory::allocate_only);
+      IRS_ASSERT(new_data != nullptr);
+      if (words_ != 0) {
+        IRS_ASSERT(data() != nullptr);
+        std::memcpy(new_data.get(), data(), words_ * sizeof(word_t));
+      }
+      data_ = std::move(new_data);
     }
   }
 
-  // counts bits set
-  word_t count() const noexcept { return math::popcount(begin(), end()); }
+  void clear_offset(size_t offset_words) noexcept {
+    if (offset_words < words_) {
+      IRS_ASSERT(data_ != nullptr);
+      std::memset(data_.get() + offset_words, 0,
+                  (words_ - offset_words) * sizeof(word_t));
+    }
+  }
 
- private:
   void sanitize() noexcept {
     IRS_ASSERT(bits_ <= capacity());
-    auto last_word_bits = bits_ % bits_required<word_t>();
+    IRS_ASSERT(words_ <= capacity_words());
+    const auto last_word_bits = bit(bits_);
 
-    if (!last_word_bits) {
+    if (last_word_bits == 0) {
       return;  // no words or last word has all bits set
     }
 
-    const auto mask = ~(~word_t(0) << (bits_ % bits_required<word_t>()));
+    const auto mask = ~(~word_t{0} << last_word_bits);
 
     data_[words_ - 1] &= mask;
   }
 
-  IRS_NO_UNIQUE_ADDRESS allocator_type alloc_;
-  size_t bits_{};    // number of bits in a bitset
-  size_t words_{};   // number of words used for storing data
-  word_ptr_t data_;  // words array
+  word_ptr_t data_;  // words array: pointer, allocator, capacity in words
+  size_t words_{0};  // size of bitset in words
+  size_t bits_{0};   // size of bitset in bits
 };
 
 using bitset = dynamic_bitset<std::allocator<size_t>>;

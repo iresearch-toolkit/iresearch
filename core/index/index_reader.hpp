@@ -133,7 +133,7 @@ struct SubReader : public IndexReader, public ColumnProvider {
 
   // Live & deleted docs
 
-  virtual const document_mask* docs_mask() const = 0;
+  virtual const DocumentMask* docs_mask() const = 0;
 
   // Returns an iterator over live documents in current segment.
   virtual doc_iterator::ptr docs_iterator() const = 0;

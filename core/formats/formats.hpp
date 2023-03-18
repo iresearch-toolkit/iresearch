@@ -56,8 +56,8 @@ struct postings_writer;
 struct Scorer;
 struct WandWriter;
 
-using document_mask = absl::flat_hash_set<doc_id_t>;
-using doc_map = std::vector<doc_id_t>;
+using DocumentMask = absl::flat_hash_set<doc_id_t>;
+using DocMap = std::vector<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
 using ScoreFunctionFactory =
@@ -384,7 +384,7 @@ struct document_mask_writer : memory::Managed {
 
   // Return number of bytes written
   virtual size_t write(directory& dir, const SegmentMeta& meta,
-                       const document_mask& docs_mask) = 0;
+                       const DocumentMask& docs_mask) = 0;
 };
 
 struct document_mask_reader : memory::Managed {
@@ -394,7 +394,7 @@ struct document_mask_reader : memory::Managed {
   // false - otherwise.
   // May throw io_error or index_error
   virtual bool read(const directory& dir, const SegmentMeta& meta,
-                    document_mask& docs_mask) = 0;
+                    DocumentMask& docs_mask) = 0;
 };
 
 struct segment_meta_writer : memory::Managed {
@@ -464,7 +464,7 @@ class format {
 
 struct flush_state {
   directory* const dir{};
-  const doc_map* docmap{};
+  const DocMap* docmap{};
   // Accumulated segment features
   const std::set<type_info::type_id>* features{};
   // Segment name
