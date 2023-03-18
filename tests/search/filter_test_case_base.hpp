@@ -152,8 +152,8 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
 
   void collect(irs::byte_type* filter_attrs, const irs::FieldCollector* field,
                const irs::TermCollector* term) const final {
-    if (sort_.collectors_collect_) {
-      sort_.collectors_collect_(filter_attrs, field, term);
+    if (collectors_collect_) {
+      collectors_collect_(filter_attrs, field, term);
     }
   }
 
@@ -162,11 +162,11 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
   }
 
   irs::FieldCollector::ptr prepare_field_collector() const final {
-    if (sort_.prepare_field_collector_) {
-      return sort_.prepare_field_collector_();
+    if (prepare_field_collector_) {
+      return prepare_field_collector_();
     }
 
-    return std::make_unique<field_collector>(sort_);
+    return std::make_unique<field_collector>(*this);
   }
 
   irs::ScoreFunction prepare_scorer(
@@ -175,29 +175,29 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
     const irs::byte_type* filter_node_attrs,
     const irs::attribute_provider& document_attrs,
     irs::score_t boost) const final {
-    if (sort_.prepare_scorer) {
-      return sort_.prepare_scorer(segment_reader, term_reader,
-                                  filter_node_attrs, document_attrs, boost);
+    if (prepare_scorer) {
+      return prepare_scorer(segment_reader, term_reader, filter_node_attrs,
+                            document_attrs, boost);
     }
 
-    return irs::ScoreFunction::Make<custom_sort::prepared::scorer>(
+    return irs::ScoreFunction::Make<custom_sort::scorer>(
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& state = *reinterpret_cast<scorer*>(ctx);
 
-        if (state.sort_.scorer_score) {
-          state.sort_.scorer_score(
+        if (state.scorer_score) {
+          state.scorer_score(
             irs::get<irs::document>(state.document_attrs_)->value, res);
         }
       },
-      sort_, segment_reader, term_reader, filter_node_attrs, document_attrs);
+      *this, segment_reader, term_reader, filter_node_attrs, document_attrs);
   }
 
   irs::TermCollector::ptr prepare_term_collector() const final {
-    if (sort_.prepare_term_collector_) {
-      return sort_.prepare_term_collector_();
+    if (prepare_term_collector_) {
+      return prepare_term_collector_();
     }
 
-    return std::make_unique<term_collector>(sort_);
+    return std::make_unique<term_collector>(*this);
   }
 
   std::function<void(const irs::SubReader&, const irs::term_reader&)>
