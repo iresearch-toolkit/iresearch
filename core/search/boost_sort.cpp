@@ -25,8 +25,8 @@
 namespace irs {
 namespace {
 
-ScorerFactory::ptr make_json(std::string_view /*args*/) {
-  return std::make_unique<boost_sort>();
+Scorer::ptr make_json(std::string_view /*args*/) {
+  return std::make_unique<BoostScore>();
 }
 
 struct volatile_boost_score_ctx final : score_ctx {
@@ -39,46 +39,27 @@ struct volatile_boost_score_ctx final : score_ctx {
   score_t boost;
   const filter_boost* volatile_boost;
 };
-
-struct Prepared final : ScorerBase<void> {
-
-  Prepared() :  ScorerBase(irs::type<Prepared>::get()) {}
-
-  IndexFeatures index_features() const noexcept final {
-    return IndexFeatures::NONE;
-  }
-
-  ScoreFunction prepare_scorer(
-    const ColumnProvider& /*segment*/,
-    const std::map<irs::type_info::type_id, field_id>& /*features*/,
-    const byte_type* /*stats*/, const irs::attribute_provider& attrs,
-    irs::score_t boost) const final {
-    const auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
-
-    if (volatile_boost == nullptr) {
-      return ScoreFunction::Constant(boost);
-    }
-
-    return ScoreFunction::Make<volatile_boost_score_ctx>(
-      [](score_ctx* ctx, score_t* res) noexcept {
-        auto& state = *static_cast<volatile_boost_score_ctx*>(ctx);
-        *res = state.volatile_boost->value * state.boost;
-      },
-      volatile_boost, boost);
-  }
-};
-
 }  // namespace
 
-void boost_sort::init() { REGISTER_SCORER_JSON(boost_sort, make_json); }
+ScoreFunction BoostScore::prepare_scorer(
+  const ColumnProvider& /*segment*/,
+  const std::map<irs::type_info::type_id, field_id>& /*features*/,
+  const byte_type* /*stats*/, const attribute_provider& attrs,
+  score_t boost) const {
+  const auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
-boost_sort::boost_sort() noexcept
-  : ScorerFactory{irs::type<boost_sort>::get()} {}
+  if (volatile_boost == nullptr) {
+    return ScoreFunction::Constant(boost);
+  }
 
-Scorer::ptr boost_sort::prepare() const {
-  // FIXME can avoid allocation
-  // TODO(MBkkt) managed_ptr? What exactly do you want?
-  return std::make_unique<Prepared>();
+  return ScoreFunction::Make<volatile_boost_score_ctx>(
+    [](score_ctx* ctx, score_t* res) noexcept {
+      auto& state = *static_cast<volatile_boost_score_ctx*>(ctx);
+      *res = state.volatile_boost->value * state.boost;
+    },
+    volatile_boost, boost);
 }
+
+void BoostScore::init() { REGISTER_SCORER_JSON(BoostScore, make_json); }
 
 }  // namespace irs

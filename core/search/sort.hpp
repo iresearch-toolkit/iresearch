@@ -143,8 +143,6 @@ struct WandWriter {
 struct Scorer {
   using ptr = std::unique_ptr<Scorer>;
 
-  explicit Scorer(const type_info& type) noexcept : type_{type.id()} {};
-
   virtual ~Scorer() = default;
 
   // Store collected index statistics into 'stats' of the
@@ -198,11 +196,10 @@ struct Scorer {
   virtual std::pair<size_t, size_t> stats_size() const = 0;
 
   virtual bool equals(const Scorer& other) const noexcept {
-    return type_ == other.type_;
+    return type() == other.type();
   }
 
- private:
-  type_info::type_id type_;
+  virtual irs::type_info::type_id type() const noexcept = 0;
 };
 
 // Possible variants of merging multiple scores
@@ -220,49 +217,27 @@ enum class ScoreMergeType {
   kMin
 };
 
-struct ScorerBucket : util::noncopyable {
-  ScorerBucket(Scorer::ptr&& bucket, size_t stats_offset) noexcept
-    : bucket(std::move(bucket)), stats_offset{stats_offset} {
+struct ScorerBucket {
+  ScorerBucket(const Scorer& bucket, size_t stats_offset) noexcept
+    : bucket(&bucket), stats_offset{stats_offset} {
     IRS_ASSERT(this->bucket);
   }
 
-  ScorerBucket(ScorerBucket&&) = default;
-  ScorerBucket& operator=(ScorerBucket&&) = default;
-
-  Scorer::ptr bucket;   // prepared score
-  size_t stats_offset;  // offset in stats buffer
+  const Scorer* bucket;  // prepared score
+  size_t stats_offset;   // offset in stats buffer
 };
 
 static_assert(std::is_nothrow_move_constructible_v<ScorerBucket>);
 static_assert(std::is_nothrow_move_assignable_v<ScorerBucket>);
-
-// FIXME(gnusi): Doesn't look very useful anymore, consider removing this
-// Factory class instantiating corresponding scorer.
-class ScorerFactory {
- public:
-  using ptr = std::unique_ptr<ScorerFactory>;
-
-  explicit ScorerFactory(const type_info& type) noexcept;
-  virtual ~ScorerFactory() = default;
-
-  constexpr type_info::type_id type() const noexcept { return type_; }
-
-  virtual Scorer::ptr prepare() const = 0;
-
- private:
-  type_info::type_id type_;
-};
 
 // Set of compiled scorers
 class Scorers final : private util::noncopyable {
  public:
   static const Scorers kUnordered;
 
-  static Scorers Prepare(std::span<const ScorerFactory::ptr> order);
-  static Scorers Prepare(std::span<const ScorerFactory*> order);
-  static Scorers Prepare(const ScorerFactory& order) {
-    const auto* p = &order;
-    return Prepare(std::span{&p, 1});
+  static Scorers Prepare(std::span<const Scorer*> scorers);
+  static Scorers Prepare(const Scorer* scorer) {
+    return Prepare(std::span{&scorer, 1});
   }
 
   Scorers() = default;
@@ -417,62 +392,50 @@ auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
 }
 
 // Template score for base class for all prepared(compiled) sort entries
-template<typename StatsType>
+template<typename Impl, typename StatsType = void>
 class ScorerBase : public Scorer {
  public:
-  static_assert(std::is_trivially_constructible_v<StatsType>,
-                "StatsTypemust be trivially constructible");
-
-  ScorerBase(const type_info& type) : Scorer(type) {}
-
-  using stats_t = StatsType;
+  static_assert(std::is_same_v<StatsType, void> ||
+                std::is_trivially_constructible_v<StatsType>);
 
   WandWriter::ptr prepare_wand_writer(size_t) const override { return nullptr; }
 
   WandSource::ptr prepare_wand_source() const override { return nullptr; }
 
-  IRS_FORCE_INLINE static const stats_t& stats_cast(
-    const byte_type* buf) noexcept {
-    IRS_ASSERT(buf);
-    return *reinterpret_cast<const stats_t*>(buf);
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<Impl>::id();
   }
 
-  IRS_FORCE_INLINE static stats_t& stats_cast(byte_type* buf) noexcept {
-    return const_cast<stats_t&>(stats_cast(const_cast<const byte_type*>(buf)));
-  }
-
-  // Returns number of bytes and alignment required to store stats
-  inline std::pair<size_t, size_t> stats_size() const noexcept final {
-    static_assert(alignof(stats_t) <= alignof(std::max_align_t),
-                  "alignof(stats_t) must be <= alignof(std::max_align_t)");
-
-    static_assert(math::is_power2(alignof(stats_t)),
-                  "alignof(stats_t) must be a power of 2");
-
-    return {sizeof(stats_t), alignof(stats_t)};
-  }
-};
-
-template<>
-class ScorerBase<void> : public Scorer {
- public:
   FieldCollector::ptr prepare_field_collector() const override {
     return nullptr;
   }
 
-  ScorerBase(const type_info& type) : Scorer(type) {}
-
   TermCollector::ptr prepare_term_collector() const override { return nullptr; }
-
-  WandWriter::ptr prepare_wand_writer(size_t) const override { return nullptr; }
-
-  WandSource::ptr prepare_wand_source() const override { return nullptr; }
 
   void collect(byte_type*, const FieldCollector*,
                const TermCollector*) const override {}
 
-  inline std::pair<size_t, size_t> stats_size() const noexcept final {
-    return {size_t{0}, size_t{0}};
+  IRS_FORCE_INLINE static const StatsType* stats_cast(
+    const byte_type* buf) noexcept {
+    IRS_ASSERT(buf);
+    return reinterpret_cast<const StatsType*>(buf);
+  }
+
+  IRS_FORCE_INLINE static StatsType* stats_cast(byte_type* buf) noexcept {
+    return const_cast<StatsType*>(
+      stats_cast(const_cast<const byte_type*>(buf)));
+  }
+
+  // Returns number of bytes and alignment required to store stats
+  IRS_FORCE_INLINE std::pair<size_t, size_t> stats_size() const noexcept final {
+    if constexpr (std::is_same_v<StatsType, void>) {
+      return {size_t{0}, size_t{0}};
+    } else {
+      static_assert(alignof(StatsType) <= alignof(std::max_align_t));
+      static_assert(math::is_power2(alignof(StatsType)));
+
+      return {sizeof(StatsType), alignof(StatsType)};
+    }
   }
 };
 

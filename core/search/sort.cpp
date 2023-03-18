@@ -29,28 +29,24 @@
 #include "utils/memory_pool.hpp"
 
 namespace irs {
-namespace {
 
-template<typename Vector, typename Iterator>
-std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
-                                                  Iterator end) {
-  Vector buckets;
-  buckets.reserve(std::distance(begin, end));
+REGISTER_ATTRIBUTE(filter_boost);
+
+Scorers Scorers::Prepare(std::span<const Scorer*> scorers) {
+  ScorerBuckets buckets;
+  buckets.reserve(scorers.size());
 
   IndexFeatures features{};
   size_t stats_size{};
   size_t stats_align{};
 
-  for (; begin != end; ++begin) {
-    auto prepared = begin->prepare();
-
-    if (!prepared) {
-      // skip empty sorts
+  for (const auto* scorer : scorers) {
+    if (IRS_UNLIKELY(!scorer)) {
       continue;
     }
 
     // cppcheck-suppress shadowFunction
-    const auto [bucket_stats_size, bucket_stats_align] = prepared->stats_size();
+    const auto [bucket_stats_size, bucket_stats_align] = scorer->stats_size();
     IRS_ASSERT(bucket_stats_align <= alignof(std::max_align_t));
     IRS_ASSERT(
       math::is_power2(bucket_stats_align));  // math::is_power2(0) returns true
@@ -58,9 +54,9 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
     stats_align = std::max(stats_align, bucket_stats_align);
 
     stats_size = memory::align_up(stats_size, bucket_stats_align);
-    features |= prepared->index_features();
+    features |= scorer->index_features();
 
-    buckets.emplace_back(std::move(prepared), stats_size);
+    buckets.emplace_back(*scorer, stats_size);
 
     stats_size += memory::align_up(bucket_stats_size, bucket_stats_align);
   }
@@ -68,31 +64,6 @@ std::tuple<Vector, size_t, IndexFeatures> Prepare(Iterator begin,
   stats_size = memory::align_up(stats_size, stats_align);
 
   return {std::move(buckets), stats_size, features};
-}
-
-}  // namespace
-
-REGISTER_ATTRIBUTE(filter_boost);
-
-ScorerFactory::ScorerFactory(const type_info& type) noexcept
-  : type_{type.id()} {}
-
-Scorers Scorers::Prepare(std::span<const ScorerFactory::ptr> order) {
-  return std::apply(
-    [](auto&&... args) {
-      return Scorers{std::forward<decltype(args)>(args)...};
-    },
-    ::irs::Prepare<ScorerBuckets>(ptr_iterator{std::begin(order)},
-                                  ptr_iterator{std::end(order)}));
-}
-
-Scorers Scorers::Prepare(std::span<const ScorerFactory*> order) {
-  return std::apply(
-    [](auto&&... args) {
-      return Scorers{std::forward<decltype(args)>(args)...};
-    },
-    ::irs::Prepare<ScorerBuckets>(ptr_iterator{std::begin(order)},
-                                  ptr_iterator{std::end(order)}));
 }
 
 const Scorers Scorers::kUnordered;

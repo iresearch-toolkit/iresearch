@@ -555,7 +555,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  std::array<irs::ScorerFactory::ptr, 1> order{irs::scorers::get(
+  std::array<irs::Scorer::ptr, 1> order{irs::scorers::get(
     "bm25", irs::type<irs::text_format::json>::get(), std::string_view{})};
   ASSERT_NE(nullptr, order.front());
 

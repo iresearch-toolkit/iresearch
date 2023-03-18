@@ -22,14 +22,42 @@
 
 #pragma once
 
-#include "scorers.hpp"
+#include "search/scorers.hpp"
 
 namespace irs {
 
-class bm25_sort : public ScorerFactory {
- public:
-  using score_t = float_t;
+// BM25 similarity
+// bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1 - b + b *
+// |doc|/avgDL) + tf(doc, term))
+//
+// Inverted document frequency
+// idf(term) = log(1 + (#documents with this field - #documents with this term +
+// 0.5)/(#documents with this term + 0.5))
+//
+// Term frequency
+//   Norm2: tf(doc, term) = frequency(doc, term);
+//   Norm:  tf(doc, term) = sqrt(frequency(doc, term));
+//
+// Document length
+//   Norm2: |doc| # of terms in a field within a document
+//   Norm:  |doc| = 1 / sqrt(# of terms in a field within a document)
+//
+// Average document length
+// avgDL = sum(field_term_count) / (#documents with this field)
 
+struct BM25Stats {
+  // precomputed idf value
+  float_t idf;
+  // precomputed k*(1-b)
+  float_t norm_const;
+  // precomputed k*b/avgD
+  float_t norm_length;
+  // precomputed 1/(k*(1-b+b*|doc|/avgDL)) for |doc| E [0..255]
+  float_t norm_cache[256];
+};
+
+class BM25 final : public irs::ScorerBase<BM25, BM25Stats> {
+ public:
   static constexpr std::string_view type_name() noexcept { return "bm25"; }
 
   static constexpr float_t K() noexcept { return 1.2f; }
@@ -40,30 +68,38 @@ class bm25_sort : public ScorerFactory {
 
   static void init();  // for trigering registration in a static build
 
-  explicit bm25_sort(float_t k = K(), float_t b = B(),
-                     bool boost_as_score = BOOST_AS_SCORE()) noexcept;
+  BM25(float_t k = K(), float_t b = B(), bool boost_as_score = BOOST_AS_SCORE())
+  noexcept : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
 
-  float_t k() const noexcept { return k_; }
-  void k(float_t k) noexcept { k_ = k; }
+  void collect(byte_type* stats_buf, const irs::FieldCollector* field,
+               const irs::TermCollector* term) const final;
 
-  float_t b() const noexcept { return b_; }
-  void b(float_t b) noexcept { b_ = b; }
+  IndexFeatures index_features() const noexcept final {
+    return IndexFeatures::FREQ;
+  }
 
-  // use boost as score even if frequency is not set
-  bool use_boost_as_score() const noexcept { return boost_as_score_; }
-  void use_boost_as_score(bool use) noexcept { boost_as_score_ = use; }
+  FieldCollector::ptr prepare_field_collector() const final;
 
-  // returns 'true' if current scorer is 'bm11'
-  bool bm11() const noexcept { return b_ == 1.f; }
+  ScoreFunction prepare_scorer(
+    const ColumnProvider& segment,
+    const std::map<irs::type_info::type_id, field_id>& features,
+    const byte_type* query_stats, const attribute_provider& doc_attrs,
+    score_t boost) const final;
 
-  // returns 'true' if current scorer is 'bm15'
-  bool bm15() const noexcept { return b_ == 0.f; }
+  WandWriter::ptr prepare_wand_writer(size_t max_levels) const final;
 
-  Scorer::ptr prepare() const final;
+  WandSource::ptr prepare_wand_source() const final;
+
+  TermCollector::ptr prepare_term_collector() const final;
+
+  bool equals(const Scorer& other) const noexcept final;
 
  private:
-  float_t k_;  // [1.2 .. 2.0]
-  float_t b_;  // 0.75
+  // Norms are not needed for BM15
+  bool IsBM15() const noexcept { return b_ == 0.f; }
+
+  float_t k_;
+  float_t b_;
   bool boost_as_score_;
 };
 

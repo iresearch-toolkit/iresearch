@@ -563,7 +563,7 @@ int search(std::string_view path, std::string_view dir_type,
   {
     SCOPED_TIMER("Order build time");
 
-    order = irs::Scorers::Prepare(std::span{&scr, 1});
+    order = irs::Scorers::Prepare(scr.get());
   }
 
   struct task_provider_t {

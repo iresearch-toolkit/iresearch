@@ -55,67 +55,37 @@ struct aligned_value {
 };
 
 template<typename StatsType>
-struct aligned_scorer : public irs::ScorerFactory {
-  class prepared final : public irs::ScorerBase<StatsType> {
-   public:
-    explicit prepared(irs::IndexFeatures index_features,
-                      bool empty_scorer) noexcept
-      : irs::ScorerBase<StatsType>(irs::type<prepared>::get()),
-        empty_scorer_(empty_scorer),
-        index_features_(index_features) {}
-
-    irs::FieldCollector::ptr prepare_field_collector() const final {
-      return nullptr;
-    }
-    irs::TermCollector::ptr prepare_term_collector() const final {
-      return nullptr;
-    }
-    void collect(irs::byte_type*, const irs::FieldCollector*,
-                 const irs::TermCollector*) const final {
-      // NOOP
-    }
-    irs::ScoreFunction prepare_scorer(
-      const irs::ColumnProvider& /*segment*/,
-      const irs::feature_map_t& /*field*/, const irs::byte_type* /*stats*/,
-      const irs::attribute_provider& /*doc_attrs*/,
-      irs::score_t /*boost*/) const final {
-      if (empty_scorer_) {
-        return irs::ScoreFunction::Invalid();
-      }
-      return irs::ScoreFunction::Empty();
-    }
-
-    irs::IndexFeatures index_features() const final { return index_features_; }
-
-    irs::IndexFeatures index_features_;
-    bool empty_scorer_;
-  };
-
-  static ptr make(irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
-                  bool empty_scorer = true) {
+class aligned_scorer final
+  : public irs::ScorerBase<aligned_scorer<StatsType>, StatsType> {
+ public:
+  static irs::Scorer::ptr make(
+    irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
+    bool empty_scorer = true) {
     return std::make_unique<aligned_scorer>(index_features, empty_scorer);
   }
 
-  explicit aligned_scorer(
-    irs::IndexFeatures index_features_ = irs::IndexFeatures::NONE,
-    bool empty_scorer = true)
-    : irs::ScorerFactory(irs::type<aligned_scorer>::get()),
-      index_features_(index_features_),
-      empty_scorer_(empty_scorer) {}
+  explicit aligned_scorer(irs::IndexFeatures index_features,
+                          bool empty_scorer) noexcept
+    : empty_scorer_(empty_scorer), index_features_(index_features) {}
 
-  irs::Scorer::ptr prepare() const final {
-    return std::make_unique<aligned_scorer<StatsType>::prepared>(
-      index_features_, empty_scorer_);
+  irs::ScoreFunction prepare_scorer(
+    const irs::ColumnProvider& /*segment*/, const irs::feature_map_t& /*field*/,
+    const irs::byte_type* /*stats*/,
+    const irs::attribute_provider& /*doc_attrs*/,
+    irs::score_t /*boost*/) const final {
+    if (empty_scorer_) {
+      return irs::ScoreFunction::Invalid();
+    }
+    return irs::ScoreFunction::Empty();
   }
+
+  irs::IndexFeatures index_features() const final { return index_features_; }
 
   irs::IndexFeatures index_features_;
   bool empty_scorer_;
 };
 
-struct dummy_scorer0 : public irs::ScorerFactory {
-  dummy_scorer0() : irs::ScorerFactory(irs::type<dummy_scorer0>::get()) {}
-  irs::Scorer::ptr prepare() const final { return nullptr; }
-};
+struct dummy_scorer0 : public irs::ScorerBase<dummy_scorer0, void> {};
 
 }  // namespace
 
@@ -131,7 +101,7 @@ TEST(sort_tests, static_const) {
 
 TEST(sort_tests, prepare_order) {
   {
-    std::array<irs::ScorerFactory::ptr, 2> ord{
+    std::array<irs::Scorer::ptr, 2> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<1, 4>>>()};
 
@@ -171,7 +141,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 4> ord{
+    std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
@@ -213,7 +183,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 4> ord{
+    std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::NONE, false),  // returns valid scorers
@@ -270,7 +240,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 4> ord{
+    std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
@@ -328,7 +298,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 4> ord{
+    std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(),
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(),
@@ -382,7 +352,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 3> ord{
+    std::array<irs::Scorer::ptr, 3> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
@@ -431,7 +401,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 4> ord{
+    std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
       std::make_unique<dummy_scorer0>(),
@@ -482,7 +452,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 4> ord{
+    std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
       std::make_unique<aligned_scorer<aligned_value<5, 4>>>(),
@@ -532,7 +502,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 11> ord{
+    std::array<irs::Scorer::ptr, 11> ord{
       std::make_unique<dummy_scorer0>(),
       std::make_unique<aligned_scorer<aligned_value<3, 1>>>(
         irs::IndexFeatures::NONE),
@@ -589,7 +559,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 5> ord{
+    std::array<irs::Scorer::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<3, 1>>>(
         irs::IndexFeatures::NONE),
@@ -640,7 +610,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 5> ord{
+    std::array<irs::Scorer::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<7, 4>>>(
         irs::IndexFeatures::FREQ),
@@ -692,7 +662,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 5> ord{
+    std::array<irs::Scorer::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::NONE),
@@ -743,7 +713,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 5> ord{
+    std::array<irs::Scorer::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>(
         irs::IndexFeatures::FREQ),
@@ -794,7 +764,7 @@ TEST(sort_tests, prepare_order) {
   }
 
   {
-    std::array<irs::ScorerFactory::ptr, 5> ord{
+    std::array<irs::Scorer::ptr, 5> ord{
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>(
         irs::IndexFeatures::FREQ),

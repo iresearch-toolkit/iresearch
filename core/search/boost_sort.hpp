@@ -26,16 +26,22 @@
 
 namespace irs {
 
-struct boost_sort final : public ScorerFactory {
+struct BoostScore final : ScorerBase<BoostScore, void> {
   static constexpr std::string_view type_name() noexcept {
     return "boostscore";
   }
 
   static void init();
 
-  boost_sort() noexcept;
+  ScoreFunction prepare_scorer(
+    const ColumnProvider& /*segment*/,
+    const std::map<irs::type_info::type_id, field_id>& /*features*/,
+    const byte_type* /*stats*/, const attribute_provider& attrs,
+    score_t boost) const final;
 
-  Scorer::ptr prepare() const final;
+  IndexFeatures index_features() const noexcept final {
+    return IndexFeatures::NONE;
+  }
 };
 
 }  // namespace irs
