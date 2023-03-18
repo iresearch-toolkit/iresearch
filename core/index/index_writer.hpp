@@ -698,10 +698,10 @@ class IndexWriter : private util::noncopyable {
 
     static std::unique_ptr<SegmentContext> make(
       directory& dir, segment_meta_generator_t&& meta_generator,
-      const SegmentWriterOptions& segment_writer_options);
+      const SegmentWriterOptions& options);
 
     SegmentContext(directory& dir, segment_meta_generator_t&& meta_generator,
-                   const SegmentWriterOptions& segment_writer_options);
+                   const SegmentWriterOptions& options);
 
     void Rollback() noexcept;
 

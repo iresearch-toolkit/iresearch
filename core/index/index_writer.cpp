@@ -948,11 +948,10 @@ uint64_t IndexWriter::FlushContext::FlushPending(uint64_t committed_tick,
 
 IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
-  const ColumnInfoProvider& column_info,
-  const FeatureInfoProvider& feature_info, const Comparer* comparator)
-  : dir_(dir),
-    meta_generator_(std::move(meta_generator)),
-    writer_(segment_writer::make(dir_, column_info, feature_info, comparator)) {
+  const SegmentWriterOptions& options)
+  : dir_{dir},
+    meta_generator_{std::move(meta_generator)},
+    writer_{segment_writer::make(dir_, options)} {
   IRS_ASSERT(meta_generator_);
 }
 
@@ -1815,21 +1814,28 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
 
       return meta;
     },
-    GetSegmentWriterOptions())};
+    GetSegmentWriterOptions());
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (auto segment_memory_max = segment_limits_.segment_memory_max.load();
       segment_memory_max != 0 &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
     segment_ctx->writer_.reset();  // reset before create new
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, GetSegmentWriterOptions());
-                                                
+    segment_ctx->writer_ =
+      segment_writer::make(segment_ctx->dir_, GetSegmentWriterOptions());
   }
 
   return {segment_ctx, segments_active_};
 } catch (...) {
   segments_active_.fetch_sub(1, std::memory_order_relaxed);
   throw;
+}
+
+SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
+  return {.column_info = column_info_,
+          .feature_info = feature_info_,
+          .scorers = committed_reader_->Options().scorers,
+          .comparator = this->comparator_};
 }
 
 IndexWriter::PendingContext IndexWriter::PrepareFlush(
