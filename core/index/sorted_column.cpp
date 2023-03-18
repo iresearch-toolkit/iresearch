@@ -126,7 +126,7 @@ void sorted_column::flush_already_sorted(
 }
 
 bool sorted_column::flush_dense(
-  const columnstore_writer::values_writer_f& writer, const DocMap& docmap,
+  const columnstore_writer::values_writer_f& writer, DocMapView docmap,
   FlushBuffer& buffer) {
   IRS_ASSERT(!docmap.empty());
 
@@ -157,7 +157,7 @@ bool sorted_column::flush_dense(
 }
 
 void sorted_column::flush_sparse(
-  const columnstore_writer::values_writer_f& writer, const DocMap& docmap,
+  const columnstore_writer::values_writer_f& writer, DocMapView docmap,
   FlushBuffer& buffer) {
   IRS_ASSERT(!docmap.empty());
 
@@ -183,7 +183,7 @@ void sorted_column::flush_sparse(
 
 field_id sorted_column::flush(columnstore_writer& writer,
                               columnstore_writer::column_finalizer_f finalizer,
-                              const DocMap& docmap, FlushBuffer& buffer) {
+                              DocMapView docmap, FlushBuffer& buffer) {
   IRS_ASSERT(docmap.size() < irs::doc_limits::eof());
 
   if (IRS_UNLIKELY(index_.empty())) {

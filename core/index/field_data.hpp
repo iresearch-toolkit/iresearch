@@ -62,14 +62,33 @@ class sorting_doc_iterator;
 
 // represents a mapping between cached column data
 // and a pointer to column identifier
-struct cached_column {
+class cached_column : public column_reader {
+ public:
   cached_column(field_id* id, ColumnInfo info,
                 columnstore_writer::column_finalizer_f finalizer) noexcept
-    : id{id}, stream{info}, finalizer{std::move(finalizer)} {}
+    : id_{id}, stream_{info}, finalizer_{std::move(finalizer)} {}
 
-  field_id* id;
-  sorted_column stream;
-  columnstore_writer::column_finalizer_f finalizer;
+  field_id id() const noexcept final { return *id_; }
+
+  // FIXME(gnusi)
+  std::string_view name() const noexcept final { return {}; }
+  bytes_view payload() const noexcept final { return {}; }
+  doc_iterator::ptr iterator(ColumnHint hint) const { return nullptr; }
+
+  doc_id_t size() const final { return static_cast<doc_id_t>(stream_.size()); }
+
+  sorted_column& Stream() noexcept { return stream_; }
+  const sorted_column& Stream() const noexcept { return stream_; }
+
+  void Flush(columnstore_writer& writer, DocMapView docmap,
+             sorted_column::FlushBuffer& buffer) {
+    *id_ = stream_.flush(writer, std::move(finalizer_), docmap, buffer);
+  }
+
+ private:
+  field_id* id_;
+  sorted_column stream_;
+  columnstore_writer::column_finalizer_f finalizer_;
 };
 
 class field_data : util::noncopyable {

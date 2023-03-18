@@ -497,17 +497,18 @@ class postings_writer_base : public irs::postings_writer {
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)>
     alloc_{meta_pool_};
   SkipWriter skip_;
-  version10::term_meta last_state_;            // Last final term state
-  bitset docs_;                                // Set of all processed documents
-  index_output::ptr doc_out_;                  // Postings (doc + freq)
-  index_output::ptr pos_out_;                  // Positions
-  index_output::ptr pay_out_;                  // Payload (pay + offs)
-  doc_buffer doc_;                             // Document stream
-  pos_buffer pos_;                             // Proximity stream
-  pay_buffer pay_;                             // Payloads and offsets stream
-  uint32_t* buf_;                              // Buffer for encoding
-  Attributes attrs_;                           // Set of attributes
-  std::vector<irs::WandWriter::ptr> writers_;  // List of wand writers
+  version10::term_meta last_state_;  // Last final term state
+  bitset docs_;                      // Set of all processed documents
+  index_output::ptr doc_out_;        // Postings (doc + freq)
+  index_output::ptr pos_out_;        // Positions
+  index_output::ptr pay_out_;        // Payload (pay + offs)
+  doc_buffer doc_;                   // Document stream
+  pos_buffer pos_;                   // Proximity stream
+  pay_buffer pay_;                   // Payloads and offsets stream
+  uint32_t* buf_;                    // Buffer for encoding
+  Attributes attrs_;                 // Set of attributes
+  const ColumnProvider* columns_{};
+  std::vector<irs::WandWriter::ptr> writers_;    // List of wand writers
   std::vector<irs::WandWriter*> valid_writers_;  // Valid wand writers
   uint64_t writers_mask_{};
   Features features_;  // Features supported by current field
@@ -515,23 +516,19 @@ class postings_writer_base : public irs::postings_writer {
   const TermsFormat terms_format_version_;
 };
 
-// FIXME(gnusi): remove
-struct EmptyColumnProvider : ColumnProvider {
-  const irs::column_reader* column(field_id) const { return nullptr; }
-
-  const irs::column_reader* column(std::string_view) const { return nullptr; }
-} kEmptyColumnProvider;
-
 void postings_writer_base::PrepareWriters(const irs::feature_map_t& features) {
-  // Make frequency avaliable for Prepare
-  attrs_.freq_ = features_.HasFrequency() ? &attrs_.freq_value_ : nullptr;
-
   writers_mask_ = 0;
   valid_writers_.clear();
 
+  if (IRS_UNLIKELY(!columns_)) {
+    return;
+  }
+
+  // Make frequency avaliable for Prepare
+  attrs_.freq_ = features_.HasFrequency() ? &attrs_.freq_value_ : nullptr;
+
   for (size_t i = 0; auto& writer : writers_) {
-    const bool valid =
-      writer && writer->Prepare(kEmptyColumnProvider, features, attrs_);
+    const bool valid = writer && writer->Prepare(*columns_, features, attrs_);
     if (valid) {
       irs::set_bit(writers_mask_, i);
       valid_writers_.emplace_back(writer.get());
@@ -610,6 +607,7 @@ void postings_writer_base::prepare(index_output& out,
   // Prepare wand writers
   writers_ = PrepareWandWriters(state.scorers, kMaxSkipLevels);
   valid_writers_.reserve(writers_.size());
+  columns_ = state.columns;
 
   // Prepare documents bitset
   docs_.reset(doc_limits::min() + state.doc_count);

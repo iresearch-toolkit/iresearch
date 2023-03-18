@@ -80,7 +80,7 @@ class sorted_column final : public column_output, private util::noncopyable {
 
   field_id flush(columnstore_writer& writer,
                  columnstore_writer::column_finalizer_f header_writer,
-                 const DocMap& docmap, FlushBuffer& buffer);
+                 DocMapView docmap, FlushBuffer& buffer);
 
   size_t memory_active() const noexcept {
     return data_buf_.size() +
@@ -120,10 +120,10 @@ class sorted_column final : public column_output, private util::noncopyable {
   void flush_already_sorted(const columnstore_writer::values_writer_f& writer);
 
   bool flush_dense(const columnstore_writer::values_writer_f& writer,
-                   const DocMap& docmap, FlushBuffer& buffer);
+                   DocMapView docmap, FlushBuffer& buffer);
 
   void flush_sparse(const columnstore_writer::values_writer_f& writer,
-                    const DocMap& docmap, FlushBuffer& buffer);
+                    DocMapView docmap, FlushBuffer& buffer);
 
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
   // doc_id + offset in 'data_buf_'

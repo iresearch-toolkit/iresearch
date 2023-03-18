@@ -58,6 +58,7 @@ struct WandWriter;
 
 using DocumentMask = absl::flat_hash_set<doc_id_t>;
 using DocMap = std::vector<doc_id_t>;
+using DocMapView = std::span<doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
 using ScoreFunctionFactory =
@@ -465,6 +466,7 @@ class format {
 struct flush_state {
   directory* const dir{};
   const DocMap* docmap{};
+  const ColumnProvider* columns{};
   // Accumulated segment features
   const std::set<type_info::type_id>* features{};
   // Segment name

@@ -726,7 +726,7 @@ field_data::field_data(std::string_view name, const features_t& features,
                                                     std::move(finalizer));
         features_.emplace_back(
           std::move(feature_writer),
-          [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
+          [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
             stream->prepare(doc);
             return *stream;
           });
