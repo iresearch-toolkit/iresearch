@@ -111,7 +111,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{true});
+  auto prepared_order = irs::Scorers::Prepare(irs::TFIDF{true});
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
@@ -211,7 +211,7 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
 }
 
 TEST_P(tfidf_test_case, consts) {
-  static_assert("tfidf" == irs::type<irs::tfidf_sort>::name());
+  static_assert("tfidf" == irs::type<irs::TFIDF>::name());
 }
 
 TEST_P(tfidf_test_case, test_load) {
@@ -229,9 +229,9 @@ TEST_P(tfidf_test_case, make_from_bool) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
-    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    auto& tfidf = dynamic_cast<irs::TFIDF&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
-    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
+    ASSERT_EQ(irs::TFIDF::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
   }
 
   // invalid `withNorms` argument
@@ -251,10 +251,10 @@ TEST_P(tfidf_test_case, make_from_array) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), std::string_view{});
     ASSERT_NE(nullptr, scorer);
-    ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
-    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
-    ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
-    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
+    ASSERT_EQ(irs::type<irs::TFIDF>::id(), scorer->type());
+    auto& tfidf = dynamic_cast<irs::TFIDF&>(*scorer);
+    ASSERT_EQ(irs::TFIDF::WITH_NORMS(), tfidf.normalize());
+    ASSERT_EQ(irs::TFIDF::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
   }
 
   // default args
@@ -262,10 +262,10 @@ TEST_P(tfidf_test_case, make_from_array) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
-    ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
-    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
-    ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
-    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
+    ASSERT_EQ(irs::type<irs::TFIDF>::id(), scorer->type());
+    auto& tfidf = dynamic_cast<irs::TFIDF&>(*scorer);
+    ASSERT_EQ(irs::TFIDF::WITH_NORMS(), tfidf.normalize());
+    ASSERT_EQ(irs::TFIDF::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
   }
 
   // `withNorms` argument
@@ -273,10 +273,10 @@ TEST_P(tfidf_test_case, make_from_array) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), "[ true ]");
     ASSERT_NE(nullptr, scorer);
-    ASSERT_EQ(irs::type<irs::tfidf_sort>::id(), scorer->type());
-    auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    ASSERT_EQ(irs::type<irs::TFIDF>::id(), scorer->type());
+    auto& tfidf = dynamic_cast<irs::TFIDF&>(*scorer);
     ASSERT_EQ(true, tfidf.normalize());
-    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
+    ASSERT_EQ(irs::TFIDF::BOOST_AS_SCORE(), tfidf.use_boost_as_score());
   }
 
   // invalid `withNorms` argument
@@ -384,7 +384,7 @@ TEST_P(tfidf_test_case, test_phrase) {
     add_segment(gen);
   }
 
-  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{false, true});
+  auto prepared_order = irs::Scorers::Prepare(irs::TFIDF{false, true});
 
   // read segment
   auto index = open_reader();
@@ -518,7 +518,7 @@ TEST_P(tfidf_test_case, test_query) {
     add_segment(gen);
   }
 
-  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{false, true});
+  auto prepared_order = irs::Scorers::Prepare(irs::TFIDF{false, true});
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
@@ -1274,7 +1274,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // default init (field_collector)
   {
-    irs::tfidf_sort sort;
+    irs::TFIDF sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_field_collector();
@@ -1310,7 +1310,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // default init (term_collector)
   {
-    irs::tfidf_sort sort;
+    irs::TFIDF sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_term_collector();
@@ -1346,7 +1346,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too short (field_collector)
   {
-    irs::tfidf_sort sort;
+    irs::TFIDF sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_field_collector();
@@ -1358,7 +1358,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too short (term_collector)
   {
-    irs::tfidf_sort sort;
+    irs::TFIDF sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_term_collector();
@@ -1370,7 +1370,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too long (field_collector)
   {
-    irs::tfidf_sort sort;
+    irs::TFIDF sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_field_collector();
@@ -1382,7 +1382,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too long (term_collector)
   {
-    irs::tfidf_sort sort;
+    irs::TFIDF sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_term_collector();
@@ -1399,9 +1399,9 @@ TEST_P(tfidf_test_case, test_make) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), std::string_view{});
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::TFIDF&>(*scorer);
     ASSERT_FALSE(scr.normalize());
-    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), scr.use_boost_as_score());
+    ASSERT_EQ(irs::TFIDF::BOOST_AS_SCORE(), scr.use_boost_as_score());
   }
 
   // invalid args
@@ -1416,9 +1416,9 @@ TEST_P(tfidf_test_case, test_make) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::TFIDF&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
-    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), scr.use_boost_as_score());
+    ASSERT_EQ(irs::TFIDF::BOOST_AS_SCORE(), scr.use_boost_as_score());
   }
 
   // invalid value (non-bool)
@@ -1434,9 +1434,9 @@ TEST_P(tfidf_test_case, test_make) {
       irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                         "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::TFIDF&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
-    ASSERT_EQ(irs::tfidf_sort::BOOST_AS_SCORE(), scr.use_boost_as_score());
+    ASSERT_EQ(irs::TFIDF::BOOST_AS_SCORE(), scr.use_boost_as_score());
   }
 
   // invalid values (withNorms)
@@ -1470,7 +1470,7 @@ TEST_P(tfidf_test_case, test_order) {
   irs::by_term query;
   *query.mutable_field() = "field";
 
-  auto prepared_order = irs::Scorers::Prepare(irs::tfidf_sort{false, true});
+  auto prepared_order = irs::Scorers::Prepare(irs::TFIDF{false, true});
 
   uint64_t seq = 0;
   const auto* column = segment.column("seq");

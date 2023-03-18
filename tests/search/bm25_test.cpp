@@ -115,7 +115,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
   }
 
   auto prepared_order = irs::Scorers::Prepare(
-    irs::bm25_sort{irs::bm25_sort::K(), irs::bm25_sort::B(), true});
+    irs::BM25{irs::BM25::K(), irs::BM25::B(), true});
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
@@ -212,7 +212,7 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
 }
 
 TEST_P(bm25_test_case, consts) {
-  static_assert("bm25" == irs::type<irs::bm25_sort>::name());
+  static_assert("bm25" == irs::type<irs::BM25>::name());
 }
 
 TEST_P(bm25_test_case, test_load) {
@@ -229,11 +229,11 @@ TEST_P(bm25_test_case, make_from_array) {
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), std::string_view{});
     ASSERT_NE(nullptr, scorer);
-    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
-    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
-    ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
-    ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
-    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
+    ASSERT_EQ(irs::type<irs::BM25>::id(), scorer->type());
+    auto& bm25 = dynamic_cast<irs::BM25&>(*scorer);
+    ASSERT_EQ(irs::BM25::K(), bm25.k());
+    ASSERT_EQ(irs::BM25::B(), bm25.b());
+    ASSERT_EQ(irs::BM25::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // default args
@@ -241,11 +241,11 @@ TEST_P(bm25_test_case, make_from_array) {
     auto scorer =
       irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(), "[]");
     ASSERT_NE(nullptr, scorer);
-    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
-    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
-    ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
-    ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
-    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
+    ASSERT_EQ(irs::type<irs::BM25>::id(), scorer->type());
+    auto& bm25 = dynamic_cast<irs::BM25&>(*scorer);
+    ASSERT_EQ(irs::BM25::K(), bm25.k());
+    ASSERT_EQ(irs::BM25::B(), bm25.b());
+    ASSERT_EQ(irs::BM25::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // `k` argument
@@ -253,11 +253,11 @@ TEST_P(bm25_test_case, make_from_array) {
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "[ 1.5 ]");
     ASSERT_NE(nullptr, scorer);
-    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
-    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(irs::type<irs::BM25>::id(), scorer->type());
+    auto& bm25 = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
-    ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
-    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
+    ASSERT_EQ(irs::BM25::B(), bm25.b());
+    ASSERT_EQ(irs::BM25::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // invalid `k` argument
@@ -288,11 +288,11 @@ TEST_P(bm25_test_case, make_from_array) {
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "[ 1.5, 1.7 ]");
     ASSERT_NE(nullptr, scorer);
-    ASSERT_EQ(irs::type<irs::bm25_sort>::id(), scorer->type());
-    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(irs::type<irs::BM25>::id(), scorer->type());
+    auto& bm25 = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
     ASSERT_EQ(1.7f, bm25.b());
-    ASSERT_EQ(irs::bm25_sort::BOOST_AS_SCORE(), bm25.use_boost_as_score());
+    ASSERT_EQ(irs::BM25::BOOST_AS_SCORE(), bm25.use_boost_as_score());
   }
 
   // invalid `b` argument
@@ -515,7 +515,7 @@ TEST_P(bm25_test_case, test_query) {
     add_segment(gen);
   }
 
-  irs::bm25_sort impl{irs::bm25_sort::K(), irs::bm25_sort::B(), true};
+  irs::BM25 impl{irs::BM25::K(), irs::BM25::B(), true};
   const irs::Scorer* sort{&impl};
 
   auto prepared_order = irs::Scorers::Prepare(std::span{&sort, 1});
@@ -1274,7 +1274,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
 
   // default init (field_collector)
   {
-    irs::bm25_sort sort;
+    irs::BM25 sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_field_collector();
@@ -1310,7 +1310,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
 
   // default init (term_collector)
   {
-    irs::bm25_sort sort;
+    irs::BM25 sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_term_collector();
@@ -1346,7 +1346,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
 
   // serialized too short (field_collector)
   {
-    irs::bm25_sort sort;
+    irs::BM25 sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_field_collector();
@@ -1358,7 +1358,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
 
   // serialized too short (term_collector)
   {
-    irs::bm25_sort sort;
+    irs::BM25 sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_term_collector();
@@ -1370,7 +1370,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
 
   // serialized too long (field_collector)
   {
-    irs::bm25_sort sort;
+    irs::BM25 sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_field_collector();
@@ -1382,7 +1382,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
 
   // serialized too long (term_collector)
   {
-    irs::bm25_sort sort;
+    irs::BM25 sort;
     auto prepared_sort = sort.prepare();
     ASSERT_NE(nullptr, prepared_sort);
     auto collector = prepared_sort->prepare_term_collector();
@@ -1399,7 +1399,7 @@ TEST_P(bm25_test_case, test_make) {
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), std::string_view{});
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());
     ASSERT_EQ(1.2f, scr.k());
     ASSERT_FALSE(scr.bm11());
@@ -1412,7 +1412,7 @@ TEST_P(bm25_test_case, test_make) {
       irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                         "{\"b\": 123.456, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
     ASSERT_FALSE(scr.bm11());
@@ -1425,7 +1425,7 @@ TEST_P(bm25_test_case, test_make) {
       irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                         "{\"b\": 123.456, \"k\": 78 }");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
     ASSERT_EQ(78.0f, scr.k());
     ASSERT_FALSE(scr.bm11());
@@ -1438,7 +1438,7 @@ TEST_P(bm25_test_case, test_make) {
       irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                         "{\"b\": 1.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
     ASSERT_TRUE(scr.bm11());
@@ -1451,7 +1451,7 @@ TEST_P(bm25_test_case, test_make) {
       irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                         "{\"b\": 1, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
     ASSERT_TRUE(scr.bm11());
@@ -1464,7 +1464,7 @@ TEST_P(bm25_test_case, test_make) {
       irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                         "{\"b\": 0.0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
     ASSERT_FALSE(scr.bm11());
@@ -1477,7 +1477,7 @@ TEST_P(bm25_test_case, test_make) {
       irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                         "{\"b\": 0, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
-    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
     ASSERT_FALSE(scr.bm11());
@@ -1531,7 +1531,7 @@ TEST_P(bm25_test_case, test_order) {
   irs::by_term query;
   *query.mutable_field() = "field";
 
-  irs::bm25_sort sort;
+  irs::BM25 sort;
   const irs::Scorer* impl{&sort};
 
   auto prepared_order = irs::Scorers::Prepare(std::span{&impl, 1});

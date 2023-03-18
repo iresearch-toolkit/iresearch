@@ -1077,7 +1077,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
   Docs expected{11, 12, 8, 13, 5, 1, 2};
 
-  irs::Scorer::ptr scorer{std::make_unique<irs::tfidf_sort>(true)};
+  irs::Scorer::ptr scorer{std::make_unique<irs::TFIDF>(true)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1100,7 +1100,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
   Docs expected{11, 12, 13, 1, 2, 8, 5};
 
-  irs::Scorer::ptr scorer{std::make_unique<irs::tfidf_sort>(false)};
+  irs::Scorer::ptr scorer{std::make_unique<irs::TFIDF>(false)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1123,7 +1123,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
   Docs expected{11, 12, 13, 8, 1, 5, 2};
 
-  irs::Scorer::ptr scorer{std::make_unique<irs::bm25_sort>()};
+  irs::Scorer::ptr scorer{std::make_unique<irs::BM25>()};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1147,7 +1147,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
   Docs expected{11, 12, 13, 1, 2, 8, 5};
 
   irs::Scorer::ptr bm15{
-    std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), 0.f)};
+    std::make_unique<irs::BM25>(irs::BM25::K(), 0.f)};
 
   CheckQuery(filter, std::span{&bm15, 1}, expected, rdr);
 }

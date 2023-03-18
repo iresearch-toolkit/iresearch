@@ -3487,7 +3487,7 @@ TEST(block_disjunction_test, check_attributes) {
 
   // no scoring, order
   {
-    auto prepared = irs::Scorers::Prepare(irs::bm25_sort{});
+    auto prepared = irs::Scorers::Prepare(irs::BM25{});
 
     using disjunction = irs::block_disjunction<
       irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
@@ -3507,7 +3507,7 @@ TEST(block_disjunction_test, check_attributes) {
 
   // scoring, order
   {
-    auto prepared = irs::Scorers::Prepare(irs::bm25_sort{});
+    auto prepared = irs::Scorers::Prepare(irs::BM25{});
 
     using disjunction = irs::block_disjunction<
       irs::doc_iterator::ptr, irs::Aggregator<irs::SumMerger, 1>,
@@ -16146,7 +16146,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
     }
 
     std::array<irs::Scorer::ptr, 2> ord{
-      std::make_unique<irs::tfidf_sort>(), std::make_unique<irs::bm25_sort>()};
+      std::make_unique<irs::TFIDF>(), std::make_unique<irs::BM25>()};
 
     auto prepared_ord = irs::Scorers::Prepare(ord);
     ASSERT_FALSE(prepared_ord.empty());
