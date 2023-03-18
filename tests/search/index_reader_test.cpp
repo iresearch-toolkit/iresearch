@@ -85,14 +85,14 @@ TEST(directory_reader_test, open_newest_index) {
     void read(const irs::directory& /*dir*/, irs::IndexMeta& /*meta*/,
               std::string_view filename = std::string_view{}) final {
       read_file.assign(filename.data(), filename.size());
-    };
+    }
     std::string segments_file;
     std::string read_file;
   };
   class test_format : public irs::format {
    public:
     mutable test_index_meta_reader index_meta_reader;
-    test_format(const irs::type_info& type) : irs::format(type) {}
+    explicit test_format(irs::type_info::type_id type) : type_{type} {}
     irs::index_meta_writer::ptr get_index_meta_writer() const final {
       return nullptr;
     }
@@ -121,6 +121,9 @@ TEST(directory_reader_test, open_newest_index) {
     irs::columnstore_reader::ptr get_columnstore_reader() const final {
       return nullptr;
     }
+    irs::type_info::type_id type type() const noexcept final { return type_; }
+
+    irs::type_info::type_id type_
   };
 
   struct test_format0 {};
@@ -182,15 +185,15 @@ TEST(directory_reader_test, open) {
       }
     });
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
-  tests::document const* doc6 = gen.next();
-  tests::document const* doc7 = gen.next();
-  tests::document const* doc8 = gen.next();
-  tests::document const* doc9 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
+  const tests::document* doc6 = gen.next();
+  const tests::document* doc7 = gen.next();
+  const tests::document* doc8 = gen.next();
+  const tests::document* doc9 = gen.next();
 
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
@@ -454,11 +457,11 @@ TEST(segment_reader_test, open_invalid_segment) {
 TEST(segment_reader_test, open) {
   tests::json_doc_generator gen(test_base::resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
-  tests::document const* doc3 = gen.next();
-  tests::document const* doc4 = gen.next();
-  tests::document const* doc5 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
+  const tests::document* doc3 = gen.next();
+  const tests::document* doc4 = gen.next();
+  const tests::document* doc5 = gen.next();
 
   irs::memory_directory dir;
   auto codec_ptr = irs::formats::get("1_0");
