@@ -295,12 +295,13 @@ struct pay_buffer : skip_buffer {
 
 std::vector<irs::WandWriter::ptr> PrepareWandWriters(ScorersView scorers,
                                                      size_t max_levels) {
-  scorers = scorers.subspan(0, kMaxScorers);
+  scorers = scorers.subspan(0, std::min(scorers.size(), kMaxScorers));
 
   std::vector<irs::WandWriter::ptr> writers(scorers.size());
   auto scorer = scorers.begin();
   for (auto& writer : writers) {
     writer = (*scorer)->prepare_wand_writer(max_levels);
+    ++scorer;
   }
   return writers;
 }
@@ -3403,7 +3404,8 @@ void postings_reader_base::prepare(index_input& in, const ReaderState& state,
                    block_size, "', expected '", block_size_, "'")};
   }
 
-  scorers_ = state.scorers.subspan(0, kMaxScorers);
+  scorers_ =
+    state.scorers.subspan(0, std::min(state.scorers.size(), kMaxScorers));
 }
 
 size_t postings_reader_base::decode(const byte_type* in, IndexFeatures features,
