@@ -141,7 +141,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    irs::ScorerFactory::ptr impl{std::make_unique<tests::sort::custom_sort>()};
+    irs::Scorer::ptr impl{std::make_unique<tests::sort::custom_sort>()};
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](
@@ -159,11 +159,11 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
                       const irs::TermCollector*) -> void { ++finish_count; };
     scorer->prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(*scorer);
+        tests::sort::custom_sort::field_collector>(*scorer);
     };
     scorer->prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(*scorer);
+        tests::sort::custom_sort::term_collector>(*scorer);
     };
 
     const auto filter = make_filter(
@@ -182,7 +182,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
     const auto filter = make_filter(
       "prefix", {{"abcd", 0.5f}, {"abcd", 1.f}, {"abc", 1.f}, {"abcy", 1.f}});
 
-    irs::ScorerFactory::ptr impl{std::make_unique<irs::boost_sort>()};
+    irs::Scorer::ptr impl{std::make_unique<irs::boost_sort>()};
     CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
   }
 
@@ -195,7 +195,7 @@ TEST_P(terms_filter_test_case, simple_sequential_order) {
       "prefix",
       {{"abcd", -1.f}, {"abcd", 0.5f}, {"abc", 0.65}, {"abcy", 0.5f}});
 
-    irs::ScorerFactory::ptr impl{std::make_unique<irs::boost_sort>()};
+    irs::Scorer::ptr impl{std::make_unique<irs::boost_sort>()};
     CheckQuery(filter, std::span{&impl, 1}, docs, rdr, true, true);
   }
 }
@@ -463,7 +463,7 @@ TEST_P(terms_filter_test_case, min_match) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    irs::ScorerFactory::ptr impl{std::make_unique<tests::sort::custom_sort>()};
+    irs::Scorer::ptr impl{std::make_unique<tests::sort::custom_sort>()};
     auto* scorer = static_cast<tests::sort::custom_sort*>(impl.get());
 
     scorer->collector_collect_field = [&collect_field_count](
@@ -481,11 +481,11 @@ TEST_P(terms_filter_test_case, min_match) {
                       const irs::TermCollector*) -> void { ++finish_count; };
     scorer->prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(*scorer);
+        tests::sort::custom_sort::field_collector>(*scorer);
     };
     scorer->prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(*scorer);
+        tests::sort::custom_sort::term_collector>(*scorer);
     };
     scorer->prepare_scorer =
       [](const irs::ColumnProvider&, const irs::feature_map_t&,

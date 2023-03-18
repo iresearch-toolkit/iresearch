@@ -149,7 +149,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
 }
 
 void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
-                                    std::span<const irs::ScorerFactory::ptr> order,
+                                    std::span<const irs::Scorer::ptr> order,
                                     const std::vector<Tests>& tests,
                                     const irs::IndexReader& rdr,
                                     std::string_view source_location) {
@@ -214,7 +214,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
 }
 
 void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
-                                    std::span<const irs::ScorerFactory::ptr> order,
+                                    std::span<const irs::Scorer::ptr> order,
                                     const ScoredDocs& expected,
                                     const irs::IndexReader& index,
                                     std::string_view source_location) {
@@ -240,7 +240,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
 }
 
 void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
-                                    std::span<const irs::ScorerFactory::ptr> order,
+                                    std::span<const irs::Scorer::ptr> order,
                                     const std::vector<irs::doc_id_t>& expected,
                                     const irs::IndexReader& rdr,
                                     bool score_must_be_present, bool reverse) {

@@ -1025,7 +1025,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       size_t collect_term_count = 0;
       size_t finish_count = 0;
 
-      irs::ScorerFactory::ptr sort{
+      irs::Scorer::ptr sort{
         std::make_unique<tests::sort::custom_sort>()};
       auto& scorer = static_cast<tests::sort::custom_sort&>(*sort);
 
@@ -1045,11 +1045,11 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+          tests::sort::custom_sort::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+          tests::sort::custom_sort::term_collector>(scorer);
       };
 
       irs::by_range filter;
@@ -1075,7 +1075,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "value";
 
-      irs::ScorerFactory::ptr sort{
+      irs::Scorer::ptr sort{
         std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
@@ -1096,7 +1096,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->scored_terms_limit = 2;
 
-      irs::ScorerFactory::ptr sort{
+      irs::Scorer::ptr sort{
         std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
@@ -1120,7 +1120,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       filter.mutable_options()->range.max = max_term->value;
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      irs::ScorerFactory::ptr sort{
+      irs::Scorer::ptr sort{
         std::make_unique<tests::sort::frequency_sort>()};
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }

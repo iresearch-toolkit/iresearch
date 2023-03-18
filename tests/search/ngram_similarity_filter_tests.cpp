@@ -928,7 +928,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   std::vector<size_t> frequency;
   std::vector<irs::score_t> filter_boost;
 
-  irs::ScorerFactory::ptr order{std::make_unique<tests::sort::custom_sort>()};
+  irs::Scorer::ptr order{std::make_unique<tests::sort::custom_sort>()};
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
@@ -946,10 +946,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
     return std::make_unique<
-      tests::sort::custom_sort::prepared::field_collector>(scorer);
+      tests::sort::custom_sort::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::prepared::term_collector>(
+    return std::make_unique<tests::sort::custom_sort::term_collector>(
       scorer);
   };
   scorer.prepare_scorer =
@@ -1002,7 +1002,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   std::vector<size_t> frequency;
   std::vector<irs::score_t> filter_boost;
 
-  irs::ScorerFactory::ptr order{std::make_unique<tests::sort::custom_sort>()};
+  irs::Scorer::ptr order{std::make_unique<tests::sort::custom_sort>()};
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
@@ -1020,10 +1020,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
     return std::make_unique<
-      tests::sort::custom_sort::prepared::field_collector>(scorer);
+      tests::sort::custom_sort::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::prepared::term_collector>(
+    return std::make_unique<tests::sort::custom_sort::term_collector>(
       scorer);
   };
   scorer.prepare_scorer =
@@ -1077,7 +1077,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
   Docs expected{11, 12, 8, 13, 5, 1, 2};
 
-  irs::ScorerFactory::ptr scorer{std::make_unique<irs::tfidf_sort>(true)};
+  irs::Scorer::ptr scorer{std::make_unique<irs::tfidf_sort>(true)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1100,7 +1100,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
   Docs expected{11, 12, 13, 1, 2, 8, 5};
 
-  irs::ScorerFactory::ptr scorer{std::make_unique<irs::tfidf_sort>(false)};
+  irs::Scorer::ptr scorer{std::make_unique<irs::tfidf_sort>(false)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1123,7 +1123,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
   Docs expected{11, 12, 13, 8, 1, 5, 2};
 
-  irs::ScorerFactory::ptr scorer{std::make_unique<irs::bm25_sort>()};
+  irs::Scorer::ptr scorer{std::make_unique<irs::bm25_sort>()};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1146,7 +1146,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 
   Docs expected{11, 12, 13, 1, 2, 8, 5};
 
-  irs::ScorerFactory::ptr bm15{
+  irs::Scorer::ptr bm15{
     std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), 0.f)};
 
   CheckQuery(filter, std::span{&bm15, 1}, expected, rdr);

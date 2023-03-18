@@ -187,7 +187,7 @@ struct merge_writer_test_case
     constexpr std::string_view kOldFormats[]{"1_0"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
+                              codec()->type()().name());
     return std::end(kOldFormats) == it;
   }
 

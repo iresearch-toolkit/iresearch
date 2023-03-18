@@ -168,7 +168,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::ScorerFactory::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -189,13 +189,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+        tests::sort::custom_sort::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+        tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 0, false), order, docs, rdr);
@@ -217,7 +217,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::ScorerFactory::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -238,13 +238,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+        tests::sort::custom_sort::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+        tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 10, false), order, docs, rdr);
@@ -266,7 +266,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::ScorerFactory::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -287,13 +287,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+        tests::sort::custom_sort::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+        tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 1, false), order, docs, rdr);

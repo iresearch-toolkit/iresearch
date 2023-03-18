@@ -175,17 +175,17 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
     const irs::byte_type* filter_node_attrs,
     const irs::attribute_provider& document_attrs,
     irs::score_t boost) const final {
-    if (prepare_scorer) {
-      return prepare_scorer(segment_reader, term_reader, filter_node_attrs,
-                            document_attrs, boost);
+    if (prepare_scorer_) {
+      return prepare_scorer_(segment_reader, term_reader, filter_node_attrs,
+                             document_attrs, boost);
     }
 
     return irs::ScoreFunction::Make<custom_sort::scorer>(
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         const auto& state = *reinterpret_cast<scorer*>(ctx);
 
-        if (state.scorer_score) {
-          state.scorer_score(
+        if (state.sort_.scorer_score) {
+          state.sort_.scorer_score(
             irs::get<irs::document>(state.document_attrs_)->value, res);
         }
       },
@@ -212,7 +212,7 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
   std::function<irs::ScoreFunction(
     const irs::ColumnProvider&, const irs::feature_map_t&,
     const irs::byte_type*, const irs::attribute_provider&, irs::score_t)>
-    prepare_scorer;
+    prepare_scorer_;
   std::function<irs::TermCollector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t, irs::score_t*)> scorer_score;
   std::function<void()> term_reset_;
@@ -261,7 +261,7 @@ struct frequency_sort : public irs::ScorerBase<frequency_sort, stats_t> {
                const irs::TermCollector* term) const final {
     auto* term_ptr = dynamic_cast<const term_collector*>(term);
     if (term_ptr) {  // may be null e.g. 'all' filter
-      stats_cast(stats_buf).count =
+      stats_cast(stats_buf)->count =
         static_cast<irs::doc_id_t>(term_ptr->docs_count);
       const_cast<term_collector*>(term_ptr)->docs_count = 0;
     }

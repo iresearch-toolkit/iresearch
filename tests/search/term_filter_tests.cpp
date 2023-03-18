@@ -478,11 +478,11 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+          tests::sort::custom_sort::field_collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+          tests::sort::custom_sort::term_collector>(scorer);
       };
 
       std::set<irs::doc_id_t> expected{31, 32};
