@@ -3010,7 +3010,7 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   irs::SegmentMeta index_segment;
   index_segment.codec = codec_ptr;
 
-  if (codec()->type().name() == "1_0") {
+  if (codec()->type()().name() == "1_0") {
     // primary sort is not supported in version 1_0
     ASSERT_FALSE(writer.Flush(index_segment));
     return;

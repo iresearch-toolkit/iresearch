@@ -168,13 +168,20 @@ class FreqNormSource final : public WandSource {
     if (irs::type<frequency>::id() == type) {
       return &freq_;
     }
+    if (irs::type<Norm2>::id() == type) {
+      return &freq_;
+    }
     return nullptr;
   }
 
-  void Read(data_input& in) final { freq_.value = in.read_vint(); }
+  void Read(data_input& in) final {
+    freq_.value = in.read_vint();
+    norm_.value = in.read_vint();
+  }
 
  private:
   frequency freq_;
+  Norm2 norm_;
 };
 
 class FreqProducer : public ValueProducerBase {

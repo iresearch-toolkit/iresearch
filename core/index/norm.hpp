@@ -249,6 +249,8 @@ class Norm2 : public attribute {
         return func(MakeReader<uint32_t>(std::move(ctx)));
     }
   }
+
+  ValueType value{};
 };
 
 static_assert(std::is_nothrow_move_constructible_v<Norm2>);

@@ -386,18 +386,25 @@ ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
 
   // add norm attribute if requested
   if (normalize_) {
+    auto prepare_norm_scorer =
+      [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
+      return MakeScoreFunction<NormScoreContext<Norm>>(
+        filter_boost, std::move(norm), boost, *stats, freq);
+    };
+
+    // Check if norms are present in attributes
+    if (auto* norm = irs::get<Norm2>(doc_attrs); norm) {
+      return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(
+        [norm]() noexcept { return norm->value; }));
+    }
+
+    // Fallback to reading from columnstore
     auto* doc = irs::get<document>(doc_attrs);
 
     if (IRS_UNLIKELY(!doc)) {
       // we need 'document' attribute to be exposed
       return ScoreFunction::Invalid();
     }
-
-    auto prepare_norm_scorer =
-      [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
-      return MakeScoreFunction<NormScoreContext<Norm>>(
-        filter_boost, std::move(norm), boost, *stats, freq);
-    };
 
     if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
       if (Norm2::Context ctx; ctx.Reset(segment, it->second, *doc)) {
