@@ -39,9 +39,9 @@ class sorted_column final : public column_output, private util::noncopyable {
   explicit sorted_column(const ColumnInfo& info) : info_{info} {}
 
   void prepare(doc_id_t key) {
-    IRS_ASSERT(index_.empty() || key >= index_.back().first);
+    IRS_ASSERT(index_.empty() || key >= index_.back().key);
 
-    if (index_.empty() || index_.back().first != key) {
+    if (index_.empty() || index_.back().key != key) {
       index_.emplace_back(key, data_buf_.size());
     }
   }
@@ -57,7 +57,7 @@ class sorted_column final : public column_output, private util::noncopyable {
       return;
     }
 
-    data_buf_.resize(index_.back().second);
+    data_buf_.resize(index_.back().offset);
     index_.pop_back();
   }
 
@@ -94,21 +94,30 @@ class sorted_column final : public column_output, private util::noncopyable {
 
   const ColumnInfo& info() const noexcept { return info_; }
 
+  doc_iterator::ptr iterator() const;
+
  private:
-  bytes_view get_value(
-    const std::pair<doc_id_t, size_t>* value) const noexcept {
+  friend class SortedColumnIterator;
+
+  struct Value {
+    Value(doc_id_t key, size_t offset) noexcept : key{key}, offset{offset} {}
+
+    doc_id_t key;
+    size_t offset;  // offset in 'data_buf_'
+  };
+
+  bytes_view get_value(const Value* value) const noexcept {
     IRS_ASSERT(index_.data() <= value);
     IRS_ASSERT(value < (index_.data() + index_.size() - 1));
-    IRS_ASSERT(!doc_limits::eof(value->first));
+    IRS_ASSERT(!doc_limits::eof(value->key));
 
-    const auto begin = value->second;
-    const auto end = (value + 1)->second;
+    const auto begin = value->offset;
+    const auto end = (value + 1)->offset;
 
     return {data_buf_.c_str() + begin, end - begin};
   }
 
-  void write_value(data_output& out,
-                   const std::pair<doc_id_t, size_t>* value) const {
+  void write_value(data_output& out, const Value* value) const {
     const auto payload = get_value(value);
     out.write_bytes(payload.data(), payload.size());
   }
@@ -126,8 +135,7 @@ class sorted_column final : public column_output, private util::noncopyable {
                     DocMapView docmap, FlushBuffer& buffer);
 
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
-  // doc_id + offset in 'data_buf_'
-  std::vector<std::pair<irs::doc_id_t, size_t>> index_;
+  std::vector<Value> index_;
   ColumnInfo info_;
 };
 

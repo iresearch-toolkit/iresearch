@@ -22,11 +22,70 @@
 
 #include "sorted_column.hpp"
 
+#include "analysis/token_attributes.hpp"
 #include "index/comparer.hpp"
+#include "search/cost.hpp"
 #include "shared.hpp"
+#include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
 
 namespace irs {
+
+class SortedColumnIterator : public doc_iterator {
+ public:
+  explicit SortedColumnIterator(std::span<const sorted_column::Value> values,
+                                bytes_view column_payload) noexcept
+    : next_{values.data()},
+      end_{next_ + values.size()},
+      column_payload_{column_payload} {}
+
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
+    return irs::get_mutable(attrs_, type);
+  }
+
+  doc_id_t value() const noexcept final {
+    return std::get<document>(attrs_).value;
+  }
+
+  doc_id_t seek(doc_id_t target) noexcept final {
+    if (IRS_UNLIKELY(target <= value())) {
+      return target;
+    }
+
+    next_ = std::lower_bound(next_, end_, target,
+                             [](const auto& value, doc_id_t target) noexcept {
+                               return value.key < target;
+                             });
+
+    return next();
+  }
+
+  bool next() noexcept final {
+    auto& doc = std::get<document>(attrs_);
+
+    if (IRS_UNLIKELY(next_ == end_)) {
+      doc.value = doc_limits::eof();
+      return false;
+    }
+
+    doc.value = next_->key;
+    const auto offset = next_->offset;
+    ++next_;
+
+    auto& payload = std::get<irs::payload>(attrs_);
+    payload.value = {column_payload_.data() + offset, next_->offset - offset};
+
+    return true;
+  }
+
+ private:
+  using attributes = std::tuple<document, cost, irs::payload>;
+
+  attributes attrs_;
+  const sorted_column::Value* next_;
+  const sorted_column::Value* end_;
+  bytes_view column_payload_;
+};
 
 bool sorted_column::flush_sparse_primary(
   DocMap& docmap, const columnstore_writer::values_writer_f& writer,
@@ -63,10 +122,10 @@ bool sorted_column::flush_sparse_primary(
 
     doc_id_t min = doc_limits::min();
     if (IRS_LIKELY(idx)) {
-      min += std::prev(value)->first;
+      min += std::prev(value)->key;
     }
 
-    for (const doc_id_t max = value->first; min < max; ++min) {
+    for (const doc_id_t max = value->key; min < max; ++min) {
       docmap[min] = new_doc++;
     }
 
@@ -79,7 +138,7 @@ bool sorted_column::flush_sparse_primary(
   IRS_ASSERT(std::all_of(docmap.begin() + 1, docmap.begin() + new_doc,
                          [](doc_id_t doc) { return doc_limits::valid(doc); }));
   // Ensure we reached the last doc in sort column
-  IRS_ASSERT((std::prev(index_.end(), 2)->first + 1) == new_doc);
+  IRS_ASSERT((std::prev(index_.end(), 2)->key + 1) == new_doc);
   // Handle docs without sort value that are placed after last filled sort doc
   for (auto begin = std::next(docmap.begin(), new_doc); begin != docmap.end();
        ++begin) {
@@ -94,7 +153,7 @@ std::pair<DocMap, field_id> sorted_column::flush(
   columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
   doc_id_t docs_count, const Comparer& compare) {
   IRS_ASSERT(index_.size() <= docs_count);
-  IRS_ASSERT(index_.empty() || index_.back().first <= docs_count);
+  IRS_ASSERT(index_.empty() || index_.back().key <= docs_count);
 
   if (IRS_UNLIKELY(index_.empty())) {
     return {{}, field_limits::invalid()};
@@ -111,8 +170,6 @@ std::pair<DocMap, field_id> sorted_column::flush(
     flush_already_sorted(column_writer);
   }
 
-  clear();  // data have been flushed
-
   return {std::move(docmap), column_id};
 }
 
@@ -121,7 +178,7 @@ void sorted_column::flush_already_sorted(
   // -1 for sentinel
   for (auto begin = index_.begin(), end = std::prev(index_.end()); begin != end;
        ++begin) {
-    write_value(writer(begin->first), &*begin);
+    write_value(writer(begin->key), &*begin);
   }
 }
 
@@ -141,7 +198,7 @@ bool sorted_column::flush_dense(
   buffer.resize(total, std::pair{doc_limits::eof(), doc_limits::invalid()});
 
   for (size_t i = 0; i < size; ++i) {
-    buffer[docmap[index_[i].first] - doc_limits::min()].first = doc_id_t(i);
+    buffer[docmap[index_[i].key] - doc_limits::min()].first = doc_id_t(i);
   }
 
   // flush sorted data
@@ -166,7 +223,7 @@ void sorted_column::flush_sparse(
   buffer.resize(size);
 
   for (size_t i = 0; i < size; ++i) {
-    buffer[i] = std::pair{doc_id_t(i), docmap[index_[i].first]};
+    buffer[i] = std::pair{doc_id_t(i), docmap[index_[i].key]};
   }
 
   std::sort(buffer.begin(), buffer.end(),
@@ -202,9 +259,11 @@ field_id sorted_column::flush(columnstore_writer& writer,
     flush_sparse(column_writer, docmap, buffer);
   }
 
-  clear();  // data have been flushed
-
   return column_id;
+}
+
+doc_iterator::ptr sorted_column::iterator() const {
+  return memory::make_managed<SortedColumnIterator>(index_, data_buf_);
 }
 
 }  // namespace irs

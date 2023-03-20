@@ -62,20 +62,11 @@ class sorting_doc_iterator;
 
 // represents a mapping between cached column data
 // and a pointer to column identifier
-class cached_column : public column_reader {
+class cached_column final : public column_reader {
  public:
   cached_column(field_id* id, ColumnInfo info,
                 columnstore_writer::column_finalizer_f finalizer) noexcept
     : id_{id}, stream_{info}, finalizer_{std::move(finalizer)} {}
-
-  field_id id() const noexcept final { return *id_; }
-
-  // FIXME(gnusi)
-  std::string_view name() const noexcept final { return {}; }
-  bytes_view payload() const noexcept final { return {}; }
-  doc_iterator::ptr iterator(ColumnHint hint) const { return nullptr; }
-
-  doc_id_t size() const final { return static_cast<doc_id_t>(stream_.size()); }
 
   sorted_column& Stream() noexcept { return stream_; }
   const sorted_column& Stream() const noexcept { return stream_; }
@@ -83,6 +74,24 @@ class cached_column : public column_reader {
   void Flush(columnstore_writer& writer, DocMapView docmap,
              sorted_column::FlushBuffer& buffer) {
     *id_ = stream_.flush(writer, std::move(finalizer_), docmap, buffer);
+  }
+
+  field_id id() const noexcept final { return *id_; }
+
+  // FIXME(gnusi)
+  std::string_view name() const noexcept final { return {}; }
+  bytes_view payload() const noexcept final { return {}; }
+
+  doc_iterator::ptr iterator(ColumnHint hint) const final {
+    // kPrevDoc isn't supported atm
+    IRS_ASSERT(ColumnHint::kNormal == (hint & ColumnHint::kPrevDoc));
+
+    return stream_.iterator();
+  }
+
+  doc_id_t size() const final {
+    IRS_ASSERT(stream_.size() < doc_limits::eof());
+    return static_cast<doc_id_t>(stream_.size());
   }
 
  private:
