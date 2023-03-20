@@ -408,7 +408,7 @@ bool process_term(analysis::text_token_stream::state_t& state,
   if (state.stemmer) {
     static_assert(sizeof(sb_symbol) == sizeof(char));
     const sb_symbol* value =
-      reinterpret_cast<sb_symbol const*>(word_utf8.c_str());
+      reinterpret_cast<const sb_symbol*>(word_utf8.c_str());
 
     value = sb_stemmer_stem(state.stemmer.get(), value, (int)word_utf8.size());
 
@@ -995,7 +995,7 @@ void text_token_stream::state_deleter_t::operator()(state_t* p) const noexcept {
 // --SECTION--                                                  static variables
 // -----------------------------------------------------------------------------
 
-char const* text_token_stream::STOPWORD_PATH_ENV_VARIABLE =
+const char* text_token_stream::STOPWORD_PATH_ENV_VARIABLE =
   "IRESEARCH_TEXT_STOPWORD_PATH";
 
 // -----------------------------------------------------------------------------

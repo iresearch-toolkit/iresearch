@@ -39,9 +39,9 @@ class [[nodiscard]] Finally {
 
   // If you need some of it, please use absl::Cleanup
   Finally(Finally&&) = delete;
-  Finally(Finally const&) = delete;
+  Finally(const Finally&) = delete;
   Finally& operator=(Finally&&) = delete;
-  Finally& operator=(Finally const&) = delete;
+  Finally& operator=(const Finally&) = delete;
 
   Finally(Func&& func) : func_{std::move(func)} {}
 

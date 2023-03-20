@@ -136,8 +136,8 @@ struct numeric_traits<uint32_t> {
   inline static integral_t integral(integral_t value) { return value; }
   static bytes_view min() { return minu32(); }
   static bytes_view max() { return maxu32(); }
-  static bytes_view raw_ref(integral_t const& value) {
-    return bytes_view(reinterpret_cast<irs::byte_type const*>(&value),
+  static bytes_view raw_ref(const integral_t& value) {
+    return bytes_view(reinterpret_cast<const irs::byte_type*>(&value),
                       sizeof(value));
   }
   constexpr static size_t size() { return sizeof(integral_t) + 1; }
@@ -168,8 +168,8 @@ struct numeric_traits<uint64_t> {
   inline static integral_t integral(integral_t value) { return value; }
   static bytes_view max() { return maxu64(); }
   static bytes_view min() { return minu64(); }
-  static bytes_view raw_ref(integral_t const& value) {
-    return bytes_view(reinterpret_cast<irs::byte_type const*>(&value),
+  static bytes_view raw_ref(const integral_t& value) {
+    return bytes_view(reinterpret_cast<const irs::byte_type*>(&value),
                       sizeof(value));
   }
   constexpr static size_t size() { return sizeof(integral_t) + 1; }
