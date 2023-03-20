@@ -305,9 +305,7 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), std::string_view{});
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 
   // with norms (as args)
@@ -315,9 +313,7 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), "true");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 
   // with norms
@@ -326,9 +322,7 @@ TEST_P(tfidf_test_case, test_normalize_features) {
       irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                         "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 
   // without norms (as args)
@@ -336,9 +330,7 @@ TEST_P(tfidf_test_case, test_normalize_features) {
     auto scorer = irs::scorers::get(
       "tfidf", irs::type<irs::text_format::json>::get(), "false");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 
   // without norms
@@ -347,9 +339,7 @@ TEST_P(tfidf_test_case, test_normalize_features) {
       irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                         "{\"withNorms\": false}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 }
 
@@ -1274,10 +1264,8 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // default init (field_collector)
   {
-    irs::TFIDF sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_field_collector();
+    irs::TFIDF prepared_sort;
+    auto collector = prepared_sort.prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
@@ -1290,7 +1278,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
-    collector = prepared_sort->prepare_field_collector();
+    collector = prepared_sort.prepare_field_collector();
     collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
@@ -1299,7 +1287,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
-    collector = prepared_sort->prepare_field_collector();
+    collector = prepared_sort.prepare_field_collector();
     collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
@@ -1310,10 +1298,8 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // default init (term_collector)
   {
-    irs::TFIDF sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_term_collector();
+    irs::TFIDF prepared_sort;
+    auto collector = prepared_sort.prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
@@ -1326,7 +1312,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
-    collector = prepared_sort->prepare_term_collector();
+    collector = prepared_sort.prepare_term_collector();
     collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
@@ -1335,7 +1321,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
-    collector = prepared_sort->prepare_term_collector();
+    collector = prepared_sort.prepare_term_collector();
     collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
@@ -1346,10 +1332,8 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too short (field_collector)
   {
-    irs::TFIDF sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_field_collector();
+    irs::TFIDF prepared_sort;
+    auto collector = prepared_sort.prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     ASSERT_THROW(collector->collect(irs::bytes_view(&fcollector_out[0],
                                                     fcollector_out.size() - 1)),
@@ -1358,10 +1342,8 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too short (term_collector)
   {
-    irs::TFIDF sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_term_collector();
+    irs::TFIDF prepared_sort;
+    auto collector = prepared_sort.prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     ASSERT_THROW(collector->collect(irs::bytes_view(&tcollector_out[0],
                                                     tcollector_out.size() - 1)),
@@ -1370,10 +1352,8 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too long (field_collector)
   {
-    irs::TFIDF sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_field_collector();
+    irs::TFIDF prepared_sort;
+    auto collector = prepared_sort.prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     auto out = fcollector_out;
     out.append(1, 42);
@@ -1382,10 +1362,8 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
 
   // serialized too long (term_collector)
   {
-    irs::TFIDF sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_term_collector();
+    irs::TFIDF prepared_sort;
+    auto collector = prepared_sort.prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     auto out = tcollector_out;
     out.append(1, 42);

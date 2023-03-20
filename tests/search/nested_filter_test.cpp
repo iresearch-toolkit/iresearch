@@ -103,43 +103,33 @@ class PrevDocWrapper : public irs::doc_iterator {
   irs::prev_doc prev_doc_;
 };
 
-struct DocIdScorer : irs::Scorer {
-  DocIdScorer() : irs::Scorer(irs::type<DocIdScorer>::get()) {}
+struct DocIdScorer : irs::ScorerBase<void> {
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
 
-  struct Prepared final : irs::ScorerBase<void> {
-    irs::IndexFeatures index_features() const final {
-      return irs::IndexFeatures::NONE;
-    }
+  irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
+                                    const irs::feature_map_t&,
+                                    const irs::byte_type*,
+                                    const irs::attribute_provider& attrs,
+                                    irs::score_t) const final {
+    struct ScorerContext final : irs::score_ctx {
+      explicit ScorerContext(const irs::document* doc) noexcept : doc{doc} {}
 
-    Prepared() : ScorerBase(irs::type<Prepared>::get()) {}
+      const irs::document* doc;
+    };
 
-    irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
-                                      const irs::feature_map_t&,
-                                      const irs::byte_type*,
-                                      const irs::attribute_provider& attrs,
-                                      irs::score_t) const final {
-      struct ScorerContext final : irs::score_ctx {
-        explicit ScorerContext(const irs::document* doc) noexcept : doc{doc} {}
+    auto* doc = irs::get<irs::document>(attrs);
+    EXPECT_NE(nullptr, doc);
 
-        const irs::document* doc;
-      };
-
-      auto* doc = irs::get<irs::document>(attrs);
-      EXPECT_NE(nullptr, doc);
-
-      return irs::ScoreFunction::Make<ScorerContext>(
-        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-          ASSERT_NE(nullptr, res);
-          ASSERT_NE(nullptr, ctx);
-          const auto& state = *static_cast<ScorerContext*>(ctx);
-          *res = state.doc->value;
-        },
-        doc);
-    }
-  };
-
-  irs::Scorer::ptr prepare() const final {
-    return std::make_unique<Prepared>();
+    return irs::ScoreFunction::Make<ScorerContext>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        ASSERT_NE(nullptr, res);
+        ASSERT_NE(nullptr, ctx);
+        const auto& state = *static_cast<ScorerContext*>(ctx);
+        *res = state.doc->value;
+      },
+      doc);
   }
 };
 
@@ -1286,7 +1276,7 @@ class NestedFilterFormatsTestCase : public NestedFilterTestCase {
 
     return std::end(kOldFormats) == std::find(std::begin(kOldFormats),
                                               std::end(kOldFormats),
-                                              codec()->type().name());
+                                              codec()->type()().name());
   }
 };
 

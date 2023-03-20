@@ -58,14 +58,9 @@ template<typename StatsType>
 class aligned_scorer final
   : public irs::ScorerBase<aligned_scorer<StatsType>, StatsType> {
  public:
-  static irs::Scorer::ptr make(
+  explicit aligned_scorer(
     irs::IndexFeatures index_features = irs::IndexFeatures::NONE,
-    bool empty_scorer = true) {
-    return std::make_unique<aligned_scorer>(index_features, empty_scorer);
-  }
-
-  explicit aligned_scorer(irs::IndexFeatures index_features,
-                          bool empty_scorer) noexcept
+    bool empty_scorer = true) noexcept
     : empty_scorer_(empty_scorer), index_features_(index_features) {}
 
   irs::ScoreFunction prepare_scorer(
@@ -85,7 +80,19 @@ class aligned_scorer final
   bool empty_scorer_;
 };
 
-struct dummy_scorer0 : public irs::ScorerBase<dummy_scorer0, void> {};
+struct dummy_scorer0 : public irs::ScorerBase<dummy_scorer0, void> {
+  irs::ScoreFunction prepare_scorer(
+    const irs::ColumnProvider& /*segment*/, const irs::feature_map_t& /*field*/,
+    const irs::byte_type* /*stats*/,
+    const irs::attribute_provider& /*doc_attrs*/,
+    irs::score_t /*boost*/) const final {
+    return irs::ScoreFunction::Empty();
+  }
+
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+};
 
 }  // namespace
 

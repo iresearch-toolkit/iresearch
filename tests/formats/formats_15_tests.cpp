@@ -38,7 +38,6 @@ struct EmptyColumnProvider : irs::ColumnProvider {
 };
 
 struct FreqScorer : irs::ScorerBase<void> {
-  FreqScorer() : ScorerBase(irs::type<FreqScorer>::get()) {}
   irs::IndexFeatures index_features() const final {
     return irs::IndexFeatures::FREQ;
   }

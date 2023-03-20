@@ -487,7 +487,7 @@ TEST_P(terms_filter_test_case, min_match) {
       return std::make_unique<tests::sort::custom_sort::term_collector>(
         *scorer);
     };
-    scorer->prepare_scorer =
+    scorer->prepare_scorer_ =
       [](const irs::ColumnProvider&, const irs::feature_map_t&,
          const irs::byte_type*, const irs::attribute_provider& attrs,
          irs::score_t boost) -> irs::ScoreFunction {

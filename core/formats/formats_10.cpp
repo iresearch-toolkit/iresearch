@@ -2898,7 +2898,7 @@ bool IndexMetaWriter::prepare(directory& dir, IndexMeta& meta,
 
     for (const auto& segment : meta.segments) {
       write_string(*out, segment.filename);
-      write_string(*out, segment.meta.codec->type().name());
+      write_string(*out, segment.meta.codec->type()().name());
     }
 
     if (version_ > kFormatMin) {
@@ -4012,8 +4012,6 @@ class format15 : public format14 {
 
   static ptr make();
 
-  format15() noexcept : format14(irs::type<format15>::get()) {}
-
   irs::field_writer::ptr get_field_writer(bool consolidation) const;
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
@@ -4093,8 +4091,6 @@ class format12simd final : public format12 {
   static constexpr std::string_view type_name() noexcept { return "1_2simd"; }
 
   static ptr make();
-
-  format12simd() noexcept : format12(irs::type<format12simd>::get()) {}
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;

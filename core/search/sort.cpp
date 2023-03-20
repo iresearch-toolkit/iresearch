@@ -30,41 +30,22 @@
 
 namespace irs {
 
-REGISTER_ATTRIBUTE(filter_boost);
+size_t Scorers::PushBack(const Scorer& scorer) {
+  // cppcheck-suppress shadowFunction
+  const auto [bucket_stats_size, bucket_stats_align] = scorer.stats_size();
+  IRS_ASSERT(bucket_stats_align <= alignof(std::max_align_t));
+  // math::is_power2(0) returns true
+  IRS_ASSERT(math::is_power2(bucket_stats_align));
 
-Scorers Scorers::Prepare(std::span<const Scorer*> scorers) {
-  ScorerBuckets buckets;
-  buckets.reserve(scorers.size());
+  stats_size_ = memory::align_up(stats_size_, bucket_stats_align);
+  features_ |= scorer.index_features();
+  buckets_.emplace_back(scorer, stats_size_);
+  stats_size_ += memory::align_up(bucket_stats_size, bucket_stats_align);
 
-  IndexFeatures features{};
-  size_t stats_size{};
-  size_t stats_align{};
-
-  for (const auto* scorer : scorers) {
-    if (IRS_UNLIKELY(!scorer)) {
-      continue;
-    }
-
-    // cppcheck-suppress shadowFunction
-    const auto [bucket_stats_size, bucket_stats_align] = scorer->stats_size();
-    IRS_ASSERT(bucket_stats_align <= alignof(std::max_align_t));
-    IRS_ASSERT(
-      math::is_power2(bucket_stats_align));  // math::is_power2(0) returns true
-
-    stats_align = std::max(stats_align, bucket_stats_align);
-
-    stats_size = memory::align_up(stats_size, bucket_stats_align);
-    features |= scorer->index_features();
-
-    buckets.emplace_back(*scorer, stats_size);
-
-    stats_size += memory::align_up(bucket_stats_size, bucket_stats_align);
-  }
-
-  stats_size = memory::align_up(stats_size, stats_align);
-
-  return {std::move(buckets), stats_size, features};
+  return bucket_stats_align;
 }
+
+REGISTER_ATTRIBUTE(filter_boost);
 
 const Scorers Scorers::kUnordered;
 

@@ -28,7 +28,9 @@
 #include "index/index_features.hpp"
 #include "search/score_function.hpp"
 #include "utils/attribute_provider.hpp"
+#include "utils/iterator.hpp"
 #include "utils/math_utils.hpp"
+#include "utils/memory_pool.hpp"
 #include "utils/small_vector.hpp"
 
 namespace irs {
@@ -235,10 +237,16 @@ class Scorers final : private util::noncopyable {
  public:
   static const Scorers kUnordered;
 
-  static Scorers Prepare(std::span<const Scorer*> scorers);
+  static Scorers Prepare(std::span<const Scorer*> scorers) {
+    return Prepare(scorers.begin(), scorers.end());
+  }
+  static Scorers Prepare(std::span<const Scorer::ptr> scorers) {
+    return Prepare(scorers.begin(), scorers.end());
+  }
   static Scorers Prepare(const Scorer* scorer) {
     return Prepare(std::span{&scorer, 1});
   }
+  static Scorers Prepare(const Scorer& scorer) { return Prepare(&scorer); }
 
   Scorers() = default;
   Scorers(Scorers&&) = default;
@@ -255,18 +263,38 @@ class Scorers final : private util::noncopyable {
  private:
   using ScorerBuckets = SmallVector<ScorerBucket, 2>;
 
-  Scorers(ScorerBuckets&& buckets, size_t stats_size,
-          IndexFeatures features) noexcept
-    : buckets_{std::move(buckets)},
-      score_size_(buckets_.size() * sizeof(score_t)),
-      stats_size_{stats_size},
-      features_{features} {}
+  template<typename Iterator>
+  static Scorers Prepare(Iterator begin, Iterator end);
+
+  size_t PushBack(const Scorer& scorer);
 
   ScorerBuckets buckets_;
   size_t score_size_{};
   size_t stats_size_{};
   IndexFeatures features_{IndexFeatures::NONE};
 };
+
+template<typename Iterator>
+Scorers Scorers::Prepare(Iterator begin, Iterator end) {
+  IRS_ASSERT(begin <= end);
+
+  size_t stats_align{};
+  Scorers scorers;
+  scorers.buckets_.reserve(end - begin);
+
+  for (; begin != end; ++begin) {
+    const auto& scorer = *begin;
+
+    if (IRS_UNLIKELY(!scorer)) {
+      continue;
+    }
+
+    stats_align = std::max(stats_align, scorers.PushBack(*scorer));
+  }
+  scorers.stats_size_ = memory::align_up(scorers.stats_size_, stats_align);
+
+  return scorers;
+}
 
 struct NoopAggregator {
   constexpr size_t size() const noexcept { return 0; }

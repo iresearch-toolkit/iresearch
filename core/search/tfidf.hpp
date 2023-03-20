@@ -67,6 +67,10 @@ class TFIDF final : public irs::ScorerBase<TFIDF, TFIDFStats> {
 
   bool equals(const Scorer& other) const noexcept final;
 
+  bool normalize() const noexcept { return normalize_; }
+
+  bool use_boost_as_score() const noexcept { return boost_as_score_; }
+
  private:
   bool normalize_;
   bool boost_as_score_;

@@ -945,14 +945,12 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
     [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
-    return std::make_unique<
-      tests::sort::custom_sort::field_collector>(scorer);
+    return std::make_unique<tests::sort::custom_sort::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::term_collector>(
-      scorer);
+    return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
   };
-  scorer.prepare_scorer =
+  scorer.prepare_scorer_ =
     [&frequency, &filter_boost](
       const irs::ColumnProvider& /*segment*/,
       const irs::feature_map_t& /*term*/, const irs::byte_type* /*stats_buf*/,
@@ -1019,14 +1017,12 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
     [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                     const irs::TermCollector*) -> void { ++finish_count; };
   scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
-    return std::make_unique<
-      tests::sort::custom_sort::field_collector>(scorer);
+    return std::make_unique<tests::sort::custom_sort::field_collector>(scorer);
   };
   scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-    return std::make_unique<tests::sort::custom_sort::term_collector>(
-      scorer);
+    return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
   };
-  scorer.prepare_scorer =
+  scorer.prepare_scorer_ =
     [&frequency, &filter_boost](
       const irs::ColumnProvider& /*segment*/,
       const irs::feature_map_t& /*term*/, const irs::byte_type* /*stats_buf*/,
@@ -1146,8 +1142,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 
   Docs expected{11, 12, 13, 1, 2, 8, 5};
 
-  irs::Scorer::ptr bm15{
-    std::make_unique<irs::BM25>(irs::BM25::K(), 0.f)};
+  irs::Scorer::ptr bm15{std::make_unique<irs::BM25>(irs::BM25::K(), 0.f)};
 
   CheckQuery(filter, std::span{&bm15, 1}, expected, rdr);
 }

@@ -64,11 +64,7 @@ Filter& append(irs::boolean_filter& root, const std::string_view& name,
 namespace tests {
 namespace detail {
 
-struct basic_sort : irs::Scorer<basic_sort, void> {
-  static irs::Sort::ptr make(size_t i) {
-    return irs::Scorer::ptr(new basic_sort(i));
-  }
-
+struct basic_sort : irs::ScorerBase<basic_sort, void> {
   explicit basic_sort(size_t idx) : idx(idx) {}
 
   struct basic_scorer final : irs::score_ctx {
@@ -16145,8 +16141,8 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
     }
 
-    std::array<irs::Scorer::ptr, 2> ord{
-      std::make_unique<irs::TFIDF>(), std::make_unique<irs::BM25>()};
+    std::array<irs::Scorer::ptr, 2> ord{std::make_unique<irs::TFIDF>(),
+                                        std::make_unique<irs::BM25>()};
 
     auto prepared_ord = irs::Scorers::Prepare(ord);
     ASSERT_FALSE(prepared_ord.empty());

@@ -114,8 +114,8 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  auto prepared_order = irs::Scorers::Prepare(
-    irs::BM25{irs::BM25::K(), irs::BM25::B(), true});
+  auto prepared_order =
+    irs::Scorers::Prepare(irs::BM25{irs::BM25::K(), irs::BM25::B(), true});
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
@@ -327,9 +327,7 @@ TEST_P(bm25_test_case, test_normalize_features) {
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), std::string_view{});
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 
   // without norms (bm15)
@@ -337,9 +335,7 @@ TEST_P(bm25_test_case, test_normalize_features) {
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0.0}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 
   // without norms (bm15), integer argument
@@ -347,9 +343,7 @@ TEST_P(bm25_test_case, test_normalize_features) {
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{\"b\": 0}");
     ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::IndexFeatures::FREQ, prepared->index_features());
+    ASSERT_EQ(irs::IndexFeatures::FREQ, scorer->index_features());
   }
 }
 
@@ -1275,9 +1269,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   // default init (field_collector)
   {
     irs::BM25 sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_field_collector();
+    auto collector = sort.prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
@@ -1290,7 +1282,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
-    collector = prepared_sort->prepare_field_collector();
+    collector = sort.prepare_field_collector();
     collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
@@ -1299,7 +1291,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
-    collector = prepared_sort->prepare_field_collector();
+    collector = sort.prepare_field_collector();
     collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
@@ -1311,9 +1303,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   // default init (term_collector)
   {
     irs::BM25 sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_term_collector();
+    auto collector = sort.prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     bstring_data_output out0;
     collector->write(out0);
@@ -1326,7 +1316,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out1.out_[0], out0.out_.size()));
 
     // identical to default
-    collector = prepared_sort->prepare_term_collector();
+    collector = sort.prepare_term_collector();
     collector->collect(out0.out_);
     bstring_data_output out2;
     collector->write(out2);
@@ -1335,7 +1325,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
                   std::memcmp(&out0.out_[0], &out2.out_[0], out0.out_.size()));
 
     // identical to modified
-    collector = prepared_sort->prepare_term_collector();
+    collector = sort.prepare_term_collector();
     collector->collect(out1.out_);
     bstring_data_output out3;
     collector->write(out3);
@@ -1347,9 +1337,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   // serialized too short (field_collector)
   {
     irs::BM25 sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_field_collector();
+    auto collector = sort.prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     ASSERT_THROW(collector->collect(irs::bytes_view(&fcollector_out[0],
                                                     fcollector_out.size() - 1)),
@@ -1359,9 +1347,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   // serialized too short (term_collector)
   {
     irs::BM25 sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_term_collector();
+    auto collector = sort.prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     ASSERT_THROW(collector->collect(irs::bytes_view(&tcollector_out[0],
                                                     tcollector_out.size() - 1)),
@@ -1371,9 +1357,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   // serialized too long (field_collector)
   {
     irs::BM25 sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_field_collector();
+    auto collector = sort.prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     auto out = fcollector_out;
     out.append(1, 42);
@@ -1383,10 +1367,7 @@ TEST_P(bm25_test_case, test_collector_serialization) {
   // serialized too long (term_collector)
   {
     irs::BM25 sort;
-    auto prepared_sort = sort.prepare();
-    ASSERT_NE(nullptr, prepared_sort);
-    auto collector = prepared_sort->prepare_term_collector();
-    ASSERT_NE(nullptr, collector);
+    auto collector = sort.prepare_term_collector();
     auto out = tcollector_out;
     out.append(1, 42);
     ASSERT_THROW(collector->collect(out), irs::io_error);
@@ -1402,8 +1383,8 @@ TEST_P(bm25_test_case, test_make) {
     auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());
     ASSERT_EQ(1.2f, scr.k());
-    ASSERT_FALSE(scr.bm11());
-    ASSERT_FALSE(scr.bm15());
+    ASSERT_FALSE(scr.IsBM11());
+    ASSERT_FALSE(scr.IsBM15());
   }
 
   // custom values
@@ -1415,8 +1396,8 @@ TEST_P(bm25_test_case, test_make) {
     auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
-    ASSERT_FALSE(scr.bm11());
-    ASSERT_FALSE(scr.bm15());
+    ASSERT_FALSE(scr.IsBM11());
+    ASSERT_FALSE(scr.IsBM15());
   }
 
   // custom values (integer argument)
@@ -1428,8 +1409,8 @@ TEST_P(bm25_test_case, test_make) {
     auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
     ASSERT_EQ(78.0f, scr.k());
-    ASSERT_FALSE(scr.bm11());
-    ASSERT_FALSE(scr.bm15());
+    ASSERT_FALSE(scr.IsBM11());
+    ASSERT_FALSE(scr.IsBM15());
   }
 
   // bm11
@@ -1441,8 +1422,8 @@ TEST_P(bm25_test_case, test_make) {
     auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
-    ASSERT_TRUE(scr.bm11());
-    ASSERT_FALSE(scr.bm15());
+    ASSERT_TRUE(scr.IsBM11());
+    ASSERT_FALSE(scr.IsBM15());
   }
 
   // bm11 (integer argument)
@@ -1454,8 +1435,8 @@ TEST_P(bm25_test_case, test_make) {
     auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(1.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
-    ASSERT_TRUE(scr.bm11());
-    ASSERT_FALSE(scr.bm15());
+    ASSERT_TRUE(scr.IsBM11());
+    ASSERT_FALSE(scr.IsBM15());
   }
 
   // bm15
@@ -1467,8 +1448,8 @@ TEST_P(bm25_test_case, test_make) {
     auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
-    ASSERT_FALSE(scr.bm11());
-    ASSERT_TRUE(scr.bm15());
+    ASSERT_FALSE(scr.IsBM11());
+    ASSERT_TRUE(scr.IsBM15());
   }
 
   // bm15 (integer argument)
@@ -1480,8 +1461,8 @@ TEST_P(bm25_test_case, test_make) {
     auto& scr = dynamic_cast<irs::BM25&>(*scorer);
     ASSERT_EQ(0.f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
-    ASSERT_FALSE(scr.bm11());
-    ASSERT_TRUE(scr.bm15());
+    ASSERT_FALSE(scr.IsBM11());
+    ASSERT_TRUE(scr.IsBM15());
   }
 
   // invalid args

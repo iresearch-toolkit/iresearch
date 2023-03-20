@@ -91,8 +91,8 @@ TEST(directory_reader_test, open_newest_index) {
   };
   class test_format : public irs::format {
    public:
-    mutable test_index_meta_reader index_meta_reader;
     explicit test_format(irs::type_info::type_id type) : type_{type} {}
+
     irs::index_meta_writer::ptr get_index_meta_writer() const final {
       return nullptr;
     }
@@ -121,16 +121,17 @@ TEST(directory_reader_test, open_newest_index) {
     irs::columnstore_reader::ptr get_columnstore_reader() const final {
       return nullptr;
     }
-    irs::type_info::type_id type type() const noexcept final { return type_; }
+    irs::type_info::type_id type() const noexcept final { return type_; }
 
-    irs::type_info::type_id type_
+    mutable test_index_meta_reader index_meta_reader;
+    irs::type_info::type_id type_;
   };
 
   struct test_format0 {};
   struct test_format1 {};
 
-  test_format test_codec0(irs::type<test_format0>::get());
-  test_format test_codec1(irs::type<test_format1>::get());
+  test_format test_codec0(irs::type<test_format0>::id());
+  test_format test_codec1(irs::type<test_format1>::id());
   irs::format_registrar test_format0_registrar(irs::type<test_format0>::get(),
                                                "", &get_codec0);
   irs::format_registrar test_format1_registrar(irs::type<test_format1>::get(),
@@ -344,7 +345,8 @@ TEST(directory_reader_test, open) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                   Segment reader
+// --SECTION--                                                   Segment
+// reader
 // ----------------------------------------------------------------------------
 
 TEST(segment_reader_test, segment_reader_has) {
