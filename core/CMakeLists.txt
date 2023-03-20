@@ -109,10 +109,10 @@ set(IResearch_core_sources
   ./search/all_docs_provider.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
-  ./search/boost_sort.cpp
+  ./search/boost_scorer.cpp
   ./search/granular_range_filter.cpp
   ./search/scorers.cpp
-  ./search/sort.cpp
+  ./search/scorer.cpp
   ./search/score_function.cpp
   ./search/cost.cpp
   ./search/collectors.cpp
@@ -202,11 +202,11 @@ set(IResearch_core_headers
   ./index/index_writer.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
-  ./search/boost_sort.hpp
+  ./search/boost_scorer.hpp
   ./search/granular_range_filter.hpp
   ./search/scorers.hpp
   ./search/states_cache.hpp
-  ./search/sort.hpp
+  ./search/scorer.hpp
   ./search/cost.hpp
   ./search/filter.hpp
   ./search/term_filter.hpp

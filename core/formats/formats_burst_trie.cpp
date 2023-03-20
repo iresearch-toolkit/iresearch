@@ -79,7 +79,7 @@
 #include "index/index_meta.hpp"
 #include "index/norm.hpp"
 #include "store/memory_directory.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "store/store_utils.hpp"
 #include "utils/automaton.hpp"
 #include "utils/encryption.hpp"

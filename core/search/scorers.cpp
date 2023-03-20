@@ -27,7 +27,7 @@
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
 #include "bm25.hpp"
-#include "boost_sort.hpp"
+#include "boost_scorer.hpp"
 #include "tfidf.hpp"
 #endif
 #include "utils/hash_utils.hpp"
@@ -89,17 +89,15 @@ class scorer_register
 
 namespace irs {
 
-/*static*/ bool scorers::exists(std::string_view name,
-                                const type_info& args_format,
-                                bool load_library /*= true*/) {
+bool scorers::exists(std::string_view name, const type_info& args_format,
+                     bool load_library /*= true*/) {
   return nullptr != scorer_register::instance().get(
                       entry_key_t(name, args_format), load_library);
 }
 
-/*static*/ Scorer::ptr scorers::get(std::string_view name,
-                                    const type_info& args_format,
-                                    std::string_view args,
-                                    bool load_library /*= true*/) noexcept {
+Scorer::ptr scorers::get(std::string_view name, const type_info& args_format,
+                         std::string_view args,
+                         bool load_library /*= true*/) noexcept {
   try {
     auto* factory = scorer_register::instance().get(
       entry_key_t(name, args_format), load_library);
@@ -112,7 +110,7 @@ namespace irs {
   return nullptr;
 }
 
-/*static*/ void scorers::init() {
+void scorers::init() {
 #ifndef IRESEARCH_DLL
   irs::BM25::init();
   irs::TFIDF::init();
@@ -120,11 +118,11 @@ namespace irs {
 #endif
 }
 
-/*static*/ void scorers::load_all(std::string_view path) {
+void scorers::load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool scorers::visit(
+bool scorers::visit(
   const std::function<bool(std::string_view, const type_info&)>& visitor) {
   scorer_register::visitor_t wrapper =
     [&visitor](const entry_key_t& key) -> bool {

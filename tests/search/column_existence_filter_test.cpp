@@ -25,7 +25,7 @@
 
 #include "filter_test_case_base.hpp"
 #include "index/doc_generator.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "tests_shared.hpp"
 #include "utils/lz4compression.hpp"
 

@@ -32,8 +32,8 @@
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/score.hpp"
+#include "search/scorer.hpp"
 #include "search/scorers.hpp"
-#include "search/sort.hpp"
 #include "search/term_filter.hpp"
 #include "tests_shared.hpp"
 

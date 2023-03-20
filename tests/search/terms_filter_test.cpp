@@ -24,7 +24,7 @@
 
 #include "filter_test_case_base.hpp"
 #include "index/doc_generator.hpp"
-#include "search/boost_sort.hpp"
+#include "search/boost_scorer.hpp"
 #include "tests_shared.hpp"
 
 namespace {

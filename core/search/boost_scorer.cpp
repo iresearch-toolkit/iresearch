@@ -20,7 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "boost_sort.hpp"
+#include "boost_scorer.hpp"
 
 namespace irs {
 namespace {

@@ -25,7 +25,7 @@
 #include <function2/function2.hpp>
 #include <functional>
 
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/bit_utils.hpp"
 
 namespace irs {

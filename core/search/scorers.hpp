@@ -23,14 +23,10 @@
 
 #pragma once
 
-#include "sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/text_format.hpp"
 
 namespace irs {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               scorer registration
-// -----------------------------------------------------------------------------
 
 class scorer_registrar {
  public:
@@ -67,47 +63,29 @@ class scorer_registrar {
 #define REGISTER_SCORER_TYPED(scorer_name, args_format) \
   REGISTER_SCORER(scorer_name, args_format, scorer_name::make)
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               convinience methods
-// -----------------------------------------------------------------------------
+namespace scorers {
 
-class scorers {
- public:
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief checks whether scorer with a specified name is registered
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(std::string_view name, const type_info& args_format,
-                     bool load_library = true);
+// Check whether scorer with a specified name is registered
+bool exists(std::string_view name, const type_info& args_format,
+            bool load_library = true);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief find a scorer by name, or nullptr if not found
-  ///        indirect call to <class>::make(...)
-  ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-  ////////////////////////////////////////////////////////////////////////////////
-  static Scorer::ptr get(std::string_view name, const type_info& args_format,
-                         std::string_view args,
-                         bool load_library = true) noexcept;
+// Find a scorer by name, or nullptr if not found
+// indirect call to <class>::make(...)
+// NOTE: make(...) MUST be defined in CPP to ensire proper code scope
+Scorer::ptr get(std::string_view name, const type_info& args_format,
+                std::string_view args, bool load_library = true) noexcept;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief for static lib reference all known scorers in lib
-  ///        for shared lib NOOP
-  ///        no explicit call of fn is required, existence of fn is sufficient
-  ////////////////////////////////////////////////////////////////////////////////
-  static void init();
+// For static lib reference all known scorers in lib
+// for shared lib NOOP
+// no explicit call of fn is required, existence of fn is sufficient
+void init();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief load all scorers from plugins directory
-  ////////////////////////////////////////////////////////////////////////////////
-  static void load_all(std::string_view path);
+// Load all scorers from plugins directory
+void load_all(std::string_view path);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief visit all loaded scorers, terminate early if visitor returns false
-  ////////////////////////////////////////////////////////////////////////////////
-  static bool visit(
-    const std::function<bool(std::string_view, const type_info&)>& visitor);
+// Visit all loaded scorers, terminate early if visitor returns false
+bool visit(
+  const std::function<bool(std::string_view, const type_info&)>& visitor);
 
- private:
-  scorers() = delete;
-};
-
+}  // namespace scorers
 }  // namespace irs

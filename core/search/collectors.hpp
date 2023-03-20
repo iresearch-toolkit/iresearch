@@ -24,8 +24,8 @@
 
 #include <vector>
 
+#include "search/scorer.hpp"
 #include "shared.hpp"
-#include "sort.hpp"
 
 namespace irs {
 

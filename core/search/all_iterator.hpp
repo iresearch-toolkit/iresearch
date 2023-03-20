@@ -27,7 +27,7 @@
 #include "index/iterators.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/attribute_helper.hpp"
 
 namespace irs {

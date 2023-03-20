@@ -24,7 +24,7 @@
 
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "store/memory_directory.hpp"
 
 #include <absl/container/inlined_vector.h>

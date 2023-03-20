@@ -27,7 +27,7 @@
 
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "shared.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/noncopyable.hpp"

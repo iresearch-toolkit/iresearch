@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/attributes.hpp"
 
 namespace irs {
