@@ -105,7 +105,7 @@ template<typename T>
 bstring& encode(bstring& buf, T value, size_t offset = 0) {
   typedef numeric_traits<T> traits_t;
   buf.resize(traits_t::size());
-  buf.resize(traits_t::encode(traits_t::integral(value), &(buf[0]), offset));
+  buf.resize(traits_t::encode(traits_t::integral(value), buf.data(), offset));
   return buf;
 }
 

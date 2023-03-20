@@ -45,7 +45,7 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
 
   IRS_ASSERT(enc);
 
-  if (!enc->create_header(filename, &header[0])) {
+  if (!enc->create_header(filename, header.data())) {
     throw index_error{absl::StrCat(
       "failed to initialize encryption header, path '", filename, "'")};
   }
@@ -53,7 +53,7 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   // header is encrypted here
   irs::write_string(out, header);
 
-  cipher = enc->create_stream(filename, &header[0]);
+  cipher = enc->create_stream(filename, header.data());
 
   if (!cipher) {
     throw index_error{absl::StrCat(
@@ -96,7 +96,7 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
                    filename, "'")};
   }
 
-  cipher = enc->create_stream(filename, &header[0]);
+  cipher = enc->create_stream(filename, header.data());
 
   if (!cipher) {
     throw index_error{
