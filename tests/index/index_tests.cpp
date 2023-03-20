@@ -3200,6 +3200,48 @@ TEST_P(index_test_case, document_context) {
     thread1.join();
   }
 
+  // remove without tick
+  {
+    auto query_doc1 = MakeByTerm("name", "A");
+    auto query_doc3 = MakeByTerm("name", "C");
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                       doc2->stored.begin(), doc2->stored.end()));
+    writer->GetBatch().Remove<false>(*query_doc1);
+    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                       doc1->stored.begin(), doc1->stored.end()));
+    writer->GetBatch().Remove(*query_doc3);
+    ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                       doc1->stored.begin(), doc1->stored.end()));
+    writer->Commit();
+    auto reader = irs::DirectoryReader(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    EXPECT_EQ(3, reader.docs_count());
+    EXPECT_EQ(2, reader.live_docs_count());
+    auto& segment = reader[0];  // assume 0 is id of first/only segment
+    const auto* column = segment.column("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->iterator(irs::ColumnHint::kNormal);
+    ASSERT_NE(nullptr, values);
+    auto* actual_value = irs::get<irs::payload>(*values);
+    ASSERT_NE(nullptr, actual_value);
+    auto terms = segment.field("same");
+    ASSERT_NE(nullptr, terms);
+    auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+    ASSERT_TRUE(termItr->next());
+    auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("B",
+              irs::to_string<std::string_view>(actual_value->value.data()));
+    ASSERT_TRUE(docsItr->next());
+    ASSERT_EQ(docsItr->value(), values->seek(docsItr->value()));
+    ASSERT_EQ("A",
+              irs::to_string<std::string_view>(actual_value->value.data()));
+    ASSERT_FALSE(docsItr->next());
+  }
+
   // holding document_context after insert across commit does not block
   {
     auto writer = open_writer();
