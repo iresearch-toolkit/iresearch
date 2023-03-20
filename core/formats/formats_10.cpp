@@ -4263,8 +4263,6 @@ void init() {
 #endif  // IRESEARCH_DLL
 }
 
-format::format(const irs::type_info& type) noexcept : irs::format(type) {}
-
 }  // namespace version10
 
 // use base irs::position type for ancestors
