@@ -941,7 +941,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
 
   // 'path_prefix' cannot be used with paths containing a mix of native and
   // non-native path separators
-  std::replace(&dirname[0], &dirname[0] + dirname.size(), L'/',
+  std::replace(dirname.data(), dirname.data() + dirname.size(), L'/',
                file_path_delimiter);
 
   dirname = ensure_path_prefix(dirname);
@@ -1062,7 +1062,7 @@ bool read_cwd(
       result.resize(size + 1);  // allocate space for cwd, +1 for '\0'
     }
 
-    size = GetCurrentDirectory(size, &result[0]);
+    size = GetCurrentDirectory(size, result.data());
 
     // if error or more space required than available
     if (!size || size >= result.size()) {
@@ -1091,8 +1091,9 @@ bool read_cwd(
 
         return true;
       }
-    } else if (nullptr != getcwd(&result[0], result.size())) {
-      result.resize(std::strlen(&result[0]));  // truncate buffer to size of cwd
+    } else if (nullptr != getcwd(result.data(), result.size())) {
+      // truncate buffer to size of cwd
+      result.resize(std::strlen(result.data()));
 
       return true;
     }
@@ -1200,7 +1201,7 @@ bool remove(const file_path_t path) noexcept {
 
   // 'path_prefix' cannot be used with paths containing a mix of native and
   // non-native path separators
-  std::replace(&fullpath[0], &fullpath[0] + fullpath.size(), L'/',
+  std::replace(fullpath.data(), fullpath.data() + fullpath.size(), L'/',
                file_path_delimiter);
 
   fullpath = ensure_path_prefix(fullpath);
@@ -1257,7 +1258,7 @@ bool set_cwd(const file_path_t path) noexcept {
 
   // 'path_prefix' cannot be used with paths containing a mix of native and
   // non-native path separators
-  std::replace(&fullpath[0], &fullpath[0] + fullpath.size(), L'/',
+  std::replace(fullpath.data(), fullpath.data() + fullpath.size(), L'/',
                file_path_delimiter);
   fullpath = ensure_path_prefix(fullpath);
 

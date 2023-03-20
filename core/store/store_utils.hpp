@@ -160,7 +160,7 @@ inline StringType read_string(data_input& in) {
 
   StringType str(len, 0);
   [[maybe_unused]] const auto read =
-    in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
+    in.read_bytes(reinterpret_cast<byte_type*>(str.data()), str.size());
   IRS_ASSERT(read == str.size());
   return str;
 }

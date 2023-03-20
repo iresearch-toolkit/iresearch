@@ -142,7 +142,7 @@ void bytes_view_input::read_bytes(bstring& buf, size_t size) {
 
   buf.resize(used + size);
 
-  [[maybe_unused]] const auto read = read_bytes(&(buf[0]) + used, size);
+  [[maybe_unused]] const auto read = read_bytes(buf.data() + used, size);
   IRS_ASSERT(read == size);
 }
 
@@ -169,11 +169,11 @@ size_t remapped_bytes_view_input::src_to_internal(size_t t) const noexcept {
 }
 
 size_t remapped_bytes_view_input::file_pointer() const noexcept {
-  auto const addr = bytes_view_input::file_pointer();
+  const auto addr = bytes_view_input::file_pointer();
   auto diff = std::numeric_limits<size_t>::max();
   IRS_ASSERT(!mapping_.empty());
   mapping_value src = mapping_.front();
-  for (auto const& m : mapping_) {
+  for (const auto& m : mapping_) {
     if (m.second < addr) {
       if (addr - m.second < diff) {
         diff = addr - m.second;

@@ -32,7 +32,7 @@ namespace irs {
 // return slice as string
 inline std::string slice_to_string(
   const VPackSlice slice,
-  VPackOptions const* options = &VPackOptions::Defaults) noexcept {
+  const VPackOptions* options = &VPackOptions::Defaults) noexcept {
   std::string str;
   try {
     str = slice.toString(options);

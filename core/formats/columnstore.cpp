@@ -248,8 +248,8 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
   // Ensure that we have enough space to store decompressed data
   decode_buf.resize(buff_size + MAX_DATA_BLOCK_SIZE);
 
-  const auto decoded =
-    decompressor->decompress(buf, buf_size, &decode_buf[0], decode_buf.size());
+  const auto decoded = decompressor->decompress(
+    buf, buf_size, decode_buf.data(), decode_buf.size());
 
   if (IsNull(decoded)) {
     throw irs::index_error("error while reading compact");
@@ -689,7 +689,7 @@ class writer final : public irs::columnstore_writer {
 
       // finish column blocks index
       IRS_ASSERT(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
-      auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
+      auto* buf = reinterpret_cast<uint64_t*>(ctx_->buf_.data());
       column_index_.flush(blocks_index_.stream, buf);
       blocks_index_.stream.flush();
     }
@@ -736,7 +736,7 @@ class writer final : public irs::columnstore_writer {
       column_index_.push_back(block_index_.min_key(), out.file_pointer());
 
       IRS_ASSERT(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
-      auto* buf = reinterpret_cast<uint64_t*>(&ctx_->buf_[0]);
+      auto* buf = reinterpret_cast<uint64_t*>(ctx_->buf_.data());
 
       if (column_index_.full()) {
         column_index_.flush(blocks_index_.stream, buf);
@@ -1077,20 +1077,20 @@ class sparse_block : util::noncopyable {
     auto begin = std::begin(index_);
 
     // read keys
-    encode::avg::visit_block_packed_tail(in, size,
-                                         reinterpret_cast<uint32_t*>(&buf[0]),
-                                         [begin](uint32_t key) mutable {
-                                           begin->key = key;
-                                           ++begin;
-                                         });
+    encode::avg::visit_block_packed_tail(
+      in, size, reinterpret_cast<uint32_t*>(buf.data()),
+      [begin](uint32_t key) mutable {
+        begin->key = key;
+        ++begin;
+      });
 
     // read offsets
-    encode::avg::visit_block_packed_tail(in, size,
-                                         reinterpret_cast<uint64_t*>(&buf[0]),
-                                         [begin](uint64_t offset) mutable {
-                                           begin->offset = offset;
-                                           ++begin;
-                                         });
+    encode::avg::visit_block_packed_tail(
+      in, size, reinterpret_cast<uint64_t*>(buf.data()),
+      [begin](uint64_t offset) mutable {
+        begin->offset = offset;
+        ++begin;
+      });
 
     // read data
     read_compact(in, cipher, decomp, buf, data_);
@@ -1200,12 +1200,12 @@ class dense_block : util::noncopyable {
     // read data offsets
     auto begin = std::begin(index_);
 
-    encode::avg::visit_block_packed_tail(in, size,
-                                         reinterpret_cast<uint64_t*>(&buf[0]),
-                                         [begin](uint64_t offset) mutable {
-                                           *begin = offset;
-                                           ++begin;
-                                         });
+    encode::avg::visit_block_packed_tail(
+      in, size, reinterpret_cast<uint64_t*>(buf.data()),
+      [begin](uint64_t offset) mutable {
+        *begin = offset;
+        ++begin;
+      });
 
     // read data
     read_compact(in, cipher, decomp, buf, data_);
@@ -1396,7 +1396,7 @@ class sparse_mask_block : util::noncopyable {
     auto begin = std::begin(keys_);
 
     encode::avg::visit_block_packed_tail(
-      in, size_, reinterpret_cast<uint32_t*>(&buf[0]),
+      in, size_, reinterpret_cast<uint32_t*>(buf.data()),
       [begin](uint32_t key) mutable { *begin++ = key; });
 
     // mask block has no data, so all offsets should be equal to 0

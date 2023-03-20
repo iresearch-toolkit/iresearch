@@ -1001,7 +1001,7 @@ class block_pool {
   using allocator = AllocType;
   using value_type = typename allocator::value_type;
   using reference = typename allocator::value_type&;
-  using const_reference = typename allocator::value_type const&;
+  using const_reference = const typename allocator::value_type&;
   using pointer = typename std::allocator_traits<allocator>::pointer;
   using const_pointer =
     typename std::allocator_traits<allocator>::const_pointer;

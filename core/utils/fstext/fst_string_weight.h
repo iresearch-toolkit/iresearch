@@ -110,7 +110,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 
     // read content
     str_.resize(size);
-    strm.read(reinterpret_cast<char*>(&str_[0]), size * sizeof(Label));
+    strm.read(reinterpret_cast<char*>(str_.data()), size * sizeof(Label));
 
     return strm;
   }

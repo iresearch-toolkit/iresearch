@@ -83,11 +83,11 @@ bool ctr_cipher_stream::encrypt(uint64_t offset, byte_type* data, size_t size) {
 
     if (n != block_size) {
       block_buf.resize(block_size);
-      block = &block_buf[0];
+      block = block_buf.data();
       std::memmove(block + block_offset, data, n);
     }
 
-    if (!encrypt_block(block_index, block, &scratch[0])) {
+    if (!encrypt_block(block_index, block, scratch.data())) {
       return false;
     }
 
@@ -123,11 +123,11 @@ bool ctr_cipher_stream::decrypt(uint64_t offset, byte_type* data, size_t size) {
 
     if (n != block_size) {
       block_buf.resize(block_size, 0);
-      block = &block_buf[0];
+      block = block_buf.data();
       std::memmove(block + block_offset, data, n);
     }
 
-    if (!decrypt_block(block_index, block, &scratch[0])) {
+    if (!decrypt_block(block_index, block, scratch.data())) {
       return false;
     }
 
