@@ -284,12 +284,14 @@ void FlushedSegmentContext::MaskUnusedReplace(uint64_t first_tick,
   const std::span docs{segment.flushed_docs_.data() + begin,
                        segment.flushed_docs_.data() + end};
   for (const auto& doc : docs) {
-    if (doc.query_id == writer_limits::kInvalidOffset ||
-        doc.tick <= first_tick) {
+    if (doc.tick <= first_tick) {
       continue;
     }
     if (last_tick < doc.tick) {
       break;
+    }
+    if (doc.query_id == writer_limits::kInvalidOffset) {
+      continue;
     }
     IRS_ASSERT(doc.query_id < segment.queries_.size());
     if (!segment.queries_[doc.query_id].IsDone()) {

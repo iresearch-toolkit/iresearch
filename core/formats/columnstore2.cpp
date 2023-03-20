@@ -689,10 +689,10 @@ class dense_fixed_length_column final : public column_base {
     irs::index_input& in, MemoryAccountingFunc& memory_accounter,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
-    auto const data_size = len_ * hdr.docs_count;
-    auto const bitmap_size =
+    const auto data_size = len_ * hdr.docs_count;
+    const auto bitmap_size =
       calculate_bitmap_size(in.length(), next_sorted_columns);
-    auto const total_size = data_size + bitmap_size;
+    const auto total_size = data_size + bitmap_size;
     if (!allocate_buffered_memory(total_size, memory_accounter)) {
       return;
     }
@@ -868,7 +868,7 @@ class fixed_length_column final : public column_base {
     MemoryAccountingFunc& memory_accounter,
     remapped_bytes_view_input::mapping* mapping) {
     IRS_ASSERT(!blocks.empty());
-    auto const last_block_full = hdr.docs_count % column::kBlockSize == 0;
+    const auto last_block_full = hdr.docs_count % column::kBlockSize == 0;
     auto last_offset = blocks.back();
     std::vector<std::tuple<size_t, size_t, size_t>> blocks_offsets;
     size_t blocks_data_size{0};
@@ -1047,7 +1047,7 @@ class sparse_column final : public column_base {
         // block data size is calculated as end of the data for the last
         // document in block
         const size_t block_size = block.bits * sizeof(uint64_t);
-        auto const value_index = block.last % packed::BLOCK_SIZE_64;
+        const auto value_index = block.last % packed::BLOCK_SIZE_64;
         addr_buffer.resize(block_size);
         in.read_bytes(block.addr + addr_length - block_size, addr_buffer.data(),
                       block_size);

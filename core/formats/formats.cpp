@@ -58,7 +58,7 @@ class format_register
                                         equal_to> {
  protected:
   std::string key_to_filename(const key_type& key) const final {
-    auto const& module = irs::IsNull(key.second) ? key.first : key.second;
+    const auto& module = irs::IsNull(key.second) ? key.first : key.second;
 
     std::string filename(kFileNamePrefix.size() + module.size(), 0);
 
@@ -78,7 +78,7 @@ namespace irs {
 
 /*static*/ bool formats::exists(std::string_view name,
                                 bool load_library /*= true*/) {
-  auto const key = std::make_pair(name, std::string_view{});
+  const auto key = std::make_pair(name, std::string_view{});
   return nullptr != format_register::instance().get(key, load_library);
 }
 
@@ -86,7 +86,7 @@ namespace irs {
                                     std::string_view module /*= {} */,
                                     bool load_library /*= true*/) noexcept {
   try {
-    auto const key = std::make_pair(name, module);
+    const auto key = std::make_pair(name, module);
     auto* factory = format_register::instance().get(key, load_library);
 
     return factory ? factory() : nullptr;

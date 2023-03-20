@@ -108,7 +108,7 @@ bool get_thread_name(
   init_thread_name_api();
   std::unique_ptr<void, local_deleter> guard;
   thread_name_t tmp;
-  auto const res = get_thread_description.load()(GetCurrentThread(), &tmp);
+  const auto res = get_thread_description.load()(GetCurrentThread(), &tmp);
   guard.reset(tmp);
   if (SUCCEEDED(res)) {
     name = tmp;

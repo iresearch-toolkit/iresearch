@@ -624,7 +624,7 @@ class disjunction : public compound_doc_iterator<Adapter>,
     }
 
     while (lead().value() <= doc.value) {
-      bool const exhausted = lead().value() == doc.value
+      const bool exhausted = lead().value() == doc.value
                                ? !lead()->next()
                                : doc_limits::eof(lead()->seek(doc.value + 1));
 

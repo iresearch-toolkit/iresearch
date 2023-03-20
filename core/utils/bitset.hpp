@@ -44,8 +44,7 @@ class dynamic_bitset {
   using word_ptr_t = std::unique_ptr<word_t[], word_ptr_deleter_t>;
 
   constexpr IRS_FORCE_INLINE static size_t bits_to_words(size_t bits) noexcept {
-    return bits / bits_required<word_t>() +
-           static_cast<size_t>((bits % bits_required<word_t>()) != 0);
+    return (bits + bits_required<word_t>() - 1) / bits_required<word_t>();
   }
 
   // returns corresponding bit index within a word for the

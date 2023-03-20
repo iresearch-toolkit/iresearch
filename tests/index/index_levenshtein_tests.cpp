@@ -68,8 +68,8 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
             std::back_inserter(expected_chars));
 
           auto edit_distance =
-            irs::edit_distance(&expected_chars[0], expected_chars.size(),
-                               &target_chars[0], target_chars.size());
+            irs::edit_distance(expected_chars.data(), expected_chars.size(),
+                               target_chars.data(), target_chars.size());
           if (edit_distance > description.max_distance()) {
             continue;
           }

@@ -157,7 +157,7 @@ class volatile_ref : util::noncopyable {
 
   void assign(ref_t str, Char label) {
     str_.resize(str.size() + 1);
-    std::memcpy(&str_[0], str.data(), str.size() * sizeof(Char));
+    std::memcpy(str_.data(), str.data(), str.size() * sizeof(Char));
     str_[str.size()] = label;
     ref_ = str_;
   }

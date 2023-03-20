@@ -114,7 +114,7 @@ void URing::reg_buffer(byte_type* b, size_t size) {
 }
 
 void URing::submit() {
-  int const ret = io_uring_submit(&ring);
+  const int ret = io_uring_submit(&ring);
   if (ret < 0) {
     throw io_error{
       absl::StrCat("failed to submit write request, error ", -ret)};

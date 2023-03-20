@@ -368,14 +368,20 @@ class IndexWriter : private util::noncopyable {
     }
 
     // Marks all documents matching the filter for removal.
+    // TickBound - Remove filter usage is restricted by document creation tick.
     // Filter the filter selecting which documents should be removed.
     // Note that changes are not visible until commit().
     // Note that filter must be valid until commit().
-    template<typename Filter>
+    // Remove</*TickBound=*/false> is applied even for documents created after
+    // the Remove call and until next TickBound Remove or Replace.
+    template<bool TickBound = true, typename Filter>
     void Remove(Filter&& filter) {
       UpdateSegment(/*disable_flush=*/true);
       active_.Segment()->queries_.emplace_back(std::forward<Filter>(filter),
-                                               queries_++, QueryContext::kDone);
+                                               queries_, QueryContext::kDone);
+      if constexpr (TickBound) {
+        ++queries_;
+      }
     }
 
     // Create a document to filled by the caller
@@ -694,6 +700,7 @@ class IndexWriter : private util::noncopyable {
     std::unique_ptr<segment_writer> writer_;
     // the SegmentMeta this writer was initialized with
     IndexSegment writer_meta_;
+    // TODO(MBkkt) Better to be per FlushedSegment
     bool has_replace_{false};
 
     static std::unique_ptr<SegmentContext> make(

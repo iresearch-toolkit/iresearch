@@ -87,7 +87,7 @@ compression_registrar::compression_registrar(
   const type_info& type, compressor_factory_f compressor_factory,
   decompressor_factory_f decompressor_factory,
   const char* source /*= nullptr*/) {
-  auto const source_ref =
+  const auto source_ref =
     source != nullptr ? std::string_view{source} : std::string_view{};
   const auto new_entry = value(compressor_factory, decompressor_factory);
 
