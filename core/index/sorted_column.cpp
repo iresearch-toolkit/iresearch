@@ -37,7 +37,9 @@ class SortedColumnIterator : public doc_iterator {
                                 bytes_view column_payload) noexcept
     : next_{values.data()},
       end_{next_ + values.size()},
-      column_payload_{column_payload} {}
+      column_payload_{column_payload} {
+    std::get<cost>(attrs_).reset(values.size());
+  }
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
