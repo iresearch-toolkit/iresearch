@@ -1099,11 +1099,11 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 fields_data::fields_data(const FeatureInfoProvider& feature_info,
                          std::deque<cached_column>& cached_features,
                          const Comparer* comparator /*= nullptr*/)
-  : comparator_(comparator),
-    feature_info_(&feature_info),
-    cached_features_(&cached_features),
-    byte_writer_(byte_pool_.begin()),
-    int_writer_(int_pool_.begin()) {}
+  : comparator_{comparator},
+    feature_info_{&feature_info},
+    cached_features_{&cached_features},
+    byte_writer_{byte_pool_.begin()},
+    int_writer_{int_pool_.begin()} {}
 
 field_data* fields_data::emplace(const hashed_string_view& name,
                                  IndexFeatures index_features,
@@ -1118,15 +1118,13 @@ field_data* fields_data::emplace(const hashed_string_view& name,
 
   if (!it->second) {
     try {
-      fields_.emplace_back(static_cast<const std::string_view&>(name), features,
-                           *feature_info_, *cached_features_, columns,
-                           byte_writer_, int_writer_, index_features,
-                           (nullptr != comparator_));
+      const_cast<field_data*&>(it->second) = &fields_.emplace_back(
+        name, features, *feature_info_, *cached_features_, columns,
+        byte_writer_, int_writer_, index_features, (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
+      throw;
     }
-
-    const_cast<field_data*&>(it->second) = &fields_.back();
   }
 
   return it->second;
