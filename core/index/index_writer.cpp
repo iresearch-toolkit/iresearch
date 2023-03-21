@@ -2161,6 +2161,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
           segment->flushed_docs_[flushed.GetDocsBegin()].tick;
         const auto flushed_last_tick =
           segment->flushed_docs_[flushed.GetDocsEnd() - 1].tick;
+        IRS_ASSERT(flushed_first_tick <= flushed_last_tick);
 
         if (flushed_last_tick <= committed_tick_) {
           continue;  // skip flushed from previous Commit
@@ -2357,6 +2358,7 @@ bool IndexWriter::Start(uint64_t tick, const ProgressReportCallback& progress) {
 
   if (to_commit.Empty()) {
     // Nothing to commit, no transaction started
+    committed_tick_ = tick == writer_limits::kMaxTick ? committed_tick_ : tick;
     return false;
   }
   Finally cleanup = [&]() noexcept {
