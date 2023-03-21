@@ -71,6 +71,7 @@ struct WanderatorOptions {
 struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
   const FeatureInfoProvider& feature_info;
+  const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
 };

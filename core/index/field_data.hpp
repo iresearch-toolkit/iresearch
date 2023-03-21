@@ -105,7 +105,7 @@ class field_data : util::noncopyable {
   field_data(std::string_view name, const features_t& features,
              const FeatureInfoProvider& feature_columns,
              std::deque<cached_column>& cached_columns,
-             columnstore_writer& columns,
+             const feature_set_t& cached_features, columnstore_writer& columns,
              byte_block_pool::inserter& byte_writer,
              int_block_pool::inserter& int_writer, IndexFeatures index_features,
              bool random_access);
@@ -155,8 +155,6 @@ class field_data : util::noncopyable {
   using process_term_f = void (field_data::*)(posting&, doc_id_t,
                                               const payload*, const offset*);
 
-  static const process_term_f TERM_PROCESSING_TABLES[2][2];
-
   void reset(doc_id_t doc_id);
 
   void new_term(posting& p, doc_id_t did, const payload* pay,
@@ -168,6 +166,12 @@ class field_data : util::noncopyable {
                               const offset* offs);
   void add_term_random_access(posting& p, doc_id_t did, const payload* pay,
                               const offset* offs);
+
+  static constexpr process_term_f TERM_PROCESSING_TABLES[2][2] = {
+    // sequential access: [0] - new term, [1] - add term
+    {&field_data::add_term, &field_data::new_term},
+    // random access: [0] - new term, [1] - add term
+    {&field_data::add_term_random_access, &field_data::new_term_random_access}};
 
   bool prox_random_access() const noexcept {
     return TERM_PROCESSING_TABLES[1] == proc_table_;
@@ -211,7 +215,8 @@ class fields_data : util::noncopyable {
   using postings_ref_t = std::vector<const posting*>;
 
   explicit fields_data(const FeatureInfoProvider& feature_info,
-                       std::deque<cached_column>& cached_features,
+                       std::deque<cached_column>& cached_columns,
+                       const feature_set_t& cached_features,
                        const Comparer* comparator);
 
   const Comparer* comparator() const noexcept { return comparator_; }
@@ -237,8 +242,9 @@ class fields_data : util::noncopyable {
  private:
   const Comparer* comparator_;
   const FeatureInfoProvider* feature_info_;
-  std::deque<field_data> fields_;               // pointers remain valid
-  std::deque<cached_column>* cached_features_;  // pointers remain valid
+  std::deque<field_data> fields_;              // pointers remain valid
+  std::deque<cached_column>* cached_columns_;  // pointers remain valid
+  const feature_set_t* cached_features_;
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;

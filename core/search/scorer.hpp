@@ -167,6 +167,9 @@ struct Scorer {
   // The index features required for proper operation of this sort::prepared
   virtual IndexFeatures index_features() const = 0;
 
+  virtual void get_features(
+    std::set<irs::type_info::type_id>& features) const = 0;
+
   // Create an object to be used for collecting index statistics, one
   // instance per matched field.
   // Returns nullptr == no statistics collection required
@@ -441,6 +444,8 @@ class ScorerBase : public Scorer {
 
   void collect(byte_type*, const FieldCollector*,
                const TermCollector*) const override {}
+
+  void get_features(std::set<irs::type_info::type_id>&) const override {}
 
   IRS_FORCE_INLINE static const StatsType* stats_cast(
     const byte_type* buf) noexcept {

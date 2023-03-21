@@ -162,7 +162,8 @@ segment_writer::segment_writer(ConstructToken, directory& dir,
                                const SegmentWriterOptions& options) noexcept
   : scorers_{options.scorers},
     sort_{options.column_info, {}},
-    fields_{options.feature_info, cached_columns_, options.comparator},
+    fields_{options.feature_info, cached_columns_, options.scorers_features,
+            options.comparator},
     column_info_{&options.column_info},
     dir_{dir} {}
 
@@ -232,35 +233,34 @@ void segment_writer::FlushFields(flush_state& state) {
       *col_writer_, std::move(sort_.finalizer),
       static_cast<doc_id_t>(state.doc_count), *fields_.comparator());
 
-    // flush all cached columns
-    irs::sorted_column::FlushBuffer buffer;
-    for (auto& column : cached_columns_) {
-      if (IRS_LIKELY(!field_limits::valid(column.id()))) {
-        column.Flush(*col_writer_, docmap, buffer);
-      }
-    }
-
-    meta.sort = sort_.id;  // store sorted column id in segment meta
+    meta.sort = sort_.id;  // Store sorted column id in segment meta
 
     if (!docmap.empty()) {
       state.docmap = &docmap;
     }
   }
 
-  // flush columnstore
+  // Flush all cached columns
+  for (irs::sorted_column::FlushBuffer buffer; auto& column : cached_columns_) {
+    if (IRS_LIKELY(!field_limits::valid(column.id()))) {
+      column.Flush(*col_writer_, docmap, buffer);
+    }
+  }
+
+  // Flush columnstore
   meta.column_store = col_writer_->commit(state);
 
-  // flush fields metadata & inverted data,
+  // Flush fields metadata & inverted data,
   if (state.doc_count != 0) {
     FlushFields(state);
   }
 
-  // get document mask
+  // Get document mask
   IRS_ASSERT(docs_mask_.set.count() == docs_mask_.count);
   docs_mask = std::move(docs_mask_);
   docs_mask_.count = 0;
 
-  // update segment metadata
+  // Update segment metadata
   meta.docs_count = state.doc_count;
   meta.live_docs_count = meta.docs_count - docs_mask.count;
   meta.files = dir_.FlushTracked(meta.byte_size);

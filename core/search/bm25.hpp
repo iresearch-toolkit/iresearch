@@ -78,6 +78,8 @@ class BM25 final : public irs::ScorerBase<BM25, BM25Stats> {
     return IndexFeatures::FREQ;
   }
 
+  void get_features(std::set<irs::type_info::type_id>& features) const final;
+
   FieldCollector::ptr prepare_field_collector() const final;
 
   ScoreFunction prepare_scorer(

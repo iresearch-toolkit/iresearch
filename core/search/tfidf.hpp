@@ -51,6 +51,8 @@ class TFIDF final : public irs::ScorerBase<TFIDF, TFIDFStats> {
     return IndexFeatures::FREQ;
   }
 
+  void get_features(std::set<type_info::type_id>& features) const final;
+
   FieldCollector::ptr prepare_field_collector() const final;
 
   ScoreFunction prepare_scorer(

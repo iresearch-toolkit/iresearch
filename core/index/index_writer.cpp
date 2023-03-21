@@ -1153,6 +1153,10 @@ IndexWriter::IndexWriter(
   IRS_ASSERT(feature_info);  // ensured by 'make'
   IRS_ASSERT(codec_);
 
+  for (auto* scorer : committed_reader_->Options().scorers) {
+    scorer->get_features(wand_features_);
+  }
+
   flush_context_.store(flush_context_pool_.data());
 
   // setup round-robin chain
@@ -1269,6 +1273,12 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
     return std::make_shared<const DirectoryReaderImpl>(
       dir, std::move(codec), opts, std::move(meta), std::move(readers));
   }(dir, codec, std::move(meta), options.reader_options);
+
+  // accumulate required feature set
+  // feature_set_t features;
+  // for (const Scorer* scorer :options.reader_options.scorers) {
+  //  // scorer->features(features);
+  //}
 
   auto writer = std::make_shared<IndexWriter>(
     ConstructToken{}, std::move(lock), std::move(lock_ref), dir,
@@ -1837,6 +1847,7 @@ catch (...) {
 SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
   return {.column_info = column_info_,
           .feature_info = feature_info_,
+          .scorers_features = wand_features_,
           .scorers = committed_reader_->Options().scorers,
           .comparator = this->comparator_};
 }

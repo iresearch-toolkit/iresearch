@@ -53,10 +53,6 @@ using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           helpers
-// -----------------------------------------------------------------------------
-
 void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
   for (auto& entry : features) {
     accum.emplace(entry.first);
@@ -676,21 +672,10 @@ class term_reader final : public irs::basic_term_reader,
 
 }  // namespace detail
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         field_data implementation
-// -----------------------------------------------------------------------------
-
-/*static*/ const field_data::process_term_f
-  field_data::TERM_PROCESSING_TABLES[2][2] = {
-    // sequential access: [0] - new term, [1] - add term
-    {&field_data::add_term, &field_data::new_term},
-
-    // random access: [0] - new term, [1] - add term
-    {&field_data::add_term_random_access, &field_data::new_term_random_access}};
-
 field_data::field_data(std::string_view name, const features_t& features,
                        const FeatureInfoProvider& feature_columns,
-                       std::deque<cached_column>& cached_features,
+                       std::deque<cached_column>& cached_columns,
+                       const feature_set_t& cached_features,
                        columnstore_writer& columns,
                        byte_block_pool::inserter& byte_writer,
                        int_block_pool::inserter& int_writer,
@@ -718,12 +703,12 @@ field_data::field_data(std::string_view name, const features_t& features,
           return std::string_view{};
         };
 
-      if (random_access) {
-        // sorted index case
+      // sorted index case or the feature is required for wand
+      if (random_access || cached_features.contains(feature)) {
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
-        auto& stream = cached_features.emplace_back(id, feature_column_info,
-                                                    std::move(finalizer));
+        auto& stream = cached_columns.emplace_back(id, feature_column_info,
+                                                   std::move(finalizer));
         features_.emplace_back(
           std::move(feature_writer),
           [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
@@ -1092,15 +1077,13 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        fields_data implementation
-// -----------------------------------------------------------------------------
-
 fields_data::fields_data(const FeatureInfoProvider& feature_info,
-                         std::deque<cached_column>& cached_features,
+                         std::deque<cached_column>& cached_columns,
+                         const feature_set_t& cached_features,
                          const Comparer* comparator /*= nullptr*/)
   : comparator_{comparator},
     feature_info_{&feature_info},
+    cached_columns_{&cached_columns},
     cached_features_{&cached_features},
     byte_writer_{byte_pool_.begin()},
     int_writer_{int_pool_.begin()} {}
@@ -1119,8 +1102,9 @@ field_data* fields_data::emplace(const hashed_string_view& name,
   if (!it->second) {
     try {
       const_cast<field_data*&>(it->second) = &fields_.emplace_back(
-        name, features, *feature_info_, *cached_features_, columns,
-        byte_writer_, int_writer_, index_features, (nullptr != comparator_));
+        name, features, *feature_info_, *cached_columns_, *cached_features_,
+        columns, byte_writer_, int_writer_, index_features,
+        (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
       throw;

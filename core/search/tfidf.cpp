@@ -364,6 +364,12 @@ void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
   // TODO(MBkkt) SEARCH-444 IRS_ASSERT(idf.value >= 0.f);
 }
 
+void TFIDF::get_features(std::set<type_info::type_id>& features) const {
+  if (normalize()) {
+    features.emplace(irs::type<Norm2>::id());
+  }
+}
+
 ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
                                     const irs::feature_map_t& features,
                                     const byte_type* stats_buf,

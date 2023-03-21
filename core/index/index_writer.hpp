@@ -933,6 +933,7 @@ class IndexWriter : private util::noncopyable {
   // Abort transaction
   void Abort() noexcept;
 
+  feature_set_t wand_features_;  // Set of features required for wand
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
   const Comparer* comparator_;

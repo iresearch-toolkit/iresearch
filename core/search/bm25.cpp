@@ -563,6 +563,12 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
   return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, *stats, freq);
 }
 
+void BM25::get_features(std::set<type_info::type_id>& features) const {
+  if (!IsBM15()) {
+    features.emplace(irs::type<Norm2>::id());
+  }
+}
+
 WandWriter::ptr BM25::prepare_wand_writer(size_t max_levels) const {
   return ResolveBool(
     !IsBM15(),

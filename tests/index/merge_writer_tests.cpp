@@ -410,7 +410,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns_remove) {
 
   auto reader = irs::DirectoryReader(dir, codec_ptr);
   const irs::SegmentWriterOptions options{.column_info = column_info,
-                                          .feature_info = feature_info};
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::MergeWriter writer(dir, options);
 
   ASSERT_EQ(2, reader.size());
@@ -824,7 +825,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_columns) {
 
   auto reader = irs::DirectoryReader(dir, codec_ptr);
   const irs::SegmentWriterOptions options{.column_info = column_info,
-                                          .feature_info = feature_info};
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::MergeWriter writer(dir, options);
 
   ASSERT_EQ(2, reader.size());
@@ -2166,7 +2168,8 @@ TEST_P(merge_writer_test_case, test_merge_writer) {
   ASSERT_TRUE(feature_info);
 
   const irs::SegmentWriterOptions options{.column_info = column_info,
-                                          .feature_info = feature_info};
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::MergeWriter writer(dir, options);
   writer.Reset(reader.begin(), reader.end());
   ASSERT_TRUE(writer.Flush(index_segment));
@@ -2669,7 +2672,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_add_segments) {
     irs::memory_directory dir;
     irs::SegmentMeta index_segment;
     const irs::SegmentWriterOptions options{.column_info = column_info,
-                                            .feature_info = feature_info};
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::MergeWriter writer(dir, options);
     writer.Reset(reader.begin(), reader.end());
 
@@ -2727,7 +2731,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress;
     const irs::SegmentWriterOptions options{.column_info = column_info,
-                                            .feature_info = feature_info};
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
@@ -2751,7 +2756,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
     irs::SegmentMeta index_segment;
     irs::MergeWriter::FlushProgress progress = []() -> bool { return false; };
     const irs::SegmentWriterOptions options{.column_info = column_info,
-                                            .feature_info = feature_info};
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
@@ -2782,7 +2788,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
       return true;
     };
     const irs::SegmentWriterOptions options{.column_info = column_info,
-                                            .feature_info = feature_info};
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
@@ -2813,7 +2820,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_flush_progress) {
       return --call_count;
     };
     const irs::SegmentWriterOptions options{.column_info = column_info,
-                                            .feature_info = feature_info};
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::MergeWriter writer(dir, options);
 
     index_segment.codec = codec_ptr;
@@ -2889,7 +2897,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     };
 
     const irs::SegmentWriterOptions options{.column_info = column_info,
-                                            .feature_info = feature_info};
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::MergeWriter writer(dir, options);
     writer.Reset(segments.begin(), segments.end());
 
@@ -2906,7 +2915,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_field_features) {
     };
 
     const irs::SegmentWriterOptions options{.column_info = column_info,
-                                            .feature_info = feature_info};
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::MergeWriter writer(dir, options);
     writer.Reset(segments.begin(), segments.end());
 
@@ -3003,7 +3013,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
   ASSERT_TRUE(feature_info);
 
   const irs::SegmentWriterOptions options{.column_info = column_info,
-                                          .feature_info = feature_info};
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::MergeWriter writer(dir, options);
   writer.Reset(reader.begin(), reader.end());
 
@@ -4157,7 +4168,8 @@ TEST_P(merge_writer_test_case_1_4, test_merge_writer) {
   ASSERT_TRUE(feature_info);
 
   const irs::SegmentWriterOptions options{.column_info = column_info,
-                                          .feature_info = feature_info};
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::MergeWriter writer(dir, options);
   writer.Reset(reader.begin(), reader.end());
   ASSERT_TRUE(writer.Flush(index_segment));
