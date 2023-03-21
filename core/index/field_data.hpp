@@ -60,7 +60,7 @@ class doc_iterator;
 class sorting_doc_iterator;
 }  // namespace detail
 
-// represents a mapping between cached column data
+// Represents a mapping between cached column data
 // and a pointer to column identifier
 class cached_column final : public column_reader {
  public:
@@ -73,14 +73,19 @@ class cached_column final : public column_reader {
 
   void Flush(columnstore_writer& writer, DocMapView docmap,
              sorted_column::FlushBuffer& buffer) {
-    *id_ = stream_.flush(writer, std::move(finalizer_), docmap, buffer);
+    auto finalizer = [this, finalizer = std::move(finalizer_)](
+                       bstring& out) mutable -> std::string_view {
+      name_ = finalizer(payload_);
+      out = payload_;  // FIXME(gnusi): avoid double-copy
+      return name_;
+    };
+
+    *id_ = stream_.flush(writer, std::move(finalizer), docmap, buffer);
   }
 
   field_id id() const noexcept final { return *id_; }
-
-  // FIXME(gnusi)
-  std::string_view name() const noexcept final { return {}; }
-  bytes_view payload() const noexcept final { return {}; }
+  std::string_view name() const noexcept final { return name_; }
+  bytes_view payload() const noexcept final { return payload_; }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final {
     // kPrevDoc isn't supported atm
@@ -96,6 +101,8 @@ class cached_column final : public column_reader {
 
  private:
   field_id* id_;
+  std::string name_;
+  bstring payload_;
   sorted_column stream_;
   columnstore_writer::column_finalizer_f finalizer_;
 };
