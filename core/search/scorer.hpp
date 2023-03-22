@@ -293,7 +293,9 @@ Scorers Scorers::Prepare(Iterator begin, Iterator end) {
 
     stats_align = std::max(stats_align, scorers.PushBack(*scorer));
   }
+
   scorers.stats_size_ = memory::align_up(scorers.stats_size_, stats_align);
+  scorers.score_size_ = sizeof(score_t) * scorers.buckets_.size();
 
   return scorers;
 }

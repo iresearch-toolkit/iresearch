@@ -105,7 +105,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     filter.boost(0.f);
 
     // create order
-    auto pord = irs::Scorers::Prepare(tests::sort::boost{});
+
+    auto scorer = tests::sort::boost{};
+    auto pord = irs::Scorers::Prepare(scorer);
 
     // without boost
     {
@@ -477,12 +479,12 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
                         const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::field_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::field_collector>(
+          scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::term_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::term_collector>(
+          scorer);
       };
 
       std::set<irs::doc_id_t> expected{31, 32};
