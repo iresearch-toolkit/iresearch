@@ -1193,9 +1193,9 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists =
-    IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
+    IndexFeatures::FREQ == (index_features & IndexFeatures::FREQ);
 
-  for (; terms.next();) {
+  while (terms.next()) {
     auto postings = terms.postings(index_features);
     auto meta = pw_->write(*postings);
 

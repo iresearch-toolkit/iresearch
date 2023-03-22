@@ -618,7 +618,7 @@ void postings_writer_base::encode(data_output& out,
   const auto& meta = static_cast<const version10::term_meta&>(state);
 
   out.write_vint(meta.docs_count);
-  if (meta.freq != std::numeric_limits<uint32_t>::max()) {
+  if (meta.freq) {
     IRS_ASSERT(meta.freq >= meta.docs_count);
     out.write_vint(meta.freq - meta.docs_count);
   }
@@ -793,10 +793,6 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
         pay_.pay_buf_.clear();
       }
     }
-  }
-
-  if (!attrs_.freq_) {
-    meta.freq = std::numeric_limits<uint32_t>::max();
   }
 
   // if we have flushed at least

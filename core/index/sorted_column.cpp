@@ -39,8 +39,8 @@ class SortedColumnIterator : public doc_iterator {
       end_{next_ + values.size() - 1},
       column_payload_{column_payload} {
     // Iterator can be created only after flushing the column
-    IRS_ASSERT(!index.empty());
-    IRS_ASSERT(doc_limits::eof(index.back().key));
+    IRS_ASSERT(!values.empty());
+    IRS_ASSERT(doc_limits::eof(values.back().key));
 
     std::get<cost>(attrs_).reset(values.size());
   }
