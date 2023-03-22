@@ -45,7 +45,7 @@ enum class Version : int32_t {
   WAND = 3,
 
   // Max supported version
-  MAX = IMMUTABLE_FST
+  MAX = WAND
 };
 
 irs::field_writer::ptr make_writer(Version version,
