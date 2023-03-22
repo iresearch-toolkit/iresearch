@@ -128,11 +128,8 @@ TEST_P(SortedColumnTestCase, FlushEmpty) {
     ASSERT_EQ(0, order.size());
     ASSERT_FALSE(irs::field_limits::valid(column_id));
 
-    irs::flush_state state{
-      .dir = &dir,
-      .name = segment.name,
-      .doc_count = 0,
-    };
+    const irs::flush_state state{
+      .dir = &dir, .name = segment.name, .doc_count = 0};
 
     ASSERT_FALSE(writer->commit(state));  // nothing to commit
   }
@@ -213,11 +210,8 @@ TEST_P(SortedColumnTestCase, InsertDuplicates) {
     ASSERT_EQ(0, order.size());  // already sorted
     ASSERT_FALSE(irs::field_limits::valid(column_id));
 
-    irs::flush_state state{
-      .dir = &dir,
-      .name = segment.name,
-      .doc_count = std::size(values),
-    };
+    const irs::flush_state state{
+      .dir = &dir, .name = segment.name, .doc_count = std::size(values)};
 
     ASSERT_FALSE(writer->commit(state));
   }
@@ -295,11 +289,8 @@ TEST_P(SortedColumnTestCase, Sort) {
     ASSERT_EQ(1 + std::size(values), order.size());
     ASSERT_TRUE(irs::field_limits::valid(column_id));
 
-    irs::flush_state state{
-      .dir = &dir,
-      .name = segment.name,
-      .doc_count = std::size(values),
-    };
+    const irs::flush_state state{
+      .dir = &dir, .name = segment.name, .doc_count = std::size(values)};
 
     ASSERT_TRUE(writer->commit(state));
   }

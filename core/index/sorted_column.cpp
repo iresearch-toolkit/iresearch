@@ -36,8 +36,12 @@ class SortedColumnIterator : public doc_iterator {
   explicit SortedColumnIterator(std::span<const sorted_column::Value> values,
                                 bytes_view column_payload) noexcept
     : next_{values.data()},
-      end_{next_ + values.size()},
+      end_{next_ + values.size() - 1},
       column_payload_{column_payload} {
+    // Iterator can be created only after flushing the column
+    IRS_ASSERT(!index.empty());
+    IRS_ASSERT(doc_limits::eof(index.back().key));
+
     std::get<cost>(attrs_).reset(values.size());
   }
 
@@ -161,7 +165,7 @@ std::pair<DocMap, field_id> sorted_column::flush(
     return {{}, field_limits::invalid()};
   }
 
-  // temporarily push sentinel
+  // Temporarily push sentinel
   index_.emplace_back(doc_limits::eof(), data_buf_.size());
 
   DocMap docmap;
@@ -252,7 +256,7 @@ field_id sorted_column::flush(columnstore_writer& writer,
   auto [column_id, column_writer] =
     writer.push_column(info_, std::move(finalizer));
 
-  // temporarily push sentinel
+  // Temporarily push sentinel
   index_.emplace_back(doc_limits::eof(), data_buf_.size());
 
   if (docmap.empty()) {
