@@ -1015,7 +1015,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
           ApplyWriters([&](auto& writer) {
             const byte_type size = writer.Size(level);
             IRS_ASSERT(size <= irs::WandWriter::kMaxSize);
-            out.write_byte(size);  // FIXME(gnusi): write termination marker
+            out.write_byte(size);
           });
           ApplyWriters([&](auto& writer) { writer.Write(level, out); });
         }

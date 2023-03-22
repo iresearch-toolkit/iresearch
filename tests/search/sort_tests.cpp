@@ -80,20 +80,6 @@ class aligned_scorer final
   bool empty_scorer_;
 };
 
-struct dummy_scorer0 : public irs::ScorerBase<dummy_scorer0, void> {
-  irs::ScoreFunction prepare_scorer(
-    const irs::ColumnProvider& /*segment*/, const irs::feature_map_t& /*field*/,
-    const irs::byte_type* /*stats*/,
-    const irs::attribute_provider& /*doc_attrs*/,
-    irs::score_t /*boost*/) const final {
-    return irs::ScoreFunction::Empty();
-  }
-
-  irs::IndexFeatures index_features() const final {
-    return irs::IndexFeatures::NONE;
-  }
-};
-
 }  // namespace
 
 TEST(sort_tests, static_const) {
@@ -109,8 +95,7 @@ TEST(sort_tests, static_const) {
 TEST(sort_tests, prepare_order) {
   {
     std::array<irs::Scorer::ptr, 2> ord{
-      std::make_unique<dummy_scorer0>(),
-      std::make_unique<aligned_scorer<aligned_value<1, 4>>>()};
+      nullptr, std::make_unique<aligned_scorer<aligned_value<1, 4>>>()};
 
     // first - score offset
     // second - stats offset
@@ -149,8 +134,7 @@ TEST(sort_tests, prepare_order) {
 
   {
     std::array<irs::Scorer::ptr, 4> ord{
-      std::make_unique<dummy_scorer0>(),
-      std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
+      nullptr, std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>()};
 
@@ -191,7 +175,7 @@ TEST(sort_tests, prepare_order) {
 
   {
     std::array<irs::Scorer::ptr, 4> ord{
-      std::make_unique<dummy_scorer0>(),
+      nullptr,
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::NONE, false),  // returns valid scorers
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
@@ -248,8 +232,7 @@ TEST(sort_tests, prepare_order) {
 
   {
     std::array<irs::Scorer::ptr, 4> ord{
-      std::make_unique<dummy_scorer0>(),
-      std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
+      nullptr, std::make_unique<aligned_scorer<aligned_value<2, 2>>>(),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::FREQ, false),  // returns valid scorer
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>()};
@@ -306,8 +289,7 @@ TEST(sort_tests, prepare_order) {
 
   {
     std::array<irs::Scorer::ptr, 4> ord{
-      std::make_unique<dummy_scorer0>(),
-      std::make_unique<aligned_scorer<aligned_value<1, 1>>>(),
+      nullptr, std::make_unique<aligned_scorer<aligned_value<1, 1>>>(),
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(),
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>()};
 
@@ -364,7 +346,7 @@ TEST(sort_tests, prepare_order) {
         irs::IndexFeatures::NONE, false),
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::NONE, false),
-      std::make_unique<dummy_scorer0>()};
+      nullptr};
 
     // first - score offset
     // second - stats offset
@@ -411,7 +393,7 @@ TEST(sort_tests, prepare_order) {
     std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
-      std::make_unique<dummy_scorer0>(),
+      nullptr,
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::NONE, false),
       std::make_unique<aligned_scorer<aligned_value<4, 4>>>(
@@ -462,8 +444,7 @@ TEST(sort_tests, prepare_order) {
     std::array<irs::Scorer::ptr, 4> ord{
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::NONE, false),
-      std::make_unique<aligned_scorer<aligned_value<5, 4>>>(),
-      std::make_unique<dummy_scorer0>(),
+      std::make_unique<aligned_scorer<aligned_value<5, 4>>>(), nullptr,
       std::make_unique<aligned_scorer<aligned_value<2, 2>>>(
         irs::IndexFeatures::FREQ, false)};
 
@@ -510,21 +491,21 @@ TEST(sort_tests, prepare_order) {
 
   {
     std::array<irs::Scorer::ptr, 11> ord{
-      std::make_unique<dummy_scorer0>(),
+      nullptr,
       std::make_unique<aligned_scorer<aligned_value<3, 1>>>(
         irs::IndexFeatures::NONE),
-      std::make_unique<dummy_scorer0>(),
+      nullptr,
       std::make_unique<aligned_scorer<aligned_value<27, 8>>>(),
-      std::make_unique<dummy_scorer0>(),
+      nullptr,
       std::make_unique<aligned_scorer<aligned_value<7, 4>>>(
         irs::IndexFeatures::FREQ),
-      std::make_unique<dummy_scorer0>(),
+      nullptr,
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::FREQ),
-      std::make_unique<dummy_scorer0>(),
+      nullptr,
       std::make_unique<aligned_scorer<aligned_value<1, 1>>>(
         irs::IndexFeatures::FREQ),
-      std::make_unique<dummy_scorer0>()};
+      nullptr};
 
     // first - score offset
     // second - stats offset
