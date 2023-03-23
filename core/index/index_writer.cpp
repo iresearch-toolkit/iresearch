@@ -1274,12 +1274,6 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
       dir, std::move(codec), opts, std::move(meta), std::move(readers));
   }(dir, codec, std::move(meta), options.reader_options);
 
-  // accumulate required feature set
-  // feature_set_t features;
-  // for (const Scorer* scorer :options.reader_options.scorers) {
-  //  // scorer->features(features);
-  //}
-
   auto writer = std::make_shared<IndexWriter>(
     ConstructToken{}, std::move(lock), std::move(lock_ref), dir,
     std::move(codec), options.segment_pool_size, SegmentOptions{options},
