@@ -35,7 +35,6 @@ struct term_meta : irs::term_meta {
     irs::term_meta::clear();
     doc_start = pos_start = pay_start = 0;
     pos_end = address_limits::invalid();
-    e_single_doc = 0;
   }
 
   uint64_t doc_start = 0;  // where this term's postings start in the .doc file

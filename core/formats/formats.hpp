@@ -119,12 +119,11 @@ struct postings_writer {
 
   virtual ~postings_writer() = default;
   // out - corresponding terms stream
-  virtual state make_state() = 0;
   virtual void prepare(index_output& out, const flush_state& state) = 0;
   virtual void begin_field(
     IndexFeatures index_features,
     const std::map<irs::type_info::type_id, field_id>& features) = 0;
-  virtual void write(term_meta& state, doc_iterator& docs) = 0;
+  virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
   virtual FieldStats end_field() = 0;
@@ -132,6 +131,8 @@ struct postings_writer {
 
  protected:
   friend struct term_meta;
+
+  state make_state(term_meta& meta) noexcept { return {&meta, releaser{this}}; }
 
   virtual void release(term_meta* meta) noexcept = 0;
 };

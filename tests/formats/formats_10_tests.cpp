@@ -109,7 +109,8 @@ class format_10_test_case : public tests::format_test_case {
     ASSERT_NE(nullptr, codec);
     auto writer = codec->get_postings_writer(false);
     ASSERT_NE(nullptr, writer);
-    auto term_meta = writer->make_state();
+    irs::postings_writer::state
+      term_meta;  // must be destroyed before the writer
 
     // write postings for field
     {
@@ -132,7 +133,7 @@ class format_10_test_case : public tests::format_test_case {
       // write postings for term
       {
         postings it(docs, field.index_features);
-        writer->write(*term_meta, it);
+        term_meta = writer->write(it);
 
         // write attributes to out
         writer->encode(*out, *term_meta);
@@ -244,18 +245,16 @@ class format_10_test_case : public tests::format_test_case {
             auto it =
               reader->iterator(field.index_features, features, read_meta, 0);
             ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-
             ASSERT_EQ(doc->first, it->seek(doc->first));
 
             ASSERT_EQ(doc->first, expected.seek(doc->first));
             AssertFrequencyAndPositions(expected, *it);
             if (doc != docs.rbegin()) {
-              const auto expected_doc = (doc - 1)->first;
               ASSERT_TRUE(it->next());
-              ASSERT_EQ(expected_doc, it->value());
+              ASSERT_EQ((doc - 1)->first, it->value());
 
               ASSERT_TRUE(expected.next());
-              ASSERT_EQ(expected_doc, expected.value());
+              ASSERT_EQ((doc - 1)->first, expected.value());
               AssertFrequencyAndPositions(expected, *it);
             }
           }
@@ -324,8 +323,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // write postings for term0
     {
       postings docs(docs0);
-      meta0 = writer->make_state();
-      writer->write(*meta0, docs);
+      meta0 = writer->write(docs);
 
       // check term_meta
       {
@@ -341,8 +339,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     // write postings for term0
     {
       postings docs(docs1);
-      meta1 = writer->make_state();
-      writer->write(*meta1, docs);
+      meta1 = writer->write(docs);
 
       // check term_meta
       {
@@ -490,8 +487,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     // write postings for term0
     {
       postings docs(docs0);
-      meta0 = writer->make_state();
-      writer->write(*meta0, docs);
+      meta0 = writer->write(docs);
 
       // write attributes to out
       writer->encode(*out, *meta0);
@@ -499,8 +495,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     // write postings for term1
     {
       postings docs(docs1);
-      meta1 = writer->make_state();
-      writer->write(*meta1, docs);
+      meta1 = writer->write(docs);
 
       // write attributes to out
       writer->encode(*out, *meta1);
@@ -637,8 +632,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     writer->prepare(*out, state);
     writer->begin_field(features, field.features);
-    auto meta = writer->make_state();
-    writer->write(*meta, docs);
+    writer->write(docs);
     writer->end();
   }
 
@@ -667,8 +661,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     writer->prepare(*out, state);
     writer->begin_field(features, field.features);
-    auto meta = writer->make_state();
-    writer->write(*meta, docs);
+    writer->write(docs);
     writer->end();
   }
 
@@ -697,8 +690,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     writer->prepare(*out, state);
     writer->begin_field(features, field.features);
-    auto meta = writer->make_state();
-    writer->write(*meta, docs);
+    writer->write(docs);
     writer->end();
   }
 
@@ -726,8 +718,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     writer->prepare(*out, state);
     writer->begin_field(features, field.features);
-    auto meta = writer->make_state();
-    writer->write(*meta, docs);
+    writer->write(docs);
     writer->end();
   }
 
@@ -754,8 +745,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     writer->prepare(*out, state);
     writer->begin_field(features, field.features);
-    auto meta = writer->make_state();
-    writer->write(*meta, docs);
+    writer->write(docs);
     writer->end();
   }
 
@@ -780,8 +770,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
 
     writer->prepare(*out, state);
     writer->begin_field(features, field.features);
-    auto meta = writer->make_state();
-    writer->write(*meta, docs);
+    writer->write(docs);
     writer->end();
   }
 }

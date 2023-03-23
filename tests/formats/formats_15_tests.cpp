@@ -307,8 +307,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
     writer->begin_field(features, irs::feature_map_t{});
 
     postings it{docs, features};
-    term_meta = writer->make_state();
-    writer->write(*term_meta, it);
+    term_meta = writer->write(it);
 
     writer->encode(*out, *term_meta);
     writer->end();
