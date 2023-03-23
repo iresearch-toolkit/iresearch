@@ -408,7 +408,11 @@ class postings_writer_base : public irs::postings_writer {
   }
 
   state make_state() final {
-    return {new version10::term_meta{}, releaser{this}};
+    return {new version10::term_meta{}, [](irs::term_meta* p) noexcept {
+              IRS_ASSERT(p);
+              auto* impl = static_cast<version10::term_meta*>(p);
+              delete impl;
+            }};
   }
   void prepare(index_output& out, const flush_state& state) final;
   void encode(data_output& out, const irs::term_meta& attrs) final;
@@ -474,13 +478,6 @@ class postings_writer_base : public irs::postings_writer {
       }
     }
   };
-
-  void release(irs::term_meta* meta) noexcept final {
-    auto* state = static_cast<version10::term_meta*>(meta);
-    IRS_ASSERT(state);
-
-    delete state;
-  }
 
   void WriteSkip(size_t level, memory_index_output& out) const;
   void BeginTerm();
@@ -960,7 +957,7 @@ void postings_writer<FormatTraits>::AddPosition(uint32_t pos) {
 #endif
 
 template<typename FormatTraits>
-void postings_writer<FormatTraits>::write(term_meta& term_state,
+void postings_writer<FormatTraits>::write(irs::term_meta& term_state,
                                           irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
 

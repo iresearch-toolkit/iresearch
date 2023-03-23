@@ -245,6 +245,9 @@ class format_10_test_case : public tests::format_test_case {
               reader->iterator(field.index_features, features, read_meta, 0);
             ASSERT_FALSE(irs::doc_limits::valid(it->value()));
 
+            if (doc->first == 9985) {
+              int i = 5;
+            }
             ASSERT_EQ(doc->first, it->seek(doc->first));
 
             ASSERT_EQ(doc->first, expected.seek(doc->first));
@@ -301,7 +304,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   ASSERT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false);
-  irs::postings_writer::state meta0, meta1;
+  irs::postings_writer::state meta0{nullptr, nullptr}, meta1{nullptr, nullptr};
 
   // write postings
   {
@@ -467,7 +470,7 @@ TEST_P(format_10_test_case, postings_read_write) {
   ASSERT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false);
   ASSERT_NE(nullptr, writer);
-  irs::postings_writer::state meta0, meta1;  // must be destroyed before writer
+  irs::postings_writer::state meta0{nullptr, nullptr}, meta1{nullptr, nullptr};
 
   // write postings
   {

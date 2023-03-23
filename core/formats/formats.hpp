@@ -98,19 +98,7 @@ struct term_meta : attribute {
 
 struct postings_writer {
   using ptr = std::unique_ptr<postings_writer>;
-
-  class releaser {
-   public:
-    explicit releaser(postings_writer* owner = nullptr) noexcept
-      : owner_{owner} {}
-
-    inline void operator()(term_meta* meta) const noexcept;
-
-   private:
-    postings_writer* owner_;
-  };
-
-  using state = std::unique_ptr<term_meta, releaser>;
+  using state = std::unique_ptr<term_meta, void (*)(term_meta*)>;
 
   struct FieldStats {
     uint64_t wand_mask;
@@ -118,7 +106,6 @@ struct postings_writer {
   };
 
   virtual ~postings_writer() = default;
-  // out - corresponding terms stream
   virtual state make_state() = 0;
   virtual void prepare(index_output& out, const flush_state& state) = 0;
   virtual void begin_field(
@@ -129,17 +116,7 @@ struct postings_writer {
   virtual void encode(data_output& out, const term_meta& state) = 0;
   virtual FieldStats end_field() = 0;
   virtual void end() = 0;
-
- protected:
-  friend struct term_meta;
-
-  virtual void release(term_meta* meta) noexcept = 0;
 };
-
-void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
-  IRS_ASSERT(owner_ && meta);
-  owner_->release(meta);
-}
 
 struct field_writer {
   using ptr = std::unique_ptr<field_writer>;
