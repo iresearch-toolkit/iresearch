@@ -1195,9 +1195,12 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
   const bool freq_exists =
     IndexFeatures::FREQ == (index_features & IndexFeatures::FREQ);
 
+  auto meta = pw_->make_state();
+  IRS_ASSERT(meta);
+
   while (terms.next()) {
     auto postings = terms.postings(index_features);
-    auto meta = pw_->write(*postings);
+    pw_->write(*meta, *postings);
 
     if (freq_exists) {
       sum_tfreq += meta->freq;

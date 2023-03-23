@@ -407,6 +407,9 @@ class postings_writer_base : public irs::postings_writer {
     last_state_.clear();
   }
 
+  state make_state() final {
+    return {new version10::term_meta{}, releaser{this}};
+  }
   void prepare(index_output& out, const flush_state& state) final;
   void encode(data_output& out, const irs::term_meta& attrs) final;
   void end() final;
@@ -476,8 +479,7 @@ class postings_writer_base : public irs::postings_writer {
     auto* state = static_cast<version10::term_meta*>(meta);
     IRS_ASSERT(state);
 
-    alloc_.destroy(state);
-    alloc_.deallocate(state);
+    delete state;
   }
 
   void WriteSkip(size_t level, memory_index_output& out) const;
@@ -493,9 +495,6 @@ class postings_writer_base : public irs::postings_writer {
     }
   }
 
-  memory::memory_pool<> meta_pool_;
-  memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)>
-    alloc_{meta_pool_};
   SkipWriter skip_;
   version10::term_meta last_state_;  // Last final term state
   bitset docs_;                      // Set of all processed documents
@@ -844,7 +843,7 @@ class postings_writer final : public postings_writer_base {
                   : pos_limits::min()) == FormatTraits::pos_min());
   }
 
-  irs::postings_writer::state write(irs::doc_iterator& docs) final;
+  void write(irs::term_meta& state, irs::doc_iterator& docs) final;
 
  private:
   void AddPosition(uint32_t pos);
@@ -961,8 +960,8 @@ void postings_writer<FormatTraits>::AddPosition(uint32_t pos) {
 #endif
 
 template<typename FormatTraits>
-irs::postings_writer::state postings_writer<FormatTraits>::write(
-  irs::doc_iterator& docs) {
+void postings_writer<FormatTraits>::write(term_meta& term_state,
+                                          irs::doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
 
   const auto* doc = irs::get<document>(docs);
@@ -989,7 +988,8 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
       [refresh](attribute_provider& attrs) { refresh(attrs); });
   }
 
-  auto meta = memory::allocate_unique<version10::term_meta>(alloc_);
+  auto& meta = static_cast<version10::term_meta&>(term_state);
+  meta.clear();
 
   BeginTerm();
   if constexpr (FormatTraits::wand()) {
@@ -1038,11 +1038,9 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   // FIXME(gnusi): do we need to write terminal skip if present?
 
-  meta->docs_count = docs_count;
-  meta->freq = total_freq;
-  EndTerm(*meta);
-
-  return make_state(*meta.release());
+  meta.docs_count = docs_count;
+  meta.freq = total_freq;
+  EndTerm(meta);
 }
 
 #if defined(_MSC_VER)
