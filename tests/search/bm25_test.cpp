@@ -114,8 +114,8 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  auto prepared_order =
-    irs::Scorers::Prepare(irs::BM25{irs::BM25::K(), irs::BM25::B(), true});
+  auto scorer = irs::BM25{irs::BM25::K(), irs::BM25::B(), true};
+  auto prepared_order = irs::Scorers::Prepare(scorer);
 
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());

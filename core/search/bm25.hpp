@@ -98,14 +98,14 @@ class BM25 final : public irs::ScorerBase<BM25, BM25Stats> {
 
   float_t k() const noexcept { return k_; }
 
-  float_t b() const noexcept { return k_; }
+  float_t b() const noexcept { return b_; }
 
   bool use_boost_as_score() const noexcept { return boost_as_score_; }
 
   // Norms are not needed for BM15
   bool IsBM15() const noexcept { return b_ == 0.f; }
 
-  bool IsBM11() const noexcept { return b_ == 2.f; }
+  bool IsBM11() const noexcept { return b_ == 1.f; }
 
  private:
   float_t k_;
