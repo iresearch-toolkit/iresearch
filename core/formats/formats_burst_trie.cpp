@@ -274,7 +274,7 @@ class entry : private util::noncopyable {
   volatile_byte_ref data_;  // block prefix or term
   memory::aligned_type<irs::postings_writer::state, block_t> mem_;  // storage
   EntryType type_;  // entry type
-};
+};                  // entry
 
 entry::entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
              bool volatile_term)

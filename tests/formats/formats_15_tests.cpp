@@ -291,7 +291,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   EXPECT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false);
   EXPECT_NE(nullptr, writer);
-  irs::postings_writer::state term_meta{nullptr, nullptr};
+  irs::postings_writer::state term_meta;  // must be destroyed before the writer
 
   {
     const irs::flush_state state{.dir = &dir,
