@@ -139,6 +139,10 @@ class format_10_test_case : public tests::format_test_case {
         writer->encode(*out, *term_meta);
       }
 
+      auto stats = writer->end_field();
+      ASSERT_EQ(0, stats.wand_mask);
+      ASSERT_EQ(docs.size(), stats.docs_count);
+
       writer->end();
     }
 
@@ -251,10 +255,11 @@ class format_10_test_case : public tests::format_test_case {
             AssertFrequencyAndPositions(expected, *it);
             if (doc != docs.rbegin()) {
               ASSERT_TRUE(it->next());
-              ASSERT_EQ((doc - 1)->first, it->value());
+              const auto expected_doc = (doc - 1)->first;
+              ASSERT_EQ(expected_doc, it->value());
 
               ASSERT_TRUE(expected.next());
-              ASSERT_EQ((doc - 1)->first, expected.value());
+              ASSERT_EQ(expected_doc, expected.value());
               AssertFrequencyAndPositions(expected, *it);
             }
           }
