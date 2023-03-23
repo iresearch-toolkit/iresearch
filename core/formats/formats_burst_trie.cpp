@@ -1193,7 +1193,7 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists =
-    IndexFeatures::FREQ == (index_features & IndexFeatures::FREQ);
+    IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
 
   auto meta = pw_->make_state();
   IRS_ASSERT(meta);
@@ -1413,7 +1413,7 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
   min_term_ = read_string<bstring>(in);
   max_term_ = read_string<bstring>(in);
 
-  if (IndexFeatures::FREQ == (field_.index_features & IndexFeatures::FREQ)) {
+  if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ)) {
     freq_.value = in.read_vlong();
   }
 
@@ -1425,7 +1425,7 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
 
 attribute* term_reader_base::get_mutable(
   irs::type_info::type_id type) noexcept {
-  if (IndexFeatures::FREQ == (field_.index_features & IndexFeatures::FREQ) &&
+  if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ) &&
       irs::type<irs::frequency>::id() == type) {
     return &freq_;
   }

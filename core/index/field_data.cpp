@@ -148,7 +148,7 @@ class pos_iterator final : public irs::position {
 
   // reset field
   void reset(IndexFeatures features, const frequency& freq) {
-    IRS_ASSERT(IndexFeatures::FREQ == (features & IndexFeatures::FREQ));
+    IRS_ASSERT(IndexFeatures::NONE != (features & IndexFeatures::FREQ));
 
     freq_ = &freq;
 
