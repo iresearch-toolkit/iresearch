@@ -3014,7 +3014,8 @@ TEST_P(merge_writer_test_case, test_merge_writer_sorted) {
 
   const irs::SegmentWriterOptions options{.column_info = column_info,
                                           .feature_info = feature_info,
-                                          .scorers_features = {}};
+                                          .scorers_features = {},
+                                          .comparator = &test_comparer};
   irs::MergeWriter writer(dir, options);
   writer.Reset(reader.begin(), reader.end());
 

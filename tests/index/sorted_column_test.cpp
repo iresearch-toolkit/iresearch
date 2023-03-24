@@ -281,6 +281,8 @@ TEST_P(SortedColumnTestCase, Sort) {
         return std::string_view{};
       },
       std::size(values), kLess);
+    ASSERT_FALSE(col.empty());
+    col.clear();
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_TRUE(col.empty());
