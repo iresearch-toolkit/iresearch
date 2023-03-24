@@ -711,6 +711,8 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
     auto doc = doc_.docs.begin();
     auto prev = doc_.block_last;
 
+    auto pp = out.file_pointer();
+
     if (features_.HasFrequency()) {
       auto doc_freq = doc_.freqs.begin();
       for (; doc < doc_.doc; ++doc) {
@@ -893,7 +895,7 @@ void postings_writer<FormatTraits>::BeginDocument() {
       simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.data(),
                                                             doc_.block_last);
       FormatTraits::write_block(*doc_out_, doc_.docs.data(), buf_);
-      if (attrs_.freq_) {
+      if (features_.HasFrequency()) {
         FormatTraits::write_block(*doc_out_, doc_.freqs.data(), buf_);
       }
     }
@@ -974,7 +976,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   auto refresh = [this, no_freq = frequency{}](auto& attrs) noexcept {
     attrs_.reset(attrs);
-    if (!attrs_.freq_) {
+    if (!features_.HasFrequency()) {
       attrs_.freq_ = &no_freq;
     }
   };
