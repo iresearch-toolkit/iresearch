@@ -41,7 +41,7 @@ using ColumnWarmupCallback =
 // Should never throw as may be used in dtors
 using MemoryAccountingFunc = fu2::function<bool(int64_t) noexcept>;
 
-// Scorers allowed to use in conjunction with wanderator.
+// Scorers allowed to be used in conjunction with wanderator.
 using ScorersView = std::span<const Scorer* const>;
 
 // We support up to 64 scorers per field

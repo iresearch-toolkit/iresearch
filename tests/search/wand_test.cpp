@@ -138,22 +138,26 @@ void WandTestCase::AssertResults(const irs::IndexReader& index,
 }
 
 TEST_P(WandTestCase, TermFilter) {
+  const irs::TFIDF scorer{false, false};
+  const irs::Scorer* const p = &scorer;
+  irs::IndexWriterOptions writer_options;
+  writer_options.reader_options.scorers = irs::ScorersView{&p, 1};
+
   {
     tests::json_doc_generator gen(
       resource("simple_single_column_multi_term.json"),
       &tests::payloaded_json_field_factory);
-    add_segment(gen);
+    add_segment(gen, irs::OM_CREATE, writer_options);
   }
 
-  auto reader = irs::DirectoryReader{dir(), codec()};
+  auto reader =
+    irs::DirectoryReader{dir(), codec(), writer_options.reader_options};
   ASSERT_NE(nullptr, reader);
 
   irs::by_term filter;
   *filter.mutable_field() = "name_anl";
   filter.mutable_options()->term =
     irs::ViewCast<irs::byte_type>(std::string_view{"tempor"});
-
-  irs::TFIDF scorer{false, false};
 
   AssertResults(reader, filter, scorer, 10);
   AssertResults(reader, filter, scorer, 100);
