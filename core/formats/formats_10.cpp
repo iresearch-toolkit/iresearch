@@ -711,8 +711,6 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
     auto doc = doc_.docs.begin();
     auto prev = doc_.block_last;
 
-    auto pp = out.file_pointer();
-
     if (features_.HasFrequency()) {
       auto doc_freq = doc_.freqs.begin();
       for (; doc < doc_.doc; ++doc) {
