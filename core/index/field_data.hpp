@@ -101,7 +101,7 @@ class cached_column final : public column_reader {
 
  private:
   field_id* id_;
-  std::string name_;
+  std::string_view name_;
   bstring payload_;
   sorted_column stream_;
   columnstore_writer::column_finalizer_f finalizer_;
