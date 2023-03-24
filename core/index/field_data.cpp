@@ -1144,13 +1144,13 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
   fw.prepare(state);
   for (auto* field : sorted_fields_) {
-    auto& meta = field->meta();
-
-    // reset reader
+    // Reset reader
     terms.reset(*field);
 
-    // write inverted data
     auto it = terms.iterator();
+
+    // Write inverted data
+    const auto& meta = field->meta();
     fw.write(meta.name, meta.index_features, meta.features, *it);
   }
 
