@@ -974,7 +974,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   auto refresh = [this, no_freq = frequency{}](auto& attrs) noexcept {
     attrs_.reset(attrs);
-    if (!features_.HasFrequency()) {
+    if (!attrs_.freq_) {
       attrs_.freq_ = &no_freq;
     }
   };
