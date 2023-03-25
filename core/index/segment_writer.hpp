@@ -240,7 +240,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};
-    irs::SortedColumn stream;
+    irs::BufferedColumn stream;
     columnstore_writer::column_finalizer_f finalizer;
   };
 

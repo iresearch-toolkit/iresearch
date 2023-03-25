@@ -83,7 +83,7 @@ struct SortedColumnTestCase : public virtual test_param_base<std::string_view> {
 };
 
 TEST_P(SortedColumnTestCase, Ctor) {
-  irs::SortedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
+  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
   ASSERT_EQ(0, col.MemoryActive());
@@ -91,7 +91,7 @@ TEST_P(SortedColumnTestCase, Ctor) {
 }
 
 TEST_P(SortedColumnTestCase, FlushEmpty) {
-  irs::SortedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
+  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
   ASSERT_EQ(0, col.MemoryActive());
@@ -168,7 +168,7 @@ TEST_P(SortedColumnTestCase, InsertDuplicates) {
 
     writer->prepare(dir, segment);
 
-    irs::SortedColumn col({irs::type<irs::compression::none>::get(), {}, true});
+    irs::BufferedColumn col({irs::type<irs::compression::none>::get(), {}, true});
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());
@@ -249,7 +249,7 @@ TEST_P(SortedColumnTestCase, Sort) {
 
     writer->prepare(dir, segment);
 
-    irs::SortedColumn col({irs::type<irs::compression::lz4>::get(), {}, true});
+    irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, true});
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());

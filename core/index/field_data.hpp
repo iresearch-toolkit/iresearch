@@ -68,11 +68,11 @@ class cached_column final : public column_reader {
                 columnstore_writer::column_finalizer_f finalizer) noexcept
     : id_{id}, stream_{info}, finalizer_{std::move(finalizer)} {}
 
-  SortedColumn& Stream() noexcept { return stream_; }
-  const SortedColumn& Stream() const noexcept { return stream_; }
+  BufferedColumn& Stream() noexcept { return stream_; }
+  const BufferedColumn& Stream() const noexcept { return stream_; }
 
   void Flush(columnstore_writer& writer, DocMapView docmap,
-             SortedColumn::FlushBuffer& buffer) {
+             BufferedColumn::FlushBuffer& buffer) {
     auto finalizer = [this, finalizer = std::move(finalizer_)](
                        bstring& out) mutable -> std::string_view {
       name_ = finalizer(payload_);
@@ -103,7 +103,7 @@ class cached_column final : public column_reader {
   field_id* id_;
   std::string_view name_;
   bstring payload_;
-  SortedColumn stream_;
+  BufferedColumn stream_;
   columnstore_writer::column_finalizer_f finalizer_;
 };
 

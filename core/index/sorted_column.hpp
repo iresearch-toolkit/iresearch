@@ -32,12 +32,11 @@ namespace irs {
 
 class Comparer;
 
-// FIXME(gnusi): rename to BufferedColumn
-class SortedColumn final : public column_output, private util::noncopyable {
+class BufferedColumn final : public column_output, private util::noncopyable {
  public:
   using FlushBuffer = std::vector<std::pair<doc_id_t, doc_id_t>>;
 
-  explicit SortedColumn(const ColumnInfo& info) : info_{info} {}
+  explicit BufferedColumn(const ColumnInfo& info) : info_{info} {}
 
   void Prepare(doc_id_t key) {
     IRS_ASSERT(key >= pending_key_);
@@ -105,7 +104,7 @@ class SortedColumn final : public column_output, private util::noncopyable {
 
   const ColumnInfo& info() const noexcept { return info_; }
 
-  doc_iterator::ptr iterator() const;
+  doc_iterator::ptr Iterator() const;
 
  private:
   friend class SortedColumnIterator;
