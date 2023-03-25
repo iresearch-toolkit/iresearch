@@ -83,19 +83,19 @@ struct SortedColumnTestCase : public virtual test_param_base<std::string_view> {
 };
 
 TEST_P(SortedColumnTestCase, Ctor) {
-  irs::sorted_column col({irs::type<irs::compression::lz4>::get(), {}, false});
-  ASSERT_TRUE(col.empty());
-  ASSERT_EQ(0, col.size());
-  ASSERT_EQ(0, col.memory_active());
-  ASSERT_GE(col.memory_reserved(), 0);
+  irs::SortedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
+  ASSERT_TRUE(col.Empty());
+  ASSERT_EQ(0, col.Size());
+  ASSERT_EQ(0, col.MemoryActive());
+  ASSERT_GE(col.MemoryReserved(), 0);
 }
 
 TEST_P(SortedColumnTestCase, FlushEmpty) {
-  irs::sorted_column col({irs::type<irs::compression::lz4>::get(), {}, false});
-  ASSERT_TRUE(col.empty());
-  ASSERT_EQ(0, col.size());
-  ASSERT_EQ(0, col.memory_active());
-  ASSERT_GE(col.memory_reserved(), 0);
+  irs::SortedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
+  ASSERT_TRUE(col.Empty());
+  ASSERT_EQ(0, col.Size());
+  ASSERT_EQ(0, col.MemoryActive());
+  ASSERT_GE(col.MemoryReserved(), 0);
 
   irs::field_id column_id;
   irs::DocMap order;
@@ -112,7 +112,7 @@ TEST_P(SortedColumnTestCase, FlushEmpty) {
 
     writer->prepare(dir, segment);
 
-    std::tie(order, column_id) = col.flush(
+    std::tie(order, column_id) = col.Flush(
       *writer,
       [](auto&) {
         // Must not be called
@@ -120,11 +120,11 @@ TEST_P(SortedColumnTestCase, FlushEmpty) {
         return std::string_view{};
       },
       0, kLess);
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.size());
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.memory_active());
-    ASSERT_GE(col.memory_reserved(), 0);
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.Size());
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.MemoryActive());
+    ASSERT_GE(col.MemoryReserved(), 0);
     ASSERT_EQ(0, order.size());
     ASSERT_FALSE(irs::field_limits::valid(column_id));
 
@@ -168,33 +168,32 @@ TEST_P(SortedColumnTestCase, InsertDuplicates) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col(
-      {irs::type<irs::compression::none>::get(), {}, true});
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.size());
-    ASSERT_EQ(0, col.memory_active());
-    ASSERT_GE(col.memory_reserved(), 0);
+    irs::SortedColumn col({irs::type<irs::compression::none>::get(), {}, true});
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.Size());
+    ASSERT_EQ(0, col.MemoryActive());
+    ASSERT_GE(col.MemoryReserved(), 0);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     for (const auto value : values) {
       // write value
-      col.prepare(doc);
+      col.Prepare(doc);
       col.write_vint(value);
 
       // write and rollback
-      col.prepare(doc);
+      col.Prepare(doc);
       col.write_vint(value);
       col.reset();
 
       ++doc;
     }
-    ASSERT_EQ(0, col.size());
-    ASSERT_TRUE(col.empty());
+    ASSERT_EQ(0, col.Size());
+    ASSERT_TRUE(col.Empty());
 
-    ASSERT_GE(col.memory_active(), 0);
-    ASSERT_GE(col.memory_reserved(), 0);
+    ASSERT_GE(col.MemoryActive(), 0);
+    ASSERT_GE(col.MemoryReserved(), 0);
 
-    std::tie(order, column_id) = col.flush(
+    std::tie(order, column_id) = col.Flush(
       *writer,
       [](irs::bstring&) {
         // must not be called
@@ -202,11 +201,11 @@ TEST_P(SortedColumnTestCase, InsertDuplicates) {
         return std::string_view{};
       },
       std::size(values), kLess);
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.size());
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.memory_active());
-    ASSERT_GE(col.memory_reserved(), 0);
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.Size());
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.MemoryActive());
+    ASSERT_GE(col.MemoryReserved(), 0);
     ASSERT_EQ(0, order.size());  // already sorted
     ASSERT_FALSE(irs::field_limits::valid(column_id));
 
@@ -250,30 +249,30 @@ TEST_P(SortedColumnTestCase, Sort) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col({irs::type<irs::compression::lz4>::get(), {}, true});
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.size());
-    ASSERT_EQ(0, col.memory_active());
-    ASSERT_GE(col.memory_reserved(), 0);
+    irs::SortedColumn col({irs::type<irs::compression::lz4>::get(), {}, true});
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.Size());
+    ASSERT_EQ(0, col.MemoryActive());
+    ASSERT_GE(col.MemoryReserved(), 0);
 
     irs::doc_id_t doc = irs::doc_limits::min();
     for (const auto value : values) {
       // write value
-      col.prepare(doc);
+      col.Prepare(doc);
       col.write_vint(value);
 
       // write and rollback
-      col.prepare(++doc);
+      col.Prepare(++doc);
       col.write_vint(value);
       col.reset();
     }
-    ASSERT_EQ(std::size(values), col.size());
-    ASSERT_FALSE(col.empty());
+    ASSERT_EQ(std::size(values), col.Size());
+    ASSERT_FALSE(col.Empty());
 
-    ASSERT_GE(col.memory_active(), 0);
-    ASSERT_GE(col.memory_reserved(), 0);
+    ASSERT_GE(col.MemoryActive(), 0);
+    ASSERT_GE(col.MemoryReserved(), 0);
 
-    std::tie(order, column_id) = col.flush(
+    std::tie(order, column_id) = col.Flush(
       *writer,
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
@@ -281,13 +280,13 @@ TEST_P(SortedColumnTestCase, Sort) {
         return std::string_view{};
       },
       std::size(values), kLess);
-    ASSERT_FALSE(col.empty());
-    col.clear();
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.size());
-    ASSERT_TRUE(col.empty());
-    ASSERT_EQ(0, col.memory_active());
-    ASSERT_GE(col.memory_reserved(), 0);
+    ASSERT_FALSE(col.Empty());
+    col.Clear();
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.Size());
+    ASSERT_TRUE(col.Empty());
+    ASSERT_EQ(0, col.MemoryActive());
+    ASSERT_GE(col.MemoryReserved(), 0);
     ASSERT_EQ(1 + std::size(values), order.size());
     ASSERT_TRUE(irs::field_limits::valid(column_id));
 

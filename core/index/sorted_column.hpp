@@ -32,17 +32,27 @@ namespace irs {
 
 class Comparer;
 
-class sorted_column final : public column_output, private util::noncopyable {
+// FIXME(gnusi): rename to BufferedColumn
+class SortedColumn final : public column_output, private util::noncopyable {
  public:
   using FlushBuffer = std::vector<std::pair<doc_id_t, doc_id_t>>;
 
-  explicit sorted_column(const ColumnInfo& info) : info_{info} {}
+  explicit SortedColumn(const ColumnInfo& info) : info_{info} {}
 
-  void prepare(doc_id_t key) {
-    IRS_ASSERT(index_.empty() || key >= index_.back().key);
+  void Prepare(doc_id_t key) {
+    IRS_ASSERT(key >= pending_key_);
 
-    if (index_.empty() || index_.back().key != key) {
-      index_.emplace_back(key, data_buf_.size());
+    if (IRS_LIKELY(pending_key_ != key)) {
+      const auto offset = data_buf_.size();
+
+      if (IRS_LIKELY(doc_limits::valid(pending_key_))) {
+        IRS_ASSERT(offset >= pending_offset_);
+        index_.emplace_back(pending_key_, pending_offset_,
+                            offset - pending_offset_);
+      }
+
+      pending_key_ = key;
+      pending_offset_ = offset;
     }
   }
 
@@ -53,41 +63,42 @@ class sorted_column final : public column_output, private util::noncopyable {
   }
 
   void reset() final {
-    if (index_.empty()) {
+    if (!doc_limits::valid(pending_key_)) {
       return;
     }
 
-    data_buf_.resize(index_.back().offset);
-    index_.pop_back();
+    data_buf_.resize(pending_offset_);
+    pending_key_ = doc_limits::invalid();
   }
 
-  bool empty() const noexcept { return index_.empty(); }
+  bool Empty() const noexcept { return index_.empty(); }
 
-  size_t size() const noexcept { return index_.size(); }
+  size_t Size() const noexcept { return index_.size(); }
 
-  void clear() noexcept {
+  void Clear() noexcept {
     data_buf_.clear();
     index_.clear();
+    pending_key_ = doc_limits::invalid();
   }
 
   // 1st - doc map (old->new), empty -> already sorted
   // 2nd - flushed column identifier
-  std::pair<DocMap, field_id> flush(
+  std::pair<DocMap, field_id> Flush(
     columnstore_writer& writer,
     columnstore_writer::column_finalizer_f header_writer,
     doc_id_t docs_count,  // total number of docs in segment
     const Comparer& compare);
 
-  field_id flush(columnstore_writer& writer,
+  field_id Flush(columnstore_writer& writer,
                  columnstore_writer::column_finalizer_f header_writer,
                  DocMapView docmap, FlushBuffer& buffer);
 
-  size_t memory_active() const noexcept {
+  size_t MemoryActive() const noexcept {
     return data_buf_.size() +
            index_.size() * sizeof(decltype(index_)::value_type);
   }
 
-  size_t memory_reserved() const noexcept {
+  size_t MemoryReserved() const noexcept {
     return data_buf_.capacity() +
            index_.capacity() * sizeof(decltype(index_)::value_type);
   }
@@ -100,42 +111,39 @@ class sorted_column final : public column_output, private util::noncopyable {
   friend class SortedColumnIterator;
 
   struct Value {
-    Value(doc_id_t key, size_t offset) noexcept : key{key}, offset{offset} {}
+    Value(doc_id_t key, size_t begin, size_t size) noexcept
+      : key{key}, begin{begin}, size{size} {}
 
     doc_id_t key;
-    size_t offset;  // offset in 'data_buf_'
+    size_t begin;
+    size_t size;
   };
 
-  bytes_view get_value(const Value* value) const noexcept {
-    IRS_ASSERT(index_.data() <= value);
-    IRS_ASSERT(value < (index_.data() + index_.size() - 1));
-    IRS_ASSERT(!doc_limits::eof(value->key));
-
-    const auto begin = value->offset;
-    const auto end = (value + 1)->offset;
-
-    return {data_buf_.c_str() + begin, end - begin};
+  bytes_view GetPayload(const Value& value) noexcept {
+    return {data_buf_.data() + value.begin, value.size};
   }
 
-  void write_value(data_output& out, const Value* value) const {
-    const auto payload = get_value(value);
+  void WriteValue(data_output& out, const Value& value) {
+    const auto payload = GetPayload(value);
     out.write_bytes(payload.data(), payload.size());
   }
 
-  bool flush_sparse_primary(DocMap& docmap,
-                            const columnstore_writer::values_writer_f& writer,
-                            doc_id_t docs_count, const Comparer& compare);
+  bool FlushSparsePrimary(DocMap& docmap,
+                          const columnstore_writer::values_writer_f& writer,
+                          doc_id_t docs_count, const Comparer& compare);
 
-  void flush_already_sorted(const columnstore_writer::values_writer_f& writer);
+  void FlushAlreadySorted(const columnstore_writer::values_writer_f& writer);
 
-  bool flush_dense(const columnstore_writer::values_writer_f& writer,
+  bool FlushDense(const columnstore_writer::values_writer_f& writer,
+                  DocMapView docmap, FlushBuffer& buffer);
+
+  void FlushSparse(const columnstore_writer::values_writer_f& writer,
                    DocMapView docmap, FlushBuffer& buffer);
-
-  void flush_sparse(const columnstore_writer::values_writer_f& writer,
-                    DocMapView docmap, FlushBuffer& buffer);
 
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
   std::vector<Value> index_;
+  size_t pending_offset_{};
+  doc_id_t pending_key_{doc_limits::invalid()};
   ColumnInfo info_;
 };
 

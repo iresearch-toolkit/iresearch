@@ -68,11 +68,11 @@ class cached_column final : public column_reader {
                 columnstore_writer::column_finalizer_f finalizer) noexcept
     : id_{id}, stream_{info}, finalizer_{std::move(finalizer)} {}
 
-  sorted_column& Stream() noexcept { return stream_; }
-  const sorted_column& Stream() const noexcept { return stream_; }
+  SortedColumn& Stream() noexcept { return stream_; }
+  const SortedColumn& Stream() const noexcept { return stream_; }
 
   void Flush(columnstore_writer& writer, DocMapView docmap,
-             sorted_column::FlushBuffer& buffer) {
+             SortedColumn::FlushBuffer& buffer) {
     auto finalizer = [this, finalizer = std::move(finalizer_)](
                        bstring& out) mutable -> std::string_view {
       name_ = finalizer(payload_);
@@ -80,7 +80,7 @@ class cached_column final : public column_reader {
       return name_;
     };
 
-    *id_ = stream_.flush(writer, std::move(finalizer), docmap, buffer);
+    *id_ = stream_.Flush(writer, std::move(finalizer), docmap, buffer);
   }
 
   field_id id() const noexcept final { return *id_; }
@@ -95,15 +95,15 @@ class cached_column final : public column_reader {
   }
 
   doc_id_t size() const final {
-    IRS_ASSERT(stream_.size() < doc_limits::eof());
-    return static_cast<doc_id_t>(stream_.size());
+    IRS_ASSERT(stream_.Size() < doc_limits::eof());
+    return static_cast<doc_id_t>(stream_.Size());
   }
 
  private:
   field_id* id_;
   std::string_view name_;
   bstring payload_;
-  sorted_column stream_;
+  SortedColumn stream_;
   columnstore_writer::column_finalizer_f finalizer_;
 };
 

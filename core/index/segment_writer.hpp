@@ -240,7 +240,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};
-    irs::sorted_column stream;
+    irs::SortedColumn stream;
     columnstore_writer::column_finalizer_f finalizer;
   };
 
@@ -359,7 +359,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
 
   // Returns stream for storing attributes in sorted order
   column_output& sorted_stream(const doc_id_t doc_id) {
-    sort_.stream.prepare(doc_id);
+    sort_.stream.Prepare(doc_id);
     return sort_.stream;
   }
 
