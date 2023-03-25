@@ -313,7 +313,11 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
 
     postings it{docs, features};
     term_meta = writer->write(it);
-
+    const auto stats = writer->end_field();
+    EXPECT_EQ(docs.size(), stats.docs_count);
+    const uint64_t expected_wand_mask{irs::IndexFeatures::NONE !=
+                                      (features & irs::IndexFeatures::FREQ)};
+    EXPECT_EQ(expected_wand_mask, stats.wand_mask);
     writer->encode(*out, *term_meta);
     writer->end();
   }
@@ -379,9 +383,11 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
                                    nullptr, attrs, irs::kNoBoost);
     }};
 
+  const bool has_freq =
+    irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ);
   irs::WandContext ctx{};
-  irs::postings_reader::WandInfo info{};
-  if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
+  irs::WandInfo info{};
+  if (has_freq) {
     ctx.index = 0;
     ctx.strict = strict;
     info.count = 1;

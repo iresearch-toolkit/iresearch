@@ -153,14 +153,14 @@ struct field_writer {
   virtual void end() = 0;
 };
 
+struct WandInfo {
+  byte_type mapped_index;
+  byte_type count;
+};
+
 struct postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
   using term_provider_f = std::function<const term_meta*()>;
-
-  struct WandInfo {
-    byte_type mapped_index;
-    byte_type count;
-  };
 
   virtual ~postings_reader() = default;
 
