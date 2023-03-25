@@ -87,12 +87,7 @@ class cached_column final : public column_reader {
   std::string_view name() const noexcept final { return name_; }
   bytes_view payload() const noexcept final { return payload_; }
 
-  doc_iterator::ptr iterator(ColumnHint hint) const final {
-    // kPrevDoc isn't supported atm
-    IRS_ASSERT(ColumnHint::kNormal == (hint & ColumnHint::kPrevDoc));
-
-    return stream_.Iterator();
-  }
+  doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   doc_id_t size() const final {
     IRS_ASSERT(stream_.Size() < doc_limits::eof());

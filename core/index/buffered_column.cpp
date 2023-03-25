@@ -22,74 +22,11 @@
 
 #include "buffered_column.hpp"
 
-#include "analysis/token_attributes.hpp"
 #include "index/comparer.hpp"
-#include "search/cost.hpp"
 #include "shared.hpp"
-#include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
 
 namespace irs {
-
-class SortedColumnIterator : public doc_iterator {
- public:
-  explicit SortedColumnIterator(std::span<const BufferedColumn::Value> values,
-                                bytes_view data) noexcept
-    : next_{values.data()}, end_{next_ + values.size()}, data_{data} {
-    // Iterator can be created only after flushing the column
-    IRS_ASSERT(!values.empty());
-    IRS_ASSERT(doc_limits::eof(values.back().key));
-
-    std::get<cost>(attrs_).reset(values.size());
-  }
-
-  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    return irs::get_mutable(attrs_, type);
-  }
-
-  doc_id_t value() const noexcept final {
-    return std::get<document>(attrs_).value;
-  }
-
-  doc_id_t seek(doc_id_t target) noexcept final {
-    if (IRS_UNLIKELY(target <= value())) {
-      return target;
-    }
-
-    next_ = std::lower_bound(next_, end_, target,
-                             [](const auto& value, doc_id_t target) noexcept {
-                               return value.key < target;
-                             });
-
-    return next();
-  }
-
-  bool next() noexcept final {
-    auto& doc = std::get<document>(attrs_);
-
-    if (IRS_UNLIKELY(next_ == end_)) {
-      doc.value = doc_limits::eof();
-      return false;
-    }
-
-    auto& payload = std::get<irs::payload>(attrs_);
-
-    doc.value = next_->key;
-    payload.value = {data_.data() + next_->begin, next_->size};
-
-    ++next_;
-
-    return true;
-  }
-
- private:
-  using attributes = std::tuple<document, cost, irs::payload>;
-
-  attributes attrs_;
-  const BufferedColumn::Value* next_;
-  const BufferedColumn::Value* end_;
-  bytes_view data_;
-};
 
 bool BufferedColumn::FlushSparsePrimary(
   DocMap& docmap, const columnstore_writer::values_writer_f& writer,
@@ -261,10 +198,6 @@ field_id BufferedColumn::Flush(columnstore_writer& writer,
   }
 
   return column_id;
-}
-
-doc_iterator::ptr BufferedColumn::Iterator() const {
-  return memory::make_managed<SortedColumnIterator>(index_, data_buf_);
 }
 
 }  // namespace irs

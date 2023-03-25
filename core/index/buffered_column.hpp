@@ -32,6 +32,15 @@ namespace irs {
 
 class Comparer;
 
+struct BufferedValue {
+  BufferedValue(doc_id_t key, size_t begin, size_t size) noexcept
+    : key{key}, begin{begin}, size{size} {}
+
+  doc_id_t key;
+  size_t begin;
+  size_t size;
+};
+
 class BufferedColumn final : public column_output, private util::noncopyable {
  public:
   using FlushBuffer = std::vector<std::pair<doc_id_t, doc_id_t>>;
@@ -104,25 +113,18 @@ class BufferedColumn final : public column_output, private util::noncopyable {
 
   const ColumnInfo& info() const noexcept { return info_; }
 
-  doc_iterator::ptr Iterator() const;
+  std::span<const BufferedValue> Index() const noexcept { return index_; }
+
+  bytes_view Data() const noexcept { return data_buf_; }
 
  private:
-  friend class SortedColumnIterator;
+  friend class BufferedColumnIterator;
 
-  struct Value {
-    Value(doc_id_t key, size_t begin, size_t size) noexcept
-      : key{key}, begin{begin}, size{size} {}
-
-    doc_id_t key;
-    size_t begin;
-    size_t size;
-  };
-
-  bytes_view GetPayload(const Value& value) noexcept {
+  bytes_view GetPayload(const BufferedValue& value) noexcept {
     return {data_buf_.data() + value.begin, value.size};
   }
 
-  void WriteValue(data_output& out, const Value& value) {
+  void WriteValue(data_output& out, const BufferedValue& value) {
     const auto payload = GetPayload(value);
     out.write_bytes(payload.data(), payload.size());
   }
@@ -140,7 +142,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
                    DocMapView docmap, FlushBuffer& buffer);
 
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
-  std::vector<Value> index_;
+  std::vector<BufferedValue> index_;
   size_t pending_offset_{};
   doc_id_t pending_key_{doc_limits::invalid()};
   ColumnInfo info_;

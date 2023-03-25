@@ -30,6 +30,7 @@
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 #include "formats/formats.hpp"
+#include "index/buffered_column_iterator.hpp"
 #include "index/comparer.hpp"
 #include "index/field_meta.hpp"
 #include "index/norm.hpp"
@@ -671,6 +672,14 @@ class term_reader final : public irs::basic_term_reader,
 };
 
 }  // namespace detail
+
+doc_iterator::ptr cached_column::iterator(ColumnHint hint) const {
+  // kPrevDoc isn't supported atm
+  IRS_ASSERT(ColumnHint::kNormal == (hint & ColumnHint::kPrevDoc));
+
+  return memory::make_managed<BufferedColumnIterator>(stream_.Index(),
+                                                      stream_.Data());
+}
 
 field_data::field_data(std::string_view name, const features_t& features,
                        const FeatureInfoProvider& feature_columns,
