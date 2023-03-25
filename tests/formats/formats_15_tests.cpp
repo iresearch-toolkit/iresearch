@@ -248,7 +248,8 @@ class Format15TestCase : public tests::format_test_case {
   Docs GenerateDocs(size_t count, float_t mean, float_t dev, size_t step);
 
   std::pair<irs::version10::term_meta, irs::postings_reader::ptr> WriteReadMeta(
-    irs::directory& dir, DocsView docs, irs::IndexFeatures features);
+    irs::directory& dir, DocsView docs, irs::ScorersView scorers,
+    irs::IndexFeatures features);
 
   void AssertWanderator(irs::doc_iterator::ptr& actual,
                         irs::IndexFeatures features, DocsView docs);
@@ -285,6 +286,7 @@ class Format15TestCase : public tests::format_test_case {
 
 std::pair<irs::version10::term_meta, irs::postings_reader::ptr>
 Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
+                                irs::ScorersView scorers,
                                 irs::IndexFeatures features) {
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
@@ -294,8 +296,11 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   irs::postings_writer::state term_meta;  // must be destroyed before the writer
 
   {
+    const EmptyColumnProvider provider;
     const irs::flush_state state{.dir = &dir,
+                                 .columns = &provider,
                                  .name = "segment_name",
+                                 .scorers = scorers,
                                  .doc_count = docs.back().first + 1,
                                  .index_features = features};
 
@@ -316,11 +321,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   irs::SegmentMeta meta;
   meta.name = "segment_name";
 
-  FreqScorer scorer;
-  const irs::Scorer* scorer_ptr = &scorer;
-
-  const irs::ReaderState state{
-    .dir = &dir, .meta = &meta, .scorers = std::span{&scorer_ptr, 1}};
+  const irs::ReaderState state{.dir = &dir, .meta = &meta, .scorers = scorers};
 
   auto in = dir.open("attributes", irs::IOAdvice::NORMAL);
   EXPECT_FALSE(!in);
@@ -378,9 +379,16 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
                                    nullptr, attrs, irs::kNoBoost);
     }};
 
-  auto actual = reader.wanderator(field_features, features, meta, options,
-                                  {.index = 0, .strict = strict},
-                                  {.mapped_index = 0, .count = 1});
+  irs::WandContext ctx{};
+  irs::postings_reader::WandInfo info{};
+  if (irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ)) {
+    ctx.index = 0;
+    ctx.strict = strict;
+    info.count = 1;
+  }
+
+  auto actual =
+    reader.wanderator(field_features, features, meta, options, ctx, info);
   EXPECT_NE(nullptr, actual);
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
@@ -583,9 +591,13 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
 void Format15TestCase::AssertPostings(DocsView docs,
                                       irs::IndexFeatures features,
                                       uint32_t threshold, bool strict) {
+  FreqScorer scorer;
+  const irs::Scorer* scorer_ptr = &scorer;
+
   auto dir = get_directory(*this);
   ASSERT_NE(nullptr, dir);
-  auto [meta, reader] = WriteReadMeta(*dir, docs, features);
+  auto [meta, reader] =
+    WriteReadMeta(*dir, docs, std::span{&scorer_ptr, 1}, features);
   ASSERT_NE(nullptr, reader);
 
   AssertCornerCases(*reader, docs, features, features, meta, strict);
