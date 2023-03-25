@@ -20,7 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "sorted_column.hpp"
+#include "buffered_column.hpp"
 
 #include "analysis/token_attributes.hpp"
 #include "index/comparer.hpp"

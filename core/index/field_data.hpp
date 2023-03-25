@@ -27,11 +27,11 @@
 #include <vector>
 
 #include "formats/formats.hpp"
+#include "index/buffered_column.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_features.hpp"
 #include "index/iterators.hpp"
 #include "index/postings.hpp"
-#include "index/sorted_column.hpp"
 #include "utils/block_pool.hpp"
 #include "utils/hash_set_utils.hpp"
 #include "utils/memory.hpp"
@@ -91,7 +91,7 @@ class cached_column final : public column_reader {
     // kPrevDoc isn't supported atm
     IRS_ASSERT(ColumnHint::kNormal == (hint & ColumnHint::kPrevDoc));
 
-    return stream_.iterator();
+    return stream_.Iterator();
   }
 
   doc_id_t size() const final {

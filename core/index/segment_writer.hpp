@@ -27,7 +27,7 @@
 #include "index/column_info.hpp"
 #include "index/field_data.hpp"
 #include "index/index_reader.hpp"
-#include "index/sorted_column.hpp"
+#include "index/buffered_column.hpp"
 #include "utils/bitset.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"

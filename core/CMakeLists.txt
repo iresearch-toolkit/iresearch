@@ -91,6 +91,7 @@ set(IResearch_core_sources
   ./formats/format_utils.cpp
   ./formats/skip_list.cpp
   ./formats/sparse_bitmap.cpp
+  ./index/buffered_column.cpp
   ./index/directory_reader.cpp
   ./index/directory_reader_impl.cpp
   ./index/field_data.cpp
@@ -105,7 +106,6 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp
   ./index/segment_reader_impl.cpp
   ./index/segment_writer.cpp
-  ./index/sorted_column.cpp
   ./search/all_docs_provider.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp

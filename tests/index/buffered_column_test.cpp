@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "index/sorted_column.hpp"
+#include "index/buffered_column.hpp"
 
 #include "analysis/token_attributes.hpp"
 #include "index/comparer.hpp"
