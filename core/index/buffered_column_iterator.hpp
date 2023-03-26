@@ -33,7 +33,10 @@ class BufferedColumnIterator : public doc_iterator {
  public:
   BufferedColumnIterator(std::span<const BufferedValue> values,
                          bytes_view data) noexcept
-    : next_{values.data()}, end_{next_ + values.size()}, data_{data} {
+    : begin_{values.data()},
+      next_{begin_},
+      end_{begin_ + values.size()},
+      data_{data} {
     std::get<cost>(attrs_).reset(values.size());
   }
 
@@ -46,16 +49,20 @@ class BufferedColumnIterator : public doc_iterator {
   }
 
   doc_id_t seek(doc_id_t target) noexcept final {
-    if (IRS_UNLIKELY(target <= value())) {
-      return value();
+    // Currently the iterator is only used for sequential access during the
+    // segment flushing. We intentionally allow iterator to seek backwards.
+    if (target < value()) {
+      next_ = std::lower_bound(
+        begin_, end_, target,
+        [](const BufferedValue& value, doc_id_t target) noexcept {
+          return value.key < target;
+        });
+
+      next();
+    } else {
+      irs::seek(*this, target);
     }
 
-    next_ = std::lower_bound(next_, end_, target,
-                             [](const auto& value, doc_id_t target) noexcept {
-                               return value.key < target;
-                             });
-
-    next();
     return value();
   }
 
@@ -81,6 +88,7 @@ class BufferedColumnIterator : public doc_iterator {
   using attributes = std::tuple<document, cost, irs::payload>;
 
   attributes attrs_;
+  const BufferedValue* begin_;
   const BufferedValue* next_;
   const BufferedValue* end_;
   bytes_view data_;

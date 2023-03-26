@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index/index_tests.hpp"
+#include "index/norm.hpp"
+#include "search/bm25.hpp"
 #include "search/filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
@@ -45,6 +47,8 @@ class WandTestCase : public tests::index_test_base {
 
   void AssertResults(const irs::IndexReader& index, const irs::filter& filter,
                      const irs::Scorer& scorer, size_t limit);
+
+  void AssertTermFilter(const irs::Scorer* scorer);
 };
 
 std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
@@ -137,30 +141,71 @@ void WandTestCase::AssertResults(const irs::IndexReader& index,
   ASSERT_EQ(result, wand_result);
 }
 
-TEST_P(WandTestCase, TermFilter) {
-  const irs::TFIDF scorer{false, false};
-  const irs::Scorer* const p = &scorer;
-  irs::IndexWriterOptions writer_options;
-  writer_options.reader_options.scorers = irs::ScorersView{&p, 1};
+void WandTestCase::AssertTermFilter(const irs::Scorer* scorer) {
+  ASSERT_NE(nullptr, scorer);
 
-  {
-    tests::json_doc_generator gen(
-      resource("simple_single_column_multi_term.json"),
-      &tests::payloaded_json_field_factory);
-    add_segment(gen, irs::OM_CREATE, writer_options);
-  }
+  irs::IndexWriterOptions writer_options;
+  writer_options.reader_options.scorers = irs::ScorersView{&scorer, 1};
+  writer_options.features = [](irs::type_info::type_id id) {
+    if (irs::type<irs::Norm2>::id() == id) {
+      return std::make_pair(
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        &irs::Norm2::MakeWriter);
+    }
+
+    return std::make_pair(
+      irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+      irs::FeatureWriterFactory{});
+  };
+
+  tests::json_doc_generator gen(
+    resource("simple_single_column_multi_term.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      using TextField = tests::text_field<std::string>;
+
+      if (tests::json_doc_generator::ValueType::STRING == data.vt) {
+        doc.indexed.push_back(std::make_shared<TextField>(
+          std::string{name}, data.str, false,
+          std::vector{irs::type<irs::Norm2>::id()}));
+      }
+    });
+  add_segment(gen, irs::OM_CREATE, writer_options);
 
   auto reader =
     irs::DirectoryReader{dir(), codec(), writer_options.reader_options};
   ASSERT_NE(nullptr, reader);
 
   irs::by_term filter;
-  *filter.mutable_field() = "name_anl";
+  *filter.mutable_field() = "name";
   filter.mutable_options()->term =
     irs::ViewCast<irs::byte_type>(std::string_view{"tempor"});
 
-  AssertResults(reader, filter, scorer, 10);
-  AssertResults(reader, filter, scorer, 100);
+  AssertResults(reader, filter, *scorer, 10);
+  AssertResults(reader, filter, *scorer, 100);
+}
+
+TEST_P(WandTestCase, TermFilterTFIDF) {
+  const irs::TFIDF scorer{false};
+  AssertTermFilter(&scorer);
+}
+
+TEST_P(WandTestCase, TermFilterTFIDFWithNorms) {
+  const irs::TFIDF scorer{true};
+  AssertTermFilter(&scorer);
+}
+
+TEST_P(WandTestCase, TermFilterBM25) {
+  const irs::BM25 scorer{};
+  ASSERT_FALSE(scorer.IsBM15());
+  ASSERT_FALSE(scorer.IsBM11());
+  AssertTermFilter(&scorer);
+}
+
+TEST_P(WandTestCase, TermFilterBM15) {
+  const irs::BM25 scorer{irs::BM25::K(), 0};
+  ASSERT_TRUE(scorer.IsBM15());
+  AssertTermFilter(&scorer);
 }
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();
