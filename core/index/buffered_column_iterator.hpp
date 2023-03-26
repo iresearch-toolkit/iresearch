@@ -34,9 +34,6 @@ class BufferedColumnIterator : public doc_iterator {
   BufferedColumnIterator(std::span<const BufferedValue> values,
                          bytes_view data) noexcept
     : next_{values.data()}, end_{next_ + values.size()}, data_{data} {
-    IRS_ASSERT(!values.empty());
-    IRS_ASSERT(doc_limits::eof(values.back().key));
-
     std::get<cost>(attrs_).reset(values.size());
   }
 
@@ -50,7 +47,7 @@ class BufferedColumnIterator : public doc_iterator {
 
   doc_id_t seek(doc_id_t target) noexcept final {
     if (IRS_UNLIKELY(target <= value())) {
-      return target;
+      return value();
     }
 
     next_ = std::lower_bound(next_, end_, target,
@@ -58,7 +55,8 @@ class BufferedColumnIterator : public doc_iterator {
                                return value.key < target;
                              });
 
-    return next();
+    next();
+    return value();
   }
 
   bool next() noexcept final {

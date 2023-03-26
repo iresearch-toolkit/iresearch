@@ -24,7 +24,9 @@
 #include "index/buffered_column.hpp"
 
 #include "analysis/token_attributes.hpp"
+#include "index/buffered_column_iterator.hpp"
 #include "index/comparer.hpp"
+#include "search/score.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/bytes_utils.hpp"
@@ -65,6 +67,131 @@ class Comparator final : public irs::Comparer {
     return 0;
   }
 };
+
+void AssertIteratorNext(const irs::BufferedColumn& column,
+                        std::span<const uint32_t> expected_values) {
+  irs::BufferedColumnIterator it{column.Index(), column.Data()};
+  ASSERT_EQ(expected_values.size(), irs::cost::extract(it));
+  ASSERT_EQ(nullptr, irs::get<irs::score>(it));
+  auto* doc = irs::get<irs::document>(it);
+  ASSERT_NE(nullptr, doc);
+  auto* payload = irs::get<irs::payload>(it);
+  ASSERT_NE(nullptr, payload);
+
+  ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+  ASSERT_EQ(it.value(), doc->value);
+  for (const auto expected_value : expected_values) {
+    ASSERT_TRUE(it.next());
+    ASSERT_EQ(it.value(), doc->value);
+    ASSERT_FALSE(payload->value.empty());
+    const auto* data = payload->value.data();
+    const auto value = irs::vread<uint32_t>(data);
+    ASSERT_EQ(expected_value, value);
+  }
+  ASSERT_FALSE(it.next());
+  ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+  ASSERT_FALSE(it.next());
+  ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+}
+
+void AssertIteratorSeekStateful(const irs::BufferedColumn& column,
+                                std::span<const uint32_t> expected_values) {
+  irs::BufferedColumnIterator it{column.Index(), column.Data()};
+  ASSERT_EQ(expected_values.size(), irs::cost::extract(it));
+  ASSERT_EQ(nullptr, irs::get<irs::score>(it));
+  auto* doc = irs::get<irs::document>(it);
+  ASSERT_NE(nullptr, doc);
+  auto* payload = irs::get<irs::payload>(it);
+  ASSERT_NE(nullptr, payload);
+
+  ASSERT_FALSE(irs::doc_limits::valid(doc->value));
+  ASSERT_EQ(it.value(), doc->value);
+  irs::doc_id_t expected_doc = irs::doc_limits::min();
+  for (const auto expected_value : expected_values) {
+    ASSERT_EQ(expected_doc, it.seek(expected_doc));
+    ASSERT_EQ(it.value(), doc->value);
+    ASSERT_EQ(expected_doc, it.seek(expected_doc));
+    ASSERT_EQ(it.value(), doc->value);
+    ASSERT_EQ(expected_doc, it.seek(expected_doc - 1));
+    ASSERT_EQ(it.value(), doc->value);
+    ASSERT_FALSE(payload->value.empty());
+    const auto* data = payload->value.data();
+    const auto value = irs::vread<uint32_t>(data);
+    ASSERT_EQ(expected_value, value);
+    ++expected_doc;
+  }
+  ASSERT_FALSE(it.next());
+  ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+  ASSERT_FALSE(it.next());
+  ASSERT_TRUE(irs::doc_limits::eof(doc->value));
+}
+
+void AssertIteratorSeekStateles(const irs::BufferedColumn& column,
+                                std::span<const uint32_t> expected_values) {
+  irs::doc_id_t expected_doc = irs::doc_limits::min();
+  for (const auto expected_value : expected_values) {
+    irs::BufferedColumnIterator it{column.Index(), column.Data()};
+    auto* payload = irs::get<irs::payload>(it);
+    ASSERT_NE(nullptr, payload);
+    ASSERT_EQ(expected_doc, it.seek(expected_doc));
+    ASSERT_EQ(it.value(), expected_doc);
+    ASSERT_EQ(expected_doc, it.seek(expected_doc));
+    ASSERT_EQ(it.value(), expected_doc);
+    ASSERT_EQ(expected_doc, it.seek(expected_doc - 1));
+    ASSERT_EQ(it.value(), expected_doc);
+    ASSERT_FALSE(payload->value.empty());
+    const auto* data = payload->value.data();
+    const auto value = irs::vread<uint32_t>(data);
+    ASSERT_EQ(expected_value, value);
+    ++expected_doc;
+  }
+}
+
+void AssertIteratorCornerCases(const irs::BufferedColumn& column,
+                               std::span<const uint32_t> expected_values) {
+  // next + seek to eof
+  {
+    irs::BufferedColumnIterator it{column.Index(), column.Data()};
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    if (!expected_values.empty()) {
+      ASSERT_TRUE(it.next());
+      ASSERT_EQ(1, it.value());
+    } else {
+      ASSERT_FALSE(it.next());
+    }
+    ASSERT_TRUE(irs::doc_limits::eof(it.seek(expected_values.size() + 42)));
+  }
+
+  // Seek to irs::doc_limits::invalid()
+  {
+    irs::BufferedColumnIterator it{column.Index(), column.Data()};
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_FALSE(irs::doc_limits::valid(it.seek(irs::doc_limits::invalid())));
+    if (!expected_values.empty()) {
+      ASSERT_TRUE(it.next());
+      ASSERT_EQ(1, it.value());
+    } else {
+      ASSERT_FALSE(it.next());
+    }
+  }
+
+  // Seek to irs::doc_limits::eof()
+  {
+    irs::BufferedColumnIterator it{column.Index(), column.Data()};
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_TRUE(irs::doc_limits::eof(it.seek(irs::doc_limits::eof())));
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+}
+
+void AssertIterator(const irs::BufferedColumn& column,
+                    std::span<const uint32_t> expected_values) {
+  AssertIteratorNext(column, expected_values);
+  AssertIteratorSeekStateful(column, expected_values);
+  AssertIteratorSeekStateles(column, expected_values);
+  AssertIteratorCornerCases(column, expected_values);
+}
 
 const Comparator kLess;
 
@@ -270,6 +397,7 @@ TEST_P(BufferedColumnTestCase, Sort) {
       col.reset();
     }
     ASSERT_EQ(std::size(values), col.Size());
+    ASSERT_EQ(col.Index().size(), col.Size());
     ASSERT_FALSE(col.Empty());
 
     ASSERT_GE(col.MemoryActive(), 0);
@@ -284,6 +412,9 @@ TEST_P(BufferedColumnTestCase, Sort) {
       },
       std::size(values), kLess);
     ASSERT_FALSE(col.Empty());
+
+    AssertIterator(col, values);
+
     col.Clear();
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
@@ -292,6 +423,8 @@ TEST_P(BufferedColumnTestCase, Sort) {
     ASSERT_GE(col.MemoryReserved(), 0);
     ASSERT_EQ(1 + std::size(values), order.size());
     ASSERT_TRUE(irs::field_limits::valid(column_id));
+
+    AssertIterator(col, {});
 
     const irs::flush_state state{
       .dir = &dir, .name = segment.name, .doc_count = std::size(values)};
