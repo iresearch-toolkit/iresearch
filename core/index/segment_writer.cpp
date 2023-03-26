@@ -241,7 +241,8 @@ void segment_writer::FlushFields(flush_state& state) {
   }
 
   // Flush all cached columns
-  for (irs::BufferedColumn::FlushBuffer buffer; auto& column : cached_columns_) {
+  for (irs::BufferedColumn::BufferedValues buffer;
+       auto& column : cached_columns_) {
     if (IRS_LIKELY(!field_limits::valid(column.id()))) {
       column.Flush(*col_writer_, docmap, buffer);
     }

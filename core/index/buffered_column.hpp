@@ -33,17 +33,18 @@ namespace irs {
 class Comparer;
 
 struct BufferedValue {
+  BufferedValue() = default;
   BufferedValue(doc_id_t key, size_t begin, size_t size) noexcept
     : key{key}, begin{begin}, size{size} {}
 
-  doc_id_t key;
+  doc_id_t key{};
   size_t begin;
   size_t size;
 };
 
 class BufferedColumn final : public column_output, private util::noncopyable {
  public:
-  using FlushBuffer = std::vector<std::pair<doc_id_t, doc_id_t>>;
+  using BufferedValues = std::vector<BufferedValue>;
 
   explicit BufferedColumn(const ColumnInfo& info) : info_{info} {}
 
@@ -99,7 +100,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
 
   field_id Flush(columnstore_writer& writer,
                  columnstore_writer::column_finalizer_f header_writer,
-                 DocMapView docmap, FlushBuffer& buffer);
+                 DocMapView docmap, BufferedValues& buffer);
 
   size_t MemoryActive() const noexcept {
     return data_buf_.size() +
@@ -136,13 +137,13 @@ class BufferedColumn final : public column_output, private util::noncopyable {
   void FlushAlreadySorted(const columnstore_writer::values_writer_f& writer);
 
   bool FlushDense(const columnstore_writer::values_writer_f& writer,
-                  DocMapView docmap, FlushBuffer& buffer);
+                  DocMapView docmap, BufferedValues& buffer);
 
   void FlushSparse(const columnstore_writer::values_writer_f& writer,
-                   DocMapView docmap, FlushBuffer& buffer);
+                   DocMapView docmap);
 
   bstring data_buf_;  // FIXME use memory_file or block_pool instead
-  std::vector<BufferedValue> index_;
+  BufferedValues index_;
   size_t pending_offset_{};
   doc_id_t pending_key_{doc_limits::invalid()};
   ColumnInfo info_;

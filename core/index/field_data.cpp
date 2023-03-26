@@ -388,7 +388,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
     if (!docmap) {
       reset_already_sorted(it, *freq);
-    } else if (irs::use_dense_sort(
+    } else if (irs::UseDenseSort(
                  it.cost(), docmap->size() - 1)) {  // -1 for first element
       reset_dense(it, *freq, *docmap);
     } else {
@@ -459,7 +459,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
   void reset_dense(detail::doc_iterator& it, const frequency& freq,
                    std::span<const doc_id_t> docmap) {
     IRS_ASSERT(!docmap.empty());
-    IRS_ASSERT(irs::use_dense_sort(it.cost(),
+    IRS_ASSERT(irs::UseDenseSort(it.cost(),
                                    docmap.size() - 1));  // -1 for first element
 
     docs_.resize(docmap.size() - 1);  // -1 for first element
@@ -484,7 +484,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
                     std::span<const doc_id_t> docmap) {
     IRS_ASSERT(!docmap.empty());
     IRS_ASSERT(
-      !irs::use_dense_sort(it.cost(),
+      !irs::UseDenseSort(it.cost(),
                            docmap.size() - 1));  // -1 for first element
 
     while (it.next()) {

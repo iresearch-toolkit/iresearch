@@ -72,7 +72,7 @@ class cached_column final : public column_reader {
   const BufferedColumn& Stream() const noexcept { return stream_; }
 
   void Flush(columnstore_writer& writer, DocMapView docmap,
-             BufferedColumn::FlushBuffer& buffer) {
+             BufferedColumn::BufferedValues& buffer) {
     auto finalizer = [this, finalizer = std::move(finalizer_)](
                        bstring& out) mutable -> std::string_view {
       name_ = finalizer(payload_);
