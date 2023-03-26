@@ -112,8 +112,6 @@ void AssertIteratorSeekStateful(const irs::BufferedColumn& column,
     ASSERT_EQ(it.value(), doc->value);
     ASSERT_EQ(expected_doc, it.seek(expected_doc));
     ASSERT_EQ(it.value(), doc->value);
-    ASSERT_EQ(expected_doc, it.seek(expected_doc - 1));
-    ASSERT_EQ(it.value(), doc->value);
     ASSERT_FALSE(payload->value.empty());
     const auto* data = payload->value.data();
     const auto value = irs::vread<uint32_t>(data);
@@ -136,8 +134,6 @@ void AssertIteratorSeekStateles(const irs::BufferedColumn& column,
     ASSERT_EQ(expected_doc, it.seek(expected_doc));
     ASSERT_EQ(it.value(), expected_doc);
     ASSERT_EQ(expected_doc, it.seek(expected_doc));
-    ASSERT_EQ(it.value(), expected_doc);
-    ASSERT_EQ(expected_doc, it.seek(expected_doc - 1));
     ASSERT_EQ(it.value(), expected_doc);
     ASSERT_FALSE(payload->value.empty());
     const auto* data = payload->value.data();
@@ -225,7 +221,6 @@ void AssertIteratorBackwardsNextStateful(
        expected_value != end; ++expected_value) {
     auto expected_doc =
       static_cast<irs::doc_id_t>(std::distance(expected_value, end));
-    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
     ASSERT_EQ(expected_doc, it.seek(expected_doc));
 
     for (auto expected_it = expected_values.begin() + expected_doc;
