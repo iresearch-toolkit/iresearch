@@ -185,12 +185,42 @@ void AssertIteratorCornerCases(const irs::BufferedColumn& column,
   }
 }
 
+void AssertIteratorBackwardsNext(const irs::BufferedColumn& column,
+                                 std::span<const uint32_t> expected_values) {
+  for (auto expected_value = expected_values.rbegin(),
+            end = expected_values.rend();
+       expected_value != end; ++expected_value) {
+    auto expected_doc =
+      static_cast<irs::doc_id_t>(std::distance(expected_value, end));
+    irs::BufferedColumnIterator it{column.Index(), column.Data()};
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    ASSERT_EQ(expected_doc, it.seek(expected_doc));
+
+    for (auto expected_it = expected_values.begin() + expected_doc;
+         expected_it != expected_values.end(); ++expected_it) {
+      ++expected_doc;
+      ASSERT_TRUE(it.next());
+      auto* payload = irs::get<irs::payload>(it);
+      ASSERT_NE(nullptr, payload);
+      ASSERT_EQ(expected_doc, it.seek(expected_doc));
+      ASSERT_EQ(it.value(), expected_doc);
+      const auto* data = payload->value.data();
+      const auto value = irs::vread<uint32_t>(data);
+      ASSERT_EQ(*expected_it, value);
+    }
+
+    ASSERT_FALSE(it.next());
+    ASSERT_TRUE(irs::doc_limits::eof(it.value()));
+  }
+}
+
 void AssertIterator(const irs::BufferedColumn& column,
                     std::span<const uint32_t> expected_values) {
   AssertIteratorNext(column, expected_values);
   AssertIteratorSeekStateful(column, expected_values);
   AssertIteratorSeekStateles(column, expected_values);
   AssertIteratorCornerCases(column, expected_values);
+  AssertIteratorBackwardsNext(column, expected_values);
 }
 
 const Comparator kLess;
