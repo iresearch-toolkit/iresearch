@@ -70,7 +70,8 @@ const Comparator kLess;
 
 }  // namespace
 
-struct SortedColumnTestCase : public virtual test_param_base<std::string_view> {
+struct BufferedColumnTestCase
+  : public virtual test_param_base<std::string_view> {
   bool supports_columnstore_headers() const noexcept {
     // old formats don't support columnstore headers
     constexpr std::string_view kOldFormats[]{"1_0", "1_1", "1_2", "1_3",
@@ -82,7 +83,7 @@ struct SortedColumnTestCase : public virtual test_param_base<std::string_view> {
   }
 };
 
-TEST_P(SortedColumnTestCase, Ctor) {
+TEST_P(BufferedColumnTestCase, Ctor) {
   irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
@@ -90,7 +91,7 @@ TEST_P(SortedColumnTestCase, Ctor) {
   ASSERT_GE(col.MemoryReserved(), 0);
 }
 
-TEST_P(SortedColumnTestCase, FlushEmpty) {
+TEST_P(BufferedColumnTestCase, FlushEmpty) {
   irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
@@ -142,7 +143,7 @@ TEST_P(SortedColumnTestCase, FlushEmpty) {
   }
 }
 
-TEST_P(SortedColumnTestCase, InsertDuplicates) {
+TEST_P(BufferedColumnTestCase, InsertDuplicates) {
   constexpr uint32_t values[] = {
     19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
     75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
@@ -168,7 +169,8 @@ TEST_P(SortedColumnTestCase, InsertDuplicates) {
 
     writer->prepare(dir, segment);
 
-    irs::BufferedColumn col({irs::type<irs::compression::none>::get(), {}, true});
+    irs::BufferedColumn col(
+      {irs::type<irs::compression::none>::get(), {}, true});
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());
@@ -223,7 +225,7 @@ TEST_P(SortedColumnTestCase, InsertDuplicates) {
   }
 }
 
-TEST_P(SortedColumnTestCase, Sort) {
+TEST_P(BufferedColumnTestCase, Sort) {
   constexpr uint32_t values[] = {
     19, 45, 27, 1,  73, 98, 46, 48, 38,  20, 60, 91, 61, 80, 44,  53, 88,
     75, 63, 39, 68, 20, 11, 78, 21, 100, 87, 8,  9,  63, 41, 35,  82, 69,
@@ -249,7 +251,8 @@ TEST_P(SortedColumnTestCase, Sort) {
 
     writer->prepare(dir, segment);
 
-    irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, true});
+    irs::BufferedColumn col(
+      {irs::type<irs::compression::lz4>::get(), {}, true});
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());
@@ -348,5 +351,5 @@ TEST_P(SortedColumnTestCase, Sort) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(SortedColumnTest, SortedColumnTestCase,
+INSTANTIATE_TEST_SUITE_P(BufferedColumnTest, BufferedColumnTestCase,
                          ::testing::Values("1_0", "1_4"));
