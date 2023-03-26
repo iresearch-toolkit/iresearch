@@ -146,20 +146,37 @@ class FreqNormProducer : public ValueProducerBase {
       return false;
     }
 
-    auto norm = features.find(irs::type<Norm2>::id());
+    const auto* doc = irs::get<irs::document>(attrs);
+
+    if (IRS_UNLIKELY(!doc)) {
+      return false;
+    }
+
+    const auto norm = features.find(irs::type<Norm2>::id());
 
     if (norm == features.end() || !field_limits::valid(norm->second)) {
       return false;
     }
 
-    // FIXME(gnusi): norms
+    Norm2::Context ctx;
+    if (!ctx.Reset(reader, norm->second, *doc)) {
+      return false;
+    }
+
+    norm_ = Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+      return fu2::unique_function<uint32_t()>{std::move(reader)};
+    });
+
     return ValueProducerBase::Prepare(reader, features, attrs);
   }
 
-  Value GetValue() const noexcept { return {.freq = freq_->value}; }
+  Value GetValue() const noexcept {
+    return {.freq = freq_->value, .norm = norm_()};
+  }
 
  private:
   const irs::frequency* freq_{};
+  mutable fu2::unique_function<uint32_t()> norm_;
 };
 
 class FreqNormSource final : public WandSource {
