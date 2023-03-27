@@ -1358,6 +1358,7 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   bytes_view min() const noexcept final { return min_term_; }
   bytes_view max() const noexcept final { return max_term_; }
   attribute* get_mutable(irs::type_info::type_id type) noexcept final;
+  bool has_scorer(byte_type index) const noexcept final;
 
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
@@ -1391,6 +1392,10 @@ byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
   }
 
   return static_cast<byte_type>(std::popcount(wand_mask_ & (mask - 1)));
+}
+
+bool term_reader_base::has_scorer(byte_type index) const noexcept {
+  return WandIndex(index) != WandContext::kDisable;
 }
 
 void term_reader_base::prepare(burst_trie::Version version, index_input& in,

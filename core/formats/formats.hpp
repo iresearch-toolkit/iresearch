@@ -274,6 +274,9 @@ struct term_reader : public attribute_provider {
 
   // Returns the most significant term.
   virtual bytes_view(max)() const = 0;
+
+  // Returns true if scorer denoted by the is supported by the field.
+  virtual bool has_scorer(byte_type index) const = 0;
 };
 
 struct field_reader {

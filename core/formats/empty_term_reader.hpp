@@ -27,21 +27,19 @@
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief a term_reader implementation with docs_count but without terms
-////////////////////////////////////////////////////////////////////////////////
+// term_reader implementation with docs_count but without terms
 class empty_term_reader final : public irs::term_reader {
  public:
   constexpr explicit empty_term_reader(uint64_t docs_count) noexcept
-    : docs_count_(docs_count) {}
+    : docs_count_{docs_count} {}
 
-  irs::seek_term_iterator::ptr iterator(SeekMode) const noexcept final {
-    return irs::seek_term_iterator::empty();
+  seek_term_iterator::ptr iterator(SeekMode) const noexcept final {
+    return seek_term_iterator::empty();
   }
 
-  irs::seek_term_iterator::ptr iterator(
+  seek_term_iterator::ptr iterator(
     automaton_table_matcher&) const noexcept final {
-    return irs::seek_term_iterator::empty();
+    return seek_term_iterator::empty();
   }
 
   size_t bit_union(const cookie_provider&, size_t*) const noexcept final {
@@ -65,11 +63,9 @@ class empty_term_reader final : public irs::term_reader {
     return doc_iterator::empty();
   }
 
-  const irs::field_meta& meta() const noexcept final {
-    return irs::field_meta::kEmpty;
-  }
+  const field_meta& meta() const noexcept final { return field_meta::kEmpty; }
 
-  irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+  attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
   }
 
@@ -82,10 +78,12 @@ class empty_term_reader final : public irs::term_reader {
   uint64_t docs_count() const noexcept final { return docs_count_; }
 
   // least significant term
-  irs::bytes_view(min)() const noexcept final { return {}; }
+  bytes_view(min)() const noexcept final { return {}; }
 
   // most significant term
-  irs::bytes_view(max)() const noexcept final { return {}; }
+  bytes_view(max)() const noexcept final { return {}; }
+
+  bool has_scorer(byte_type) const noexcept final { return false; }
 
  private:
   uint64_t docs_count_;

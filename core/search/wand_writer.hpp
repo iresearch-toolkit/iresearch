@@ -92,7 +92,7 @@ class WandWriterImpl final : public WandWriter {
     }
   }
 
-  std::vector<Entry> score_levels_;
+  absl::InlinedVector<Entry, 10> score_levels_;
   IRS_NO_UNIQUE_ADDRESS ValueProducer producer_;
 };
 

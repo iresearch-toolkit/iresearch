@@ -2575,7 +2575,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       ++i;
 
       uint64_t block_offset = 0;
-      for (; i < extent - 1; ++i) {
+      for (; i < extent; ++i) {
         block_offset += in.read_byte();
       }
 
