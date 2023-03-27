@@ -318,6 +318,7 @@ struct MakeScoreFunctionImpl {
 
         auto& state = *static_cast<Ctx*>(ctx);
 
+        // FIXME(gnusi): we don't need idf for WAND evaluation
         float_t idf;
         if constexpr (HasFilterBoost) {
           IRS_ASSERT(state.filter_boost);

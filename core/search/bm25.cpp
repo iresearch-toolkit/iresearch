@@ -407,6 +407,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           tf = kSQRT.get<true>(state.freq->value);
         }
 
+        // FIXME(gnusi): we don't need c0 for WAND evaluation
         float_t c0;
         if constexpr (HasFilterBoost) {
           IRS_ASSERT(state.filter_boost);
