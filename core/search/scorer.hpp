@@ -303,30 +303,37 @@ struct NoopAggregator {
 };
 
 template<typename Merger, size_t Size>
-struct Aggregator : Merger {
+class Aggregator {
+ public:
   static_assert(Size > 0);
 
   constexpr size_t size() const noexcept { return Size; }
 
   constexpr size_t byte_size() const noexcept { return Size * sizeof(score_t); }
 
-  constexpr score_t* temp() noexcept { return buf.data(); }
+  constexpr score_t* temp() noexcept { return buf_.data(); }
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < Size; ++i) {
-      Merger::operator()(i, dst, src);
+      merger_(dst, src);
+      ++dst;
+      ++src;
     }
   }
 
-  std::array<score_t, Size> buf;
+ private:
+  IRS_NO_UNIQUE_ADDRESS Merger merger_;
+  std::array<score_t, Size> buf_;
 };
 
 template<typename Merger>
-struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
+class Aggregator<Merger, std::numeric_limits<size_t>::max()> {
+ private:
   using Alloc = memory::allocator_array_deallocator<std::allocator<score_t>>;
 
+ public:
   explicit Aggregator(size_t size) noexcept
-    : buf{[size]() {
+    : buf_{[size]() {
         std::allocator<score_t> alloc{};  // TODO(MBkkt) remove
         return memory::allocate_unique<score_t[]>(alloc, size,
                                                   memory::allocate_only);
@@ -334,19 +341,23 @@ struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
     IRS_ASSERT(size);
   }
 
-  size_t size() const noexcept { return buf.get_deleter().size(); }
+  size_t size() const noexcept { return buf_.get_deleter().size(); }
 
   size_t byte_size() const noexcept { return size() * sizeof(score_t); }
 
-  score_t* temp() noexcept { return buf.get(); }
+  score_t* temp() noexcept { return buf_.get(); }
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
     for (size_t i = 0; i < size(); ++i) {
-      Merger::operator()(i, dst, src);
+      merger_(dst, src);
+      ++dst;
+      ++src;
     }
   }
 
-  std::unique_ptr<score_t[], Alloc> buf;
+ private:
+  IRS_NO_UNIQUE_ADDRESS Merger merger_;
+  std::unique_ptr<score_t[], Alloc> buf_;
 };
 
 template<typename Aggregator>
@@ -359,32 +370,30 @@ template<typename Aggregator>
 inline constexpr bool HasScore_v = HasScoreHelper<Aggregator>::value;
 
 struct SumMerger {
-  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+  void operator()(score_t* IRS_RESTRICT dst,
                   const score_t* IRS_RESTRICT src) const noexcept {
-    dst[idx] += src[idx];
+    *dst += *src;
   }
 };
 
 struct MaxMerger {
-  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+  void operator()(score_t* IRS_RESTRICT dst,
                   const score_t* IRS_RESTRICT src) const noexcept {
-    auto& casted_dst = dst[idx];
-    auto& casted_src = src[idx];
+    const auto src_value = *src;
 
-    if (casted_dst < casted_src) {
-      casted_dst = casted_src;
+    if (*dst < src_value) {
+      *dst = src_value;
     }
   }
 };
 
 struct MinMerger {
-  void operator()(size_t idx, score_t* IRS_RESTRICT dst,
+  void operator()(score_t* IRS_RESTRICT dst,
                   const score_t* IRS_RESTRICT src) const noexcept {
-    auto& casted_dst = dst[idx];
-    auto& casted_src = src[idx];
+    const auto& src_value = *src;
 
-    if (casted_src < casted_dst) {
-      casted_dst = casted_src;
+    if (src_value < *dst) {
+      *dst = src_value;
     }
   }
 };
