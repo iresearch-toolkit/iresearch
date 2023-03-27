@@ -1137,8 +1137,8 @@ IndexWriter::IndexWriter(
   std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
   : feature_info_{feature_info},
     column_info_{column_info},
-    comparator_{comparator},
     meta_payload_provider_{meta_payload_provider},
+    comparator_{comparator},
     codec_{std::move(codec)},
     dir_{dir},
     committed_reader_{std::move(committed_reader)},
@@ -1213,7 +1213,7 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
                                    const IndexWriterOptions& options) {
   IRS_ASSERT(std::all_of(options.reader_options.scorers.begin(),
                          options.reader_options.scorers.end(),
-                         [](const auto& v) { return v != nullptr; }));
+                         [](const auto* v) { return v != nullptr; }));
 
   index_lock::ptr lock;
   index_file_refs::ref_t lock_ref;

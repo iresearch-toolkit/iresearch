@@ -117,7 +117,7 @@ template<typename... T>
 Visitor(T...) -> Visitor<std::decay_t<T>...>;
 
 template<typename Func>
-auto ResolveBool(byte_type value, Func&& func) {
+auto ResolveBool(bool value, Func&& func) {
   if (value) {
     return std::forward<Func>(func)(std::true_type{});
   } else {

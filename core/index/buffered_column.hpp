@@ -112,7 +112,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
            index_.capacity() * sizeof(decltype(index_)::value_type);
   }
 
-  const ColumnInfo& info() const noexcept { return info_; }
+  const ColumnInfo& Info() const noexcept { return info_; }
 
   std::span<const BufferedValue> Index() const noexcept { return index_; }
 

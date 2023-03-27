@@ -53,7 +53,7 @@ class BufferedColumnIterator : public doc_iterator {
     // segment flushing. We intentionally allow iterator to seek backwards.
     if (target < value()) {
       next_ = std::lower_bound(
-        begin_, end_, target,
+        begin_, next_, target,
         [](const BufferedValue& value, doc_id_t target) noexcept {
           return value.key < target;
         });

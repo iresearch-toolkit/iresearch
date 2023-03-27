@@ -134,8 +134,7 @@ bool BufferedColumn::FlushDense(
 
   buffer.clear();
   buffer.resize(total);
-  for (size_t i = 0; i < size; ++i) {
-    const auto& old_value = index_[i];
+  for (const auto& old_value : index_) {
     const auto new_key = docmap[old_value.key];
     auto& new_value = buffer[new_key - doc_limits::min()];
     new_value.key = new_key;

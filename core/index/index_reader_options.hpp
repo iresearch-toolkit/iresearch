@@ -45,7 +45,7 @@ using MemoryAccountingFunc = fu2::function<bool(int64_t) noexcept>;
 using ScorersView = std::span<const Scorer* const>;
 
 // We support up to 64 scorers per field
-static constexpr size_t kMaxScorers = bits_required<uint64_t>();
+inline constexpr size_t kMaxScorers = bits_required<uint64_t>();
 
 struct WandContext {
   static constexpr auto kDisable = std::numeric_limits<byte_type>::max();

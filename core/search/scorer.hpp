@@ -42,7 +42,7 @@ struct ColumnProvider;
 struct term_reader;
 
 // Represents no boost value.
-inline constexpr score_t kNoBoost{1.F};
+inline constexpr score_t kNoBoost{1.f};
 
 // Represents an addition to score from filter specific to a particular
 // document. May vary from document to document.
@@ -223,9 +223,7 @@ enum class ScoreMergeType {
 
 struct ScorerBucket {
   ScorerBucket(const Scorer& bucket, size_t stats_offset) noexcept
-    : bucket(&bucket), stats_offset{stats_offset} {
-    IRS_ASSERT(this->bucket);
-  }
+    : bucket{&bucket}, stats_offset{stats_offset} {}
 
   const Scorer* bucket;  // prepared score
   size_t stats_offset;   // offset in stats buffer
@@ -325,25 +323,30 @@ struct Aggregator : Merger {
 
 template<typename Merger>
 struct Aggregator<Merger, std::numeric_limits<size_t>::max()> : Merger {
-  explicit Aggregator(size_t size) noexcept : count{size} {
+  using Alloc = memory::allocator_array_deallocator<std::allocator<score_t>>;
+
+  explicit Aggregator(size_t size) noexcept
+    : buf{[size]() {
+        std::allocator<score_t> alloc{};  // TODO(MBkkt) remove
+        return memory::allocate_unique<score_t[]>(alloc, size,
+                                                  memory::allocate_only);
+      }()} {
     IRS_ASSERT(size);
-    buf.resize(byte_size());
   }
 
-  size_t size() const noexcept { return count; }
+  size_t size() const noexcept { return buf.get_deleter().size(); }
 
   size_t byte_size() const noexcept { return size() * sizeof(score_t); }
 
-  score_t* temp() noexcept { return reinterpret_cast<score_t*>(buf.data()); }
+  score_t* temp() noexcept { return buf.get(); }
 
   void operator()(score_t* dst, const score_t* src) const noexcept {
-    for (size_t i = 0; i < count; ++i) {
+    for (size_t i = 0; i < size(); ++i) {
       Merger::operator()(i, dst, src);
     }
   }
 
-  size_t count;
-  bstring buf;
+  std::unique_ptr<score_t[], Alloc> buf;
 };
 
 template<typename Aggregator>

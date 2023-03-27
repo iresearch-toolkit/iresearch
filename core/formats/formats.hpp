@@ -58,7 +58,7 @@ struct WandWriter;
 
 using DocumentMask = absl::flat_hash_set<doc_id_t>;
 using DocMap = std::vector<doc_id_t>;
-using DocMapView = std::span<doc_id_t>;
+using DocMapView = std::span<const doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
 using ScoreFunctionFactory =

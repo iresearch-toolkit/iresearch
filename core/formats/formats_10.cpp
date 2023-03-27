@@ -45,8 +45,8 @@ extern "C" {
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
 #include "utils/attribute_helper.hpp"
+#include "utils/bit_utils.hpp"
 #include "utils/bitpack.hpp"
-#include "utils/bitset.hpp"
 #include "utils/log.hpp"
 #include "utils/memory.hpp"
 #include "utils/memory_pool.hpp"
@@ -393,7 +393,7 @@ class postings_writer_base : public irs::postings_writer {
     last_state_.clear();
   }
 
-  FieldStats end_field() noexcept {
+  FieldStats end_field() noexcept final {
     const auto count = docs_.count();
     IRS_ASSERT(count < doc_limits::eof());
     return {.wand_mask = writers_mask_,
@@ -2113,31 +2113,23 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
 void doc_iterator<IteratorTraits, FieldTraits,
                   WandExtent>::ReadSkip::SkipWandData(index_input& stream) {
-  if constexpr (!FieldTraits::wand()) {
-    return;
-  }
-
-  auto count = WandExtent::GetExtent();
-
-  uint64_t skip;
-
-  switch (count) {
-    case 0:
-      return;
-    case 1:
-      skip = stream.read_byte();
-      break;
-    case 2:
-      skip = stream.read_byte() + stream.read_byte();
-      break;
-    default:
-      for (skip = 0; count; --count) {
-        skip += stream.read_byte();
+  if constexpr (FieldTraits::wand()) {
+    switch (auto count = WandExtent::GetExtent(); count) {
+      case 0:
+        return;
+      case 1:
+        stream.skip(stream.read_byte());
+        return;
+      default: {
+        uint64_t skip{};
+        for (; count; --count) {
+          skip += stream.read_byte();
+        }
+        stream.skip(skip);
+        return;
       }
-      break;
+    }
   }
-
-  stream.skip(skip);
 }
 
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
@@ -2578,6 +2570,9 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       for (; i < index; ++i) {
         scorer_offset += in.read_byte();
       }
+
+      std::ignore = in.read_byte();
+      ++i;
 
       uint64_t block_offset = 0;
       for (; i < extent - 1; ++i) {

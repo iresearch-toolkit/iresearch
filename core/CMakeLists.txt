@@ -80,7 +80,6 @@ source_group("utils" ./utils/*)
 
 set(IResearch_core_sources
   ./utils/assert.cpp
-  ./analysis/analyzer.cpp
   ./analysis/analyzers.cpp
   ./analysis/token_attributes.cpp
   ./analysis/token_streams.cpp
@@ -762,7 +761,6 @@ target_include_directories(iresearch-analyzer-nearest-neighbors-static
 
 set(IResearch_format-1_0_source
   ./formats/formats_10.cpp
-  ./formats/formats_10_attributes.cpp
   ./formats/formats_burst_trie.cpp
   ./formats/formats_10.hpp
   ./formats/formats_10_attributes.hpp

@@ -510,57 +510,56 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
   auto* stats = stats_cast(query_stats);
   auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
 
-  if (!IsBM15()) {
-    auto prepare_norm_scorer =
-      [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
-      return MakeScoreFunction<BM25Context<Norm>>(
-        filter_boost, k_, boost, *stats, freq, std::move(norm));
-    };
-
-    // Check if norms are present in attributes
-    if (auto* norm = irs::get<Norm2>(doc_attrs); norm) {
-      return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(
-        [norm]() noexcept { return norm->value; }));
-    }
-
-    // Fallback to reading from columnstore
-    auto* doc = irs::get<document>(doc_attrs);
-
-    if (IRS_UNLIKELY(!doc)) {
-      // We need 'document' attribute to be exposed.
-      return ScoreFunction::Invalid();
-    }
-
-    if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
-      if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-        if (ctx.max_num_bytes == sizeof(byte_type)) {
-          return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-            return prepare_norm_scorer(
-              MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
-          });
-        }
-
-        return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-          return prepare_norm_scorer(
-            MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
-        });
-      }
-    }
-
-    if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
-      if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-        return prepare_norm_scorer(
-          MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
-      }
-    }
-
-    // No norms, pretend all fields have the same length 1.
-    return prepare_norm_scorer(
-      MakeNormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
+  if (IsBM15()) {
+    return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, *stats,
+                                          freq);
   }
 
-  // BM15
-  return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, *stats, freq);
+  auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
+    return MakeScoreFunction<BM25Context<Norm>>(filter_boost, k_, boost, *stats,
+                                                freq, std::move(norm));
+  };
+
+  // Check if norms are present in attributes
+  if (auto* norm = irs::get<Norm2>(doc_attrs); norm) {
+    return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(
+      [norm]() noexcept { return norm->value; }));
+  }
+
+  // Fallback to reading from columnstore
+  auto* doc = irs::get<document>(doc_attrs);
+
+  if (IRS_UNLIKELY(!doc)) {
+    // We need 'document' attribute to be exposed.
+    return ScoreFunction::Invalid();
+  }
+
+  if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
+    if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+      if (ctx.max_num_bytes == sizeof(byte_type)) {
+        return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+          return prepare_norm_scorer(
+            MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
+        });
+      }
+
+      return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+        return prepare_norm_scorer(
+          MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
+      });
+    }
+  }
+
+  if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
+    if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+      return prepare_norm_scorer(
+        MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
+    }
+  }
+
+  // No norms, pretend all fields have the same length 1.
+  return prepare_norm_scorer(
+    MakeNormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
 }
 
 void BM25::get_features(std::set<type_info::type_id>& features) const {

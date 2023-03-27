@@ -35,7 +35,7 @@ class all : public filter {
                                 score_t filter_boost,
                                 const attribute_provider* ctx) const final;
 
-  irs::type_info::type_id type() const noexcept override {
+  irs::type_info::type_id type() const noexcept final {
     return irs::type<all>::id();
   }
 };

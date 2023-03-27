@@ -388,8 +388,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
     if (!docmap) {
       reset_already_sorted(it, *freq);
-    } else if (irs::UseDenseSort(
-                 it.cost(), docmap->size() - 1)) {  // -1 for first element
+    } else if (irs::UseDenseSort(it.cost(),
+                                 docmap->size() - 1)) {  // -1 for first element
       reset_dense(it, *freq, *docmap);
     } else {
       reset_sparse(it, *freq, *docmap);
@@ -460,7 +460,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
                    std::span<const doc_id_t> docmap) {
     IRS_ASSERT(!docmap.empty());
     IRS_ASSERT(irs::UseDenseSort(it.cost(),
-                                   docmap.size() - 1));  // -1 for first element
+                                 docmap.size() - 1));  // -1 for first element
 
     docs_.resize(docmap.size() - 1);  // -1 for first element
 
@@ -483,9 +483,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
   void reset_sparse(detail::doc_iterator& it, const frequency& freq,
                     std::span<const doc_id_t> docmap) {
     IRS_ASSERT(!docmap.empty());
-    IRS_ASSERT(
-      !irs::UseDenseSort(it.cost(),
-                           docmap.size() - 1));  // -1 for first element
+    IRS_ASSERT(!irs::UseDenseSort(it.cost(),
+                                  docmap.size() - 1));  // -1 for first element
 
     while (it.next()) {
       IRS_ASSERT(it.value() - doc_limits::min() < docmap.size());
@@ -1156,10 +1155,9 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
     // Reset reader
     terms.reset(*field);
 
-    auto it = terms.iterator();
-
     // Write inverted data
     const auto& meta = field->meta();
+    auto it = terms.iterator();
     fw.write(meta.name, meta.index_features, meta.features, *it);
   }
 

@@ -936,8 +936,8 @@ class IndexWriter : private util::noncopyable {
   feature_set_t wand_features_;  // Set of features required for wand
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
-  const Comparer* comparator_;
   PayloadProvider meta_payload_provider_;  // provides payload for new segments
+  const Comparer* comparator_;
   format::ptr codec_;
   // guard for cached_segment_readers_, commit_pool_, meta_
   // (modification during commit()/defragment()), payload_buf_

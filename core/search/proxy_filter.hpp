@@ -60,7 +60,7 @@ class proxy_filter final : public filter {
     return *this;
   }
 
-  irs::type_info::type_id type() const noexcept override {
+  irs::type_info::type_id type() const noexcept final {
     return irs::type<proxy_filter>::id();
   }
 
