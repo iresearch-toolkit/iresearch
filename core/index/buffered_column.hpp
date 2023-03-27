@@ -38,8 +38,8 @@ struct BufferedValue {
     : key{key}, begin{begin}, size{size} {}
 
   doc_id_t key{};
-  size_t begin;
-  size_t size;
+  size_t begin{};
+  size_t size{};
 };
 
 class BufferedColumn final : public column_output, private util::noncopyable {

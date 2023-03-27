@@ -693,7 +693,7 @@ field_data::field_data(std::string_view name, const features_t& features,
     terms_{*byte_writer},
     byte_writer_{&byte_writer},
     int_writer_{&int_writer},
-    proc_table_{TERM_PROCESSING_TABLES[size_t(random_access)]},
+    proc_table_{kTermProcessingTables[size_t(random_access)]},
     requested_features_{index_features},
     last_doc_{doc_limits::invalid()} {
   for (const type_info::type_id feature : features) {

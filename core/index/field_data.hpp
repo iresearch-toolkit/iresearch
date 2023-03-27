@@ -169,14 +169,14 @@ class field_data : util::noncopyable {
   void add_term_random_access(posting& p, doc_id_t did, const payload* pay,
                               const offset* offs);
 
-  static constexpr process_term_f TERM_PROCESSING_TABLES[2][2] = {
+  static constexpr process_term_f kTermProcessingTables[2][2] = {
     // sequential access: [0] - new term, [1] - add term
     {&field_data::add_term, &field_data::new_term},
     // random access: [0] - new term, [1] - add term
     {&field_data::add_term_random_access, &field_data::new_term_random_access}};
 
   bool prox_random_access() const noexcept {
-    return TERM_PROCESSING_TABLES[1] == proc_table_;
+    return kTermProcessingTables[1] == proc_table_;
   }
 
   mutable std::vector<feature_info> features_;
