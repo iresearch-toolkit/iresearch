@@ -852,7 +852,7 @@ class field_writer final : public irs::field_writer {
 
   void EndField(std::string_view name, IndexFeatures index_features,
                 const irs::feature_map_t& features, uint64_t total_doc_freq,
-                uint64_t total_term_freq, size_t doc_count);
+                uint64_t total_term_freq, uint64_t doc_count);
 
   // prefix - prefix length (in last_term)
   // begin - index of the first entry in the block
