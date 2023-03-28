@@ -1193,15 +1193,7 @@ class BufferedColumns final : public irs::ColumnProvider {
       return nullptr;
     }
 
-    const auto it = std::find_if(
-      columns_.begin(), columns_.end(),
-      [field](const auto& column) { return column.id() == field; });
-
-    if (it == columns_.end()) {
-      return nullptr;
-    }
-
-    return &*it;
+    return Find(field);
   }
 
   const irs::column_reader* column(std::string_view) const noexcept final {
@@ -1209,14 +1201,9 @@ class BufferedColumns final : public irs::ColumnProvider {
   }
 
   BufferedValues& PushColumn() {
-    const auto it = std::find_if(columns_.begin(), columns_.end(),
-                                 [](const auto& column) noexcept {
-                                   return !field_limits::valid(column.id());
-                                 });
-
-    if (it != columns_.end()) {
-      it->Clear();
-      return *it;
+    if (auto* column = Find(field_limits::invalid()); column) {
+      column->Clear();
+      return *column;
     }
 
     return columns_.emplace_back();
@@ -1229,7 +1216,16 @@ class BufferedColumns final : public irs::ColumnProvider {
   }
 
  private:
-  std::vector<BufferedValues> columns_;
+  BufferedValues* Find(field_id id) const noexcept {
+    for (auto& column : columns_) {
+      if (column.id() == id) {
+        return const_cast<BufferedValues*>(&column);
+      }
+    }
+    return nullptr;
+  }
+
+  SmallVector<BufferedValues, 1> columns_;
 };
 
 // Write field term data
