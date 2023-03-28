@@ -60,12 +60,36 @@ class Scorers {
 };
 
 struct Doc {
-  Doc(size_t segment, irs::doc_id_t doc) : segment{segment}, doc{doc} {}
+  Doc(size_t segment, irs::doc_id_t doc) noexcept
+    : segment{segment}, doc{doc} {}
 
   bool operator==(const Doc&) const = default;
 
   size_t segment;
   irs::doc_id_t doc;
+};
+
+struct ScoredDoc : Doc {
+  ScoredDoc(size_t segment, irs::doc_id_t doc, float score) noexcept
+    : Doc{segment, doc}, score{score} {}
+
+  bool operator<(const ScoredDoc& rhs) noexcept {
+    if (score > rhs.score) {
+      return true;
+    }
+    if (score < rhs.score) {
+      return false;
+    }
+    if (segment < rhs.segment) {
+      return true;
+    }
+    if (segment > rhs.segment) {
+      return false;
+    }
+    return doc < rhs.doc;
+  }
+
+  float score;
 };
 
 class WandTestCase : public tests::index_test_base {
@@ -82,8 +106,8 @@ class WandTestCase : public tests::index_test_base {
                      const irs::filter& filter, const irs::Scorer& scorer,
                      irs::byte_type wand_idx, bool can_use_wand, size_t limit);
 
-  void GenerateData(irs::ScorersView scorers, bool write_norms,
-                    bool append_data = false);
+  void GenerateSegment(irs::ScorersView scorers, bool write_norms,
+                       bool append_data = false);
   void ConsolidateAll(irs::ScorersView scorers, bool write_norms);
   void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
                         irs::byte_type wand_index);
@@ -95,17 +119,6 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
                                        const irs::Scorer& scorer,
                                        irs::byte_type wand_idx,
                                        bool can_use_wand, size_t limit) {
-  struct ScoredDoc : Doc {
-    ScoredDoc(size_t segment, irs::doc_id_t doc, float score)
-      : Doc{segment, doc}, score{score} {}
-
-    float score;
-  };
-
-  auto less = [](const ScoredDoc& lhs, const ScoredDoc& rhs) noexcept {
-    return lhs.score > rhs.score;
-  };
-
   auto scorers = irs::Scorers::Prepare(scorer);
   EXPECT_FALSE(scorers.empty());
   auto query = filter.prepare(index, scorers);
@@ -136,7 +149,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
     if (!left) {
       EXPECT_TRUE(!sorted.empty());
-      EXPECT_TRUE(std::is_heap(std::begin(sorted), std::end(sorted), less));
+      EXPECT_TRUE(std::is_heap(std::begin(sorted), std::end(sorted)));
       threshold->value = sorted.front().score;
     }
 
@@ -147,27 +160,27 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
         sorted.emplace_back(segment_id, doc->value, score_value);
 
         if (0 == --left) {
-          std::make_heap(std::begin(sorted), std::end(sorted), less);
+          std::make_heap(std::begin(sorted), std::end(sorted));
           threshold->value = sorted.front().score;
         }
       } else if (sorted.front().score < score_value) {
-        std::pop_heap(std::begin(sorted), std::end(sorted), less);
+        std::pop_heap(std::begin(sorted), std::end(sorted));
 
         auto& min_doc = sorted.back();
         min_doc.segment = segment_id;
         min_doc.doc = doc->value;
         min_doc.score = score_value;
 
-        std::push_heap(std::begin(sorted), std::end(sorted), less);
+        std::push_heap(std::begin(sorted), std::end(sorted));
 
         threshold->value = sorted.front().score;
       }
     }
 
-    std::sort(std::begin(sorted), std::end(sorted), less);
-
     ++segment_id;
   }
+
+  std::sort(std::begin(sorted), std::end(sorted));
 
   return {std::begin(sorted), std::end(sorted)};
 }
@@ -216,8 +229,8 @@ irs::IndexWriterOptions WandTestCase::GetWriterOptions(irs::ScorersView scorers,
   return writer_options;
 }
 
-void WandTestCase::GenerateData(irs::ScorersView scorers, bool write_norms,
-                                bool append_data) {
+void WandTestCase::GenerateSegment(irs::ScorersView scorers, bool write_norms,
+                                   bool append_data) {
   tests::json_doc_generator gen(
     resource("simple_single_column_multi_term.json"),
     [](tests::document& doc, std::string_view name,
@@ -304,11 +317,21 @@ TEST_P(WandTestCase, TermFilterMultipleScorersDense) {
   scorers.PushBack<irs::BM25>();
   scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
 
-  GenerateData(scorers, true);
+  GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
 
-  GenerateData(scorers, true, true);  // Add another segment
+  GenerateSegment(scorers, true, true);  // Add another segment
   ConsolidateAll(scorers, true);
+  AssertTermFilter(scorers);
+
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertTermFilter(scorers);
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertTermFilter(scorers);
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertTermFilter(scorers);
+  ConsolidateAll(scorers, true);
+
   AssertTermFilter(scorers);
 }
 
@@ -319,7 +342,13 @@ TEST_P(WandTestCase, TermFilterMultipleScorersSparse) {
   scorers.PushBack<irs::BM25>();
   scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
 
-  GenerateData(scorers, false);
+  GenerateSegment(scorers, false);
+  AssertTermFilter(scorers);
+
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertTermFilter(scorers);
+  ConsolidateAll(scorers, true);
+
   AssertTermFilter(scorers);
 }
 
@@ -327,7 +356,7 @@ TEST_P(WandTestCase, TermFilterTFIDF) {
   Scorers scorers;
   scorers.PushBack<irs::TFIDF>(false);
 
-  GenerateData(scorers, true);
+  GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
 }
 
@@ -335,7 +364,7 @@ TEST_P(WandTestCase, TermFilterTFIDFWithNorms) {
   Scorers scorers;
   scorers.PushBack<irs::TFIDF>(true);
 
-  GenerateData(scorers, true);
+  GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
 }
 
@@ -345,7 +374,7 @@ TEST_P(WandTestCase, TermFilterBM25) {
   ASSERT_FALSE(scorer.IsBM15());
   ASSERT_FALSE(scorer.IsBM11());
 
-  GenerateData(scorers, true);
+  GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
 }
 
@@ -354,7 +383,7 @@ TEST_P(WandTestCase, TermFilterBM15) {
   auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
   ASSERT_TRUE(scorer.IsBM15());
 
-  GenerateData(scorers, true);
+  GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
 }
 
