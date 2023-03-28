@@ -33,11 +33,12 @@ namespace {
 
 class Scorers {
  public:
-  const irs::Scorer& PushBack(irs::Scorer::ptr scorer) {
-    EXPECT_NE(nullptr, scorer);
+  template<typename T, typename... Args>
+  const T& PushBack(Args&&... args) {
+    auto scorer = std::make_unique<T>(std::forward<Args>(args)...);
     auto& bucket = scorers_.emplace_back();
     bucket = scorer.release();
-    return *bucket;
+    return static_cast<T&>(*bucket);
   }
 
   const irs::Scorer& operator[](size_t i) const noexcept {
@@ -45,7 +46,8 @@ class Scorers {
     return *scorers_[i];
   }
 
-  irs::ScorersView GetView() const noexcept { return scorers_; }
+  // Intentionally imlicit
+  operator irs::ScorersView() const noexcept { return scorers_; }
 
   ~Scorers() {
     for (auto* scorer : scorers_) {
@@ -297,66 +299,63 @@ void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
 
 TEST_P(WandTestCase, TermFilterMultipleScorersDense) {
   Scorers scorers;
-  scorers.PushBack(std::make_unique<irs::TFIDF>(false));
-  scorers.PushBack(std::make_unique<irs::TFIDF>(true));
-  scorers.PushBack(std::make_unique<irs::BM25>());
-  scorers.PushBack(std::make_unique<irs::BM25>(irs::BM25::K(), 0));
+  scorers.PushBack<irs::TFIDF>(false);
+  scorers.PushBack<irs::TFIDF>(true);
+  scorers.PushBack<irs::BM25>();
+  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
 
-  GenerateData(scorers.GetView(), true);
-  AssertTermFilter(scorers.GetView());
+  GenerateData(scorers, true);
+  AssertTermFilter(scorers);
 
-  GenerateData(scorers.GetView(), true, true);  // Add another segment
-  ConsolidateAll(scorers.GetView(), true);
-  AssertTermFilter(scorers.GetView());
+  GenerateData(scorers, true, true);  // Add another segment
+  ConsolidateAll(scorers, true);
+  AssertTermFilter(scorers);
 }
 
 TEST_P(WandTestCase, TermFilterMultipleScorersSparse) {
   Scorers scorers;
-  scorers.PushBack(std::make_unique<irs::TFIDF>(false));
-  scorers.PushBack(std::make_unique<irs::TFIDF>(true));
-  scorers.PushBack(std::make_unique<irs::BM25>());
-  scorers.PushBack(std::make_unique<irs::BM25>(irs::BM25::K(), 0));
+  scorers.PushBack<irs::TFIDF>(false);
+  scorers.PushBack<irs::TFIDF>(true);
+  scorers.PushBack<irs::BM25>();
+  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
 
-  GenerateData(scorers.GetView(), false);
-  AssertTermFilter(scorers.GetView());
+  GenerateData(scorers, false);
+  AssertTermFilter(scorers);
 }
 
 TEST_P(WandTestCase, TermFilterTFIDF) {
   Scorers scorers;
-  auto& scorer = static_cast<const irs::TFIDF&>(
-    scorers.PushBack(std::make_unique<irs::TFIDF>(false)));
+  scorers.PushBack<irs::TFIDF>(false);
 
-  GenerateData(scorers.GetView(), true);
-  AssertTermFilter(scorers.GetView());
+  GenerateData(scorers, true);
+  AssertTermFilter(scorers);
 }
 
 TEST_P(WandTestCase, TermFilterTFIDFWithNorms) {
   Scorers scorers;
-  auto& scorer = scorers.PushBack(std::make_unique<irs::TFIDF>(true));
+  scorers.PushBack<irs::TFIDF>(true);
 
-  GenerateData(scorers.GetView(), true);
-  AssertTermFilter(scorers.GetView());
+  GenerateData(scorers, true);
+  AssertTermFilter(scorers);
 }
 
 TEST_P(WandTestCase, TermFilterBM25) {
   Scorers scorers;
-  auto& scorer = static_cast<const irs::BM25&>(
-    scorers.PushBack(std::make_unique<irs::BM25>()));
+  auto& scorer = scorers.PushBack<irs::BM25>();
   ASSERT_FALSE(scorer.IsBM15());
   ASSERT_FALSE(scorer.IsBM11());
 
-  GenerateData(scorers.GetView(), true);
-  AssertTermFilter(scorers.GetView());
+  GenerateData(scorers, true);
+  AssertTermFilter(scorers);
 }
 
 TEST_P(WandTestCase, TermFilterBM15) {
   Scorers scorers;
-  auto& scorer = static_cast<const irs::BM25&>(
-    scorers.PushBack(std::make_unique<irs::BM25>(irs::BM25::K(), 0)));
+  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
   ASSERT_TRUE(scorer.IsBM15());
 
-  GenerateData(scorers.GetView(), true);
-  AssertTermFilter(scorers.GetView());
+  GenerateData(scorers, true);
+  AssertTermFilter(scorers);
 }
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();

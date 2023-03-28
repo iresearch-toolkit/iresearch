@@ -192,7 +192,7 @@ class FreqNormSource final : public WandSource {
       return &freq_;
     }
     if (irs::type<Norm2>::id() == type) {
-      return &freq_;
+      return &norm_;
     }
     return nullptr;
   }
