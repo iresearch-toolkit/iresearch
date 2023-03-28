@@ -164,7 +164,7 @@ class FreqNormProducer : public ValueProducerBase {
     }
 
     norm_ = Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-      return fu2::unique_function<uint32_t()>{std::move(reader)};
+      return fu2::unique_function<Norm2::ValueType()>{std::move(reader)};
     });
 
     return ValueProducerBase::Prepare(reader, features, attrs);
