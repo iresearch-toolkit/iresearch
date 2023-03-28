@@ -1169,7 +1169,7 @@ class BufferedValues final : public irs::column_reader {
   }
 
   void SetID(field_id id) noexcept { id_ = id; }
-  void SetHeader(bytes_view header) { header_.emplace(header); }
+  void SetHeader(FeatureWriter& writer) { writer.finish(header_.emplace()); }
 
   doc_iterator::ptr iterator(ColumnHint hint) const noexcept final {
     // kPrevDoc isn't supported atm
@@ -1252,7 +1252,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
 
       if (column == field.features.end() ||
           !field_limits::valid(column->second)) {
-        // field has no feature
+        // Field has no feature
         return true;
       }
 
@@ -1330,8 +1330,11 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
         buffered_column->Reserve(count, kValueSize);
       }
 
-      if (feature_writer) {
-        auto value_writer = [writer = feature_writer.get(), buffered_column](
+      // feature_writer can be moved
+      auto* feature_writer_ptr = feature_writer.get();
+
+      if (feature_writer_ptr) {
+        auto value_writer = [writer = feature_writer_ptr, buffered_column](
                               data_output& out, doc_id_t doc,
                               bytes_view payload) {
           writer->write(out, payload);
@@ -1345,14 +1348,11 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
           [feature_writer = std::move(feature_writer),
            buffered_column](bstring& out) {
             feature_writer->finish(out);
-            if (buffered_column) {
-              buffered_column->SetHeader(out);
-            }
             return std::string_view{};
           },
           std::move(value_writer));
       } else if (!factory) {
-        // Factory has failed to instantiate writer
+        // Factory has failed to instantiate a writer
         res = cs.insert(
           feature_itr, info, [](bstring&) { return std::string_view{}; },
           [buffered_column](data_output& out, doc_id_t doc,
@@ -1373,10 +1373,14 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
       features[feature] = *res;
       if (buffered_column) {
         buffered_column->SetID(*res);
+        if (feature_writer_ptr) {
+          // Column is fully written, get header
+          buffered_column->SetHeader(*feature_writer_ptr);
+        }
       }
     }
 
-    // write field terms
+    // Write field terms
     auto terms = field_itr.iterator();
 
     field_writer->write(field_meta.name, field_meta.index_features, features,

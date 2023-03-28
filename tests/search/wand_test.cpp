@@ -27,6 +27,7 @@
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
+#include "utils/index_utils.hpp"
 
 namespace {
 
@@ -67,6 +68,9 @@ struct Doc {
 
 class WandTestCase : public tests::index_test_base {
  public:
+  static irs::IndexWriterOptions GetWriterOptions(irs::ScorersView scorers,
+                                                  bool write_norms);
+
   std::vector<Doc> Collect(const irs::DirectoryReader& index,
                            const irs::filter& filter, const irs::Scorer& scorer,
                            irs::byte_type wand_idx, bool can_use_wand,
@@ -76,7 +80,9 @@ class WandTestCase : public tests::index_test_base {
                      const irs::filter& filter, const irs::Scorer& scorer,
                      irs::byte_type wand_idx, bool can_use_wand, size_t limit);
 
-  void GenerateData(irs::ScorersView scorers, bool write_norms);
+  void GenerateData(irs::ScorersView scorers, bool write_norms,
+                    bool append_data = false);
+  void ConsolidateAll(irs::ScorersView scorers, bool write_norms);
   void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
                         irs::byte_type wand_index);
   void AssertTermFilter(irs::ScorersView scorers);
@@ -176,13 +182,24 @@ void WandTestCase::AssertResults(const irs::DirectoryReader& index,
   ASSERT_EQ(result, wand_result);
 }
 
-void WandTestCase::GenerateData(irs::ScorersView scorers, bool write_norms) {
-  ASSERT_TRUE(std::all_of(scorers.begin(), scorers.end(),
+void WandTestCase::ConsolidateAll(irs::ScorersView scorers, bool write_norms) {
+  const irs::index_utils::ConsolidateCount consolidate_all;
+  auto writer =
+    open_writer(irs::OM_APPEND, GetWriterOptions(scorers, write_norms));
+  ASSERT_TRUE(
+    writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+  ASSERT_TRUE(writer->Commit());
+  ASSERT_EQ(1, writer->GetSnapshot().size());
+}
+
+irs::IndexWriterOptions WandTestCase::GetWriterOptions(irs::ScorersView scorers,
+                                                       bool write_norms) {
+  EXPECT_TRUE(std::all_of(scorers.begin(), scorers.end(),
                           [](auto* scorer) { return scorer != nullptr; }));
 
   irs::IndexWriterOptions writer_options;
   writer_options.reader_options.scorers = scorers;
-  writer_options.features = [&](irs::type_info::type_id id) {
+  writer_options.features = [write_norms](irs::type_info::type_id id) {
     if (write_norms && irs::type<irs::Norm2>::id() == id) {
       return std::make_pair(
         irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
@@ -194,6 +211,11 @@ void WandTestCase::GenerateData(irs::ScorersView scorers, bool write_norms) {
       irs::FeatureWriterFactory{});
   };
 
+  return writer_options;
+}
+
+void WandTestCase::GenerateData(irs::ScorersView scorers, bool write_norms,
+                                bool append_data) {
   tests::json_doc_generator gen(
     resource("simple_single_column_multi_term.json"),
     [](tests::document& doc, std::string_view name,
@@ -206,7 +228,13 @@ void WandTestCase::GenerateData(irs::ScorersView scorers, bool write_norms) {
           std::vector{irs::type<irs::Norm2>::id()}));
       }
     });
-  add_segment(gen, irs::OM_CREATE, writer_options);
+
+  auto open_mode = irs::OM_CREATE;
+  if (append_data) {
+    open_mode |= irs::OM_APPEND;
+  }
+
+  add_segment(gen, open_mode, GetWriterOptions(scorers, write_norms));
 }
 
 void WandTestCase::AssertTermFilter(irs::ScorersView scorers) {
@@ -275,6 +303,10 @@ TEST_P(WandTestCase, TermFilterMultipleScorersDense) {
   scorers.PushBack(std::make_unique<irs::BM25>(irs::BM25::K(), 0));
 
   GenerateData(scorers.GetView(), true);
+  AssertTermFilter(scorers.GetView());
+
+  GenerateData(scorers.GetView(), true, true);  // Add another segment
+  ConsolidateAll(scorers.GetView(), true);
   AssertTermFilter(scorers.GetView());
 }
 
