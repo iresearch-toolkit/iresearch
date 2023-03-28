@@ -1141,21 +1141,14 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
   return true;
 }
 
-class BufferedValues final : public irs::column_reader {
+class BufferedValues final : public column_reader, data_output {
  public:
-  field_id id() const noexcept final { return id_; }
-  std::string_view name() const noexcept final { return {}; }
-  bytes_view payload() const noexcept final {
-    return header_.has_value() ? *header_ : bytes_view{};
-  }
-  doc_id_t size() const noexcept final {
-    return static_cast<doc_id_t>(index_.size());
-  }
-
   void Clear() noexcept {
     index_.clear();
     data_.clear();
     header_.reset();
+    out_ = nullptr;
+    feature_writer_ = nullptr;
   }
 
   void Reserve(size_t count, size_t value_size) {
@@ -1169,7 +1162,48 @@ class BufferedValues final : public irs::column_reader {
   }
 
   void SetID(field_id id) noexcept { id_ = id; }
-  void SetHeader(FeatureWriter& writer) { writer.finish(header_.emplace()); }
+
+  void UpdateHeader() {
+    if (feature_writer_) {
+      feature_writer_->finish(header_.emplace());
+    }
+  }
+
+  void SetFeatureWriter(FeatureWriter& writer) noexcept {
+    IRS_ASSERT(!feature_writer_);
+    feature_writer_ = &writer;
+  }
+
+  void operator()(data_output& out, doc_id_t doc, bytes_view payload) {
+    const auto begin = data_.size();
+    out_ = &out;
+    feature_writer_->write(*this, payload);
+    index_.emplace_back(doc, begin, data_.size() - begin);
+  }
+
+  // data_output
+  void write_byte(byte_type b) final {
+    out_->write_byte(b);
+    data_ += b;
+  }
+
+  void write_bytes(const byte_type* b, size_t len) final {
+    out_->write_bytes(b, len);
+    data_.append(b, len);
+  }
+
+  // column_reader
+  field_id id() const noexcept final { return id_; }
+
+  std::string_view name() const noexcept final { return {}; }
+
+  bytes_view payload() const noexcept final {
+    return header_.has_value() ? *header_ : bytes_view{};
+  }
+
+  doc_id_t size() const noexcept final {
+    return static_cast<doc_id_t>(index_.size());
+  }
 
   doc_iterator::ptr iterator(ColumnHint hint) const noexcept final {
     // kPrevDoc isn't supported atm
@@ -1184,6 +1218,8 @@ class BufferedValues final : public irs::column_reader {
   bstring data_;
   field_id id_;
   std::optional<bstring> header_;
+  data_output* out_{};
+  FeatureWriter* feature_writer_{};
 };
 
 class BufferedColumns final : public irs::ColumnProvider {
@@ -1328,29 +1364,33 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
         // FIXME(gnusi): We can get better estimation from column headers/stats.
         static constexpr size_t kValueSize = sizeof(uint32_t);
         buffered_column->Reserve(count, kValueSize);
+        if (feature_writer) {
+          buffered_column->SetFeatureWriter(*feature_writer);
+        }
       }
 
-      // feature_writer can be moved
-      auto* feature_writer_ptr = feature_writer.get();
-
-      if (feature_writer_ptr) {
-        auto value_writer = [writer = feature_writer_ptr, buffered_column](
-                              data_output& out, doc_id_t doc,
-                              bytes_view payload) {
-          writer->write(out, payload);
-          if (buffered_column) {
-            buffered_column->PushBack(doc, payload);
-          }
+      if (feature_writer) {
+        auto write_values = [&]<typename T>(T&& value_writer) {
+          return cs.insert(
+            feature_itr, info,
+            [feature_writer = std::move(feature_writer),
+             buffered_column](bstring& out) {
+              feature_writer->finish(out);
+              return std::string_view{};
+            },
+            std::forward<T>(value_writer));
         };
 
-        res = cs.insert(
-          feature_itr, info,
-          [feature_writer = std::move(feature_writer),
-           buffered_column](bstring& out) {
-            feature_writer->finish(out);
-            return std::string_view{};
-          },
-          std::move(value_writer));
+        if (buffered_column) {
+          res = write_values(*buffered_column);
+        } else {
+          res = write_values(
+            [writer = feature_writer.get()](data_output& out, doc_id_t /*doc*/,
+                                            bytes_view payload) {
+              writer->write(out, payload);
+            });
+        }
+
       } else if (!factory) {
         // Factory has failed to instantiate a writer
         res = cs.insert(
@@ -1373,10 +1413,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
       features[feature] = *res;
       if (buffered_column) {
         buffered_column->SetID(*res);
-        if (feature_writer_ptr) {
-          // Column is fully written, get header
-          buffered_column->SetHeader(*feature_writer_ptr);
-        }
+        buffered_column->UpdateHeader();
       }
     }
 
