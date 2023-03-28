@@ -65,6 +65,12 @@ class WandWriterImpl final : public WandWriter {
       // Accumulate score on less granular level
       Update(score_levels_[level + 1], score.score,
              [&]() { return score.value; });
+
+      IRS_ASSERT(std::is_sorted(score_levels_.begin(),
+                                score_levels_.begin() + level + 2,
+                                [](const auto& lhs, const auto& rhs) noexcept {
+                                  return lhs.score < rhs.score;
+                                }));
     }
     ValueProducer::Write(score.value, out);
     score.score = 0.f;
