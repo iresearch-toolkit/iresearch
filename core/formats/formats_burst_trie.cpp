@@ -1381,7 +1381,7 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
 };
 
 byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
-  if (i >= bits_required<uint64_t>()) {
+  if (i >= kMaxScorers) {
     return WandContext::kDisable;
   }
 

@@ -145,6 +145,22 @@ void AssertIteratorSeekStateles(const irs::BufferedColumn& column,
 
 void AssertIteratorCornerCases(const irs::BufferedColumn& column,
                                std::span<const uint32_t> expected_values) {
+  // next + seek to the last element
+  {
+    irs::BufferedColumnIterator it{column.Index(), column.Data()};
+    ASSERT_FALSE(irs::doc_limits::valid(it.value()));
+    if (!expected_values.empty()) {
+      ASSERT_TRUE(it.next());
+      ASSERT_EQ(1, it.value());
+    } else {
+      ASSERT_FALSE(it.next());
+    }
+    ASSERT_EQ(
+      expected_values.empty() ? irs::doc_limits::eof() : expected_values.size(),
+      it.seek(expected_values.size()));
+    ASSERT_FALSE(it.next());
+  }
+
   // next + seek to eof
   {
     irs::BufferedColumnIterator it{column.Index(), column.Data()};

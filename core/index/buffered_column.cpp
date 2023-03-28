@@ -167,9 +167,7 @@ void BufferedColumn::FlushSparse(
               return lhs.key < rhs.key;
             });
 
-  for (const auto& value : index_) {
-    WriteValue(writer(value.key), value);
-  }
+  FlushAlreadySorted(writer);
 }
 
 field_id BufferedColumn::Flush(columnstore_writer& writer,
