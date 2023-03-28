@@ -58,6 +58,7 @@ class MergeWriter : public util::noncopyable {
       column_info_{&options.column_info},
       feature_info_{&options.feature_info},
       scorers_{options.scorers},
+      scorers_features_{&options.scorers_features},
       comparator_{options.comparator} {
     IRS_ASSERT(column_info_);
   }
@@ -94,6 +95,7 @@ class MergeWriter : public util::noncopyable {
   const ColumnInfoProvider* column_info_{};
   const FeatureInfoProvider* feature_info_{};
   ScorersView scorers_;
+  const std::set<irs::type_info::type_id>* scorers_features_{};
   const Comparer* const comparator_{};
 };
 

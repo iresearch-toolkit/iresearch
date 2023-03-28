@@ -676,6 +676,7 @@ doc_iterator::ptr cached_column::iterator(ColumnHint hint) const {
   // kPrevDoc isn't supported atm
   IRS_ASSERT(ColumnHint::kNormal == (hint & ColumnHint::kPrevDoc));
 
+  // FIXME(gnusi): can avoid allocation with the help of managed_ptr
   return memory::make_managed<BufferedColumnIterator>(stream_.Index(),
                                                       stream_.Data());
 }
