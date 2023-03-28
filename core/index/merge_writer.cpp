@@ -1216,7 +1216,7 @@ class BufferedValues final : public column_reader, data_output {
  private:
   std::vector<BufferedValue> index_;
   bstring data_;
-  field_id id_;
+  field_id id_{field_limits::invalid()};
   std::optional<bstring> header_;
   data_output* out_{};
   FeatureWriter* feature_writer_{};
