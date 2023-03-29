@@ -1262,7 +1262,7 @@ class BufferedValues final : public column_reader, data_output {
 
 class BufferedColumns final : public irs::ColumnProvider {
  public:
-  const irs::column_reader* column(field_id field) const noexcept {
+  const irs::column_reader* column(field_id field) const noexcept final {
     if (IRS_UNLIKELY(!field_limits::valid(field))) {
       return nullptr;
     }
@@ -1411,8 +1411,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
         auto write_values = [&, &info = info]<typename T>(T&& value_writer) {
           return cs.insert(
             feature_itr, info,
-            [feature_writer = std::move(feature_writer),
-             buffered_column](bstring& out) {
+            [feature_writer = std::move(feature_writer)](bstring& out) {
               feature_writer->finish(out);
               return std::string_view{};
             },
