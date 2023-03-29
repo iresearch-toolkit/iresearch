@@ -345,9 +345,9 @@ TEST_P(WandTestCase, TermFilterMultipleScorersSparse) {
   GenerateSegment(scorers, false);
   AssertTermFilter(scorers);
 
-  GenerateSegment(scorers, true, true);  // Add another segment
+  GenerateSegment(scorers, false, true);  // Add another segment
   AssertTermFilter(scorers);
-  ConsolidateAll(scorers, true);
+  ConsolidateAll(scorers, false);
 
   AssertTermFilter(scorers);
 }
