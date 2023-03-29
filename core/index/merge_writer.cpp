@@ -45,6 +45,7 @@
 #include "utils/version_utils.hpp"
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/strings/internal/resize_uninitialized.h>
 
 namespace irs {
 namespace {
@@ -1192,6 +1193,36 @@ class BufferedValues final : public column_reader, data_output {
     data_.append(b, len);
   }
 
+  void write_short(int16_t value) final {
+    out_->write_short(value);
+    auto* begin = EnsureSize(sizeof(uint16_t));
+    irs::write<uint16_t>(begin, value);
+  }
+
+  void write_int(int32_t value) final {
+    out_->write_int(value);
+    auto* begin = EnsureSize(sizeof(uint32_t));
+    irs::write<uint32_t>(begin, value);
+  }
+
+  void write_long(int64_t value) final {
+    out_->write_long(value);
+    auto* begin = EnsureSize(sizeof(uint64_t));
+    irs::write<uint64_t>(begin, value);
+  }
+
+  void write_vint(uint32_t value) final {
+    out_->write_vint(value);
+    auto* begin = EnsureSize(bytes_io<uint32_t>::const_max_vsize);
+    irs::vwrite<uint32_t>(begin, value);
+  }
+
+  void write_vlong(uint64_t value) final {
+    out_->write_vlong(value);
+    auto* begin = EnsureSize(bytes_io<uint64_t>::const_max_vsize);
+    irs::vwrite<uint64_t>(begin, value);
+  }
+
   // column_reader
   field_id id() const noexcept final { return id_; }
 
@@ -1214,6 +1245,13 @@ class BufferedValues final : public column_reader, data_output {
   }
 
  private:
+  byte_type* EnsureSize(size_t size) {
+    const auto offset = data_.size();
+    absl::strings_internal::STLStringResizeUninitializedAmortized(
+      &data_, offset + size);
+    return data_.data() + offset;
+  }
+
   std::vector<BufferedValue> index_;
   bstring data_;
   field_id id_{field_limits::invalid()};
@@ -1370,7 +1408,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
       }
 
       if (feature_writer) {
-        auto write_values = [&]<typename T>(T&& value_writer) {
+        auto write_values = [&, &info = info]<typename T>(T&& value_writer) {
           return cs.insert(
             feature_itr, info,
             [feature_writer = std::move(feature_writer),

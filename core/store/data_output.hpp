@@ -48,7 +48,7 @@ struct data_output {
 
   virtual void write_bytes(const byte_type* b, size_t len) = 0;
 
-  void write_short(int16_t i) { irs::write<uint16_t>(*this, i); }
+  virtual void write_short(int16_t i) { irs::write<uint16_t>(*this, i); }
 
   virtual void write_int(int32_t i) { irs::write<uint32_t>(*this, i); }
 
@@ -129,6 +129,8 @@ class buffered_index_output : public index_output, util::noncopyable {
   void write_byte(byte_type b) final;
 
   void write_bytes(const byte_type* b, size_t length) final;
+
+  void write_short(int16_t value) final;
 
   void write_vint(uint32_t v) final;
 

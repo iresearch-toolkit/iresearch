@@ -51,6 +51,14 @@ output_buf::int_type output_buf::overflow(int_type c) {
 // --SECTION--                              buffered_index_output implementation
 // -----------------------------------------------------------------------------
 
+void buffered_index_output::write_short(int16_t value) {
+  if (remain() < sizeof(uint16_t)) {
+    irs::write<uint16_t>(*this, value);
+  } else {
+    irs::write<uint16_t>(pos_, value);
+  }
+}
+
 void buffered_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
     irs::write<uint32_t>(*this, value);
