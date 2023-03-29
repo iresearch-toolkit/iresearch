@@ -73,7 +73,7 @@ struct ScoredDoc : Doc {
   ScoredDoc(size_t segment, irs::doc_id_t doc, float score) noexcept
     : Doc{segment, doc}, score{score} {}
 
-  bool operator<(const ScoredDoc& rhs) noexcept {
+  bool operator<(const ScoredDoc& rhs) const noexcept {
     if (score > rhs.score) {
       return true;
     }
