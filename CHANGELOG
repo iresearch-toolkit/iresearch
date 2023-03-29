@@ -1,6 +1,18 @@
 master
 -------------------------
 
+* Add WAND support to `by_term`.
+
+* Allow to store WAND-specific data in skip list.
+
+* Add ability to use an external tick in `IndexWriter::Commit`.
+
+* Refactor index write to maintain its own index snapshot.
+
+* Add ability to optionally cache columnstore data in memory.
+
+* Swtich to 3-way comparator for primary sort.
+
 * Make primary sort stable.
 
 * Add ability to specify custom callback for debug assertions.
