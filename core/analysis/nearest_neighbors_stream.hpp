@@ -35,8 +35,9 @@ class Dictionary;
 namespace irs {
 namespace analysis {
 
-class nearest_neighbors_stream final : public analyzer,
-                                       private util::noncopyable {
+class nearest_neighbors_stream final
+  : public TypedAnalyzer<nearest_neighbors_stream>,
+    private util::noncopyable {
  public:
   using model_ptr = std::shared_ptr<const fasttext::ImmutableFastText>;
   using model_provider_f = model_ptr (*)(std::string_view);

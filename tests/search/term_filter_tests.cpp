@@ -105,7 +105,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     filter.boost(0.f);
 
     // create order
-    auto pord = irs::Order::Prepare(tests::sort::boost{});
+
+    auto scorer = tests::sort::boost{};
+    auto pord = irs::Scorers::Prepare(scorer);
 
     // without boost
     {
@@ -472,25 +474,21 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+        [&scorer]() -> irs::FieldCollector::ptr {
+        return std::make_unique<tests::sort::custom_sort::field_collector>(
+          scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
+        return std::make_unique<tests::sort::custom_sort::term_collector>(
+          scorer);
       };
 
       std::set<irs::doc_id_t> expected{31, 32};
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 

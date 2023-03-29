@@ -28,6 +28,8 @@
 #endif
 
 #include "analysis/token_attributes.hpp"
+#include "index/buffered_column.hpp"
+#include "index/buffered_column_iterator.hpp"
 #include "index/comparer.hpp"
 #include "index/field_meta.hpp"
 #include "index/heap_iterator.hpp"
@@ -43,6 +45,7 @@
 #include "utils/version_utils.hpp"
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/strings/internal/resize_uninitialized.h>
 
 namespace irs {
 namespace {
@@ -858,10 +861,9 @@ term_iterator::ptr CompoundFiledIterator::iterator() const {
 }
 
 // Computes fields_type
-bool compute_field_meta(field_meta_map_t& field_meta_map,
-                        IndexFeatures& index_features,
-                        feature_set_t& fields_features,
-                        const SubReader& reader) {
+bool ComputeFieldMeta(field_meta_map_t& field_meta_map,
+                      IndexFeatures& index_features,
+                      feature_set_t& fields_features, const SubReader& reader) {
   REGISTER_TIMER_DETAILED();
 
   for (auto it = reader.fields(); it->next();) {
@@ -957,10 +959,11 @@ std::optional<field_id> Columnstore::insert(
         return false;
       }
 
-      auto& out = column.second(it.value());
+      const auto doc = it.value();
+      auto& out = column.second(doc);
 
       if (payload) {
-        writer(out, payload->value);
+        writer(out, doc, payload->value);
       }
     } while (it.next());
 
@@ -1004,10 +1007,11 @@ std::optional<field_id> Columnstore::insert(
         return std::nullopt;
       }
 
-      auto& out = column.second(it.value());
+      const auto doc = it.value();
+      auto& out = column.second(doc);
 
       if (payload) {
-        writer(out, payload->value);
+        writer(out, doc, payload->value);
       }
     } while (it.next());
 
@@ -1083,10 +1087,10 @@ class MinHeapContext {
 };
 
 template<typename Iterator>
-bool write_columns(Columnstore& cs, Iterator& columns,
-                   const ColumnInfoProvider& column_info,
-                   CompoundColumnIterator& column_itr,
-                   const MergeWriter::FlushProgress& progress) {
+bool WriteColumns(Columnstore& cs, Iterator& columns,
+                  const ColumnInfoProvider& column_info,
+                  CompoundColumnIterator& column_itr,
+                  const MergeWriter::FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(cs.valid());
   IRS_ASSERT(progress);
@@ -1124,7 +1128,7 @@ bool write_columns(Columnstore& cs, Iterator& columns,
     const auto res = cs.insert(
       columns, column_info(column_name),
       [column_name](bstring&) { return column_name; },
-      [](data_output& out, bytes_view payload) {
+      [](data_output& out, doc_id_t /*doc*/, bytes_view payload) {
         if (!payload.empty()) {
           out.write_bytes(payload.data(), payload.size());
         }
@@ -1138,13 +1142,174 @@ bool write_columns(Columnstore& cs, Iterator& columns,
   return true;
 }
 
+class BufferedValues final : public column_reader, data_output {
+ public:
+  void Clear() noexcept {
+    index_.clear();
+    data_.clear();
+    header_.reset();
+    out_ = nullptr;
+    feature_writer_ = nullptr;
+  }
+
+  void Reserve(size_t count, size_t value_size) {
+    index_.reserve(count);
+    data_.reserve(count * value_size);
+  }
+
+  void PushBack(doc_id_t doc, bytes_view value) {
+    index_.emplace_back(doc, data_.size(), value.size());
+    data_.append(value);
+  }
+
+  void SetID(field_id id) noexcept { id_ = id; }
+
+  void UpdateHeader() {
+    if (feature_writer_) {
+      feature_writer_->finish(header_.emplace());
+    }
+  }
+
+  void SetFeatureWriter(FeatureWriter& writer) noexcept {
+    IRS_ASSERT(!feature_writer_);
+    feature_writer_ = &writer;
+  }
+
+  void operator()(data_output& out, doc_id_t doc, bytes_view payload) {
+    const auto begin = data_.size();
+    out_ = &out;
+    feature_writer_->write(*this, payload);
+    index_.emplace_back(doc, begin, data_.size() - begin);
+  }
+
+  // data_output
+  void write_byte(byte_type b) final {
+    out_->write_byte(b);
+    data_ += b;
+  }
+
+  void write_bytes(const byte_type* b, size_t len) final {
+    out_->write_bytes(b, len);
+    data_.append(b, len);
+  }
+
+  void write_short(int16_t value) final {
+    out_->write_short(value);
+    auto* begin = EnsureSize(sizeof(uint16_t));
+    irs::write<uint16_t>(begin, value);
+  }
+
+  void write_int(int32_t value) final {
+    out_->write_int(value);
+    auto* begin = EnsureSize(sizeof(uint32_t));
+    irs::write<uint32_t>(begin, value);
+  }
+
+  void write_long(int64_t value) final {
+    out_->write_long(value);
+    auto* begin = EnsureSize(sizeof(uint64_t));
+    irs::write<uint64_t>(begin, value);
+  }
+
+  void write_vint(uint32_t value) final {
+    out_->write_vint(value);
+    auto* begin = EnsureSize(bytes_io<uint32_t>::const_max_vsize);
+    irs::vwrite<uint32_t>(begin, value);
+  }
+
+  void write_vlong(uint64_t value) final {
+    out_->write_vlong(value);
+    auto* begin = EnsureSize(bytes_io<uint64_t>::const_max_vsize);
+    irs::vwrite<uint64_t>(begin, value);
+  }
+
+  // column_reader
+  field_id id() const noexcept final { return id_; }
+
+  std::string_view name() const noexcept final { return {}; }
+
+  bytes_view payload() const noexcept final {
+    return header_.has_value() ? *header_ : bytes_view{};
+  }
+
+  doc_id_t size() const noexcept final {
+    return static_cast<doc_id_t>(index_.size());
+  }
+
+  doc_iterator::ptr iterator(ColumnHint hint) const noexcept final {
+    // kPrevDoc isn't supported atm
+    IRS_ASSERT(ColumnHint::kNormal == (hint & ColumnHint::kPrevDoc));
+
+    // FIXME(gnusi): can avoid allocation with the help of managed_ptr
+    return memory::make_managed<BufferedColumnIterator>(index_, data_);
+  }
+
+ private:
+  byte_type* EnsureSize(size_t size) {
+    const auto offset = data_.size();
+    absl::strings_internal::STLStringResizeUninitializedAmortized(
+      &data_, offset + size);
+    return data_.data() + offset;
+  }
+
+  std::vector<BufferedValue> index_;
+  bstring data_;
+  field_id id_{field_limits::invalid()};
+  std::optional<bstring> header_;
+  data_output* out_{};
+  FeatureWriter* feature_writer_{};
+};
+
+class BufferedColumns final : public irs::ColumnProvider {
+ public:
+  const irs::column_reader* column(field_id field) const noexcept final {
+    if (IRS_UNLIKELY(!field_limits::valid(field))) {
+      return nullptr;
+    }
+
+    return Find(field);
+  }
+
+  const irs::column_reader* column(std::string_view) const noexcept final {
+    return nullptr;
+  }
+
+  BufferedValues& PushColumn() {
+    if (auto* column = Find(field_limits::invalid()); column) {
+      column->Clear();
+      return *column;
+    }
+
+    return columns_.emplace_back();
+  }
+
+  void Clear() noexcept {
+    for (auto& column : columns_) {
+      column.SetID(field_limits::invalid());
+    }
+  }
+
+ private:
+  BufferedValues* Find(field_id id) const noexcept {
+    for (auto& column : columns_) {
+      if (column.id() == id) {
+        return const_cast<BufferedValues*>(&column);
+      }
+    }
+    return nullptr;
+  }
+
+  SmallVector<BufferedValues, 1> columns_;
+};
+
 // Write field term data
 template<typename Iterator>
-bool write_fields(Columnstore& cs, Iterator& feature_itr,
-                  const flush_state& flush_state, const SegmentMeta& meta,
-                  const FeatureInfoProvider& column_info,
-                  CompoundFiledIterator& field_itr,
-                  const MergeWriter::FlushProgress& progress) {
+bool WriteFields(Columnstore& cs, Iterator& feature_itr,
+                 const irs::flush_state& flush_state, const SegmentMeta& meta,
+                 const FeatureInfoProvider& column_info,
+                 CompoundFiledIterator& field_itr,
+                 const feature_set_t& scorers_features,
+                 const MergeWriter::FlushProgress& progress) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(cs.valid());
 
@@ -1152,16 +1317,16 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
   irs::type_info::type_id feature{};
   std::vector<bytes_view> hdrs;
   hdrs.reserve(field_itr.size());
+  doc_id_t count{};  // Total count of documents in consolidating columns
 
-  auto add_iterators = [&field_itr, &hdrs, &feature](auto& itrs) {
-    auto add_iterators = [&itrs, &hdrs, &feature](const SubReader& segment,
-                                                  const doc_map_f& doc_map,
-                                                  const field_meta& field) {
+  auto add_iterators = [&](auto& itrs) {
+    auto add_iterators = [&](const SubReader& segment, const doc_map_f& doc_map,
+                             const field_meta& field) {
       const auto column = field.features.find(feature);
 
       if (column == field.features.end() ||
           !field_limits::valid(column->second)) {
-        // field has no feature
+        // Field has no feature
         return true;
       }
 
@@ -1176,6 +1341,7 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
           hdrs.emplace_back(reader->payload());
 
           if (IRS_LIKELY(irs::get<document>(*it))) {
+            count += reader->size();
             itrs.emplace_back(std::move(it), doc_map);
           } else {
             IRS_ASSERT(false);
@@ -1189,6 +1355,7 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
       return true;
     };
 
+    count = 0;
     hdrs.clear();
     itrs.clear();
     return field_itr.visit(add_iterators);
@@ -1197,7 +1364,13 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
   auto field_writer = meta.codec->get_field_writer(true);
   field_writer->prepare(flush_state);
 
+  // Ensured by the caller
+  IRS_ASSERT(flush_state.columns);
+  auto& buffered_columns = const_cast<BufferedColumns&>(
+    down_cast<BufferedColumns>(*flush_state.columns));
+
   while (field_itr.next()) {
+    buffered_columns.Clear();
     features.clear();
     auto& field_meta = field_itr.meta();
 
@@ -1221,26 +1394,51 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
       auto feature_writer =
         factory ? (*factory)({hdrs.data(), hdrs.size()}) : FeatureWriter::ptr{};
 
+      auto* buffered_column = scorers_features.contains(feature)
+                                ? &buffered_columns.PushColumn()
+                                : nullptr;
+
+      if (buffered_column) {
+        // FIXME(gnusi): We can get better estimation from column headers/stats.
+        static constexpr size_t kValueSize = sizeof(uint32_t);
+        buffered_column->Reserve(count, kValueSize);
+        if (feature_writer) {
+          buffered_column->SetFeatureWriter(*feature_writer);
+        }
+      }
+
       if (feature_writer) {
-        auto value_writer = [writer = feature_writer.get()](
-                              data_output& out, bytes_view payload) {
-          writer->write(out, payload);
+        auto write_values = [&, &info = info]<typename T>(T&& value_writer) {
+          return cs.insert(
+            feature_itr, info,
+            [feature_writer = std::move(feature_writer)](bstring& out) {
+              feature_writer->finish(out);
+              return std::string_view{};
+            },
+            std::forward<T>(value_writer));
         };
 
-        res = cs.insert(
-          feature_itr, info,
-          [feature_writer = std::move(feature_writer)](bstring& out) {
-            feature_writer->finish(out);
-            return std::string_view{};
-          },
-          std::move(value_writer));
-      } else if (!factory) {  // Otherwise factory has failed to instantiate
-                              // writer
+        if (buffered_column) {
+          res = write_values(*buffered_column);
+        } else {
+          res = write_values(
+            [writer = feature_writer.get()](data_output& out, doc_id_t /*doc*/,
+                                            bytes_view payload) {
+              writer->write(out, payload);
+            });
+        }
+
+      } else if (!factory) {
+        // Factory has failed to instantiate a writer
         res = cs.insert(
           feature_itr, info, [](bstring&) { return std::string_view{}; },
-          [](data_output& out, bytes_view payload) {
+          [buffered_column](data_output& out, doc_id_t doc,
+                            bytes_view payload) {
             if (!payload.empty()) {
               out.write_bytes(payload.data(), payload.size());
+              if (buffered_column) {
+                buffered_column->PushBack(doc, payload);
+              }
             }
           });
       }
@@ -1249,10 +1447,14 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
         return false;  // Failed to insert all values
       }
 
-      features[feature] = res.value();
+      features[feature] = *res;
+      if (buffered_column) {
+        buffered_column->SetID(*res);
+        buffered_column->UpdateHeader();
+      }
     }
 
-    // write field terms
+    // Write field terms
     auto terms = field_itr.iterator();
 
     field_writer->write(field_meta.name, field_meta.index_features, features,
@@ -1266,8 +1468,8 @@ bool write_fields(Columnstore& cs, Iterator& feature_itr,
 }
 
 // Computes doc_id_map and docs_count
-doc_id_t compute_doc_ids(doc_id_map_t& doc_id_map, const SubReader& reader,
-                         doc_id_t next_id) noexcept {
+doc_id_t ComputeDocIds(doc_id_map_t& doc_id_map, const SubReader& reader,
+                       doc_id_t next_id) noexcept {
   REGISTER_TIMER_DETAILED();
   // assume not a lot of space wasted if doc_limits::min() > 0
   try {
@@ -1319,11 +1521,7 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter() noexcept
-  : dir_(NoopDirectory::instance()),
-    column_info_(nullptr),
-    feature_info_(nullptr),
-    comparator_(nullptr) {}
+MergeWriter::MergeWriter() noexcept : dir_(NoopDirectory::instance()) {}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1366,7 +1564,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
       };
     } else {  // segment has some deleted docs
       auto& doc_id_map = reader_ctx.doc_id_map;
-      base_id = compute_doc_ids(doc_id_map, reader, base_id);
+      base_id = ComputeDocIds(doc_id_map, reader, base_id);
 
       reader_ctx.doc_map = [&doc_id_map](doc_id_t doc) noexcept {
         return doc >= doc_id_map.size() ? doc_limits::eof() : doc_id_map[doc];
@@ -1377,8 +1575,8 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
       return false;  // failed to compute next doc_id
     }
 
-    if (!compute_field_meta(field_meta_map, index_features, fields_features,
-                            reader)) {
+    if (!ComputeFieldMeta(field_meta_map, index_features, fields_features,
+                          reader)) {
       return false;
     }
 
@@ -1407,8 +1605,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  if (!write_columns(cs, remapping_itrs, *column_info_, columns_itr,
-                     progress)) {
+  if (!WriteColumns(cs, remapping_itrs, *column_info_, columns_itr, progress)) {
     return false;  // flush failure
   }
 
@@ -1416,22 +1613,25 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  flush_state state{
-    .dir = &dir,
-    .features = &fields_features,
-    .name = segment.name,
-    .doc_count = segment.docs_count,
-    .index_features = index_features,
-  };
+  BufferedColumns buffered_columns;
 
-  // write field meta and field term data
-  if (!write_fields(cs, remapping_itrs, state, segment, *feature_info_,
-                    fields_itr, progress)) {
-    return false;  // flush failure
+  const flush_state state{.dir = &dir,
+                          .columns = &buffered_columns,
+                          .features = &fields_features,
+                          .name = segment.name,
+                          .scorers = scorers_,
+                          .doc_count = segment.docs_count,
+                          .index_features = index_features};
+
+  // Write field meta and field term data
+  IRS_ASSERT(scorers_features_);
+  if (!WriteFields(cs, remapping_itrs, state, segment, *feature_info_,
+                   fields_itr, *scorers_features_, progress)) {
+    return false;  // Flush failure
   }
 
   if (!progress()) {
-    return false;  // progress callback requested termination
+    return false;  // Progress callback requested termination
   }
 
   segment.column_store = cs.flush(state);
@@ -1460,7 +1660,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   auto emplace_iterator = [&itrs](const SubReader& segment) {
     if (!segment.sort()) {
-      // sort column is not present, give up
+      // Sort column is not present, give up
       return false;
     }
 
@@ -1489,36 +1689,36 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   // Init doc map for each reader
   for (auto& reader_ctx : readers_) {
-    // ensured by merge_writer::add(...)
+    // Ensured by merge_writer::add(...)
     IRS_ASSERT(reader_ctx.reader);
 
     auto& reader = *reader_ctx.reader;
 
     if (reader.docs_count() > doc_limits::eof() - doc_limits::min()) {
-      // can't merge segment holding more than 'doc_limits::eof()-1' docs
+      // Can't merge segment holding more than 'doc_limits::eof()-1' docs
       return false;
     }
 
     if (!emplace_iterator(reader)) {
-      // sort column is not present, give up
+      // Sort column is not present, give up
       return false;
     }
 
-    if (!compute_field_meta(field_meta_map, index_features, fields_features,
-                            reader)) {
+    if (!ComputeFieldMeta(field_meta_map, index_features, fields_features,
+                          reader)) {
       return false;
     }
 
     fields_itr.add(reader, reader_ctx.doc_map);
     columns_itr.add(reader, reader_ctx.doc_map);
 
-    // count total number of documents in consolidated segment
+    // Count total number of documents in consolidated segment
     if (!math::sum_check_overflow(segment.docs_count, reader.live_docs_count(),
                                   segment.docs_count)) {
       return false;
     }
 
-    // prepare doc maps
+    // Prepare doc maps
     auto& doc_id_map = reader_ctx.doc_id_map;
 
     try {
@@ -1541,19 +1741,19 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   }
 
   if (segment.docs_count >= doc_limits::eof()) {
-    // can't merge segments holding more than 'doc_limits::eof()-1' docs
+    // Can't merge segments holding more than 'doc_limits::eof()-1' docs
     return false;
   }
 
   if (!progress()) {
-    return false;  // progress callback requested termination
+    return false;  // Progress callback requested termination
   }
 
   // Write new sorted column and fill doc maps for each reader
   auto writer = segment.codec->get_columnstore_writer(true);
   writer->prepare(dir, segment);
 
-  // get column info for sorted column
+  // Get column info for sorted column
   const auto info = (*column_info_)({});
   auto [column_id, column_writer] = writer->push_column(info, {});
 
@@ -1594,9 +1794,9 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     const auto max = it.doc->value;
     auto& doc_id_map = readers_[index].doc_id_map;
 
-    // fill doc id map
+    // Fill doc id map
     if (!fill_doc_map(doc_id_map, it, max)) {
-      return false;  // progress callback requested termination
+      return false;  // Progress callback requested termination
     }
     doc_id_map[max] = next_id;
 
@@ -1608,7 +1808,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     ++next_id;
 
     if (!progress()) {
-      return false;  // progress callback requested termination
+      return false;  // Progress callback requested termination
     }
   }
 
@@ -1630,43 +1830,45 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   SortingCompoundDocIterator sorting_doc_it(doc_it);
 
   if (!cs.valid()) {
+    return false;  // Flush failure
+  }
+
+  if (!progress()) {
+    return false;  // Progress callback requested termination
+  }
+
+  if (!WriteColumns(cs, sorting_doc_it, *column_info_, columns_itr, progress)) {
+    return false;  // Flush failure
+  }
+
+  if (!progress()) {
+    return false;  // Progress callback requested termination
+  }
+
+  BufferedColumns buffered_columns;
+
+  const flush_state state{.dir = &dir,
+                          .columns = &buffered_columns,
+                          .features = &fields_features,
+                          .name = segment.name,
+                          .scorers = scorers_,
+                          .doc_count = segment.docs_count,
+                          .index_features = index_features};
+
+  // Write field meta and field term data
+  IRS_ASSERT(scorers_features_);
+  if (!WriteFields(cs, sorting_doc_it, state, segment, *feature_info_,
+                   fields_itr, *scorers_features_, progress)) {
     return false;  // flush failure
   }
 
   if (!progress()) {
-    return false;  // progress callback requested termination
+    return false;  // Progress callback requested termination
   }
 
-  if (!write_columns(cs, sorting_doc_it, *column_info_, columns_itr,
-                     progress)) {
-    return false;  // flush failure
-  }
-
-  if (!progress()) {
-    return false;  // progress callback requested termination
-  }
-
-  flush_state state{
-    .dir = &dir,
-    .features = &fields_features,
-    .name = segment.name,
-    .doc_count = segment.docs_count,
-    .index_features = index_features,
-  };
-
-  // write field meta and field term data
-  if (!write_fields(cs, sorting_doc_it, state, segment, *feature_info_,
-                    fields_itr, progress)) {
-    return false;  // flush failure
-  }
-
-  if (!progress()) {
-    return false;  // progress callback requested termination
-  }
-
-  segment.column_store = cs.flush(state);  // flush columnstore
-  segment.sort = column_id;                // set sort column identifier
-  // all merged documents are live
+  segment.column_store = cs.flush(state);  // Flush columnstore
+  segment.sort = column_id;                // Set sort column identifier
+  // All merged documents are live
   segment.live_docs_count = segment.docs_count;
 
   return true;

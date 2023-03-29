@@ -93,7 +93,7 @@ void by_term::visit(const SubReader& segment, const term_reader& field,
 }
 
 filter::prepared::ptr by_term::prepare(const IndexReader& index,
-                                       const Order& ord, score_t boost,
+                                       const Scorers& ord, score_t boost,
                                        std::string_view field,
                                        bytes_view term) {
   TermQuery::States states(index.size());

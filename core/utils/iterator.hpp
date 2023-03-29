@@ -160,6 +160,8 @@ class ptr_iterator
     return dynamic_cast<typename adjust_const<T>::pointer>(&it);
   }
 
+  bool is_null() const noexcept { return *it_ == nullptr; }
+
  private:
   friend class ::boost::iterator_core_access;
 

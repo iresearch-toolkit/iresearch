@@ -30,6 +30,7 @@
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 #include "formats/formats.hpp"
+#include "index/buffered_column_iterator.hpp"
 #include "index/comparer.hpp"
 #include "index/field_meta.hpp"
 #include "index/norm.hpp"
@@ -52,10 +53,6 @@ namespace {
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           helpers
-// -----------------------------------------------------------------------------
 
 void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
   for (auto& entry : features) {
@@ -152,7 +149,7 @@ class pos_iterator final : public irs::position {
 
   // reset field
   void reset(IndexFeatures features, const frequency& freq) {
-    IRS_ASSERT(IndexFeatures::FREQ == (features & IndexFeatures::FREQ));
+    IRS_ASSERT(IndexFeatures::NONE != (features & IndexFeatures::FREQ));
 
     freq_ = &freq;
 
@@ -391,8 +388,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
     if (!docmap) {
       reset_already_sorted(it, *freq);
-    } else if (irs::use_dense_sort(
-                 it.cost(), docmap->size() - 1)) {  // -1 for first element
+    } else if (irs::UseDenseSort(it.cost(),
+                                 docmap->size() - 1)) {  // -1 for first element
       reset_dense(it, *freq, *docmap);
     } else {
       reset_sparse(it, *freq, *docmap);
@@ -462,8 +459,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
   void reset_dense(detail::doc_iterator& it, const frequency& freq,
                    std::span<const doc_id_t> docmap) {
     IRS_ASSERT(!docmap.empty());
-    IRS_ASSERT(irs::use_dense_sort(it.cost(),
-                                   docmap.size() - 1));  // -1 for first element
+    IRS_ASSERT(irs::UseDenseSort(it.cost(),
+                                 docmap.size() - 1));  // -1 for first element
 
     docs_.resize(docmap.size() - 1);  // -1 for first element
 
@@ -486,9 +483,8 @@ class sorting_doc_iterator : public irs::doc_iterator {
   void reset_sparse(detail::doc_iterator& it, const frequency& freq,
                     std::span<const doc_id_t> docmap) {
     IRS_ASSERT(!docmap.empty());
-    IRS_ASSERT(
-      !irs::use_dense_sort(it.cost(),
-                           docmap.size() - 1));  // -1 for first element
+    IRS_ASSERT(!irs::UseDenseSort(it.cost(),
+                                  docmap.size() - 1));  // -1 for first element
 
     while (it.next()) {
       IRS_ASSERT(it.value() - doc_limits::min() < docmap.size());
@@ -528,7 +524,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 class term_iterator : public irs::term_iterator {
  public:
   explicit term_iterator(fields_data::postings_ref_t& postings,
-                         const doc_map* docmap) noexcept
+                         const DocMap* docmap) noexcept
     : postings_(&postings), doc_map_(docmap) {}
 
   void reset(const field_data& field, bytes_view min, bytes_view max) {
@@ -634,7 +630,7 @@ class term_iterator : public irs::term_iterator {
   fields_data::postings_ref_t::const_iterator next_;
   fields_data::postings_ref_t::const_iterator it_;
   const field_data* field_{};
-  const doc_map* doc_map_{};
+  const DocMap* doc_map_{};
   mutable detail::doc_iterator doc_itr_;
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
 };
@@ -649,7 +645,7 @@ class term_reader final : public irs::basic_term_reader,
                           private util::noncopyable {
  public:
   explicit term_reader(fields_data::postings_ref_t& postings,
-                       const doc_map* docmap) noexcept
+                       const DocMap* docmap) noexcept
     : it_(postings, docmap) {}
 
   void reset(const field_data& field) { it_.reset(field, min_, max_); }
@@ -676,21 +672,19 @@ class term_reader final : public irs::basic_term_reader,
 
 }  // namespace detail
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         field_data implementation
-// -----------------------------------------------------------------------------
+doc_iterator::ptr cached_column::iterator(ColumnHint hint) const {
+  // kPrevDoc isn't supported atm
+  IRS_ASSERT(ColumnHint::kNormal == (hint & ColumnHint::kPrevDoc));
 
-/*static*/ const field_data::process_term_f
-  field_data::TERM_PROCESSING_TABLES[2][2] = {
-    // sequential access: [0] - new term, [1] - add term
-    {&field_data::add_term, &field_data::new_term},
-
-    // random access: [0] - new term, [1] - add term
-    {&field_data::add_term_random_access, &field_data::new_term_random_access}};
+  // FIXME(gnusi): can avoid allocation with the help of managed_ptr
+  return memory::make_managed<BufferedColumnIterator>(stream_.Index(),
+                                                      stream_.Data());
+}
 
 field_data::field_data(std::string_view name, const features_t& features,
                        const FeatureInfoProvider& feature_columns,
-                       std::deque<cached_column>& cached_features,
+                       std::deque<cached_column>& cached_columns,
+                       const feature_set_t& cached_features,
                        columnstore_writer& columns,
                        byte_block_pool::inserter& byte_writer,
                        int_block_pool::inserter& int_writer,
@@ -700,7 +694,7 @@ field_data::field_data(std::string_view name, const features_t& features,
     terms_{*byte_writer},
     byte_writer_{&byte_writer},
     int_writer_{&int_writer},
-    proc_table_{TERM_PROCESSING_TABLES[size_t(random_access)]},
+    proc_table_{kTermProcessingTables[size_t(random_access)]},
     requested_features_{index_features},
     last_doc_{doc_limits::invalid()} {
   for (const type_info::type_id feature : features) {
@@ -718,16 +712,16 @@ field_data::field_data(std::string_view name, const features_t& features,
           return std::string_view{};
         };
 
-      if (random_access) {
-        // sorted index case
+      // sorted index case or the feature is required for wand
+      if (random_access || cached_features.contains(feature)) {
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
-        auto& stream = cached_features.emplace_back(id, feature_column_info,
-                                                    std::move(finalizer));
+        auto& stream = cached_columns.emplace_back(id, feature_column_info,
+                                                   std::move(finalizer));
         features_.emplace_back(
           std::move(feature_writer),
-          [stream = &stream.stream](doc_id_t doc) mutable -> column_output& {
-            stream->prepare(doc);
+          [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
+            stream->Prepare(doc);
             return *stream;
           });
       } else {
@@ -1092,18 +1086,16 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                        fields_data implementation
-// -----------------------------------------------------------------------------
-
 fields_data::fields_data(const FeatureInfoProvider& feature_info,
-                         std::deque<cached_column>& cached_features,
+                         std::deque<cached_column>& cached_columns,
+                         const feature_set_t& cached_features,
                          const Comparer* comparator /*= nullptr*/)
-  : comparator_(comparator),
-    feature_info_(&feature_info),
-    cached_features_(&cached_features),
-    byte_writer_(byte_pool_.begin()),
-    int_writer_(int_pool_.begin()) {}
+  : comparator_{comparator},
+    feature_info_{&feature_info},
+    cached_columns_{&cached_columns},
+    cached_features_{&cached_features},
+    byte_writer_{byte_pool_.begin()},
+    int_writer_{int_pool_.begin()} {}
 
 field_data* fields_data::emplace(const hashed_string_view& name,
                                  IndexFeatures index_features,
@@ -1118,15 +1110,14 @@ field_data* fields_data::emplace(const hashed_string_view& name,
 
   if (!it->second) {
     try {
-      fields_.emplace_back(static_cast<const std::string_view&>(name), features,
-                           *feature_info_, *cached_features_, columns,
-                           byte_writer_, int_writer_, index_features,
-                           (nullptr != comparator_));
+      const_cast<field_data*&>(it->second) = &fields_.emplace_back(
+        name, features, *feature_info_, *cached_columns_, *cached_features_,
+        columns, byte_writer_, int_writer_, index_features,
+        (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
+      throw;
     }
-
-    const_cast<field_data*&>(it->second) = &fields_.back();
   }
 
   return it->second;
@@ -1162,12 +1153,11 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
 
   fw.prepare(state);
   for (auto* field : sorted_fields_) {
-    auto& meta = field->meta();
-
-    // reset reader
+    // Reset reader
     terms.reset(*field);
 
-    // write inverted data
+    // Write inverted data
+    const auto& meta = field->meta();
     auto it = terms.iterator();
     fw.write(meta.name, meta.index_features, meta.features, *it);
   }

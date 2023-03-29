@@ -90,7 +90,7 @@ TEST_P(all_filter_test_case, all_order) {
     size_t collector_finish_count = 0;
     size_t scorer_score_count = 0;
 
-    irs::sort::ptr bucket{std::make_unique<tests::sort::custom_sort>()};
+    irs::Scorer::ptr bucket{std::make_unique<tests::sort::custom_sort>()};
     auto* sort = static_cast<tests::sort::custom_sort*>(bucket.get());
 
     sort->collector_collect_field = [&collector_collect_field_count](
@@ -105,11 +105,9 @@ TEST_P(all_filter_test_case, all_order) {
       ++collector_collect_term_count;
     };
     sort->collectors_collect_ =
-      [&collector_finish_count](const irs::byte_type*, const irs::IndexReader&,
-                                const irs::sort::field_collector*,
-                                const irs::sort::term_collector*) -> void {
-      ++collector_finish_count;
-    };
+      [&collector_finish_count](
+        const irs::byte_type*, const irs::FieldCollector*,
+        const irs::TermCollector*) -> void { ++collector_finish_count; };
     sort->scorer_score = [&scorer_score_count](irs::doc_id_t doc,
                                                irs::score_t* score) -> void {
       ++scorer_score_count;
@@ -128,18 +126,19 @@ TEST_P(all_filter_test_case, all_order) {
     Docs docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
-    irs::sort::ptr bucket{std::make_unique<tests::sort::custom_sort>()};
+    irs::Scorer::ptr bucket{std::make_unique<tests::sort::custom_sort>()};
     auto& sort = static_cast<tests::sort::custom_sort&>(*bucket);
 
-    sort.prepare_field_collector_ = []() -> irs::sort::field_collector::ptr {
+    sort.prepare_field_collector_ = []() -> irs::FieldCollector::ptr {
       return nullptr;
     };
-    sort.prepare_scorer =
-      [](const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
-         const irs::attribute_provider&, irs::score_t) -> irs::ScoreFunction {
+    sort.prepare_scorer_ = [](const irs::ColumnProvider&,
+                              const irs::feature_map_t&, const irs::byte_type*,
+                              const irs::attribute_provider&,
+                              irs::score_t) -> irs::ScoreFunction {
       return irs::ScoreFunction::Invalid();
     };
-    sort.prepare_term_collector_ = []() -> irs::sort::term_collector::ptr {
+    sort.prepare_term_collector_ = []() -> irs::TermCollector::ptr {
       return nullptr;
     };
     CheckQuery(irs::all(), std::span{&bucket, 1}, docs, rdr, false);
@@ -150,7 +149,7 @@ TEST_P(all_filter_test_case, all_order) {
     Docs docs{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16,
               17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
-    irs::sort::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
+    irs::Scorer::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
 
     CheckQuery(irs::all(), std::span{&sort, 1}, docs, rdr);
   }

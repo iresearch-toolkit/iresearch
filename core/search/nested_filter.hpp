@@ -70,7 +70,7 @@ struct ByNestedOptions {
   MatchType match{kMatchAny};
 
   // Score merge type.
-  sort::MergeType merge_type{sort::MergeType::kSum};
+  ScoreMergeType merge_type{ScoreMergeType::kSum};
 
   bool operator==(const ByNestedOptions& rhs) const noexcept {
     auto equal = [](const filter* lhs, const filter* rhs) noexcept {
@@ -111,7 +111,7 @@ class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
  public:
   using filter::prepare;
 
-  prepared::ptr prepare(const IndexReader& rdr, const Order& ord, score_t boost,
+  prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord, score_t boost,
                         const attribute_provider* /*ctx*/) const final;
 };
 

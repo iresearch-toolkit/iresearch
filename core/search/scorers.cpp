@@ -27,7 +27,7 @@
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
 #include "bm25.hpp"
-#include "boost_sort.hpp"
+#include "boost_scorer.hpp"
 #include "tfidf.hpp"
 #endif
 #include "utils/hash_utils.hpp"
@@ -68,8 +68,8 @@ constexpr std::string_view kFileNamePrefix{"libscorer-"};
 
 class scorer_register
   : public irs::tagged_generic_register<
-      entry_key_t, irs::sort::ptr (*)(std::string_view args), std::string_view,
-      scorer_register> {
+      entry_key_t, irs::Scorer::ptr (*)(std::string_view args),
+      std::string_view, scorer_register> {
  protected:
   std::string key_to_filename(const key_type& key) const final {
     auto& name = key.name_;
@@ -89,17 +89,15 @@ class scorer_register
 
 namespace irs {
 
-/*static*/ bool scorers::exists(std::string_view name,
-                                const type_info& args_format,
-                                bool load_library /*= true*/) {
+bool scorers::exists(std::string_view name, const type_info& args_format,
+                     bool load_library /*= true*/) {
   return nullptr != scorer_register::instance().get(
                       entry_key_t(name, args_format), load_library);
 }
 
-/*static*/ sort::ptr scorers::get(std::string_view name,
-                                  const type_info& args_format,
-                                  std::string_view args,
-                                  bool load_library /*= true*/) noexcept {
+Scorer::ptr scorers::get(std::string_view name, const type_info& args_format,
+                         std::string_view args,
+                         bool load_library /*= true*/) noexcept {
   try {
     auto* factory = scorer_register::instance().get(
       entry_key_t(name, args_format), load_library);
@@ -112,19 +110,19 @@ namespace irs {
   return nullptr;
 }
 
-/*static*/ void scorers::init() {
+void scorers::init() {
 #ifndef IRESEARCH_DLL
-  irs::bm25_sort::init();
-  irs::tfidf_sort::init();
-  irs::boost_sort::init();
+  irs::BM25::init();
+  irs::TFIDF::init();
+  irs::BoostScore::init();
 #endif
 }
 
-/*static*/ void scorers::load_all(std::string_view path) {
+void scorers::load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool scorers::visit(
+bool scorers::visit(
   const std::function<bool(std::string_view, const type_info&)>& visitor) {
   scorer_register::visitor_t wrapper =
     [&visitor](const entry_key_t& key) -> bool {
@@ -134,14 +132,10 @@ namespace irs {
   return scorer_register::instance().visit(wrapper);
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                               scorer registration
-// -----------------------------------------------------------------------------
-
-scorer_registrar::scorer_registrar(const type_info& type,
-                                   const type_info& args_format,
-                                   sort::ptr (*factory)(std::string_view args),
-                                   const char* source /*= nullptr*/) {
+scorer_registrar::scorer_registrar(
+  const type_info& type, const type_info& args_format,
+  Scorer::ptr (*factory)(std::string_view args),
+  const char* source /*= nullptr*/) {
   const auto source_ref =
     source ? std::string_view{source} : std::string_view{};
   auto entry = scorer_register::instance().set(

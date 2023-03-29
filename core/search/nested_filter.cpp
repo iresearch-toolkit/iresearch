@@ -31,7 +31,7 @@
 #include "search/prepared_state_visitor.hpp"
 #include "search/prev_doc.hpp"
 #include "search/score.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/attribute_helper.hpp"
 #include "utils/type_limits.hpp"
 
@@ -46,13 +46,13 @@ using namespace irs;
 
 static_assert(std::variant_size_v<ByNestedOptions::MatchType> == 2);
 
-const Order& GetOrder(const ByNestedOptions::MatchType& match,
-                      const Order& ord) noexcept {
+const Scorers& GetOrder(const ByNestedOptions::MatchType& match,
+                        const Scorers& ord) noexcept {
   return std::visit(
-    irs::Visitor{[&](Match v) noexcept -> const Order& {
-                   return kMatchNone == v ? Order::kUnordered : ord;
+    irs::Visitor{[&](Match v) noexcept -> const Scorers& {
+                   return kMatchNone == v ? Scorers::kUnordered : ord;
                  },
-                 [&ord](const DocIteratorProvider&) noexcept -> const Order& {
+                 [&ord](const DocIteratorProvider&) noexcept -> const Scorers& {
                    return ord;
                  }},
     match);
@@ -584,7 +584,7 @@ namespace irs {
 class ByNestedQuery : public filter::prepared {
  public:
   ByNestedQuery(DocIteratorProvider parent, prepared::ptr&& child,
-                sort::MergeType merge_type, ByNestedOptions::MatchType match,
+                ScoreMergeType merge_type, ByNestedOptions::MatchType match,
                 score_t none_boost) noexcept
     : parent_{std::move(parent)},
       child_{std::move(child)},
@@ -615,7 +615,7 @@ class ByNestedQuery : public filter::prepared {
   DocIteratorProvider parent_;
   prepared::ptr child_;
   ByNestedOptions::MatchType match_;
-  sort::MergeType merge_type_;
+  ScoreMergeType merge_type_;
   score_t none_boost_;
 };
 
@@ -638,7 +638,7 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
   auto child = child_->execute({.segment = rdr,
                                 .scorers = GetOrder(match_, ord),
                                 .ctx = ctx.ctx,
-                                .mode = ExecutionMode::kAll});
+                                .wand = {}});
 
   if (IRS_UNLIKELY(!child)) {
     return doc_iterator::empty();
@@ -687,7 +687,7 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
 }
 
 filter::prepared::ptr ByNestedFilter::prepare(
-  const IndexReader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {
   auto& [parent, child, match, merge_type] = options();
 

@@ -120,6 +120,7 @@ struct index_input : public data_input {
   virtual ptr reopen()
     const = 0;  // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
+  virtual void skip(size_t count) { seek(file_pointer() + count); }
 
   using data_input::read_bytes;
   virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) = 0;
@@ -199,6 +200,7 @@ class buffered_index_input : public index_input {
   bool eof() const final { return file_pointer() >= length(); }
 
   void seek(size_t pos) final;
+  void skip(size_t pos) final;
 
   int16_t read_short() final;
 

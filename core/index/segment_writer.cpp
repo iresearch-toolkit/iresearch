@@ -54,8 +54,8 @@ segment_writer::stored_column::stored_column(
   const hashed_string_view& name, columnstore_writer& columnstore,
   const ColumnInfoProvider& column_info,
   std::deque<cached_column>& cached_columns, bool cache)
-  : name(name.data(), name.size()), name_hash(name.hash()) {
-  const auto info = column_info(static_cast<const std::string_view&>(name));
+  : name{name}, name_hash{name.hash()} {
+  const auto info = column_info(std::string_view(name));
 
   columnstore_writer::column_finalizer_f finalizer = [this](bstring&) noexcept {
     return std::string_view{this->name};
@@ -64,10 +64,10 @@ segment_writer::stored_column::stored_column(
   if (!cache) {
     std::tie(id, writer) = columnstore.push_column(info, std::move(finalizer));
   } else {
-    auto& cached = cached_columns.emplace_back(&id, info, std::move(finalizer));
+    cached = &cached_columns.emplace_back(&id, info, std::move(finalizer));
 
-    writer = [stream = &cached.stream](irs::doc_id_t doc) -> column_output& {
-      stream->prepare(doc);
+    writer = [stream = &cached->Stream()](irs::doc_id_t doc) -> column_output& {
+      stream->Prepare(doc);
       return *stream;
     };
   }
@@ -96,10 +96,8 @@ doc_id_t segment_writer::begin(DocContext ctx) {
 }
 
 std::unique_ptr<segment_writer> segment_writer::make(
-  directory& dir, const ColumnInfoProvider& column_info,
-  const FeatureInfoProvider& feature_info, const Comparer* comparator) {
-  return std::make_unique<segment_writer>(ConstructToken{}, dir, column_info,
-                                          feature_info, comparator);
+  directory& dir, const SegmentWriterOptions& options) {
+  return std::make_unique<segment_writer>(ConstructToken{}, dir, options);
 }
 
 size_t segment_writer::memory_active() const noexcept {
@@ -112,12 +110,12 @@ size_t segment_writer::memory_active() const noexcept {
   column_cache_active +=
     std::accumulate(cached_columns_.begin(), cached_columns_.end(), size_t{0},
                     [](size_t lhs, const cached_column& rhs) {
-                      return lhs + rhs.stream.memory_active();
+                      return lhs + rhs.Stream().MemoryActive();
                     });
 
   return docs_context_.size() * sizeof(DocContext) +
          bitset::bits_to_words(docs_mask_.count) * sizeof(bitset::word_t) +
-         fields_.memory_active() + sort_.stream.memory_active() +
+         fields_.memory_active() + sort_.stream.MemoryActive() +
          column_cache_active;
 }
 
@@ -134,13 +132,13 @@ size_t segment_writer::memory_reserved() const noexcept {
   column_cache_reserved +=
     std::accumulate(cached_columns_.begin(), cached_columns_.end(), size_t{0},
                     [](size_t lhs, const cached_column& rhs) {
-                      return lhs + rhs.stream.memory_active() + sizeof(rhs);
+                      return lhs + rhs.Stream().MemoryActive() + sizeof(rhs);
                     });
 
   return sizeof(segment_writer) +
          docs_context_.capacity() * sizeof(DocContext) +
          docs_mask_.set.capacity() / bits_required<char>() +
-         fields_.memory_reserved() + sort_.stream.memory_reserved() +
+         fields_.memory_reserved() + sort_.stream.MemoryReserved() +
          column_cache_reserved;
 }
 
@@ -161,13 +159,13 @@ bool segment_writer::remove(doc_id_t doc_id) noexcept {
 }
 
 segment_writer::segment_writer(ConstructToken, directory& dir,
-                               const ColumnInfoProvider& column_info,
-                               const FeatureInfoProvider& feature_info,
-                               const Comparer* comparator) noexcept
-  : sort_(column_info, {}),
-    fields_(feature_info, cached_columns_, comparator),
-    column_info_(&column_info),
-    dir_(dir) {}
+                               const SegmentWriterOptions& options) noexcept
+  : scorers_{options.scorers},
+    sort_{options.column_info, {}},
+    fields_{options.feature_info, cached_columns_, options.scorers_features,
+            options.comparator},
+    column_info_{&options.column_info},
+    dir_{dir} {}
 
 bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
@@ -208,6 +206,8 @@ column_output& segment_writer::stream(const hashed_string_view& name,
 }
 
 void segment_writer::FlushFields(flush_state& state) {
+  IRS_ASSERT(field_writer_);
+
   try {
     fields_.flush(*field_writer_, state);
   } catch (...) {
@@ -215,53 +215,53 @@ void segment_writer::FlushFields(flush_state& state) {
     throw;
   }
 }
-[[nodiscard]] doc_map segment_writer::flush(IndexSegment& segment,
-                                            DocsMask& docs_mask) {
+
+[[nodiscard]] DocMap segment_writer::flush(IndexSegment& segment,
+                                           DocsMask& docs_mask) {
   REGISTER_TIMER_DETAILED();
   auto& meta = segment.meta;
 
-  flush_state state{
-    .dir = &dir_,
-    .name = seg_name_,
-    .doc_count = buffered_docs(),
-  };
+  flush_state state{.dir = &dir_,
+                    .columns = this,
+                    .name = seg_name_,
+                    .scorers = scorers_,
+                    .doc_count = buffered_docs()};
 
-  doc_map docmap;
+  DocMap docmap;
   if (fields_.comparator() != nullptr) {
-    std::tie(docmap, sort_.id) = sort_.stream.flush(
+    std::tie(docmap, sort_.id) = sort_.stream.Flush(
       *col_writer_, std::move(sort_.finalizer),
       static_cast<doc_id_t>(state.doc_count), *fields_.comparator());
 
-    // flush all cached columns
-    irs::sorted_column::flush_buffer_t buffer;
-    for (auto& column : cached_columns_) {
-      if (IRS_LIKELY(!field_limits::valid(*column.id))) {
-        *column.id = column.stream.flush(
-          *col_writer_, std::move(column.finalizer), docmap, buffer);
-      }
-    }
-
-    meta.sort = sort_.id;  // store sorted column id in segment meta
+    meta.sort = sort_.id;  // Store sorted column id in segment meta
 
     if (!docmap.empty()) {
       state.docmap = &docmap;
     }
   }
 
-  // flush columnstore
+  // Flush all cached columns
+  for (irs::BufferedColumn::BufferedValues buffer;
+       auto& column : cached_columns_) {
+    if (IRS_LIKELY(!field_limits::valid(column.id()))) {
+      column.Flush(*col_writer_, docmap, buffer);
+    }
+  }
+
+  // Flush columnstore
   meta.column_store = col_writer_->commit(state);
 
-  // flush fields metadata & inverted data,
+  // Flush fields metadata & inverted data,
   if (state.doc_count != 0) {
     FlushFields(state);
   }
 
-  // get document mask
+  // Get document mask
   IRS_ASSERT(docs_mask_.set.count() == docs_mask_.count);
   docs_mask = std::move(docs_mask_);
   docs_mask_.count = 0;
 
-  // update segment metadata
+  // Update segment metadata
   meta.docs_count = state.doc_count;
   meta.live_docs_count = meta.docs_count - docs_mask.count;
   meta.files = dir_.FlushTracked(meta.byte_size);
@@ -282,7 +282,7 @@ void segment_writer::reset() noexcept {
   fields_.reset();
   columns_.clear();
   cached_columns_.clear();  // FIXME(@gnusi): we loose all per-column buffers
-  sort_.stream.clear();
+  sort_.stream.Clear();
 
   if (col_writer_) {
     col_writer_->rollback();

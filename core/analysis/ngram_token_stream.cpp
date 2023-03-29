@@ -349,8 +349,7 @@ template<irs::analysis::ngram_token_stream_base::InputType StreamType>
 
 ngram_token_stream_base::ngram_token_stream_base(
   const ngram_token_stream_base::Options& options)
-  : analyzer{irs::type<ngram_token_stream_base>::get()},
-    options_(options),
+  : options_(options),
     start_marker_empty_(options.start_marker.empty()),
     end_marker_empty_(options.end_marker.empty()) {
   options_.min_gram = std::max(options_.min_gram, size_t(1));

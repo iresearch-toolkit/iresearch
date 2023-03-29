@@ -97,11 +97,11 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
       IR_FRMT_ERROR(
         "Caught exception while reading index meta with codec '%s', error "
         "'%s'",
-        codec->type().name().data(), e.what());
+        codec->type()().name().data(), e.what());
       return nullptr;
     } catch (...) {
       IR_FRMT_ERROR("Caught exception while reading index meta with codec '%s'",
-                    codec->type().name().data());
+                    codec->type()().name().data());
 
       return nullptr;
     }
@@ -223,7 +223,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
     return cached;  // no changes to refresh
   }
 
-  constexpr size_t kInvalidCandidate{std::numeric_limits<size_t>::max()};
+  static constexpr size_t kInvalidCandidate{std::numeric_limits<size_t>::max()};
   absl::flat_hash_map<std::string_view, size_t> reuse_candidates;
 
   if (cached) {

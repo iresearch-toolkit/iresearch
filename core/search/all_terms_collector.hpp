@@ -24,7 +24,7 @@
 
 #include "analysis/token_attributes.hpp"
 #include "search/collectors.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 

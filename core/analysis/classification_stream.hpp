@@ -34,7 +34,8 @@ class FastText;
 namespace irs {
 namespace analysis {
 
-class classification_stream final : public analyzer, private util::noncopyable {
+class classification_stream final : public TypedAnalyzer<classification_stream>,
+                                    private util::noncopyable {
  public:
   using model_ptr = std::shared_ptr<const fasttext::FastText>;
   using model_provider_f = model_ptr (*)(std::string_view);

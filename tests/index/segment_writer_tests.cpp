@@ -98,9 +98,11 @@ TEST_F(segment_writer_tests, invalid_actions) {
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::memory_directory dir;
-  auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, options);
   ASSERT_EQ(0, writer->memory_active());
 
   // store + store sorted
@@ -166,11 +168,18 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
 
   irs::memory_directory dir;
 
-  auto writer_sorted =
-    irs::segment_writer::make(dir, column_info, feature_info, &compare);
+  const irs::SegmentWriterOptions options_with_comparer{
+    .column_info = column_info,
+    .feature_info = feature_info,
+    .scorers_features = {},
+    .comparator = &compare};
+  auto writer_sorted = irs::segment_writer::make(dir, options_with_comparer);
   ASSERT_EQ(0, writer_sorted->memory_active());
-  auto writer_unsorted =
-    irs::segment_writer::make(dir, column_info, feature_info, nullptr);
+
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
+  auto writer_unsorted = irs::segment_writer::make(dir, options);
   ASSERT_EQ(0, writer_unsorted->memory_active());
 
   irs::SegmentMeta segment;
@@ -228,10 +237,12 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
       irs::compression::options(irs::compression::options::Hint::SPEED), true};
   };
   auto feature_info = default_feature_info();
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
 
   irs::memory_directory dir;
-  auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, options);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::SegmentMeta segment;
@@ -275,9 +286,12 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info,
+                                          .scorers_features = {},
+                                          .comparator = &compare};
   irs::memory_directory dir;
-  auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, &compare);
+  auto writer = irs::segment_writer::make(dir, options);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::SegmentMeta segment;
@@ -321,9 +335,12 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info,
+                                          .scorers_features = {},
+                                          .comparator = &compare};
   irs::memory_directory dir;
-  auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, &compare);
+  auto writer = irs::segment_writer::make(dir, options);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::SegmentMeta segment;
@@ -365,9 +382,11 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
   auto column_info = default_column_info();
   auto feature_info = default_feature_info();
 
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::memory_directory dir;
-  auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, options);
   ASSERT_EQ(0, writer->memory_active());
 
   irs::SegmentMeta segment;
@@ -419,9 +438,11 @@ TEST_F(segment_writer_tests, memory_index_field) {
   segment.codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, segment.codec);
 
+  const irs::SegmentWriterOptions options{.column_info = column_info,
+                                          .feature_info = feature_info,
+                                          .scorers_features = {}};
   irs::memory_directory dir;
-  auto writer =
-    irs::segment_writer::make(dir, column_info, feature_info, nullptr);
+  auto writer = irs::segment_writer::make(dir, options);
   writer->reset(segment);
 
   ASSERT_EQ(0, writer->memory_active());
@@ -468,9 +489,11 @@ TEST_F(segment_writer_tests, index_field) {
     segment.codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, segment.codec);
 
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::memory_directory dir;
-    auto writer =
-      irs::segment_writer::make(dir, column_info, feature_info, nullptr);
+    auto writer = irs::segment_writer::make(dir, options);
     writer->reset(segment);
 
     irs::segment_writer::DocContext ctx;
@@ -495,9 +518,11 @@ TEST_F(segment_writer_tests, index_field) {
     segment.codec = irs::formats::get("1_0");
     ASSERT_NE(nullptr, segment.codec);
 
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info,
+                                            .scorers_features = {}};
     irs::memory_directory dir;
-    auto writer =
-      irs::segment_writer::make(dir, column_info, feature_info, nullptr);
+    auto writer = irs::segment_writer::make(dir, options);
     writer->reset(segment);
 
     irs::segment_writer::DocContext ctx;
@@ -542,7 +567,7 @@ void reorder(std::span<const tests::document*> docs,
 }
 
 std::vector<irs::segment_writer::DocContext> reorder(
-  std::span<irs::segment_writer::DocContext> ctxs, const irs::doc_map& docmap) {
+  std::span<irs::segment_writer::DocContext> ctxs, const irs::DocMap& docmap) {
   std::vector<irs::segment_writer::DocContext> new_ctxs;
   new_ctxs.resize(ctxs.size());
   for (size_t i = 0, size = ctxs.size(); i < size; ++i) {
@@ -590,9 +615,12 @@ TEST_F(segment_writer_tests, reorder) {
     auto feature_info = default_feature_info();
     StringComparer less;
 
+    const irs::SegmentWriterOptions options{.column_info = column_info,
+                                            .feature_info = feature_info,
+                                            .scorers_features = {},
+                                            .comparator = &less};
     irs::memory_directory dir;
-    auto writer =
-      irs::segment_writer::make(dir, column_info, feature_info, &less);
+    auto writer = irs::segment_writer::make(dir, options);
     ASSERT_EQ(0, writer->memory_active());
 
     irs::SegmentMeta segment;

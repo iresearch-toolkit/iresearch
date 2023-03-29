@@ -57,7 +57,7 @@ set(IReSearch_tests_sources
   ./index/field_meta_test.cpp
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
-  ./index/sorted_column_test.cpp
+  ./index/buffered_column_test.cpp
   ./index/segment_writer_tests.cpp
   ./index/consolidation_policy_tests.cpp
   ./search/empty_filter_tests.cpp

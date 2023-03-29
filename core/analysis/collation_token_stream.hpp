@@ -37,8 +37,9 @@ namespace analysis {
 ///        token as per specified locale
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class collation_token_stream final : public analyzer,
-                                     private util::noncopyable {
+class collation_token_stream final
+  : public TypedAnalyzer<collation_token_stream>,
+    private util::noncopyable {
  public:
   struct options_t {
     icu::Locale locale;

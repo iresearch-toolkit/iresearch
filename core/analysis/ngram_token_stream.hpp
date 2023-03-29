@@ -34,7 +34,8 @@ namespace analysis {
 /// @brief produces ngram from a specified input in a range of
 ///         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
-class ngram_token_stream_base : public analyzer, private util::noncopyable {
+class ngram_token_stream_base : public TypedAnalyzer<ngram_token_stream_base>,
+                                private util::noncopyable {
  public:
   enum class InputType {
     Binary,  // input is treaten as generic bytes

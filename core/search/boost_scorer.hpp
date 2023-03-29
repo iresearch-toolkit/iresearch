@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,18 +15,33 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "analyzer.hpp"
+#pragma once
 
-namespace irs::analysis {
+#include "scorers.hpp"
 
-analyzer::analyzer(const type_info& type) noexcept : type_(type.id()) {}
+namespace irs {
 
-empty_analyzer::empty_analyzer() noexcept
-  : analyzer(irs::type<empty_analyzer>::get()) {}
+struct BoostScore final : ScorerBase<BoostScore, void> {
+  static constexpr std::string_view type_name() noexcept {
+    return "boostscore";
+  }
 
-}  // namespace irs::analysis
+  static void init();
+
+  ScoreFunction prepare_scorer(
+    const ColumnProvider& /*segment*/,
+    const std::map<irs::type_info::type_id, field_id>& /*features*/,
+    const byte_type* /*stats*/, const attribute_provider& attrs,
+    score_t boost) const final;
+
+  IndexFeatures index_features() const noexcept final {
+    return IndexFeatures::NONE;
+  }
+};
+
+}  // namespace irs

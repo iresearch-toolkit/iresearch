@@ -43,7 +43,7 @@ namespace sort {
 /// @class boost
 /// @brief boost scorer assign boost value to the particular document score
 ////////////////////////////////////////////////////////////////////////////////
-struct boost : public irs::sort {
+struct boost : public irs::ScorerBase<boost, void> {
   struct score_ctx final : public irs::score_ctx {
    public:
     explicit score_ctx(irs::score_t boost) noexcept : boost_(boost) {}
@@ -51,291 +51,255 @@ struct boost : public irs::sort {
     irs::score_t boost_;
   };
 
-  class prepared : public irs::PreparedSortBase<void> {
-   public:
-    prepared() = default;
+  irs::IndexFeatures index_features() const noexcept final {
+    return irs::IndexFeatures::NONE;
+  }
 
-    irs::IndexFeatures features() const noexcept final {
-      return irs::IndexFeatures::NONE;
-    }
+  irs::ScoreFunction prepare_scorer(
+    const irs::ColumnProvider&, const irs::feature_map_t& /*features*/,
+    const irs::byte_type* /*query_attrs*/,
+    const irs::attribute_provider& /*doc_attrs*/,
+    irs::score_t boost) const final {
+    return irs::ScoreFunction::Make<boost::score_ctx>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        const auto& state = *reinterpret_cast<score_ctx*>(ctx);
 
-    irs::ScoreFunction prepare_scorer(
-      const irs::SubReader&, const irs::term_reader&,
-      const irs::byte_type* /*query_attrs*/,
-      const irs::attribute_provider& /*doc_attrs*/,
-      irs::score_t boost) const final {
-      return irs::ScoreFunction::Make<boost::score_ctx>(
-        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-          const auto& state = *reinterpret_cast<score_ctx*>(ctx);
-
-          *res = state.boost_;
-        },
-        boost);
-    }
-  };
-
-  typedef irs::score_t score_t;
-  boost() : sort(irs::type<boost>::get()) {}
-  virtual sort::prepared::ptr prepare() const {
-    return std::make_unique<boost::prepared>();
+        *res = state.boost_;
+      },
+      boost);
   }
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief expose sort functionality through overidable lambdas
 //////////////////////////////////////////////////////////////////////////////
-struct custom_sort : public irs::sort {
-  class prepared : public irs::PreparedSortBase<void> {
+struct custom_sort : public irs::ScorerBase<custom_sort, void> {
+  class field_collector : public irs::FieldCollector {
    public:
-    class field_collector : public irs::sort::field_collector {
-     public:
-      field_collector(const custom_sort& sort) : sort_(sort) {}
+    field_collector(const custom_sort& sort) : sort_(sort) {}
 
-      void collect(const irs::SubReader& segment,
-                   const irs::term_reader& field) final {
-        if (sort_.collector_collect_field) {
-          sort_.collector_collect_field(segment, field);
-        }
-      }
-
-      void reset() final {
-        if (sort_.field_reset_) {
-          sort_.field_reset_();
-        }
-      }
-
-      void collect(irs::bytes_view in) final {
-        // NOOP
-      }
-
-      void write(irs::data_output& out) const final {
-        // NOOP
-      }
-
-     private:
-      const custom_sort& sort_;
-    };
-
-    class term_collector : public irs::sort::term_collector {
-     public:
-      term_collector(const custom_sort& sort) : sort_(sort) {}
-
-      void collect(const irs::SubReader& segment, const irs::term_reader& field,
-                   const irs::attribute_provider& term_attrs) final {
-        if (sort_.collector_collect_term) {
-          sort_.collector_collect_term(segment, field, term_attrs);
-        }
-      }
-
-      void reset() final {
-        if (sort_.term_reset_) {
-          sort_.term_reset_();
-        }
-      }
-
-      void collect(irs::bytes_view in) final {
-        // NOOP
-      }
-
-      void write(irs::data_output& out) const final {
-        // NOOP
-      }
-
-     private:
-      const custom_sort& sort_;
-    };
-
-    struct scorer final : public irs::score_ctx {
-      scorer(const custom_sort& sort, const irs::SubReader& segment_reader,
-             const irs::term_reader& term_reader,
-             const irs::byte_type* filter_node_attrs,
-             const irs::attribute_provider& document_attrs)
-        : document_attrs_(document_attrs),
-          filter_node_attrs_(filter_node_attrs),
-          segment_reader_(segment_reader),
-          sort_(sort),
-          term_reader_(term_reader) {}
-
-      const irs::attribute_provider& document_attrs_;
-      const irs::byte_type* filter_node_attrs_;
-      const irs::SubReader& segment_reader_;
-      const custom_sort& sort_;
-      const irs::term_reader& term_reader_;
-    };
-
-    prepared(const custom_sort& sort) : sort_(sort) {}
-
-    void collect(irs::byte_type* filter_attrs, const irs::IndexReader& index,
-                 const irs::sort::field_collector* field,
-                 const irs::sort::term_collector* term) const final {
-      if (sort_.collectors_collect_) {
-        sort_.collectors_collect_(filter_attrs, index, field, term);
+    void collect(const irs::SubReader& segment,
+                 const irs::term_reader& field) final {
+      if (sort_.collector_collect_field) {
+        sort_.collector_collect_field(segment, field);
       }
     }
 
-    irs::IndexFeatures features() const final {
-      return irs::IndexFeatures::NONE;
+    void reset() final {
+      if (sort_.field_reset_) {
+        sort_.field_reset_();
+      }
     }
 
-    irs::sort::field_collector::ptr prepare_field_collector() const final {
-      if (sort_.prepare_field_collector_) {
-        return sort_.prepare_field_collector_();
-      }
-
-      return std::make_unique<field_collector>(sort_);
+    void collect(irs::bytes_view in) final {
+      // NOOP
     }
 
-    irs::ScoreFunction prepare_scorer(
-      const irs::SubReader& segment_reader, const irs::term_reader& term_reader,
-      const irs::byte_type* filter_node_attrs,
-      const irs::attribute_provider& document_attrs,
-      irs::score_t boost) const final {
-      if (sort_.prepare_scorer) {
-        return sort_.prepare_scorer(segment_reader, term_reader,
-                                    filter_node_attrs, document_attrs, boost);
-      }
-
-      return irs::ScoreFunction::Make<custom_sort::prepared::scorer>(
-        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-          const auto& state = *reinterpret_cast<scorer*>(ctx);
-
-          if (state.sort_.scorer_score) {
-            state.sort_.scorer_score(
-              irs::get<irs::document>(state.document_attrs_)->value, res);
-          }
-        },
-        sort_, segment_reader, term_reader, filter_node_attrs, document_attrs);
-    }
-
-    irs::sort::term_collector::ptr prepare_term_collector() const final {
-      if (sort_.prepare_term_collector_) {
-        return sort_.prepare_term_collector_();
-      }
-
-      return std::make_unique<term_collector>(sort_);
+    void write(irs::data_output& out) const final {
+      // NOOP
     }
 
    private:
     const custom_sort& sort_;
   };
 
+  class term_collector : public irs::TermCollector {
+   public:
+    term_collector(const custom_sort& sort) : sort_(sort) {}
+
+    void collect(const irs::SubReader& segment, const irs::term_reader& field,
+                 const irs::attribute_provider& term_attrs) final {
+      if (sort_.collector_collect_term) {
+        sort_.collector_collect_term(segment, field, term_attrs);
+      }
+    }
+
+    void reset() final {
+      if (sort_.term_reset_) {
+        sort_.term_reset_();
+      }
+    }
+
+    void collect(irs::bytes_view in) final {
+      // NOOP
+    }
+
+    void write(irs::data_output& out) const final {
+      // NOOP
+    }
+
+   private:
+    const custom_sort& sort_;
+  };
+
+  struct scorer final : public irs::score_ctx {
+    scorer(const custom_sort& sort, const irs::ColumnProvider& segment_reader,
+           const irs::feature_map_t& term_reader,
+           const irs::byte_type* filter_node_attrs,
+           const irs::attribute_provider& document_attrs)
+      : document_attrs_(document_attrs),
+        filter_node_attrs_(filter_node_attrs),
+        segment_reader_(segment_reader),
+        sort_(sort),
+        term_reader_(term_reader) {}
+
+    const irs::attribute_provider& document_attrs_;
+    const irs::byte_type* filter_node_attrs_;
+    const irs::ColumnProvider& segment_reader_;
+    const custom_sort& sort_;
+    const irs::feature_map_t& term_reader_;
+  };
+
+  void collect(irs::byte_type* filter_attrs, const irs::FieldCollector* field,
+               const irs::TermCollector* term) const final {
+    if (collectors_collect_) {
+      collectors_collect_(filter_attrs, field, term);
+    }
+  }
+
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    if (prepare_field_collector_) {
+      return prepare_field_collector_();
+    }
+
+    return std::make_unique<field_collector>(*this);
+  }
+
+  irs::ScoreFunction prepare_scorer(
+    const irs::ColumnProvider& segment_reader,
+    const irs::feature_map_t& term_reader,
+    const irs::byte_type* filter_node_attrs,
+    const irs::attribute_provider& document_attrs,
+    irs::score_t boost) const final {
+    if (prepare_scorer_) {
+      return prepare_scorer_(segment_reader, term_reader, filter_node_attrs,
+                             document_attrs, boost);
+    }
+
+    return irs::ScoreFunction::Make<custom_sort::scorer>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        const auto& state = *reinterpret_cast<scorer*>(ctx);
+
+        if (state.sort_.scorer_score) {
+          state.sort_.scorer_score(
+            irs::get<irs::document>(state.document_attrs_)->value, res);
+        }
+      },
+      *this, segment_reader, term_reader, filter_node_attrs, document_attrs);
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    if (prepare_term_collector_) {
+      return prepare_term_collector_();
+    }
+
+    return std::make_unique<term_collector>(*this);
+  }
+
   std::function<void(const irs::SubReader&, const irs::term_reader&)>
     collector_collect_field;
   std::function<void(const irs::SubReader&, const irs::term_reader&,
                      const irs::attribute_provider&)>
     collector_collect_term;
-  std::function<void(irs::byte_type*, const irs::IndexReader&,
-                     const irs::sort::field_collector*,
-                     const irs::sort::term_collector*)>
+  std::function<void(irs::byte_type*, const irs::FieldCollector*,
+                     const irs::TermCollector*)>
     collectors_collect_;
-  std::function<irs::sort::field_collector::ptr()> prepare_field_collector_;
+  std::function<irs::FieldCollector::ptr()> prepare_field_collector_;
   std::function<irs::ScoreFunction(
-    const irs::SubReader&, const irs::term_reader&, const irs::byte_type*,
-    const irs::attribute_provider&, irs::score_t)>
-    prepare_scorer;
-  std::function<irs::sort::term_collector::ptr()> prepare_term_collector_;
+    const irs::ColumnProvider&, const irs::feature_map_t&,
+    const irs::byte_type*, const irs::attribute_provider&, irs::score_t)>
+    prepare_scorer_;
+  std::function<irs::TermCollector::ptr()> prepare_term_collector_;
   std::function<void(irs::doc_id_t, irs::score_t*)> scorer_score;
   std::function<void()> term_reset_;
   std::function<void()> field_reset_;
+};
 
-  custom_sort() : sort(irs::type<custom_sort>::get()) {}
-  virtual prepared::ptr prepare() const {
-    return std::make_unique<custom_sort::prepared>(*this);
-  }
+struct stats_t {
+  irs::doc_id_t count;
 };
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief order by frequency, then if equal order by doc_id_t
 //////////////////////////////////////////////////////////////////////////////
-struct frequency_sort : public irs::sort {
-  struct stats_t {
-    irs::doc_id_t count;
-  };
+struct frequency_sort : public irs::ScorerBase<frequency_sort, stats_t> {
+  struct term_collector : public irs::TermCollector {
+    size_t docs_count{};
+    const irs::term_meta* meta_attr;
 
-  class prepared : public irs::PreparedSortBase<stats_t> {
-   public:
-    struct term_collector : public irs::sort::term_collector {
-      size_t docs_count{};
-      const irs::term_meta* meta_attr;
-
-      void collect(const irs::SubReader& segment, const irs::term_reader& field,
-                   const irs::attribute_provider& term_attrs) final {
-        meta_attr = irs::get<irs::term_meta>(term_attrs);
-        ASSERT_NE(nullptr, meta_attr);
-        docs_count += meta_attr->docs_count;
-      }
-
-      void reset() noexcept final { docs_count = 0; }
-
-      void collect(irs::bytes_view in) final {
-        // NOOP
-      }
-
-      void write(irs::data_output& out) const final {
-        // NOOP
-      }
-    };
-
-    struct scorer final : public irs::score_ctx {
-      scorer(const irs::doc_id_t* docs_count, const irs::document* doc)
-        : doc(doc), docs_count(docs_count) {}
-
-      const irs::document* doc;
-      const irs::doc_id_t* docs_count;
-    };
-
-    prepared() = default;
-
-    void collect(irs::byte_type* stats_buf, const irs::IndexReader& /*index*/,
-                 const irs::sort::field_collector* /*field*/,
-                 const irs::sort::term_collector* term) const final {
-      auto* term_ptr = dynamic_cast<const term_collector*>(term);
-      if (term_ptr) {  // may be null e.g. 'all' filter
-        stats_cast(stats_buf).count =
-          static_cast<irs::doc_id_t>(term_ptr->docs_count);
-        const_cast<term_collector*>(term_ptr)->docs_count = 0;
-      }
+    void collect(const irs::SubReader& segment, const irs::term_reader& field,
+                 const irs::attribute_provider& term_attrs) final {
+      meta_attr = irs::get<irs::term_meta>(term_attrs);
+      ASSERT_NE(nullptr, meta_attr);
+      docs_count += meta_attr->docs_count;
     }
 
-    irs::IndexFeatures features() const final {
-      return irs::IndexFeatures::NONE;
+    void reset() noexcept final { docs_count = 0; }
+
+    void collect(irs::bytes_view in) final {
+      // NOOP
     }
 
-    irs::sort::field_collector::ptr prepare_field_collector() const final {
-      return nullptr;  // do not need to collect stats
-    }
-
-    irs::ScoreFunction prepare_scorer(const irs::SubReader&,
-                                      const irs::term_reader&,
-                                      const irs::byte_type* stats_buf,
-                                      const irs::attribute_provider& doc_attrs,
-                                      irs::score_t /*boost*/) const final {
-      auto* doc = irs::get<irs::document>(doc_attrs);
-      auto& stats = stats_cast(stats_buf);
-      const irs::doc_id_t* docs_count = &stats.count;
-      return irs::ScoreFunction::Make<frequency_sort::prepared::scorer>(
-        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-          const auto& state = *reinterpret_cast<scorer*>(ctx);
-
-          // docs_count may be nullptr if no collector called,
-          // e.g. by range_query for bitset_doc_iterator
-          if (state.docs_count) {
-            *res = 1.f / (*state.docs_count);
-          } else {
-            *res = std::numeric_limits<irs::score_t>::infinity();
-          }
-        },
-        docs_count, doc);
-    }
-
-    irs::sort::term_collector::ptr prepare_term_collector() const final {
-      return std::make_unique<term_collector>();
+    void write(irs::data_output& out) const final {
+      // NOOP
     }
   };
 
-  frequency_sort() : sort(irs::type<frequency_sort>::get()) {}
-  virtual prepared::ptr prepare() const {
-    return std::make_unique<frequency_sort::prepared>();
+  struct scorer final : public irs::score_ctx {
+    scorer(const irs::doc_id_t* docs_count, const irs::document* doc)
+      : doc(doc), docs_count(docs_count) {}
+
+    const irs::document* doc;
+    const irs::doc_id_t* docs_count;
+  };
+
+  void collect(irs::byte_type* stats_buf, const irs::FieldCollector* /*field*/,
+               const irs::TermCollector* term) const final {
+    auto* term_ptr = dynamic_cast<const term_collector*>(term);
+    if (term_ptr) {  // may be null e.g. 'all' filter
+      stats_cast(stats_buf)->count =
+        static_cast<irs::doc_id_t>(term_ptr->docs_count);
+      const_cast<term_collector*>(term_ptr)->docs_count = 0;
+    }
+  }
+
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
+  }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return nullptr;  // do not need to collect stats
+  }
+
+  irs::ScoreFunction prepare_scorer(const irs::ColumnProvider&,
+                                    const irs::feature_map_t&,
+                                    const irs::byte_type* stats_buf,
+                                    const irs::attribute_provider& doc_attrs,
+                                    irs::score_t /*boost*/) const final {
+    auto* doc = irs::get<irs::document>(doc_attrs);
+    auto* stats = stats_cast(stats_buf);
+    const irs::doc_id_t* docs_count = &stats->count;
+    return irs::ScoreFunction::Make<frequency_sort::scorer>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        const auto& state = *reinterpret_cast<scorer*>(ctx);
+
+        // docs_count may be nullptr if no collector called,
+        // e.g. by range_query for bitset_doc_iterator
+        if (state.docs_count) {
+          *res = 1.f / (*state.docs_count);
+        } else {
+          *res = std::numeric_limits<irs::score_t>::infinity();
+        }
+      },
+      docs_count, doc);
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return std::make_unique<term_collector>();
   }
 };
 
@@ -381,21 +345,21 @@ class FilterTestCaseBase : public index_test_base {
 
   // Validate documents and its scores
   static void CheckQuery(const irs::filter& filter,
-                         std::span<const irs::sort::ptr> order,
+                         std::span<const irs::Scorer::ptr> order,
                          const ScoredDocs& expected,
                          const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate documents and its scores with test cases
   static void CheckQuery(const irs::filter& filter,
-                         std::span<const irs::sort::ptr> order,
+                         std::span<const irs::Scorer::ptr> order,
                          const std::vector<Tests>& tests,
                          const irs::IndexReader& index,
                          std::string_view source_location = {});
 
   // Validate document order
   static void CheckQuery(const irs::filter& filter,
-                         std::span<const irs::sort::ptr> order,
+                         std::span<const irs::Scorer::ptr> order,
                          const std::vector<irs::doc_id_t>& expected,
                          const irs::IndexReader& index,
                          bool score_must_be_present = true,
@@ -409,7 +373,7 @@ class FilterTestCaseBase : public index_test_base {
 
   static void GetQueryResult(const irs::filter::prepared::ptr& q,
                              const irs::IndexReader& index,
-                             const irs::Order& ord, ScoredDocs& result,
+                             const irs::Scorers& ord, ScoredDocs& result,
                              Costs& result_costs,
                              std::string_view source_location);
 };

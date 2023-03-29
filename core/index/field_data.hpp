@@ -27,11 +27,11 @@
 #include <vector>
 
 #include "formats/formats.hpp"
+#include "index/buffered_column.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_features.hpp"
 #include "index/iterators.hpp"
 #include "index/postings.hpp"
-#include "index/sorted_column.hpp"
 #include "utils/block_pool.hpp"
 #include "utils/hash_set_utils.hpp"
 #include "utils/memory.hpp"
@@ -60,16 +60,46 @@ class doc_iterator;
 class sorting_doc_iterator;
 }  // namespace detail
 
-// represents a mapping between cached column data
+// Represents a mapping between cached column data
 // and a pointer to column identifier
-struct cached_column {
+class cached_column final : public column_reader {
+ public:
   cached_column(field_id* id, ColumnInfo info,
                 columnstore_writer::column_finalizer_f finalizer) noexcept
-    : id{id}, stream{info}, finalizer{std::move(finalizer)} {}
+    : id_{id}, stream_{info}, finalizer_{std::move(finalizer)} {}
 
-  field_id* id;
-  sorted_column stream;
-  columnstore_writer::column_finalizer_f finalizer;
+  BufferedColumn& Stream() noexcept { return stream_; }
+  const BufferedColumn& Stream() const noexcept { return stream_; }
+
+  void Flush(columnstore_writer& writer, DocMapView docmap,
+             BufferedColumn::BufferedValues& buffer) {
+    auto finalizer = [this, finalizer = std::move(finalizer_)](
+                       bstring& out) mutable -> std::string_view {
+      name_ = finalizer(payload_);
+      out = payload_;  // FIXME(gnusi): avoid double-copy
+      return name_;
+    };
+
+    *id_ = stream_.Flush(writer, std::move(finalizer), docmap, buffer);
+  }
+
+  field_id id() const noexcept final { return *id_; }
+  std::string_view name() const noexcept final { return name_; }
+  bytes_view payload() const noexcept final { return payload_; }
+
+  doc_iterator::ptr iterator(ColumnHint hint) const final;
+
+  doc_id_t size() const final {
+    IRS_ASSERT(stream_.Size() < doc_limits::eof());
+    return static_cast<doc_id_t>(stream_.Size());
+  }
+
+ private:
+  field_id* id_;
+  std::string_view name_;
+  bstring payload_;
+  BufferedColumn stream_;
+  columnstore_writer::column_finalizer_f finalizer_;
 };
 
 class field_data : util::noncopyable {
@@ -77,7 +107,7 @@ class field_data : util::noncopyable {
   field_data(std::string_view name, const features_t& features,
              const FeatureInfoProvider& feature_columns,
              std::deque<cached_column>& cached_columns,
-             columnstore_writer& columns,
+             const feature_set_t& cached_features, columnstore_writer& columns,
              byte_block_pool::inserter& byte_writer,
              int_block_pool::inserter& int_writer, IndexFeatures index_features,
              bool random_access);
@@ -127,8 +157,6 @@ class field_data : util::noncopyable {
   using process_term_f = void (field_data::*)(posting&, doc_id_t,
                                               const payload*, const offset*);
 
-  static const process_term_f TERM_PROCESSING_TABLES[2][2];
-
   void reset(doc_id_t doc_id);
 
   void new_term(posting& p, doc_id_t did, const payload* pay,
@@ -141,8 +169,14 @@ class field_data : util::noncopyable {
   void add_term_random_access(posting& p, doc_id_t did, const payload* pay,
                               const offset* offs);
 
+  static constexpr process_term_f kTermProcessingTables[2][2] = {
+    // sequential access: [0] - new term, [1] - add term
+    {&field_data::add_term, &field_data::new_term},
+    // random access: [0] - new term, [1] - add term
+    {&field_data::add_term_random_access, &field_data::new_term_random_access}};
+
   bool prox_random_access() const noexcept {
-    return TERM_PROCESSING_TABLES[1] == proc_table_;
+    return kTermProcessingTables[1] == proc_table_;
   }
 
   mutable std::vector<feature_info> features_;
@@ -183,7 +217,8 @@ class fields_data : util::noncopyable {
   using postings_ref_t = std::vector<const posting*>;
 
   explicit fields_data(const FeatureInfoProvider& feature_info,
-                       std::deque<cached_column>& cached_features,
+                       std::deque<cached_column>& cached_columns,
+                       const feature_set_t& cached_features,
                        const Comparer* comparator);
 
   const Comparer* comparator() const noexcept { return comparator_; }
@@ -209,8 +244,9 @@ class fields_data : util::noncopyable {
  private:
   const Comparer* comparator_;
   const FeatureInfoProvider* feature_info_;
-  std::deque<field_data> fields_;               // pointers remain valid
-  std::deque<cached_column>* cached_features_;  // pointers remain valid
+  std::deque<field_data> fields_;              // pointers remain valid
+  std::deque<cached_column>* cached_columns_;  // pointers remain valid
+  const feature_set_t* cached_features_;
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
   std::vector<const field_data*> sorted_fields_;

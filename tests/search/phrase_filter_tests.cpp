@@ -5610,27 +5610,23 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::IndexReader&,
-                                 const irs::sort::field_collector*,
-                                 const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
-    sort.prepare_field_collector_ =
-      [&sort]() -> irs::sort::field_collector::ptr {
+    sort.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
+    sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(sort);
+        tests::sort::custom_sort::field_collector>(sort);
     };
-    sort.prepare_term_collector_ = [&sort]() -> irs::sort::term_collector::ptr {
+    sort.prepare_term_collector_ = [&sort]() -> irs::TermCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(sort);
+        tests::sort::custom_sort::term_collector>(sort);
     };
     sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
       ASSERT_NE(nullptr, score);
       *score = doc;
     };
 
-    auto pord = irs::Order::Prepare(sort);
+    auto pord = irs::Scorers::Prepare(sort);
     auto prepared = q.prepare(rdr, pord);
     ASSERT_EQ(1, collect_field_count);  // 1 field in 1 segment
     ASSERT_EQ(6, collect_term_count);   // 6 different terms
@@ -6008,27 +6004,23 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    sort.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::IndexReader&,
-                                 const irs::sort::field_collector*,
-                                 const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
-    sort.prepare_field_collector_ =
-      [&sort]() -> irs::sort::field_collector::ptr {
+    sort.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
+    sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(sort);
+        tests::sort::custom_sort::field_collector>(sort);
     };
-    sort.prepare_term_collector_ = [&sort]() -> irs::sort::term_collector::ptr {
+    sort.prepare_term_collector_ = [&sort]() -> irs::TermCollector::ptr {
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(sort);
+        tests::sort::custom_sort::term_collector>(sort);
     };
     sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
       ASSERT_NE(nullptr, score);
       *score = doc;
     };
 
-    auto pord = irs::Order::Prepare(sort);
+    auto pord = irs::Scorers::Prepare(sort);
     auto prepared = q.prepare(rdr, pord);
     ASSERT_EQ(1, collect_field_count);  // 1 field in 1 segment
     ASSERT_EQ(3, collect_term_count);   // 3 different terms
@@ -6575,7 +6567,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
-    auto prepared_order = irs::Order::Prepare(*scorer);
+    auto prepared_order = irs::Scorers::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -6643,7 +6635,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
-    auto prepared_order = irs::Order::Prepare(*scorer);
+    auto prepared_order = irs::Scorers::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -6710,7 +6702,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
-    auto prepared_order = irs::Order::Prepare(*scorer);
+    auto prepared_order = irs::Scorers::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -6813,7 +6805,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
-    auto prepared_order = irs::Order::Prepare(*scorer);
+    auto prepared_order = irs::Scorers::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -6984,7 +6976,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
-    auto prepared_order = irs::Order::Prepare(*scorer);
+    auto prepared_order = irs::Scorers::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -7180,7 +7172,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
 
     auto scorer = irs::scorers::get(
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
-    auto prepared_order = irs::Order::Prepare(*scorer);
+    auto prepared_order = irs::Scorers::Prepare(*scorer);
 
     auto prepared = q.prepare(rdr, prepared_order);
 
@@ -7976,7 +7968,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       ASSERT_NE(nullptr, score);
       *score = doc;
     };
-    auto pord = irs::Order::Prepare(sort);
+    auto pord = irs::Scorers::Prepare(sort);
 
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
@@ -8044,7 +8036,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       ASSERT_NE(nullptr, score);
       *score = doc;
     };
-    auto pord = irs::Order::Prepare(sort);
+    auto pord = irs::Scorers::Prepare(sort);
 
     auto prepared = q.prepare(rdr, pord);
     auto sub = rdr.begin();
@@ -8147,7 +8139,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       ASSERT_NE(nullptr, score);
       *score = doc;
     };
-    auto pord = irs::Order::Prepare(sort);
+    auto pord = irs::Scorers::Prepare(sort);
 
     auto prepared = q.prepare(rdr, pord);
 

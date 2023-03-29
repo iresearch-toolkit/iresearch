@@ -37,7 +37,6 @@
 #include "store/directory.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/automaton_decl.hpp"
-#include "utils/io_utils.hpp"
 #include "utils/string.hpp"
 #include "utils/type_info.hpp"
 
@@ -45,25 +44,36 @@
 
 namespace irs {
 
+class Comparer;
 struct SegmentMeta;
 struct field_meta;
 struct flush_state;
-struct reader_state;
+struct ReaderState;
 class index_output;
 struct data_input;
 struct index_input;
 struct postings_writer;
+struct Scorer;
+struct WandWriter;
 
 using DocumentMask = absl::flat_hash_set<doc_id_t>;
 using DocMap = std::vector<doc_id_t>;
+using DocMapView = std::span<const doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
 using ScoreFunctionFactory =
-  std::function<ScoreFunction(const attribute_provider&)>;
+  std::function<ScoreFunction(const attribute_provider&, const Scorer&)>;
 
 struct WanderatorOptions {
   ScoreFunctionFactory factory;
-  bool strict{false};
+};
+
+struct SegmentWriterOptions {
+  const ColumnInfoProvider& column_info;
+  const FeatureInfoProvider& feature_info;
+  const std::set<irs::type_info::type_id>& scorers_features;
+  ScorersView scorers;
+  const Comparer* const comparator{};
 };
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
@@ -86,13 +96,13 @@ struct term_meta : attribute {
   uint32_t freq = 0;
 };
 
-struct postings_writer : attribute_provider {
+struct postings_writer {
   using ptr = std::unique_ptr<postings_writer>;
 
   class releaser {
    public:
     explicit releaser(postings_writer* owner = nullptr) noexcept
-      : owner_(owner) {}
+      : owner_{owner} {}
 
     inline void operator()(term_meta* meta) const noexcept;
 
@@ -100,23 +110,29 @@ struct postings_writer : attribute_provider {
     postings_writer* owner_;
   };
 
-  typedef std::unique_ptr<term_meta, releaser> state;
+  using state = std::unique_ptr<term_meta, releaser>;
+
+  struct FieldStats {
+    uint64_t wand_mask;
+    doc_id_t docs_count;
+  };
 
   virtual ~postings_writer() = default;
-  /* out - corresponding terms utils/utstream */
+  // out - corresponding terms stream
   virtual void prepare(index_output& out, const flush_state& state) = 0;
-  virtual void begin_field(IndexFeatures features) = 0;
+  virtual void begin_field(
+    IndexFeatures index_features,
+    const std::map<irs::type_info::type_id, field_id>& features) = 0;
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
+  virtual FieldStats end_field() = 0;
   virtual void end() = 0;
 
  protected:
   friend struct term_meta;
 
-  state make_state(term_meta& meta) noexcept {
-    return state(&meta, releaser(this));
-  }
+  state make_state(term_meta& meta) noexcept { return {&meta, releaser{this}}; }
 
   virtual void release(term_meta* meta) noexcept = 0;
 };
@@ -137,6 +153,11 @@ struct field_writer {
   virtual void end() = 0;
 };
 
+struct WandInfo {
+  byte_type mapped_index;
+  byte_type count;
+};
+
 struct postings_reader {
   using ptr = std::unique_ptr<postings_reader>;
   using term_provider_f = std::function<const term_meta*()>;
@@ -145,7 +166,7 @@ struct postings_reader {
 
   // in - corresponding stream
   // features - the set of features available for segment
-  virtual void prepare(index_input& in, const reader_state& state,
+  virtual void prepare(index_input& in, const ReaderState& state,
                        IndexFeatures features) = 0;
 
   // Parses input block "in" and populate "attrs" collection with
@@ -157,12 +178,14 @@ struct postings_reader {
   // Returns document iterator for a specified 'cookie' and 'features'
   virtual doc_iterator::ptr iterator(IndexFeatures field_features,
                                      IndexFeatures required_features,
-                                     const term_meta& meta) = 0;
+                                     const term_meta& meta,
+                                     byte_type wand_count) = 0;
 
   virtual doc_iterator::ptr wanderator(IndexFeatures field_features,
                                        IndexFeatures required_features,
                                        const term_meta& meta,
-                                       const WanderatorOptions& options) = 0;
+                                       const WanderatorOptions& options,
+                                       WandContext ctx, WandInfo info) = 0;
 
   // Evaluates a union of all docs denoted by attribute supplied via a
   // speciified 'provider'. Each doc is represented by a bit in a
@@ -232,9 +255,10 @@ struct term_reader : public attribute_provider {
   virtual doc_iterator::ptr postings(const seek_cookie& cookie,
                                      IndexFeatures features) const = 0;
 
-  virtual doc_iterator::ptr wanderator(
-    const seek_cookie& cookie, IndexFeatures features,
-    const WanderatorOptions& options) const = 0;
+  virtual doc_iterator::ptr wanderator(const seek_cookie& cookie,
+                                       IndexFeatures features,
+                                       const WanderatorOptions& options,
+                                       WandContext context) const = 0;
 
   // Returns field metadata.
   virtual const field_meta& meta() const = 0;
@@ -250,6 +274,9 @@ struct term_reader : public attribute_provider {
 
   // Returns the most significant term.
   virtual bytes_view(max)() const = 0;
+
+  // Returns true if scorer denoted by the is supported by the field.
+  virtual bool has_scorer(byte_type index) const = 0;
 };
 
 struct field_reader {
@@ -257,8 +284,7 @@ struct field_reader {
 
   virtual ~field_reader() = default;
 
-  virtual void prepare(const directory& dir, const SegmentMeta& meta,
-                       const DocumentMask& mask) = 0;
+  virtual void prepare(const ReaderState& stat) = 0;
 
   virtual const term_reader* field(std::string_view field) const = 0;
   virtual field_iterator::ptr iterator() const = 0;
@@ -416,7 +442,6 @@ class format {
  public:
   using ptr = std::shared_ptr<const format>;
 
-  explicit format(const type_info& type) noexcept : type_(type) {}
   virtual ~format() = default;
 
   virtual index_meta_writer::ptr get_index_meta_writer() const = 0;
@@ -435,24 +460,27 @@ class format {
     bool consolidation) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
-  const type_info& type() const { return type_; }
-
- private:
-  type_info type_;
+  virtual irs::type_info::type_id type() const noexcept = 0;
 };
 
 struct flush_state {
   directory* const dir{};
   const DocMap* docmap{};
-  const std::set<type_info::type_id>* features{};  // segment features
-  const std::string_view name;                     // segment name
+  const ColumnProvider* columns{};
+  // Accumulated segment features
+  const std::set<type_info::type_id>* features{};
+  // Segment name
+  const std::string_view name;  // segment name
+  ScorersView scorers;
   const size_t doc_count;
-  IndexFeatures index_features{IndexFeatures::NONE};  // segment index features
+  // Accumulated segment index features
+  IndexFeatures index_features{IndexFeatures::NONE};
 };
 
-struct reader_state {
+struct ReaderState {
   const directory* dir;
   const SegmentMeta* meta;
+  ScorersView scorers;
 };
 
 namespace formats {

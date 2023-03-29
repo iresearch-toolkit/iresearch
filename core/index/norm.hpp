@@ -30,7 +30,8 @@
 namespace irs {
 
 struct NormReaderContext {
-  bool Reset(const SubReader& segment, field_id column, const document& doc);
+  bool Reset(const ColumnProvider& segment, field_id column,
+             const document& doc);
   bool Valid() const noexcept { return doc != nullptr; }
 
   bytes_view header;
@@ -184,7 +185,8 @@ class Norm2Writer : public FeatureWriter {
 };
 
 struct Norm2ReaderContext : NormReaderContext {
-  bool Reset(const SubReader& segment, field_id column, const document& doc);
+  bool Reset(const ColumnProvider& segment, field_id column,
+             const document& doc);
   bool Valid() const noexcept {
     return NormReaderContext::Valid() && num_bytes;
   }
@@ -247,6 +249,8 @@ class Norm2 : public attribute {
         return func(MakeReader<uint32_t>(std::move(ctx)));
     }
   }
+
+  ValueType value{};
 };
 
 static_assert(std::is_nothrow_move_constructible_v<Norm2>);

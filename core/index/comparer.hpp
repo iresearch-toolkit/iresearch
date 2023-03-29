@@ -47,7 +47,7 @@ class Comparer {
   virtual int CompareImpl(bytes_view lhs, bytes_view rhs) const = 0;
 };
 
-inline bool use_dense_sort(size_t size, size_t total) noexcept {
+inline bool UseDenseSort(size_t size, size_t total) noexcept {
   // check: N*logN > K
   return std::isgreaterequal(static_cast<double_t>(size) * std::log(size),
                              static_cast<double_t>(total));

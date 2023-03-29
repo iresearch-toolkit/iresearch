@@ -26,14 +26,14 @@ namespace {
 
 using namespace irs;
 
-struct noop_field_collector final : sort::field_collector {
+struct noop_field_collector final : FieldCollector {
   void collect(const SubReader&, const term_reader&) final {}
   void reset() final {}
   void collect(bytes_view) final {}
   void write(data_output&) const final {}
 };
 
-struct noop_term_collector final : sort::term_collector {
+struct noop_term_collector final : TermCollector {
   void collect(const SubReader&, const term_reader&,
                const attribute_provider&) final {}
   void reset() final {}
@@ -53,7 +53,7 @@ field_collector_wrapper::noop() noexcept {
   return NOOP_FIELD_STATS;
 }
 
-field_collectors::field_collectors(const Order& order)
+field_collectors::field_collectors(const Scorers& order)
   : collectors_base<field_collector_wrapper>(order.buckets().size(), order) {
   auto collectors = collectors_.begin();
   for (auto& bucket : order.buckets()) {
@@ -83,8 +83,7 @@ void field_collectors::collect(const SubReader& segment,
   }
 }
 
-void field_collectors::finish(byte_type* stats_buf,
-                              const IndexReader& index) const {
+void field_collectors::finish(byte_type* stats_buf) const {
   // special case where term statistics collection is not applicable
   // e.g. by_column_existence filter
   IRS_ASSERT(buckets_.size() == collectors_.size());
@@ -95,7 +94,7 @@ void field_collectors::finish(byte_type* stats_buf,
 
     sort.bucket->collect(
       stats_buf + sort.stats_offset,  // where stats for bucket start
-      index, collectors_[i].get(), nullptr);
+      collectors_[i].get(), nullptr);
   }
 }
 
@@ -104,7 +103,7 @@ term_collector_wrapper::noop() noexcept {
   return NOOP_TERM_STATS;
 }
 
-term_collectors::term_collectors(const Order& buckets, size_t size)
+term_collectors::term_collectors(const Scorers& buckets, size_t size)
   : collectors_base<term_collector_wrapper>(buckets.buckets().size() * size,
                                             buckets) {
   // add term collectors from each bucket
@@ -212,8 +211,8 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       IRS_ASSERT(field_collectors.front());
       IRS_ASSERT(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset, index,
-        field_collectors.front(), collectors_[term_idx].get());
+        stats_buf + buckets_.front().stats_offset, field_collectors.front(),
+        collectors_[term_idx].get());
     } break;
     case 2: {
       term_idx *= bucket_count;
@@ -221,13 +220,13 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       IRS_ASSERT(field_collectors.front());
       IRS_ASSERT(buckets_.front().bucket);
       buckets_.front().bucket->collect(
-        stats_buf + buckets_.front().stats_offset, index,
-        field_collectors.front(), collectors_[term_idx].get());
+        stats_buf + buckets_.front().stats_offset, field_collectors.front(),
+        collectors_[term_idx].get());
 
       IRS_ASSERT(field_collectors.back());
       IRS_ASSERT(buckets_.back().bucket);
       buckets_.back().bucket->collect(stats_buf + buckets_.back().stats_offset,
-                                      index, field_collectors.back(),
+                                      field_collectors.back(),
                                       collectors_[term_idx + 1].get());
     } break;
     default: {
@@ -236,8 +235,8 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
       // cppcheck-suppress shadowFunction
       auto begin = field_collectors.begin();
       for (auto& bucket : buckets_) {
-        bucket.bucket->collect(stats_buf + bucket.stats_offset, index,
-                               begin->get(), collectors_[term_idx++].get());
+        bucket.bucket->collect(stats_buf + bucket.stats_offset, begin->get(),
+                               collectors_[term_idx++].get());
         ++begin;
       }
     } break;

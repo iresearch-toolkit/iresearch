@@ -34,8 +34,9 @@ namespace analysis {
 /// @brief an analyzer capable of breaking up delimited text into tokens as per
 ///        RFC4180 (without starting new records on newlines)
 ////////////////////////////////////////////////////////////////////////////////
-class delimited_token_stream final : public analyzer,
-                                     private util::noncopyable {
+class delimited_token_stream final
+  : public TypedAnalyzer<delimited_token_stream>,
+    private util::noncopyable {
  public:
   static constexpr std::string_view type_name() noexcept { return "delimiter"; }
   static void init();  // for trigering registration in a static build

@@ -328,9 +328,7 @@ REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,
 
 segmentation_token_stream::segmentation_token_stream(
   segmentation_token_stream::options_t&& options)
-  : analyzer{irs::type<segmentation_token_stream>::get()},
-    state_{new state_t()},
-    options_{options} {}
+  : state_{new state_t()}, options_{options} {}
 
 bool segmentation_token_stream::next() {
   while (true) {

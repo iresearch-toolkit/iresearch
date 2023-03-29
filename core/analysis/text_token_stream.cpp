@@ -77,10 +77,6 @@
 namespace irs {
 namespace analysis {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
-
 struct icu_objects {
   bool valid() const noexcept {
     // 'break_iterator' indicates that 'icu_objects' struct initialized
@@ -138,9 +134,6 @@ namespace {
 
 using namespace irs;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 struct cached_options_t : public analysis::text_token_stream::options_t {
   analysis::text_token_stream::stopwords_t stopwords_;
 
@@ -163,13 +156,7 @@ absl::node_hash_map<std::string, cached_options_t, StringHash>
   cached_state_by_key;
 std::mutex mutex;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief retrieves a set of ignored words from FS at the specified custom path
-////////////////////////////////////////////////////////////////////////////////
+// Retrieves a set of ignored words from FS at the specified custom path
 bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
                    std::string_view language, std::string_view path = {}) {
   std::filesystem::path stopword_path;
@@ -991,25 +978,12 @@ void text_token_stream::state_deleter_t::operator()(state_t* p) const noexcept {
   delete p;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  static variables
-// -----------------------------------------------------------------------------
-
 const char* text_token_stream::STOPWORD_PATH_ENV_VARIABLE =
   "IRESEARCH_TEXT_STOPWORD_PATH";
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
 text_token_stream::text_token_stream(const options_t& options,
                                      const stopwords_t& stopwords)
-  : analyzer{irs::type<text_token_stream>::get()},
-    state_{new state_t{options, stopwords}} {}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
+  : state_{new state_t{options, stopwords}} {}
 
 /*static*/ void text_token_stream::init() {
   REGISTER_ANALYZER_VPACK(analysis::text_token_stream, make_vpack,

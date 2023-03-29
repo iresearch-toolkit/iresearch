@@ -711,18 +711,18 @@ void generic_json_field_factory(document& doc, const std::string& name,
 
 void payloaded_json_field_factory(document& doc, const std::string& name,
                                   const json_doc_generator::json_value& data) {
-  typedef text_field<std::string> text_field;
+  using text_field = text_field<std::string>;
 
   if (json_doc_generator::ValueType::STRING == data.vt) {
-    // analyzed && pyaloaded
+    // Analyzed field with payload
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl_pay", data.str, true));
 
-    // analyzed field
+    // Analyzed field
     doc.indexed.push_back(std::make_shared<text_field>(
       std::string(name.c_str()) + "_anl", data.str));
 
-    // not analyzed field
+    // Not analyzed field
     doc.insert(std::make_shared<string_field>(name, data.str));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<binary_field>());

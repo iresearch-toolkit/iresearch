@@ -20,7 +20,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "sorted_column.hpp"
+#include "buffered_column.hpp"
 
 #include "index/comparer.hpp"
 #include "shared.hpp"
@@ -28,14 +28,14 @@
 
 namespace irs {
 
-bool sorted_column::flush_sparse_primary(
-  doc_map& docmap, const columnstore_writer::values_writer_f& writer,
+bool BufferedColumn::FlushSparsePrimary(
+  DocMap& docmap, const columnstore_writer::values_writer_f& writer,
   doc_id_t docs_count, const Comparer& compare) {
   auto comparer = [&](const auto& lhs, const auto& rhs) {
-    return compare.Compare(get_value(&lhs), get_value(&rhs));
+    return compare.Compare(GetPayload(lhs), GetPayload(rhs));
   };
 
-  if (std::is_sorted(index_.begin(), index_.end() - 1,
+  if (std::is_sorted(index_.begin(), index_.end(),
                      [&](const auto& lhs, const auto& rhs) {
                        return comparer(lhs, rhs) < 0;
                      })) {
@@ -44,7 +44,7 @@ bool sorted_column::flush_sparse_primary(
 
   docmap.resize(doc_limits::min() + docs_count);
 
-  std::vector<size_t> sorted_index(index_.size() - 1);
+  std::vector<size_t> sorted_index(index_.size());
   std::iota(sorted_index.begin(), sorted_index.end(), 0);
   std::sort(sorted_index.begin(), sorted_index.end(),
             [&](size_t lhs, size_t rhs) {
@@ -63,15 +63,15 @@ bool sorted_column::flush_sparse_primary(
 
     doc_id_t min = doc_limits::min();
     if (IRS_LIKELY(idx)) {
-      min += std::prev(value)->first;
+      min += std::prev(value)->key;
     }
 
-    for (const doc_id_t max = value->first; min < max; ++min) {
+    for (const doc_id_t max = value->key; min < max; ++min) {
       docmap[min] = new_doc++;
     }
 
     docmap[min] = new_doc;
-    write_value(writer(new_doc), value);
+    WriteValue(writer(new_doc), *value);
     ++new_doc;
   }
 
@@ -79,7 +79,7 @@ bool sorted_column::flush_sparse_primary(
   IRS_ASSERT(std::all_of(docmap.begin() + 1, docmap.begin() + new_doc,
                          [](doc_id_t doc) { return doc_limits::valid(doc); }));
   // Ensure we reached the last doc in sort column
-  IRS_ASSERT((std::prev(index_.end(), 2)->first + 1) == new_doc);
+  IRS_ASSERT((std::prev(index_.end(), 1)->key + 1) == new_doc);
   // Handle docs without sort value that are placed after last filled sort doc
   for (auto begin = std::next(docmap.begin(), new_doc); begin != docmap.end();
        ++begin) {
@@ -90,101 +90,92 @@ bool sorted_column::flush_sparse_primary(
   return true;
 }
 
-std::pair<doc_map, field_id> sorted_column::flush(
+std::pair<DocMap, field_id> BufferedColumn::Flush(
   columnstore_writer& writer, columnstore_writer::column_finalizer_f finalizer,
   doc_id_t docs_count, const Comparer& compare) {
   IRS_ASSERT(index_.size() <= docs_count);
-  IRS_ASSERT(index_.empty() || index_.back().first <= docs_count);
+  IRS_ASSERT(index_.empty() || index_.back().key <= docs_count);
+
+  Prepare(doc_limits::eof());  // Insert last pending value
 
   if (IRS_UNLIKELY(index_.empty())) {
     return {{}, field_limits::invalid()};
   }
 
-  // temporarily push sentinel
-  index_.emplace_back(doc_limits::eof(), data_buf_.size());
-
-  doc_map docmap;
+  DocMap docmap;
   auto [column_id, column_writer] =
     writer.push_column(info_, std::move(finalizer));
 
-  if (!flush_sparse_primary(docmap, column_writer, docs_count, compare)) {
-    flush_already_sorted(column_writer);
+  if (!FlushSparsePrimary(docmap, column_writer, docs_count, compare)) {
+    FlushAlreadySorted(column_writer);
   }
-
-  clear();  // data have been flushed
 
   return {std::move(docmap), column_id};
 }
 
-void sorted_column::flush_already_sorted(
+void BufferedColumn::FlushAlreadySorted(
   const columnstore_writer::values_writer_f& writer) {
-  // -1 for sentinel
-  for (auto begin = index_.begin(), end = std::prev(index_.end()); begin != end;
-       ++begin) {
-    write_value(writer(begin->first), &*begin);
+  for (const auto& value : index_) {
+    WriteValue(writer(value.key), value);
   }
 }
 
-bool sorted_column::flush_dense(
-  const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
-  flush_buffer_t& buffer) {
+bool BufferedColumn::FlushDense(
+  const columnstore_writer::values_writer_f& writer, DocMapView docmap,
+  BufferedValues& buffer) {
   IRS_ASSERT(!docmap.empty());
 
-  const size_t total = docmap.size() - 1;  // -1 for first element
-  const size_t size = index_.size() - 1;   // -1 for sentinel
+  const size_t total = docmap.size() - 1;  // -1 for the first element
+  const size_t size = index_.size();
 
-  if (!use_dense_sort(size, total)) {
+  if (!UseDenseSort(size, total)) {
     return false;
   }
 
   buffer.clear();
-  buffer.resize(total, std::pair{doc_limits::eof(), doc_limits::invalid()});
-
-  for (size_t i = 0; i < size; ++i) {
-    buffer[docmap[index_[i].first] - doc_limits::min()].first = doc_id_t(i);
+  buffer.resize(total);
+  for (const auto& old_value : index_) {
+    const auto new_key = docmap[old_value.key];
+    auto& new_value = buffer[new_key - doc_limits::min()];
+    new_value.key = new_key;
+    new_value.begin = old_value.begin;
+    new_value.size = old_value.size;
   }
 
-  // flush sorted data
-  irs::doc_id_t doc = doc_limits::min();
-  for (const auto& entry : buffer) {
-    if (!doc_limits::eof(entry.first)) {
-      write_value(writer(doc), &index_[entry.first]);
+  index_.clear();
+
+  for (const auto& new_value : buffer) {
+    if (doc_limits::valid(new_value.key)) {
+      WriteValue(writer(new_value.key), new_value);
+      index_.emplace_back(new_value);
     }
-    ++doc;
   };
 
   return true;
 }
 
-void sorted_column::flush_sparse(
-  const columnstore_writer::values_writer_f& writer, const doc_map& docmap,
-  flush_buffer_t& buffer) {
+void BufferedColumn::FlushSparse(
+  const columnstore_writer::values_writer_f& writer, DocMapView docmap) {
   IRS_ASSERT(!docmap.empty());
 
-  const size_t size = index_.size() - 1;  // -1 for sentinel
-
-  buffer.resize(size);
-
-  for (size_t i = 0; i < size; ++i) {
-    buffer[i] = std::pair{doc_id_t(i), docmap[index_[i].first]};
+  for (auto& value : index_) {
+    value.key = docmap[value.key];
   }
 
-  std::sort(buffer.begin(), buffer.end(),
-            [](std::pair<doc_id_t, doc_id_t> lhs,
-               std::pair<doc_id_t, doc_id_t> rhs) noexcept {
-              return lhs.second < rhs.second;
+  std::sort(index_.begin(), index_.end(),
+            [](const auto& lhs, const auto& rhs) noexcept {
+              return lhs.key < rhs.key;
             });
 
-  // flush sorted data
-  for (const auto& entry : buffer) {
-    write_value(writer(entry.second), &index_[entry.first]);
-  }
+  FlushAlreadySorted(writer);
 }
 
-field_id sorted_column::flush(columnstore_writer& writer,
-                              columnstore_writer::column_finalizer_f finalizer,
-                              const doc_map& docmap, flush_buffer_t& buffer) {
+field_id BufferedColumn::Flush(columnstore_writer& writer,
+                               columnstore_writer::column_finalizer_f finalizer,
+                               DocMapView docmap, BufferedValues& buffer) {
   IRS_ASSERT(docmap.size() < irs::doc_limits::eof());
+
+  Prepare(doc_limits::eof());  // Insert last pending value
 
   if (IRS_UNLIKELY(index_.empty())) {
     return field_limits::invalid();
@@ -193,16 +184,11 @@ field_id sorted_column::flush(columnstore_writer& writer,
   auto [column_id, column_writer] =
     writer.push_column(info_, std::move(finalizer));
 
-  // temporarily push sentinel
-  index_.emplace_back(doc_limits::eof(), data_buf_.size());
-
   if (docmap.empty()) {
-    flush_already_sorted(column_writer);
-  } else if (!flush_dense(column_writer, docmap, buffer)) {
-    flush_sparse(column_writer, docmap, buffer);
+    FlushAlreadySorted(column_writer);
+  } else if (!FlushDense(column_writer, docmap, buffer)) {
+    FlushSparse(column_writer, docmap);
   }
-
-  clear();  // data have been flushed
 
   return column_id;
 }

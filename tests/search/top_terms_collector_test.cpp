@@ -53,84 +53,77 @@ struct type<::term_meta> : type<irs::term_meta> {};
 
 namespace {
 
-struct sort : irs::sort {
-  sort() noexcept : irs::sort(irs::type<sort>::get()) {}
+struct sort : irs::Scorer {
+  struct field_collector final : irs::FieldCollector {
+    uint64_t docs_with_field = 0;  // number of documents containing the matched
+                                   // field (possibly without matching terms)
+    uint64_t total_term_freq = 0;  // number of terms for processed field
 
-  struct prepared final : irs::sort::prepared {
-    struct field_collector final : irs::sort::field_collector {
-      uint64_t docs_with_field =
-        0;  // number of documents containing the matched field (possibly
-            // without matching terms)
-      uint64_t total_term_freq = 0;  // number of terms for processed field
+    void collect(const irs::SubReader&, const irs::term_reader& field) final {
+      docs_with_field += field.docs_count();
 
-      void collect(const irs::SubReader&, const irs::term_reader& field) final {
-        docs_with_field += field.docs_count();
+      auto* freq = irs::get<irs::frequency>(field);
 
-        auto* freq = irs::get<irs::frequency>(field);
-
-        if (freq) {
-          total_term_freq += freq->value;
-        }
+      if (freq) {
+        total_term_freq += freq->value;
       }
-
-      void reset() noexcept final {
-        docs_with_field = 0;
-        total_term_freq = 0;
-      }
-
-      void collect(irs::bytes_view) final {}
-      void write(irs::data_output&) const final {}
-    };
-
-    struct term_collector final : irs::sort::term_collector {
-      uint64_t docs_with_term =
-        0;  // number of documents containing the matched term
-
-      void collect(const irs::SubReader&, const irs::term_reader&,
-                   const irs::attribute_provider& term_attrs) final {
-        auto* meta = irs::get<irs::term_meta>(term_attrs);
-
-        if (meta) {
-          docs_with_term += meta->docs_count;
-        }
-      }
-
-      void reset() noexcept final { docs_with_term = 0; }
-
-      void collect(irs::bytes_view) final {}
-      void write(irs::data_output&) const final {}
-    };
-
-    void collect(irs::byte_type*, const irs::IndexReader&,
-                 const irs::sort::field_collector*,
-                 const irs::sort::term_collector*) const final {}
-
-    irs::IndexFeatures features() const final {
-      return irs::IndexFeatures::NONE;
     }
 
-    irs::sort::field_collector::ptr prepare_field_collector() const final {
-      return std::make_unique<field_collector>();
+    void reset() noexcept final {
+      docs_with_field = 0;
+      total_term_freq = 0;
     }
 
-    irs::sort::term_collector::ptr prepare_term_collector() const final {
-      return std::make_unique<term_collector>();
-    }
-
-    irs::ScoreFunction prepare_scorer(
-      const irs::SubReader& /*segment*/, const irs::term_reader& /*field*/,
-      const irs::byte_type* /*stats*/,
-      const irs::attribute_provider& /*doc_attrs*/,
-      irs::score_t /*boost*/) const final {
-      return irs::ScoreFunction::Invalid();
-    }
-
-    std::pair<size_t, size_t> stats_size() const final { return {0, 0}; }
+    void collect(irs::bytes_view) final {}
+    void write(irs::data_output&) const final {}
   };
 
-  irs::sort::prepared::ptr prepare() const final {
-    return std::make_unique<prepared>();
+  struct term_collector final : irs::TermCollector {
+    uint64_t docs_with_term =
+      0;  // number of documents containing the matched term
+
+    void collect(const irs::SubReader&, const irs::term_reader&,
+                 const irs::attribute_provider& term_attrs) final {
+      auto* meta = irs::get<irs::term_meta>(term_attrs);
+
+      if (meta) {
+        docs_with_term += meta->docs_count;
+      }
+    }
+
+    void reset() noexcept final { docs_with_term = 0; }
+
+    void collect(irs::bytes_view) final {}
+    void write(irs::data_output&) const final {}
+  };
+
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::NONE;
   }
+
+  irs::WandWriter::ptr prepare_wand_writer(size_t) const final {
+    return nullptr;
+  }
+
+  irs::WandSource::ptr prepare_wand_source() const final { return nullptr; }
+
+  irs::FieldCollector::ptr prepare_field_collector() const final {
+    return std::make_unique<field_collector>();
+  }
+
+  irs::TermCollector::ptr prepare_term_collector() const final {
+    return std::make_unique<term_collector>();
+  }
+
+  irs::ScoreFunction prepare_scorer(
+    const irs::ColumnProvider& /*segment*/, const irs::feature_map_t& /*field*/,
+    const irs::byte_type* /*stats*/,
+    const irs::attribute_provider& /*doc_attrs*/,
+    irs::score_t /*boost*/) const final {
+    return irs::ScoreFunction::Invalid();
+  }
+
+  std::pair<size_t, size_t> stats_size() const final { return {0, 0}; }
 };
 
 class seek_term_iterator : public irs::seek_term_iterator {

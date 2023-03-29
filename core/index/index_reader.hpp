@@ -103,8 +103,16 @@ struct IndexReader {
   Iterator end() const { return Iterator{*this, size()}; }
 };
 
+struct ColumnProvider {
+  virtual ~ColumnProvider() = default;
+
+  virtual const irs::column_reader* column(field_id field) const = 0;
+
+  virtual const irs::column_reader* column(std::string_view field) const = 0;
+};
+
 // Generic interface for accessing an index segment
-struct SubReader : public IndexReader {
+struct SubReader : public IndexReader, public ColumnProvider {
   using ptr = std::shared_ptr<const SubReader>;
 
   static const SubReader& empty() noexcept;
@@ -144,10 +152,6 @@ struct SubReader : public IndexReader {
   // Columnstore
 
   virtual column_iterator::ptr columns() const = 0;
-
-  virtual const irs::column_reader* column(field_id field) const = 0;
-
-  virtual const irs::column_reader* column(std::string_view field) const = 0;
 
   virtual const irs::column_reader* sort() const = 0;
 };

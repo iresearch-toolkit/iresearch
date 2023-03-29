@@ -21,15 +21,47 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index/index_tests.hpp"
+#include "index/norm.hpp"
+#include "search/bm25.hpp"
 #include "search/filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
+#include "utils/index_utils.hpp"
 
 namespace {
 
+class Scorers {
+ public:
+  template<typename T, typename... Args>
+  const T& PushBack(Args&&... args) {
+    auto scorer = std::make_unique<T>(std::forward<Args>(args)...);
+    auto& bucket = scorers_.emplace_back();
+    bucket = scorer.release();
+    return static_cast<T&>(*bucket);
+  }
+
+  const irs::Scorer& operator[](size_t i) const noexcept {
+    EXPECT_LT(i, scorers_.size());
+    return *scorers_[i];
+  }
+
+  // Intentionally imlicit
+  operator irs::ScorersView() const noexcept { return scorers_; }
+
+  ~Scorers() {
+    for (auto* scorer : scorers_) {
+      delete scorer;
+    }
+  }
+
+ private:
+  std::vector<irs::Scorer*> scorers_;
+};
+
 struct Doc {
-  Doc(size_t segment, irs::doc_id_t doc) : segment{segment}, doc{doc} {}
+  Doc(size_t segment, irs::doc_id_t doc) noexcept
+    : segment{segment}, doc{doc} {}
 
   bool operator==(const Doc&) const = default;
 
@@ -37,38 +69,62 @@ struct Doc {
   irs::doc_id_t doc;
 };
 
-class WandTestCase : public tests::index_test_base {
- public:
-  std::vector<Doc> Collect(const irs::IndexReader& index,
-                           const irs::filter& filter, const irs::sort& scorer,
-                           size_t limit, bool use_wand);
+struct ScoredDoc : Doc {
+  ScoredDoc(size_t segment, irs::doc_id_t doc, float score) noexcept
+    : Doc{segment, doc}, score{score} {}
 
-  void AssertResults(const irs::IndexReader& index, const irs::filter& filter,
-                     const irs::sort& scorer, size_t limit);
+  bool operator<(const ScoredDoc& rhs) const noexcept {
+    if (score > rhs.score) {
+      return true;
+    }
+    if (score < rhs.score) {
+      return false;
+    }
+    if (segment < rhs.segment) {
+      return true;
+    }
+    if (segment > rhs.segment) {
+      return false;
+    }
+    return doc < rhs.doc;
+  }
+
+  float score;
 };
 
-std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
+class WandTestCase : public tests::index_test_base {
+ public:
+  static irs::IndexWriterOptions GetWriterOptions(irs::ScorersView scorers,
+                                                  bool write_norms);
+
+  std::vector<Doc> Collect(const irs::DirectoryReader& index,
+                           const irs::filter& filter, const irs::Scorer& scorer,
+                           irs::byte_type wand_idx, bool can_use_wand,
+                           size_t limit);
+
+  void AssertResults(const irs::DirectoryReader& index,
+                     const irs::filter& filter, const irs::Scorer& scorer,
+                     irs::byte_type wand_idx, bool can_use_wand, size_t limit);
+
+  void GenerateSegment(irs::ScorersView scorers, bool write_norms,
+                       bool append_data = false);
+  void ConsolidateAll(irs::ScorersView scorers, bool write_norms);
+  void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
+                        irs::byte_type wand_index);
+  void AssertTermFilter(irs::ScorersView scorers);
+};
+
+std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
                                        const irs::filter& filter,
-                                       const irs::sort& scorer, size_t limit,
-                                       bool use_wand) {
-  struct ScoredDoc : Doc {
-    ScoredDoc(size_t segment, irs::doc_id_t doc, float score)
-      : Doc{segment, doc}, score{score} {}
-
-    float score;
-  };
-
-  auto less = [](const ScoredDoc& lhs, const ScoredDoc& rhs) noexcept {
-    return lhs.score > rhs.score;
-  };
-
-  auto scorers = irs::Order::Prepare(scorer);
+                                       const irs::Scorer& scorer,
+                                       irs::byte_type wand_idx,
+                                       bool can_use_wand, size_t limit) {
+  auto scorers = irs::Scorers::Prepare(scorer);
   EXPECT_FALSE(scorers.empty());
   auto query = filter.prepare(index, scorers);
   EXPECT_NE(nullptr, query);
 
-  const auto mode =
-    (use_wand ? irs::ExecutionMode::kTop : irs::ExecutionMode::kAll);
+  const irs::WandContext mode{.index = wand_idx};
 
   irs::score_threshold tmp;
   std::vector<ScoredDoc> sorted;
@@ -76,7 +132,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
 
   for (size_t left = limit, segment_id = 0; const auto& segment : index) {
     auto docs = query->execute(irs::ExecutionContext{
-      .segment = segment, .scorers = scorers, .mode = mode});
+      .segment = segment, .scorers = scorers, .wand = mode});
     EXPECT_NE(nullptr, docs);
 
     const auto* doc = irs::get<irs::document>(*docs);
@@ -84,7 +140,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
     const auto* score = irs::get<irs::score>(*docs);
     EXPECT_NE(nullptr, score);
     auto* threshold = irs::get_mutable<irs::score_threshold>(docs.get());
-    if (use_wand) {
+    if (wand_idx != irs::WandContext::kDisable && can_use_wand) {
       EXPECT_NE(nullptr, threshold);
     } else {
       EXPECT_EQ(nullptr, threshold);
@@ -93,7 +149,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
 
     if (!left) {
       EXPECT_TRUE(!sorted.empty());
-      EXPECT_TRUE(std::is_heap(std::begin(sorted), std::end(sorted), less));
+      EXPECT_TRUE(std::is_heap(std::begin(sorted), std::end(sorted)));
       threshold->value = sorted.front().score;
     }
 
@@ -104,59 +160,231 @@ std::vector<Doc> WandTestCase::Collect(const irs::IndexReader& index,
         sorted.emplace_back(segment_id, doc->value, score_value);
 
         if (0 == --left) {
-          std::make_heap(std::begin(sorted), std::end(sorted), less);
+          std::make_heap(std::begin(sorted), std::end(sorted));
           threshold->value = sorted.front().score;
         }
       } else if (sorted.front().score < score_value) {
-        std::pop_heap(std::begin(sorted), std::end(sorted), less);
+        std::pop_heap(std::begin(sorted), std::end(sorted));
 
         auto& min_doc = sorted.back();
         min_doc.segment = segment_id;
         min_doc.doc = doc->value;
         min_doc.score = score_value;
 
-        std::push_heap(std::begin(sorted), std::end(sorted), less);
+        std::push_heap(std::begin(sorted), std::end(sorted));
 
         threshold->value = sorted.front().score;
       }
     }
 
-    std::sort(std::begin(sorted), std::end(sorted), less);
-
     ++segment_id;
   }
+
+  std::sort(std::begin(sorted), std::end(sorted));
 
   return {std::begin(sorted), std::end(sorted)};
 }
 
-void WandTestCase::AssertResults(const irs::IndexReader& index,
+void WandTestCase::AssertResults(const irs::DirectoryReader& index,
                                  const irs::filter& filter,
-                                 const irs::sort& scorer, size_t limit) {
-  auto wand_result = Collect(index, filter, scorer, limit, true);
-  auto result = Collect(index, filter, scorer, limit, false);
+                                 const irs::Scorer& scorer,
+                                 irs::byte_type scorer_idx, bool can_use_wand,
+                                 size_t limit) {
+  auto wand_result =
+    Collect(index, filter, scorer, scorer_idx, can_use_wand, limit);
+  auto result = Collect(index, filter, scorer, irs::WandContext::kDisable,
+                        can_use_wand, limit);
   ASSERT_EQ(result, wand_result);
 }
 
-TEST_P(WandTestCase, TermFilter) {
-  {
-    tests::json_doc_generator gen(
-      resource("simple_single_column_multi_term.json"),
-      &tests::payloaded_json_field_factory);
-    add_segment(gen);
+void WandTestCase::ConsolidateAll(irs::ScorersView scorers, bool write_norms) {
+  const irs::index_utils::ConsolidateCount consolidate_all;
+  auto writer =
+    open_writer(irs::OM_APPEND, GetWriterOptions(scorers, write_norms));
+  ASSERT_TRUE(
+    writer->Consolidate(irs::index_utils::MakePolicy(consolidate_all)));
+  ASSERT_TRUE(writer->Commit());
+  ASSERT_EQ(1, writer->GetSnapshot().size());
+}
+
+irs::IndexWriterOptions WandTestCase::GetWriterOptions(irs::ScorersView scorers,
+                                                       bool write_norms) {
+  EXPECT_TRUE(std::all_of(scorers.begin(), scorers.end(),
+                          [](auto* scorer) { return scorer != nullptr; }));
+
+  irs::IndexWriterOptions writer_options;
+  writer_options.reader_options.scorers = scorers;
+  writer_options.features = [write_norms](irs::type_info::type_id id) {
+    if (write_norms && irs::type<irs::Norm2>::id() == id) {
+      return std::make_pair(
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        &irs::Norm2::MakeWriter);
+    }
+
+    return std::make_pair(
+      irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+      irs::FeatureWriterFactory{});
+  };
+
+  return writer_options;
+}
+
+void WandTestCase::GenerateSegment(irs::ScorersView scorers, bool write_norms,
+                                   bool append_data) {
+  tests::json_doc_generator gen(
+    resource("simple_single_column_multi_term.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      using TextField = tests::text_field<std::string>;
+
+      if (tests::json_doc_generator::ValueType::STRING == data.vt) {
+        doc.indexed.push_back(std::make_shared<TextField>(
+          std::string{name}, data.str, false,
+          std::vector{irs::type<irs::Norm2>::id()}));
+      }
+    });
+
+  auto open_mode = irs::OM_CREATE;
+  if (append_data) {
+    open_mode |= irs::OM_APPEND;
   }
 
-  auto reader = irs::DirectoryReader{dir(), codec()};
-  ASSERT_NE(nullptr, reader);
+  add_segment(gen, open_mode, GetWriterOptions(scorers, write_norms));
+}
+
+void WandTestCase::AssertTermFilter(irs::ScorersView scorers) {
+  ASSERT_FALSE(scorers.empty());
+  for (size_t idx = 0; auto* scorer : scorers) {
+    AssertTermFilter(scorers, *scorer, idx);
+    ++idx;
+  }
+  // Invalid scorer
+  AssertTermFilter(scorers, *scorers[0], scorers.size());
+}
+
+void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
+                                    const irs::Scorer& scorer,
+                                    irs::byte_type wand_index) {
+  static constexpr std::string_view kFieldName = "name";
 
   irs::by_term filter;
-  *filter.mutable_field() = "name_anl";
-  filter.mutable_options()->term =
-    irs::ViewCast<irs::byte_type>(std::string_view{"tempor"});
+  *filter.mutable_field() = kFieldName;
 
-  irs::tfidf_sort scorer{false, false};
+  auto reader = irs::DirectoryReader{
+    dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
+  ASSERT_NE(nullptr, reader);
 
-  AssertResults(reader, filter, scorer, 10);
-  AssertResults(reader, filter, scorer, 100);
+  for (const auto& segment : reader) {
+    const auto* field = segment.field(kFieldName);
+    ASSERT_NE(nullptr, field);
+
+    const auto can_use_wand = [&]() {
+      const auto& field_meta = field->meta();
+      const auto index_features = scorer.index_features();
+      if (index_features != (index_features & field_meta.index_features)) {
+        return false;
+      }
+
+      irs::feature_set_t features;
+      scorer.get_features(features);
+
+      for (const auto feature : features) {
+        const auto it = field_meta.features.find(feature);
+        if (it == field_meta.features.end() ||
+            !irs::field_limits::valid(it->second)) {
+          return false;
+        }
+      }
+
+      return wand_index < scorers.size();
+    }();
+
+    ASSERT_EQ(can_use_wand, field->has_scorer(wand_index));
+
+    for (auto terms = field->iterator(irs::SeekMode::NORMAL); terms->next();) {
+      filter.mutable_options()->term = terms->value();
+
+      AssertResults(reader, filter, scorer, wand_index, can_use_wand, 10);
+      AssertResults(reader, filter, scorer, wand_index, can_use_wand, 100);
+    }
+  }
+}
+
+TEST_P(WandTestCase, TermFilterMultipleScorersDense) {
+  Scorers scorers;
+  scorers.PushBack<irs::TFIDF>(false);
+  scorers.PushBack<irs::TFIDF>(true);
+  scorers.PushBack<irs::BM25>();
+  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+
+  GenerateSegment(scorers, true);
+  AssertTermFilter(scorers);
+
+  GenerateSegment(scorers, true, true);  // Add another segment
+  ConsolidateAll(scorers, true);
+  AssertTermFilter(scorers);
+
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertTermFilter(scorers);
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertTermFilter(scorers);
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertTermFilter(scorers);
+  ConsolidateAll(scorers, true);
+
+  AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, TermFilterMultipleScorersSparse) {
+  Scorers scorers;
+  scorers.PushBack<irs::TFIDF>(false);
+  scorers.PushBack<irs::TFIDF>(true);
+  scorers.PushBack<irs::BM25>();
+  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+
+  GenerateSegment(scorers, false);
+  AssertTermFilter(scorers);
+
+  GenerateSegment(scorers, false, true);  // Add another segment
+  AssertTermFilter(scorers);
+  ConsolidateAll(scorers, false);
+
+  AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, TermFilterTFIDF) {
+  Scorers scorers;
+  scorers.PushBack<irs::TFIDF>(false);
+
+  GenerateSegment(scorers, true);
+  AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, TermFilterTFIDFWithNorms) {
+  Scorers scorers;
+  scorers.PushBack<irs::TFIDF>(true);
+
+  GenerateSegment(scorers, true);
+  AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, TermFilterBM25) {
+  Scorers scorers;
+  auto& scorer = scorers.PushBack<irs::BM25>();
+  ASSERT_FALSE(scorer.IsBM15());
+  ASSERT_FALSE(scorer.IsBM11());
+
+  GenerateSegment(scorers, true);
+  AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, TermFilterBM15) {
+  Scorers scorers;
+  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+  ASSERT_TRUE(scorer.IsBM15());
+
+  GenerateSegment(scorers, true);
+  AssertTermFilter(scorers);
 }
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();

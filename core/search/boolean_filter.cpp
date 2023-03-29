@@ -48,7 +48,7 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
 // Returns disjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
-                                        irs::sort::MergeType merge_type,
+                                        irs::ScoreMergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
   IRS_ASSERT(std::distance(begin, end) >= 0);
@@ -87,7 +87,7 @@ irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
 // Returns conjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
-                                        irs::sort::MergeType merge_type,
+                                        irs::ScoreMergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
   IRS_ASSERT(std::distance(begin, end) >= 0);
@@ -154,8 +154,8 @@ class BooleanQuery : public filter::prepared {
 
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(
-      {.segment = ctx.segment, .scorers = Order::kUnordered, .ctx = ctx.ctx},
-      irs::sort::MergeType::kSum, excl_begin, end);
+      {.segment = ctx.segment, .scorers = Scorers::kUnordered, .ctx = ctx.ctx},
+      irs::ScoreMergeType::kSum, excl_begin, end);
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {
@@ -180,8 +180,8 @@ class BooleanQuery : public filter::prepared {
     }
   }
 
-  virtual void prepare(const IndexReader& rdr, const Order& ord, score_t boost,
-                       sort::MergeType merge_type,
+  virtual void prepare(const IndexReader& rdr, const Scorers& ord,
+                       score_t boost, ScoreMergeType merge_type,
                        const attribute_provider* ctx,
                        std::span<const filter* const> incl,
                        std::span<const filter* const> excl) {
@@ -200,7 +200,7 @@ class BooleanQuery : public filter::prepared {
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
       queries.emplace_back(
-        filter->prepare(rdr, Order::kUnordered, irs::kNoBoost, ctx));
+        filter->prepare(rdr, Scorers::kUnordered, irs::kNoBoost, ctx));
     }
 
     // nothrow block
@@ -220,7 +220,7 @@ class BooleanQuery : public filter::prepared {
   virtual doc_iterator::ptr execute(const ExecutionContext& ctx, iterator begin,
                                     iterator end) const = 0;
 
-  sort::MergeType merge_type() const noexcept { return merge_type_; }
+  ScoreMergeType merge_type() const noexcept { return merge_type_; }
 
  private:
   // 0..excl_-1 - included queries
@@ -228,7 +228,7 @@ class BooleanQuery : public filter::prepared {
   queries_t queries_;
   // index of the first excluded query
   size_t excl_;
-  sort::MergeType merge_type_{sort::MergeType::kSum};
+  ScoreMergeType merge_type_{ScoreMergeType::kSum};
 };
 
 // Represent a set of queries joint by "And"
@@ -306,8 +306,6 @@ class MinMatchQuery : public BooleanQuery {
   size_t min_match_count_;
 };
 
-boolean_filter::boolean_filter(const type_info& type) noexcept : filter{type} {}
-
 size_t boolean_filter::hash() const noexcept {
   size_t seed = 0;
 
@@ -329,7 +327,7 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
 }
 
 filter::prepared::ptr boolean_filter::prepare(
-  const IndexReader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {
   const auto size = filters_.size();
 
@@ -413,11 +411,9 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
   }
 }
 
-And::And() noexcept : boolean_filter{irs::type<And>::get()} {}
-
 filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
                                    std::vector<const filter*>& excl,
-                                   const IndexReader& rdr, const Order& ord,
+                                   const IndexReader& rdr, const Scorers& ord,
                                    score_t boost,
                                    const attribute_provider* ctx) const {
   // optimization step
@@ -486,9 +482,7 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
   return q;
 }
 
-Or::Or() noexcept : boolean_filter(irs::type<Or>::get()), min_match_count_(1) {}
-
-filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Order& ord,
+filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Scorers& ord,
                                   score_t boost,
                                   const attribute_provider* ctx) const {
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
@@ -502,7 +496,7 @@ filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Order& ord,
 
 filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
                                   std::vector<const filter*>& excl,
-                                  const IndexReader& rdr, const Order& ord,
+                                  const IndexReader& rdr, const Scorers& ord,
                                   score_t boost,
                                   const attribute_provider* ctx) const {
   boost *= this->boost();
@@ -596,9 +590,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   return q;
 }
 
-Not::Not() noexcept : irs::filter{irs::type<Not>::get()} {}
-
-filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Order& ord,
+filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Scorers& ord,
                                    score_t boost,
                                    const attribute_provider* ctx) const {
   const auto res = optimize_not(*this);
@@ -615,7 +607,7 @@ filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Order& ord,
     const std::array<const irs::filter*, 1> excl{res.first};
 
     auto q = memory::make_managed<AndQuery>();
-    q->prepare(rdr, ord, boost, sort::MergeType::kSum, ctx, incl, excl);
+    q->prepare(rdr, ord, boost, ScoreMergeType::kSum, ctx, incl, excl);
     return q;
   }
 

@@ -27,28 +27,12 @@
 
 namespace irs {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                               boolean_token_stream implementation
-// -----------------------------------------------------------------------------
-
-boolean_token_stream::boolean_token_stream(bool value /*= false*/) noexcept
-  : basic_token_stream(irs::type<boolean_token_stream>::get()),
-    in_use_(false),
-    value_(value) {}
-
 bool boolean_token_stream::next() noexcept {
   const auto in_use = in_use_;
   in_use_ = true;
   std::get<term_attribute>(attrs_).value = ViewCast<byte_type>(value(value_));
   return !in_use;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                string_token_stream implementation
-// -----------------------------------------------------------------------------
-
-string_token_stream::string_token_stream() noexcept
-  : analysis::analyzer(irs::type<string_token_stream>::get()), in_use_(false) {}
 
 bool string_token_stream::next() noexcept {
   const auto in_use = in_use_;
@@ -59,10 +43,6 @@ bool string_token_stream::next() noexcept {
   in_use_ = true;
   return !in_use;
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       numeric_term implementation
-// -----------------------------------------------------------------------------
 
 bytes_view numeric_token_stream::numeric_term::value(byte_type* buf,
                                                      NumericType type,
@@ -122,10 +102,6 @@ bool numeric_token_stream::numeric_term::next(increment& inc, bytes_view& out) {
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                               numeric_token_stream implementation
-// -----------------------------------------------------------------------------
-
 bool numeric_token_stream::next() {
   return num_.next(std::get<increment>(attrs_),
                    std::get<term_attribute>(attrs_).value);
@@ -171,10 +147,6 @@ void numeric_token_stream::reset(double_t value,
                                                   double_t value) {
   return numeric_term::value(buf, value);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                  null_token_stream implementation
-// -----------------------------------------------------------------------------
 
 bool null_token_stream::next() noexcept {
   const auto in_use = in_use_;

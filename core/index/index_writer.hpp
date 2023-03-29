@@ -630,7 +630,7 @@ class IndexWriter : private util::noncopyable {
  public:
   struct FlushedSegment : public IndexSegment {
     FlushedSegment() = default;
-    explicit FlushedSegment(IndexSegment&& segment, doc_map&& old2new,
+    explicit FlushedSegment(IndexSegment&& segment, DocMap&& old2new,
                             DocsMask&& docs_mask, size_t docs_begin) noexcept
       : IndexSegment{std::move(segment)},
         old2new{std::move(old2new)},
@@ -648,8 +648,8 @@ class IndexWriter : private util::noncopyable {
       return docs_begin_ != committed;
     }
 
-    doc_map old2new;
-    doc_map new2old;
+    DocMap old2new;
+    DocMap new2old;
     // Flushed segment removals
     DocsMask docs_mask;
     DocumentMask document_mask;
@@ -705,13 +705,10 @@ class IndexWriter : private util::noncopyable {
 
     static std::unique_ptr<SegmentContext> make(
       directory& dir, segment_meta_generator_t&& meta_generator,
-      const ColumnInfoProvider& column_info,
-      const FeatureInfoProvider& feature_info, const Comparer* comparator);
+      const SegmentWriterOptions& options);
 
     SegmentContext(directory& dir, segment_meta_generator_t&& meta_generator,
-                   const ColumnInfoProvider& column_info,
-                   const FeatureInfoProvider& feature_info,
-                   const Comparer* comparator);
+                   const SegmentWriterOptions& options);
 
     void Rollback() noexcept;
 
@@ -915,9 +912,12 @@ class IndexWriter : private util::noncopyable {
   FlushContextPtr GetFlushContext() const noexcept;
   FlushContextPtr SwitchFlushContext() noexcept;
 
-  // return a usable segment or a nullptr segment if retry is required
+  // Return a usable segment or a nullptr segment if retry is required
   // (e.g. no free segments available)
   ActiveSegmentContext GetSegmentContext();
+
+  // Return options for segment_writer
+  SegmentWriterOptions GetSegmentWriterOptions() const noexcept;
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;
@@ -933,10 +933,10 @@ class IndexWriter : private util::noncopyable {
   // Abort transaction
   void Abort() noexcept;
 
+  feature_set_t wand_features_;  // Set of features required for wand
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
-  // provides payload for new segments
-  PayloadProvider meta_payload_provider_;
+  PayloadProvider meta_payload_provider_;  // provides payload for new segments
   const Comparer* comparator_;
   format::ptr codec_;
   // guard for cached_segment_readers_, commit_pool_, meta_

@@ -25,11 +25,22 @@
 #include "tests_shared.hpp"
 
 TEST(scorers_tests, duplicate_register) {
-  struct dummy_scorer : public irs::sort {
-    static ptr make(std::string_view) { return ptr(new dummy_scorer()); }
-    dummy_scorer() : irs::sort(irs::type<dummy_scorer>::get()) {}
+  struct dummy_scorer : public irs::ScorerBase<dummy_scorer, void> {
+    irs::IndexFeatures index_features() const final {
+      return irs::IndexFeatures::NONE;
+    }
 
-    prepared::ptr prepare() const { return nullptr; }
+    irs::ScoreFunction prepare_scorer(
+      const irs::ColumnProvider& segment,
+      const std::map<irs::type_info::type_id, irs::field_id>& features,
+      const irs::byte_type* stats, const irs::attribute_provider& doc_attrs,
+      irs::score_t boost) const final {
+      return {};
+    }
+
+    static irs::Scorer::ptr make(std::string_view) {
+      return std::make_unique<dummy_scorer>();
+    }
   };
 
   static bool initial_expected = true;

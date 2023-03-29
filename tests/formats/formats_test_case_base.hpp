@@ -26,12 +26,7 @@
 #include <unordered_set>
 
 #include "analysis/token_attributes.hpp"
-#include "index/doc_generator.hpp"
 #include "index/index_tests.hpp"
-#include "search/cost.hpp"
-#include "store/memory_directory.hpp"
-#include "tests_shared.hpp"
-#include "utils/version_utils.hpp"
 
 namespace tests {
 
@@ -173,7 +168,7 @@ class format_test_case : public index_test_base {
     constexpr std::string_view kOldFormats[]{"1_0"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
+                              codec()->type()().name());
     return std::end(kOldFormats) == it;
   }
 
@@ -183,7 +178,7 @@ class format_test_case : public index_test_base {
                                              "1_3simd"};
 
     const auto it = std::find(std::begin(kOldFormats), std::end(kOldFormats),
-                              codec()->type().name());
+                              codec()->type()().name());
     return std::end(kOldFormats) == it;
   }
 

@@ -45,7 +45,7 @@ class lazy_filter_bitset : private util::noncopyable {
     real_doc_itr_ = segment.mask(filter.execute({.segment = segment,
                                                  .scorers = ctx.scorers,
                                                  .ctx = ctx.ctx,
-                                                 .mode = ctx.mode}));
+                                                 .wand = ctx.wand}));
     words_ = bitset::bits_to_words(bits);
     cost_ = cost::extract(*real_doc_itr_);
     set_ = std::make_unique<word_t[]>(words_);
@@ -201,11 +201,8 @@ class proxy_query : public filter::prepared {
   mutable proxy_filter::cache_ptr cache_;
 };
 
-proxy_filter::proxy_filter() noexcept
-  : filter(irs::type<proxy_filter>::get()) {}
-
 filter::prepared::ptr proxy_filter::prepare(
-  const IndexReader& rdr, const Order& ord, score_t boost,
+  const IndexReader& rdr, const Scorers& ord, score_t boost,
   const attribute_provider* ctx) const {
   if (!cache_ || !cache_->real_filter_) {
     IRS_ASSERT(false);

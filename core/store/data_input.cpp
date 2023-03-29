@@ -199,4 +199,6 @@ void buffered_index_input::seek(size_t p) {
   }
 }
 
+void buffered_index_input::skip(size_t count) { seek(file_pointer() + count); }
+
 }  // namespace irs

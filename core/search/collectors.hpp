@@ -24,8 +24,8 @@
 
 #include <vector>
 
+#include "search/scorer.hpp"
 #include "shared.hpp"
-#include "sort.hpp"
 
 namespace irs {
 
@@ -99,7 +99,7 @@ class collectors_base {
  public:
   using iterator_type = typename std::vector<Collector>::const_iterator;
 
-  explicit collectors_base(size_t size, const Order& order)
+  explicit collectors_base(size_t size, const Scorers& order)
     : collectors_(size), buckets_{order.buckets()} {}
 
   collectors_base(collectors_base&&) = default;
@@ -134,15 +134,15 @@ class collectors_base {
 
  protected:
   std::vector<Collector> collectors_;
-  std::span<const OrderBucket> buckets_;
+  std::span<const ScorerBucket> buckets_;
 };
 
-// Wrapper around sort::field_collector which guarantees collector
+// Wrapper around FieldCollector which guarantees collector
 // is not nullptr
 class field_collector_wrapper
-  : public collector_wrapper<field_collector_wrapper, sort::field_collector> {
+  : public collector_wrapper<field_collector_wrapper, FieldCollector> {
  public:
-  using collector_type = sort::field_collector;
+  using collector_type = FieldCollector;
   using base_type = collector_wrapper<field_collector_wrapper, collector_type>;
 
   static collector_type& noop() noexcept;
@@ -165,7 +165,7 @@ static_assert(std::is_nothrow_move_assignable_v<field_collector_wrapper>);
 // all buckets
 class field_collectors : public collectors_base<field_collector_wrapper> {
  public:
-  explicit field_collectors(const Order& buckets);
+  explicit field_collectors(const Scorers& buckets);
   field_collectors(field_collectors&&) = default;
   field_collectors& operator=(field_collectors&&) = default;
 
@@ -183,22 +183,21 @@ class field_collectors : public collectors_base<field_collector_wrapper> {
   // current 'filter'
   // stats out-parameter to store statistics for later use in
   // calls to score(...)
-  // index the full index to collect statistics on
   // Note called once on the 'index' for every term matched by a filter
   //       calling collect(...) on each of its segments
   // Note if not matched terms then called exactly once
-  void finish(byte_type* stats_buf, const IndexReader& index) const;
+  void finish(byte_type* stats_buf) const;
 };
 
 static_assert(std::is_nothrow_move_constructible_v<field_collectors>);
 static_assert(std::is_nothrow_move_assignable_v<field_collectors>);
 
-// Wrapper around sort::term_collector which guarantees collector
+// Wrapper around TermCollector which guarantees collector
 // is not nullptr
 class term_collector_wrapper
-  : public collector_wrapper<term_collector_wrapper, sort::term_collector> {
+  : public collector_wrapper<term_collector_wrapper, TermCollector> {
  public:
-  using collector_type = sort::term_collector;
+  using collector_type = TermCollector;
   using base_type = collector_wrapper<term_collector_wrapper, collector_type>;
 
   static collector_type& noop() noexcept;
@@ -221,7 +220,7 @@ static_assert(std::is_nothrow_move_assignable_v<term_collector_wrapper>);
 // all buckets
 class term_collectors : public collectors_base<term_collector_wrapper> {
  public:
-  term_collectors(const Order& buckets, size_t size);
+  term_collectors(const Scorers& buckets, size_t size);
   term_collectors(term_collectors&&) = default;
   term_collectors& operator=(term_collectors&&) = default;
 

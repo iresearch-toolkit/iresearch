@@ -42,7 +42,8 @@ namespace analysis {
 /// @class text_token_stream
 /// @note expects UTF-8 encoded input
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_stream final : public analyzer, private util::noncopyable {
+class text_token_stream final : public TypedAnalyzer<text_token_stream>,
+                                private util::noncopyable {
  public:
   using stopwords_t = absl::flat_hash_set<std::string>;
 

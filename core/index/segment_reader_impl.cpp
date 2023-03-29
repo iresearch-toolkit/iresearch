@@ -182,7 +182,8 @@ std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
 
   if (opts.index) {
     // initialize optional field reader
-    field_reader->prepare(dir, meta, reader->docs_mask_);
+    field_reader->prepare(
+      ReaderState{.dir = &dir, .meta = &meta, .scorers = opts.scorers});
   }
 
   // always instantiate to avoid unnecessary checks

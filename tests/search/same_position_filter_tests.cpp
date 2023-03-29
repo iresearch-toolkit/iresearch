@@ -76,24 +76,20 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+          tests::sort::custom_sort::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+          tests::sort::custom_sort::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(0, collect_field_count);  // should not be executed
       ASSERT_EQ(0, collect_term_count);   // should not be executed
@@ -122,24 +118,20 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+          tests::sort::custom_sort::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+          tests::sort::custom_sort::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(2, collect_field_count);  // 1 field in 2 segments
       ASSERT_EQ(2, collect_term_count);   // 1 term in 2 segments
@@ -170,24 +162,20 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                               const irs::attribute_provider&) -> void {
         ++collect_term_count;
       };
-      scorer.collectors_collect_ = [&finish_count](
-                                     irs::byte_type*, const irs::IndexReader&,
-                                     const irs::sort::field_collector*,
-                                     const irs::sort::term_collector*) -> void {
-        ++finish_count;
-      };
+      scorer.collectors_collect_ =
+        [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                        const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
-        [&scorer]() -> irs::sort::field_collector::ptr {
+        [&scorer]() -> irs::FieldCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::field_collector>(scorer);
+          tests::sort::custom_sort::field_collector>(scorer);
       };
-      scorer.prepare_term_collector_ =
-        [&scorer]() -> irs::sort::term_collector::ptr {
+      scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
         return std::make_unique<
-          tests::sort::custom_sort::prepared::term_collector>(scorer);
+          tests::sort::custom_sort::term_collector>(scorer);
       };
 
-      auto pord = irs::Order::Prepare(scorer);
+      auto pord = irs::Scorers::Prepare(scorer);
       auto prepared = filter.prepare(index, pord);
       ASSERT_EQ(4, collect_field_count);  // 2 fields (1 per term since treated
                                           // as a disjunction) in 2 segments

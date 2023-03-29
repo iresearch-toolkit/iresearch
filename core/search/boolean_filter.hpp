@@ -40,9 +40,9 @@ class boolean_filter : public filter, public AllDocsProvider {
   auto begin() { return ptr_iterator{std::begin(filters_)}; }
   auto end() { return ptr_iterator{std::end(filters_)}; }
 
-  sort::MergeType merge_type() const noexcept { return merge_type_; }
+  ScoreMergeType merge_type() const noexcept { return merge_type_; }
 
-  void merge_type(sort::MergeType merge_type) noexcept {
+  void merge_type(ScoreMergeType merge_type) noexcept {
     merge_type_ = merge_type;
   }
 
@@ -65,17 +65,16 @@ class boolean_filter : public filter, public AllDocsProvider {
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const override;
 
  protected:
-  explicit boolean_filter(const type_info& type) noexcept;
   bool equals(const filter& rhs) const noexcept final;
 
   virtual filter::prepared::ptr prepare(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const IndexReader& rdr, const Order& ord, score_t boost,
+    const IndexReader& rdr, const Scorers& ord, score_t boost,
     const attribute_provider* ctx) const = 0;
 
  private:
@@ -84,20 +83,22 @@ class boolean_filter : public filter, public AllDocsProvider {
                      std::vector<const filter*>& excl) const;
 
   std::vector<filter::ptr> filters_;
-  sort::MergeType merge_type_{sort::MergeType::kSum};
+  ScoreMergeType merge_type_{ScoreMergeType::kSum};
 };
 
 // Represents conjunction
 class And final : public boolean_filter {
  public:
-  And() noexcept;
-
   using filter::prepare;
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<And>::id();
+  }
 
  protected:
   filter::prepared::ptr prepare(std::vector<const filter*>& incl,
                                 std::vector<const filter*>& excl,
-                                const IndexReader& rdr, const Order& ord,
+                                const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 };
@@ -105,8 +106,6 @@ class And final : public boolean_filter {
 // Represents disjunction
 class Or final : public boolean_filter {
  public:
-  Or() noexcept;
-
   // Return minimum number of subqueries which must be satisfied
   size_t min_match_count() const { return min_match_count_; }
 
@@ -117,26 +116,26 @@ class Or final : public boolean_filter {
   }
 
   using filter::prepare;
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
+
+  type_info::type_id type() const noexcept final { return irs::type<Or>::id(); }
 
  protected:
   filter::prepared::ptr prepare(std::vector<const filter*>& incl,
                                 std::vector<const filter*>& excl,
-                                const IndexReader& rdr, const Order& ord,
+                                const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 
  private:
-  size_t min_match_count_;
+  size_t min_match_count_{1};
 };
 
 // Represents negation
 class Not : public filter, public AllDocsProvider {
  public:
-  Not() noexcept;
-
   const irs::filter* filter() const { return filter_.get(); }
 
   template<typename T>
@@ -161,11 +160,15 @@ class Not : public filter, public AllDocsProvider {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 
   size_t hash() const noexcept final;
+
+  type_info::type_id type() const noexcept final {
+    return irs::type<Not>::id();
+  }
 
  protected:
   bool equals(const irs::filter& rhs) const noexcept final;

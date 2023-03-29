@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include "sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/attributes.hpp"
 
 namespace irs {
@@ -44,16 +44,16 @@ struct score : attribute, ScoreFunction {
   using ScoreFunction::operator=;
 };
 
-using Scorers = SmallVector<ScoreFunction, 2>;
+using ScoreFunctions = SmallVector<ScoreFunction, 2>;
 
 // Prepare scorer for each of the bucket.
-Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const SubReader& segment, const term_reader& field,
-                       const byte_type* stats, const attribute_provider& doc,
-                       score_t boost);
+ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
+                              const ColumnProvider& segment,
+                              const term_reader& field, const byte_type* stats,
+                              const attribute_provider& doc, score_t boost);
 
 // Compiles a set of prepared scorers into a single score function.
-ScoreFunction CompileScorers(Scorers&& scorers);
+ScoreFunction CompileScorers(ScoreFunctions&& scorers);
 
 template<typename... Args>
 ScoreFunction CompileScore(Args&&... args) {
@@ -63,7 +63,6 @@ ScoreFunction CompileScore(Args&&... args) {
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,
 // e.g. for 'all' filter.
-void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats,
-                       const IndexReader& index);
+void PrepareCollectors(std::span<const ScorerBucket> order, byte_type* stats);
 
 }  // namespace irs

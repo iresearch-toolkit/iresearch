@@ -30,8 +30,9 @@
 
 namespace irs {
 namespace analysis {
-class segmentation_token_stream final : public analyzer,
-                                        private util::noncopyable {
+class segmentation_token_stream final
+  : public TypedAnalyzer<segmentation_token_stream>,
+    private util::noncopyable {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "segmentation";

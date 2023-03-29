@@ -212,7 +212,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -253,7 +253,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -294,7 +294,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -334,7 +334,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -376,7 +376,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
   irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "1"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -416,7 +416,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 1.0f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -458,7 +458,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -499,7 +499,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
     make_filter("field", {"1", "5", "6", "2"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -542,7 +542,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
     make_filter("field", {"1", "2", "3", "4", "5", "1"}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -581,7 +581,7 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
   irs::by_ngram_similarity filter = make_filter("field", {""}, 0.5f);
 
   tests::sort::custom_sort sort;
-  auto prepared_order = irs::Order::Prepare(sort);
+  auto prepared_order = irs::Scorers::Prepare(sort);
   auto prepared = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub, prepared_order);
@@ -618,7 +618,7 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"ee", "we", "qq", "rr", "ff", "never_match"}, 0.1f);
 
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
 
@@ -643,7 +643,7 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"ee", "ss", "pa", "rr"}, 0.5f);
 
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
     auto* doc = irs::get<irs::document>(*docs);
@@ -669,7 +669,7 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 
   Docs expected{1, 3, 5, 6, 7, 8, 9, 10, 12};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -703,7 +703,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -737,7 +737,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -771,7 +771,7 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -806,7 +806,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -841,7 +841,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -877,7 +877,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
   size_t count = 0;
   for (const auto& sub : rdr) {
     auto docs = prepared->execute(sub);
@@ -928,7 +928,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
   std::vector<size_t> frequency;
   std::vector<irs::score_t> filter_boost;
 
-  irs::sort::ptr order{std::make_unique<tests::sort::custom_sort>()};
+  irs::Scorer::ptr order{std::make_unique<tests::sort::custom_sort>()};
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
@@ -941,27 +941,20 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
                           const irs::attribute_provider&) -> void {
     ++collect_term_count;
   };
-  scorer.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::IndexReader&,
-                                 const irs::sort::field_collector*,
-                                 const irs::sort::term_collector*) -> void {
-    ++finish_count;
+  scorer.collectors_collect_ =
+    [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                    const irs::TermCollector*) -> void { ++finish_count; };
+  scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
+    return std::make_unique<tests::sort::custom_sort::field_collector>(scorer);
   };
-  scorer.prepare_field_collector_ =
-    [&scorer]() -> irs::sort::field_collector::ptr {
-    return std::make_unique<
-      tests::sort::custom_sort::prepared::field_collector>(scorer);
+  scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
+    return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
   };
-  scorer.prepare_term_collector_ =
-    [&scorer]() -> irs::sort::term_collector::ptr {
-    return std::make_unique<tests::sort::custom_sort::prepared::term_collector>(
-      scorer);
-  };
-  scorer.prepare_scorer =
+  scorer.prepare_scorer_ =
     [&frequency, &filter_boost](
-      const irs::SubReader& /*segment*/, const irs::term_reader& /*term*/,
-      const irs::byte_type* /*stats_buf*/, const irs::attribute_provider& attr,
-      irs::score_t) -> irs::ScoreFunction {
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*term*/, const irs::byte_type* /*stats_buf*/,
+      const irs::attribute_provider& attr, irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
     return irs::ScoreFunction::Make<test_score_ctx>(
@@ -1007,7 +1000,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
   std::vector<size_t> frequency;
   std::vector<irs::score_t> filter_boost;
 
-  irs::sort::ptr order{std::make_unique<tests::sort::custom_sort>()};
+  irs::Scorer::ptr order{std::make_unique<tests::sort::custom_sort>()};
   auto& scorer = static_cast<tests::sort::custom_sort&>(*order);
 
   scorer.collector_collect_field = [&collect_field_count](
@@ -1020,27 +1013,20 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
                           const irs::attribute_provider&) -> void {
     ++collect_term_count;
   };
-  scorer.collectors_collect_ = [&finish_count](
-                                 irs::byte_type*, const irs::IndexReader&,
-                                 const irs::sort::field_collector*,
-                                 const irs::sort::term_collector*) -> void {
-    ++finish_count;
+  scorer.collectors_collect_ =
+    [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                    const irs::TermCollector*) -> void { ++finish_count; };
+  scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
+    return std::make_unique<tests::sort::custom_sort::field_collector>(scorer);
   };
-  scorer.prepare_field_collector_ =
-    [&scorer]() -> irs::sort::field_collector::ptr {
-    return std::make_unique<
-      tests::sort::custom_sort::prepared::field_collector>(scorer);
+  scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
+    return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
   };
-  scorer.prepare_term_collector_ =
-    [&scorer]() -> irs::sort::term_collector::ptr {
-    return std::make_unique<tests::sort::custom_sort::prepared::term_collector>(
-      scorer);
-  };
-  scorer.prepare_scorer =
+  scorer.prepare_scorer_ =
     [&frequency, &filter_boost](
-      const irs::SubReader& /*segment*/, const irs::term_reader& /*term*/,
-      const irs::byte_type* /*stats_buf*/, const irs::attribute_provider& attr,
-      irs::score_t) -> irs::ScoreFunction {
+      const irs::ColumnProvider& /*segment*/,
+      const irs::feature_map_t& /*term*/, const irs::byte_type* /*stats_buf*/,
+      const irs::attribute_provider& attr, irs::score_t) -> irs::ScoreFunction {
     auto* freq = irs::get<irs::frequency>(attr);
     auto* boost = irs::get<irs::filter_boost>(attr);
     return irs::ScoreFunction::Make<test_score_ctx>(
@@ -1087,7 +1073,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_norm_test) {
 
   Docs expected{11, 12, 8, 13, 5, 1, 2};
 
-  irs::sort::ptr scorer{std::make_unique<irs::tfidf_sort>(true)};
+  irs::Scorer::ptr scorer{std::make_unique<irs::TFIDF>(true)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1110,7 +1096,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_tfidf_test) {
 
   Docs expected{11, 12, 13, 1, 2, 8, 5};
 
-  irs::sort::ptr scorer{std::make_unique<irs::tfidf_sort>(false)};
+  irs::Scorer::ptr scorer{std::make_unique<irs::TFIDF>(false)};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1133,7 +1119,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm25_test) {
 
   Docs expected{11, 12, 13, 8, 1, 5, 2};
 
-  irs::sort::ptr scorer{std::make_unique<irs::bm25_sort>()};
+  irs::Scorer::ptr scorer{std::make_unique<irs::BM25>()};
 
   CheckQuery(filter, std::span{&scorer, 1}, expected, rdr);
 }
@@ -1156,8 +1142,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_bm15_test) {
 
   Docs expected{11, 12, 13, 1, 2, 8, 5};
 
-  irs::sort::ptr bm15{
-    std::make_unique<irs::bm25_sort>(irs::bm25_sort::K(), 0.f)};
+  irs::Scorer::ptr bm15{std::make_unique<irs::BM25>(irs::BM25::K(), 0.f)};
 
   CheckQuery(filter, std::span{&bm15, 1}, expected, rdr);
 }
@@ -1175,9 +1160,9 @@ TEST_P(ngram_similarity_filter_test_case, seek_next) {
     make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   auto expected_it = std::begin(expected);
-  auto prepared_filter = filter.prepare(rdr, irs::Order::kUnordered);
+  auto prepared_filter = filter.prepare(rdr, irs::Scorers::kUnordered);
   for (const auto& sub : rdr) {
-    auto docs = prepared_filter->execute(sub, irs::Order::kUnordered);
+    auto docs = prepared_filter->execute(sub, irs::Scorers::kUnordered);
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
       bool(doc));  // ensure all iterators contain "document" attribute
@@ -1216,7 +1201,7 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
     make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
   Docs seek_tagrets{2, 5, 8, 13};
   auto seek_it = std::begin(seek_tagrets);
-  auto& prepared_order = irs::Order::kUnordered;
+  auto& prepared_order = irs::Scorers::kUnordered;
   auto prepared_filter = filter.prepare(rdr, prepared_order);
   for (const auto& sub : rdr) {
     while (std::end(seek_tagrets) != seek_it) {

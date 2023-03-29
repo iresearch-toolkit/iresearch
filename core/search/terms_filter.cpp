@@ -109,7 +109,7 @@ namespace irs {
 }
 
 filter::prepared::ptr by_terms::prepare(const IndexReader& index,
-                                        const Order& order, score_t boost,
+                                        const Scorers& order, score_t boost,
                                         const attribute_provider* ctx) const {
   const auto& [terms, min_match, merge_type] = options();
   const size_t size = terms.size();

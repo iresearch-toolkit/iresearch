@@ -168,7 +168,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -182,23 +182,20 @@ TEST_P(by_edit_distance_test_case, test_order) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
+    scorer.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ =
-      [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
+      [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+        tests::sort::custom_sort::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
-      [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
+      [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+        tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 0, false), order, docs, rdr);
@@ -220,7 +217,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -234,23 +231,20 @@ TEST_P(by_edit_distance_test_case, test_order) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
+    scorer.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ =
-      [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
+      [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+        tests::sort::custom_sort::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
-      [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
+      [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+        tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 10, false), order, docs, rdr);
@@ -272,7 +266,7 @@ TEST_P(by_edit_distance_test_case, test_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -286,23 +280,20 @@ TEST_P(by_edit_distance_test_case, test_order) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-      ++finish_count;
-    };
+    scorer.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ =
-      [&scorer, &field_collectors_count]() -> irs::sort::field_collector::ptr {
+      [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
+        tests::sort::custom_sort::field_collector>(scorer);
     };
     scorer.prepare_term_collector_ =
-      [&scorer, &term_collectors_count]() -> irs::sort::term_collector::ptr {
+      [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
       return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+        tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 1, false), order, docs, rdr);
@@ -564,11 +555,11 @@ TEST_P(by_edit_distance_test_case, bm25) {
     add_segment(gen, irs::OM_CREATE, opts);
   }
 
-  std::array<irs::sort::ptr, 1> order{irs::scorers::get(
+  std::array<irs::Scorer::ptr, 1> order{irs::scorers::get(
     "bm25", irs::type<irs::text_format::json>::get(), std::string_view{})};
   ASSERT_NE(nullptr, order.front());
 
-  auto prepared_order = irs::Order::Prepare(order);
+  auto prepared_order = irs::Scorers::Prepare(order);
 
   auto index = open_reader();
   ASSERT_NE(nullptr, index);

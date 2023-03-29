@@ -38,11 +38,11 @@
 #ifndef IRESEARCH_DLL
 namespace {
 
-class pipeline_test_analyzer : public irs::analysis::analyzer,
-                               private irs::util::noncopyable {
+class pipeline_test_analyzer
+  : public irs::analysis::TypedAnalyzer<pipeline_test_analyzer>,
+    private irs::util::noncopyable {
  public:
-  pipeline_test_analyzer(bool has_offset, irs::bytes_view payload)
-    : irs::analysis::analyzer{irs::type<pipeline_test_analyzer>::get()} {
+  pipeline_test_analyzer(bool has_offset, irs::bytes_view payload) {
     if (!irs::IsNull(payload)) {
       std::get<irs::attribute_ptr<irs::payload>>(attrs_) = &payload_;
     }
@@ -83,15 +83,15 @@ class pipeline_test_analyzer : public irs::analysis::analyzer,
   irs::offset offs_;
 };
 
-class pipeline_test_analyzer2 : public irs::analysis::analyzer,
-                                private irs::util::noncopyable {
+class pipeline_test_analyzer2
+  : public irs::analysis::TypedAnalyzer<pipeline_test_analyzer2>,
+    private irs::util::noncopyable {
  public:
   pipeline_test_analyzer2(std::vector<std::pair<uint32_t, uint32_t>>&& offsets,
                           std::vector<uint32_t>&& increments,
                           std::vector<bool>&& nexts, std::vector<bool>&& resets,
                           std::vector<irs::bytes_view>&& terms)
-    : irs::analysis::analyzer{irs::type<pipeline_test_analyzer>::get()},
-      offsets_(offsets),
+    : offsets_(offsets),
       increments_(increments),
       nexts_(nexts),
       resets_(resets),
@@ -201,9 +201,9 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data,
 
 void assert_pipeline_members(
   irs::analysis::pipeline_token_stream& pipe,
-  std::vector<irs::type_info::type_id> const& expected) {
+  const std::vector<irs::type_info::type_id>& expected) {
   size_t i{0};
-  auto visitor = [&expected, &i](irs::analysis::analyzer const& a) {
+  auto visitor = [&expected, &i](const irs::analysis::analyzer& a) {
     EXPECT_LT(i, expected.size());
     if (i >= expected.size()) {
       return false;  // save ourselves from crash

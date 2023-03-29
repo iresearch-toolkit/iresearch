@@ -113,7 +113,7 @@ void visit(const SubReader& segment, const term_reader& reader,
 namespace irs {
 
 filter::prepared::ptr by_range::prepare(const IndexReader& index,
-                                        const Order& ord, score_t boost,
+                                        const Scorers& ord, score_t boost,
                                         std::string_view field,
                                         const options_type::range_type& rng,
                                         size_t scored_terms_limit) {
@@ -158,7 +158,7 @@ filter::prepared::ptr by_range::prepare(const IndexReader& index,
 
   return memory::make_managed<MultiTermQuery>(std::move(states),
                                               std::move(stats), boost,
-                                              sort::MergeType::kSum, size_t{1});
+                                              ScoreMergeType::kSum, size_t{1});
 }
 
 void by_range::visit(const SubReader& segment, const term_reader& reader,

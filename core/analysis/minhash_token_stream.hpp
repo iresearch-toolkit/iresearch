@@ -30,7 +30,8 @@
 
 namespace irs::analysis {
 
-class MinHashTokenStream final : public analyzer, private util::noncopyable {
+class MinHashTokenStream final : public TypedAnalyzer<MinHashTokenStream>,
+                                 private util::noncopyable {
  public:
   struct Options {
     // Analyzer used for hashing set generation

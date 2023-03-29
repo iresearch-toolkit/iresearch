@@ -245,8 +245,7 @@ classification_stream::set_model_provider(model_provider_f provider) noexcept {
 
 classification_stream::classification_stream(const Options& options,
                                              model_ptr model) noexcept
-  : analyzer{irs::type<classification_stream>::get()},
-    model_{std::move(model)},
+  : model_{std::move(model)},
     predictions_it_{predictions_.end()},
     threshold_{options.threshold},
     top_k_{options.top_k} {

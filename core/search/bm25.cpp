@@ -26,22 +26,26 @@
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
+#include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
+#include "utils/misc.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
 #include "velocypack/velocypack-aliases.h"
 #include "velocypack/vpack.h"
 
+namespace irs {
 namespace {
 
 const auto kSQRT = irs::cache_func<uint32_t, 2048>(
   0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
-irs::sort::ptr make_from_object(const VPackSlice slice) {
+irs::Scorer::ptr make_from_object(const VPackSlice slice) {
   IRS_ASSERT(slice.isObject());
 
-  auto scorer = std::make_unique<irs::bm25_sort>();
+  float_t k{BM25::K()};
+  float_t b{BM25::B()};
 
   {
     // optional float
@@ -57,7 +61,7 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
         return nullptr;
       }
 
-      scorer->b(slice.get(key).getNumber<float>());
+      b = slice.get(key).getNumber<float>();
     }
   }
 
@@ -75,14 +79,14 @@ irs::sort::ptr make_from_object(const VPackSlice slice) {
         return nullptr;
       }
 
-      scorer->k(slice.get(key).getNumber<float>());
+      k = slice.get(key).getNumber<float>();
     }
   }
 
-  return scorer;
+  return std::make_unique<BM25>(k, b);
 }
 
-irs::sort::ptr make_from_array(const VPackSlice slice) {
+Scorer::ptr make_from_array(const VPackSlice slice) {
   IRS_ASSERT(slice.isArray());
 
   VPackArrayIterator array(slice);
@@ -96,8 +100,8 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
   }
 
   // default args
-  auto k = irs::bm25_sort::K();
-  auto b = irs::bm25_sort::B();
+  auto k = BM25::K();
+  auto b = BM25::B();
   int i = 0;
   for (auto arg_slice : array) {
     switch (i) {
@@ -127,10 +131,10 @@ irs::sort::ptr make_from_array(const VPackSlice slice) {
     }
   }
 
-  return std::make_unique<irs::bm25_sort>(k, b);
+  return std::make_unique<BM25>(k, b);
 }
 
-irs::sort::ptr make_vpack(const VPackSlice slice) {
+Scorer::ptr make_vpack(const VPackSlice slice) {
   switch (slice.type()) {
     case VPackValueType::Object:
       return make_from_object(slice);
@@ -143,20 +147,20 @@ irs::sort::ptr make_vpack(const VPackSlice slice) {
   }
 }
 
-irs::sort::ptr make_vpack(std::string_view args) {
+Scorer::ptr make_vpack(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
-    return std::make_unique<irs::bm25_sort>();
+    return std::make_unique<irs::BM25>();
   } else {
     VPackSlice slice(reinterpret_cast<const uint8_t*>(args.data()));
     return make_vpack(slice);
   }
 }
 
-irs::sort::ptr make_json(std::string_view args) {
+Scorer::ptr make_json(std::string_view args) {
   if (irs::IsNull(args)) {
     // default args
-    return std::make_unique<irs::bm25_sort>();
+    return std::make_unique<irs::BM25>();
   } else {
     try {
       auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -174,8 +178,8 @@ irs::sort::ptr make_json(std::string_view args) {
   }
 }
 
-REGISTER_SCORER_JSON(irs::bm25_sort, make_json);
-REGISTER_SCORER_VPACK(irs::bm25_sort, make_vpack);
+REGISTER_SCORER_JSON(irs::BM25, make_json);
+REGISTER_SCORER_VPACK(irs::BM25, make_vpack);
 
 struct byte_ref_iterator {
   using iterator_category = std::input_iterator_tag;
@@ -201,7 +205,7 @@ struct byte_ref_iterator {
   void operator++() { ++pos_; }
 };
 
-struct field_collector final : public irs::sort::field_collector {
+struct field_collector final : public irs::FieldCollector {
   // number of documents containing the matched
   // field (possibly without matching terms)
   uint64_t docs_with_field = 0;
@@ -243,7 +247,7 @@ struct field_collector final : public irs::sort::field_collector {
   }
 };
 
-struct term_collector final : public irs::sort::term_collector {
+struct term_collector final : public irs::TermCollector {
   // number of documents containing the matched term
   uint64_t docs_with_term = 0;
 
@@ -275,48 +279,15 @@ struct term_collector final : public irs::sort::term_collector {
   }
 };
 
-}  // namespace
-
-namespace irs {
-
-// BM25 similarity
-// bm25(doc, term) = idf(term) * ((k + 1) * tf(doc, term)) / (k * (1 - b + b *
-// |doc|/avgDL) + tf(doc, term))
-//
-// Inverted document frequency
-// idf(term) = log(1 + (#documents with this field - #documents with this term +
-// 0.5)/(#documents with this term + 0.5))
-//
-// Term frequency
-//   Norm2: tf(doc, term) = frequency(doc, term);
-//   Norm:  tf(doc, term) = sqrt(frequency(doc, term));
-//
-// Document length
-//   Norm2: |doc| # of terms in a field within a document
-//   Norm:  |doc| = 1 / sqrt(# of terms in a field within a document)
-//
-// Average document length
-// avgDL = sum(field_term_count) / (#documents with this field)
-
-namespace bm25 {
-
 // Empty frequency
 const frequency kEmptyFreq;
 
-struct stats final {
-  // precomputed idf value
-  float_t idf;
-  // precomputed k*(1-b)
-  float_t norm_const;
-  // precomputed k*b/avgD
-  float_t norm_length;
-  // precomputed 1/(k*(1-b+b*|doc|/avgDL)) for |doc| E [0..255]
-  float_t norm_cache[256];
-};
+}  // namespace
 
 struct BM15Context : public irs::score_ctx {
-  BM15Context(float_t k, irs::score_t boost, const bm25::stats& stats,
-              const frequency* freq, const filter_boost* fb = nullptr) noexcept
+  BM15Context(float_t k, irs::score_t boost, const BM25Stats& stats,
+              const frequency* freq,
+              const irs::filter_boost* fb = nullptr) noexcept
     : freq{freq ? freq : &kEmptyFreq},
       filter_boost{fb},
       num{boost * (k + 1) * stats.idf},
@@ -332,7 +303,7 @@ struct BM15Context : public irs::score_ctx {
 
 template<typename Norm>
 struct BM25Context final : public BM15Context {
-  BM25Context(float_t k, irs::score_t boost, const bm25::stats& stats,
+  BM25Context(float_t k, irs::score_t boost, const BM25Stats& stats,
               const frequency* freq, Norm&& norm,
               const irs::filter_boost* filter_boost = nullptr) noexcept
     : BM15Context{k, boost, stats, freq, filter_boost},
@@ -433,9 +404,10 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
         if constexpr (Norm::kType < NormType::kNorm) {
           tf = static_cast<float_t>(state.freq->value);
         } else {
-          tf = ::kSQRT.get<true>(state.freq->value);
+          tf = kSQRT.get<true>(state.freq->value);
         }
 
+        // FIXME(gnusi): we don't need c0 for WAND evaluation
         float_t c0;
         if constexpr (HasFilterBoost) {
           IRS_ASSERT(state.filter_boost);
@@ -473,156 +445,163 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
     std::forward<Args>(args)...);
 }
 
-class sort final : public irs::PreparedSortBase<bm25::stats> {
- public:
-  sort(float_t k, float_t b, bool boost_as_score) noexcept
-    : k_{k}, b_{b}, boost_as_score_{boost_as_score} {}
+void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
+                   const irs::TermCollector* term) const {
+  auto* stats = stats_cast(stats_buf);
 
-  void collect(byte_type* stats_buf, const irs::IndexReader& /*index*/,
-               const irs::sort::field_collector* field,
-               const irs::sort::term_collector* term) const final {
-    auto& stats = stats_cast(stats_buf);
+  const auto* field_ptr = down_cast<field_collector>(field);
+  const auto* term_ptr = down_cast<term_collector>(term);
 
-    const auto* field_ptr = down_cast<field_collector>(field);
-    const auto* term_ptr = down_cast<term_collector>(term);
+  // nullptr possible if e.g. 'all' filter
+  const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
+  // nullptr possible if e.g.'by_column_existence' filter
+  const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0;
+  // nullptr possible if e.g. 'all' filter
+  const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0;
 
-    // nullptr possible if e.g. 'all' filter
-    const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
-    // nullptr possible if e.g.'by_column_existence' filter
-    const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0;
-    // nullptr possible if e.g. 'all' filter
-    const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0;
+  // precomputed idf value
+  stats->idf += float_t(std::log1p((docs_with_field - docs_with_term + 0.5) /
+                                   (docs_with_term + 0.5)));
+  IRS_ASSERT(stats->idf >= 0.f);
 
-    // precomputed idf value
-    stats.idf += float_t(std::log1p((docs_with_field - docs_with_term + 0.5) /
-                                    (docs_with_term + 0.5)));
-    IRS_ASSERT(stats.idf >= 0.f);
-
-    // - stats were already initialized
-    // - BM15 without norms
-    if (b_ == 0.f) {
-      stats.norm_const = 1.f;
-      return;
-    }
-
-    // precomputed length norm
-    const float_t kb = k_ * b_;
-
-    stats.norm_const = k_ - kb;
-    if (total_term_freq && docs_with_field) {
-      const float_t avg_dl = float_t(total_term_freq) / docs_with_field;
-      stats.norm_length = kb / avg_dl;
-    } else {
-      stats.norm_length = kb;
-    }
-
-    for (uint32_t i = 0; auto& norm : stats.norm_cache) {
-      norm = 1.f / (stats.norm_const + stats.norm_length * i++);
-    }
+  // - stats were already initialized
+  // - BM15 without norms
+  if (IsBM15()) {
+    stats->norm_const = 1.f;
+    return;
   }
 
-  IndexFeatures features() const noexcept final { return IndexFeatures::FREQ; }
+  // precomputed length norm
+  const float_t kb = k_ * b_;
 
-  field_collector::ptr prepare_field_collector() const final {
-    return std::make_unique<field_collector>();
+  stats->norm_const = k_ - kb;
+  if (total_term_freq && docs_with_field) {
+    const float_t avg_dl = float_t(total_term_freq) / docs_with_field;
+    stats->norm_length = kb / avg_dl;
+  } else {
+    stats->norm_length = kb;
   }
 
-  ScoreFunction prepare_scorer(const SubReader& segment,
-                               const term_reader& field,
-                               const byte_type* query_stats,
-                               const attribute_provider& doc_attrs,
-                               score_t boost) const final {
-    auto* freq = irs::get<frequency>(doc_attrs);
-
-    if (!freq) {
-      if (!boost_as_score_ || 0.f == boost) {
-        return ScoreFunction::Invalid();
-      }
-
-      // if there is no frequency then all the scores
-      // will be the same (e.g. filter irs::all)
-      return ScoreFunction::Constant(boost);
-    }
-
-    auto& stats = stats_cast(query_stats);
-    auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
-
-    if (b_ != 0.f) {
-      auto* doc = irs::get<document>(doc_attrs);
-
-      if (IRS_UNLIKELY(!doc)) {
-        // We need 'document' attribute to be exposed.
-        return ScoreFunction::Invalid();
-      }
-
-      auto prepare_norm_scorer =
-        [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
-        return MakeScoreFunction<BM25Context<Norm>>(
-          filter_boost, k_, boost, stats, freq, std::move(norm));
-      };
-
-      const auto& features = field.meta().features;
-
-      if (auto it = features.find(irs::type<Norm2>::id());
-          it != features.end()) {
-        if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-          if (ctx.max_num_bytes == sizeof(byte_type)) {
-            return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-              return prepare_norm_scorer(
-                MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
-            });
-          }
-
-          return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
-            return prepare_norm_scorer(
-              MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
-          });
-        }
-      }
-
-      if (auto it = features.find(irs::type<Norm>::id());
-          it != features.end()) {
-        if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
-          return prepare_norm_scorer(
-            MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
-        }
-      }
-
-      // No norms, pretend all fields have the same length 1.
-      return prepare_norm_scorer(
-        MakeNormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
-    }
-
-    // BM15
-    return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, stats, freq);
+  for (uint32_t i = 0; auto& norm : stats->norm_cache) {
+    norm = 1.f / (stats->norm_const + stats->norm_length * i++);
   }
-
-  term_collector::ptr prepare_term_collector() const final {
-    return std::make_unique<term_collector>();
-  }
-
- private:
-  float_t k_;
-  float_t b_;
-  bool boost_as_score_;
-};
-
-}  // namespace bm25
-
-bm25_sort::bm25_sort(float_t k /*= 1.2f*/, float_t b /*= 0.75f*/,
-                     bool boost_as_score /*= false*/) noexcept
-  : sort{irs::type<bm25_sort>::get()},
-    k_{k},
-    b_{b},
-    boost_as_score_{boost_as_score} {}
-
-/*static*/ void bm25_sort::init() {
-  REGISTER_SCORER_JSON(bm25_sort, make_json);    // match registration above
-  REGISTER_SCORER_VPACK(bm25_sort, make_vpack);  // match registration above
 }
 
-sort::prepared::ptr bm25_sort::prepare() const {
-  return std::make_unique<bm25::sort>(k_, b_, boost_as_score_);
+FieldCollector::ptr BM25::prepare_field_collector() const {
+  return std::make_unique<field_collector>();
+}
+
+ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
+                                   const irs::feature_map_t& features,
+                                   const byte_type* query_stats,
+                                   const attribute_provider& doc_attrs,
+                                   score_t boost) const {
+  auto* freq = irs::get<frequency>(doc_attrs);
+
+  if (!freq) {
+    if (!boost_as_score_ || 0.f == boost) {
+      return ScoreFunction::Invalid();
+    }
+
+    // if there is no frequency then all the scores
+    // will be the same (e.g. filter irs::all)
+    return ScoreFunction::Constant(boost);
+  }
+
+  auto* stats = stats_cast(query_stats);
+  auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
+
+  if (IsBM15()) {
+    return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, *stats,
+                                          freq);
+  }
+
+  auto prepare_norm_scorer = [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
+    return MakeScoreFunction<BM25Context<Norm>>(filter_boost, k_, boost, *stats,
+                                                freq, std::move(norm));
+  };
+
+  // Check if norms are present in attributes
+  if (auto* norm = irs::get<Norm2>(doc_attrs); norm) {
+    return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(
+      [norm]() noexcept { return norm->value; }));
+  }
+
+  // Fallback to reading from columnstore
+  auto* doc = irs::get<document>(doc_attrs);
+
+  if (IRS_UNLIKELY(!doc)) {
+    // We need 'document' attribute to be exposed.
+    return ScoreFunction::Invalid();
+  }
+
+  if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {
+    if (Norm2ReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+      if (ctx.max_num_bytes == sizeof(byte_type)) {
+        return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+          return prepare_norm_scorer(
+            MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
+        });
+      }
+
+      return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
+        return prepare_norm_scorer(
+          MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
+      });
+    }
+  }
+
+  if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
+    if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
+      return prepare_norm_scorer(
+        MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
+    }
+  }
+
+  // No norms, pretend all fields have the same length 1.
+  return prepare_norm_scorer(
+    MakeNormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
+}
+
+void BM25::get_features(std::set<type_info::type_id>& features) const {
+  if (!IsBM15()) {
+    features.emplace(irs::type<Norm2>::id());
+  }
+}
+
+WandWriter::ptr BM25::prepare_wand_writer(size_t max_levels) const {
+  return ResolveBool(
+    !IsBM15(),
+    [&]<bool HasNorms>(
+      std::integral_constant<bool, HasNorms>) -> WandWriter::ptr {
+      return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
+        *this, max_levels);
+    });
+}
+
+WandSource::ptr BM25::prepare_wand_source() const {
+  return ResolveBool(!IsBM15(),
+                     [&]<bool HasNorms>(std::integral_constant<bool, HasNorms>)
+                       -> WandSource::ptr {
+                       return std::make_unique<WandAttributes<HasNorms>>();
+                     });
+}
+
+TermCollector::ptr BM25::prepare_term_collector() const {
+  return std::make_unique<term_collector>();
+}
+
+bool BM25::equals(const Scorer& other) const noexcept {
+  if (!Scorer::equals(other)) {
+    return false;
+  }
+  const auto& p = down_cast<BM25>(other);
+  return p.k_ == k_ && p.b_ == b_;
+}
+
+void BM25::init() {
+  REGISTER_SCORER_JSON(BM25, make_json);    // match registration above
+  REGISTER_SCORER_VPACK(BM25, make_vpack);  // match registration above
 }
 
 }  // namespace irs

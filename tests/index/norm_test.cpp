@@ -38,14 +38,13 @@ auto MakeByTerm(std::string_view name, std::string_view value) {
   return filter;
 }
 
-class Analyzer : public irs::analysis::analyzer {
+class Analyzer : public irs::analysis::TypedAnalyzer<Analyzer> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "NormTestAnalyzer";
   }
 
-  explicit Analyzer(size_t count)
-    : irs::analysis::analyzer{irs::type<Analyzer>::get()}, count_{count} {}
+  explicit Analyzer(size_t count) : count_{count} {}
 
   irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);

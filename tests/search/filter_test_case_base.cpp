@@ -73,7 +73,7 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
 
 void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
                                         const irs::IndexReader& rdr,
-                                        const irs::Order& ord,
+                                        const irs::Scorers& ord,
                                         ScoredDocs& result, Costs& result_costs,
                                         std::string_view source_location) {
   SCOPED_TRACE(source_location);
@@ -142,19 +142,19 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   SCOPED_TRACE(source_location);
   Docs result;
   Costs result_costs;
-  GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
+  GetQueryResult(filter.prepare(index, irs::Scorers::kUnordered), index, result,
                  result_costs, source_location);
   ASSERT_EQ(expected, result);
   ASSERT_EQ(expected_costs, result_costs);
 }
 
 void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
-                                    std::span<const irs::sort::ptr> order,
+                                    std::span<const irs::Scorer::ptr> order,
                                     const std::vector<Tests>& tests,
                                     const irs::IndexReader& rdr,
                                     std::string_view source_location) {
   SCOPED_TRACE(source_location);
-  auto ord = irs::Order::Prepare(order);
+  auto ord = irs::Scorers::Prepare(order);
   auto q = filter.prepare(rdr, ord);
   ASSERT_NE(nullptr, q);
 
@@ -214,14 +214,14 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
 }
 
 void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
-                                    std::span<const irs::sort::ptr> order,
+                                    std::span<const irs::Scorer::ptr> order,
                                     const ScoredDocs& expected,
                                     const irs::IndexReader& index,
                                     std::string_view source_location) {
   SCOPED_TRACE(source_location);
   ScoredDocs result;
   Costs result_costs;
-  auto prepared = irs::Order::Prepare(order);
+  auto prepared = irs::Scorers::Prepare(order);
   GetQueryResult(filter.prepare(index, prepared), index, prepared, result,
                  result_costs, source_location);
   ASSERT_EQ(expected, result);
@@ -234,17 +234,17 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   SCOPED_TRACE(source_location);
   Docs result;
   Costs result_costs;
-  GetQueryResult(filter.prepare(index, irs::Order::kUnordered), index, result,
+  GetQueryResult(filter.prepare(index, irs::Scorers::kUnordered), index, result,
                  result_costs, source_location);
   ASSERT_EQ(expected, result);
 }
 
 void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
-                                    std::span<const irs::sort::ptr> order,
+                                    std::span<const irs::Scorer::ptr> order,
                                     const std::vector<irs::doc_id_t>& expected,
                                     const irs::IndexReader& rdr,
                                     bool score_must_be_present, bool reverse) {
-  auto prepared_order = irs::Order::Prepare(order);
+  auto prepared_order = irs::Scorers::Prepare(order);
   auto prepared_filter = filter.prepare(rdr, prepared_order);
   auto score_less =
     [reverse, size = prepared_order.buckets().size()](

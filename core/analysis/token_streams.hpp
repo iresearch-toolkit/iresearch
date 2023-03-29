@@ -29,16 +29,10 @@
 
 namespace irs {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class basic_token_stream
-/// @brief convenient helper implementation providing access to "increment"
-///        and "term_attributes" attributes
-//////////////////////////////////////////////////////////////////////////////
+// Convenient helper implementation providing access to "increment"
+// and "term_attributes" attributes
 class basic_token_stream : public analysis::analyzer {
  public:
-  explicit basic_token_stream(const type_info& type)
-    : analysis::analyzer(type) {}
-
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::get_mutable(attrs_, type);
   }
@@ -49,13 +43,14 @@ class basic_token_stream : public analysis::analyzer {
   std::tuple<term_attribute, increment> attrs_;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class null_token_stream
-/// @brief token_stream implementation for boolean field, a single bool term.
-//////////////////////////////////////////////////////////////////////////////
+// analyzer implementation for boolean field, a single bool term.
 class boolean_token_stream final : public basic_token_stream,
                                    private util::noncopyable {
  public:
+  static constexpr std::string_view type_name() noexcept {
+    return "boolean_token_stream";
+  }
+
   static constexpr std::string_view value_true() noexcept {
     return {"\xFF", 1};
   }
@@ -68,8 +63,6 @@ class boolean_token_stream final : public basic_token_stream,
     return val ? value_true() : value_false();
   }
 
-  explicit boolean_token_stream(bool value = false) noexcept;
-
   bool next() noexcept final;
 
   void reset(bool value) noexcept {
@@ -77,29 +70,24 @@ class boolean_token_stream final : public basic_token_stream,
     in_use_ = false;
   }
 
-  static constexpr std::string_view type_name() noexcept {
-    return "boolean_token_stream";
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<boolean_token_stream>::id();
   }
 
  private:
   using basic_token_stream::reset;
 
-  bool in_use_;
-  bool value_;
+  bool in_use_{false};
+  bool value_{false};
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class string_token_stream
-/// @brief basic implementation of token_stream for simple string field.
-///        it does not tokenize or analyze field, just set attributes based
-///        on initial string length
-//////////////////////////////////////////////////////////////////////////////
-class string_token_stream : public analysis::analyzer,
+// Basic implementation of token_stream for simple string field.
+// it does not tokenize or analyze field, just set attributes based
+// on initial string length
+class string_token_stream : public analysis::TypedAnalyzer<string_token_stream>,
                             private util::noncopyable {
  public:
   static constexpr std::string_view type_name() noexcept { return "identity"; }
-
-  string_token_stream() noexcept;
 
   bool next() noexcept final;
 
@@ -121,34 +109,18 @@ class string_token_stream : public analysis::analyzer,
  private:
   std::tuple<offset, increment, term_attribute> attrs_;
   bytes_view value_;
-  bool in_use_;
+  bool in_use_{false};
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class numeric_token_stream
-/// @brief token_stream implementation for numeric field. based on precision
-///        step it produces several terms representing ranges of the input
-///        term
-//////////////////////////////////////////////////////////////////////////////
+// analyzer implementation for numeric field. based on precision
+// step it produces several terms representing ranges of the input
+// term
 class numeric_token_stream final : public basic_token_stream,
                                    private util::noncopyable {
  public:
-  explicit numeric_token_stream()
-    : basic_token_stream(irs::type<numeric_token_stream>::get()) {}
-
   static constexpr uint32_t PRECISION_STEP_DEF = 16;
   static constexpr uint32_t PRECISION_STEP_32 = 8;
 
-  bool next() final;
-
-  void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
-  void reset(int64_t value, uint32_t step = PRECISION_STEP_DEF);
-
-#ifndef FLOAT_T_IS_DOUBLE_T
-  void reset(float_t value, uint32_t step = PRECISION_STEP_DEF);
-#endif
-
-  void reset(double_t value, uint32_t step = PRECISION_STEP_DEF);
   static bytes_view value(bstring& buf, int32_t value);
   static bytes_view value(bstring& buf, int64_t value);
 
@@ -160,6 +132,21 @@ class numeric_token_stream final : public basic_token_stream,
 
   static constexpr std::string_view type_name() noexcept {
     return "numeric_token_stream";
+  }
+
+  bool next() final;
+
+  void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
+  void reset(int64_t value, uint32_t step = PRECISION_STEP_DEF);
+
+#ifndef FLOAT_T_IS_DOUBLE_T
+  void reset(float_t value, uint32_t step = PRECISION_STEP_DEF);
+#endif
+
+  void reset(double_t value, uint32_t step = PRECISION_STEP_DEF);
+
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<numeric_token_stream>::id();
   }
 
  private:
@@ -262,15 +249,13 @@ class numeric_token_stream final : public basic_token_stream,
   numeric_term num_;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class null_token_stream
-/// @brief token_stream implementation for null field, a single null term.
-//////////////////////////////////////////////////////////////////////////////
+// analyzer implementation for null field, a single null term.
 class null_token_stream final : public basic_token_stream,
                                 private util::noncopyable {
  public:
-  explicit null_token_stream()
-    : basic_token_stream(irs::type<null_token_stream>::get()) {}
+  static constexpr std::string_view type_name() noexcept {
+    return "null_token_stream";
+  }
 
   static constexpr std::string_view value_null() noexcept {
     // data pointer != nullptr or IRS_ASSERT failure in bytes_hash::insert(...)
@@ -281,8 +266,8 @@ class null_token_stream final : public basic_token_stream,
 
   void reset() noexcept { in_use_ = false; }
 
-  static constexpr std::string_view type_name() noexcept {
-    return "null_token_stream";
+  irs::type_info::type_id type() const noexcept final {
+    return irs::type<null_token_stream>::id();
   }
 
  private:

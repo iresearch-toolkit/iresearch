@@ -116,4 +116,13 @@ struct Visitor : Visitors... {
 template<typename... T>
 Visitor(T...) -> Visitor<std::decay_t<T>...>;
 
+template<typename Func>
+auto ResolveBool(bool value, Func&& func) {
+  if (value) {
+    return std::forward<Func>(func)(std::true_type{});
+  } else {
+    return std::forward<Func>(func)(std::false_type{});
+  }
+}
+
 }  // namespace irs

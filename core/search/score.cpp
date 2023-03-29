@@ -22,17 +22,20 @@
 
 #include "score.hpp"
 
+#include "formats/formats.hpp"
+#include "index/field_meta.hpp"
 #include "shared.hpp"
 
 namespace irs {
 
 const score score::kNoScore;
 
-Scorers PrepareScorers(std::span<const OrderBucket> buckets,
-                       const SubReader& segment, const term_reader& field,
-                       const byte_type* stats_buf,
-                       const attribute_provider& doc, score_t boost) {
-  Scorers scorers;
+ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
+                              const ColumnProvider& segment,
+                              const term_reader& field,
+                              const byte_type* stats_buf,
+                              const attribute_provider& doc, score_t boost) {
+  ScoreFunctions scorers;
   scorers.reserve(buckets.size());
 
   for (const auto& entry : buckets) {
@@ -42,8 +45,9 @@ Scorers PrepareScorers(std::span<const OrderBucket> buckets,
       continue;
     }
 
-    auto scorer = bucket.prepare_scorer(
-      segment, field, stats_buf + entry.stats_offset, doc, boost);
+    auto scorer =
+      bucket.prepare_scorer(segment, field.meta().features,
+                            stats_buf + entry.stats_offset, doc, boost);
 
     if (IRS_LIKELY(scorer)) {
       scorers.emplace_back(std::move(scorer));
@@ -55,7 +59,7 @@ Scorers PrepareScorers(std::span<const OrderBucket> buckets,
   return scorers;
 }
 
-ScoreFunction CompileScorers(Scorers&& scorers) {
+ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
   switch (scorers.size()) {
     case 0: {
       return ScoreFunction{};
@@ -85,10 +89,10 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
     }
     default: {
       struct Ctx final : score_ctx {
-        explicit Ctx(Scorers&& scorers) noexcept
+        explicit Ctx(ScoreFunctions&& scorers) noexcept
           : scorers{std::move(scorers)} {}
 
-        Scorers scorers;
+        ScoreFunctions scorers;
       };
 
       return ScoreFunction::Make<Ctx>(
@@ -103,12 +107,11 @@ ScoreFunction CompileScorers(Scorers&& scorers) {
   }
 }
 
-void PrepareCollectors(std::span<const OrderBucket> order, byte_type* stats_buf,
-                       const IndexReader& index) {
+void PrepareCollectors(std::span<const ScorerBucket> order,
+                       byte_type* stats_buf) {
   for (const auto& entry : order) {
     if (IRS_LIKELY(entry.bucket)) {
-      entry.bucket->collect(stats_buf + entry.stats_offset, index, nullptr,
-                            nullptr);
+      entry.bucket->collect(stats_buf + entry.stats_offset, nullptr, nullptr);
     }
   }
 }

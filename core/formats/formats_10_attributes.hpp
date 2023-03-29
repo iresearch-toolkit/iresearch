@@ -23,23 +23,9 @@
 #pragma once
 
 #include "analysis/token_attributes.hpp"
-#include "utils/attributes.hpp"
-#include "utils/bitset.hpp"
 
 namespace irs {
 namespace version10 {
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class documents
-/// @brief document set
-//////////////////////////////////////////////////////////////////////////////
-struct documents final : attribute {
-  static constexpr std::string_view type_name() noexcept { return "documents"; }
-
-  documents() = default;
-
-  bitset value;
-};
 
 struct term_meta : irs::term_meta {
   term_meta() noexcept

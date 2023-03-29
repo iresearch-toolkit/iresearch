@@ -563,7 +563,7 @@ class PhraseIterator : public doc_iterator {
   PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
                  std::vector<typename Frequency::TermPosition>&& pos,
                  const SubReader& segment, const term_reader& field,
-                 const byte_type* stats, const Order& ord, score_t boost)
+                 const byte_type* stats, const Scorers& ord, score_t boost)
     : PhraseIterator{std::move(itrs), std::move(pos)} {
     if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);

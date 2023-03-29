@@ -52,7 +52,7 @@ class column_existence_query : public irs::filter::prepared {
  protected:
   doc_iterator::ptr iterator(const SubReader& segment,
                              const column_reader& column,
-                             const Order& ord) const {
+                             const Scorers& ord) const {
     auto it = column.iterator(ColumnHint::kMask);
 
     if (IRS_UNLIKELY(!it)) {
@@ -113,7 +113,7 @@ class column_prefix_existence_query : public column_existence_query {
     }
 
     return ResoveMergeType(
-      sort::MergeType::kSum, ord.buckets().size(),
+      ScoreMergeType::kSum, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t =
           irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
@@ -132,7 +132,7 @@ class column_prefix_existence_query : public column_existence_query {
 namespace irs {
 
 filter::prepared::ptr by_column_existence::prepare(
-  const IndexReader& reader, const Order& order, score_t filter_boost,
+  const IndexReader& reader, const Scorers& order, score_t filter_boost,
   const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
@@ -140,7 +140,7 @@ filter::prepared::ptr by_column_existence::prepare(
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = stats.data();
 
-  PrepareCollectors(order.buckets(), stats_buf, reader);
+  PrepareCollectors(order.buckets(), stats_buf);
 
   filter_boost *= boost();
 

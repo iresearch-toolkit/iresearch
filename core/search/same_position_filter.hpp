@@ -60,7 +60,7 @@ class by_same_position : public filter_with_options<by_same_position_options> {
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Order& ord,
+  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
                                 score_t boost,
                                 const attribute_provider* ctx) const final;
 };

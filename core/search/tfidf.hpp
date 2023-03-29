@@ -22,32 +22,56 @@
 
 #pragma once
 
-#include "scorers.hpp"
+#include "search/scorers.hpp"
 
 namespace irs {
 
-class tfidf_sort : public sort {
- public:
-  using score_t = float_t;
+struct TFIDFStats {
+  float_t value;
+};
 
+class TFIDF final : public irs::ScorerBase<TFIDF, TFIDFStats> {
+ public:
   static constexpr std::string_view type_name() noexcept { return "tfidf"; }
 
   static constexpr bool WITH_NORMS() noexcept { return false; }
 
   static constexpr bool BOOST_AS_SCORE() noexcept { return false; }
 
-  explicit tfidf_sort(bool normalize = WITH_NORMS(),
-                      bool boost_as_score = BOOST_AS_SCORE()) noexcept;
+  static void init();
 
-  static void init();  // for trigering registration in a static build
+  explicit TFIDF(bool normalize = WITH_NORMS(),
+                 bool boost_as_score = BOOST_AS_SCORE()) noexcept
+    : normalize_{normalize}, boost_as_score_{boost_as_score} {}
+
+  void collect(byte_type* stats_buf, const irs::FieldCollector* field,
+               const irs::TermCollector* term) const final;
+
+  IndexFeatures index_features() const noexcept final {
+    return IndexFeatures::FREQ;
+  }
+
+  void get_features(std::set<type_info::type_id>& features) const final;
+
+  FieldCollector::ptr prepare_field_collector() const final;
+
+  ScoreFunction prepare_scorer(
+    const ColumnProvider& segment,
+    const std::map<irs::type_info::type_id, field_id>& features,
+    const byte_type* stats_buf, const attribute_provider& doc_attrs,
+    score_t boost) const final;
+
+  TermCollector::ptr prepare_term_collector() const final;
+
+  WandWriter::ptr prepare_wand_writer(size_t max_levels) const final;
+
+  WandSource::ptr prepare_wand_source() const final;
+
+  bool equals(const Scorer& other) const noexcept final;
+
   bool normalize() const noexcept { return normalize_; }
-  void normalize(bool value) noexcept { normalize_ = value; }
 
-  // use boost as score even if frequency is not set
   bool use_boost_as_score() const noexcept { return boost_as_score_; }
-  void use_boost_as_score(bool use) noexcept { boost_as_score_ = use; }
-
-  sort::prepared::ptr prepare() const final;
 
  private:
   bool normalize_;

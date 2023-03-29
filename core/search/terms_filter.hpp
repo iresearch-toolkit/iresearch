@@ -65,7 +65,7 @@ struct by_terms_options {
 
   search_terms terms;
   size_t min_match{1};
-  sort::MergeType merge_type{sort::MergeType::kSum};
+  ScoreMergeType merge_type{ScoreMergeType::kSum};
 
   bool operator==(const by_terms_options& rhs) const noexcept {
     return terms == rhs.terms;
@@ -92,7 +92,7 @@ class by_terms final : public filter_base<by_terms_options>,
 
   using filter::prepare;
 
-  filter::prepared::ptr prepare(const IndexReader& index, const Order& order,
+  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& order,
                                 score_t boost,
                                 const attribute_provider* /*ctx*/) const final;
 };

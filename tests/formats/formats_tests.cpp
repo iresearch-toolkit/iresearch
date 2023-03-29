@@ -27,7 +27,6 @@
 TEST(formats_tests, duplicate_register) {
   struct dummy_format : public irs::format {
     static ptr make() { return ptr(new dummy_format()); }
-    dummy_format() : irs::format(dummy_format::type()) {}
     irs::columnstore_writer::ptr get_columnstore_writer(bool) const final {
       return nullptr;
     }
@@ -55,6 +54,9 @@ TEST(formats_tests, duplicate_register) {
     }
     irs::segment_meta_reader::ptr get_segment_meta_reader() const final {
       return nullptr;
+    }
+    irs::type_info::type_id type() const noexcept final {
+      return irs::type<dummy_format>::id();
     }
   };
 

@@ -1876,7 +1876,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::sort::ptr, 1> scorers{
+    std::array<irs::Scorer::ptr, 1> scorers{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*scorers.front());
 
@@ -1890,21 +1890,15 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-      ++finish_count;
+    scorer.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
+    scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
+      return std::make_unique<tests::sort::custom_sort::field_collector>(
+        scorer);
     };
-    scorer.prepare_field_collector_ =
-      [&scorer]() -> irs::sort::field_collector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
-    };
-    scorer.prepare_term_collector_ =
-      [&scorer]() -> irs::sort::term_collector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+    scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
+      return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
     };
 
     irs::by_granular_range q;
@@ -1932,7 +1926,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
     size_t collect_term_count = 0;
     size_t finish_count = 0;
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::custom_sort>()};
     auto& scorer = static_cast<tests::sort::custom_sort&>(*order.front());
 
@@ -1946,21 +1940,15 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
                             const irs::attribute_provider&) -> void {
       ++collect_term_count;
     };
-    scorer.collectors_collect_ = [&finish_count](
-                                   irs::byte_type*, const irs::IndexReader&,
-                                   const irs::sort::field_collector*,
-                                   const irs::sort::term_collector*) -> void {
-      ++finish_count;
+    scorer.collectors_collect_ =
+      [&finish_count](irs::byte_type*, const irs::FieldCollector*,
+                      const irs::TermCollector*) -> void { ++finish_count; };
+    scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
+      return std::make_unique<tests::sort::custom_sort::field_collector>(
+        scorer);
     };
-    scorer.prepare_field_collector_ =
-      [&scorer]() -> irs::sort::field_collector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::prepared::field_collector>(scorer);
-    };
-    scorer.prepare_term_collector_ =
-      [&scorer]() -> irs::sort::term_collector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::prepared::term_collector>(scorer);
+    scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
+      return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
     };
 
     irs::by_granular_range q;
@@ -1984,7 +1972,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     Docs docs{1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17};
     Costs costs{docs.size()};
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;
@@ -2004,7 +1992,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
   {
     Docs docs{2, 4, 6, 11, 12, 13, 14, 15, 16, 17, 1, 5, 7, 9, 10, 3, 8};
     Costs costs{docs.size()};
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;
@@ -2031,7 +2019,7 @@ TEST_P(granular_range_filter_test_case, by_range_order) {
 
     ASSERT_TRUE(max_stream.next());
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;
@@ -2096,7 +2084,7 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
     irs::numeric_token_stream min_stream;
     min_stream.reset((double_t)begin);
 
-    std::array<irs::sort::ptr, 1> order{
+    std::array<irs::Scorer::ptr, 1> order{
       std::make_unique<tests::sort::frequency_sort>()};
 
     irs::by_granular_range q;

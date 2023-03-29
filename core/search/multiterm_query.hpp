@@ -35,7 +35,7 @@ class MultiTermQuery : public filter::prepared {
   using Stats = std::vector<bstring>;
 
   explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
-                          sort::MergeType merge_type, size_t min_match)
+                          ScoreMergeType merge_type, size_t min_match)
     : prepared{boost},
       states_{std::move(states)},
       stats_{std::move(stats)},
@@ -50,7 +50,7 @@ class MultiTermQuery : public filter::prepared {
  private:
   States states_;
   Stats stats_;
-  sort::MergeType merge_type_;
+  ScoreMergeType merge_type_;
   size_t min_match_;
 };
 

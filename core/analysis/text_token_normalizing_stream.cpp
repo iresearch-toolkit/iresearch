@@ -328,9 +328,7 @@ void normalizing_token_stream::state_deleter_t::operator()(
 }
 
 normalizing_token_stream::normalizing_token_stream(const options_t& options)
-  : analyzer{irs::type<normalizing_token_stream>::get()},
-    state_{new state_t{options}},
-    term_eof_{true} {}
+  : state_{new state_t{options}}, term_eof_{true} {}
 
 /*static*/ void normalizing_token_stream::init() {
   REGISTER_ANALYZER_JSON(normalizing_token_stream, make_json,

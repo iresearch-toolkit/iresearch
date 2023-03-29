@@ -335,7 +335,7 @@ int put(const std::string& path, const std::string& dir_type,
   }
 
   irs::features_t text_features{TEXT_FEATURES.data(), TEXT_FEATURES.size()};
-  if (LEGACY_FORMATS.count(codec->type().name()) > 0) {
+  if (LEGACY_FORMATS.count(codec->type()().name()) > 0) {
     // legacy formats don't support pluggable features
     text_features = {LEGACY_TEXT_FEATURES.data(), LEGACY_TEXT_FEATURES.size()};
   }

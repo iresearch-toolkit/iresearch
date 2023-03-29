@@ -79,6 +79,7 @@
 #include "index/index_meta.hpp"
 #include "index/norm.hpp"
 #include "store/memory_directory.hpp"
+#include "search/scorer.hpp"
 #include "store/store_utils.hpp"
 #include "utils/automaton.hpp"
 #include "utils/encryption.hpp"
@@ -654,7 +655,7 @@ inline void prepare_output(std::string& str, index_output::ptr& out,
 }
 
 inline int32_t prepare_input(std::string& str, index_input::ptr& in,
-                             irs::IOAdvice advice, const reader_state& state,
+                             irs::IOAdvice advice, const ReaderState& state,
                              std::string_view ext, std::string_view format,
                              const int32_t min_ver, const int32_t max_ver,
                              int64_t* checksum = nullptr) {
@@ -846,25 +847,26 @@ class field_writer final : public irs::field_writer {
  private:
   static constexpr size_t DEFAULT_SIZE = 8;
 
-  void begin_field(IndexFeatures field);
+  void BeginField(IndexFeatures index_features,
+                  const irs::feature_map_t& features);
 
-  void end_field(std::string_view name, IndexFeatures index_features,
-                 const irs::feature_map_t& features, uint64_t total_doc_freq,
-                 uint64_t total_term_freq, size_t doc_count);
+  void EndField(std::string_view name, IndexFeatures index_features,
+                const irs::feature_map_t& features, uint64_t total_doc_freq,
+                uint64_t total_term_freq, uint64_t doc_count);
 
   // prefix - prefix length (in last_term)
   // begin - index of the first entry in the block
   // end - index of the last entry in the block
   // meta - block metadata
   // label - block lead label (if present)
-  void write_block(size_t prefix, size_t begin, size_t end, byte_type meta,
-                   uint16_t label);
+  void WriteBlock(size_t prefix, size_t begin, size_t end, byte_type meta,
+                  uint16_t label);
 
   // prefix - prefix length ( in last_term
   // count - number of entries to write into block
-  void write_blocks(size_t prefix, size_t count);
+  void WriteBlocks(size_t prefix, size_t count);
 
-  void push(bytes_view term);
+  void Push(bytes_view term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
 #ifdef __cpp_lib_memory_resource
@@ -884,7 +886,6 @@ class field_writer final : public irs::field_writer {
   std::vector<size_t> prefixes_;
   std::pair<bool, volatile_byte_ref> min_term_;  // current min term in a block
   volatile_byte_ref max_term_;                   // current max term in a block
-  uint64_t term_count_;                          // count of terms
   size_t fields_count_{};
   const burst_trie::Version version_;
   const uint32_t min_block_size_;
@@ -892,8 +893,8 @@ class field_writer final : public irs::field_writer {
   const bool consolidation_;
 };
 
-void field_writer::write_block(size_t prefix, size_t begin, size_t end,
-                               irs::byte_type meta, uint16_t label) {
+void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
+                              irs::byte_type meta, uint16_t label) {
   IRS_ASSERT(end > begin);
 
   // begin of the block
@@ -993,7 +994,7 @@ void field_writer::write_block(size_t prefix, size_t begin, size_t end,
   }
 }
 
-void field_writer::write_blocks(size_t prefix, size_t count) {
+void field_writer::WriteBlocks(size_t prefix, size_t count) {
   // only root node able to write whole stack
   IRS_ASSERT(prefix || count == stack_.size());
   IRS_ASSERT(blocks_.empty());
@@ -1028,7 +1029,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
       if (block_size >= min_block_size_ &&
           end - block_start > max_block_size_) {
         block_meta::floor(meta, block_size < count);
-        write_block(prefix, block_start, i, meta, next_label);
+        WriteBlock(prefix, block_start, i, meta, next_label);
         next_label = label;
         block_meta::reset(meta);
         block_start = i;
@@ -1045,7 +1046,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   // write remaining block
   if (block_start < end) {
     block_meta::floor(meta, end - block_start < count);
-    write_block(prefix, block_start, end, meta, next_label);
+    WriteBlock(prefix, block_start, end, meta, next_label);
   }
 
   // merge blocks into 1st block
@@ -1063,7 +1064,7 @@ void field_writer::write_blocks(size_t prefix, size_t count) {
   }
 }
 
-void field_writer::push(bytes_view term) {
+void field_writer::Push(bytes_view term) {
   const irs::bytes_view last = last_term_;
   const size_t limit = std::min(last.size(), term.size());
 
@@ -1077,7 +1078,7 @@ void field_writer::push(bytes_view term) {
     --i;  // should use it here as we use size_t
     const size_t top = stack_.size() - prefixes_[i];
     if (top > min_block_size_) {
-      write_blocks(i + 1, top);
+      WriteBlocks(i + 1, top);
       prefixes_[i] -= (top - 1);
     }
   }
@@ -1101,7 +1102,6 @@ field_writer::field_writer(
     pw_(std::move(pw)),
     fst_buf_(new fst_buffer()),
     prefixes_(DEFAULT_SIZE, 0),
-    term_count_(0),
     version_(version),
     min_block_size_(min_block_size),
     max_block_size_(max_block_size),
@@ -1118,7 +1118,7 @@ field_writer::field_writer(
 
 field_writer::~field_writer() { delete fst_buf_; }
 
-void field_writer::prepare(const irs::flush_state& state) {
+void field_writer::prepare(const flush_state& state) {
   IRS_ASSERT(state.dir);
 
   // reset writer state
@@ -1130,7 +1130,6 @@ void field_writer::prepare(const irs::flush_state& state) {
   stack_.clear();
   stats_.reset();
   suffix_.reset();
-  term_count_ = 0;
   fields_count_ = 0;
 
   std::string filename;
@@ -1187,18 +1186,16 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
                          const irs::feature_map_t& features,
                          term_iterator& terms) {
   REGISTER_TIMER_DETAILED();
-  begin_field(index_features);
+  BeginField(index_features, features);
 
+  uint64_t term_count = 0;
   uint64_t sum_dfreq = 0;
   uint64_t sum_tfreq = 0;
 
   const bool freq_exists =
     IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
 
-  auto* docs = irs::get<version10::documents>(*pw_);
-  IRS_ASSERT(docs);
-
-  for (; terms.next();) {
+  while (terms.next()) {
     auto postings = terms.postings(index_features);
     auto meta = pw_->write(*postings);
 
@@ -1210,7 +1207,7 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
       sum_dfreq += meta->docs_count;
 
       const bytes_view term = terms.value();
-      push(term);
+      Push(term);
 
       // push term to the top of the stack
       stack_.emplace_back(term, std::move(meta), consolidation_);
@@ -1222,49 +1219,47 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
 
       max_term_.assign(term, consolidation_);
 
-      // increase processed term count
-      ++term_count_;
+      ++term_count;
     }
   }
 
-  end_field(name, index_features, features, sum_dfreq, sum_tfreq,
-            docs->value.count());
+  EndField(name, index_features, features, sum_dfreq, sum_tfreq, term_count);
 }
 
-void field_writer::begin_field(IndexFeatures features) {
+void field_writer::BeginField(IndexFeatures index_features,
+                              const irs::feature_map_t& features) {
   IRS_ASSERT(terms_out_);
   IRS_ASSERT(index_out_);
 
-  // at the beginning of the field
-  // there should be no pending
-  // entries at all
+  // At the beginning of the field there should be no pending entries at all
   IRS_ASSERT(stack_.empty());
 
-  // reset first field term
+  // Reset first field term
   min_term_.first = false;
   min_term_.second.clear();
-  term_count_ = 0;
 
-  pw_->begin_field(features);
+  pw_->begin_field(index_features, features);
 }
 
-void field_writer::end_field(std::string_view name,
-                             IndexFeatures index_features,
-                             const irs::feature_map_t& features,
-                             uint64_t total_doc_freq, uint64_t total_term_freq,
-                             size_t doc_count) {
+void field_writer::EndField(std::string_view name, IndexFeatures index_features,
+                            const irs::feature_map_t& features,
+                            uint64_t total_doc_freq, uint64_t total_term_freq,
+                            uint64_t term_count) {
   IRS_ASSERT(terms_out_);
   IRS_ASSERT(index_out_);
-  if (!term_count_) {
+
+  if (!term_count) {
     // nothing to write
     return;
   }
 
+  const auto [wand_mask, doc_count] = pw_->end_field();
+
   // cause creation of all final blocks
-  push(kEmptyStringView<irs::byte_type>);
+  Push(kEmptyStringView<irs::byte_type>);
 
   // write root block with empty prefix
-  write_blocks(0, stack_.size());
+  WriteBlocks(0, stack_.size());
   IRS_ASSERT(1 == stack_.size());
 
   // write field meta
@@ -1275,13 +1270,16 @@ void field_writer::end_field(std::string_view name,
     write_field_features_legacy(feature_map_, *index_out_, index_features,
                                 features);
   }
-  index_out_->write_vlong(term_count_);
+  index_out_->write_vlong(term_count);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
   write_string<irs::bytes_view>(*index_out_, min_term_.second);
   write_string<irs::bytes_view>(*index_out_, max_term_);
   if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     index_out_->write_vlong(total_term_freq);
+  }
+  if (IRS_LIKELY(version_ >= burst_trie::Version::WAND)) {
+    index_out_->write_long(wand_mask);
   }
 
   // build fst
@@ -1360,20 +1358,45 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   bytes_view min() const noexcept final { return min_term_; }
   bytes_view max() const noexcept final { return max_term_; }
   attribute* get_mutable(irs::type_info::type_id type) noexcept final;
+  bool has_scorer(byte_type index) const noexcept final;
 
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
 
+  byte_type WandCount() const noexcept { return wand_count_; }
+
+ protected:
+  byte_type WandIndex(byte_type i) const noexcept;
+
  private:
+  field_meta field_;
   bstring min_term_;
   bstring max_term_;
   uint64_t terms_count_;
   uint64_t doc_count_;
   uint64_t doc_freq_;
+  uint64_t wand_mask_{};
+  uint32_t wand_count_{};
   frequency freq_;  // total term freq
-  frequency* pfreq_{};
-  field_meta field_;
 };
+
+byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
+  if (i >= kMaxScorers) {
+    return WandContext::kDisable;
+  }
+
+  const uint64_t mask{uint64_t{1} << i};
+
+  if (0 == (wand_mask_ & mask)) {
+    return WandContext::kDisable;
+  }
+
+  return static_cast<byte_type>(std::popcount(wand_mask_ & (mask - 1)));
+}
+
+bool term_reader_base::has_scorer(byte_type index) const noexcept {
+  return WandIndex(index) != WandContext::kDisable;
+}
 
 void term_reader_base::prepare(burst_trie::Version version, index_input& in,
                                const feature_map_t& feature_map) {
@@ -1394,13 +1417,22 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
 
   if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ)) {
     freq_.value = in.read_vlong();
-    pfreq_ = &freq_;
+  }
+
+  if (IRS_LIKELY(version >= burst_trie::Version::WAND)) {
+    wand_mask_ = in.read_long();
+    wand_count_ = static_cast<byte_type>(std::popcount(wand_mask_));
   }
 }
 
 attribute* term_reader_base::get_mutable(
   irs::type_info::type_id type) noexcept {
-  return irs::type<irs::frequency>::id() == type ? pfreq_ : nullptr;
+  if (IndexFeatures::NONE != (field_.index_features & IndexFeatures::FREQ) &&
+      irs::type<irs::frequency>::id() == type) {
+    return &freq_;
+  }
+
+  return nullptr;
 }
 
 class block_iterator : util::noncopyable {
@@ -2000,10 +2032,10 @@ void block_iterator::reset() {
 // Base class for term_iterator and automaton_term_iterator
 class term_iterator_base : public seek_term_iterator {
  public:
-  term_iterator_base(const field_meta& field, postings_reader& postings,
+  term_iterator_base(const term_reader_base& field, postings_reader& postings,
                      irs::encryption::stream* terms_cipher,
                      payload* pay = nullptr)
-    : field_(&field), postings_(&postings), terms_cipher_(terms_cipher) {
+    : field_{&field}, postings_{&postings}, terms_cipher_{terms_cipher} {
     std::get<attribute_ptr<payload>>(attrs_) = pay;
   }
 
@@ -2030,17 +2062,19 @@ class term_iterator_base : public seek_term_iterator {
     std::tuple<version10::term_meta, term_attribute, attribute_ptr<payload>>;
 
   void read_impl(block_iterator& it) {
-    it.load_data(*field_, std::get<version10::term_meta>(attrs_), *postings_);
+    it.load_data(field_->meta(), std::get<version10::term_meta>(attrs_),
+                 *postings_);
   }
 
   doc_iterator::ptr postings_impl(block_iterator* it,
                                   IndexFeatures features) const {
     auto& meta = std::get<version10::term_meta>(attrs_);
-
+    const auto& field_meta = field_->meta();
     if (it) {
-      it->load_data(*field_, meta, *postings_);
+      it->load_data(field_meta, meta, *postings_);
     }
-    return postings_->iterator(field_->index_features, features, meta);
+    return postings_->iterator(field_meta.index_features, features, meta,
+                               field_->WandCount());
   }
 
   void copy(const byte_type* suffix, size_t prefix_size, size_t suffix_size) {
@@ -2054,10 +2088,10 @@ class term_iterator_base : public seek_term_iterator {
   }
   void reset_value() noexcept { std::get<term_attribute>(attrs_).value = {}; }
 
-  const field_meta& field() const noexcept { return *field_; }
+  const field_meta& field() const noexcept { return field_->meta(); }
 
   mutable attributes attrs_;
-  const field_meta* field_;
+  const term_reader_base* field_;
   postings_reader* postings_;
   irs::encryption::stream* terms_cipher_;
   bstring term_buf_;
@@ -2074,13 +2108,13 @@ class term_iterator : public term_iterator_base {
   using weight_t = typename FST::Weight;
   using stateid_t = typename FST::StateId;
 
-  term_iterator(const field_meta& field, postings_reader& postings,
+  term_iterator(const term_reader_base& field, postings_reader& postings,
                 const index_input& terms_in,
                 irs::encryption::stream* terms_cipher, const FST& fst)
-    : term_iterator_base(field, postings, terms_cipher, nullptr),
-      terms_in_source_(&terms_in),
-      fst_(&fst),
-      matcher_(&fst, fst::MATCH_INPUT) {  // pass pointer to avoid copying FST
+    : term_iterator_base{field, postings, terms_cipher, nullptr},
+      terms_in_source_{&terms_in},
+      fst_{&fst},
+      matcher_{&fst, fst::MATCH_INPUT} {  // pass pointer to avoid copying FST
   }
 
   bool next() final;
@@ -2455,7 +2489,7 @@ SeekResult term_iterator<FST>::seek_ge(bytes_view term) {
 template<typename FST>
 class single_term_iterator : public seek_term_iterator {
  public:
-  explicit single_term_iterator(const field_meta& field,
+  explicit single_term_iterator(const term_reader_base& field,
                                 postings_reader& postings,
                                 index_input::ptr&& terms_in,
                                 irs::encryption::stream* terms_cipher,
@@ -2492,7 +2526,8 @@ class single_term_iterator : public seek_term_iterator {
   }
 
   doc_iterator::ptr postings(IndexFeatures features) const final {
-    return postings_->iterator(field_->index_features, features, meta_);
+    return postings_->iterator(field_->meta().index_features, features, meta_,
+                               field_->WandCount());
   }
 
   const version10::term_meta& meta() const noexcept { return meta_; }
@@ -2505,7 +2540,7 @@ class single_term_iterator : public seek_term_iterator {
   index_input::ptr terms_in_;
   irs::encryption::stream* cipher_;
   postings_reader* postings_;
-  const field_meta* field_;
+  const term_reader_base* field_;
   const FST* fst_;
 };
 
@@ -2559,7 +2594,7 @@ bool single_term_iterator<FST>::seek(bytes_view term) {
   cur_block.load(*terms_in_, cipher_);
 
   if (SeekResult::FOUND == cur_block.scan_to_term(term, [](auto, auto) {})) {
-    cur_block.load_data(*field_, meta_, *postings_);
+    cur_block.load_data(field_->meta(), meta_, *postings_);
     value_.value = term;
     return true;
   }
@@ -2625,17 +2660,18 @@ class fst_arc_matcher {
 template<typename FST>
 class automaton_term_iterator : public term_iterator_base {
  public:
-  automaton_term_iterator(const field_meta& field, postings_reader& postings,
+  automaton_term_iterator(const term_reader_base& field,
+                          postings_reader& postings,
                           index_input::ptr&& terms_in,
                           irs::encryption::stream* terms_cipher, const FST& fst,
                           automaton_table_matcher& matcher)
-    : term_iterator_base(field, postings, terms_cipher, &payload_),
-      terms_in_(std::move(terms_in)),
-      fst_(&fst),
-      acceptor_(&matcher.GetFst()),
-      matcher_(&matcher),
-      fst_matcher_(&fst, fst::MATCH_INPUT),
-      sink_(matcher.sink()) {
+    : term_iterator_base{field, postings, terms_cipher, &payload_},
+      terms_in_{std::move(terms_in)},
+      fst_{&fst},
+      acceptor_{&matcher.GetFst()},
+      matcher_{&matcher},
+      fst_matcher_{&fst, fst::MATCH_INPUT},
+      sink_{matcher.sink()} {
     IRS_ASSERT(terms_in_);
     IRS_ASSERT(fst::kNoStateId != acceptor_->Start());
     IRS_ASSERT(acceptor_->NumArcs(acceptor_->Start()));
@@ -2978,8 +3014,7 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  void prepare(const directory& dir, const SegmentMeta& meta,
-               const DocumentMask& mask) final;
+  void prepare(const ReaderState& state) final;
 
   const irs::term_reader* field(std::string_view field) const final;
   irs::field_iterator::ptr iterator() const final;
@@ -3021,17 +3056,17 @@ class field_reader final : public irs::field_reader {
         }
 
         return memory::make_managed<single_term_iterator<FST>>(
-          meta(), *owner_->pr_, std::move(terms_in),
+          *this, *owner_->pr_, std::move(terms_in),
           owner_->terms_in_cipher_.get(), *fst_);
       }
 
       return memory::make_managed<term_iterator<FST>>(
-        meta(), *owner_->pr_, *owner_->terms_in_,
-        owner_->terms_in_cipher_.get(), *fst_);
+        *this, *owner_->pr_, *owner_->terms_in_, owner_->terms_in_cipher_.get(),
+        *fst_);
     }
 
     term_meta term(bytes_view term) const final {
-      single_term_iterator<FST> it{meta(), *owner_->pr_,
+      single_term_iterator<FST> it{*this, *owner_->pr_,
                                    owner_->terms_in_->reopen(),
                                    owner_->terms_in_cipher_.get(), *fst_};
 
@@ -3045,7 +3080,7 @@ class field_reader final : public irs::field_reader {
         return 0;
       }
 
-      single_term_iterator<FST> it{meta(), *owner_->pr_,
+      single_term_iterator<FST> it{*this, *owner_->pr_,
                                    owner_->terms_in_->reopen(),
                                    owner_->terms_in_cipher_.get(), *fst_};
 
@@ -3122,21 +3157,25 @@ class field_reader final : public irs::field_reader {
       }
 
       return memory::make_managed<automaton_term_iterator<FST>>(
-        meta(), *owner_->pr_, std::move(terms_in),
+        *this, *owner_->pr_, std::move(terms_in),
         owner_->terms_in_cipher_.get(), *fst_, matcher);
     }
 
     doc_iterator::ptr postings(const seek_cookie& cookie,
                                IndexFeatures features) const final {
       return owner_->pr_->iterator(meta().index_features, features,
-                                   down_cast<::cookie>(cookie).meta);
+                                   down_cast<::cookie>(cookie).meta,
+                                   WandCount());
     }
 
     doc_iterator::ptr wanderator(const seek_cookie& cookie,
                                  IndexFeatures features,
-                                 const WanderatorOptions& options) const final {
-      return owner_->pr_->wanderator(meta().index_features, features,
-                                     down_cast<::cookie>(cookie).meta, options);
+                                 const WanderatorOptions& options,
+                                 WandContext ctx) const final {
+      return owner_->pr_->wanderator(
+        meta().index_features, features, down_cast<::cookie>(cookie).meta,
+        options, ctx,
+        {.mapped_index = WandIndex(ctx.index), .count = WandCount()});
     }
 
    private:
@@ -3162,22 +3201,15 @@ field_reader::field_reader(irs::postings_reader::ptr&& pr)
   IRS_ASSERT(pr_);
 }
 
-void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
-                           const DocumentMask& /*mask*/) {
-  std::string filename;
-
-  feature_map_t feature_map;
-  IndexFeatures features{IndexFeatures::NONE};
-  reader_state state;
-
-  state.dir = &dir;
-  state.meta = &meta;
+void field_reader::prepare(const ReaderState& state) {
+  IRS_ASSERT(state.dir);
+  IRS_ASSERT(state.meta);
 
   // check index header
   index_input::ptr index_in;
 
   int64_t checksum = 0;
-
+  std::string filename;
   const auto term_index_version = burst_trie::Version(prepare_input(
     filename, index_in, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE,
     state, field_writer::TERMS_INDEX_EXT, field_writer::FORMAT_TERMS_INDEX,
@@ -3202,7 +3234,7 @@ void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
     index_in->seek(ptr);
   }
 
-  auto* enc = dir.attributes().encryption();
+  auto* enc = state.dir->attributes().encryption();
   encryption::stream::ptr index_in_cipher;
 
   if (term_index_version > burst_trie::Version::MIN) {
@@ -3217,6 +3249,8 @@ void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
     }
   }
 
+  feature_map_t feature_map;
+  IndexFeatures features{IndexFeatures::NONE};
   if (IRS_LIKELY(term_index_version >= burst_trie::Version::IMMUTABLE_FST)) {
     read_segment_features(*index_in, features, feature_map);
   } else {
@@ -3227,6 +3261,8 @@ void field_reader::prepare(const directory& dir, const SegmentMeta& meta,
   if (term_index_version <= burst_trie::Version::ENCRYPTION_MIN) {
     fields_ = vector_fst_readers{};
   }
+
+  const auto& meta = *state.meta;
 
   std::visit(
     [&](auto& fields) {
@@ -3427,7 +3463,7 @@ class dumper : util::noncopyable {
     out_ << "|\n";
     indent();
     out_ << "V\n";
-  };
+  }
 
   void pop_block(const block_iterator& block) {
     indent_ -= 2;

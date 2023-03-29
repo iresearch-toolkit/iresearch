@@ -25,6 +25,9 @@
 #include <function2/function2.hpp>
 #include <functional>
 
+#include "search/scorer.hpp"
+#include "utils/bit_utils.hpp"
+
 namespace irs {
 
 struct SegmentMeta;
@@ -35,12 +38,33 @@ using ColumnWarmupCallback =
   std::function<bool(const SegmentMeta& meta, const field_reader& fields,
                      const column_reader& column)>;
 
-// should never throw as may be used in dtors
+// Should never throw as may be used in dtors
 using MemoryAccountingFunc = fu2::function<bool(int64_t) noexcept>;
 
+// Scorers allowed to be used in conjunction with wanderator.
+using ScorersView = std::span<const Scorer* const>;
+
+// We support up to 64 scorers per field
+inline constexpr size_t kMaxScorers = bits_required<uint64_t>();
+
+struct WandContext {
+  static constexpr auto kDisable = std::numeric_limits<byte_type>::max();
+
+  bool Enabled() const noexcept { return index != kDisable; }
+
+  // Index of the scorer to use for optimization.
+  // Optimization is turned off by default.
+  byte_type index{kDisable};
+  bool strict{false};
+};
+
 struct IndexReaderOptions {
-  ColumnWarmupCallback warmup_columns{};
-  MemoryAccountingFunc pinned_memory_accounting{};
+  ColumnWarmupCallback warmup_columns;
+
+  MemoryAccountingFunc pinned_memory_accounting;
+
+  // A list of wand scorers.
+  ScorersView scorers;
 
   // Open inverted index
   bool index{true};

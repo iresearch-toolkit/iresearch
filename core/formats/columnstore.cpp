@@ -909,8 +909,8 @@ bool writer::commit(const flush_state& state) {
     column.flush();
   }
 
-  const auto block_index_ptr =
-    data_out_->file_pointer();  // Where blocks index start.
+  // Where blocks index start.
+  const auto block_index_ptr = data_out_->file_pointer();
 
   data_out_->write_vlong(columns_.size());  // Number of columns.
 

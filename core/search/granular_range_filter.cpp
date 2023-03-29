@@ -555,7 +555,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
 }
 
 /*static*/ filter::prepared::ptr by_granular_range::prepare(
-  const IndexReader& index, const Order& ord, score_t boost,
+  const IndexReader& index, const Scorers& ord, score_t boost,
   std::string_view field, const options_type::range_type& rng,
   size_t scored_terms_limit) {
   if (!rng.min.empty() && !rng.max.empty()) {
@@ -601,7 +601,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
 
   return memory::make_managed<MultiTermQuery>(std::move(states),
                                               std::move(stats), boost,
-                                              sort::MergeType::kSum, size_t{1});
+                                              ScoreMergeType::kSum, size_t{1});
 }
 
 /*static*/ void by_granular_range::visit(const SubReader& segment,

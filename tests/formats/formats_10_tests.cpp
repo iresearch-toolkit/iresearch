@@ -128,7 +128,7 @@ class format_10_test_case : public tests::format_test_case {
       // prepare writer
       writer->prepare(*out, state);
 
-      writer->begin_field(features);
+      writer->begin_field(features, field.features);
 
       // write postings for term
       {
@@ -139,6 +139,10 @@ class format_10_test_case : public tests::format_test_case {
         writer->encode(*out, *term_meta);
       }
 
+      auto stats = writer->end_field();
+      ASSERT_EQ(0, stats.wand_mask);
+      ASSERT_EQ(docs.size(), stats.docs_count);
+
       writer->end();
     }
 
@@ -147,7 +151,7 @@ class format_10_test_case : public tests::format_test_case {
       irs::SegmentMeta meta;
       meta.name = "segment_name";
 
-      irs::reader_state state;
+      irs::ReaderState state;
       state.dir = dir.get();
       state.meta = &meta;
 
@@ -186,7 +190,7 @@ class format_10_test_case : public tests::format_test_case {
           postings expected_postings{docs, field.index_features};
 
           auto actual =
-            reader->iterator(field.index_features, features, read_meta);
+            reader->iterator(field.index_features, features, read_meta, 0);
           ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
 
           postings expected(docs, field.index_features);
@@ -217,7 +221,7 @@ class format_10_test_case : public tests::format_test_case {
         // next + seek to eof
         {
           auto it = reader->iterator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
+                                     irs::IndexFeatures::NONE, read_meta, 0);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_TRUE(it->next());
           ASSERT_EQ(docs.front().first, it->value());
@@ -243,7 +247,7 @@ class format_10_test_case : public tests::format_test_case {
           for (auto doc = docs.rbegin(), end = docs.rend(); doc != end; ++doc) {
             postings expected(docs, field.index_features);
             auto it =
-              reader->iterator(field.index_features, features, read_meta);
+              reader->iterator(field.index_features, features, read_meta, 0);
             ASSERT_FALSE(irs::doc_limits::valid(it->value()));
             ASSERT_EQ(doc->first, it->seek(doc->first));
 
@@ -251,10 +255,11 @@ class format_10_test_case : public tests::format_test_case {
             AssertFrequencyAndPositions(expected, *it);
             if (doc != docs.rbegin()) {
               ASSERT_TRUE(it->next());
-              ASSERT_EQ((doc - 1)->first, it->value());
+              const auto expected_doc = (doc - 1)->first;
+              ASSERT_EQ(expected_doc, it->value());
 
               ASSERT_TRUE(expected.next());
-              ASSERT_EQ((doc - 1)->first, expected.value());
+              ASSERT_EQ(expected_doc, expected.value());
               AssertFrequencyAndPositions(expected, *it);
             }
           }
@@ -263,7 +268,7 @@ class format_10_test_case : public tests::format_test_case {
         // seek to irs::doc_limits::invalid()
         {
           auto it = reader->iterator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
+                                     irs::IndexFeatures::NONE, read_meta, 0);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_FALSE(
             irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
@@ -274,7 +279,7 @@ class format_10_test_case : public tests::format_test_case {
         // seek to irs::doc_limits::eof()
         {
           auto it = reader->iterator(field.index_features,
-                                     irs::IndexFeatures::NONE, read_meta);
+                                     irs::IndexFeatures::NONE, read_meta, 0);
           ASSERT_FALSE(irs::doc_limits::valid(it->value()));
           ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
           ASSERT_FALSE(it->next());
@@ -318,7 +323,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     writer->prepare(*out, state);
 
     // begin field
-    writer->begin_field(field.index_features);
+    writer->begin_field(field.index_features, field.features);
 
     // write postings for term0
     {
@@ -372,7 +377,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::reader_state state;
+    irs::ReaderState state;
     state.dir = &dir();
     state.meta = &meta;
 
@@ -409,7 +414,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 
       // read documents
       auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE,
-                                 read_meta);
+                                 read_meta, 0);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs0[i++].first, it->value());
       }
@@ -435,7 +440,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
 
       // read documents
       auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE,
-                                 read_meta);
+                                 read_meta, 0);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs1[i++].first, it->value());
       }
@@ -482,7 +487,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     writer->prepare(*out, state);
 
     // begin field
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
 
     // write postings for term0
     {
@@ -517,7 +522,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::reader_state state;
+    irs::ReaderState state;
     state.dir = &dir();
     state.meta = &meta;
 
@@ -554,7 +559,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
       // read documents
       auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE,
-                                 read_meta);
+                                 read_meta, 0);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs0[i++].first, it->value());
       }
@@ -578,7 +583,7 @@ TEST_P(format_10_test_case, postings_read_write) {
 
       // read documents
       auto it = reader->iterator(field.index_features, irs::IndexFeatures::NONE,
-                                 read_meta);
+                                 read_meta, 0);
       for (size_t i = 0; it->next();) {
         ASSERT_EQ(docs1[i++].first, it->value());
       }
@@ -631,7 +636,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -660,7 +665,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -689,7 +694,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -717,7 +722,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -744,7 +749,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -769,7 +774,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
     postings docs(docs0);
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, field.features);
     writer->write(docs);
     writer->end();
   }
@@ -817,7 +822,7 @@ TEST_P(format_10_test_case, ires336) {
 
   irs::DocumentMask docs_mask;
   auto fr = get_codec()->get_field_reader();
-  fr->prepare(*dir, meta, docs_mask);
+  fr->prepare(irs::ReaderState{.dir = dir.get(), .meta = &meta});
 
   auto it = fr->field(field_meta.name)->iterator(irs::SeekMode::NORMAL);
   ASSERT_TRUE(it->seek(term));

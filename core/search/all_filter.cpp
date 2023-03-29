@@ -47,10 +47,8 @@ class all_query : public filter::prepared {
   bstring stats_;
 };
 
-all::all() noexcept : filter(irs::type<all>::get()) {}
-
 filter::prepared::ptr all::prepare(const IndexReader& reader,
-                                   const Order& order, score_t filter_boost,
+                                   const Scorers& order, score_t filter_boost,
                                    const attribute_provider* /*ctx*/) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
@@ -58,7 +56,7 @@ filter::prepared::ptr all::prepare(const IndexReader& reader,
   bstring stats(order.stats_size(), 0);
   auto* stats_buf = stats.data();
 
-  PrepareCollectors(order.buckets(), stats_buf, reader);
+  PrepareCollectors(order.buckets(), stats_buf);
 
   return memory::make_managed<all_query>(std::move(stats),
                                          this->boost() * filter_boost);

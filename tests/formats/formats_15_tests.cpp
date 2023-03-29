@@ -23,11 +23,49 @@
 #include "formats/formats_10.hpp"
 #include "formats/formats_10_attributes.hpp"
 #include "formats_test_case_base.hpp"
-#include "store/directory_attributes.hpp"
-#include "store/mmap_directory.hpp"
+#include "search/wand_writer.hpp"
 #include "tests_shared.hpp"
 
 namespace {
+
+struct EmptyColumnProvider : irs::ColumnProvider {
+  const irs::column_reader* column(irs::field_id) const final {
+    return nullptr;
+  }
+  const irs::column_reader* column(std::string_view) const final {
+    return nullptr;
+  }
+};
+
+struct FreqScorer : irs::ScorerBase<void> {
+  irs::IndexFeatures index_features() const final {
+    return irs::IndexFeatures::FREQ;
+  }
+
+  irs::ScoreFunction prepare_scorer(
+    const irs::ColumnProvider&,
+    const std::map<irs::type_info::type_id, irs::field_id>&,
+    const irs::byte_type*, const irs::attribute_provider& attrs,
+    irs::score_t) const final {
+    auto* freq = irs::get<irs::frequency>(attrs);
+    EXPECT_NE(nullptr, freq);
+
+    return irs::ScoreFunction{
+      reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        *res = reinterpret_cast<irs::frequency*>(ctx)->value;
+      }};
+  }
+
+  irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const {
+    return std::make_unique<irs::WandWriterImpl<irs::FreqProducer>>(*this,
+                                                                    max_levels);
+  }
+
+  irs::WandSource::ptr prepare_wand_source() const {
+    return std::make_unique<irs::FreqSource>();
+  }
+};
 
 class FreqThresholdDocIterator : public irs::doc_iterator {
  public:
@@ -210,7 +248,8 @@ class Format15TestCase : public tests::format_test_case {
   Docs GenerateDocs(size_t count, float_t mean, float_t dev, size_t step);
 
   std::pair<irs::version10::term_meta, irs::postings_reader::ptr> WriteReadMeta(
-    irs::directory& dir, DocsView docs, irs::IndexFeatures features);
+    irs::directory& dir, DocsView docs, irs::ScorersView scorers,
+    irs::IndexFeatures features);
 
   void AssertWanderator(irs::doc_iterator::ptr& actual,
                         irs::IndexFeatures features, DocsView docs);
@@ -247,6 +286,7 @@ class Format15TestCase : public tests::format_test_case {
 
 std::pair<irs::version10::term_meta, irs::postings_reader::ptr>
 Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
+                                irs::ScorersView scorers,
                                 irs::IndexFeatures features) {
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
@@ -256,8 +296,11 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   irs::postings_writer::state term_meta;  // must be destroyed before the writer
 
   {
+    const EmptyColumnProvider provider;
     const irs::flush_state state{.dir = &dir,
+                                 .columns = &provider,
                                  .name = "segment_name",
+                                 .scorers = scorers,
                                  .doc_count = docs.back().first + 1,
                                  .index_features = features};
 
@@ -266,11 +309,15 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
     irs::write_string(*out, std::string_view("file_header"));
 
     writer->prepare(*out, state);
-    writer->begin_field(features);
+    writer->begin_field(features, irs::feature_map_t{});
 
     postings it{docs, features};
     term_meta = writer->write(it);
-
+    const auto stats = writer->end_field();
+    EXPECT_EQ(docs.size(), stats.docs_count);
+    const uint64_t expected_wand_mask{irs::IndexFeatures::NONE !=
+                                      (features & irs::IndexFeatures::FREQ)};
+    EXPECT_EQ(expected_wand_mask, stats.wand_mask);
     writer->encode(*out, *term_meta);
     writer->end();
   }
@@ -278,7 +325,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   irs::SegmentMeta meta;
   meta.name = "segment_name";
 
-  const irs::reader_state state{.dir = &dir, .meta = &meta};
+  const irs::ReaderState state{.dir = &dir, .meta = &meta, .scorers = scorers};
 
   auto in = dir.open("attributes", irs::IOAdvice::NORMAL);
   EXPECT_FALSE(!in);
@@ -330,20 +377,24 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   irs::IndexFeatures features, const irs::term_meta& meta, uint32_t threshold,
   bool strict) {
   const irs::WanderatorOptions options{
-    .factory =
-      [](const irs::attribute_provider& attrs) {
-        auto* freq = irs::get<irs::frequency>(attrs);
-        EXPECT_NE(nullptr, freq);
+    .factory = [](const irs::attribute_provider& attrs,
+                  const irs::Scorer& scorer) {
+      return scorer.prepare_scorer(EmptyColumnProvider{}, irs::feature_map_t{},
+                                   nullptr, attrs, irs::kNoBoost);
+    }};
 
-        return irs::ScoreFunction{
-          reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
-          [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-            *res = reinterpret_cast<irs::frequency*>(ctx)->value;
-          }};
-      },
-    .strict = strict};
+  const bool has_freq =
+    irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ);
+  irs::WandContext ctx{};
+  irs::WandInfo info{};
+  if (has_freq) {
+    ctx.index = 0;
+    ctx.strict = strict;
+    info.count = 1;
+  }
 
-  auto actual = reader.wanderator(field_features, features, meta, options);
+  auto actual =
+    reader.wanderator(field_features, features, meta, options, ctx, info);
   EXPECT_NE(nullptr, actual);
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
@@ -546,9 +597,13 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
 void Format15TestCase::AssertPostings(DocsView docs,
                                       irs::IndexFeatures features,
                                       uint32_t threshold, bool strict) {
+  FreqScorer scorer;
+  const irs::Scorer* scorer_ptr = &scorer;
+
   auto dir = get_directory(*this);
   ASSERT_NE(nullptr, dir);
-  auto [meta, reader] = WriteReadMeta(*dir, docs, features);
+  auto [meta, reader] =
+    WriteReadMeta(*dir, docs, std::span{&scorer_ptr, 1}, features);
   ASSERT_NE(nullptr, reader);
 
   AssertCornerCases(*reader, docs, features, features, meta, strict);

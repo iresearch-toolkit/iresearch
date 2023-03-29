@@ -24,7 +24,7 @@
 
 #include "formats/seek_cookie.hpp"
 #include "search/cost.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 
 namespace irs {
 

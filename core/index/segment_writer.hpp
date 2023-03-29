@@ -24,10 +24,10 @@
 #pragma once
 
 #include "analysis/token_stream.hpp"
-#include "column_info.hpp"
-#include "field_data.hpp"
-#include "formats/formats.hpp"
-#include "sorted_column.hpp"
+#include "index/column_info.hpp"
+#include "index/field_data.hpp"
+#include "index/index_reader.hpp"
+#include "index/buffered_column.hpp"
 #include "utils/bitset.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
@@ -67,7 +67,7 @@ struct DocsMask final {
 // Interface for an index writer over a directory
 // an object that represents a single ongoing transaction
 // non-thread safe
-class segment_writer : util::noncopyable {
+class segment_writer : public ColumnProvider, util::noncopyable {
  private:
   // Disallow using public constructor
   struct ConstructToken final {
@@ -81,8 +81,7 @@ class segment_writer : util::noncopyable {
   };
 
   static std::unique_ptr<segment_writer> make(
-    directory& dir, const ColumnInfoProvider& column_info,
-    const FeatureInfoProvider& feature_info, const Comparer* comparator);
+    directory& dir, const SegmentWriterOptions& options);
 
   // begin document-write transaction
   // Return doc_id_t as per doc_limits
@@ -147,7 +146,7 @@ class segment_writer : util::noncopyable {
 
   std::span<DocContext> docs_context() noexcept { return docs_context_; }
 
-  [[nodiscard]] doc_map flush(IndexSegment& segment, DocsMask& docs_mask);
+  [[nodiscard]] DocMap flush(IndexSegment& segment, DocsMask& docs_mask);
 
   const std::string& name() const noexcept { return seg_name_; }
   size_t buffered_docs() const noexcept { return docs_context_.size(); }
@@ -162,9 +161,25 @@ class segment_writer : util::noncopyable {
   }
 
   segment_writer(ConstructToken, directory& dir,
-                 const ColumnInfoProvider& column_info,
-                 const FeatureInfoProvider& feature_info,
-                 const Comparer* comparator) noexcept;
+                 const SegmentWriterOptions& options) noexcept;
+
+  const column_reader* column(field_id id) const final {
+    if (id < cached_columns_.size()) {
+      return &cached_columns_[id];
+    }
+
+    return nullptr;
+  }
+
+  const column_reader* column(std::string_view name) const final {
+    const auto it = columns_.find(hashed_string_view{name});
+
+    if (it == columns_.end()) {
+      return nullptr;
+    }
+
+    return it->cached;
+  }
 
  private:
   struct stored_column : util::noncopyable {
@@ -207,6 +222,7 @@ class segment_writer : util::noncopyable {
     std::string name;
     size_t name_hash;
     columnstore_writer::values_writer_f writer;
+    cached_column* cached{};
     mutable field_id id{field_limits::invalid()};
   };
 
@@ -224,7 +240,7 @@ class segment_writer : util::noncopyable {
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};
-    irs::sorted_column stream;
+    irs::BufferedColumn stream;
     columnstore_writer::column_finalizer_f finalizer;
   };
 
@@ -343,7 +359,7 @@ class segment_writer : util::noncopyable {
 
   // Returns stream for storing attributes in sorted order
   column_output& sorted_stream(const doc_id_t doc_id) {
-    sort_.stream.prepare(doc_id);
+    sort_.stream.Prepare(doc_id);
     return sort_.stream;
   }
 
@@ -361,6 +377,7 @@ class segment_writer : util::noncopyable {
   // Flushes indexed fields to directory
   void FlushFields(flush_state& state);
 
+  ScorersView scorers_;
   std::deque<cached_column> cached_columns_;  // pointers remain valid
   sorted_column sort_;
   std::vector<DocContext> docs_context_;
@@ -368,7 +385,6 @@ class segment_writer : util::noncopyable {
   DocsMask docs_mask_;
   fields_data fields_;
   stored_columns columns_;
-  std::vector<const stored_column*> sorted_columns_;
   std::vector<const field_data*> doc_;  // document fields
   std::string seg_name_;
   field_writer::ptr field_writer_;

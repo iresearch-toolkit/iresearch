@@ -27,7 +27,7 @@
 #include "index/iterators.hpp"
 #include "search/cost.hpp"
 #include "search/score.hpp"
-#include "search/sort.hpp"
+#include "search/scorer.hpp"
 #include "utils/attribute_helper.hpp"
 
 namespace irs {
@@ -35,7 +35,7 @@ namespace irs {
 class AllIterator : public doc_iterator {
  public:
   AllIterator(const irs::SubReader& reader, const byte_type* query_stats,
-              const irs::Order& order, uint64_t docs_count, score_t boost);
+              const irs::Scorers& order, uint64_t docs_count, score_t boost);
 
   attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::get_mutable(attrs_, id);
