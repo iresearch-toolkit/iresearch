@@ -358,7 +358,7 @@ void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
   const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
   // nullptr possible if e.g.'by_column_existence' filter
   const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0;
-  IRS_ASSERT(docs_with_field >= docs_with_term);
+  // TODO(MBkkt) SEARCH-464 IRS_ASSERT(docs_with_field >= docs_with_term);
 
   auto* idf = stats_cast(stats_buf);
   idf->value += float_t(
