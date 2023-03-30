@@ -49,7 +49,7 @@ static_assert(std::is_nothrow_move_constructible_v<FixedPhraseState>);
 static_assert(std::is_nothrow_move_assignable_v<FixedPhraseState>);
 
 // Cached per reader variadic phrase state
-struct VariadicPhraseState : FixedPhraseState {
+struct VariadicPhraseState {
   using TermState = std::pair<seek_cookie::ptr, score_t>;
 
   std::vector<size_t> num_terms;  // number of terms per phrase part
