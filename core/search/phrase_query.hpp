@@ -26,6 +26,7 @@
 #include "search/prepared_state_visitor.hpp"
 #include "search/states/phrase_state.hpp"
 #include "search/states_cache.hpp"
+#include "utils/misc.hpp"
 
 namespace irs {
 
@@ -35,6 +36,9 @@ class VariadicPhraseQuery;
 // Prepared phrase query implementation
 template<typename State>
 class PhraseQuery : public filter::prepared {
+  static_assert(std::is_same_v<State, FixedPhraseState> ||
+                std::is_same_v<State, VariadicPhraseState>);
+
  public:
   using states_t = StatesCache<State>;
   using positions_t = std::vector<uint32_t>;
@@ -52,17 +56,12 @@ class PhraseQuery : public filter::prepared {
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
              score_t boost) const final {
-    static_assert(std::is_same_v<State, FixedPhraseState> ||
-                  std::is_same_v<State, VariadicPhraseState>);
-
     if (auto state = states_.find(segment); state) {
       boost *= this->boost();
       if constexpr (std::is_same_v<State, FixedPhraseState>) {
-        visitor.Visit(static_cast<const FixedPhraseQuery&>(*this), *state,
-                      boost);
-      } else if constexpr (std::is_same_v<State, FixedPhraseState>) {
-        visitor.Visit(static_cast<const VariadicPhraseQuery&>(*this), *state,
-                      boost);
+        visitor.Visit(down_cast<FixedPhraseQuery>(*this), *state, boost);
+      } else if constexpr (std::is_same_v<State, VariadicPhraseState>) {
+        visitor.Visit(down_cast<VariadicPhraseQuery>(*this), *state, boost);
       }
     }
   }

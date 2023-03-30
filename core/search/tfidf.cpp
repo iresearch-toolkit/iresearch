@@ -361,8 +361,8 @@ void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
   // TODO(MBkkt) SEARCH-464 IRS_ASSERT(docs_with_field >= docs_with_term);
 
   auto* idf = stats_cast(stats_buf);
-  idf->value += float_t(
-    std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
+  idf->value += static_cast<float_t>(
+    std::log1p((docs_with_field + 1.0) / (docs_with_term + 1.0)));
   // TODO(MBkkt) SEARCH-444 IRS_ASSERT(idf.value >= 0.f);
 }
 

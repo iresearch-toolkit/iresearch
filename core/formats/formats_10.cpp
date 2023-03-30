@@ -4003,12 +4003,12 @@ class format15 : public format14 {
 
   static ptr make();
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
-  irs::type_info::type_id type() const noexcept override {
+  irs::type_info::type_id type() const noexcept final {
     return irs::type<format15>::id();
   }
 };
@@ -4195,12 +4195,12 @@ class format15simd : public format14simd {
 
   static ptr make();
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
-  irs::type_info::type_id type() const noexcept override {
+  irs::type_info::type_id type() const noexcept final {
     return irs::type<format15simd>::id();
   }
 };
