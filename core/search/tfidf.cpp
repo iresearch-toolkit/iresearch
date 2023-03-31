@@ -169,8 +169,6 @@ IRS_FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
   return kSQRT.get<true>(freq) * idf;
 }
 
-struct EmptyNorm final {};
-
 template<typename Norm>
 struct TFIDFContext final : public score_ctx {
   TFIDFContext(Norm&& norm, score_t boost, TFIDFStats idf,
@@ -236,7 +234,7 @@ struct MakeScoreFunctionImpl<TFIDFContext<Norm>> {
           idf = state.idf;
         }
 
-        if constexpr (std::is_same_v<Norm, EmptyNorm>) {
+        if constexpr (std::is_same_v<Norm, Empty>) {
           *res = tfidf(state.freq.value, idf);
         } else {
           *res = tfidf(state.freq.value, idf) * state.norm();
@@ -335,8 +333,8 @@ ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
     }
   }
 
-  return MakeScoreFunction<TFIDFContext<EmptyNorm>>(filter_boost, EmptyNorm{},
-                                                    boost, *stats, freq);
+  return MakeScoreFunction<TFIDFContext<Empty>>(filter_boost, Empty{}, boost,
+                                                *stats, freq);
 }
 
 TermCollector::ptr TFIDF::prepare_term_collector() const {

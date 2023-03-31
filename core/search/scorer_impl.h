@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iterator>
 #include <type_traits>
 
@@ -61,20 +62,17 @@ struct TermCollectorImpl final : TermCollector {
   void write(data_output& out) const final { out.write_vlong(docs_with_term); }
 };
 
-struct FieldCollectorBase : FieldCollector {
-  // number of documents containing the matched field
-  // (possibly without matching terms)
-  uint64_t docs_with_field = 0;
-};
-
-struct FieldCollectorWithFreq : FieldCollectorBase {
-  // number of terms for processed field
-  uint64_t total_term_freq = 0;
-};
+struct Empty final {};
 
 template<bool Freq>
-struct FieldCollectorImpl final
-  : std::conditional_t<Freq, FieldCollectorWithFreq, FieldCollectorBase> {
+struct FieldCollectorImpl final : FieldCollector {
+  // number of documents containing the matched field
+  // (possibly without matching terms)
+  uint64_t docs_with_field{};
+  // number of terms for processed field
+  IRS_NO_UNIQUE_ADDRESS std::conditional_t<Freq, uint64_t, Empty>
+    total_term_freq{};
+
   void collect(const SubReader& /*segment*/,
                const term_reader& field) noexcept final {
     this->docs_with_field += field.docs_count();
