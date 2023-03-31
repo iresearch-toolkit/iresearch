@@ -247,8 +247,6 @@ IRS_FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
 
 constexpr frequency kEmptyFreq;
 
-}  // namespace
-
 struct ScoreContext : public score_ctx {
   ScoreContext(score_t boost, TFIDFStats idf, const frequency* freq,
                const filter_boost* filter_boost = nullptr) noexcept
@@ -289,7 +287,7 @@ struct NormAdapter {
     }
   }
 
-  Reader reader;
+  IRS_NO_UNIQUE_ADDRESS Reader reader;
 };
 
 template<NormType Type, typename Reader>
@@ -348,6 +346,8 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
   return MakeScoreFunctionImpl<Ctx>::template Make<false>(
     std::forward<Args>(args)...);
 }
+
+}  // namespace
 
 void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
                     const TermCollector* term) const {

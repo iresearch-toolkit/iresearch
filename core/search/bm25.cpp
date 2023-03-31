@@ -22,6 +22,8 @@
 
 #include "bm25.hpp"
 
+#include <cstdint>
+
 #include "analysis/token_attributes.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
@@ -280,9 +282,7 @@ struct term_collector final : public irs::TermCollector {
 };
 
 // Empty frequency
-const frequency kEmptyFreq;
-
-}  // namespace
+constexpr frequency kEmptyFreq;
 
 struct BM15Context : public irs::score_ctx {
   BM15Context(float_t k, irs::score_t boost, const BM25Stats& stats,
@@ -329,20 +329,22 @@ enum class NormType {
 };
 
 template<typename Reader, NormType Type>
-struct NormAdapter : Reader {
+struct NormAdapter {
   static constexpr auto kType = Type;
 
-  explicit NormAdapter(Reader&& reader) : Reader{std::move(reader)} {}
+  explicit NormAdapter(Reader&& reader) : reader{std::move(reader)} {}
 
-  IRS_FORCE_INLINE auto operator()() -> std::invoke_result_t<Reader> {
+  IRS_FORCE_INLINE decltype(auto) operator()() {
     if constexpr (kType < NormType::kNorm) {
       // norms are stored |doc| as uint32_t
-      return Reader::operator()();
+      return reader();
     } else {
       // norms are stored 1/sqrt(|doc|) as float
-      return 1.f / Reader::operator()();
+      return 1.f / reader();
     }
   }
+
+  IRS_NO_UNIQUE_ADDRESS Reader reader;
 };
 
 template<NormType Type, typename Reader>
@@ -444,6 +446,8 @@ ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
   return MakeScoreFunctionImpl<Ctx>::template Make<false>(
     std::forward<Args>(args)...);
 }
+
+}  // namespace
 
 void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
                    const irs::TermCollector* term) const {
