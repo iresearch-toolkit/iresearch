@@ -193,7 +193,9 @@ class IndexWriter : private util::noncopyable {
     std::unique_ptr<FlushContext, void (*)(FlushContext*)>;
 
   // Disallow using public constructor
-  struct ConstructToken {};
+  struct ConstructToken {
+    explicit ConstructToken() = default;
+  };
 
   class ActiveSegmentContext {
    public:
@@ -917,7 +919,9 @@ class IndexWriter : private util::noncopyable {
   ActiveSegmentContext GetSegmentContext();
 
   // Return options for segment_writer
-  SegmentWriterOptions GetSegmentWriterOptions() const noexcept;
+  // TODO(gnusi) should get it options from IndexWriterOptions not from Reader
+  SegmentWriterOptions GetSegmentWriterOptions(
+    const IndexReaderOptions& options) const noexcept;
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;

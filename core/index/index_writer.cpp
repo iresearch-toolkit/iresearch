@@ -1346,11 +1346,7 @@ ConsolidationResult IndexWriter::Consolidate(
     // use atomic_load(...) since Finish() may modify the pointer
     committed_reader =
       std::atomic_load_explicit(&committed_reader_, std::memory_order_acquire);
-    IRS_ASSERT(committed_reader);
-    if (IRS_UNLIKELY(!committed_reader)) {
-      return {0, ConsolidationError::FAIL};
-    }
-
+    IRS_ASSERT(committed_reader != nullptr);
     if (committed_reader->size() == 0) {
       // nothing to consolidate
       return {0, ConsolidationError::OK};
@@ -1459,7 +1455,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
   RefTrackingDirectory dir{dir_};  // Track references for new segment
 
-  MergeWriter merger{dir, GetSegmentWriterOptions()};
+  MergeWriter merger{dir, GetSegmentWriterOptions(committed_reader->Options())};
   merger.Reset(candidates.begin(), candidates.end());
 
   // We do not persist segment meta since some removals may come later
@@ -1690,20 +1686,12 @@ bool IndexWriter::Import(const IndexReader& reader,
     codec = codec_;
   }
 
-  auto options = [&]() -> std::optional<IndexReaderOptions> {
-    auto committed_reader =
+  const auto options = [&] {
+    const auto committed_reader =
       std::atomic_load_explicit(&committed_reader_, std::memory_order_acquire);
-    IRS_ASSERT(committed_reader);
-    if (IRS_UNLIKELY(!committed_reader)) {
-      return std::nullopt;
-    }
-
+    IRS_ASSERT(committed_reader != nullptr);
     return committed_reader->Options();
   }();
-
-  if (IRS_UNLIKELY(!options.has_value())) {
-    return false;
-  }
 
   RefTrackingDirectory dir{dir_};  // Track references
 
@@ -1711,14 +1699,14 @@ bool IndexWriter::Import(const IndexReader& reader,
   segment.meta.name = file_name(NextSegmentId());
   segment.meta.codec = codec;
 
-  MergeWriter merger{dir, GetSegmentWriterOptions()};
+  MergeWriter merger{dir, GetSegmentWriterOptions(options)};
   merger.Reset(reader.begin(), reader.end());
 
   if (!merger.Flush(segment.meta, progress)) {
     return false;  // Import failure (no files created, nothing to clean up)
   }
 
-  auto imported_reader = SegmentReaderImpl::Open(dir_, segment.meta, *options);
+  auto imported_reader = SegmentReaderImpl::Open(dir_, segment.meta, options);
 
   if (!imported_reader) {
     throw index_error{absl::StrCat(
@@ -1811,39 +1799,46 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
     }
   }
 
+  const auto options = [&] {
+    const auto committed_reader =
+      std::atomic_load_explicit(&committed_reader_, std::memory_order_acquire);
+    IRS_ASSERT(committed_reader != nullptr);
+    return GetSegmentWriterOptions(committed_reader->Options());
+  }();
+
   // should allocate a new segment_context from the pool
   std::shared_ptr<SegmentContext> segment_ctx = segment_writer_pool_.emplace(
     dir_,
-    [this]() {
+    [this] {
       SegmentMeta meta{.codec = codec_};
       meta.name = file_name(NextSegmentId());
-
       return meta;
     },
-    GetSegmentWriterOptions());
+    options);
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (auto segment_memory_max = segment_limits_.segment_memory_max.load();
       segment_memory_max != 0 &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
     segment_ctx->writer_.reset();  // reset before create new
-    segment_ctx->writer_ =
-      segment_writer::make(segment_ctx->dir_, GetSegmentWriterOptions());
+    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, options);
   }
 
   return {segment_ctx, segments_active_};
-}  // namespace irs
-catch (...) {
+} catch (...) {
   segments_active_.fetch_sub(1, std::memory_order_relaxed);
   throw;
 }
 
-SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
-  return {.column_info = column_info_,
-          .feature_info = feature_info_,
-          .scorers_features = wand_features_,
-          .scorers = committed_reader_->Options().scorers,
-          .comparator = this->comparator_};
+SegmentWriterOptions IndexWriter::GetSegmentWriterOptions(
+  const IndexReaderOptions& options) const noexcept {
+  return {
+    .column_info = column_info_,
+    .feature_info = feature_info_,
+    .scorers_features = wand_features_,
+    .scorers = options.scorers,
+    .comparator = comparator_,
+  };
 }
 
 IndexWriter::PendingContext IndexWriter::PrepareFlush(
@@ -1937,8 +1932,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
       continue;
     }
 
-    // We don't want to call clear here because even for empty map it costs
-    // O(n)
+    // We don't want to call clear here because even for empty map it costs O(n)
     IRS_ASSERT(deleted_docs.empty());
 
     // mask documents matching filters from segment_contexts
@@ -2049,8 +2043,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
         if (!success) {
           // Consolidated segment has docs missing from 'segments'
           IR_FRMT_WARN(
-            "Failed to finish merge for segment '%s', due to removed "
-            "documents "
+            "Failed to finish merge for segment '%s', due to removed documents "
             "still present the consolidation candidates",
             meta.name.c_str());
 
@@ -2067,9 +2060,9 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
       // pending consolidation request
       import_candidates_count += candidates.size();
     } else {
-      // During consolidation doc_mask could be already populated even for
-      // just merged segment. Pending already imported/consolidated segment,
-      // apply removals mask documents matching filters from segment_contexts
+      // During consolidation doc_mask could be already populated even for just
+      // merged segment. Pending already imported/consolidated segment, apply
+      // removals mask documents matching filters from segment_contexts
       // (i.e. from new operations)
       apply_all_queries([&](QueryContext& query) {
         // skip queries which not affect this
@@ -2198,8 +2191,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
         if (auto it = ctx->cached_.find(&flushed); it != ctx->cached_.end()) {
           IRS_ASSERT(it->second != nullptr);
           IRS_ASSERT(flushed_first_tick <= committed_tick_);
-          // We don't support case when segment is committed partially more
-          // than one time. Because it's useless and ineffective.
+          // We don't support case when segment is committed partially more than
+          // one time. Because it's useless and ineffective.
           IRS_ASSERT(flushed_last_tick <= tick);
           // find existing reader
           reader = std::make_shared<const SegmentReaderImpl>(
@@ -2280,11 +2273,9 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
   }
 #endif
 
-  // TODO(MBkkt) In general looks useful to iterate here over all segments
-  // which
+  // TODO(MBkkt) In general looks useful to iterate here over all segments which
   //  partially committed, and free query memory which already was applied.
-  //  But when I start thinking about rollback stuff it looks almost
-  //  impossible
+  //  But when I start thinking about rollback stuff it looks almost impossible
 
   auto files_to_sync =
     GetFilesToSync(pending_meta.segments, partial_sync, partial_sync_threshold);
@@ -2415,8 +2406,7 @@ void IndexWriter::Finish() {
   auto lock = pending_state_.StartReset(*this, true);
   IRS_ASSERT(pending_state_.tick != writer_limits::kMaxTick);
   committed_tick_ = pending_state_.tick;
-  // after this line transaction is successful (only noexcept operations
-  // below)
+  // after this line transaction is successful (only noexcept operations below)
   std::atomic_store_explicit(&committed_reader_,
                              std::move(pending_state_.commit),
                              std::memory_order_release);
