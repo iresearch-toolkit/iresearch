@@ -34,6 +34,7 @@
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
+#include "search/scorer_impl.h"
 #include "search/scorers.hpp"
 #include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
@@ -42,6 +43,7 @@
 namespace irs {
 namespace {
 
+// TODO(MBkkt) deduplicate with bm25.cpp
 const auto kSQRT = cache_func<uint32_t, 2048>(
   0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
@@ -163,125 +165,40 @@ Scorer::ptr make_json(std::string_view args) {
 REGISTER_SCORER_JSON(TFIDF, make_json);
 REGISTER_SCORER_VPACK(TFIDF, make_vpack);
 
-struct byte_ref_iterator {
-  using iterator_category = std::input_iterator_tag;
-  using value_type = byte_type;
-  using pointer = value_type*;
-  using reference = value_type&;
-  using difference_type = void;
-
-  const byte_type* end_;
-  const byte_type* pos_;
-
-  explicit byte_ref_iterator(bytes_view in)
-    : end_(in.data() + in.size()), pos_(in.data()) {}
-
-  byte_type operator*() {
-    if (pos_ >= end_) {
-      throw io_error("invalid read past end of input");
-    }
-
-    return *pos_;
-  }
-
-  void operator++() { ++pos_; }
-};
-
-struct field_collector final : public FieldCollector {
-  // number of documents containing the matched
-  // field (possibly without matching terms)
-  uint64_t docs_with_field = 0;
-
-  void collect(const SubReader& /*segment*/, const term_reader& field) final {
-    docs_with_field += field.docs_count();
-  }
-
-  void reset() noexcept final { docs_with_field = 0; }
-
-  void collect(bytes_view in) final {
-    byte_ref_iterator itr(in);
-    auto docs_with_field_value = vread<uint64_t>(itr);
-
-    if (itr.pos_ != itr.end_) {
-      throw io_error("input not read fully");
-    }
-
-    docs_with_field += docs_with_field_value;
-  }
-
-  void write(data_output& out) const final { out.write_vlong(docs_with_field); }
-};
-
-struct term_collector final : public TermCollector {
-  // number of documents containing the matched term
-  uint64_t docs_with_term = 0;
-
-  void collect(const SubReader& /*segment*/, const term_reader& /*field*/,
-               const attribute_provider& term_attrs) final {
-    auto* meta = irs::get<term_meta>(term_attrs);
-
-    if (meta) {
-      docs_with_term += meta->docs_count;
-    }
-  }
-
-  void reset() noexcept final { docs_with_term = 0; }
-
-  void collect(bytes_view in) final {
-    byte_ref_iterator itr(in);
-    auto docs_with_term_value = vread<uint64_t>(itr);
-
-    if (itr.pos_ != itr.end_) {
-      throw io_error("input not read fully");
-    }
-
-    docs_with_term += docs_with_term_value;
-  }
-
-  void write(data_output& out) const final { out.write_vlong(docs_with_term); }
-};
-
 IRS_FORCE_INLINE float_t tfidf(uint32_t freq, float_t idf) noexcept {
-  return idf * kSQRT.get<true>(freq);
+  return kSQRT.get<true>(freq) * idf;
 }
 
-constexpr frequency kEmptyFreq;
+struct EmptyNorm final {};
 
-struct ScoreContext : public score_ctx {
-  ScoreContext(score_t boost, TFIDFStats idf, const frequency* freq,
+template<typename Norm>
+struct TFIDFContext final : public score_ctx {
+  TFIDFContext(Norm&& norm, score_t boost, TFIDFStats idf,
+               const frequency* freq,
                const filter_boost* filter_boost = nullptr) noexcept
     : freq{freq ? *freq : kEmptyFreq},
       filter_boost{filter_boost},
-      idf{boost * idf.value} {
+      idf{boost * idf.value},
+      norm{std::move(norm)} {
     IRS_ASSERT(freq);
   }
 
-  ScoreContext(const ScoreContext&) = delete;
-  ScoreContext& operator=(const ScoreContext&) = delete;
+  TFIDFContext(const TFIDFContext&) = delete;
+  TFIDFContext& operator=(const TFIDFContext&) = delete;
 
   const frequency& freq;
   const irs::filter_boost* filter_boost;
   float_t idf;  // precomputed : boost * idf
-};
-
-enum class NormType {
-  // Norm2 values
-  kNorm2 = 0,
-  // Norm2 values fit 1-byte
-  kNorm2Tiny,
-  // Old norms, 1/sqrt(|doc|)
-  kNorm
+  IRS_NO_UNIQUE_ADDRESS Norm norm;
 };
 
 template<typename Reader, NormType Type>
-struct NormAdapter {
-  static constexpr auto kType = Type;
+struct TFIDFNormAdapter final {
+  explicit TFIDFNormAdapter(Reader&& reader) : reader{std::move(reader)} {}
 
-  explicit NormAdapter(Reader&& reader) : reader{std::move(reader)} {}
-
-  IRS_FORCE_INLINE float_t operator()() {
-    if constexpr (kType < NormType::kNorm) {
-      return kRSQRT.get<kType != NormType::kNorm2Tiny>(reader());
+  IRS_FORCE_INLINE decltype(auto) operator()() {
+    if constexpr (Type < NormType::kNorm) {
+      return kRSQRT.get<Type != NormType::kNorm2Tiny>(reader());
     } else {
       return reader();
     }
@@ -291,22 +208,16 @@ struct NormAdapter {
 };
 
 template<NormType Type, typename Reader>
-auto MakeNormAdapter(Reader&& reader) {
-  return NormAdapter<Reader, Type>(std::move(reader));
+auto MakeTFIDFNormAdapter(Reader&& reader) {
+  return TFIDFNormAdapter<Reader, Type>(std::move(reader));
 }
 
+}  // namespace
+
 template<typename Norm>
-struct NormScoreContext final : public ScoreContext {
-  NormScoreContext(Norm&& norm, score_t boost, const TFIDFStats& idf,
-                   const frequency* freq,
-                   const irs::filter_boost* filter_boost = nullptr) noexcept
-    : ScoreContext{boost, idf, freq, filter_boost}, norm{std::move(norm)} {}
+struct MakeScoreFunctionImpl<TFIDFContext<Norm>> {
+  using Ctx = TFIDFContext<Norm>;
 
-  Norm norm;
-};
-
-template<typename Ctx>
-struct MakeScoreFunctionImpl {
   template<bool HasFilterBoost, typename... Args>
   static auto Make(Args&&... args) {
     return ScoreFunction::Make<Ctx>(
@@ -325,7 +236,7 @@ struct MakeScoreFunctionImpl {
           idf = state.idf;
         }
 
-        if constexpr (std::is_same_v<Ctx, ScoreContext>) {
+        if constexpr (std::is_same_v<Norm, EmptyNorm>) {
           *res = tfidf(state.freq.value, idf);
         } else {
           *res = tfidf(state.freq.value, idf) * state.norm();
@@ -335,24 +246,10 @@ struct MakeScoreFunctionImpl {
   }
 };
 
-template<typename Ctx, typename... Args>
-ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
-                                Args&&... args) noexcept {
-  if (filter_boost) {
-    return MakeScoreFunctionImpl<Ctx>::template Make<true>(
-      std::forward<Args>(args)..., filter_boost);
-  }
-
-  return MakeScoreFunctionImpl<Ctx>::template Make<false>(
-    std::forward<Args>(args)...);
-}
-
-}  // namespace
-
 void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
                     const TermCollector* term) const {
-  const auto* field_ptr = down_cast<field_collector>(field);
-  const auto* term_ptr = down_cast<term_collector>(term);
+  const auto* field_ptr = down_cast<FieldCollectorImpl<false>>(field);
+  const auto* term_ptr = down_cast<TermCollectorImpl>(term);
 
   // nullptr possible if e.g. 'all' filter
   const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
@@ -396,13 +293,13 @@ ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
   if (normalize_) {
     auto prepare_norm_scorer =
       [&]<typename Norm>(Norm&& norm) -> ScoreFunction {
-      return MakeScoreFunction<NormScoreContext<Norm>>(
+      return MakeScoreFunction<TFIDFContext<Norm>>(
         filter_boost, std::move(norm), boost, *stats, freq);
     };
 
     // Check if norms are present in attributes
     if (auto* norm = irs::get<Norm2>(doc_attrs); norm) {
-      return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(
+      return prepare_norm_scorer(MakeTFIDFNormAdapter<NormType::kNorm2>(
         [norm]() noexcept { return norm->value; }));
     }
 
@@ -419,34 +316,35 @@ ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
         if (ctx.max_num_bytes == sizeof(byte_type)) {
           return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
             return prepare_norm_scorer(
-              MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
+              MakeTFIDFNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
           });
         }
 
         return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
           return prepare_norm_scorer(
-            MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
+            MakeTFIDFNormAdapter<NormType::kNorm2>(std::move(reader)));
         });
       }
     }
 
     if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
       if (Norm::Context ctx; ctx.Reset(segment, it->second, *doc)) {
-        return prepare_norm_scorer(
-          MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
+        return prepare_norm_scorer(MakeTFIDFNormAdapter<NormType::kNorm>(
+          Norm::MakeReader(std::move(ctx))));
       }
     }
   }
 
-  return MakeScoreFunction<ScoreContext>(filter_boost, boost, *stats, freq);
+  return MakeScoreFunction<TFIDFContext<EmptyNorm>>(filter_boost, EmptyNorm{},
+                                                    boost, *stats, freq);
 }
 
 TermCollector::ptr TFIDF::prepare_term_collector() const {
-  return std::make_unique<term_collector>();
+  return std::make_unique<TermCollectorImpl>();
 }
 
 FieldCollector::ptr TFIDF::prepare_field_collector() const {
-  return std::make_unique<field_collector>();
+  return std::make_unique<FieldCollectorImpl<false>>();
 }
 
 WandWriter::ptr TFIDF::prepare_wand_writer(size_t max_levels) const {
