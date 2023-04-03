@@ -88,58 +88,6 @@ struct TermCollectorImpl final : TermCollector {
 
 struct Empty final {};
 
-template<bool Freq>
-struct FieldCollectorImpl final : FieldCollector {
-  // number of documents containing the matched field
-  // (possibly without matching terms)
-  uint64_t docs_with_field{};
-  // number of terms for processed field
-  IRS_NO_UNIQUE_ADDRESS std::conditional_t<Freq, uint64_t, Empty>
-    total_term_freq{};
-
-  void collect(const SubReader& /*segment*/,
-               const term_reader& field) noexcept final {
-    this->docs_with_field += field.docs_count();
-    if constexpr (Freq) {
-      if (auto* freq = get<frequency>(field); freq != nullptr) {
-        this->total_term_freq += freq->value;
-      }
-    }
-  }
-
-  void reset() noexcept final {
-    this->docs_with_field = 0;
-    if constexpr (Freq) {
-      this->total_term_freq = 0;
-    }
-  }
-
-  void collect(bytes_view in) final {
-    ByteRefIterator itr{in};
-    const auto docs_with_field_value = vread<uint64_t>(itr);
-    if constexpr (Freq) {
-      const auto total_term_freq_value = vread<uint64_t>(itr);
-      if (itr.pos_ != itr.end_) {
-        throw io_error{"input not read fully"};
-      }
-      this->docs_with_field += docs_with_field_value;
-      this->total_term_freq += total_term_freq_value;
-    } else {
-      if (itr.pos_ != itr.end_) {
-        throw io_error{"input not read fully"};
-      }
-      this->docs_with_field += docs_with_field_value;
-    }
-  }
-
-  void write(data_output& out) const final {
-    out.write_vlong(this->docs_with_field);
-    if constexpr (Freq) {
-      out.write_vlong(this->total_term_freq);
-    }
-  }
-};
-
 inline constexpr frequency kEmptyFreq;
 
 template<typename Ctx>

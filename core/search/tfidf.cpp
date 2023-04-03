@@ -43,6 +43,30 @@
 namespace irs {
 namespace {
 
+struct TFIDFFieldCollector final : FieldCollector {
+  // number of documents containing the matched field
+  // (possibly without matching terms)
+  uint64_t docs_with_field = 0;
+
+  void collect(const SubReader& /*segment*/,
+               const term_reader& field) noexcept final {
+    docs_with_field += field.docs_count();
+  }
+
+  void reset() noexcept final { docs_with_field = 0; }
+
+  void collect(bytes_view in) final {
+    ByteRefIterator itr{in};
+    const auto docs_with_field_value = vread<uint64_t>(itr);
+    if (itr.pos_ != itr.end_) {
+      throw io_error{"input not read fully"};
+    }
+    docs_with_field += docs_with_field_value;
+  }
+
+  void write(data_output& out) const final { out.write_vlong(docs_with_field); }
+};
+
 // TODO(MBkkt) deduplicate with bm25.cpp
 const auto kSQRT = cache_func<uint32_t, 2048>(
   0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
@@ -246,7 +270,7 @@ struct MakeScoreFunctionImpl<TFIDFContext<Norm>> {
 
 void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
                     const TermCollector* term) const {
-  const auto* field_ptr = down_cast<FieldCollectorImpl<false>>(field);
+  const auto* field_ptr = down_cast<TFIDFFieldCollector>(field);
   const auto* term_ptr = down_cast<TermCollectorImpl>(term);
 
   // nullptr possible if e.g. 'all' filter
@@ -342,7 +366,7 @@ TermCollector::ptr TFIDF::prepare_term_collector() const {
 }
 
 FieldCollector::ptr TFIDF::prepare_field_collector() const {
-  return std::make_unique<FieldCollectorImpl<false>>();
+  return std::make_unique<TFIDFFieldCollector>();
 }
 
 WandWriter::ptr TFIDF::prepare_wand_writer(size_t max_levels) const {
