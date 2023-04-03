@@ -22,22 +22,64 @@
 
 #include "bm25.hpp"
 
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include <velocypack/vpack.h>
+
+#include <cstdint>
+
 #include "analysis/token_attributes.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
+#include "scorer.hpp"
+#include "search/scorer_impl.h"
 #include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
-#include "velocypack/Builder.h"
-#include "velocypack/Parser.h"
-#include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
-#include "velocypack/vpack.h"
 
 namespace irs {
 namespace {
 
+struct BM25FieldCollector final : FieldCollector {
+  // number of documents containing the matched field
+  // (possibly without matching terms)
+  uint64_t docs_with_field = 0;
+  // number of terms for processed field
+  uint64_t total_term_freq = 0;
+
+  void collect(const SubReader& /*segment*/,
+               const term_reader& field) noexcept final {
+    docs_with_field += field.docs_count();
+    if (auto* freq = get<frequency>(field); freq != nullptr) {
+      total_term_freq += freq->value;
+    }
+  }
+
+  void reset() noexcept final {
+    docs_with_field = 0;
+    total_term_freq = 0;
+  }
+
+  void collect(bytes_view in) final {
+    ByteRefIterator itr{in};
+    const auto docs_with_field_value = vread<uint64_t>(itr);
+    const auto total_term_freq_value = vread<uint64_t>(itr);
+    if (itr.pos_ != itr.end_) {
+      throw io_error{"input not read fully"};
+    }
+    docs_with_field += docs_with_field_value;
+    total_term_freq += total_term_freq_value;
+  }
+
+  void write(data_output& out) const final {
+    out.write_vlong(docs_with_field);
+    out.write_vlong(total_term_freq);
+  }
+};
+
+// TODO(MBkkt) deduplicate with tfidf.cpp
 const auto kSQRT = irs::cache_func<uint32_t, 2048>(
   0, [](uint32_t i) noexcept { return std::sqrt(static_cast<float_t>(i)); });
 
@@ -181,109 +223,6 @@ Scorer::ptr make_json(std::string_view args) {
 REGISTER_SCORER_JSON(irs::BM25, make_json);
 REGISTER_SCORER_VPACK(irs::BM25, make_vpack);
 
-struct byte_ref_iterator {
-  using iterator_category = std::input_iterator_tag;
-  using value_type = irs::byte_type;
-  using pointer = value_type*;
-  using reference = value_type&;
-  using difference_type = void;
-
-  const irs::byte_type* end_;
-  const irs::byte_type* pos_;
-
-  explicit byte_ref_iterator(irs::bytes_view in)
-    : end_(in.data() + in.size()), pos_(in.data()) {}
-
-  irs::byte_type operator*() {
-    if (pos_ >= end_) {
-      throw irs::io_error("invalid read past end of input");
-    }
-
-    return *pos_;
-  }
-
-  void operator++() { ++pos_; }
-};
-
-struct field_collector final : public irs::FieldCollector {
-  // number of documents containing the matched
-  // field (possibly without matching terms)
-  uint64_t docs_with_field = 0;
-  // number of terms for processed field
-  uint64_t total_term_freq = 0;
-
-  void collect(const irs::SubReader& /*segment*/,
-               const irs::term_reader& field) final {
-    docs_with_field += field.docs_count();
-
-    auto* freq = irs::get<irs::frequency>(field);
-
-    if (freq) {
-      total_term_freq += freq->value;
-    }
-  }
-
-  void reset() noexcept final {
-    docs_with_field = 0;
-    total_term_freq = 0;
-  }
-
-  void collect(irs::bytes_view in) final {
-    byte_ref_iterator itr(in);
-    auto docs_with_field_value = irs::vread<uint64_t>(itr);
-    auto total_term_freq_value = irs::vread<uint64_t>(itr);
-
-    if (itr.pos_ != itr.end_) {
-      throw irs::io_error("input not read fully");
-    }
-
-    docs_with_field += docs_with_field_value;
-    total_term_freq += total_term_freq_value;
-  }
-
-  void write(irs::data_output& out) const final {
-    out.write_vlong(docs_with_field);
-    out.write_vlong(total_term_freq);
-  }
-};
-
-struct term_collector final : public irs::TermCollector {
-  // number of documents containing the matched term
-  uint64_t docs_with_term = 0;
-
-  void collect(const irs::SubReader& /*segment*/,
-               const irs::term_reader& /*field*/,
-               const irs::attribute_provider& term_attrs) final {
-    auto* meta = irs::get<irs::term_meta>(term_attrs);
-
-    if (meta) {
-      docs_with_term += meta->docs_count;
-    }
-  }
-
-  void reset() noexcept final { docs_with_term = 0; }
-
-  void collect(irs::bytes_view in) final {
-    byte_ref_iterator itr(in);
-    auto docs_with_term_value = irs::vread<uint64_t>(itr);
-
-    if (itr.pos_ != itr.end_) {
-      throw irs::io_error("input not read fully");
-    }
-
-    docs_with_term += docs_with_term_value;
-  }
-
-  void write(irs::data_output& out) const final {
-    out.write_vlong(docs_with_term);
-  }
-};
-
-// Empty frequency
-const frequency kEmptyFreq;
-
-}  // namespace
-
 struct BM15Context : public irs::score_ctx {
   BM15Context(float_t k, irs::score_t boost, const BM25Stats& stats,
               const frequency* freq,
@@ -319,42 +258,31 @@ struct BM25Context final : public BM15Context {
   const float_t* norm_cache;
 };
 
-enum class NormType {
-  // Norm2 values
-  kNorm2 = 0,
-  // Norm2 values fit 1-byte
-  kNorm2Tiny,
-  // Old norms, 1/sqrt(|doc|)
-  kNorm
-};
-
 template<typename Reader, NormType Type>
-struct NormAdapter : Reader {
+struct BM25NormAdapter final {
   static constexpr auto kType = Type;
 
-  explicit NormAdapter(Reader&& reader) : Reader{std::move(reader)} {}
+  explicit BM25NormAdapter(Reader&& reader) : reader{std::move(reader)} {}
 
-  IRS_FORCE_INLINE auto operator()() -> std::invoke_result_t<Reader> {
+  IRS_FORCE_INLINE decltype(auto) operator()() {
     if constexpr (kType < NormType::kNorm) {
       // norms are stored |doc| as uint32_t
-      return Reader::operator()();
+      return reader();
     } else {
       // norms are stored 1/sqrt(|doc|) as float
-      return 1.f / Reader::operator()();
+      return 1.f / reader();
     }
   }
+
+  IRS_NO_UNIQUE_ADDRESS Reader reader;
 };
 
 template<NormType Type, typename Reader>
-auto MakeNormAdapter(Reader&& reader) {
-  return NormAdapter<Reader, Type>(std::move(reader));
+auto MakeBM25NormAdapter(Reader&& reader) {
+  return BM25NormAdapter<Reader, Type>(std::move(reader));
 }
 
-template<typename Ctx>
-struct MakeScoreFunctionImpl {
-  template<bool HasFilterBoost, typename... Args>
-  static ScoreFunction Make(Args&&... args);
-};
+}  // namespace
 
 template<>
 struct MakeScoreFunctionImpl<BM15Context> {
@@ -433,24 +361,12 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
   }
 };
 
-template<typename Ctx, typename... Args>
-ScoreFunction MakeScoreFunction(const filter_boost* filter_boost,
-                                Args&&... args) noexcept {
-  if (filter_boost) {
-    return MakeScoreFunctionImpl<Ctx>::template Make<true>(
-      std::forward<Args>(args)..., filter_boost);
-  }
-
-  return MakeScoreFunctionImpl<Ctx>::template Make<false>(
-    std::forward<Args>(args)...);
-}
-
 void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
                    const irs::TermCollector* term) const {
   auto* stats = stats_cast(stats_buf);
 
-  const auto* field_ptr = down_cast<field_collector>(field);
-  const auto* term_ptr = down_cast<term_collector>(term);
+  const auto* field_ptr = down_cast<BM25FieldCollector>(field);
+  const auto* term_ptr = down_cast<TermCollectorImpl>(term);
 
   // nullptr possible if e.g. 'all' filter
   const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
@@ -488,7 +404,7 @@ void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
 }
 
 FieldCollector::ptr BM25::prepare_field_collector() const {
-  return std::make_unique<field_collector>();
+  return std::make_unique<BM25FieldCollector>();
 }
 
 ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
@@ -523,7 +439,7 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
 
   // Check if norms are present in attributes
   if (auto* norm = irs::get<Norm2>(doc_attrs); norm) {
-    return prepare_norm_scorer(MakeNormAdapter<NormType::kNorm2>(
+    return prepare_norm_scorer(MakeBM25NormAdapter<NormType::kNorm2>(
       [norm]() noexcept { return norm->value; }));
   }
 
@@ -540,13 +456,13 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
       if (ctx.max_num_bytes == sizeof(byte_type)) {
         return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
           return prepare_norm_scorer(
-            MakeNormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
+            MakeBM25NormAdapter<NormType::kNorm2Tiny>(std::move(reader)));
         });
       }
 
       return Norm2::MakeReader(std::move(ctx), [&](auto&& reader) {
         return prepare_norm_scorer(
-          MakeNormAdapter<NormType::kNorm2>(std::move(reader)));
+          MakeBM25NormAdapter<NormType::kNorm2>(std::move(reader)));
       });
     }
   }
@@ -554,13 +470,13 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
   if (auto it = features.find(irs::type<Norm>::id()); it != features.end()) {
     if (NormReaderContext ctx; ctx.Reset(segment, it->second, *doc)) {
       return prepare_norm_scorer(
-        MakeNormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
+        MakeBM25NormAdapter<NormType::kNorm>(Norm::MakeReader(std::move(ctx))));
     }
   }
 
   // No norms, pretend all fields have the same length 1.
   return prepare_norm_scorer(
-    MakeNormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
+    MakeBM25NormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
 }
 
 void BM25::get_features(std::set<type_info::type_id>& features) const {
@@ -588,7 +504,7 @@ WandSource::ptr BM25::prepare_wand_source() const {
 }
 
 TermCollector::ptr BM25::prepare_term_collector() const {
-  return std::make_unique<term_collector>();
+  return std::make_unique<TermCollectorImpl>();
 }
 
 bool BM25::equals(const Scorer& other) const noexcept {
