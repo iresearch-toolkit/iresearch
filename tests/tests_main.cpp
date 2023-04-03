@@ -52,8 +52,10 @@
 #include <unicode/udata.h>
 
 #include <ctime>
+#include <filesystem>
 #include <formats/formats.hpp>
 #include <utils/attributes.hpp>
+#include <vector>
 
 #include "index/doc_generator.hpp"
 #include "tests_config.hpp"
@@ -374,12 +376,9 @@ void test_base::TearDown() {
   if (!test_dir_.empty()) {
     auto path = test_dir_;
     if (!HasFailure()) {
+      std::filesystem::remove_all(path);
+    } else if (std::filesystem::is_empty(path)) {
       std::filesystem::remove(path);
-      path = path.parent_path();
-    }
-    while (std::filesystem::is_empty(path)) {
-      std::filesystem::remove(path);
-      path = path.parent_path();
     }
   }
 }
@@ -394,6 +393,20 @@ int main(int argc, char* argv[]) {
             << test_env::test_results_dir().string() << std::endl;
 
   u_cleanup();  // cleanup ICU resources
+
+  std::vector<std::filesystem::path> paths;
+  for (const auto& entry : std::filesystem::recursive_directory_iterator{
+         test_env::test_results_dir()}) {
+    if (std::filesystem::is_empty(entry.path())) {
+      paths.emplace_back(entry.path());
+    }
+  }
+  for (auto& path : paths) {
+    do {
+      std::filesystem::remove(path);
+      path = path.parent_path();
+    } while (std::filesystem::is_empty(path));
+  }
 
   return code;
 }
