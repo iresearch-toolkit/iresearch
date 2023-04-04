@@ -75,7 +75,7 @@ class ExternalHeapIterator {
 
   Value& Lead() const noexcept {
     IRS_ASSERT(!values_.empty());
-    return values_.back();
+    return values_.front();
   }
 
   Value* Data() const noexcept { return values_.data(); }
