@@ -46,7 +46,7 @@ class MergeWriter : public util::noncopyable {
     ReaderCtx(const SubReader& reader) noexcept : ReaderCtx{&reader} {}
 
     const SubReader* reader;                    // segment reader
-    std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
+    DocMap doc_id_map;                          // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 

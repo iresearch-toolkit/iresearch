@@ -23,9 +23,9 @@
 #pragma once
 
 #include <algorithm>
-#include <vector>
+#include <cstdint>
+#include <span>
 
-#include "iterators.hpp"
 #include "shared.hpp"
 
 namespace irs {
@@ -44,63 +44,46 @@ namespace irs {
 // ----------------------------------------------------------------------------
 template<typename Context>
 class ExternalHeapIterator {
+  using Value = typename Context::Value;
+
  public:
   explicit ExternalHeapIterator(Context&& ctx) : ctx_{std::move(ctx)} {}
 
-  void reset(size_t size) {
-    heap_.resize(size);
-    std::iota(heap_.begin(), heap_.end(), size_t{0});
-    lead_ = size;
-  }
-
-  bool next() {
-    if (heap_.empty()) {
+  bool Reset(std::span<Value> values) noexcept {
+    auto it = std::remove_if(values.begin(), values.end(),
+                             [&](auto& value) { return !ctx_(value); });
+    values_ = values.subspan(0, static_cast<size_t>(values.end() - it));
+    if (values_.empty()) {
       return false;
     }
-
-    auto begin = std::begin(heap_);
-
-    while (lead_) {
-      auto it = std::end(heap_) - lead_--;
-
-      if (!ctx_(*it)) {  // advance iterator
-        if (!remove_lead(it)) {
-          IRS_ASSERT(heap_.empty());
-          return false;
-        }
-
-        continue;
-      }
-
-      std::push_heap(begin, ++it, ctx_);
-    }
-
-    IRS_ASSERT(!heap_.empty());
-    std::pop_heap(begin, std::end(heap_), ctx_);
-    lead_ = 1;
-
+    std::make_heap(values_.begin(), values_.end(), ctx_);
     return true;
   }
 
-  size_t value() const noexcept {
-    IRS_ASSERT(!heap_.empty());
-    return heap_.back();
+  bool Next() noexcept {
+    if (IRS_UNLIKELY(values_.empty())) {
+      return false;
+    }
+    std::pop_heap(values_.begin(), values_.end(), ctx_);
+    if (IRS_UNLIKELY(!ctx_(values_.back()))) {
+      values_ = values_.subspan(0, values_.size() - 1);
+      return !values_.empty();
+    }
+    std::push_heap(values_.begin(), values_.end(), ctx_);
+    return true;
   }
 
-  size_t size() const noexcept { return heap_.size(); }
+  Value& Lead() const noexcept {
+    IRS_ASSERT(!values_.empty());
+    return values_.back();
+  }
+
+  Value* Data() const noexcept { return values_.data(); }
+  size_t Size() const noexcept { return values_.size(); }
 
  private:
-  bool remove_lead(std::vector<size_t>::iterator it) {
-    if (&*it != &heap_.back()) {
-      std::swap(*it, heap_.back());
-    }
-    heap_.pop_back();
-    return !heap_.empty();
-  }
-
   IRS_NO_UNIQUE_ADDRESS Context ctx_;
-  std::vector<size_t> heap_;
-  size_t lead_{};
+  std::span<Value> values_;
 };
 
 }  // namespace irs
