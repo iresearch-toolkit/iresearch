@@ -51,7 +51,10 @@ tags/
 
 # VS Code specific
 .vscode/
+.cache/
 
 # Builds
 build*/
 cmake-build*/
+
+iresearch.deps/
