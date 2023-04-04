@@ -2190,7 +2190,6 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(
         std::shared_ptr<const SegmentReaderImpl> reader;
         if (auto it = ctx->cached_.find(&flushed); it != ctx->cached_.end()) {
           IRS_ASSERT(it->second != nullptr);
-          IRS_ASSERT(flushed_first_tick <= committed_tick_);
           // We don't support case when segment is committed partially more than
           // one time. Because it's useless and ineffective.
           IRS_ASSERT(flushed_last_tick <= tick);
