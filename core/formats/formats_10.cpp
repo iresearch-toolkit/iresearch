@@ -3834,7 +3834,7 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format10::make() {
+irs::format::ptr format10::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT10_INSTANCE);
 }
 
@@ -3884,7 +3884,7 @@ columnstore_writer::ptr format11::get_columnstore_writer(
                                   columnstore::ColumnMetaVersion::MAX);
 }
 
-/*static*/ irs::format::ptr format11::make() {
+irs::format::ptr format11::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT11_INSTANCE);
 }
 
@@ -3912,7 +3912,7 @@ columnstore_writer::ptr format12::get_columnstore_writer(
                                   columnstore::ColumnMetaVersion::MAX);
 }
 
-/*static*/ irs::format::ptr format12::make() {
+irs::format::ptr format12::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT12_INSTANCE);
 }
 
@@ -3947,7 +3947,7 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format13::make() {
+irs::format::ptr format13::make() {
   static const ::format13 INSTANCE;
 
   return irs::format::ptr(irs::format::ptr(), &FORMAT13_INSTANCE);
@@ -3989,7 +3989,7 @@ columnstore_reader::ptr format14::get_columnstore_reader() const {
   return columnstore2::make_reader();
 }
 
-/*static*/ irs::format::ptr format14::make() {
+irs::format::ptr format14::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT14_INSTANCE);
 }
 
@@ -4031,7 +4031,7 @@ irs::postings_reader::ptr format15::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format15::make() {
+irs::format::ptr format15::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT15_INSTANCE);
 }
 
@@ -4103,7 +4103,7 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format12simd::make() {
+irs::format::ptr format12simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT12SIMD_INSTANCE);
 }
 
@@ -4138,7 +4138,7 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format13simd::make() {
+irs::format::ptr format13simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT13SIMD_INSTANCE);
 }
 
@@ -4181,7 +4181,7 @@ columnstore_reader::ptr format14simd::get_columnstore_reader() const {
   return columnstore2::make_reader();
 }
 
-/*static*/ irs::format::ptr format14simd::make() {
+irs::format::ptr format14simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT14SIMD_INSTANCE);
 }
 
@@ -4224,7 +4224,7 @@ irs::postings_reader::ptr format15simd::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format15simd::make() {
+irs::format::ptr format15simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT15SIMD_INSTANCE);
 }
 

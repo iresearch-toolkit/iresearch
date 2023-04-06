@@ -32,16 +32,13 @@ memory_allocator kGlobalAlloc{size_t{128}};
 
 }  // namespace
 
-/*static*/ memory_allocator::buffer::ptr memory_allocator::buffer::make(
-  size_t size) {
+memory_allocator::buffer::ptr memory_allocator::buffer::make(size_t size) {
   return std::make_unique<byte_type[]>(size);
 }
 
-/*static*/ memory_allocator& memory_allocator::global() noexcept {
-  return kGlobalAlloc;
-}
+memory_allocator& memory_allocator::global() noexcept { return kGlobalAlloc; }
 
-/*static*/ memory_allocator::ptr memory_allocator::make(size_t pool_size) {
+memory_allocator::ptr memory_allocator::make(size_t pool_size) {
   if (pool_size != 0) {
     return memory::make_managed<memory_allocator>(pool_size);
   }

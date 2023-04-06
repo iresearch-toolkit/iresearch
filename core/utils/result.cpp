@@ -26,7 +26,7 @@
 
 namespace irs {
 
-/*static*/ std::unique_ptr<char[]> result::copyState(const char* src) {
+std::unique_ptr<char[]> result::copyState(const char* src) {
   const size_t len = std::strlen(src);
   auto copy = std::make_unique<char[]>(len + 1);  // +1 for null terminator
   memcpy(copy.get(), src, len);

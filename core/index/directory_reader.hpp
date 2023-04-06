@@ -76,7 +76,7 @@ class DirectoryReader final : public IndexReader {
   size_t size() const final;
 
   // Open a new instance based on the latest file for the specified codec
-  // this call will atempt to reuse segments from the existing reader
+  // this call will attempt to reuse segments from the existing reader
   DirectoryReader Reopen() const;
 
   const std::shared_ptr<const DirectoryReaderImpl>& GetImpl() const noexcept {

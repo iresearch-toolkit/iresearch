@@ -76,15 +76,14 @@ class format_register
 
 namespace irs {
 
-/*static*/ bool formats::exists(std::string_view name,
-                                bool load_library /*= true*/) {
+bool formats::exists(std::string_view name, bool load_library /*= true*/) {
   const auto key = std::make_pair(name, std::string_view{});
   return nullptr != format_register::instance().get(key, load_library);
 }
 
-/*static*/ format::ptr formats::get(std::string_view name,
-                                    std::string_view module /*= {} */,
-                                    bool load_library /*= true*/) noexcept {
+format::ptr formats::get(std::string_view name,
+                         std::string_view module /*= {} */,
+                         bool load_library /*= true*/) noexcept {
   try {
     const auto key = std::make_pair(name, module);
     auto* factory = format_register::instance().get(key, load_library);
@@ -97,18 +96,17 @@ namespace irs {
   return nullptr;
 }
 
-/*static*/ void formats::init() {
+void formats::init() {
 #ifndef IRESEARCH_DLL
   irs::version10::init();
 #endif
 }
 
-/*static*/ void formats::load_all(std::string_view path) {
+void formats::load_all(std::string_view path) {
   load_libraries(path, kFileNamePrefix, "");
 }
 
-/*static*/ bool formats::visit(
-  const std::function<bool(std::string_view)>& visitor) {
+bool formats::visit(const std::function<bool(std::string_view)>& visitor) {
   auto visit_all = [&visitor](const format_register::key_type& key) {
     if (!visitor(key.first)) {
       return false;

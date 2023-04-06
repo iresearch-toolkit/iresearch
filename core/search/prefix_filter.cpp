@@ -70,9 +70,11 @@ void visit(const SubReader& segment, const term_reader& reader,
 
 namespace irs {
 
-/*static*/ filter::prepared::ptr by_prefix::prepare(
-  const IndexReader& index, const Scorers& ord, score_t boost,
-  std::string_view field, bytes_view prefix, size_t scored_terms_limit) {
+filter::prepared::ptr by_prefix::prepare(const IndexReader& index,
+                                         const Scorers& ord, score_t boost,
+                                         std::string_view field,
+                                         bytes_view prefix,
+                                         size_t scored_terms_limit) {
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
     ord.empty() ? 0 : scored_terms_limit);
@@ -99,9 +101,8 @@ namespace irs {
                                               ScoreMergeType::kSum, size_t{1});
 }
 
-/*static*/ void by_prefix::visit(const SubReader& segment,
-                                 const term_reader& reader, bytes_view prefix,
-                                 filter_visitor& visitor) {
+void by_prefix::visit(const SubReader& segment, const term_reader& reader,
+                      bytes_view prefix, filter_visitor& visitor) {
   ::visit(segment, reader, prefix, visitor);
 }
 

@@ -438,7 +438,7 @@ auto sRegisterTypes = []() {
 
 namespace irs::analysis {
 
-/*static*/ void MinHashTokenStream::init() {
+void MinHashTokenStream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::MinHashTokenStream, MakeVPack,
                           NormalizeVPack);
   REGISTER_ANALYZER_JSON(irs::analysis::MinHashTokenStream, MakeJson,

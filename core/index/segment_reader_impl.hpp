@@ -39,25 +39,26 @@ class SegmentReaderImpl final : public SubReader {
   };
 
  public:
-  static std::shared_ptr<const SegmentReaderImpl> Open(
-    const directory& dir, const SegmentMeta& meta,
-    const IndexReaderOptions& warmup);
-
-  SegmentReaderImpl(PrivateTag, const directory& dir, const SegmentMeta& meta,
-                    const IndexReaderOptions& opts);
-
-  SegmentReaderImpl(const SegmentReaderImpl& rhs, const SegmentMeta& meta,
-                    DocumentMask&& doc_mask);
+  SegmentReaderImpl(PrivateTag) noexcept;
   ~SegmentReaderImpl();
 
-  const directory& Dir() const noexcept { return *dir_; }
+  static std::shared_ptr<SegmentReaderImpl> Open(
+    const directory& dir, const SegmentMeta& meta,
+    const IndexReaderOptions& options);
 
-  const IndexReaderOptions& Options() const noexcept { return opts_; }
+  // reopen columnstore
+  std::shared_ptr<SegmentReaderImpl> Reopen(
+    const directory& dir, const SegmentMeta& meta,
+    const IndexReaderOptions& options) const;
+  // reopen removals
+  std::shared_ptr<SegmentReaderImpl> Reopen(const directory& dir,
+                                            const SegmentMeta& meta,
+                                            DocumentMask&& docs_mask) const;
+  // update removals
+  void Update(const directory& dir, const SegmentMeta& meta,
+              DocumentMask&& docs_mask) noexcept;
 
   const SegmentInfo& Meta() const final { return info_; }
-
-  std::shared_ptr<const SegmentReaderImpl> Reopen(
-    const SegmentMeta& meta) const;
 
   column_iterator::ptr columns() const final;
 
@@ -68,12 +69,10 @@ class SegmentReaderImpl final : public SubReader {
   doc_iterator::ptr mask(doc_iterator::ptr&& it) const final;
 
   const term_reader* field(std::string_view name) const final {
-    return data_->field_reader_->field(name);
+    return field_reader_->field(name);
   }
 
-  field_iterator::ptr fields() const final {
-    return data_->field_reader_->iterator();
-  }
+  field_iterator::ptr fields() const final { return field_reader_->iterator(); }
 
   const irs::column_reader* sort() const noexcept final { return sort_; }
 
@@ -87,20 +86,24 @@ class SegmentReaderImpl final : public SubReader {
   using SortedNamedColumns =
     std::vector<std::reference_wrapper<const irs::column_reader>>;
 
-  struct Data {
-    field_reader::ptr field_reader_;
+  struct ColumnData {
     columnstore_reader::ptr columnstore_reader_;
     NamedColumns named_columns_;
     SortedNamedColumns sorted_named_columns_;
+
+    const irs::column_reader* Open(const directory& dir,
+                                   const SegmentMeta& meta,
+                                   const IndexReaderOptions& options,
+                                   const field_reader& field_reader);
   };
 
-  std::vector<index_file_refs::ref_t> file_refs_;
-  DocumentMask docs_mask_;
-  std::shared_ptr<Data> data_;
+  FileRefs refs_;
   SegmentInfo info_;
-  const directory* dir_;
+  DocumentMask docs_mask_;
+  field_reader::ptr field_reader_;
+  std::shared_ptr<ColumnData> data_;
+  // logically part of data_, stored separate to avoid unnecessary indirection
   const irs::column_reader* sort_{};
-  IndexReaderOptions opts_;
 };
 
 }  // namespace irs

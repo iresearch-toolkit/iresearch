@@ -3500,7 +3500,7 @@ irs::field_writer::ptr make_writer(Version version,
 }
 
 irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {
-  return std::make_unique<::field_reader>(std::move(reader));
+  return std::make_shared<::field_reader>(std::move(reader));
 }
 
 }  // namespace burst_trie

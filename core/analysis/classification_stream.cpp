@@ -231,14 +231,14 @@ REGISTER_ANALYZER_JSON(irs::analysis::classification_stream, make_json,
 namespace irs {
 namespace analysis {
 
-/*static*/ void classification_stream::init() {
+void classification_stream::init() {
   REGISTER_ANALYZER_JSON(classification_stream, make_json,
                          normalize_json_config);
   REGISTER_ANALYZER_VPACK(classification_stream, make_vpack,
                           normalize_vpack_config);
 }
 
-/*static*/ classification_stream::model_provider_f
+classification_stream::model_provider_f
 classification_stream::set_model_provider(model_provider_f provider) noexcept {
   return ::MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);
 }

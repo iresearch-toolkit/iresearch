@@ -165,7 +165,7 @@ class index_profile_test_case : public tests::index_test_base {
       {
         std::unique_lock commit_lock{commit_mutex};
         REGISTER_TIMER_NAMED_DETAILED("init - commit");
-        import_writer->Commit(CommitTick());
+        import_writer->Commit({.tick = CommitTick()});
       }
 
       REGISTER_TIMER_NAMED_DETAILED("init - open");
@@ -240,7 +240,7 @@ class index_profile_test_case : public tests::index_test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer->Commit(CommitTick());
+                writer->Commit({.tick = CommitTick()});
               }
 
               count = 0;
@@ -251,7 +251,7 @@ class index_profile_test_case : public tests::index_test_base {
           {
             std::unique_lock commit_lock{commit_mutex};
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer->Commit(CommitTick());
+            writer->Commit({.tick = CommitTick()});
           }
 
           ++writer_commit_count;
@@ -380,7 +380,7 @@ class index_profile_test_case : public tests::index_test_base {
 
               {
                 REGISTER_TIMER_NAMED_DETAILED("commit");
-                writer->Commit(CommitTick());
+                writer->Commit({.tick = CommitTick()});
               }
 
               count = 0;
@@ -391,7 +391,7 @@ class index_profile_test_case : public tests::index_test_base {
           {
             std::unique_lock commit_lock{commit_mutex};
             REGISTER_TIMER_NAMED_DETAILED("commit");
-            writer->Commit(CommitTick());
+            writer->Commit({.tick = CommitTick()});
           }
 
           ++writer_commit_count;
@@ -404,7 +404,7 @@ class index_profile_test_case : public tests::index_test_base {
     // ensure all data have been committed
     {
       std::unique_lock commit_lock{commit_mutex};
-      writer->Commit(CommitTick());
+      writer->Commit({.tick = CommitTick()});
       EXPECT_FALSE(writer->Commit());
     }
 
@@ -512,7 +512,7 @@ class index_profile_test_case : public tests::index_test_base {
             {
               std::unique_lock commit_lock{commit_mutex};
               REGISTER_TIMER_NAMED_DETAILED("commit");
-              writer->Commit(CommitTick());
+              writer->Commit({.tick = CommitTick()});
             }
             ++writer_commit_count;
             std::this_thread::sleep_for(
@@ -562,13 +562,13 @@ class index_profile_test_case : public tests::index_test_base {
     // left in 'consolidating_segments_' before applying the final consolidation
     {
       std::unique_lock commit_lock{commit_mutex};
-      writer->Commit(CommitTick());
+      writer->Commit({.tick = CommitTick()});
       EXPECT_FALSE(writer->Commit());
     }
     ASSERT_TRUE(writer->Consolidate(policy));
     {
       std::unique_lock commit_lock{commit_mutex};
-      writer->Commit(CommitTick());
+      writer->Commit({.tick = CommitTick()});
       EXPECT_FALSE(writer->Commit());
     }
 

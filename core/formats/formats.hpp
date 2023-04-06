@@ -280,7 +280,7 @@ struct term_reader : public attribute_provider {
 };
 
 struct field_reader {
-  using ptr = std::unique_ptr<field_reader>;
+  using ptr = std::shared_ptr<field_reader>;
 
   virtual ~field_reader() = default;
 

@@ -207,7 +207,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
     meta_{std::move(meta)},
     opts_{opts} {}
 
-/*static*/ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
+std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
   const directory& dir, const IndexReaderOptions& opts, format::ptr codec,
   const std::shared_ptr<const DirectoryReaderImpl>& cached) {
   IndexMeta meta;
@@ -250,7 +250,7 @@ DirectoryReaderImpl::DirectoryReaderImpl(Init&& init, const directory& dir,
 
     if (it != reuse_candidates.end() && it->second != kInvalidCandidate &&
         meta == cached->meta_.index_meta.segments[it->second].meta) {
-      *reader = (*cached)[it->second].Reopen(meta);
+      *reader = (*cached)[it->second];
       reuse_candidates.erase(it);
     } else {
       *reader = SegmentReader{dir, meta, opts};

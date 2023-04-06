@@ -738,7 +738,7 @@ class dense_fixed_length_column final : public column_base {
   uint64_t len_;
 };
 
-/*static*/ column_ptr dense_fixed_length_column::read(
+column_ptr dense_fixed_length_column::read(
   std::optional<std::string>&& name, bstring&& payload, column_header&& hdr,
   column_index&& index, index_input& index_in, const index_input& data_in,
   compression::decompressor::ptr&& inflater, encryption::stream* cipher) {
@@ -1172,8 +1172,8 @@ bytes_view sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
   return ValueReader::value(offset, length);
 }
 
-/*static*/ std::vector<sparse_column::column_block>
-sparse_column::read_blocks_sparse(const column_header& hdr, index_input& in) {
+std::vector<sparse_column::column_block> sparse_column::read_blocks_sparse(
+  const column_header& hdr, index_input& in) {
   std::vector<sparse_column::column_block> blocks{
     math::div_ceil32(hdr.docs_count, column::kBlockSize)};
 

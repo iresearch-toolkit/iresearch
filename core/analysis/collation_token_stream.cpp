@@ -237,7 +237,7 @@ struct collation_token_stream::state_t {
   explicit state_t(const options_t& opts) : options(opts) {}
 };
 
-/*static*/ void collation_token_stream::init() {
+void collation_token_stream::init() {
   REGISTER_ANALYZER_JSON(collation_token_stream, make_json,
                          normalize_json_config);
   REGISTER_ANALYZER_VPACK(collation_token_stream, make_vpack,

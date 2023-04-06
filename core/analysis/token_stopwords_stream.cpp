@@ -284,7 +284,7 @@ token_stopwords_stream::token_stopwords_stream(
   token_stopwords_stream::stopwords_set&& stopwords)
   : stopwords_(std::move(stopwords)), term_eof_(true) {}
 
-/*static*/ void token_stopwords_stream::init() {
+void token_stopwords_stream::init() {
   REGISTER_ANALYZER_VPACK(irs::analysis::token_stopwords_stream, make_vpack,
                           normalize_vpack_config);
   REGISTER_ANALYZER_JSON(token_stopwords_stream, make_json,

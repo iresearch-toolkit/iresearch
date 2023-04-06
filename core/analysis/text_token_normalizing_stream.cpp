@@ -330,7 +330,7 @@ void normalizing_token_stream::state_deleter_t::operator()(
 normalizing_token_stream::normalizing_token_stream(const options_t& options)
   : state_{new state_t{options}}, term_eof_{true} {}
 
-/*static*/ void normalizing_token_stream::init() {
+void normalizing_token_stream::init() {
   REGISTER_ANALYZER_JSON(normalizing_token_stream, make_json,
                          normalize_json_config);  // match registration above
   REGISTER_ANALYZER_VPACK(normalizing_token_stream, make_vpack,
