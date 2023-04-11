@@ -76,7 +76,8 @@ struct FlushedSegmentContext {
   IndexWriter::SegmentContext& segment;
   IndexWriter::FlushedSegment& flushed;
 
-  bool MakeDocumentMask(uint64_t tick, DocumentMask& document_mask) {
+  bool MakeDocumentMask(uint64_t tick, DocumentMask& document_mask,
+                        IndexSegment& index) {
     if (flushed.document_mask.size() == flushed.meta.docs_count) {
       return true;
     }
@@ -87,6 +88,7 @@ struct FlushedSegmentContext {
     const auto flushed_last_tick = segment.flushed_docs_[end - 1].tick;
     if (flushed_last_tick <= tick) {
       document_mask = std::move(flushed.document_mask);
+      index = std::move(flushed);
       return false;
     }
     // intentionally copy
@@ -98,7 +100,11 @@ struct FlushedSegmentContext {
       const auto new_doc = Old2New(old_doc);
       document_mask.insert(new_doc);
     }
-    return document_mask.size() == flushed.meta.docs_count;
+    if (document_mask.size() == flushed.meta.docs_count) {
+      return true;
+    }
+    index = flushed;
+    return false;
   }
 
   void Remove(IndexWriter::QueryContext& query);
@@ -2211,11 +2217,10 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         segment_ctx.MaskUnusedReplace(committed_tick_, tick);
       }
       DocumentMask document_mask;
-      if (segment_ctx.MakeDocumentMask(tick, document_mask)) {
+      IndexSegment new_segment;
+      if (segment_ctx.MakeDocumentMask(tick, document_mask, new_segment)) {
         continue;
       }
-      // TODO(MBkkt) we can avoid copy if it is last usage of FlushedSegment
-      IndexSegment new_segment = segment_ctx.flushed;
       auto& prev_size = segment_ctx.flushed.prev_size;
       const auto curr_size = document_mask.size();
       if (prev_size != curr_size) {
@@ -2224,6 +2229,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
           // we should increment version if was partially committed segment
           new_segment.meta.version += 2;  // TODO(MBkkt) divide by 2
         }
+        prev_size = curr_size;
         if (curr_size != 0) {
           WriteDocumentMask(dir, new_segment.meta, document_mask, false);
         }
@@ -2232,7 +2238,6 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         // Refresh reader
         segment_ctx.reader->Update(dir, new_segment.meta,
                                    std::move(document_mask));
-        prev_size = curr_size;
       }
 
       readers.emplace_back(std::move(segment_ctx.reader));
