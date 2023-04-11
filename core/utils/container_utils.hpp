@@ -348,19 +348,18 @@ class raw_block_vector : public raw_block_vector_base<Allocator> {
 };
 
 template<size_t NumBuckets, size_t SkipBits, typename Allocator>
-/*static*/ const std::array<bucket_size_t, NumBuckets>&
+const std::array<bucket_size_t, NumBuckets>&
   raw_block_vector<NumBuckets, SkipBits, Allocator>::META =
     bucket_meta<NumBuckets, SkipBits>::get();
 
 template<size_t NumBuckets, size_t SkipBits, typename Allocator>
-/*static*/ const bucket_size_t&
+const bucket_size_t&
   raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER =
     bucket_meta<NumBuckets, SkipBits>::get().back();
 
 template<size_t NumBuckets, size_t SkipBits, typename Allocator>
-/*static*/ const size_t
-  raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER_ID =
-    bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
+const size_t raw_block_vector<NumBuckets, SkipBits, Allocator>::LAST_BUFFER_ID =
+  bucket_meta<NumBuckets, SkipBits>::get().size() - 1;
 
 }  // namespace container_utils
 }  // namespace irs

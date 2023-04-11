@@ -635,7 +635,7 @@ class term_iterator : public irs::term_iterator {
   mutable detail::sorting_doc_iterator sorting_doc_itr_;
 };
 
-/*static*/ const term_iterator::postings_f term_iterator::POSTINGS[2]{
+const term_iterator::postings_f term_iterator::POSTINGS[2]{
   &term_iterator::postings, &term_iterator::sort_postings};
 
 ////////////////////////////////////////////////////////////////////////////////

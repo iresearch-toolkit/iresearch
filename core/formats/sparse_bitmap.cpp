@@ -417,8 +417,8 @@ constexpr auto GetSeekFunc(bool direct, bool track_prev) noexcept {
   }
 }
 
-/*static*/ bool sparse_bitmap_iterator::initial_seek(
-  sparse_bitmap_iterator* self, doc_id_t target) {
+bool sparse_bitmap_iterator::initial_seek(sparse_bitmap_iterator* self,
+                                          doc_id_t target) {
   IRS_ASSERT(!doc_limits::valid(self->value()));
   IRS_ASSERT(0 == (target & 0xFFFF0000));
 

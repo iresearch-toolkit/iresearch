@@ -186,25 +186,26 @@ namespace irs::index_utils {
 
 ConsolidationPolicy MakePolicy(const ConsolidateBytes& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
-                   const ConsolidatingSegments& /*consolidating_segments*/) {
-    auto byte_threshold = options.threshold;
+                   const ConsolidatingSegments& consolidating_segments) {
+    const auto byte_threshold = options.threshold;
     size_t all_segment_bytes_size = 0;
-    size_t segment_count = reader.size();
+    const auto segment_count = reader.size();
 
     for (auto& segment : reader) {
-      // cppcheck-suppress 	useStlAlgorithm
       all_segment_bytes_size += segment.Meta().byte_size;
     }
 
-    auto threshold = std::max<float>(0, std::min<float>(1, byte_threshold));
-    auto threshold_bytes_avg =
-      (all_segment_bytes_size / (float)segment_count) * threshold;
+    const auto threshold = std::clamp(byte_threshold, 0.f, 1.f);
+    const auto threshold_bytes_avg =
+      (static_cast<float>(all_segment_bytes_size) / segment_count) * threshold;
 
     // merge segment if: {threshold} > segment_bytes / (all_segment_bytes /
     // #segments)
     for (auto& segment : reader) {
-      const size_t segment_bytes_size = segment.Meta().byte_size;
-
+      if (consolidating_segments.contains(segment.Meta().name)) {
+        continue;
+      }
+      const auto segment_bytes_size = segment.Meta().byte_size;
       if (threshold_bytes_avg >= segment_bytes_size) {
         candidates.emplace_back(&segment);
       }
@@ -221,20 +222,16 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options) {
     segments.reserve(reader.size());
 
     for (auto& segment : reader) {
-      if (consolidating_segments.find(&segment) !=
-          consolidating_segments.end()) {
-        // segment is already under consolidation
-        continue;
+      if (consolidating_segments.contains(segment.Meta().name)) {
+        continue;  // segment is already under consolidation
       }
-
       segments.emplace_back(SizeWithoutRemovals(segment.Meta()), &segment);
       all_segment_bytes_size += segments.back().first;
     }
 
     size_t cumulative_size = 0;
-    auto threshold_size =
-      all_segment_bytes_size *
-      std::max<float>(0, std::min<float>(1, byte_threshold));
+    const auto threshold_size =
+      all_segment_bytes_size * std::clamp(byte_threshold, 0.f, 1.f);
     struct {
       bool operator()(const std::pair<size_t, const SubReader*>& lhs,
                       const std::pair<size_t, const SubReader*>& rhs) const {
@@ -260,7 +257,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options) {
 
 ConsolidationPolicy MakePolicy(const ConsolidateCount& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
-                   const ConsolidatingSegments& /*consolidating_segments*/) {
+                   const ConsolidatingSegments& consolidating_segments) {
     // merge first 'threshold' segments
     for (size_t i = 0, count = std::min(options.threshold, reader.size());
          i < count; ++i) {
@@ -271,14 +268,17 @@ ConsolidationPolicy MakePolicy(const ConsolidateCount& options) {
 
 ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
-                   const ConsolidatingSegments& /*consolidating_segments*/) {
+                   const ConsolidatingSegments& consolidating_segments) {
     auto fill_threshold = options.threshold;
-    auto threshold = std::clamp(fill_threshold, 0.0F, 1.0F);
+    auto threshold = std::clamp(fill_threshold, 0.f, 1.f);
 
     // merge segment if: {threshold} >= #segment_docs{valid} /
     // (#segment_docs{valid} + #segment_docs{removed})
     for (auto& segment : reader) {
       auto& meta = segment.Meta();
+      if (consolidating_segments.contains(meta.name)) {
+        continue;
+      }
       if (!meta.live_docs_count  // if no valid doc_ids left in segment
           || meta.docs_count * threshold >= meta.live_docs_count) {
         candidates.emplace_back(&segment);
@@ -289,24 +289,22 @@ ConsolidationPolicy MakePolicy(const ConsolidateDocsFill& options) {
 
 ConsolidationPolicy MakePolicy(const ConsolidateDocsLive& options) {
   return [options](Consolidation& candidates, const IndexReader& meta,
-                   const ConsolidatingSegments& /*consolidating_segments*/) {
-    auto docs_threshold = options.threshold;
-    size_t all_segment_docs_count = 0;
-    size_t segment_count = meta.size();
+                   const ConsolidatingSegments& consolidating_segments) {
+    const auto docs_threshold = options.threshold;
+    const auto all_segment_docs_count = meta.live_docs_count();
+    const auto segment_count = meta.size();
 
-    for (auto& segment : meta) {
-      // cppcheck-suppress useStlAlgorithm
-      all_segment_docs_count += segment.Meta().live_docs_count;
-    }
-
-    auto threshold = std::max<float>(0, std::min<float>(1, docs_threshold));
-    auto threshold_docs_avg =
-      (all_segment_docs_count / (float)segment_count) * threshold;
+    const auto threshold = std::clamp(docs_threshold, 0.f, 1.f);
+    const auto threshold_docs_avg =
+      (static_cast<float>(all_segment_docs_count) / segment_count) * threshold;
 
     // merge segment if: {threshold} >= segment_docs{valid} /
     // (all_segment_docs{valid} / #segments)
     for (auto& segment : meta) {
       auto& info = segment.Meta();
+      if (consolidating_segments.contains(info.name)) {
+        continue;
+      }
       if (!info.live_docs_count  // if no valid doc_ids left in segment
           || threshold_docs_avg >= info.live_docs_count) {
         candidates.emplace_back(&segment);
@@ -377,8 +375,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateTier& options) {
       total_index_size += segment.size;
       total_live_docs_count += segment.meta->live_docs_count;
 
-      if (consolidating_segments.end() !=
-          consolidating_segments.find(segment.reader)) {
+      if (consolidating_segments.contains(segment.reader->Meta().name)) {
         consolidating_size += segment.size;
         // exclude removals from stats for consolidating segments
         total_docs_count += segment.meta->live_docs_count;

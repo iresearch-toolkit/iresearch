@@ -2984,7 +2984,7 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
             in_store[insert_docs[i].first] = true;
           }
           if (((commit >> i) & 1U) == 1U) {
-            writer->Commit(commit_time);
+            writer->Commit({.tick = commit_time});
             commit_time = insert_time;
             AssertSnapshotEquality(*writer);
           }
@@ -2994,7 +2994,7 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
       for (auto v : in_store) {
         in_store_count += static_cast<size_t>(v);
       }
-      writer->Commit(insert_time);
+      writer->Commit({.tick = insert_time});
       AssertSnapshotEquality(*writer);
 
       auto reader = writer->GetSnapshot();
@@ -3004,7 +3004,7 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
       EXPECT_LE(reader->docs_count(), kLen);
 
       writer->Consolidate(MakePolicy(irs::index_utils::ConsolidateCount{}));
-      writer->Commit(insert_time);
+      writer->Commit({.tick = insert_time});
       AssertSnapshotEquality(*writer);
 
       writer = nullptr;

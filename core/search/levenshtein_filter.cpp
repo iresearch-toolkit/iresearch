@@ -239,7 +239,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 
 namespace irs {
 
-/*static*/ field_visitor by_edit_distance::visitor(
+field_visitor by_edit_distance::visitor(
   const options_type::filter_options& opts) {
   return executeLevenshtein(
     opts.max_distance, opts.provider, opts.with_transpositions, opts.prefix,
@@ -287,7 +287,7 @@ namespace irs {
     });
 }
 
-/*static*/ filter::prepared::ptr by_edit_distance::prepare(
+filter::prepared::ptr by_edit_distance::prepare(
   const IndexReader& index, const Scorers& order, score_t boost,
   std::string_view field, bytes_view term, size_t scored_terms_limit,
   byte_type max_distance, options_type::pdp_f provider,

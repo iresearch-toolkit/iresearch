@@ -101,10 +101,9 @@ void collect_terms(const IndexReader& index, std::string_view field,
 
 namespace irs {
 
-/*static*/ void by_terms::visit(const SubReader& segment,
-                                const term_reader& field,
-                                const by_terms_options::search_terms& terms,
-                                filter_visitor& visitor) {
+void by_terms::visit(const SubReader& segment, const term_reader& field,
+                     const by_terms_options::search_terms& terms,
+                     filter_visitor& visitor) {
   ::visit(segment, field, terms, visitor);
 }
 

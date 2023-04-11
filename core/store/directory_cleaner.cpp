@@ -32,8 +32,8 @@ namespace irs {
 // --SECTION--                                                 directory_cleaner
 // -----------------------------------------------------------------------------
 
-/*static*/ size_t directory_cleaner::clean(directory& dir,
-                                           const removal_acceptor_t& acceptor) {
+size_t directory_cleaner::clean(directory& dir,
+                                const removal_acceptor_t& acceptor) {
   auto& refs = dir.attributes().refs().refs();
 
   size_t remove_count = 0;

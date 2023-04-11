@@ -280,7 +280,7 @@ struct term_reader : public attribute_provider {
 };
 
 struct field_reader {
-  using ptr = std::unique_ptr<field_reader>;
+  using ptr = std::shared_ptr<field_reader>;
 
   virtual ~field_reader() = default;
 
@@ -405,6 +405,7 @@ struct document_mask_reader : memory::Managed {
 struct segment_meta_writer : memory::Managed {
   using ptr = memory::managed_ptr<segment_meta_writer>;
 
+  virtual bool SupportPrimarySort() const noexcept = 0;
   virtual void write(directory& dir, std::string& filename,
                      SegmentMeta& meta) = 0;
 };

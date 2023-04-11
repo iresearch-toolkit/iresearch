@@ -2571,6 +2571,7 @@ TEST(index_death_test_formats_10,
   auto codec = irs::formats::get("1_0");
   ASSERT_NE(nullptr, codec);
 
+  size_t i{};
   // file creation failures
   {
     irs::memory_directory impl;
@@ -2606,15 +2607,19 @@ TEST(index_death_test_formats_10,
     ASSERT_FALSE(writer->Commit());
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
-
+    i = 1;
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
-
-      ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                          doc2->stored.begin(), doc2->stored.end()),
-                   irs::io_error);
-
+      if (i++ == 8) {
+        ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                           doc2->stored.begin(), doc2->stored.end()));
+        ASSERT_THROW(writer->Begin(), irs::io_error);
+      } else {
+        ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                            doc2->stored.begin(), doc2->stored.end()),
+                     irs::io_error);
+      }
       ASSERT_FALSE(writer->Begin());  // nothing to commit
     }
 
@@ -2662,13 +2667,19 @@ TEST(index_death_test_formats_10,
     tests::AssertSnapshotEquality(writer->GetSnapshot(),
                                   irs::DirectoryReader(dir));
 
+    i = 1;
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                          doc1->stored.begin(), doc1->stored.end()));
-
-      ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
-                          doc2->stored.begin(), doc2->stored.end()),
-                   irs::io_error);
+      if (i++ == 8) {
+        ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                           doc2->stored.begin(), doc2->stored.end()));
+        ASSERT_THROW(writer->Begin(), irs::io_error);
+      } else {
+        ASSERT_THROW(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                            doc2->stored.begin(), doc2->stored.end()),
+                     irs::io_error);
+      }
 
       ASSERT_FALSE(writer->Begin());  // nothing to commit
     }

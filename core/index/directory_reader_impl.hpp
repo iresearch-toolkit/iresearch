@@ -59,8 +59,6 @@ class DirectoryReaderImpl final
                       const IndexReaderOptions& opts, DirectoryMeta&& meta,
                       ReadersType&& readers);
 
-  using FileRefs = std::vector<index_file_refs::ref_t>;
-
   const directory& dir_;
   format::ptr codec_;
   FileRefs file_refs_;

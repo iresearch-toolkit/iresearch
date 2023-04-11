@@ -554,7 +554,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
   }
 }
 
-/*static*/ filter::prepared::ptr by_granular_range::prepare(
+filter::prepared::ptr by_granular_range::prepare(
   const IndexReader& index, const Scorers& ord, score_t boost,
   std::string_view field, const options_type::range_type& rng,
   size_t scored_terms_limit) {
@@ -604,10 +604,10 @@ void set_granular_term(by_granular_range_options::terms& boundary,
                                               ScoreMergeType::kSum, size_t{1});
 }
 
-/*static*/ void by_granular_range::visit(const SubReader& segment,
-                                         const term_reader& reader,
-                                         const options_type::range_type& rng,
-                                         filter_visitor& visitor) {
+void by_granular_range::visit(const SubReader& segment,
+                              const term_reader& reader,
+                              const options_type::range_type& rng,
+                              filter_visitor& visitor) {
   ::visit(segment, reader, rng, visitor);
 }
 

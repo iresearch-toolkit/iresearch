@@ -335,12 +335,12 @@ namespace irs {
 namespace analysis {
 
 template<irs::analysis::ngram_token_stream_base::InputType StreamType>
-/*static*/ analyzer::ptr ngram_token_stream<StreamType>::make(
+analyzer::ptr ngram_token_stream<StreamType>::make(
   const ngram_token_stream_base::Options& options) {
   return std::make_unique<ngram_token_stream<StreamType>>(options);
 }
 
-/*static*/ void ngram_token_stream_base::init() {
+void ngram_token_stream_base::init() {
   REGISTER_ANALYZER_VPACK(ngram_token_stream_base, make_vpack,
                           normalize_vpack_config);  // match registration above
   REGISTER_ANALYZER_JSON(ngram_token_stream_base, make_json,

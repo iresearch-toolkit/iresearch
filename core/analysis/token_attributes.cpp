@@ -40,7 +40,7 @@ empty_position NO_POSITION;
 
 namespace irs {
 
-/*static*/ irs::position* position::empty() noexcept { return &NO_POSITION; }
+irs::position* position::empty() noexcept { return &NO_POSITION; }
 
 REGISTER_ATTRIBUTE(frequency);
 REGISTER_ATTRIBUTE(position);

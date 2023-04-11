@@ -35,12 +35,13 @@ class SegmentReader final : public SubReader {
   SegmentReader() noexcept = default;
   SegmentReader(SegmentReader&&) noexcept = default;
   SegmentReader& operator=(SegmentReader&&) noexcept = default;
-  SegmentReader(const directory& dir, const SegmentMeta& meta,
-                const IndexReaderOptions& opts);
+  SegmentReader(const SegmentReader& other) noexcept = default;
+  SegmentReader& operator=(const SegmentReader& other) noexcept = default;
+
+  explicit SegmentReader(const directory& dir, const SegmentMeta& meta,
+                         const IndexReaderOptions& opts);
   explicit SegmentReader(std::shared_ptr<const SegmentReaderImpl> impl) noexcept
     : impl_{std::move(impl)} {}
-  SegmentReader(const SegmentReader& other) noexcept;
-  SegmentReader& operator=(const SegmentReader& other) noexcept;
 
   bool operator==(const SegmentReader& rhs) const noexcept {
     return impl_ == rhs.impl_;
@@ -67,8 +68,6 @@ class SegmentReader final : public SubReader {
   const term_reader* field(std::string_view name) const final;
 
   field_iterator::ptr fields() const final;
-
-  SegmentReader Reopen(const SegmentMeta& meta) const;
 
   const irs::column_reader* sort() const final;
 
