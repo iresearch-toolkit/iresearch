@@ -1352,12 +1352,14 @@ ConsolidationResult IndexWriter::Consolidate(
     // FIXME TODO remove from 'consolidating_segments_' any segments in
     // 'committed_state_' or 'pending_state_' to avoid data duplication
     policy(candidates, *committed_reader, consolidating_segments_);
-#ifdef IRESEARCH_DEBUG
+
     for (const auto* candidate : candidates) {
       IRS_ASSERT(candidate != nullptr);
-      IRS_ASSERT(!consolidating_segments_.contains(candidate->Meta().name));
+      // TODO(MBkkt) Make this check assert in future
+      if (consolidating_segments_.contains(candidate->Meta().name)) {
+        return {0, ConsolidationError::FAIL};
+      }
     }
-#endif
 
     switch (candidates.size()) {
       case 0:  // nothing to consolidate

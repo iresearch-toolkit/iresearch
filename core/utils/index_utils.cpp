@@ -261,9 +261,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateCount& options) {
     // merge first 'threshold' segments
     for (size_t i = 0, count = std::min(options.threshold, reader.size());
          i < count; ++i) {
-      if (!consolidating_segments.contains(reader[i].Meta().name)) {
-        candidates.emplace_back(&reader[i]);
-      }
+      candidates.emplace_back(&reader[i]);
     }
   };
 }
