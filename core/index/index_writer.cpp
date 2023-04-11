@@ -2219,6 +2219,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       auto& prev_size = segment_ctx.flushed.prev_size;
       const auto curr_size = document_mask.size();
       if (prev_size != curr_size) {
+        new_segment.meta.version += 2;  // TODO(MBkkt) divide by 2
         if (prev_size != 0) {
           // we should increment version if was partially committed segment
           new_segment.meta.version += 2;  // TODO(MBkkt) divide by 2
