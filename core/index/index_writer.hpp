@@ -171,7 +171,7 @@ struct IndexWriterOptions : public SegmentOptions {
 struct CommitInfo {
   uint64_t tick = writer_limits::kMaxTick;
   ProgressReportCallback progress;
-  bool need_reopen = false;
+  bool reopen_columnstore = false;
 };
 
 // The object is using for indexing data. Only one writer can write to
@@ -562,7 +562,7 @@ class IndexWriter : private util::noncopyable {
     ImportContext(
       IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
       Consolidation&& consolidation_candidates,
-      std::shared_ptr<SegmentReaderImpl>&& reader,
+      std::shared_ptr<const SegmentReaderImpl>&& reader,
       std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
       MergeWriter&& merger) noexcept
       : tick{tick},
@@ -576,7 +576,7 @@ class IndexWriter : private util::noncopyable {
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   Consolidation&& consolidation_candidates,
-                  std::shared_ptr<SegmentReaderImpl>&& reader,
+                  std::shared_ptr<const SegmentReaderImpl>&& reader,
                   std::shared_ptr<const DirectoryReaderImpl>&&
                     consolidation_reader) noexcept
       : tick{tick},
@@ -589,7 +589,7 @@ class IndexWriter : private util::noncopyable {
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   Consolidation&& consolidation_candidates,
-                  std::shared_ptr<SegmentReaderImpl>&& reader) noexcept
+                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
@@ -597,14 +597,14 @@ class IndexWriter : private util::noncopyable {
         consolidation_ctx{.candidates = std::move(consolidation_candidates)} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  std::shared_ptr<SegmentReaderImpl>&& reader) noexcept
+                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick,
-                  std::shared_ptr<SegmentReaderImpl>&& reader) noexcept
+                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
       : tick{tick}, segment{std::move(segment)}, reader{std::move(reader)} {}
 
     ImportContext(ImportContext&&) = default;
@@ -615,7 +615,7 @@ class IndexWriter : private util::noncopyable {
     uint64_t tick;
     IndexSegment segment;
     FileRefs refs;
-    std::shared_ptr<SegmentReaderImpl> reader;
+    std::shared_ptr<const SegmentReaderImpl> reader;
     ConsolidationContext consolidation_ctx;
   };
 
@@ -647,7 +647,6 @@ class IndexWriter : private util::noncopyable {
     // Flushed segment removals
     DocsMask docs_mask;
     DocumentMask document_mask;
-    size_t prev_size = 0;
 
    private:
     // starting doc_id that should be added to docs_mask

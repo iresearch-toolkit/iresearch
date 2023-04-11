@@ -266,10 +266,6 @@ void segment_writer::FlushFields(flush_state& state) {
   meta.live_docs_count = meta.docs_count - docs_mask.count;
   meta.files = dir_.FlushTracked(meta.byte_size);
 
-  // We intentionally don't write document mask here as it might
-  // be changed by removals accumulated in IndexWriter.
-  index_utils::FlushIndexSegment(dir_, segment);
-
   return docmap;
 }
 

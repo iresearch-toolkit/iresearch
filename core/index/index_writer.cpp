@@ -62,7 +62,7 @@ const FeatureInfoProvider kDefaultFeatureInfo = [](irs::type_info::type_id) {
 };
 
 struct FlushedSegmentContext {
-  FlushedSegmentContext(std::shared_ptr<SegmentReaderImpl>&& reader,
+  FlushedSegmentContext(std::shared_ptr<const SegmentReaderImpl>&& reader,
                         IndexWriter::SegmentContext& segment,
                         IndexWriter::FlushedSegment& flushed)
     : reader{std::move(reader)}, segment{segment}, flushed{flushed} {
@@ -72,7 +72,7 @@ struct FlushedSegmentContext {
     }
   }
 
-  std::shared_ptr<SegmentReaderImpl> reader;
+  std::shared_ptr<const SegmentReaderImpl> reader;
   IndexWriter::SegmentContext& segment;
   IndexWriter::FlushedSegment& flushed;
 
@@ -1596,8 +1596,8 @@ ConsolidationResult IndexWriter::Consolidate(
           WriteDocumentMask(dir, consolidation_segment.meta, docs_mask, false);
 
           // Reopen modified reader
-          pending_reader->Update(dir, consolidation_segment.meta,
-                                 std::move(docs_mask));
+          pending_reader = pending_reader->ReopenDocsMask(
+            dir, consolidation_segment.meta, std::move(docs_mask));
         }
       }
 
@@ -1934,7 +1934,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       index_utils::FlushIndexSegment(dir, segment);  // Write with new mask
       partial_sync.emplace_back(readers.size(), mask_file_index);
 
-      auto new_segment = existing_segment.GetImpl()->Reopen(
+      auto new_segment = existing_segment.GetImpl()->ReopenDocsMask(
         dir, segment.meta, std::move(docs_mask));
       readers.emplace_back(std::move(new_segment));
       pending_meta.segments.emplace_back(std::move(segment));
@@ -2052,7 +2052,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       WriteDocumentMask(dir, meta, import_docs_mask, !pending_consolidation);
 
       // Reopen modified reader
-      import_reader->Update(dir, meta, std::move(import_docs_mask));
+      import_reader =
+        import_reader->ReopenDocsMask(dir, meta, std::move(import_docs_mask));
     }
 
     // Persist segment meta
@@ -2112,10 +2113,11 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
   auto& next_cached = ctx->next_->cached_;
 
   IRS_ASSERT(pending_meta.segments.size() == readers.size());
-  if (info.need_reopen) {
+  if (info.reopen_columnstore) {
     auto it = pending_meta.segments.begin();
     for (auto& reader : readers) {
-      auto impl = reader.GetImpl()->Reopen(dir, it->meta, reader_options);
+      auto impl =
+        reader.GetImpl()->ReopenColumnStore(dir, it->meta, reader_options);
       reader = SegmentReader{std::move(impl)};
       ++it;
     }
@@ -2166,14 +2168,15 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         IRS_ASSERT(flushed.meta.live_docs_count != 0);
         IRS_ASSERT(flushed.meta.live_docs_count <= flushed.meta.docs_count);
 
-        std::shared_ptr<SegmentReaderImpl> reader;
+        std::shared_ptr<const SegmentReaderImpl> reader;
         if (auto it = curr_cached.find(&flushed); it != curr_cached.end()) {
           IRS_ASSERT(it->second != nullptr);
           // We don't support case when segment is committed partially more than
           // one time. Because it's useless and ineffective.
           IRS_ASSERT(flushed_last_tick <= tick);
           // reuse existing reader with initial meta and docs_mask
-          reader = it->second->Reopen(dir, flushed.meta, DocumentMask{});
+          reader =
+            it->second->ReopenDocsMask(dir, flushed.meta, DocumentMask{});
         } else {
           reader = SegmentReaderImpl::Open(dir, flushed.meta, reader_options);
         }
@@ -2221,25 +2224,18 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       if (segment_ctx.MakeDocumentMask(tick, document_mask, new_segment)) {
         continue;
       }
-      auto& prev_size = segment_ctx.flushed.prev_size;
-      const auto curr_size = document_mask.size();
-      if (prev_size != curr_size) {
-        new_segment.meta.version += 2;  // TODO(MBkkt) divide by 2
-        if (prev_size != 0) {
-          // we should increment version if was partially committed segment
-          new_segment.meta.version += 2;  // TODO(MBkkt) divide by 2
-        }
-        prev_size = curr_size;
-        if (curr_size != 0) {
-          WriteDocumentMask(dir, new_segment.meta, document_mask, false);
-        }
-        // Write updated segment metadata
-        index_utils::FlushIndexSegment(dir, new_segment);
-        // Refresh reader
-        segment_ctx.reader->Update(dir, new_segment.meta,
-                                   std::move(document_mask));
+      IRS_ASSERT(segment_ctx.flushed.meta.version == new_segment.meta.version);
+      if (!document_mask.empty()) {
+        // TODO(MBkkt) should be 1
+        new_segment.meta.version += 2;
+        segment_ctx.flushed.meta.version += 2;
+        WriteDocumentMask(dir, new_segment.meta, document_mask, false);
       }
-
+      index_utils::FlushIndexSegment(dir, new_segment);
+      if (!document_mask.empty()) {
+        segment_ctx.reader = segment_ctx.reader->ReopenDocsMask(
+          dir, new_segment.meta, std::move(document_mask));
+      }
       readers.emplace_back(std::move(segment_ctx.reader));
       pending_meta.segments.emplace_back(std::move(new_segment));
     }

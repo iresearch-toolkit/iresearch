@@ -250,7 +250,11 @@ std::shared_ptr<const DirectoryReaderImpl> DirectoryReaderImpl::Open(
 
     if (it != reuse_candidates.end() && it->second != kInvalidCandidate &&
         meta == cached->meta_.index_meta.segments[it->second].meta) {
-      *reader = (*cached)[it->second];
+      auto tmp = (*cached)[it->second];
+      IRS_ASSERT(tmp != nullptr);
+      IRS_ASSERT(tmp->Meta() ==
+                 cached->meta_.index_meta.segments[it->second].meta);
+      *reader = std::move(tmp);
       reuse_candidates.erase(it);
     } else {
       *reader = SegmentReader{dir, meta, opts};

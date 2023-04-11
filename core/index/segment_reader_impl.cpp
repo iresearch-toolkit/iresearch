@@ -162,7 +162,7 @@ SegmentReaderImpl::SegmentReaderImpl(PrivateTag) noexcept {}
 
 SegmentReaderImpl::~SegmentReaderImpl() = default;
 
-std::shared_ptr<SegmentReaderImpl> SegmentReaderImpl::Open(
+std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) {
   auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
@@ -187,7 +187,7 @@ std::shared_ptr<SegmentReaderImpl> SegmentReaderImpl::Open(
   return reader;
 }
 
-std::shared_ptr<SegmentReaderImpl> SegmentReaderImpl::Reopen(
+std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) const {
   IRS_ASSERT(meta == info_);
@@ -204,7 +204,7 @@ std::shared_ptr<SegmentReaderImpl> SegmentReaderImpl::Reopen(
   return reader;
 }
 
-std::shared_ptr<SegmentReaderImpl> SegmentReaderImpl::Reopen(
+std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenDocsMask(
   const directory& dir, const SegmentMeta& meta,
   DocumentMask&& docs_mask) const {
   auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});

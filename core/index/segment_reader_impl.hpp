@@ -42,21 +42,16 @@ class SegmentReaderImpl final : public SubReader {
   SegmentReaderImpl(PrivateTag) noexcept;
   ~SegmentReaderImpl();
 
-  static std::shared_ptr<SegmentReaderImpl> Open(
+  static std::shared_ptr<const SegmentReaderImpl> Open(
     const directory& dir, const SegmentMeta& meta,
     const IndexReaderOptions& options);
 
-  // reopen columnstore
-  std::shared_ptr<SegmentReaderImpl> Reopen(
+  std::shared_ptr<const SegmentReaderImpl> ReopenColumnStore(
     const directory& dir, const SegmentMeta& meta,
     const IndexReaderOptions& options) const;
-  // reopen removals
-  std::shared_ptr<SegmentReaderImpl> Reopen(const directory& dir,
-                                            const SegmentMeta& meta,
-                                            DocumentMask&& docs_mask) const;
-  // update removals
-  void Update(const directory& dir, const SegmentMeta& meta,
-              DocumentMask&& docs_mask) noexcept;
+  std::shared_ptr<const SegmentReaderImpl> ReopenDocsMask(
+    const directory& dir, const SegmentMeta& meta,
+    DocumentMask&& docs_mask) const;
 
   const SegmentInfo& Meta() const final { return info_; }
 
@@ -81,6 +76,9 @@ class SegmentReaderImpl final : public SubReader {
   const irs::column_reader* column(std::string_view name) const final;
 
  private:
+  void Update(const directory& dir, const SegmentMeta& meta,
+              DocumentMask&& docs_mask) noexcept;
+
   using NamedColumns =
     absl::flat_hash_map<std::string_view, const irs::column_reader*>;
   using SortedNamedColumns =
