@@ -3076,6 +3076,8 @@ struct SegmentMetaWriter : public segment_meta_writer {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
+  bool SupportPrimarySort() const noexcept final;
+
   // FIXME(gnusi): Better to split write into 2 methods and pass meta by const
   // reference
   void write(directory& dir, std::string& filename, SegmentMeta& meta) final;
@@ -3088,6 +3090,11 @@ template<>
 std::string file_name<segment_meta_writer, SegmentMeta>(
   const SegmentMeta& meta) {
   return irs::file_name(meta.name, meta.version, SegmentMetaWriter::FORMAT_EXT);
+}
+
+bool SegmentMetaWriter::SupportPrimarySort() const noexcept {
+  // Earlier versions don't support primary sort
+  return version_ > FORMAT_MIN;
 }
 
 void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
@@ -3114,7 +3121,7 @@ void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
   out->write_vlong(meta.docs_count -
                    meta.live_docs_count);  // docs_count >= live_docs_count
   out->write_vlong(meta.byte_size);
-  if (version_ > FORMAT_MIN) {
+  if (SupportPrimarySort()) {
     // sorted indices are not supported in version 1.0
     if (field_limits::valid(meta.sort)) {
       flags |= SORTED;
@@ -3123,7 +3130,6 @@ void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
     out->write_byte(flags);
     out->write_vlong(1 + meta.sort);  // max->0
   } else {
-    // Earlier versions don't support primary sort
     out->write_byte(flags);
     meta.sort = field_limits::invalid();
   }

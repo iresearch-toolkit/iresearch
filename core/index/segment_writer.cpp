@@ -233,7 +233,11 @@ void segment_writer::FlushFields(flush_state& state) {
       *col_writer_, std::move(sort_.finalizer),
       static_cast<doc_id_t>(state.doc_count), *fields_.comparator());
 
-    meta.sort = sort_.id;  // Store sorted column id in segment meta
+    IRS_ASSERT(meta.codec != nullptr);
+    auto writer = meta.codec->get_segment_meta_writer();
+    if (writer->SupportPrimarySort()) {
+      meta.sort = sort_.id;  // Store sorted column id in segment meta
+    }
 
     if (!docmap.empty()) {
       state.docmap = &docmap;

@@ -647,6 +647,7 @@ class IndexWriter : private util::noncopyable {
     // Flushed segment removals
     DocsMask docs_mask;
     DocumentMask document_mask;
+    bool was_flush = false;
 
    private:
     // starting doc_id that should be added to docs_mask

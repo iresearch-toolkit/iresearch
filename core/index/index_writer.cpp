@@ -2225,14 +2225,18 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         continue;
       }
       IRS_ASSERT(segment_ctx.flushed.meta.version == new_segment.meta.version);
-      if (!document_mask.empty()) {
-        // TODO(MBkkt) should be 1
+      const bool need_flush =
+        segment_ctx.flushed.was_flush || !document_mask.empty();
+      segment_ctx.flushed.was_flush = true;
+      if (need_flush) {  // TODO(MBkkt) should be 1
         new_segment.meta.version += 2;
         segment_ctx.flushed.meta.version += 2;
+      }
+      if (!document_mask.empty()) {
         WriteDocumentMask(dir, new_segment.meta, document_mask, false);
       }
       index_utils::FlushIndexSegment(dir, new_segment);
-      if (!document_mask.empty()) {
+      if (need_flush) {
         segment_ctx.reader = segment_ctx.reader->ReopenDocsMask(
           dir, new_segment.meta, std::move(document_mask));
       }
