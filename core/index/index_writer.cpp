@@ -1359,23 +1359,25 @@ ConsolidationResult IndexWriter::Consolidate(
     // 'committed_state_' or 'pending_state_' to avoid data duplication
     policy(candidates, *committed_reader, consolidating_segments_);
 
+    switch (candidates.size()) {
+      case 0:  // nothing to consolidate
+        return {0, ConsolidationError::OK};
+      case 1: {
+        const auto* candidate = candidates.front();
+        IRS_ASSERT(candidate != nullptr);
+        if (!HasRemovals(candidate->Meta())) {
+          // no removals, nothing to consolidate
+          return {0, ConsolidationError::OK};
+        }
+      }
+    }
+
     for (const auto* candidate : candidates) {
       IRS_ASSERT(candidate != nullptr);
       // TODO(MBkkt) Make this check assert in future
       if (consolidating_segments_.contains(candidate->Meta().name)) {
         return {0, ConsolidationError::FAIL};
       }
-    }
-
-    switch (candidates.size()) {
-      case 0:  // nothing to consolidate
-        return {0, ConsolidationError::OK};
-      case 1:
-        if (const auto* segment = *candidates.begin();
-            !HasRemovals(segment->Meta())) {
-          // no removals, nothing to consolidate
-          return {0, ConsolidationError::OK};
-        }
     }
 
     // register for consolidation
