@@ -16860,3 +16860,63 @@ INSTANTIATE_TEST_SUITE_P(index_test_11, index_test_case_11,
                          ::testing::Combine(kDirectories,
                                             kIndexTestCase11Formats),
                          index_test_case_11::to_string);
+
+TEST_P(index_test_case_14, buffered_column_reopen) {
+  tests::json_doc_generator gen(resource("simple_sequential.json"),
+                                &tests::generic_json_field_factory);
+  auto doc0 = gen.next();
+  auto doc1 = gen.next();
+  auto doc2 = gen.next();
+  auto doc3 = gen.next();
+  auto doc4 = gen.next();
+
+  bool cache = false;
+  int64_t memory = 0;
+  irs::IndexWriterOptions opts;
+  opts.reader_options.pinned_memory_accounting = [&](int64_t diff) noexcept {
+    memory += diff;
+    return true;
+  };
+  opts.reader_options.warmup_columns =
+    [&](const irs::SegmentMeta& /*meta*/, const irs::field_reader& /*fields*/,
+        const irs::column_reader& /*column*/) { return cache; };
+  auto writer = open_writer(irs::OM_CREATE, opts);
+
+  ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
+                     doc0->stored.begin(), doc0->stored.end()));
+  ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
+                     doc1->stored.begin(), doc1->stored.end()));
+  ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
+                     doc2->stored.begin(), doc2->stored.end()));
+  writer->Commit();
+  AssertSnapshotEquality(*writer);
+  EXPECT_EQ(0, memory);
+
+  // empty commit: enable cache
+  cache = true;
+  writer->Commit({.reopen_columnstore = true});
+  AssertSnapshotEquality(*writer);
+  EXPECT_LT(0, memory);
+
+  // empty commit: disable cache
+  cache = false;
+  writer->Commit({.reopen_columnstore = true});
+  AssertSnapshotEquality(*writer);
+  EXPECT_EQ(0, memory);
+
+  // not empty commit: enable cache
+  cache = true;
+  ASSERT_TRUE(insert(*writer, doc3->indexed.begin(), doc3->indexed.end(),
+                     doc3->stored.begin(), doc3->stored.end()));
+  writer->Commit({.reopen_columnstore = true});
+  AssertSnapshotEquality(*writer);
+  EXPECT_LT(0, memory);
+
+  // not empty commit: disable cache
+  cache = false;
+  ASSERT_TRUE(insert(*writer, doc4->indexed.begin(), doc4->indexed.end(),
+                     doc4->stored.begin(), doc4->stored.end()));
+  writer->Commit({.reopen_columnstore = true});
+  AssertSnapshotEquality(*writer);
+  EXPECT_EQ(0, memory);
+}
