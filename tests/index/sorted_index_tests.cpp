@@ -3047,6 +3047,133 @@ TEST_P(SortedIndexStressTestCase, commit_on_tick) {
   }
 }
 
+TEST_P(SortedIndexStressTestCase, split_empty_commit) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      if (name == "name" && data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.sorted = field;
+        doc.insert(field);
+      }
+    });
+  static constexpr size_t kLen = 8;
+  std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
+  for (size_t i = 0; i < kLen; ++i) {
+    insert_docs[i] = {i, gen.next()};
+  }
+  std::array<std::pair<size_t, std::unique_ptr<irs::by_term>>, kLen>
+    remove_docs;
+  for (size_t i = 0; i < kLen; ++i) {
+    remove_docs[i] = {i, MakeByTerm("name", static_cast<tests::string_field&>(
+                                              *insert_docs[i].second->sorted)
+                                              .value())};
+  }
+
+  StringComparer compare;
+  irs::IndexWriterOptions opts;
+  opts.comparator = &compare;
+  opts.features = features();
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  auto segment1 = writer->GetBatch();
+  auto insert_doc = [&](size_t i) {
+    auto doc = segment1.Insert();
+    ASSERT_TRUE(
+      doc.Insert<irs::Action::STORE_SORTED>(*insert_docs[i].second->sorted));
+    ASSERT_TRUE(
+      doc.Insert<irs::Action::INDEX>(insert_docs[i].second->indexed.begin(),
+                                     insert_docs[i].second->indexed.end()));
+    ASSERT_TRUE(
+      doc.Insert<irs::Action::STORE>(insert_docs[i].second->stored.begin(),
+                                     insert_docs[i].second->stored.end()));
+  };
+  auto remove_doc = [&](size_t i) { segment1.Remove(*remove_docs[i].second); };
+  insert_doc(0);
+  insert_doc(1);
+  insert_doc(2);
+  remove_doc(0);
+  segment1.Commit(10);
+  insert_doc(3);
+  remove_doc(1);
+  remove_doc(2);
+  remove_doc(3);
+  segment1.Commit(20);
+  writer->Commit({.tick = 10});
+  auto reader = writer->GetSnapshot();
+  EXPECT_EQ(reader->docs_count(), 4);
+  EXPECT_EQ(reader->live_docs_count(), 2);
+  EXPECT_EQ(reader->size(), 1);
+  writer->Commit({.tick = 20});
+  reader = writer->GetSnapshot();
+  EXPECT_EQ(reader->docs_count(), 0);
+  EXPECT_EQ(reader->live_docs_count(), 0);
+  EXPECT_EQ(reader->size(), 0);
+}
+
+TEST_P(SortedIndexStressTestCase, remove_tick) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      if (name == "name" && data.is_string()) {
+        auto field = std::make_shared<tests::string_field>(name, data.str);
+        doc.sorted = field;
+        doc.insert(field);
+      }
+    });
+  static constexpr size_t kLen = 8;
+  std::array<std::pair<size_t, const tests::document*>, kLen> insert_docs;
+  for (size_t i = 0; i < kLen; ++i) {
+    insert_docs[i] = {i, gen.next()};
+  }
+  std::array<std::pair<size_t, std::unique_ptr<irs::by_term>>, kLen>
+    remove_docs;
+  for (size_t i = 0; i < kLen; ++i) {
+    remove_docs[i] = {i, MakeByTerm("name", static_cast<tests::string_field&>(
+                                              *insert_docs[i].second->sorted)
+                                              .value())};
+  }
+
+  StringComparer compare;
+  irs::IndexWriterOptions opts;
+  opts.comparator = &compare;
+  opts.features = features();
+  auto writer = open_writer(irs::OM_CREATE, opts);
+  auto segment1 = writer->GetBatch();
+  auto insert_doc = [&](size_t i) {
+    auto doc = segment1.Insert();
+    ASSERT_TRUE(
+      doc.Insert<irs::Action::STORE_SORTED>(*insert_docs[i].second->sorted));
+    ASSERT_TRUE(
+      doc.Insert<irs::Action::INDEX>(insert_docs[i].second->indexed.begin(),
+                                     insert_docs[i].second->indexed.end()));
+    ASSERT_TRUE(
+      doc.Insert<irs::Action::STORE>(insert_docs[i].second->stored.begin(),
+                                     insert_docs[i].second->stored.end()));
+  };
+  auto remove_doc = [&](size_t i) { segment1.Remove(*remove_docs[i].second); };
+  insert_doc(0);
+  insert_doc(1);
+  insert_doc(2);
+  remove_doc(0);
+  segment1.Commit(10);
+  insert_doc(3);
+  insert_doc(4);
+  remove_doc(4);
+  segment1.Commit(20);
+  writer->Commit({.tick = 10});
+  auto reader = writer->GetSnapshot();
+  EXPECT_EQ(reader->docs_count(), 5);
+  EXPECT_EQ(reader->live_docs_count(), 2);
+  EXPECT_EQ(reader->size(), 1);
+  writer->Commit({.tick = 20});
+  reader = writer->GetSnapshot();
+  EXPECT_EQ(reader->docs_count(), 5);
+  EXPECT_EQ(reader->live_docs_count(), 3);
+  EXPECT_EQ(reader->size(), 1);
+}
+
 INSTANTIATE_TEST_SUITE_P(
   SortedIndexStressTest, SortedIndexStressTestCase,
   ::testing::Combine(

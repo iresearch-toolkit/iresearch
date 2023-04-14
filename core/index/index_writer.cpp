@@ -1068,9 +1068,12 @@ void IndexWriter::SegmentContext::Rollback() noexcept {
     }
   }
 
-  // TODO(MBkkt) if committed_buffered_docs_ == 0 we can just reset writer?
   // rollback inserts located inside the writer
   auto& writer = *writer_;
+  if (committed_buffered_docs_ == 0) {
+    writer.reset();
+    return;
+  }
   const auto buffered_docs = writer.buffered_docs();
   for (auto doc_id = buffered_docs - 1 + doc_limits::min(),
             doc_id_rend = committed_buffered_docs_ - 1 + doc_limits::min();
@@ -1086,12 +1089,7 @@ void IndexWriter::SegmentContext::Rollback() noexcept {
   //  will be ready? Also what about assign last_committed_tick
   //  only for first and last value in range?
   const auto docs = writer_->docs_context();
-  uint64_t last_committed_tick = writer_limits::kMinTick + 1;
-  if (committed_buffered_docs_ != 0) {
-    last_committed_tick = docs[committed_buffered_docs_ - 1].tick;
-  } else if (!flushed_docs_.empty()) {
-    last_committed_tick = flushed_docs_.back().tick;
-  }
+  const auto last_committed_tick = docs[committed_buffered_docs_ - 1].tick;
   std::for_each(docs.begin() + committed_buffered_docs_, docs.end(),
                 [&](auto& doc) {
                   doc.tick = last_committed_tick;
@@ -2224,6 +2222,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       DocumentMask document_mask;
       IndexSegment new_segment;
       if (segment_ctx.MakeDocumentMask(tick, document_mask, new_segment)) {
+        modified |= segment_ctx.flushed.was_flush;
         continue;
       }
       IRS_ASSERT(segment_ctx.flushed.meta.version == new_segment.meta.version);
@@ -2271,6 +2270,15 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
+    IRS_ASSERT(readers.size() == committed_reader_size);
+    if (info.reopen_columnstore) {
+      auto new_reader = std::make_shared<const DirectoryReaderImpl>(
+        committed_reader.Dir(), committed_reader.Codec(),
+        committed_reader.Options(), DirectoryMeta{committed_reader.Meta()},
+        std::move(readers));
+      std::atomic_store_explicit(&committed_reader_, std::move(new_reader),
+                                 std::memory_order_release);
+    }
     return {};
   }
 
