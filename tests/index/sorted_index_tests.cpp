@@ -2901,7 +2901,8 @@ TEST_P(SortedIndexStressTestCase, doc_removal_same_key_within_trx) {
           continue;
         }
         ASSERT_EQ(1, reader.size());
-        ASSERT_EQ(kLen, reader->docs_count());
+        // less possible when Reset/Rollback is first
+        ASSERT_LE(reader->docs_count(), kLen);
         ASSERT_EQ(in_store_count, reader->live_docs_count());
         const auto& segment = reader[0];
         const auto* column = segment.sort();
