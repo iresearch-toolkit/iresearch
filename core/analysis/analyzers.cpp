@@ -116,25 +116,26 @@ analyzer_registrar::analyzer_registrar(
       analyzer_register::instance().tag(::key(type.name(), args_format));
 
     if (source && registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering analyzer, ignoring: "
-        "type '%s' from %s, previously from %s",
-        type.name().data(), source, registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering analyzer, "
+                     "ignoring: type '",
+                     type.name(), "' from ", source, ", previously from ",
+                     *registered_source));
     } else if (source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering analyzer, ignoring: "
-        "type '%s' from %s",
-        type.name().data(), source);
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering analyzer, "
+                     "ignoring: type '",
+                     type.name(), "' from ", source));
     } else if (registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering analyzer, ignoring: "
-        "type '%s', previously from %s",
-        type.name().data(), registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering analyzer, "
+                     "ignoring: type '",
+                     type.name(), "', previously from ", *registered_source));
     } else {
-      IR_FRMT_WARN(
-        "type name collision detected while registering analyzer, ignoring: "
-        "type '%s'",
-        type.name().data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering analyzer, "
+                     "ignoring: type '",
+                     type.name(), "'"));
     }
   }
 }
@@ -158,8 +159,8 @@ bool normalize(std::string& out, std::string_view name,
 
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments",
-                  static_cast<std::string>(name).c_str());
+    IRS_LOG_ERROR(absl::StrCat("Caught exception while normalizing analyzer '",
+                               name, "' arguments"));
   }
 
   return false;
@@ -199,7 +200,7 @@ analyzer::ptr get(std::string_view name, const type_info& args_format,
 
     return factory ? factory(args) : nullptr;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
+    IRS_LOG_ERROR("Caught exception while getting an analyzer instance");
   }
 
   return nullptr;

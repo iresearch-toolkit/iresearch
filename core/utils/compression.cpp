@@ -101,25 +101,26 @@ compression_registrar::compression_registrar(
       compression_register::instance().tag(type.name());
 
     if (source != nullptr && registered_source != nullptr) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering compression, ignoring: "
-        "type '%s' from %s, previously from %s",
-        type.name().data(), source, registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "compression, ignoring: type '",
+                     type.name(), "' from ", source_ref, ", previously from ",
+                     *registered_source));
     } else if (source != nullptr) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering compression, ignoring: "
-        "type '%s' from %s",
-        type.name().data(), source);
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "compression, ignoring: type '",
+                     type.name(), "' from ", source_ref));
     } else if (registered_source != nullptr) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering compression, ignoring: "
-        "type '%s', previously from %s",
-        type.name().data(), registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "compression, ignoring: type '",
+                     type.name(), "' previously from ", *registered_source));
     } else {
-      IR_FRMT_WARN(
-        "type name collision detected while registering compression, ignoring: "
-        "type '%s'",
-        type.name().data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "compression, ignoring: type '",
+                     type.name(), "'"));
     }
   }
 }
@@ -137,7 +138,7 @@ compressor::ptr get_compressor(std::string_view name, const options& opts,
 
     return factory != nullptr ? factory(opts) : nullptr;
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught exception while getting an analyzer instance");  // cppcheck-suppress
                                                                // syntaxError
   }
@@ -154,7 +155,7 @@ decompressor::ptr get_decompressor(std::string_view name,
 
     return factory != nullptr ? factory() : nullptr;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
+    IRS_LOG_ERROR("Caught exception while getting an analyzer instance");
   }
 
   return nullptr;

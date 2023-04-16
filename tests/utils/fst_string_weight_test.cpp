@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/fstext/fst_string_weight.h"
+#include "utils/fstext/fst_string_weight.hpp"
 
 #include "tests_shared.hpp"
 

@@ -117,8 +117,7 @@ void Norm2Header::Write(const Norm2Header& hdr, bstring& out) {
 
 std::optional<Norm2Header> Norm2Header::Read(bytes_view payload) noexcept {
   if (IRS_UNLIKELY(payload.size() != ByteSize())) {
-    IR_FRMT_ERROR("Invalid 'norm2' header size " IR_SIZE_T_SPECIFIER "",
-                  payload.size());
+    IRS_LOG_ERROR(absl::StrCat("Invalid 'norm2' header size ", payload.size()));
     return std::nullopt;
   }
 
@@ -126,16 +125,17 @@ std::optional<Norm2Header> Norm2Header::Read(bytes_view payload) noexcept {
 
   if (const byte_type ver = *p++;
       IRS_UNLIKELY(ver != static_cast<byte_type>(Norm2Version::kMin))) {
-    IR_FRMT_ERROR("'norm2' header version mismatch, expected '%u', got '%u'",
-                  static_cast<uint32_t>(Norm2Version::kMin),
-                  static_cast<uint32_t>(ver));
+    IRS_LOG_ERROR(absl::StrCat("'norm2' header version mismatch, expected: ",
+                               static_cast<uint32_t>(Norm2Version::kMin),
+                               ", got: ", static_cast<uint32_t>(ver)));
     return std::nullopt;
   }
 
   const byte_type num_bytes = *p++;
   if (IRS_UNLIKELY(!CheckNumBytes(num_bytes))) {
-    IR_FRMT_ERROR("Malformed 'norm2' header, invalid number of bytes '%u'",
-                  static_cast<uint32_t>(num_bytes));
+    IRS_LOG_ERROR(
+      absl::StrCat("Malformed 'norm2' header, invalid number of bytes: ",
+                   static_cast<uint32_t>(num_bytes)));
     return std::nullopt;
   }
 
@@ -170,8 +170,6 @@ FeatureWriter::ptr Norm2::MakeWriter(std::span<const bytes_view> headers) {
       IRS_ASSERT(max_bytes == sizeof(uint32_t));
       return memory::make_managed<Norm2Writer<uint32_t>>();
   }
-
-  return nullptr;
 }
 
 REGISTER_ATTRIBUTE(Norm);

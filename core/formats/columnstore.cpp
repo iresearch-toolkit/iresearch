@@ -897,7 +897,7 @@ bool writer::commit(const flush_state& state) {
     data_out_.reset();
 
     if (!dir_->remove(filename_)) {  // Ignore error.
-      IR_FRMT_ERROR("Failed to remove file, path: %s", filename_.c_str());
+      IRS_LOG_ERROR(absl::StrCat("Failed to remove file, path: ", filename_));
     }
 
     return false;  // Nothing to flush.
@@ -1517,9 +1517,9 @@ class read_context
 
     if (!clone) {
       // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen columpstore input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to reopen columnstore input");
 
-      throw io_error("Failed to reopen columnstore input in");
+      throw io_error{"Failed to reopen columnstore input"};
     }
 
     return std::make_shared<read_context>(std::move(clone), cipher);
@@ -1584,7 +1584,7 @@ class read_context
   bstring buf_;  // temporary buffer for decoding/unpacking
   index_input::ptr stream_;
   encryption::stream* cipher_;  // options cipher stream
-};                              // read_context
+};
 
 typedef read_context<> read_context_t;
 
@@ -2471,7 +2471,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
     try {
       column->read(*stream, buf, std::move(decomp));
     } catch (...) {
-      IR_FRMT_ERROR("Failed to load column id=" IR_SIZE_T_SPECIFIER "", i);
+      IRS_LOG_ERROR(absl::StrCat("Failed to load column id=", i));
 
       throw;
     }

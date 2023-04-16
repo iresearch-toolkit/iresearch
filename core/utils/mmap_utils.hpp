@@ -89,7 +89,7 @@ class mmap_handle : private util::noncopyable {
 
   ~mmap_handle() noexcept { close(); }
 
-  bool open(const file_path_t file) noexcept;
+  bool open(const path_char_t* file) noexcept;
   void close() noexcept;
 
   explicit operator bool() const noexcept { return fd_ >= 0; }

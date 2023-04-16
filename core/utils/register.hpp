@@ -32,6 +32,7 @@
 #include "string.hpp"
 
 #include <absl/container/flat_hash_map.h>
+#include <absl/strings/str_cat.h>
 
 // use busywait implementation for Win32 since std::mutex cannot be used in
 // calls going through dllmain()
@@ -85,7 +86,7 @@ class generic_register : public singleton<RegisterType> {
       return load_entry_from_so(key);
     }
 
-    IR_FRMT_ERROR("%s : key not found", __FUNCTION__);
+    IRS_LOG_ERROR("key not found");
 
     return entry_type();
   }
@@ -116,7 +117,7 @@ class generic_register : public singleton<RegisterType> {
     void* handle = load_library(file.c_str(), 1);
 
     if (nullptr == handle) {
-      IR_FRMT_ERROR("%s : load failed", __FUNCTION__);
+      IRS_LOG_ERROR("load failed");
       return entry_type();
     }
 
@@ -131,8 +132,7 @@ class generic_register : public singleton<RegisterType> {
     }
 
     if (!this_ptr->add_so_handle(handle)) {
-      IR_FRMT_ERROR("%s : init failed in shared object : %s", __FUNCTION__,
-                    file.c_str());
+      IRS_LOG_ERROR(absl::StrCat("init failed in shared object : ", file));
       return entry_type();
     }
 
@@ -140,8 +140,7 @@ class generic_register : public singleton<RegisterType> {
     // that performs registration
     const entry_type* entry = lookup(key);
     if (nullptr == entry) {
-      IR_FRMT_ERROR("%s : lookup failed in shared object : %s", __FUNCTION__,
-                    file.c_str());
+      IRS_LOG_ERROR(absl::StrCat("lookup failed in shared object : ", file));
       return entry_type();
     }
 

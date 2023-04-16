@@ -24,6 +24,7 @@
 
 #include <chrono>
 
+#include "absl/strings/str_cat.h"
 #include "shared.hpp"
 
 namespace {
@@ -185,9 +186,9 @@ bool ctr_encryption::create_header(std::string_view filename,
   const auto block_size = cipher_->block_size();
 
   if (!block_size) {
-    IR_FRMT_ERROR(
-      "failed to initialize encryption header with block of size 0, path '%s'",
-      std::string{filename}.c_str());
+    IRS_LOG_ERROR(absl::StrCat(
+      "failed to initialize encryption header with block of size 0, path '",
+      filename, "'"));
 
     return false;
   }
@@ -195,19 +196,17 @@ bool ctr_encryption::create_header(std::string_view filename,
   const auto header_length = this->header_length();
 
   if (header_length < MIN_HEADER_LENGTH) {
-    IR_FRMT_ERROR(
-      "failed to initialize encryption header of size " IR_SIZE_T_SPECIFIER
-      ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
-      header_length, MIN_HEADER_LENGTH, std::string{filename}.c_str());
+    IRS_LOG_ERROR(absl::StrCat(
+      "failed to initialize encryption header of size ", header_length,
+      ", need at least ", MIN_HEADER_LENGTH, ", path '", filename, "'"));
 
     return false;
   }
 
   if (header_length < 2 * block_size) {
-    IR_FRMT_ERROR(
-      "failed to initialize encryption header of size " IR_SIZE_T_SPECIFIER
-      ", need at least " IR_SIZE_T_SPECIFIER ", path '%s'",
-      header_length, 2 * block_size, std::string{filename}.c_str());
+    IRS_LOG_ERROR(absl::StrCat(
+      "failed to initialize encryption header of size ", header_length,
+      ", need at least ", 2 * block_size, ", path '", filename, "'"));
 
     return false;
   }
@@ -230,8 +229,8 @@ bool ctr_encryption::create_header(std::string_view filename,
   ctr_cipher_stream stream(*cipher_, iv, base_counter);
   if (!stream.encrypt(0, header + 2 * block_size,
                       header_length - 2 * block_size)) {
-    IR_FRMT_ERROR("failed to encrypt header, path '%s'",
-                  std::string{filename}.c_str());
+    IRS_LOG_ERROR(
+      absl::StrCat("failed to encrypt header, path '", filename, "'"));
 
     return false;
   }
@@ -246,9 +245,9 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
   const auto block_size = cipher_->block_size();
 
   if (!block_size) {
-    IR_FRMT_ERROR(
-      "failed to instantiate encryption stream with block of size 0, path '%s'",
-      std::string{filename}.c_str());
+    IRS_LOG_ERROR(absl::StrCat(
+      "failed to instantiate encryption stream with block of size 0, path '",
+      filename, "'"));
 
     return nullptr;
   }
@@ -256,21 +255,19 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
   const auto header_length = this->header_length();
 
   if (header_length < MIN_HEADER_LENGTH) {
-    IR_FRMT_ERROR(
-      "failed to instantiate encryption stream with header of "
-      "size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER
-      ", path '%s'",
-      header_length, MIN_HEADER_LENGTH, std::string{filename}.c_str());
+    IRS_LOG_ERROR(absl::StrCat(
+      "failed to instantiate encryption stream with header of size ",
+      header_length, ", need at least ", MIN_HEADER_LENGTH, ", path '",
+      filename, "'"));
 
     return nullptr;
   }
 
   if (header_length < 2 * block_size) {
-    IR_FRMT_ERROR(
-      "failed to instantiate encryption stream with header of "
-      "size " IR_SIZE_T_SPECIFIER ", need at least " IR_SIZE_T_SPECIFIER
-      ", path '%s'",
-      header_length, 2 * block_size, std::string{filename}.c_str());
+    IRS_LOG_ERROR(absl::StrCat(
+      "failed to instantiate encryption stream with header of size ",
+      header_length, ", need at least ", 2 * block_size, ", path '", filename,
+      "'"));
 
     return nullptr;
   }
@@ -284,10 +281,10 @@ encryption::stream::ptr ctr_encryption::create_stream(std::string_view filename,
   ctr_cipher_stream stream(*cipher_, iv, base_counter);
   if (!stream.decrypt(0, header + 2 * block_size,
                       header_length - 2 * block_size)) {
-    IR_FRMT_ERROR(
-      "failed to decrypt encryption header for instantiation of encryption "
-      "stream, path '%s'",
-      std::string{filename}.c_str());
+    IRS_LOG_ERROR(
+      absl::StrCat("failed to decrypt encryption header for instantiation of "
+                   "encryption stream, path '",
+                   filename, "'"));
 
     return nullptr;
   }

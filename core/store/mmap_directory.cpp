@@ -23,6 +23,7 @@
 #include "store/mmap_directory.hpp"
 
 #include "store/store_utils.hpp"
+#include "utils/file_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/mmap_utils.hpp"
 
@@ -49,14 +50,14 @@ inline int GetPosixMadvice(IOAdvice advice) {
       return IR_MADVICE_RANDOM;
   }
 
-  IR_FRMT_ERROR(
-    "madvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
-    uint32_t(advice));
+  IRS_LOG_ERROR(
+    absl::StrCat("madvice '", static_cast<uint32_t>(advice),
+                 "' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL"));
 
   return IR_MADVICE_NORMAL;
 }
 
-std::shared_ptr<mmap_handle> OpenHandle(const file_path_t file,
+std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
                                         IOAdvice advice) noexcept {
   IRS_ASSERT(file);
 
@@ -69,8 +70,8 @@ std::shared_ptr<mmap_handle> OpenHandle(const file_path_t file,
   }
 
   if (!handle->open(file)) {
-    IR_FRMT_ERROR(
-      "Failed to open mmapped input file, path: " IR_FILEPATH_SPECIFIER, file);
+    IRS_LOG_ERROR(absl::StrCat("Failed to open mmapped input file, path: ",
+                               file_utils::ToStr(file)));
     return nullptr;
   }
 
@@ -81,9 +82,8 @@ std::shared_ptr<mmap_handle> OpenHandle(const file_path_t file,
   const int padvice = GetPosixMadvice(advice);
 
   if (IR_MADVICE_NORMAL != padvice && !handle->advise(padvice)) {
-    IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER
-                  ", error %d",
-                  file, errno);
+    IRS_LOG_ERROR(absl::StrCat("Failed to madvise input file, path: ",
+                               file_utils::ToStr(file), ", error ", errno));
   }
 
   handle->dontneed(bool(advice & IOAdvice::READONCE));

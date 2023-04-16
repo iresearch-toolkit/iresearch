@@ -22,72 +22,43 @@
 
 #pragma once
 
-#include <cstddef>
 #include <string_view>
 
 #include "shared.hpp"
+#include "utils/source_location.hpp"
 
-namespace irs {
+namespace irs::assert {
 
-#ifdef IRESEARCH_DEBUG
-namespace detail {
+using Callback = void (*)(SourceLocation&& location, std::string_view message);
+// not thread-safe
+Callback SetCallback(Callback callback) noexcept;
+void Message(SourceLocation&& location, std::string_view message);
 
-void AssertMessage(std::string_view file, std::size_t line,
-                   std::string_view func, std::string_view condition,
-                   std::string_view message) noexcept;
-
-}  // namespace detail
-#endif
-
-using LogCallback = void (*)(std::string_view file, std::size_t line,
-                             std::string_view function,
-                             std::string_view condition,
-                             std::string_view message) noexcept;
-
-LogCallback SetAssertCallback(LogCallback callback) noexcept;
-
-}  // namespace irs
-
-#define IRS_GET_MACRO(arg1, arg2, MACRO, ...) MACRO
+}  // namespace irs::assert
 
 #ifdef IRESEARCH_DEBUG
 
-#define IRS_ASSERT_MESSAGE(cond, message)                                    \
-  do {                                                                       \
-    if (!(cond)) {                                                           \
-      ::irs::detail::AssertMessage(__FILE__, __LINE__, IRS_FUNC_NAME, #cond, \
-                                   message);                                 \
-    }                                                                        \
+#define IRS_ASSERT2(condition, message)                     \
+  do {                                                      \
+    if (IRS_UNLIKELY(!(condition))) {                       \
+      ::irs::assert::Message(IRS_SOURCE_LOCATION, message); \
+    }                                                       \
   } while (false)
 
-#define IRS_ASSERT_CONDITION(cond) IRS_ASSERT_MESSAGE(cond, {})
+#define IRS_ASSERT1(condition)                                 \
+  do {                                                         \
+    if (IRS_UNLIKELY(!(condition))) {                          \
+      ::irs::assert::Message(IRS_SOURCE_LOCATION, #condition); \
+    }                                                          \
+  } while (false)
 
-#define IRS_ASSERT(...)                                                \
-  IRS_GET_MACRO(__VA_ARGS__, IRS_ASSERT_MESSAGE, IRS_ASSERT_CONDITION) \
-  (__VA_ARGS__)
+#define IRS_GET_MACRO(arg1, arg2, macro, ...) macro
 
-#elif defined(NDEBUG)
-
-#define IRS_ASSERT(...) ((void)1)
+#define IRS_ASSERT(...) \
+  IRS_GET_MACRO(__VA_ARGS__, IRS_ASSERT2, IRS_ASSERT1)(__VA_ARGS__)
 
 #else
 
-#define IRS_STUB1(first) \
-  do {                   \
-    if (false) {         \
-      (void)(first);     \
-    }                    \
-  } while (false)
-
-#define IRS_STUB2(first, second) \
-  do {                           \
-    if (false) {                 \
-      (void)(first);             \
-      (void)(second);            \
-    }                            \
-  } while (false)
-
-#define IRS_ASSERT(...) \
-  IRS_GET_MACRO(__VA_ARGS__, IRS_STUB2, IRS_STUB1)(__VA_ARGS__)
+#define IRS_ASSERT(...) ((void)1)
 
 #endif

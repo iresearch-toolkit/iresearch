@@ -34,7 +34,7 @@
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
 #include "scorer.hpp"
-#include "search/scorer_impl.h"
+#include "search/scorer_impl.hpp"
 #include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
@@ -89,40 +89,22 @@ irs::Scorer::ptr make_from_object(const VPackSlice slice) {
   float_t k{BM25::K()};
   float_t b{BM25::B()};
 
-  {
-    // optional float
-    const auto* key = "b";
-
-    if (slice.hasKey(key)) {
-      if (!slice.get(key).isNumber()) {
-        IR_FRMT_ERROR(
-          "Non-float value in '%s' while constructing bm25 scorer from VPack "
-          "arguments",
-          key);
-
-        return nullptr;
-      }
-
-      b = slice.get(key).getNumber<float>();
+  auto get = [&](std::string_view key, float_t& coefficient) {
+    auto v = slice.get(key);
+    if (v.isNone()) {
+      return true;
     }
-  }
-
-  {
-    // optional float
-    const auto* key = "k";
-
-    if (slice.hasKey(key)) {
-      if (!slice.get(key).isNumber()) {
-        IR_FRMT_ERROR(
-          "Non-float value in '%s' while constructing bm25 scorer from VPack "
-          "arguments",
-          key);
-
-        return nullptr;
-      }
-
-      k = slice.get(key).getNumber<float>();
+    if (!v.isNumber<float_t>()) {
+      IRS_LOG_ERROR(
+        absl::StrCat("Non-float value in '", key,
+                     "' while constructing bm25 scorer from VPack arguments"));
+      return false;
     }
+    coefficient = v.getNumber<float_t>();
+    return true;
+  };
+  if (!get("k", k) || !get("b", b)) {
+    return nullptr;
   }
 
   return std::make_unique<BM25>(k, b);
@@ -135,7 +117,7 @@ Scorer::ptr make_from_array(const VPackSlice slice) {
   VPackValueLength size = array.size();
   if (size > 2) {
     // wrong number of arguments
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Wrong number of arguments while constructing bm25 scorer from VPack "
       "arguments (must be <= 2)");
     return nullptr;
@@ -144,30 +126,21 @@ Scorer::ptr make_from_array(const VPackSlice slice) {
   // default args
   auto k = BM25::K();
   auto b = BM25::B();
-  int i = 0;
+  uint8_t i = 0;
   for (auto arg_slice : array) {
+    if (!arg_slice.isNumber<decltype(k)>()) {
+      IRS_LOG_ERROR(absl::StrCat("Non-float value at position '", i,
+                                 "' while constructing bm25 scorer "
+                                 "from VPack arguments"));
+      return nullptr;
+    }
+
     switch (i) {
       case 0:  // parse `k` coefficient
-        if (!arg_slice.isNumber<decltype(k)>()) {
-          IR_FRMT_ERROR(
-            "Non-float value at position '%u' while constructing bm25 scorer "
-            "from VPack arguments",
-            i);
-          return nullptr;
-        }
-
         k = static_cast<float_t>(arg_slice.getNumber<decltype(k)>());
         ++i;
         break;
       case 1:  // parse `b` coefficient
-        if (!arg_slice.isNumber<decltype(b)>()) {
-          IR_FRMT_ERROR(
-            "Non-float value at position '%u' while constructing bm25 scorer "
-            "from VPack arguments",
-            i);
-          return nullptr;
-        }
-
         b = static_cast<float_t>(arg_slice.getNumber<decltype(b)>());
         break;
     }
@@ -183,7 +156,7 @@ Scorer::ptr make_vpack(const VPackSlice slice) {
     case VPackValueType::Array:
       return make_from_array(slice);
     default:  // wrong type
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Invalid VPack arguments passed while constructing bm25 scorer");
       return nullptr;
   }
@@ -208,12 +181,11 @@ Scorer::ptr make_json(std::string_view args) {
       auto vpack = VPackParser::fromJson(args.data(), args.size());
       return make_vpack(vpack->slice());
     } catch (const VPackException& ex) {
-      IR_FRMT_ERROR(
-        "Caught error '%s' while constructing VPack from JSON for bm25 "
-        "scorer",
-        ex.what());
+      IRS_LOG_ERROR(
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing VPack from JSON for bm25 scorer"));
     } catch (...) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Caught error while constructing VPack from JSON for bm25 scorer");
     }
     return nullptr;

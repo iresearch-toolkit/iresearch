@@ -33,9 +33,8 @@
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
 
+namespace irs::analysis {
 namespace {
-
-using namespace irs::analysis;
 
 constexpr std::string_view MODEL_LOCATION_PARAM_NAME{"model_location"};
 constexpr std::string_view TOP_K_PARAM_NAME{"top_k"};
@@ -48,28 +47,28 @@ bool parse_vpack_options(const VPackSlice slice,
   if (VPackValueType::Object == slice.type()) {
     auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
     if (!model_location_slice.isString()) {
-      IR_FRMT_ERROR(
-        "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. "
-        "%s value should be a string.",
-        action, MODEL_LOCATION_PARAM_NAME.data());
+      IRS_LOG_ERROR(
+        absl::StrCat("Invalid vpack while ", action,
+                     " nearest_neighbors_stream from VPack arguments. ",
+                     MODEL_LOCATION_PARAM_NAME, " value should be a string."));
       return false;
     }
-    options.model_location = irs::get_string<std::string>(model_location_slice);
+    options.model_location = model_location_slice.stringView();
     auto top_k_slice = slice.get(TOP_K_PARAM_NAME);
     if (!top_k_slice.isNone()) {
       if (!top_k_slice.isNumber()) {
-        IR_FRMT_ERROR(
-          "Invalid vpack while %s nearest_neighbors_stream from VPack "
-          "arguments. %s value should be an integer.",
-          action, TOP_K_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid vpack while ", action,
+                       " nearest_neighbors_stream from VPack arguments. ",
+                       TOP_K_PARAM_NAME, " value should be an integer."));
         return false;
       }
       const auto top_k = top_k_slice.getNumber<size_t>();
       if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
-        IR_FRMT_ERROR(
-          "Invalid value provided while %s nearest_neighbors_stream from VPack "
-          "arguments. %s value should be an int32_t.",
-          action, TOP_K_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid value provided while ", action,
+                       " nearest_neighbors_stream from VPack arguments. ",
+                       TOP_K_PARAM_NAME, " value should be an int32_t."));
         return false;
       }
       options.top_k = static_cast<uint32_t>(top_k);
@@ -78,16 +77,15 @@ bool parse_vpack_options(const VPackSlice slice,
     return true;
   }
 
-  IR_FRMT_ERROR(
-    "Invalid vpack while %s nearest_neighbors_stream from VPack arguments. "
-    "Object was expected.",
-    action);
+  IRS_LOG_ERROR(absl::StrCat(
+    "Invalid vpack while ", action,
+    " nearest_neighbors_stream from VPack arguments. Object was expected."));
 
   return false;
 }
 
 analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
-  auto model_provider = ::MODEL_PROVIDER.load(std::memory_order_relaxed);
+  auto model_provider = MODEL_PROVIDER.load(std::memory_order_relaxed);
 
   nearest_neighbors_stream::model_ptr model;
 
@@ -101,11 +99,11 @@ analyzer::ptr construct(const nearest_neighbors_stream::options& options) {
       model = new_model;
     }
   } catch (const std::exception& e) {
-    IR_FRMT_ERROR("Failed to load fasttext kNN model from '%s', error '%s'",
-                  options.model_location.c_str(), e.what());
+    IRS_LOG_ERROR(absl::StrCat("Failed to load fasttext kNN model from: ",
+                               options.model_location, ", error: ", e.what()));
   } catch (...) {
-    IR_FRMT_ERROR("Failed to load fasttext kNN model from '%s'",
-                  options.model_location.c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to load fasttext kNN model from: ",
+                               options.model_location));
   }
 
   if (!model) {
@@ -131,18 +129,18 @@ analyzer::ptr make_vpack(std::string_view args) {
 analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Null arguments while constructing nearest_neighbors_stream ");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing nearest_neighbors_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing nearest_neighbors_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing nearest_neighbors_stream from JSON");
   }
   return nullptr;
@@ -179,7 +177,7 @@ bool normalize_vpack_config(std::string_view args, std::string& config) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Null arguments while normalizing nearest_neighbors_stream ");
       return false;
     }
@@ -190,25 +188,22 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing nearest_neighbors_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing nearest_neighbors_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing nearest_neighbors_stream from JSON");
   }
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::nearest_neighbors_stream, make_vpack,
+REGISTER_ANALYZER_VPACK(nearest_neighbors_stream, make_vpack,
                         normalize_vpack_config);
-REGISTER_ANALYZER_JSON(irs::analysis::nearest_neighbors_stream, make_json,
+REGISTER_ANALYZER_JSON(nearest_neighbors_stream, make_json,
                        normalize_json_config);
 
 }  // namespace
-
-namespace irs {
-namespace analysis {
 
 void nearest_neighbors_stream::init() {
   REGISTER_ANALYZER_JSON(nearest_neighbors_stream, make_json,
@@ -220,7 +215,7 @@ void nearest_neighbors_stream::init() {
 nearest_neighbors_stream::model_provider_f
 nearest_neighbors_stream::set_model_provider(
   model_provider_f provider) noexcept {
-  return ::MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);
+  return MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);
 }
 
 nearest_neighbors_stream::nearest_neighbors_stream(const options& options,
@@ -279,5 +274,4 @@ bool nearest_neighbors_stream::reset(std::string_view data) {
   return true;
 }
 
-}  // namespace analysis
-}  // namespace irs
+}  // namespace irs::analysis

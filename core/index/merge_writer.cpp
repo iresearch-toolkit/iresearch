@@ -1105,7 +1105,7 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
         itrs.emplace_back(std::move(it), doc_map);
       } else {
         IRS_ASSERT(false);
-        IR_FRMT_ERROR(
+        IRS_LOG_ERROR(
           "Got an invalid iterator during consolidationg of the columnstore, "
           "skipping it");
       }
@@ -1345,7 +1345,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
             itrs.emplace_back(std::move(it), doc_map);
           } else {
             IRS_ASSERT(false);
-            IR_FRMT_ERROR(
+            IRS_LOG_ERROR(
               "Failed to get document attribute from the iterator, skipping "
               "it");
           }
@@ -1476,10 +1476,9 @@ doc_id_t ComputeDocIds(doc_id_map_t& doc_id_map, const SubReader& reader,
     doc_id_map.resize(reader.docs_count() + doc_limits::min(),
                       doc_limits::eof());
   } catch (...) {
-    IR_FRMT_ERROR(
-      "Failed to resize merge_writer::doc_id_map to accommodate "
-      "element: " IR_UINT64_T_SPECIFIER,
-      reader.docs_count() + doc_limits::min());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Failed to resize merge_writer::doc_id_map to accommodate element: ",
+      reader.docs_count() + doc_limits::min()));
 
     return doc_limits::invalid();
   }
@@ -1725,10 +1724,9 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
       doc_id_map.resize(reader.docs_count() + doc_limits::min(),
                         doc_limits::eof());
     } catch (...) {
-      IR_FRMT_ERROR(
-        "Failed to resize merge_writer::doc_id_map to accommodate "
-        "element: " IR_UINT64_T_SPECIFIER,
-        reader.docs_count() + doc_limits::min());
+      IRS_LOG_ERROR(absl::StrCat(
+        "Failed to resize merge_writer::doc_id_map to accommodate element: ",
+        reader.docs_count() + doc_limits::min()));
 
       return false;
     }

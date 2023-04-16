@@ -22,9 +22,12 @@
 
 #include "utils/mmap_utils.hpp"
 
+#include "file_utils.hpp"
 #include "shared.hpp"
 #include "utils/assert.hpp"
 #include "utils/log.hpp"
+
+#include <absl/strings/str_cat.h>
 
 namespace irs::mmap_utils {
 
@@ -48,7 +51,7 @@ void mmap_handle::init() noexcept {
   dontneed_ = false;
 }
 
-bool mmap_handle::open(const file_path_t path) noexcept {
+bool mmap_handle::open(const path_char_t* path) noexcept {
   IRS_ASSERT(path);
 
   close();
@@ -57,9 +60,8 @@ bool mmap_handle::open(const file_path_t path) noexcept {
   const int fd = ::posix_open(path, O_RDONLY);
 
   if (fd < 0) {
-    IR_FRMT_ERROR(
-      "Failed to open input file, error: %d, path: " IR_FILEPATH_SPECIFIER,
-      errno, path);
+    IRS_LOG_ERROR(absl::StrCat("Failed to open input file, error: ", errno,
+                               ", path: ", file_utils::ToStr(path)));
     close();
     return false;
   }
@@ -68,11 +70,9 @@ bool mmap_handle::open(const file_path_t path) noexcept {
 
   uint64_t size;
 
-  if (!irs::file_utils::byte_size(size, fd)) {
-    IR_FRMT_ERROR(
-      "Failed to get stats for input file, error: %d, "
-      "path: " IR_FILEPATH_SPECIFIER,
-      errno, path);
+  if (!file_utils::byte_size(size, fd)) {
+    IRS_LOG_ERROR(absl::StrCat("Failed to get stats for input file, error: ",
+                               errno, ", path: ", file_utils::ToStr(path)));
     close();
     return false;
   }
@@ -88,9 +88,8 @@ bool mmap_handle::open(const file_path_t path) noexcept {
     void* addr = mmap(nullptr, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     if (MAP_FAILED == addr) {
-      IR_FRMT_ERROR(
-        "Failed to mmap input file, error: %d, path: " IR_FILEPATH_SPECIFIER,
-        errno, path);
+      IRS_LOG_ERROR(absl::StrCat("Failed to mmap input file, error: ", errno,
+                                 ", path: ", file_utils::ToStr(path)));
       close();
       return false;
     }

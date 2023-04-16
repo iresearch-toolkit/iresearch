@@ -34,7 +34,7 @@
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
-#include "search/scorer_impl.h"
+#include "search/scorer_impl.hpp"
 #include "search/scorers.hpp"
 #include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
@@ -88,20 +88,14 @@ Scorer::ptr make_from_object(const VPackSlice slice) {
 
   auto normalize = TFIDF::WITH_NORMS();
 
-  {
-    // optional bool
-    if (slice.hasKey(WITH_NORMS_PARAM_NAME)) {
-      if (!slice.get(WITH_NORMS_PARAM_NAME).isBool()) {
-        IR_FRMT_ERROR(
-          "Non-boolean value in '%s' while constructing tfidf scorer from "
-          "VPack arguments",
-          WITH_NORMS_PARAM_NAME.data());
-
-        return nullptr;
-      }
-
-      normalize = slice.get(WITH_NORMS_PARAM_NAME).getBool();
+  if (auto v = slice.get(WITH_NORMS_PARAM_NAME); !v.isNone()) {
+    if (!v.isBool()) {
+      IRS_LOG_ERROR(
+        absl::StrCat("Non-boolean value in '", WITH_NORMS_PARAM_NAME,
+                     "' while constructing tfidf scorer from VPack arguments"));
+      return nullptr;
     }
+    normalize = v.getBool();
   }
 
   return std::make_unique<TFIDF>(normalize);
@@ -115,7 +109,7 @@ Scorer::ptr make_from_array(const VPackSlice slice) {
 
   if (size > 1) {
     // wrong number of arguments
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Wrong number of arguments while constructing tfidf scorer from VPack "
       "arguments (must be <= 1)");
     return nullptr;
@@ -127,7 +121,7 @@ Scorer::ptr make_from_array(const VPackSlice slice) {
   // parse `withNorms` optional argument
   for (auto arg_slice : array) {
     if (!arg_slice.isBool()) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Non-bool value on position `0` while constructing tfidf scorer from "
         "VPack arguments");
       return nullptr;
@@ -148,7 +142,7 @@ Scorer::ptr make_vpack(const VPackSlice slice) {
     case VPackValueType::Array:
       return make_from_array(slice);
     default:  // wrong type
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Invalid VPack arguments passed while constructing tfidf scorer, "
         "arguments");
       return nullptr;
@@ -174,12 +168,11 @@ Scorer::ptr make_json(std::string_view args) {
       auto vpack = VPackParser::fromJson(args.data(), args.size());
       return make_vpack(vpack->slice());
     } catch (const VPackException& ex) {
-      IR_FRMT_ERROR(
-        "Caught error '%s' while constructing VPack from JSON for tfidf "
-        "scorer",
-        ex.what());
+      IRS_LOG_ERROR(
+        absl::StrCat("Caught error '", ex.what(),
+                     "' while constructing VPack from JSON for tfidf scorer"));
     } catch (...) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Caught error while constructing VPack from JSON for tfidf scorer");
     }
     return nullptr;

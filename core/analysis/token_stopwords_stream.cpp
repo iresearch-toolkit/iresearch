@@ -71,9 +71,9 @@ constexpr char HEX_DECODE_MAP[256] = {
 
 bool hex_decode(std::string& buf, std::string_view value) {
   if (value.length() & 1) {
-    IR_FRMT_WARN(
-      "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      std::string(value).c_str());
+    IRS_LOG_WARN(absl::StrCat(
+      "Invalid size for hex-encoded value while HEX decoding masked token: ",
+      value));
 
     return false;
   }
@@ -85,8 +85,8 @@ bool hex_decode(std::string& buf, std::string_view value) {
     auto lo = HEX_DECODE_MAP[size_t(value[i + 1])];
 
     if (hi >= 16 || lo >= 16) {
-      IR_FRMT_WARN("Invalid character while HEX decoding masked token: %s",
-                   value.data());
+      IRS_LOG_WARN(absl::StrCat(
+        "Invalid character while HEX decoding masked token: ", value));
       return false;
     }
 
@@ -103,10 +103,9 @@ irs::analysis::analyzer::ptr construct(const VPackArrayIterator& mask,
 
   for (auto itr = mask.begin(); itr.valid(); ++itr, ++offset) {
     if (!(*itr).isString()) {
-      IR_FRMT_WARN(
-        "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER
-        "' while constructing token_stopwords_stream from VPack arguments",
-        offset);
+      IRS_LOG_WARN(absl::StrCat(
+        "Non-string value in 'mask' at offset '", offset,
+        "' while constructing token_stopwords_stream from VPack arguments"));
 
       return nullptr;
     }
@@ -141,10 +140,10 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
     case VPackValueType::Object: {
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
-        IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from VPack "
-          "arguments. %s value should be boolean.",
-          HEX_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid vpack while constructing "
+                       "token_stopwords_stream from VPack arguments. ",
+                       HEX_PARAM_NAME, " value should be boolean."));
         return nullptr;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -152,15 +151,15 @@ irs::analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       if (mask_slice.isArray()) {
         return construct(VPackArrayIterator(mask_slice), hex);
       } else {
-        IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from VPack "
-          "arguments. %s value should be array.",
-          STOPWORDS_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid vpack while constructing "
+                       "token_stopwords_stream from VPack arguments. ",
+                       STOPWORDS_PARAM_NAME, " value should be array."));
         return nullptr;
       }
     }
     default: {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Invalid vpack while constructing token_stopwords_stream from VPack "
         "arguments. Array or Object was expected.");
     }
@@ -176,18 +175,18 @@ irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
 irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Null arguments while constructing token_stopwords_stream ");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing token_stopwords_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing token_stopwords_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing token_stopwords_stream from JSON");
   }
   return nullptr;
@@ -206,10 +205,10 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
     case VPackValueType::Object: {
       auto hex_slice = slice.get(HEX_PARAM_NAME);
       if (!hex_slice.isBool() && !hex_slice.isNone()) {
-        IR_FRMT_ERROR(
-          "Invalid vpack while normalizing token_stopwords_stream from VPack "
-          "arguments. %s value should be boolean.",
-          HEX_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid vpack while normalizing token_stopwords_stream "
+                       "from VPack arguments. ",
+                       HEX_PARAM_NAME, " value should be boolean."));
         return false;
       }
       bool hex = hex_slice.isBool() ? hex_slice.getBoolean() : false;
@@ -221,15 +220,15 @@ bool normalize_vpack_config(const VPackSlice slice, VPackBuilder* builder) {
         builder->close();
         return true;
       } else {
-        IR_FRMT_ERROR(
-          "Invalid vpack while constructing token_stopwords_stream from VPack "
-          "arguments. %s value should be array.",
-          STOPWORDS_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid vpack while constructing "
+                       "token_stopwords_stream from VPack arguments. ",
+                       STOPWORDS_PARAM_NAME, " value should be array."));
         return false;
       }
     }
     default: {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Invalid vpack while normalizing token_stopwords_stream from VPack "
         "arguments. Array or Object was expected.");
     }
@@ -250,7 +249,7 @@ bool normalize_vpack_config(std::string_view args, std::string& config) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while normalizing token_stopwords_stream");
+      IRS_LOG_ERROR("Null arguments while normalizing token_stopwords_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data());
@@ -260,11 +259,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return true;
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing token_stopwords_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing token_stopwords_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing token_stopwords_stream from JSON");
   }
   return false;

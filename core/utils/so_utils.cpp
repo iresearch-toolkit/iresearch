@@ -22,8 +22,10 @@
 
 #include "so_utils.hpp"
 
-#include "log.hpp"
 #include "utils/file_utils.hpp"
+#include "utils/log.hpp"
+
+#include <absl/strings/str_cat.h>
 
 #if defined(_MSC_VER)  // Microsoft compiler
 #define NOMINMAX
@@ -97,13 +99,8 @@ void* load_library(const char* soname, int mode /* = 2 */) {
 #endif
 
   if (!handle) {
-#ifdef _WIN32
-    IR_FRMT_ERROR("load failed of shared object: %s error: %s",
-                  name.u8string().c_str(), dlerror().c_str());
-#else
-    IR_FRMT_ERROR("load failed of shared object: %s error: %s", name.c_str(),
-                  dlerror());
-#endif
+    IRS_LOG_ERROR(absl::StrCat("load failed of shared object: ", name.string(),
+                               " error: ", dlerror()));
   }
 
   return handle;
@@ -132,8 +129,8 @@ void load_libraries(std::string_view path, std::string_view prefix,
   bool result;
 
   if (!file_utils::exists_directory(result, plugin_path.c_str()) || !result) {
-    IR_FRMT_INFO("library load failed, not a plugin path: %s",
-                 plugin_path.u8string().c_str());
+    IRS_LOG_INFO(absl::StrCat("library load failed, not a plugin path: ",
+                              plugin_path.string()));
 
     return;  // no plugins directory
   }
@@ -144,8 +141,8 @@ void load_libraries(std::string_view path, std::string_view prefix,
     const auto path = plugin_path / name;
 
     if (!file_utils::exists_file(result, path.c_str())) {
-      IR_FRMT_ERROR("Failed to identify plugin file: %s",
-                    path.u8string().c_str());
+      IRS_LOG_ERROR(
+        absl::StrCat("Failed to identify plugin file: ", path.string()));
 
       return false;
     }
@@ -177,8 +174,8 @@ void load_libraries(std::string_view path, std::string_view prefix,
     const void* handle = load_library(path_stem.string().c_str(), 1);
 
     if (!handle) {
-      IR_FRMT_ERROR("library load failed for path: %s",
-                    path_stem.string().c_str());
+      IRS_LOG_ERROR(
+        absl::StrCat("library load failed for path: ", path_stem.string()));
     }
 
     return true;

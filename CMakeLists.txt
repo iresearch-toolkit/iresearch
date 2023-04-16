@@ -87,18 +87,18 @@ option(USE_CCACHE "Use CCACHE if present" ON)
 option(USE_URING "Build iresearch with uring support" OFF)
 option(SUPPRESS_EXTERNAL_WARNINGS "Suppress warnings originating in 3rd party code" ON)
 
-if (CMAKE_BUILD_TYPE MATCHES "Debug|Coverage")
+if (CMAKE_BUILD_TYPE MATCHES "Debug")
   option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" ON)
 else ()
   option(IRESEARCH_DEBUG "Enable IRS_ASSERT and other checks" OFF)
 endif ()
 
-add_option_gprof(FALSE)
-
-# test for ARM
-if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64.*|AARCH64.*|arm64.*|ARM64.*|armv8.*|ARMV8.*)")
-  set(IS_ARM ON)
+if (CMAKE_BUILD_TYPE MATCHES "Coverage")
+  set(IRESEARCH_COVERAGE ON)
+  set(CMAKE_BUILD_TYPE "Debug")
 endif ()
+
+add_option_gprof(FALSE)
 
 if (USE_VALGRIND)
   add_definitions(-DIRESEARCH_VALGRIND)
@@ -135,9 +135,6 @@ if (MSVC)
     set(CMAKE_C_FLAGS "/Zc:static_assert- ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/Zc:static_assert- ${CMAKE_CXX_FLAGS}")
   endif ()
-elseif (NOT IS_ARM)
-  # allow 16 byte compare-exchange
-  add_compile_options(-mcx16)
 endif ()
 
 # fix strange issue with utf_8_to_32_iterator failing
@@ -195,9 +192,6 @@ endif ()
 ################################################################################
 
 include(OptimizeForArchitecture)
-OptimizeForArchitecture()
-
-add_definitions(${Vc_ARCHITECTURE_FLAGS})
 
 ################################################################################
 ### find 3rd party libraries
@@ -220,39 +214,13 @@ if (NOT MSVC)
   set(PTHREAD_LIBRARY pthread)
 endif ()
 
-# set gcov library
-if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
-  set(GCOV_LIBRARY gcov)
-endif ()
-
-find_package(BFD) # optional
-
-if (BFD_FOUND)
-  add_definitions(-DUSE_LIBBFD)
-else ()
-  set(BFD_INCLUDE_DIR "")
-  set(BFD_SHARED_LIBS "")
-  set(BFD_STATIC_LIBS "")
-  set(BFD_SHARED_LIB_RESOURCES "")
-endif ()
-
 find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
 find_package(Snowball REQUIRED)
-find_package(Unwind) # optional
 
 # Important note, now we include it before everything except c libraries
-# I think it's better to before they to, but now it causing build issues
+# I think it's better to before they too, but now it is causing build issues
 include(Sanitize)
-
-if (Unwind_FOUND)
-  add_definitions(-DUSE_LIBUNWIND)
-else ()
-  set(Unwind_INCLUDE_DIR "")
-  set(Unwind_SHARED_LIBS "")
-  set(Unwind_STATIC_LIBS "")
-  set(Unwind_SHARED_LIB_RESOURCES "")
-endif ()
 
 # set external dirs
 set(EXTERNAL_INCLUDE_DIRS
@@ -307,7 +275,9 @@ endforeach ()
 
 add_subdirectory(external)
 
-if (IRESEARCH_DEBUG)
+if (IRESEARCH_COVERAGE)
+  include(Coverage)
+elseif (IRESEARCH_DEBUG)
   add_definitions(-DIRESEARCH_DEBUG)
 endif ()
 
@@ -361,43 +331,6 @@ endif ()
 
 if (USE_TESTS)
   add_subdirectory(tests)
-
-  # setup code coverage
-  if (NOT MSVC AND (CMAKE_BUILD_TYPE STREQUAL "Coverage"))
-    include(CodeCoverage)
-
-    # exclude directories from coverage report
-    SET(LCOV_EXCLUDE "external/*;boost/*;${LCOV_EXCLUDE}")
-
-    setup_target_for_coverage(
-      iresearch-coverage
-      $<TARGET_FILE:iresearch-tests-static>
-      coverage
-      "--ires_output"
-    )
-    add_dependencies(iresearch-coverage
-      iresearch-tests-static
-      )
-
-    if (PYTHON_EXECUTABLE AND GCOVR_PATH)
-      # exclude directories from coverage report
-      SET(GCOVR_EXTRA_ARGS "-e;${PROJECT_SOURCE_DIR}/external/;${GCOVR_EXTRA_ARGS}")
-
-      setup_target_for_coverage_cobertura(
-        iresearch-coverage-cobertura
-        $<TARGET_FILE:iresearch-tests-static>
-        coverage
-        "--ires_output"
-      )
-      setup_target_for_collecting_coverage_cobertura(
-        iresearch-coverage-cobertura-collect
-        coverage
-      )
-      add_dependencies(iresearch-coverage-cobertura-collect
-        iresearch-tests-static
-        )
-    endif ()
-  endif ()
 
   # testing
   enable_testing()

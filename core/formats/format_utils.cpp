@@ -126,9 +126,9 @@ int64_t checksum(const index_input& in) {
     dup = in.dup();
 
     if (!dup) {
-      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("failed to duplicate input");
 
-      throw io_error("failed to duplicate input");
+      throw io_error{"failed to duplicate input"};
     }
 
     dup->seek(0);

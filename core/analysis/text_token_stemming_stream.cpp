@@ -41,15 +41,14 @@ constexpr std::string_view LOCALE_PARAM_NAME{"locale"};
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
-    IR_FRMT_WARN(
-      "Non-string value in '%s' while constructing "
-      "text_token_stemming_stream from VPack arguments",
-      LOCALE_PARAM_NAME.data());
+    IRS_LOG_WARN(absl::StrCat(
+      "Non-string value in '", LOCALE_PARAM_NAME,
+      "' while constructing text_token_stemming_stream from VPack arguments"));
 
     return false;
   }
 
-  const auto locale_name = get_string<std::string>(slice);
+  const auto locale_name = slice.copyString();
 
   locale = icu::Locale::createFromName(locale_name.c_str());
 
@@ -58,10 +57,9 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   }
 
   if (locale.isBogus()) {
-    IR_FRMT_WARN(
-      "Failed to instantiate locale from the supplied string '%s'"
-      "while constructing text_token_stemming_stream from VPack arguments",
-      locale_name.c_str());
+    IRS_LOG_WARN(absl::StrCat(
+      "Failed to instantiate locale from the supplied string '", locale_name,
+      "' while constructing text_token_stemming_stream from VPack arguments"));
 
     return false;
   }
@@ -70,10 +68,9 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   stemmer_ptr stemmer = make_stemmer_ptr(locale.getLanguage(), nullptr);
 
   if (!stemmer) {
-    IR_FRMT_WARN(
-      "Failed to instantiate sb_stemmer from locale '%s' "
-      "while constructing stemming_token_stream from VPack arguments",
-      locale_name.c_str());
+    IRS_LOG_WARN(absl::StrCat(
+      "Failed to instantiate sb_stemmer from locale '", locale_name,
+      "' while constructing stemming_token_stream from VPack arguments"));
   }
 
   return true;
@@ -83,7 +80,7 @@ bool parse_vpack_options(
   const VPackSlice slice,
   irs::analysis::stemming_token_stream::options_t& opts) {
   if (!slice.isObject()) {
-    IR_FRMT_ERROR("Slice for text_token_stemming_stream  is not an object");
+    IRS_LOG_ERROR("Slice for text_token_stemming_stream  is not an object");
     return false;
   }
 
@@ -91,22 +88,21 @@ bool parse_vpack_options(
     const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
 
     if (locale_slice.isNone()) {
-      IR_FRMT_ERROR(
-        "Missing '%s' while constructing text_token_stemming_stream from "
-        "VPack arguments",
-        LOCALE_PARAM_NAME.data());
+      IRS_LOG_ERROR(
+        absl::StrCat("Missing '", LOCALE_PARAM_NAME,
+                     "' while constructing text_token_stemming_stream from "
+                     "VPack arguments"));
 
       return false;
     }
 
     return locale_from_slice(locale_slice, opts.locale);
   } catch (const std::exception& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing text_token_stemming_stream from "
-      "VPack",
-      ex.what());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught error '", ex.what(),
+      "' while constructing text_token_stemming_stream from VPack"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing text_token_stemming_stream from VPack "
       "arguments");
   }
@@ -170,19 +166,18 @@ bool normalize_vpack_config(std::string_view args, std::string& config) {
 analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing text_token_normalizing_stream from "
-      "JSON",
-      ex.what());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught error '", ex.what(),
+      "' while constructing text_token_normalizing_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing text_token_normalizing_stream from "
       "JSON");
   }
@@ -192,7 +187,7 @@ analysis::analyzer::ptr make_json(std::string_view args) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
@@ -203,12 +198,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing text_token_normalizing_stream from "
-      "JSON",
-      ex.what());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught error '", ex.what(),
+      "' while normalizing text_token_normalizing_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing text_token_normalizing_stream from JSON");
   }
   return false;

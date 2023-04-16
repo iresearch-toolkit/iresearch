@@ -79,17 +79,14 @@
 
 namespace {
 
-void AssertCallback(std::string_view file, std::size_t line,
-                    std::string_view function, std::string_view condition,
-                    std::string_view message) noexcept {
-  testing::Message msg;
-  msg << file << ":" << line << ": " << function << ": Condition '" << condition
-      << "' is false.";
-  if (!message.empty()) {
-    msg << " With message '" << message << "'";
-  }
+void AssertCallback(irs::SourceLocation&& source, std::string_view message) {
+  FAIL() << source.file << ":" << source.line << ": " << source.func
+         << ": Assert failed: " << message;
+}
 
-  ASSERT_TRUE(false) << msg;
+void LogCallback(irs::SourceLocation&& source, std::string_view message) {
+  std::cerr << source.file << ":" << source.line << ": " << source.func << ": "
+            << message << std::endl;
 }
 
 // Custom ICU data
@@ -142,8 +139,8 @@ bool test_env::prepare(const cmdline::parser& parser) {
     // icu initialize for data file
     std::filesystem::path icu_data_file_path{
       parser.get<std::string>(IRES_ICU_DATA)};
-    IR_FRMT_INFO("Loading custom ICU data file: " IR_FILEPATH_SPECIFIER,
-                 icu_data_file_path.c_str());
+    IRS_LOG_INFO(absl::StrCat("Loading custom ICU data file: ",
+                              icu_data_file_path.string()));
     bool data_exists{false};
     if (irs::file_utils::exists(data_exists, icu_data_file_path.c_str()) &&
         data_exists) {
@@ -151,13 +148,13 @@ bool test_env::prepare(const cmdline::parser& parser) {
         UErrorCode status{U_ZERO_ERROR};
         udata_setCommonData(icu_data.addr(), &status);
         if (!U_SUCCESS(status)) {
-          IR_FRMT_FATAL("Failed to set custom ICU data file with status: %d",
-                        status);
+          IRS_LOG_FATAL(absl::StrCat(
+            "Failed to set custom ICU data file with status: ", status));
           return false;
         }
       }
     } else {
-      IR_FRMT_FATAL("Custom data file not found.");
+      IRS_LOG_FATAL("Custom data file not found.");
       return false;
     }
   }
@@ -165,12 +162,11 @@ bool test_env::prepare(const cmdline::parser& parser) {
   make_directories();
 
   {
-    auto log_level = parser.get<irs::logger::level_t>(IRES_LOG_LEVEL);
+    auto log_level = parser.get<int>(IRES_LOG_LEVEL);
 
-    irs::logger::output_le(log_level, stderr);  // set desired log level
-
-    if (parser.get<bool>(IRES_LOG_STACK)) {
-      irs::logger::stack_trace_level(log_level);  // force enable stack trace
+    for (auto level = static_cast<int>(irs::log::Level::kFatal);
+         level <= log_level; ++level) {
+      irs::log::SetCallback(static_cast<irs::log::Level>(level), LogCallback);
     }
   }
 
@@ -246,15 +242,14 @@ void test_env::make_directories() {
 }
 
 void test_env::parse_command_line(cmdline::parser& cmd) {
-  static const auto log_level_reader =
-    [](const std::string& s) -> irs::logger::level_t {
-    static const std::map<std::string, irs::logger::level_t> log_levels = {
-      {"FATAL", irs::logger::level_t::IRL_FATAL},
-      {"ERROR", irs::logger::level_t::IRL_ERROR},
-      {"WARN", irs::logger::level_t::IRL_WARN},
-      {"INFO", irs::logger::level_t::IRL_INFO},
-      {"DEBUG", irs::logger::level_t::IRL_DEBUG},
-      {"TRACE", irs::logger::level_t::IRL_TRACE},
+  static const auto log_level_reader = [](const std::string& s) -> int {
+    static const std::map<std::string, irs::log::Level> log_levels = {
+      {"FATAL", irs::log::Level::kFatal},  //
+      {"ERROR", irs::log::Level::kError},  //
+      {"WARN", irs::log::Level::kWarn},    //
+      {"INFO", irs::log::Level::kInfo},    //
+      {"DEBUG", irs::log::Level::kDebug},  //
+      {"TRACE", irs::log::Level::kTrace},  //
     };
     auto itr = log_levels.find(s);
 
@@ -262,13 +257,13 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
       throw std::invalid_argument(s);
     }
 
-    return itr->second;
+    return static_cast<int>(itr->second);
   };
 
   cmd.add(IRES_HELP, '?', "print this message");
   cmd.add(IRES_LOG_LEVEL, 0,
           "threshold log level <FATAL|ERROR|WARN|INFO|DEBUG|TRACE>", false,
-          irs::logger::level_t::IRL_FATAL, log_level_reader);
+          static_cast<int>(irs::log::Level::kFatal), log_level_reader);
   cmd.add(IRES_LOG_STACK, 0, "always log stack trace", false, false);
   cmd.add(IRES_OUTPUT, 0, "generate an XML report");
   cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.string());
@@ -303,57 +298,6 @@ int test_env::initialize(int argc, char* argv[]) {
   return RUN_ALL_TESTS();
 }
 
-void stack_trace_handler(int sig) {
-  // reset to default handler
-  signal(sig, SIG_DFL);
-  // print stack trace
-  irs::logger::stack_trace(
-    irs::logger::IRL_FATAL);  // IRL_FATAL is logged to stderr above
-  // re-signal to default handler (so we still get core dump if needed...)
-  raise(sig);
-}
-
-void install_stack_trace_handler() {
-  signal(SIGILL, stack_trace_handler);
-  signal(SIGSEGV, stack_trace_handler);
-  signal(SIGABRT, stack_trace_handler);
-
-#ifndef _MSC_VER
-  signal(SIGBUS, stack_trace_handler);
-#endif
-}
-
-#ifndef _MSC_VER
-// override GCC 'throw' handler to print stack trace before throw
-extern "C" {
-#if defined(__clang__)
-void __cxa_throw(void* ex, struct std::type_info* info, void (*dest)(void*)) {
-  static void (*rethrow)(void*, struct std::type_info*, void (*)(void*)) =
-    (void (*)(void*, struct std::type_info*, void (*)(void*)))dlsym(
-      RTLD_NEXT, "__cxa_throw");
-
-  IR_FRMT_DEBUG("exception type: %s",
-                reinterpret_cast<const std::type_info*>(info)->name());
-  IR_LOG_STACK_TRACE();
-  rethrow(ex, info, dest);
-  abort();  // otherwise MacOS reports "function declared 'noreturn' should not
-            // return"
-}
-#else
-void __cxa_throw(void* ex, void* info, void (*dest)(void*)) {
-  static void (*rethrow)(void*, void*, void (*)(void*))
-    __attribute__((noreturn)) =
-      (void (*)(void*, void*, void (*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
-
-  IR_FRMT_DEBUG("exception type: %s",
-                reinterpret_cast<const std::type_info*>(info)->name());
-  IR_LOG_STACK_TRACE();
-  rethrow(ex, info, dest);
-}
-#endif
-}
-#endif
-
 void test_base::SetUp() {
   const auto* ti = ::testing::UnitTest::GetInstance()->current_test_info();
 
@@ -384,8 +328,7 @@ void test_base::TearDown() {
 }
 
 int main(int argc, char* argv[]) {
-  irs::SetAssertCallback(AssertCallback);
-  install_stack_trace_handler();
+  irs::assert::SetCallback(AssertCallback);
 
   const int code = test_env::initialize(argc, argv);
 

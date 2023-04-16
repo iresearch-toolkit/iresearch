@@ -94,14 +94,14 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
 
       return ref;
     } catch (const std::exception& e) {
-      IR_FRMT_ERROR(
-        "Caught exception while reading index meta with codec '%s', error "
-        "'%s'",
-        codec->type()().name().data(), e.what());
+      IRS_LOG_ERROR(
+        absl::StrCat("Caught exception while reading index meta with codec ''",
+                     codec->type()().name(), "', error '", e.what(), "'"));
       return nullptr;
     } catch (...) {
-      IR_FRMT_ERROR("Caught exception while reading index meta with codec '%s'",
-                    codec->type()().name().data());
+      IRS_LOG_ERROR(
+        absl::StrCat("Caught exception while reading index meta with codec ''",
+                     codec->type()().name(), "'"));
 
       return nullptr;
     }
@@ -172,11 +172,11 @@ index_file_refs::ref_t LoadNewestIndexMeta(IndexMeta& meta,
 
     return newest.ref;
   } catch (const std::exception& e) {
-    IR_FRMT_ERROR(
-      "Caught exception while loading the newest index meta, error '%s'",
-      e.what());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught exception while loading the newest index meta, error '", e.what(),
+      "'"));
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while loading the newest index meta");
+    IRS_LOG_ERROR("Caught exception while loading the newest index meta");
   }
 
   return nullptr;

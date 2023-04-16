@@ -90,7 +90,7 @@ format::ptr formats::get(std::string_view name,
 
     return factory ? factory() : nullptr;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while getting a format instance");
+    IRS_LOG_ERROR("Caught exception while getting a format instance");
   }
 
   return nullptr;
@@ -135,25 +135,26 @@ format_registrar::format_registrar(const type_info& type,
     auto* registered_source = format_register::instance().tag(key);
 
     if (source && registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s' from %s, previously from %s",
-        type.name().data(), source, registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering format, "
+                     "ignoring: type '",
+                     type.name(), "' from ", source, ", previously from ",
+                     *registered_source));
     } else if (source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s' from %s",
-        type.name().data(), source);
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering format, "
+                     "ignoring: type '",
+                     type.name(), "' from ", source));
     } else if (registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s', previously from %s",
-        type.name().data(), registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering format, "
+                     "ignoring: type '",
+                     type.name(), "', previously from ", *registered_source));
     } else {
-      IR_FRMT_WARN(
-        "type name collision detected while registering format, ignoring: type "
-        "'%s'",
-        type.name().data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering format, "
+                     "ignoring: type '",
+                     type.name(), "'"));
     }
   }
 }

@@ -35,6 +35,7 @@
 #include <mutex>
 #include <string_view>
 
+#include "absl/strings/str_cat.h"
 #include "utils/file_utils.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/log.hpp"
@@ -185,14 +186,14 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
     if (!file_utils::exists_directory(result, stopword_path.c_str()) ||
         !result) {
       if (custom_stopword_path) {
-        IR_FRMT_ERROR("Failed to load stopwords from path: %s",
-                      stopword_path.u8string().c_str());
+        IRS_LOG_ERROR(absl::StrCat("Failed to load stopwords from path: ",
+                                   stopword_path.string()));
         return false;
       } else {
-        IR_FRMT_TRACE(
-          "Failed to load stopwords from default path: %s. "
-          "Analyzer will continue without stopwords",
-          stopword_path.u8string().c_str());
+        IRS_LOG_TRACE(
+          absl::StrCat("Failed to load stopwords from default path: ",
+                       stopword_path.string(),
+                       ". Analyzer will continue without stopwords"));
         return true;
       }
     }
@@ -203,8 +204,8 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
       const auto path = stopword_path / name;
 
       if (!file_utils::exists_file(result, path.c_str())) {
-        IR_FRMT_ERROR("Failed to identify stopword path: %s",
-                      path.u8string().c_str());
+        IRS_LOG_ERROR(
+          absl::StrCat("Failed to identify stopword path: ", path.string()));
 
         return false;
       }
@@ -216,8 +217,8 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
       std::ifstream in(path.native());
 
       if (!in) {
-        IR_FRMT_ERROR("Failed to load stopwords from path: %s",
-                      path.u8string().c_str());
+        IRS_LOG_ERROR(
+          absl::StrCat("Failed to load stopwords from path: ", path.string()));
 
         return false;
       }
@@ -247,8 +248,9 @@ bool get_stopwords(analysis::text_token_stream::stopwords_t& buf,
 
     return true;
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while loading stopwords from path: %s",
-                  stopword_path.u8string().c_str());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error while loading stopwords from path: ",
+                   stopword_path.string()));
   }
 
   return false;
@@ -332,10 +334,10 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
     options.locale = locale;
 
     if (!build_stopwords(options, stopwords)) {
-      IR_FRMT_WARN(
-        "Failed to retrieve 'stopwords' while constructing text_token_stream "
-        "with cache key: %s",
-        options.locale.getName());
+      IRS_LOG_WARN(
+        absl::StrCat("Failed to retrieve 'stopwords' while constructing "
+                     "text_token_stream with cache key: ",
+                     options.locale.getName()));
 
       return nullptr;
     }
@@ -343,9 +345,9 @@ analysis::analyzer::ptr construct(icu::Locale&& locale) {
     return construct(hashed_string_view{options.locale.getName()},
                      std::move(options), std::move(stopwords));
   } catch (...) {
-    IR_FRMT_ERROR(
-      "Caught error while constructing text_token_stream cache key: %s",
-      locale.getName());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught error while constructing text_token_stream cache key: ",
+      locale.getName()));
   }
 
   return nullptr;
@@ -448,10 +450,10 @@ bool init_from_options(const analysis::text_token_stream::options_t& options,
     objects->normalizer = nullptr;
 
     if (print_errors) {
-      IR_FRMT_WARN(
-        "Warning while instantiation icu::Normalizer2 for text_token_stream "
-        "from locale '%s' : '%s'",
-        options.locale.getName(), u_errorName(err));
+      IRS_LOG_WARN(
+        absl::StrCat("Warning while instantiation icu::Normalizer2 for "
+                     "text_token_stream from locale: ",
+                     options.locale.getName(), ", ", u_errorName(err)));
     }
 
     return false;
@@ -473,10 +475,10 @@ bool init_from_options(const analysis::text_token_stream::options_t& options,
       objects->transliterator.reset();
 
       if (print_errors) {
-        IR_FRMT_WARN(
-          "Warning while instantiation icu::Transliterator for "
-          "text_token_stream from locale '%s' : '%s'",
-          options.locale.getName(), u_errorName(err));
+        IRS_LOG_WARN(
+          absl::StrCat("Warning while instantiation icu::Transliterator for "
+                       "text_token_stream from locale: ",
+                       options.locale.getName(), ", ", u_errorName(err)));
       }
 
       return false;
@@ -491,10 +493,10 @@ bool init_from_options(const analysis::text_token_stream::options_t& options,
     objects->break_iterator.reset();
 
     if (print_errors) {
-      IR_FRMT_WARN(
-        "Warning while instantiation icu::BreakIterator for "
-        "text_token_stream from locale '%s' : '%s'",
-        options.locale.getName(), u_errorName(err));
+      IRS_LOG_WARN(
+        absl::StrCat("Warning while instantiation icu::BreakIterator for "
+                     "text_token_stream from locale: ",
+                     options.locale.getName(), ", ", u_errorName(err)));
     }
 
     return false;
@@ -507,9 +509,9 @@ bool init_from_options(const analysis::text_token_stream::options_t& options,
                                         nullptr);  // defaults to utf-8
 
     if (!objects->stemmer && print_errors) {
-      IR_FRMT_WARN(
-        "Failed to create stemmer for text_token_stream from locale '%s'",
-        options.locale.getName());
+      IRS_LOG_WARN(absl::StrCat(
+        "Failed to create stemmer for text_token_stream from locale: ",
+        options.locale.getName()));
     }
   }
 
@@ -525,10 +527,9 @@ bool locale_from_string(std::string locale_name, icu::Locale& locale) {
   }
 
   if (locale.isBogus()) {
-    IR_FRMT_WARN(
-      "Failed to instantiate locale from the supplied string '%s'"
-      "while constructing text_token_stream from VPack arguments",
-      locale_name.c_str());
+    IRS_LOG_WARN(absl::StrCat(
+      "Failed to instantiate locale from the supplied string '", locale_name,
+      "' while constructing text_token_stream from VPack arguments"));
 
     return false;
   }
@@ -538,54 +539,49 @@ bool locale_from_string(std::string locale_name, icu::Locale& locale) {
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
-    IR_FRMT_WARN(
-      "Non-string value in '%s' while constructing "
-      "text_token_stream from VPack arguments",
-      LOCALE_PARAM_NAME.data());
+    IRS_LOG_WARN(absl::StrCat(
+      "Non-string value in '", LOCALE_PARAM_NAME,
+      "' while constructing text_token_stream from VPack arguments"));
 
     return false;
   }
 
-  return locale_from_string(get_string<std::string>(slice), locale);
+  return locale_from_string(slice.copyString(), locale);
 }
 
 bool parse_vpack_options(const VPackSlice slice,
                          analysis::text_token_stream::options_t& options) {
-  if (!slice.isObject() || !slice.hasKey(LOCALE_PARAM_NAME) ||
-      !slice.get(LOCALE_PARAM_NAME).isString()) {
-    IR_FRMT_WARN(
-      "Missing '%s' while constructing text_token_stream from VPack ",
-      LOCALE_PARAM_NAME.data());
+  VPackSlice locale_slice;
+  if (!slice.isObject() ||
+      !(locale_slice = slice.get(LOCALE_PARAM_NAME)).isString()) {
+    IRS_LOG_WARN(
+      absl::StrCat("Missing '", LOCALE_PARAM_NAME,
+                   "' while constructing text_token_stream from VPack"));
 
     return false;
   }
 
   try {
-    if (!locale_from_slice(slice.get(LOCALE_PARAM_NAME), options.locale)) {
+    if (!locale_from_slice(locale_slice, options.locale)) {
       return false;
     }
 
-    if (slice.hasKey(CASE_CONVERT_PARAM_NAME)) {
-      auto case_convert_slice =
-        slice.get(CASE_CONVERT_PARAM_NAME);  // optional string enum
-
+    if (auto case_convert_slice = slice.get(CASE_CONVERT_PARAM_NAME);
+        !case_convert_slice.isNone()) {
       if (!case_convert_slice.isString()) {
-        IR_FRMT_WARN(
-          "Non-string value in '%s' while constructing text_token_stream "
-          "from VPack arguments",
-          CASE_CONVERT_PARAM_NAME.data());
+        IRS_LOG_WARN(absl::StrCat(
+          "Non-string value in '", CASE_CONVERT_PARAM_NAME,
+          "' while constructing text_token_stream from VPack arguments"));
 
         return false;
       }
 
-      auto itr =
-        CASE_CONVERT_MAP.find(get_string<std::string_view>(case_convert_slice));
+      auto itr = CASE_CONVERT_MAP.find(case_convert_slice.stringView());
 
       if (itr == CASE_CONVERT_MAP.end()) {
-        IR_FRMT_WARN(
-          "Invalid value in '%s' while constructing text_token_stream from "
-          "VPack arguments",
-          CASE_CONVERT_PARAM_NAME.data());
+        IRS_LOG_WARN(absl::StrCat(
+          "Invalid value in '", CASE_CONVERT_PARAM_NAME,
+          "' while constructing text_token_stream from VPack arguments"));
 
         return false;
       }
@@ -593,69 +589,59 @@ bool parse_vpack_options(const VPackSlice slice,
       options.case_convert = itr->second;
     }
 
-    if (slice.hasKey(STOPWORDS_PARAM_NAME)) {
-      auto stop_words_slice =
-        slice.get(STOPWORDS_PARAM_NAME);  // optional string array
+    if (auto stop_words_slice = slice.get(STOPWORDS_PARAM_NAME);
+        !stop_words_slice.isNone()) {
       if (!stop_words_slice.isArray()) {
-        IR_FRMT_WARN(
-          "Invalid value in '%s' while constructing text_token_stream from "
-          "VPack arguments",
-          STOPWORDS_PARAM_NAME.data());
+        IRS_LOG_WARN(absl::StrCat(
+          "Invalid value in '", STOPWORDS_PARAM_NAME,
+          "' while constructing text_token_stream from VPack arguments"));
 
         return false;
       }
-      options.explicit_stopwords_set =
-        true;  // mark  - we have explicit list (even if it is empty)
-      for (const auto& itr : VPackArrayIterator(stop_words_slice)) {
+      // mark - we have explicit list (even if it is empty)
+      options.explicit_stopwords_set = true;
+      for (const auto itr : VPackArrayIterator(stop_words_slice)) {
         if (!itr.isString()) {
-          IR_FRMT_WARN(
-            "Non-string value in '%s' while constructing text_token_stream "
-            "from VPack arguments",
-            STOPWORDS_PARAM_NAME.data());
+          IRS_LOG_WARN(absl::StrCat(
+            "Non-string value in '", STOPWORDS_PARAM_NAME,
+            "' while constructing text_token_stream from VPack arguments"));
 
           return false;
         }
-        options.explicit_stopwords.emplace(get_string<std::string>(itr));
+        options.explicit_stopwords.emplace(itr.stringView());
       }
     }
 
-    if (slice.hasKey(STOPWORDS_PATH_PARAM_NAME)) {
-      auto ignored_words_path_slice =
-        slice.get(STOPWORDS_PATH_PARAM_NAME);  // optional string
-
+    if (auto ignored_words_path_slice = slice.get(STOPWORDS_PATH_PARAM_NAME);
+        !ignored_words_path_slice.isNone()) {
       if (!ignored_words_path_slice.isString()) {
-        IR_FRMT_WARN(
-          "Non-string value in '%s' while constructing text_token_stream "
-          "from VPack arguments",
-          STOPWORDS_PATH_PARAM_NAME.data());
+        IRS_LOG_WARN(absl::StrCat(
+          "Non-string value in '", STOPWORDS_PATH_PARAM_NAME,
+          "' while constructing text_token_stream from VPack arguments"));
 
         return false;
       }
-      options.stopwordsPath = get_string<std::string>(ignored_words_path_slice);
+      options.stopwordsPath = ignored_words_path_slice.stringView();
     }
 
-    if (slice.hasKey(ACCENT_PARAM_NAME)) {
-      auto accent_slice = slice.get(ACCENT_PARAM_NAME);  // optional bool
-
+    if (auto accent_slice = slice.get(ACCENT_PARAM_NAME);
+        !accent_slice.isNone()) {
       if (!accent_slice.isBool()) {
-        IR_FRMT_WARN(
-          "Non-boolean value in '%s' while constructing text_token_stream "
-          "from VPack arguments",
-          ACCENT_PARAM_NAME.data());
+        IRS_LOG_WARN(absl::StrCat(
+          "Non-boolean value in '", ACCENT_PARAM_NAME,
+          "' while constructing text_token_stream from VPack arguments"));
 
         return false;
       }
       options.accent = accent_slice.getBool();
     }
 
-    if (slice.hasKey(STEMMING_PARAM_NAME)) {
-      auto stemming_slice = slice.get(STEMMING_PARAM_NAME);  // optional bool
-
+    if (auto stemming_slice = slice.get(STEMMING_PARAM_NAME);
+        !stemming_slice.isNone()) {
       if (!stemming_slice.isBool()) {
-        IR_FRMT_WARN(
-          "Non-boolean value in '%s' while constructing text_token_stream "
-          "from VPack arguments",
-          STEMMING_PARAM_NAME.data());
+        IRS_LOG_WARN(absl::StrCat(
+          "Non-boolean value in '", STEMMING_PARAM_NAME,
+          "' while constructing text_token_stream from VPack arguments"));
 
         return false;
       }
@@ -663,38 +649,30 @@ bool parse_vpack_options(const VPackSlice slice,
       options.stemming = stemming_slice.getBool();
     }
 
-    if (slice.hasKey(EDGE_NGRAM_PARAM_NAME)) {
-      auto ngram_slice = slice.get(EDGE_NGRAM_PARAM_NAME);
-
+    if (auto ngram_slice = slice.get(EDGE_NGRAM_PARAM_NAME);
+        !ngram_slice.isNone()) {
       if (!ngram_slice.isObject()) {
-        IR_FRMT_WARN(
-          "Non-object value in '%s' while constructing text_token_stream "
-          "from VPack arguments",
-          EDGE_NGRAM_PARAM_NAME.data());
+        IRS_LOG_WARN(absl::StrCat(
+          "Non-object value in '", EDGE_NGRAM_PARAM_NAME,
+          "' while constructing text_token_stream from VPack arguments"));
 
         return false;
       }
 
-      if (ngram_slice.hasKey(MIN_PARAM_NAME) &&
-          ngram_slice.get(MIN_PARAM_NAME)
-            .isNumber<decltype(options.min_gram)>()) {
-        options.min_gram = ngram_slice.get(MIN_PARAM_NAME)
-                             .getNumber<decltype(options.min_gram)>();
+      if (auto v = ngram_slice.get(MIN_PARAM_NAME);
+          v.isNumber<decltype(options.min_gram)>()) {
+        options.min_gram = v.getNumber<decltype(options.min_gram)>();
         options.min_gram_set = true;
       }
 
-      if (ngram_slice.hasKey(MAX_PARAM_NAME) &&
-          ngram_slice.get(MAX_PARAM_NAME)
-            .isNumber<decltype(options.min_gram)>()) {
-        options.max_gram = ngram_slice.get(MAX_PARAM_NAME)
-                             .getNumber<decltype(options.min_gram)>();
+      if (auto v = ngram_slice.get(MAX_PARAM_NAME);
+          v.isNumber<decltype(options.min_gram)>()) {
+        options.max_gram = v.getNumber<decltype(options.min_gram)>();
         options.max_gram_set = true;
       }
 
-      if (ngram_slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME) &&
-          ngram_slice.get(PRESERVE_ORIGINAL_PARAM_NAME).isBool()) {
-        options.preserve_original =
-          ngram_slice.get(PRESERVE_ORIGINAL_PARAM_NAME).getBool();
+      if (auto v = ngram_slice.get(PRESERVE_ORIGINAL_PARAM_NAME); v.isBool()) {
+        options.preserve_original = v.getBool();
         options.preserve_original_set = true;
       }
 
@@ -708,11 +686,11 @@ bool parse_vpack_options(const VPackSlice slice,
 
     return true;
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing text_token_stream from VPack",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing text_token_stream from VPack"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing text_token_stream from VPack "
       "arguments");
   }
@@ -743,8 +721,9 @@ bool make_vpack_config(const analysis::text_token_stream::options_t& options,
     if (case_value != CASE_CONVERT_MAP.end()) {
       builder->add(CASE_CONVERT_PARAM_NAME, VPackValue(case_value->first));
     } else {
-      IR_FRMT_ERROR("Invalid case_convert value in text analyzer options: %d",
-                    static_cast<int>(options.case_convert));
+      IRS_LOG_ERROR(
+        absl::StrCat("Invalid case_convert value in text analyzer options: ",
+                     static_cast<int>(options.case_convert)));
       return false;
     }
 
@@ -849,7 +828,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
     if (parse_vpack_options(slice, options)) {
       analysis::text_token_stream::stopwords_t stopwords;
       if (!build_stopwords(options, stopwords)) {
-        IR_FRMT_WARN(
+        IRS_LOG_WARN(
           "Failed to retrieve 'stopwords' from path while constructing "
           "text_token_stream from VPack arguments");
 
@@ -858,7 +837,7 @@ analysis::analyzer::ptr make_vpack(const VPackSlice slice) {
       return construct(slice_ref, std::move(options), std::move(stopwords));
     }
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing text_token_stream from VPack "
       "arguments");
   }
@@ -918,19 +897,18 @@ bool normalize_text_config(std::string_view args, std::string& definition) {
 analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Null arguments while constructing text_token_normalizing_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing text_token_normalizing_stream "
-      "from JSON",
-      ex.what());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught error '", ex.what(),
+      "' while constructing text_token_normalizing_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing text_token_normalizing_stream from "
       "JSON");
   }
@@ -940,7 +918,7 @@ analysis::analyzer::ptr make_json(std::string_view args) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR(
+      IRS_LOG_ERROR(
         "Null arguments while normalizing text_token_normalizing_stream");
       return false;
     }
@@ -951,12 +929,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing text_token_normalizing_stream "
-      "from JSON",
-      ex.what());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught error '", ex.what(),
+      "' while normalizing text_token_normalizing_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing text_token_normalizing_stream from "
       "JSON");
   }
