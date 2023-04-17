@@ -230,7 +230,7 @@ struct BM15Context : public irs::score_ctx {
     : freq{freq ? freq : &kEmptyFreq},
       filter_boost{fb},
       num{boost * (k + 1) * stats.idf},
-      norm_const{k} {
+      norm_const{stats.norm_const} {
     IRS_ASSERT(this->freq);
   }
 
@@ -248,10 +248,7 @@ struct BM25Context final : public BM15Context {
     : BM15Context{k, boost, stats, freq, filter_boost},
       norm{std::move(norm)},
       norm_length{stats.norm_length},
-      norm_cache{stats.norm_cache} {
-    IRS_ASSERT(stats.norm_const);
-    norm_const = stats.norm_const;
-  }
+      norm_cache{stats.norm_cache} {}
 
   Norm norm;
   float_t norm_length;  // precomputed 'k*b/avgD'
@@ -308,6 +305,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
         }
 
         const float_t c1 = state.norm_const;
+        IRS_ASSERT(c1 != 0.f);
 
         *res = c0 - c0 / (1.f + tf / c1);
       },
@@ -346,8 +344,8 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
 
         if constexpr (NormType::kNorm2Tiny == Norm::kType) {
           static_assert(std::is_same_v<uint32_t, decltype(state.norm())>);
-          const float_t inv_c1 =
-            state.norm_cache[state.norm() & uint32_t{0xFF}];
+          IRS_ASSERT((state.norm() & 0xFFU) != 0U);
+          const float_t inv_c1 = state.norm_cache[state.norm() & 0xFFU];
 
           *res = c0 - c0 / (1.f + tf * inv_c1);
         } else {
@@ -383,7 +381,7 @@ void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
   // - stats were already initialized
   // - BM15 without norms
   if (IsBM15()) {
-    stats->norm_const = 1.f;
+    stats->norm_const = k_;
     return;
   }
 
@@ -398,8 +396,11 @@ void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
     stats->norm_length = kb;
   }
 
-  for (uint32_t i = 0; auto& norm : stats->norm_cache) {
-    norm = 1.f / (stats->norm_const + stats->norm_length * i++);
+  auto it = std::begin(stats->norm_cache);
+  *it++ = 0.f;
+  const auto end = std::end(stats->norm_cache);
+  for (float_t i = 1.f; it != end;) {
+    *it++ = 1.f / (stats->norm_const + stats->norm_length * i++);
   }
 }
 
