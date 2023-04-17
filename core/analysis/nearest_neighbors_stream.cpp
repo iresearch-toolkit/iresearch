@@ -210,14 +210,14 @@ REGISTER_ANALYZER_JSON(irs::analysis::nearest_neighbors_stream, make_json,
 namespace irs {
 namespace analysis {
 
-/*static*/ void nearest_neighbors_stream::init() {
+void nearest_neighbors_stream::init() {
   REGISTER_ANALYZER_JSON(nearest_neighbors_stream, make_json,
                          normalize_json_config);
   REGISTER_ANALYZER_VPACK(nearest_neighbors_stream, make_vpack,
                           normalize_vpack_config);
 }
 
-/*static*/ nearest_neighbors_stream::model_provider_f
+nearest_neighbors_stream::model_provider_f
 nearest_neighbors_stream::set_model_provider(
   model_provider_f provider) noexcept {
   return ::MODEL_PROVIDER.exchange(provider, std::memory_order_relaxed);

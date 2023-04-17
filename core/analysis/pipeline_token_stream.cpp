@@ -406,7 +406,7 @@ bool pipeline_token_stream::reset(std::string_view data) {
   return pipeline_.front().reset(0, static_cast<uint32_t>(data.size()), data);
 }
 
-/*static*/ void pipeline_token_stream::init() {
+void pipeline_token_stream::init() {
   REGISTER_ANALYZER_JSON(pipeline_token_stream, make_json,
                          normalize_json_config);  // match registration above
 

@@ -48,7 +48,7 @@ static noop_term_collector NOOP_TERM_STATS;
 
 namespace irs {
 
-/*static*/ field_collector_wrapper::collector_type&
+field_collector_wrapper::collector_type&
 field_collector_wrapper::noop() noexcept {
   return NOOP_FIELD_STATS;
 }
@@ -98,7 +98,7 @@ void field_collectors::finish(byte_type* stats_buf) const {
   }
 }
 
-/*static*/ term_collector_wrapper::collector_type&
+term_collector_wrapper::collector_type&
 term_collector_wrapper::noop() noexcept {
   return NOOP_TERM_STATS;
 }

@@ -233,7 +233,11 @@ void segment_writer::FlushFields(flush_state& state) {
       *col_writer_, std::move(sort_.finalizer),
       static_cast<doc_id_t>(state.doc_count), *fields_.comparator());
 
-    meta.sort = sort_.id;  // Store sorted column id in segment meta
+    IRS_ASSERT(meta.codec != nullptr);
+    auto writer = meta.codec->get_segment_meta_writer();
+    if (writer->SupportPrimarySort()) {
+      meta.sort = sort_.id;  // Store sorted column id in segment meta
+    }
 
     if (!docmap.empty()) {
       state.docmap = &docmap;
@@ -265,10 +269,6 @@ void segment_writer::FlushFields(flush_state& state) {
   meta.docs_count = state.doc_count;
   meta.live_docs_count = meta.docs_count - docs_mask.count;
   meta.files = dir_.FlushTracked(meta.byte_size);
-
-  // We intentionally don't write document mask here as it might
-  // be changed by removals accumulated in IndexWriter.
-  index_utils::FlushIndexSegment(dir_, segment);
 
   return docmap;
 }

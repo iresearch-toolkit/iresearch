@@ -64,9 +64,10 @@ namespace {
     }
     std::cerr << "\n";
 
-    consolidating_segments.insert(
-      candidates.begin(),
-      candidates.end());  // register candidates for consolidation
+    // register candidates for consolidation
+    for (const auto* candidate : candidates) {
+      consolidating_segments.emplace(candidate->Meta().name);
+    }
   }
 }
 
@@ -206,9 +207,10 @@ TEST(ConsolidationTierTest, MaxConsolidationSize) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments_bytes, candidates.size());
     }
 
@@ -216,9 +218,10 @@ TEST(ConsolidationTierTest, MaxConsolidationSize) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments_bytes, candidates.size());
     }
 
@@ -226,9 +229,10 @@ TEST(ConsolidationTierTest, MaxConsolidationSize) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(reader.size() - 2 * options.max_segments_bytes,
                 candidates.size());
     }
@@ -289,7 +293,7 @@ TEST(ConsolidationTierTest, EmptyConsolidatingSegment) {
   options.min_segments = 1;
   options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-  irs::ConsolidatingSegments consolidating_segments{&reader[0]};
+  irs::ConsolidatingSegments consolidating_segments{reader[0].Meta().name};
   auto policy = irs::index_utils::MakePolicy(options);
   irs::Consolidation candidates;
   policy(candidates, reader, consolidating_segments);
@@ -307,7 +311,7 @@ TEST(ConsolidationTierTest, EmptySegment) {
   options.min_segments = 1;
   options.max_segments_bytes = std::numeric_limits<size_t>::max();
 
-  irs::ConsolidatingSegments consolidating_segments{&reader[0]};
+  irs::ConsolidatingSegments consolidating_segments{reader[0].Meta().name};
   auto policy = irs::index_utils::MakePolicy(options);
   irs::Consolidation candidates;
   policy(candidates, reader, consolidating_segments);
@@ -336,9 +340,10 @@ TEST(ConsolidationTierTest, MaxConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -346,9 +351,10 @@ TEST(ConsolidationTierTest, MaxConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -356,9 +362,10 @@ TEST(ConsolidationTierTest, MaxConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(reader.size() - 2 * options.max_segments, candidates.size());
     }
 
@@ -385,9 +392,10 @@ TEST(ConsolidationTierTest, MaxConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(reader.size(), candidates.size());
     }
 
@@ -433,9 +441,10 @@ TEST(ConsolidationTierTest, MaxConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -443,9 +452,10 @@ TEST(ConsolidationTierTest, MaxConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -481,9 +491,10 @@ TEST(ConsolidationTierTest, MinConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -491,9 +502,10 @@ TEST(ConsolidationTierTest, MinConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -520,9 +532,10 @@ TEST(ConsolidationTierTest, MinConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -530,9 +543,10 @@ TEST(ConsolidationTierTest, MinConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -540,9 +554,10 @@ TEST(ConsolidationTierTest, MinConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(reader.size() - 2 * options.max_segments, candidates.size());
     }
 
@@ -569,9 +584,10 @@ TEST(ConsolidationTierTest, MinConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -579,9 +595,10 @@ TEST(ConsolidationTierTest, MinConsolidationCount) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(options.max_segments, candidates.size());
     }
 
@@ -641,9 +658,10 @@ TEST(ConsolidationTierTest, ConsolidationFloor) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(5, candidates.size());
 
       for (size_t i = 0; i < candidates.size(); ++i) {
@@ -656,9 +674,10 @@ TEST(ConsolidationTierTest, ConsolidationFloor) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(reader.size() - 5, candidates.size());
     }
 
@@ -685,9 +704,10 @@ TEST(ConsolidationTierTest, ConsolidationFloor) {
     {
       irs::Consolidation candidates;
       policy(candidates, reader, consolidating_segments);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
       ASSERT_EQ(reader.size(), candidates.size());
     }
 
@@ -728,9 +748,10 @@ TEST(ConsolidationTierTest, PreferSegmentsWithRemovals) {
     candidates.clear();
     policy(candidates, reader, consolidating_segments);
     AssertCandidates(reader, expected_tier, candidates);
-    consolidating_segments.insert(
-      candidates.begin(),
-      candidates.end());  // register candidates for consolidation
+    // register candidates for consolidation
+    for (const auto* candidate : candidates) {
+      consolidating_segments.emplace(candidate->Meta().name);
+    }
   }
 
   // no more segments to consolidate
@@ -779,9 +800,10 @@ TEST(ConsolidationTierTest, Singleton) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, {0}, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     {
@@ -815,9 +837,10 @@ TEST(ConsolidationTierTest, Defaults) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, {0, 1, 2, 3, 4}, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no more segments to consolidate
@@ -852,9 +875,10 @@ TEST(ConsolidationTierTest, Defaults) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no more segments to consolidate
@@ -935,9 +959,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no more segments to consolidate
@@ -987,9 +1012,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no more segments to consolidate
@@ -1035,9 +1061,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no more segments to consolidate
@@ -1085,9 +1112,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no more segments to consolidate
@@ -1142,9 +1170,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no more segments to consolidate
@@ -1182,9 +1211,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
     ASSERT_EQ(reader.size(), consolidating_segments.size());
 
@@ -1252,9 +1282,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no segments to consolidate
@@ -1295,9 +1326,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
 
     // no segments to consolidate
@@ -1351,9 +1383,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
     ASSERT_EQ(reader.size(), consolidating_segments.size());
 
@@ -1410,9 +1443,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
     ASSERT_EQ(reader.size(), consolidating_segments.size());
 
@@ -1468,9 +1502,10 @@ TEST(ConsolidationTierTest, SkewedSegments) {
       candidates.clear();
       policy(candidates, reader, consolidating_segments);
       AssertCandidates(reader, expected_tier, candidates);
-      consolidating_segments.insert(
-        candidates.begin(),
-        candidates.end());  // register candidates for consolidation
+      // register candidates for consolidation
+      for (const auto* candidate : candidates) {
+        consolidating_segments.emplace(candidate->Meta().name);
+      }
     }
     ASSERT_EQ(reader.size(), consolidating_segments.size());
 

@@ -27,32 +27,9 @@
 
 namespace irs {
 
-SegmentReader::SegmentReader(const SegmentReader& other) noexcept
-  : impl_{std::atomic_load_explicit(&other.impl_, std::memory_order_acquire)} {}
-
-SegmentReader& SegmentReader::operator=(const SegmentReader& other) noexcept {
-  if (this != &other) {
-    auto impl =
-      std::atomic_load_explicit(&other.impl_, std::memory_order_acquire);
-
-    std::atomic_store_explicit(&impl_, impl, std::memory_order_release);
-  }
-
-  return *this;
-}
-
 SegmentReader::SegmentReader(const directory& dir, const SegmentMeta& meta,
                              const IndexReaderOptions& opts)
   : impl_{SegmentReaderImpl::Open(dir, meta, opts)} {}
-
-SegmentReader SegmentReader::Reopen(const SegmentMeta& meta) const {
-  // make a copy
-  auto impl = std::atomic_load_explicit(&impl_, std::memory_order_acquire);
-
-  // reuse self if no changes to meta
-  return SegmentReader{
-    impl->Meta().version == meta.version ? impl : impl->Reopen(meta)};
-}
 
 field_iterator::ptr SegmentReader::fields() const { return impl_->fields(); }
 

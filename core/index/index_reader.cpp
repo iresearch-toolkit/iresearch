@@ -51,6 +51,6 @@ const EmptySubReader kEmpty;
 
 }  // namespace
 
-/*static*/ const SubReader& SubReader::empty() noexcept { return kEmpty; }
+const SubReader& SubReader::empty() noexcept { return kEmpty; }
 
 }  // namespace irs

@@ -179,7 +179,7 @@ bool visit(const std::function<bool(std::string_view)>& visitor) {
   return compression_register::instance().visit(wrapper);
 }
 
-/*static*/ void none::init() {
+void none::init() {
 #ifndef IRESEARCH_DLL
   // match registration below
   REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);

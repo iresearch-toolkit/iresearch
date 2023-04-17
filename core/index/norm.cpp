@@ -105,7 +105,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   encoding_ = std::max(hdr.encoding_, encoding_);
 }
 
-/*static*/ void Norm2Header::Write(const Norm2Header& hdr, bstring& out) {
+void Norm2Header::Write(const Norm2Header& hdr, bstring& out) {
   out.resize(ByteSize());
 
   auto* p = out.data();
@@ -115,8 +115,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   irs::write(p, hdr.max_);
 }
 
-/*static*/ std::optional<Norm2Header> Norm2Header::Read(
-  bytes_view payload) noexcept {
+std::optional<Norm2Header> Norm2Header::Read(bytes_view payload) noexcept {
   if (IRS_UNLIKELY(payload.size() != ByteSize())) {
     IR_FRMT_ERROR("Invalid 'norm2' header size " IR_SIZE_T_SPECIFIER "",
                   payload.size());
@@ -147,8 +146,7 @@ void Norm2Header::Reset(const Norm2Header& hdr) noexcept {
   return hdr;
 }
 
-/*static*/ FeatureWriter::ptr Norm2::MakeWriter(
-  std::span<const bytes_view> headers) {
+FeatureWriter::ptr Norm2::MakeWriter(std::span<const bytes_view> headers) {
   size_t max_bytes{sizeof(ValueType)};
 
   if (!headers.empty()) {

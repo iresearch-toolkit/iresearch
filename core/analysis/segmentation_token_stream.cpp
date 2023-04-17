@@ -319,7 +319,7 @@ REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
 REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,
                        normalize_json_config);
 
-/*static*/ void segmentation_token_stream::init() {
+void segmentation_token_stream::init() {
   REGISTER_ANALYZER_VPACK(segmentation_token_stream, make_vpack,
                           normalize_vpack_config);  // match registration above
   REGISTER_ANALYZER_JSON(segmentation_token_stream, make_json,

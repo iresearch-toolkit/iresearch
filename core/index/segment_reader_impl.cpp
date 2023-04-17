@@ -104,7 +104,7 @@ class MaskDocIterator : public doc_iterator {
   doc_iterator::ptr it_;
 };
 
-class MaskedDocIterator : public doc_iterator, private util::noncopyable {
+class MaskedDocIterator : public doc_iterator {
  public:
   MaskedDocIterator(doc_id_t begin, doc_id_t end,
                     const DocumentMask& docs_mask) noexcept
@@ -144,9 +144,8 @@ class MaskedDocIterator : public doc_iterator, private util::noncopyable {
   doc_id_t next_;
 };
 
-std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
-                                            const SegmentMeta& meta) {
-  std::vector<index_file_refs::ref_t> file_refs;
+FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
+  FileRefs file_refs;
   file_refs.reserve(meta.files.size());
 
   auto& refs = dir.attributes().refs();
@@ -159,124 +158,76 @@ std::vector<index_file_refs::ref_t> GetRefs(const directory& dir,
 
 }  // namespace
 
-/*static*/ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
-  const directory& dir, const SegmentMeta& meta,
-  const IndexReaderOptions& opts) {
-  auto& codec = *meta.codec;
-
-  auto reader =
-    std::make_shared<SegmentReaderImpl>(PrivateTag{}, dir, meta, opts);
-
-  // read document mask
-  if (opts.doc_mask) {
-    index_utils::ReadDocumentMask(reader->docs_mask_, dir, meta);
-  } else {
-    reader->info_.live_docs_count = reader->info_.docs_count;
-  }
-
-  auto& data = *reader->data_;
-
-  // always instantiate to avoid unnecessary checks
-  auto& field_reader = data.field_reader_;
-  field_reader = codec.get_field_reader();
-
-  if (opts.index) {
-    // initialize optional field reader
-    field_reader->prepare(
-      ReaderState{.dir = &dir, .meta = &meta, .scorers = opts.scorers});
-  }
-
-  // always instantiate to avoid unnecessary checks
-  auto& columnstore_reader = data.columnstore_reader_;
-  columnstore_reader = codec.get_columnstore_reader();
-
-  if (opts.columnstore && meta.column_store) {
-    // initialize optional columnstore
-    columnstore_reader::options columnstore_opts;
-    if (const auto& opts = reader->Options(); opts.warmup_columns) {
-      columnstore_opts.warmup_column = [warmup = opts.warmup_columns,
-                                        &field_reader,
-                                        &meta](const column_reader& column) {
-        return warmup(meta, *field_reader, column);
-      };
-      columnstore_opts.pinned_memory = opts.pinned_memory_accounting;
-    }
-
-    if (!columnstore_reader->prepare(dir, meta, columnstore_opts)) {
-      throw index_error{
-        absl::StrCat("Failed to find existing (according to meta) "
-                     "columnstore in segment '",
-                     meta.name, "'")};
-    }
-
-    if (field_limits::valid(meta.sort)) {
-      reader->sort_ = columnstore_reader->column(meta.sort);
-
-      if (!reader->sort_) {
-        throw index_error{absl::StrCat(
-          "Failed to find sort column '", meta.sort,
-          "' (according to meta) in columnstore in segment '", meta.name, "'")};
-      }
-    }
-
-    // FIXME(gnusi): too rough, we must exclude unnamed columns
-    const size_t num_columns = columnstore_reader->size();
-
-    auto& named_columns = data.named_columns_;
-    named_columns.reserve(num_columns);
-    auto& sorted_named_columns = data.sorted_named_columns_;
-    sorted_named_columns.reserve(num_columns);
-
-    columnstore_reader->visit([&named_columns, &sorted_named_columns,
-                               &meta](const irs::column_reader& column) {
-      const auto name = column.name();
-
-      if (!IsNull(name)) {
-        const auto [it, is_new] = named_columns.emplace(name, &column);
-        IRS_IGNORE(it);
-
-        if (IRS_UNLIKELY(!is_new)) {
-          throw index_error{absl::StrCat("Duplicate named column '", name,
-                                         "' in segment '", meta.name, "'")};
-        }
-
-        if (!sorted_named_columns.empty() &&
-            sorted_named_columns.back().get().name() >= name) {
-          throw index_error{absl::StrCat(
-            "Named columns are out of order in segment '", meta.name, "'")};
-        }
-
-        sorted_named_columns.emplace_back(column);
-      }
-
-      return true;
-    });
-  }
-
-  return reader;
-}
+SegmentReaderImpl::SegmentReaderImpl(PrivateTag) noexcept {}
 
 SegmentReaderImpl::~SegmentReaderImpl() = default;
 
-SegmentReaderImpl::SegmentReaderImpl(PrivateTag, const directory& dir,
-                                     const SegmentMeta& meta,
-                                     const IndexReaderOptions& opts)
-  : file_refs_{GetRefs(dir, meta)},
-    data_{std::make_shared<Data>()},
-    info_{meta},
-    dir_{&dir},
-    opts_{opts} {}
+std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
+  const directory& dir, const SegmentMeta& meta,
+  const IndexReaderOptions& options) {
+  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  // read optional docs_mask
+  DocumentMask docs_mask;
+  if (options.doc_mask) {
+    index_utils::ReadDocumentMask(docs_mask, dir, meta);
+  }
+  reader->Update(dir, meta, std::move(docs_mask));
+  // open index data
+  IRS_ASSERT(meta.codec != nullptr);
+  // always instantiate to avoid unnecessary checks
+  reader->field_reader_ = meta.codec->get_field_reader();
+  if (options.index) {
+    reader->field_reader_->prepare(
+      ReaderState{.dir = &dir, .meta = &meta, .scorers = options.scorers});
+  }
+  // open column store
+  reader->data_ = std::make_shared<ColumnData>();
+  reader->sort_ =
+    reader->data_->Open(dir, meta, options, *reader->field_reader_);
+  return reader;
+}
 
-SegmentReaderImpl::SegmentReaderImpl(const SegmentReaderImpl& rhs,
-                                     const SegmentMeta& meta,
-                                     DocumentMask&& docs_mask)
-  : file_refs_{GetRefs(rhs.Dir(), meta)},
-    docs_mask_{std::move(docs_mask)},
-    data_{rhs.data_},
-    info_{meta},
-    dir_{rhs.dir_},
-    sort_{rhs.sort_},
-    opts_{rhs.opts_} {}
+std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
+  const directory& dir, const SegmentMeta& meta,
+  const IndexReaderOptions& options) const {
+  IRS_ASSERT(meta == info_);
+  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  // clone removals
+  reader->refs_ = refs_;
+  reader->info_ = info_;
+  reader->docs_mask_ = docs_mask_;
+  // clone index data
+  reader->field_reader_ = field_reader_;
+  // open column store
+  reader->data_ = std::make_shared<ColumnData>();
+  reader->sort_ = reader->data_->Open(dir, meta, options, *field_reader_);
+  return reader;
+}
+
+std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenDocsMask(
+  const directory& dir, const SegmentMeta& meta,
+  DocumentMask&& docs_mask) const {
+  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  // clone field reader
+  reader->field_reader_ = field_reader_;
+  // clone column store
+  reader->data_ = data_;
+  reader->sort_ = sort_;
+  // update removals
+  reader->Update(dir, meta, std::move(docs_mask));
+  return reader;
+}
+
+void SegmentReaderImpl::Update(const directory& dir, const SegmentMeta& meta,
+                               DocumentMask&& docs_mask) noexcept {
+  IRS_ASSERT(meta.live_docs_count <= meta.docs_count);
+  IRS_ASSERT(docs_mask.size() <= meta.docs_count);
+  // TODO(MBkkt) on practice only mask file changed, so it can be optimized
+  refs_ = GetRefs(dir, meta);
+  info_ = meta;
+  docs_mask_ = std::move(docs_mask);
+  info_.live_docs_count = info_.docs_count - docs_mask_.size();
+}
 
 const irs::column_reader* SegmentReaderImpl::column(
   std::string_view name) const {
@@ -321,29 +272,83 @@ doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
 }
 
 doc_iterator::ptr SegmentReaderImpl::mask(doc_iterator::ptr&& it) const {
-  if (!it) {
-    return nullptr;
-  }
-
-  if (docs_mask_.empty()) {
+  if (!it || docs_mask_.empty()) {
     return std::move(it);
   }
 
   return memory::make_managed<MaskDocIterator>(std::move(it), docs_mask_);
 }
 
-std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Reopen(
-  const SegmentMeta& meta) const {
-  IRS_ASSERT(this->Meta().version != meta.version);
+const irs::column_reader* SegmentReaderImpl::ColumnData::Open(
+  const directory& dir, const SegmentMeta& meta,
+  const IndexReaderOptions& options, const field_reader& field_reader) {
+  IRS_ASSERT(meta.codec != nullptr);
+  auto& codec = *meta.codec;
+  // always instantiate to avoid unnecessary checks
+  columnstore_reader_ = codec.get_columnstore_reader();
 
-  DocumentMask docs_mask;
-
-  // read document mask
-  if (Options().doc_mask) {
-    index_utils::ReadDocumentMask(docs_mask, Dir(), meta);
+  if (!options.columnstore || !meta.column_store) {
+    return {};
   }
 
-  return std::make_shared<SegmentReaderImpl>(*this, meta, std::move(docs_mask));
+  // initialize optional columnstore
+  columnstore_reader::options columnstore_opts;
+  if (options.warmup_columns) {
+    columnstore_opts.warmup_column = [warmup = options.warmup_columns,
+                                      &field_reader,
+                                      &meta](const column_reader& column) {
+      return warmup(meta, field_reader, column);
+    };
+    columnstore_opts.pinned_memory = options.pinned_memory_accounting;
+  }
+
+  if (!columnstore_reader_->prepare(dir, meta, columnstore_opts)) {
+    throw index_error{
+      absl::StrCat("Failed to find existing (according to meta) "
+                   "columnstore in segment '",
+                   meta.name, "'")};
+  }
+
+  const irs::column_reader* sort{};
+  if (field_limits::valid(meta.sort)) {
+    sort = columnstore_reader_->column(meta.sort);
+
+    if (!sort) {
+      throw index_error{absl::StrCat(
+        "Failed to find sort column '", meta.sort,
+        "' (according to meta) in columnstore in segment '", meta.name, "'")};
+    }
+  }
+
+  // FIXME(gnusi): too rough, we must exclude unnamed columns
+  const auto num_columns = columnstore_reader_->size();
+  named_columns_.reserve(num_columns);
+  sorted_named_columns_.reserve(num_columns);
+
+  columnstore_reader_->visit([this, &meta](const irs::column_reader& column) {
+    const auto name = column.name();
+
+    if (!IsNull(name)) {
+      const auto [it, is_new] = named_columns_.emplace(name, &column);
+      IRS_IGNORE(it);
+
+      if (IRS_UNLIKELY(!is_new)) {
+        throw index_error{absl::StrCat("Duplicate named column '", name,
+                                       "' in segment '", meta.name, "'")};
+      }
+
+      if (!sorted_named_columns_.empty() &&
+          sorted_named_columns_.back().get().name() >= name) {
+        throw index_error{absl::StrCat(
+          "Named columns are out of order in segment '", meta.name, "'")};
+      }
+
+      sorted_named_columns_.emplace_back(column);
+    }
+
+    return true;
+  });
+  return sort;
 }
 
 }  // namespace irs

@@ -36,14 +36,13 @@ class attribute_register
 
 namespace irs {
 
-/*static*/ bool attributes::exists(std::string_view name,
-                                   bool load_library /*= true*/) {
+bool attributes::exists(std::string_view name, bool load_library /*= true*/) {
   return static_cast<bool>(
     attribute_register::instance().get(name, load_library));
 }
 
-/*static*/ type_info attributes::get(std::string_view name,
-                                     bool load_library /*= true*/) noexcept {
+type_info attributes::get(std::string_view name,
+                          bool load_library /*= true*/) noexcept {
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {

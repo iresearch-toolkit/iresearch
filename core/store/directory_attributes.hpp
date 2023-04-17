@@ -112,6 +112,8 @@ class index_file_refs final {
   counter_t refs_;
 };
 
+using FileRefs = std::vector<index_file_refs::ref_t>;
+
 // Represents common directory attributes
 class directory_attributes {
  public:

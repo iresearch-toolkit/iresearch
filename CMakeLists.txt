@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 
 find_package(Git 1.5.3 REQUIRED)
 
@@ -18,39 +18,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 ### interprocedural optimization (link time optimization)
 ################################################################################
 
-set(IPO_ENABLED False)
+set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
+set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
 
-if (${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION} VERSION_GREATER 3.8)
-  set(USE_IPO AUTO CACHE STRING "Use interprocedural optimization: ON, OFF or AUTO")
-  set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
-
-  # Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
-  if (USE_IPO STREQUAL "AUTO")
-    # When USE_IPO=AUTO, enable IPO for optimized / release builds.
-    # But to work around a g++ segfault triggered by using both -flto and
-    # -fno-devirtualize-functions, we disable IPO when using google tests, because
-    # this will set no-devirtualize. See
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
-    # So this check may be removed later as soon as we use fixed gcc versions.
-    # - Tobias, 2019-08-08
-    if (CMAKE_BUILD_TYPE STREQUAL "Release"
-      OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
-      OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
-      set(IPO_ENABLED True)
-    else ()
-      set(IPO_ENABLED False)
-    endif ()
-  elseif (USE_IPO)
+# Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
+if (USE_IPO STREQUAL "AUTO")
+  # When USE_IPO=AUTO, enable IPO for optimized / release builds.
+  # But to work around a g++ segfault triggered by using both -flto and
+  # -fno-devirtualize-functions, we disable IPO when using google tests, because
+  # this will set no-devirtualize. See
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91387 and
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91375.
+  # So this check may be removed later as soon as we use fixed gcc versions.
+  # - Tobias, 2019-08-08
+  if (CMAKE_BUILD_TYPE STREQUAL "Release"
+    OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"
+    OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel")
     set(IPO_ENABLED True)
   else ()
     set(IPO_ENABLED False)
   endif ()
+elseif (USE_IPO)
+  set(IPO_ENABLED True)
+else ()
+  set(IPO_ENABLED False)
 endif ()
 
 if (IPO_ENABLED)
-  cmake_minimum_required(VERSION 3.9 FATAL_ERROR) # ensured by check above
-
   macro(SET_IPO _target)
     set_property(TARGET ${_target} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
   endmacro()

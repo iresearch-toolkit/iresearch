@@ -985,7 +985,7 @@ text_token_stream::text_token_stream(const options_t& options,
                                      const stopwords_t& stopwords)
   : state_{new state_t{options, stopwords}} {}
 
-/*static*/ void text_token_stream::init() {
+void text_token_stream::init() {
   REGISTER_ANALYZER_VPACK(analysis::text_token_stream, make_vpack,
                           normalize_vpack_config);  // match registration above
   REGISTER_ANALYZER_JSON(text_token_stream, make_json,
@@ -994,13 +994,13 @@ text_token_stream::text_token_stream(const options_t& options,
                          normalize_text_config);  // match registration above
 }
 
-/*static*/ void text_token_stream::clear_cache() {
+void text_token_stream::clear_cache() {
   // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex};
   cached_state_by_key.clear();
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(std::string_view locale) {
+analyzer::ptr text_token_stream::make(std::string_view locale) {
   return make_text(locale);
 }
 

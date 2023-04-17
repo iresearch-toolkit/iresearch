@@ -3076,6 +3076,8 @@ struct SegmentMetaWriter : public segment_meta_writer {
     IRS_ASSERT(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
+  bool SupportPrimarySort() const noexcept final;
+
   // FIXME(gnusi): Better to split write into 2 methods and pass meta by const
   // reference
   void write(directory& dir, std::string& filename, SegmentMeta& meta) final;
@@ -3088,6 +3090,11 @@ template<>
 std::string file_name<segment_meta_writer, SegmentMeta>(
   const SegmentMeta& meta) {
   return irs::file_name(meta.name, meta.version, SegmentMetaWriter::FORMAT_EXT);
+}
+
+bool SegmentMetaWriter::SupportPrimarySort() const noexcept {
+  // Earlier versions don't support primary sort
+  return version_ > FORMAT_MIN;
 }
 
 void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
@@ -3114,7 +3121,7 @@ void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
   out->write_vlong(meta.docs_count -
                    meta.live_docs_count);  // docs_count >= live_docs_count
   out->write_vlong(meta.byte_size);
-  if (version_ > FORMAT_MIN) {
+  if (SupportPrimarySort()) {
     // sorted indices are not supported in version 1.0
     if (field_limits::valid(meta.sort)) {
       flags |= SORTED;
@@ -3123,7 +3130,6 @@ void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
     out->write_byte(flags);
     out->write_vlong(1 + meta.sort);  // max->0
   } else {
-    // Earlier versions don't support primary sort
     out->write_byte(flags);
     meta.sort = field_limits::invalid();
   }
@@ -3834,7 +3840,7 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format10::make() {
+irs::format::ptr format10::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT10_INSTANCE);
 }
 
@@ -3884,7 +3890,7 @@ columnstore_writer::ptr format11::get_columnstore_writer(
                                   columnstore::ColumnMetaVersion::MAX);
 }
 
-/*static*/ irs::format::ptr format11::make() {
+irs::format::ptr format11::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT11_INSTANCE);
 }
 
@@ -3912,7 +3918,7 @@ columnstore_writer::ptr format12::get_columnstore_writer(
                                   columnstore::ColumnMetaVersion::MAX);
 }
 
-/*static*/ irs::format::ptr format12::make() {
+irs::format::ptr format12::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT12_INSTANCE);
 }
 
@@ -3947,7 +3953,7 @@ irs::postings_reader::ptr format13::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format13::make() {
+irs::format::ptr format13::make() {
   static const ::format13 INSTANCE;
 
   return irs::format::ptr(irs::format::ptr(), &FORMAT13_INSTANCE);
@@ -3989,7 +3995,7 @@ columnstore_reader::ptr format14::get_columnstore_reader() const {
   return columnstore2::make_reader();
 }
 
-/*static*/ irs::format::ptr format14::make() {
+irs::format::ptr format14::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT14_INSTANCE);
 }
 
@@ -4003,12 +4009,12 @@ class format15 : public format14 {
 
   static ptr make();
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
-  irs::type_info::type_id type() const noexcept override {
+  irs::type_info::type_id type() const noexcept final {
     return irs::type<format15>::id();
   }
 };
@@ -4031,7 +4037,7 @@ irs::postings_reader::ptr format15::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format15::make() {
+irs::format::ptr format15::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT15_INSTANCE);
 }
 
@@ -4103,7 +4109,7 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format12simd::make() {
+irs::format::ptr format12simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT12SIMD_INSTANCE);
 }
 
@@ -4138,7 +4144,7 @@ irs::postings_reader::ptr format13simd::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format13simd::make() {
+irs::format::ptr format13simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT13SIMD_INSTANCE);
 }
 
@@ -4181,7 +4187,7 @@ columnstore_reader::ptr format14simd::get_columnstore_reader() const {
   return columnstore2::make_reader();
 }
 
-/*static*/ irs::format::ptr format14simd::make() {
+irs::format::ptr format14simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT14SIMD_INSTANCE);
 }
 
@@ -4195,12 +4201,12 @@ class format15simd : public format14simd {
 
   static ptr make();
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const;
+  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
-  irs::type_info::type_id type() const noexcept override {
+  irs::type_info::type_id type() const noexcept final {
     return irs::type<format15simd>::id();
   }
 };
@@ -4224,7 +4230,7 @@ irs::postings_reader::ptr format15simd::get_postings_reader() const {
   return std::make_unique<::postings_reader<format_traits>>();
 }
 
-/*static*/ irs::format::ptr format15simd::make() {
+irs::format::ptr format15simd::make() {
   return irs::format::ptr(irs::format::ptr(), &FORMAT15SIMD_INSTANCE);
 }
 

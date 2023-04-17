@@ -185,29 +185,27 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 };
 
 template<typename Label>
-/*static*/ const StringLeftWeight<Label>&
-StringLeftWeightTraits<Label>::Zero() {
+const StringLeftWeight<Label>& StringLeftWeightTraits<Label>::Zero() {
   static const StringLeftWeight<Label> zero(
     static_cast<Label>(kStringInfinity));  // cast same as in FST
   return zero;
 }
 
 template<typename Label>
-/*static*/ const StringLeftWeight<Label>& StringLeftWeightTraits<Label>::One() {
+const StringLeftWeight<Label>& StringLeftWeightTraits<Label>::One() {
   static const StringLeftWeight<Label> one;
   return one;
 }
 
 template<typename Label>
-/*static*/ const StringLeftWeight<Label>&
-StringLeftWeightTraits<Label>::NoWeight() {
+const StringLeftWeight<Label>& StringLeftWeightTraits<Label>::NoWeight() {
   static const StringLeftWeight<Label> no_weight(
     static_cast<Label>(kStringBad));  // cast same as in FST
   return no_weight;
 }
 
 template<typename Label>
-/*static*/ bool StringLeftWeightTraits<Label>::Member(
+bool StringLeftWeightTraits<Label>::Member(
   const StringLeftWeight<Label>& weight) {
   return weight != NoWeight();
 }

@@ -28,7 +28,7 @@
 
 namespace irs {
 
-/*static*/ const field_meta field_meta::kEmpty;
+const field_meta field_meta::kEmpty;
 
 field_meta::field_meta(field_meta&& rhs) noexcept
   : features(std::move(rhs.features)),

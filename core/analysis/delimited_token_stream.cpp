@@ -267,12 +267,11 @@ delimited_token_stream::delimited_token_stream(std::string_view delimiter)
   }
 }
 
-/*static*/ analyzer::ptr delimited_token_stream::make(
-  std::string_view delimiter) {
+analyzer::ptr delimited_token_stream::make(std::string_view delimiter) {
   return make_text(delimiter);
 }
 
-/*static*/ void delimited_token_stream::init() {
+void delimited_token_stream::init() {
   REGISTER_ANALYZER_VPACK(delimited_token_stream, make_vpack,
                           normalize_vpack_config);  // match registration above
   REGISTER_ANALYZER_JSON(delimited_token_stream, make_json,

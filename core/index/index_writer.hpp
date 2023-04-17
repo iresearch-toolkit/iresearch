@@ -24,7 +24,9 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <string_view>
 
 #include "formats/formats.hpp"
@@ -68,21 +70,8 @@ ENABLE_BITMASK_ENUM(OpenMode);
 using Consolidation = std::vector<const SubReader*>;
 using ConsolidationView = std::span<const SubReader* const>;
 
-struct CandidateHash {
-  size_t operator()(const SubReader* segment) const noexcept {
-    return absl::HashOf(segment->Meta().name);
-  }
-};
-
-struct CandidateEqual {
-  bool operator()(const SubReader* lhs, const SubReader* rhs) const noexcept {
-    return lhs->Meta().name == rhs->Meta().name;
-  }
-};
-
 // segments that are under consolidation
-using ConsolidatingSegments =
-  absl::flat_hash_set<const SubReader*, CandidateHash, CandidateEqual>;
+using ConsolidatingSegments = absl::flat_hash_set<std::string_view>;
 
 // Mark consolidation candidate segments matching the current policy
 // candidates the segments that should be consolidated
@@ -179,6 +168,12 @@ struct IndexWriterOptions : public SegmentOptions {
   IndexWriterOptions() {}  // compiler requires non-default definition
 };
 
+struct CommitInfo {
+  uint64_t tick = writer_limits::kMaxTick;
+  ProgressReportCallback progress;
+  bool reopen_columnstore = false;
+};
+
 // The object is using for indexing data. Only one writer can write to
 // the same directory simultaneously.
 // Thread safe.
@@ -193,7 +188,9 @@ class IndexWriter : private util::noncopyable {
     std::unique_ptr<FlushContext, void (*)(FlushContext*)>;
 
   // Disallow using public constructor
-  struct ConstructToken {};
+  struct ConstructToken {
+    explicit ConstructToken() = default;
+  };
 
   class ActiveSegmentContext {
    public:
@@ -509,10 +506,10 @@ class IndexWriter : private util::noncopyable {
   // Begins the two-phase transaction.
   // payload arbitrary user supplied data to store in the index
   // Returns true if transaction has been successfully started.
-  bool Begin(uint64_t tick = writer_limits::kMaxTick,
-             const ProgressReportCallback& progress = {}) {
+
+  bool Begin(const CommitInfo& info = {}) {
     std::lock_guard lock{commit_lock_};
-    return Start(tick, progress);
+    return Start(info);
   }
 
   // Rollbacks the two-phase transaction
@@ -528,10 +525,9 @@ class IndexWriter : private util::noncopyable {
   // Note that if begin() has been already called commit() is
   // relatively lightweight operation.
   // FIXME(gnusi): Commit() should return committed index snapshot
-  bool Commit(uint64_t tick = writer_limits::kMaxTick,
-              const ProgressReportCallback& progress = {}) {
+  bool Commit(const CommitInfo& info = {}) {
     std::lock_guard lock{commit_lock_};
-    const bool modified = Start(tick, progress);
+    const bool modified = Start(info);
     Finish();
     return modified;
   }
@@ -554,8 +550,6 @@ class IndexWriter : private util::noncopyable {
               std::shared_ptr<const DirectoryReaderImpl>&& committed_reader);
 
  private:
-  using FileRefs = std::vector<index_file_refs::ref_t>;
-
   struct ConsolidationContext : util::noncopyable {
     std::shared_ptr<const DirectoryReaderImpl> consolidation_reader;
     Consolidation candidates;
@@ -653,6 +647,7 @@ class IndexWriter : private util::noncopyable {
     // Flushed segment removals
     DocsMask docs_mask;
     DocumentMask document_mask;
+    bool was_flush = false;
 
    private:
     // starting doc_id that should be added to docs_mask
@@ -905,8 +900,7 @@ class IndexWriter : private util::noncopyable {
   static_assert(std::is_nothrow_move_constructible_v<PendingState>);
   static_assert(std::is_nothrow_move_assignable_v<PendingState>);
 
-  PendingContext PrepareFlush(uint64_t tick,
-                              const ProgressReportCallback& progress_callback);
+  PendingContext PrepareFlush(const CommitInfo& info);
   void ApplyFlush(PendingContext&& context);
 
   FlushContextPtr GetFlushContext() const noexcept;
@@ -927,13 +921,14 @@ class IndexWriter : private util::noncopyable {
   void InitMeta(IndexMeta& meta, uint64_t tick) const;
 
   // Start transaction
-  bool Start(uint64_t tick, const ProgressReportCallback& progress);
+  bool Start(const CommitInfo& info);
   // Finish transaction
   void Finish();
   // Abort transaction
   void Abort() noexcept;
 
   feature_set_t wand_features_;  // Set of features required for wand
+  ScorersView wand_scorers_;
   FeatureInfoProvider feature_info_;
   ColumnInfoProvider column_info_;
   PayloadProvider meta_payload_provider_;  // provides payload for new segments

@@ -227,7 +227,7 @@ namespace analysis {
 stemming_token_stream::stemming_token_stream(const options_t& options)
   : options_{options}, term_eof_{true} {}
 
-/*static*/ void stemming_token_stream::init() {
+void stemming_token_stream::init() {
   REGISTER_ANALYZER_JSON(stemming_token_stream, make_json,
                          normalize_json_config);  // match registration above
   REGISTER_ANALYZER_VPACK(analysis::stemming_token_stream, make_vpack,

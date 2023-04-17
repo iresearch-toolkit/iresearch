@@ -129,22 +129,21 @@ void numeric_token_stream::reset(double_t value,
   num_.reset(value, step);
 }
 
-/*static*/ bytes_view numeric_token_stream::value(bstring& buf, int32_t value) {
+bytes_view numeric_token_stream::value(bstring& buf, int32_t value) {
   return numeric_term::value(buf, value);
 }
 
-/*static*/ bytes_view numeric_token_stream::value(bstring& buf, int64_t value) {
+bytes_view numeric_token_stream::value(bstring& buf, int64_t value) {
   return numeric_term::value(buf, value);
 }
 
 #ifndef FLOAT_T_IS_DOUBLE_T
-/*static*/ bytes_view numeric_token_stream::value(bstring& buf, float_t value) {
+bytes_view numeric_token_stream::value(bstring& buf, float_t value) {
   return numeric_term::value(buf, value);
 }
 #endif
 
-/*static*/ bytes_view numeric_token_stream::value(bstring& buf,
-                                                  double_t value) {
+bytes_view numeric_token_stream::value(bstring& buf, double_t value) {
   return numeric_term::value(buf, value);
 }
 
