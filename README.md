@@ -123,7 +123,7 @@ versions/revisions of data in the said directory.
 
 ### [CMake](https://cmake.org)
 
-v3.2 or later
+v3.10 or later
 
 ### [Boost](http://www.boost.org/doc/libs/1_57_0/more/getting_started/index.html)
 
@@ -523,7 +523,7 @@ the first whitespace is ignored), in the directory corresponding to its language
 
 ## License
 
-Copyright (c) 2017-2022 ArangoDB GmbH
+Copyright (c) 2017-2023 ArangoDB GmbH
 
 Copyright (c) 2016-2017 EMC Corporation
 
