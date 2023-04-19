@@ -276,7 +276,7 @@ if (uring_FOUND)
 endif ()
 
 if (MSVC)
-  set(DL_LIBRARY "Dbghelp.lib")
+  set(DL_LIBRARY "Dbghelp.lib")  # TODO Try to remove it
 else ()
   set(DL_LIBRARY dl)
 endif ()

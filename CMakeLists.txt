@@ -218,8 +218,8 @@ find_package(Lz4 REQUIRED)
 find_package(ICU REQUIRED)
 find_package(Snowball REQUIRED)
 
-# Important note, now we include it before everything except c libraries
-# I think it's better to before they too, but now it is causing build issues
+# Important note, now we include it before everything except C libraries
+# TODO: I think we can try to include Sanitizers before C libraries, but now it may cause build issues
 include(Sanitize)
 
 # set external dirs
