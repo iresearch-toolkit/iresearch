@@ -88,7 +88,6 @@ endif ()
 
 # found the configure enabled source directory
 if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
-  set(ICU_FOUND TRUE)
   set(ICU_WORK_PATH "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-icu.dir")
   set(ICU_INCLUDE_PATH "${ICU_WORK_PATH}/build/include")
   set(ICU_LIBRARY_PATH "${ICU_WORK_PATH}/ebuild/lib")
@@ -122,17 +121,27 @@ if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
     set(N 1)
   endif ()
   message("${N} -- processor count")
+  if (NOT ICU_WAS_BUILD)
+    execute_process(
+      COMMAND "${ICU_SRC_DIR_CONFIGURE}" "--disable-samples" "--disable-tests" "--enable-static" "--srcdir=${ICU_SRC_DIR_PARENT}" "--prefix=${ICU_WORK_PATH}/build" "--exec-prefix=${ICU_WORK_PATH}/ebuild"
+      WORKING_DIRECTORY "${ICU_WORK_PATH}"
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+    execute_process(
+      COMMAND make -j ${N} install
+      WORKING_DIRECTORY "${ICU_WORK_PATH}"
+      COMMAND_ERROR_IS_FATAL ANY
+    )
+  endif ()
+  set(ICU_WAS_BUILD TRUE CACHE BOOL "")
   add_custom_target(icu-build
-    COMMAND test -d "${ICU_LIBRARY_PATH}" || "${ICU_SRC_DIR_CONFIGURE}" "--disable-samples" "--disable-tests" "--enable-static" "--srcdir=${ICU_SRC_DIR_PARENT}" "--prefix=${ICU_WORK_PATH}/build" "--exec-prefix=${ICU_WORK_PATH}/ebuild"
-    COMMAND test -d "${ICU_LIBRARY_PATH}" || make -j ${N} install
+    COMMAND "${ICU_SRC_DIR_CONFIGURE}" "--disable-samples" "--disable-tests" "--enable-static" "--srcdir=${ICU_SRC_DIR_PARENT}" "--prefix=${ICU_WORK_PATH}/build" "--exec-prefix=${ICU_WORK_PATH}/ebuild"
+    COMMAND make -j ${N} install
     WORKING_DIRECTORY "${ICU_WORK_PATH}"
     VERBATIM
     )
-  # Uncomment this return statement to create an icu build target: icu-build
-  # Then run build icu-build
-  # Then comment out this statement
-  # return()
   list(APPEND ICU_SEARCH_LIB_PATHS ${ICU_LIBRARY_PATH})
+  set(ICU_FOUND TRUE)
 endif ()
 
 include(Utils)
@@ -273,7 +282,6 @@ include(FindPackageHandleStandardArgs)
 # If have error here you should install package with static and dynamic icu: libicu-dev for example
 # Or you can clone icu https://github.com/unicode-org/icu
 # And specify cmake variable ICU_ROOT=git src repo/icu4c
-# Then check line 122 this file
 find_package_handle_standard_args(ICU
   DEFAULT_MSG
   ICU_INCLUDE_DIR

@@ -47,7 +47,9 @@
 #error "compiler is not supported"
 #endif
 
-#ifndef IRS_DISABLE_LOG
+#ifdef IRS_DISABLE_LOG
+#define IRS_FORCE_INLINE inline
+#else
 #define IRS_FORCE_INLINE inline __attribute__((always_inline))
 #endif
 #define IRS_NO_INLINE __attribute__((noinline))
