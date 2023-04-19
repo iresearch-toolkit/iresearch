@@ -20,28 +20,24 @@
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "utils/assert.hpp"
+#pragma once
 
-#include <type_traits>
-#include <utility>
+// TODO(MBkkt) replace with std::source_location in future
 
-#include "source_location.hpp"
+#include <cstddef>
+#include <string_view>
 
-namespace irs::assert {
+#include "shared.hpp"
 
-static Callback kCallback = nullptr;
+namespace irs {
 
-Callback SetCallback(Callback callback) noexcept {
-  return std::exchange(kCallback, callback);
-}
+struct SourceLocation {
+  std::string_view file;
+  std::size_t line;
+  std::string_view func;
+};
 
-static_assert(std::is_same_v<Callback, decltype(&Message)>,
-              "We want tail call optimization for this call");
+}  // namespace irs
 
-void Message(SourceLocation&& location, std::string_view message) {
-  if (IRS_LIKELY(kCallback != nullptr)) {
-    kCallback(std::move(location), message);
-  }
-}
-
-}  // namespace irs::assert
+#define IRS_SOURCE_LOCATION \
+  irs::SourceLocation { __FILE__, __LINE__, IRS_FUNC_NAME }

@@ -28,6 +28,7 @@
 #include <string_view>
 
 #include "collation_token_stream_encoder.hpp"
+#include "utils/log.hpp"
 #include "utils/vpack_utils.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
@@ -42,23 +43,21 @@ constexpr std::string_view LOCALE_PARAM_NAME{"locale"};
 
 bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
   if (!slice.isString()) {
-    IR_FRMT_WARN(
-      "Non-string value in '%s' while constructing "
-      "collation_token_stream from VPack arguments",
-      LOCALE_PARAM_NAME.data());
+    IRS_LOG_WARN(absl::StrCat(
+      "Non-string value in '", LOCALE_PARAM_NAME,
+      "' while constructing collation_token_stream from VPack arguments"));
 
     return false;
   }
 
-  const auto locale_name = get_string<std::string>(slice);
+  const auto locale_name = slice.copyString();
 
   locale = icu::Locale::createCanonical(locale_name.c_str());
 
   if (locale.isBogus()) {
-    IR_FRMT_WARN(
-      "Failed to instantiate locale from the supplied string '%s' "
-      "while constructing collation_token_stream from VPack arguments",
-      locale_name.c_str());
+    IRS_LOG_WARN(absl::StrCat(
+      "Failed to instantiate locale from the supplied string '", locale_name,
+      "' while constructing collation_token_stream from VPack arguments"));
 
     return false;
   }
@@ -69,22 +68,17 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
     icu::Collator::createInstance(locale, err)};
 
   if (!collator) {
-    IR_FRMT_WARN("Can't instantiate icu::Collator from locale '%s'",
-                 locale_name.c_str());
+    IRS_LOG_WARN(absl::StrCat("Can't instantiate icu::Collator from locale: ",
+                              locale_name));
     return false;
   }
 
   // print warn message
   if (err != UErrorCode::U_ZERO_ERROR) {
-    if (U_FAILURE(err)) {
-      IR_FRMT_WARN(
-        "Failure while instantiation of icu::Collator from locale '%s' : '%s'",
-        locale_name.c_str(), u_errorName(err));
-    } else {
-      IR_FRMT_TRACE(
-        "Warning while instantiation of icu::Collator from locale '%s' : '%s'",
-        locale_name.c_str(), u_errorName(err));
-    }
+    IRS_LOG(
+      U_FAILURE(err) ? log::Level::kWarn : log::Level::kTrace,
+      absl::StrCat("Failure while instantiation of icu::Collator from locale: ",
+                   locale_name, ", ", u_errorName(err)));
   }
 
   return U_SUCCESS(err);
@@ -93,7 +87,7 @@ bool locale_from_slice(VPackSlice slice, icu::Locale& locale) {
 bool parse_vpack_options(const VPackSlice slice,
                          analysis::collation_token_stream::options_t& options) {
   if (!slice.isObject()) {
-    IR_FRMT_ERROR("Slice for collation_token_stream is not an object");
+    IRS_LOG_ERROR("Slice for collation_token_stream is not an object");
     return false;
   }
 
@@ -101,22 +95,20 @@ bool parse_vpack_options(const VPackSlice slice,
     const auto locale_slice = slice.get(LOCALE_PARAM_NAME);
 
     if (locale_slice.isNone()) {
-      IR_FRMT_ERROR(
-        "Missing '%s' while constructing collation_token_stream "
-        "from VPack arguments",
-        LOCALE_PARAM_NAME.data());
+      IRS_LOG_ERROR(absl::StrCat(
+        "Missing '", LOCALE_PARAM_NAME,
+        "' while constructing collation_token_stream from VPack arguments"));
 
       return false;
     }
 
     return locale_from_slice(locale_slice, options.locale);
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing collation_token_stream from "
-      "VPack",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing collation_token_stream from VPack"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing collation_token_stream from "
       "VPack arguments");
   }
@@ -178,17 +170,17 @@ bool normalize_vpack_config(std::string_view args, std::string& config) {
 analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while constructing collation_token_stream");
+      IRS_LOG_ERROR("Null arguments while constructing collation_token_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing collation_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing collation_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing collation_token_stream from JSON");
   }
   return nullptr;
@@ -197,7 +189,7 @@ analysis::analyzer::ptr make_json(std::string_view args) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while normalizing collation_token_stream");
+      IRS_LOG_ERROR("Null arguments while normalizing collation_token_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -207,11 +199,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing collation_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing collation_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing collation_token_stream from JSON");
   }
   return false;
@@ -287,10 +279,10 @@ bool collation_token_stream::reset(std::string_view data) {
   --term_size;
   IRS_ASSERT(0 == buf[term_size]);
   if (term_size > static_cast<int32_t>(sizeof raw_term_buf)) {
-    IR_FRMT_ERROR(
-      "Collated token is %d bytes length which exceeds maximum allowed "
-      "length of %d bytes",
-      term_size, static_cast<int32_t>(sizeof raw_term_buf));
+    IRS_LOG_ERROR(
+      absl::StrCat("Collated token is ", term_size,
+                   " bytes length which exceeds maximum allowed length of ",
+                   static_cast<int32_t>(sizeof raw_term_buf), " bytes"));
     return false;
   }
   size_t termBufIdx = static_cast<size_t>(term_size);
@@ -303,9 +295,9 @@ bool collation_token_stream::reset(std::string_view data) {
                     kRecalcMap.size());
       const auto [offset, size] = kRecalcMap[raw_term_buf[i]];
       if ((termBufIdx + size) > sizeof state_->term_buf) {
-        IR_FRMT_ERROR(
-          "Collated token is more than %d bytes length after encoding.",
-          static_cast<int32_t>(sizeof state_->term_buf));
+        IRS_LOG_ERROR(absl::StrCat("Collated token is more than ",
+                                   sizeof state_->term_buf,
+                                   " bytes length after encoding."));
         return false;
       }
       IRS_ASSERT(size <= 2);

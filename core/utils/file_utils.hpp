@@ -89,10 +89,26 @@
 #endif
 #endif
 
-using path_char_t = std::filesystem::path::value_type;
-#define file_path_t path_char_t*
+#ifdef _WIN32
+#define GET_ERROR() GetLastError()
+#else
+#define GET_ERROR() errno
+#endif
 
+namespace irs {
+
+using path_char_t = std::filesystem::path::value_type;
+
+}  // namespace irs
 namespace irs::file_utils {
+
+inline auto ToStr(const path_char_t* path) {
+  if constexpr (std::is_same_v<path_char_t, char>) {
+    return path;
+  } else {
+    return std::filesystem::path{path}.string();
+  }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         lock file
@@ -104,26 +120,26 @@ struct lock_file_deleter {
 
 typedef std::unique_ptr<void, lock_file_deleter> lock_handle_t;
 
-lock_handle_t create_lock_file(const file_path_t file);
-bool verify_lock_file(const file_path_t file);
+lock_handle_t create_lock_file(const path_char_t* file);
+bool verify_lock_file(const path_char_t* file);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool absolute(bool& result, const file_path_t path) noexcept;
+bool absolute(bool& result, const path_char_t* path) noexcept;
 
-bool block_size(file_blksize_t& result, const file_path_t file) noexcept;
+bool block_size(file_blksize_t& result, const path_char_t* file) noexcept;
 bool block_size(file_blksize_t& result, void* fd) noexcept;
-bool byte_size(uint64_t& result, const file_path_t file) noexcept;
+bool byte_size(uint64_t& result, const path_char_t* file) noexcept;
 bool byte_size(uint64_t& result, int fd) noexcept;
 bool byte_size(uint64_t& result, void* fd) noexcept;
 
-bool exists(bool& result, const file_path_t file) noexcept;
-bool exists_directory(bool& result, const file_path_t file) noexcept;
-bool exists_file(bool& result, const file_path_t file) noexcept;
+bool exists(bool& result, const path_char_t* file) noexcept;
+bool exists_directory(bool& result, const path_char_t* file) noexcept;
+bool exists_file(bool& result, const path_char_t* file) noexcept;
 
-bool mtime(time_t& result, const file_path_t file) noexcept;
+bool mtime(time_t& result, const path_char_t* file) noexcept;
 
 enum class OpenMode : uint16_t { Invalid = 0, Read = 1, Write = 2, Direct = 4 };
 
@@ -135,13 +151,13 @@ struct file_deleter {
 
 typedef std::unique_ptr<void, file_deleter> handle_t;
 
-handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept;
+handle_t open(const path_char_t* path, OpenMode mode, int advice) noexcept;
 handle_t open(void* file, OpenMode mode, int advice) noexcept;
 
-bool mkdir(const file_path_t path,
+bool mkdir(const path_char_t* path,
            bool createNew) noexcept;  // recursive directory creation
 
-bool move(const file_path_t src_path, const file_path_t dst_path) noexcept;
+bool move(const path_char_t* src_path, const path_char_t* dst_path) noexcept;
 
 size_t fread(void* fd, void* buf, size_t size);
 size_t fwrite(void* fd, const void* buf, size_t size);
@@ -162,21 +178,22 @@ struct path_parts_t {
   ref_t stem;       // basename without extension (ref_t{} if not present)
 };
 
-path_parts_t path_parts(const file_path_t path) noexcept;
+path_parts_t path_parts(const path_char_t* path) noexcept;
 
 bool read_cwd(std::basic_string<path_char_t>& result) noexcept;
 
 void ensure_absolute(std::filesystem::path& path);
 
-bool remove(const file_path_t path) noexcept;
+bool remove(const path_char_t* path) noexcept;
 
-bool set_cwd(const file_path_t path) noexcept;
+bool set_cwd(const path_char_t* path) noexcept;
 
-bool visit_directory(const file_path_t name,
-                     const std::function<bool(const file_path_t name)>& visitor,
-                     bool include_dot_dir = true);
+bool visit_directory(
+  const path_char_t* name,
+  const std::function<bool(const path_char_t* name)>& visitor,
+  bool include_dot_dir = true);
 
-bool file_sync(const file_path_t name) noexcept;
+bool file_sync(const path_char_t* name) noexcept;
 bool file_sync(int fd) noexcept;
 
 }  // namespace irs::file_utils

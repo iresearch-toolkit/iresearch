@@ -103,37 +103,35 @@ constexpr std::string_view DELIMITER_PARAM_NAME{"delimiter"};
 
 bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
   if (!slice.isObject() && !slice.isString()) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Slice for delimited_token_stream is not an object or string");
     return false;
   }
 
   switch (slice.type()) {
     case VPackValueType::String:
-      delimiter = irs::get_string<std::string_view>(slice);
+      delimiter = slice.stringView();
       return true;
     case VPackValueType::Object:
-      if (slice.hasKey(DELIMITER_PARAM_NAME)) {
-        auto delim_type_slice = slice.get(DELIMITER_PARAM_NAME);
+      if (auto delim_type_slice = slice.get(DELIMITER_PARAM_NAME);
+          !delim_type_slice.isNone()) {
         if (!delim_type_slice.isString()) {
-          IR_FRMT_WARN(
-            "Invalid type '%s' (string expected) for delimited_token_stream "
-            "from "
-            "VPack arguments",
-            DELIMITER_PARAM_NAME.data());
+          IRS_LOG_WARN(
+            absl::StrCat("Invalid type '", DELIMITER_PARAM_NAME,
+                         "' (string expected) for delimited_token_stream from "
+                         "VPack arguments"));
           return false;
         }
-        delimiter = irs::get_string<std::string_view>(delim_type_slice);
+        delimiter = delim_type_slice.stringView();
         return true;
       }
     default: {
     }  // fall through
   }
 
-  IR_FRMT_ERROR(
-    "Missing '%s' while constructing delimited_token_stream from VPack "
-    "arguments",
-    DELIMITER_PARAM_NAME.data());
+  IRS_LOG_ERROR(absl::StrCat(
+    "Missing '", DELIMITER_PARAM_NAME,
+    "' while constructing delimited_token_stream from VPack arguments"));
 
   return false;
 }
@@ -195,17 +193,17 @@ bool normalize_vpack_config(std::string_view args, std::string& definition) {
 irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while constructing delimited_token_stream");
+      IRS_LOG_ERROR("Null arguments while constructing delimited_token_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing delimited_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing delimited_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing delimited_token_stream from JSON");
   }
   return nullptr;
@@ -214,7 +212,7 @@ irs::analysis::analyzer::ptr make_json(std::string_view args) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while normalizing delimited_token_stream");
+      IRS_LOG_ERROR("Null arguments while normalizing delimited_token_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -224,11 +222,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing delimited_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing delimited_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing delimited_token_stream from JSON");
   }
   return false;

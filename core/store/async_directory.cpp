@@ -251,7 +251,7 @@ class AsyncIndexOutput final : public index_output {
  public:
   DEFINE_FACTORY_INLINE(AsyncIndexOutput);
 
-  static index_output::ptr open(const file_path_t name,
+  static index_output::ptr open(const path_char_t* name,
                                 AsyncFilePtr&& async) noexcept;
 
   void write_int(int32_t value) final;
@@ -315,7 +315,7 @@ class AsyncIndexOutput final : public index_output {
   size_t start_{};    // position of the buffer in file
 };
 
-index_output::ptr AsyncIndexOutput::open(const file_path_t name,
+index_output::ptr AsyncIndexOutput::open(const path_char_t* name,
                                          AsyncFilePtr&& async) noexcept {
   IRS_ASSERT(name);
 
@@ -327,13 +327,9 @@ index_output::ptr AsyncIndexOutput::open(const file_path_t name,
     file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 
   if (nullptr == handle) {
-#ifdef _WIN32
-    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                  GetLastError(), std::filesystem::path{name}.c_str());
-#else
-    IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno,
-                  std::filesystem::path{name}.c_str());
-#endif
+    IRS_LOG_ERROR(
+      absl::StrCat("Failed to open output file, error: ", GET_ERROR(),
+                   ", path: ", file_utils::ToStr(name)));
 
     return nullptr;
   }

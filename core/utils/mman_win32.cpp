@@ -56,7 +56,7 @@ DWORD page_protection(int prot) noexcept {
       return PAGE_EXECUTE_READWRITE;
   }
 
-  IR_FRMT_ERROR("Can't convert protection level %d, use PAGE_NOACCESS", prot);
+  IRS_LOG_ERROR("Can't convert protection level %d, use PAGE_NOACCESS", prot);
 
   return PAGE_NOACCESS;  // fallback
 }

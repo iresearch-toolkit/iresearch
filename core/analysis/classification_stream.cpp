@@ -48,29 +48,29 @@ bool parse_vpack_options(const VPackSlice slice,
   if (VPackValueType::Object == slice.type()) {
     auto model_location_slice = slice.get(MODEL_LOCATION_PARAM_NAME);
     if (!model_location_slice.isString()) {
-      IR_FRMT_ERROR(
-        "Invalid vpack while %s classification_stream from VPack arguments. %s "
-        "value should be a string.",
-        action, MODEL_LOCATION_PARAM_NAME.data());
+      IRS_LOG_ERROR(
+        absl::StrCat("Invalid vpack while ", action,
+                     " classification_stream from VPack arguments. ",
+                     MODEL_LOCATION_PARAM_NAME, " value should be a string."));
       return false;
     }
-    options.model_location = irs::get_string<std::string>(model_location_slice);
+    options.model_location = model_location_slice.stringView();
     auto top_k_slice = slice.get(TOP_K_PARAM_NAME);
     if (!top_k_slice.isNone()) {
       if (!top_k_slice.isNumber()) {
-        IR_FRMT_ERROR(
-          "Invalid vpack while %s classification_stream from VPack arguments. "
-          "%s value should be an integer.",
-          action, TOP_K_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid vpack while ", action,
+                       " classification_stream from VPack arguments. ",
+                       TOP_K_PARAM_NAME, " value should be an integer."));
         return false;
       }
       const auto top_k = top_k_slice.getNumber<size_t>();
 
       if (top_k > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
-        IR_FRMT_ERROR(
-          "Invalid value provided while %s classification_stream from VPack "
-          "arguments. %s value should be an int32_t.",
-          action, TOP_K_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid value provided while ", action,
+                       " classification_stream from VPack arguments. ",
+                       TOP_K_PARAM_NAME, " value should be an int32_t."));
         return false;
       }
 
@@ -80,18 +80,18 @@ bool parse_vpack_options(const VPackSlice slice,
     auto threshold_slice = slice.get(THRESHOLD_PARAM_NAME);
     if (!threshold_slice.isNone()) {
       if (!threshold_slice.isNumber()) {
-        IR_FRMT_ERROR(
-          "Invalid vpack while %s classification_stream from VPack arguments. "
-          "%s value should be a double.",
-          action, THRESHOLD_PARAM_NAME.data());
+        IRS_LOG_ERROR(
+          absl::StrCat("Invalid vpack while ", action,
+                       " classification_stream from VPack arguments. ",
+                       THRESHOLD_PARAM_NAME, " value should be a double."));
         return false;
       }
       const auto threshold = threshold_slice.getNumber<double>();
       if (threshold < 0.0 || threshold > 1.0) {
-        IR_FRMT_ERROR(
-          "Invalid value provided while %s classification_stream from VPack "
-          "arguments. %s value should be between 0.0 and 1.0 (inclusive).",
-          action, TOP_K_PARAM_NAME.data());
+        IRS_LOG_ERROR(absl::StrCat(
+          "Invalid value provided while ", action,
+          " classification_stream from VPack arguments. ", TOP_K_PARAM_NAME,
+          " value should be between 0.0 and 1.0 (inclusive)."));
         return false;
       }
       options.threshold = threshold;
@@ -99,10 +99,9 @@ bool parse_vpack_options(const VPackSlice slice,
     return true;
   }
 
-  IR_FRMT_ERROR(
-    "Invalid vpack while %s classification_stream from VPack arguments. Object "
-    "was expected.",
-    action);
+  IRS_LOG_ERROR(absl::StrCat(
+    "Invalid vpack while ", action,
+    " classification_stream from VPack arguments. Object was expected."));
 
   return false;
 }
@@ -122,12 +121,13 @@ analyzer::ptr construct(const classification_stream::Options& options) {
       model = new_model;
     }
   } catch (const std::exception& e) {
-    IR_FRMT_ERROR(
-      "Failed to load fasttext classification model from '%s', error '%s'",
-      options.model_location.c_str(), e.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Failed to load fasttext classification model from: ",
+                   options.model_location, ", error: ", e.what()));
   } catch (...) {
-    IR_FRMT_ERROR("Failed to load fasttext classification model from '%s'",
-                  options.model_location.c_str());
+    IRS_LOG_ERROR(
+      absl::StrCat("Failed to load fasttext classification model from: ",
+                   options.model_location));
   }
 
   if (!model) {
@@ -153,17 +153,17 @@ analyzer::ptr make_vpack(std::string_view args) {
 analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while constructing classification_stream ");
+      IRS_LOG_ERROR("Null arguments while constructing classification_stream ");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing classification_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing classification_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing classification_stream from JSON");
   }
   return nullptr;
@@ -201,7 +201,7 @@ bool normalize_vpack_config(std::string_view args, std::string& config) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while normalizing classification_stream ");
+      IRS_LOG_ERROR("Null arguments while normalizing classification_stream ");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data());
@@ -211,11 +211,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing classification_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing classification_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing classification_stream from JSON");
   }
   return false;

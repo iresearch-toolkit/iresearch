@@ -257,64 +257,6 @@ SNOWBALL_ROOT=<path-to-snowball>
 
 point VPACK_ROOT at the source directory to build together with IResearch
 
-### [BFD](https://sourceware.org/binutils/) <optional>
-
-#### install (*nix)
-
-via the distributions' package manager: libbfd
-or
-build from source via:
-
-```bash
-cd libiberty
-env CFLAGS=-fPIC ./configure
-make
-
-cd ../zlib
-env CFLAGS=-fPIC ./configure
-make
-
-cd ../bfd
-env LDFLAGS='-L../libiberty -liberty' ./configure --enable-targets=all --enable-shared
-make
-```
-
-#### install (win32)
-
-not yet available for win32
-
-#### set environment
-
-Note: BINUTILS_ROOT is a "reserved" variable internally used by some of the gcc compiler tools.
-
-```bash
-BFD_ROOT=<path-to-binutils>
-```
-
-### [Unwind](http://www.nongnu.org/libunwind/) <optional>
-
-#### install (*nix)
-
-via the distributions' package manager: libunwind
-or
-build from source via:
-
-```bash
-configure
-make
-make install
-```
-
-#### install (win32)
-
-not yet available for win32
-
-#### set environment
-
-```bash
-UNWIND_ROOT=<path-to-unwind>
-```
-
 ### [Gooogle test](https://code.google.com/p/googletest)
 
 #### install (*nix)

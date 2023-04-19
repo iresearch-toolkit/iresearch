@@ -46,14 +46,4 @@ inline std::string slice_to_string(
   return str;
 }
 
-// get string from slice
-template<typename T>
-T get_string(VPackSlice slice) {
-  IRS_ASSERT(slice.isString());
-  VPackValueLength length;
-  const char* ptr = slice.getString(length);
-
-  return {ptr, length};
-}
-
 }  // namespace irs

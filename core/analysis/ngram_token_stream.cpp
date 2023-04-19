@@ -54,7 +54,7 @@ bool parse_vpack_options(
   const VPackSlice slice,
   irs::analysis::ngram_token_stream_base::Options& options) {
   if (!slice.isObject()) {
-    IR_FRMT_ERROR("Slice for ngram_token_stream is not an object");
+    IRS_LOG_ERROR("Slice for ngram_token_stream is not an object");
     return false;
   }
 
@@ -67,18 +67,16 @@ bool parse_vpack_options(
   // min
   auto min_type_slice = slice.get(MIN_PARAM_NAME);
   if (min_type_slice.isNone()) {
-    IR_FRMT_ERROR(
-      "Failed to read '%s' attribute as number while constructing "
-      "ngram_token_stream from VPack arguments",
-      MIN_PARAM_NAME.data());
+    IRS_LOG_ERROR(absl::StrCat("Failed to read '", MIN_PARAM_NAME,
+                               "' attribute as number while constructing "
+                               "ngram_token_stream from VPack arguments"));
     return false;
   }
 
   if (!min_type_slice.isNumber()) {
-    IR_FRMT_WARN(
-      "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
-      "VPack arguments",
-      MIN_PARAM_NAME.data());
+    IRS_LOG_WARN(absl::StrCat(
+      "Invalid type '", MIN_PARAM_NAME,
+      "' (unsigned int expected) for ngram_token_stream from VPack arguments"));
     return false;
   }
   min = min_type_slice.getNumber<decltype(min)>();
@@ -86,17 +84,15 @@ bool parse_vpack_options(
   // max
   auto max_type_slice = slice.get(MAX_PARAM_NAME);
   if (max_type_slice.isNone()) {
-    IR_FRMT_ERROR(
-      "Failed to read '%s' attribute as number while constructing "
-      "ngram_token_stream from VPack arguments",
-      MAX_PARAM_NAME.data());
+    IRS_LOG_ERROR(absl::StrCat("Failed to read '", MAX_PARAM_NAME,
+                               "' attribute as number while constructing "
+                               "ngram_token_stream from VPack arguments"));
     return false;
   }
   if (!max_type_slice.isNumber()) {
-    IR_FRMT_WARN(
-      "Invalid type '%s' (unsigned int expected) for ngram_token_stream from "
-      "VPack arguments",
-      MAX_PARAM_NAME.data());
+    IRS_LOG_WARN(absl::StrCat(
+      "Invalid type '", MAX_PARAM_NAME,
+      "' (unsigned int expected) for ngram_token_stream from VPack arguments"));
     return false;
   }
   max = max_type_slice.getNumber<decltype(max)>();
@@ -110,68 +106,62 @@ bool parse_vpack_options(
   // preserve original
   auto preserve_type_slice = slice.get(PRESERVE_ORIGINAL_PARAM_NAME);
   if (preserve_type_slice.isNone()) {
-    IR_FRMT_ERROR(
-      "Failed to read '%s' attribute as boolean while constructing "
-      "ngram_token_stream from VPack arguments",
-      PRESERVE_ORIGINAL_PARAM_NAME.data());
+    IRS_LOG_ERROR(absl::StrCat("Failed to read '", PRESERVE_ORIGINAL_PARAM_NAME,
+                               "' attribute as boolean while constructing "
+                               "ngram_token_stream from VPack arguments"));
     return false;
   }
   if (!preserve_type_slice.isBool()) {
-    IR_FRMT_WARN(
-      "Invalid type '%b' (bool expected) for ngram_token_stream from "
-      "VPack arguments",
-      PRESERVE_ORIGINAL_PARAM_NAME.data());
+    IRS_LOG_WARN(absl::StrCat(
+      "Invalid type '", PRESERVE_ORIGINAL_PARAM_NAME,
+      "' (bool expected) for ngram_token_stream from VPack arguments"));
     return false;
   }
   preserve_original = preserve_type_slice.getBool();
   options.preserve_original = preserve_original;
 
   // start marker
-  if (slice.hasKey(START_MARKER_PARAM_NAME)) {
-    auto start_marker_type_slice = slice.get(START_MARKER_PARAM_NAME);
+  if (auto start_marker_type_slice = slice.get(START_MARKER_PARAM_NAME);
+      !start_marker_type_slice.isNone()) {
     if (!start_marker_type_slice.isString()) {
-      IR_FRMT_WARN(
-        "Invalid type '%s' (string expected) for ngram_token_stream from "
-        "VPack arguments",
-        START_MARKER_PARAM_NAME.data());
+      IRS_LOG_WARN(absl::StrCat(
+        "Invalid type '", START_MARKER_PARAM_NAME,
+        "' (string expected) for ngram_token_stream from VPack arguments"));
       return false;
     }
-    start_marker = irs::get_string<std::string_view>(start_marker_type_slice);
+    start_marker = start_marker_type_slice.stringView();
   }
   options.start_marker = irs::ViewCast<irs::byte_type>(start_marker);
 
   // end marker
-  if (slice.hasKey(END_MARKER_PARAM_NAME)) {
-    auto end_marker_type_slice = slice.get(END_MARKER_PARAM_NAME);
+  if (auto end_marker_type_slice = slice.get(END_MARKER_PARAM_NAME);
+      !end_marker_type_slice.isNone()) {
     if (!end_marker_type_slice.isString()) {
-      IR_FRMT_WARN(
-        "Invalid type '%s' (string expected) for ngram_token_stream from "
-        "VPack arguments",
-        END_MARKER_PARAM_NAME.data());
+      IRS_LOG_WARN(absl::StrCat(
+        "Invalid type '", END_MARKER_PARAM_NAME,
+        "' (string expected) for ngram_token_stream from VPack arguments"));
       return false;
     }
-    end_marker = irs::get_string<std::string_view>(end_marker_type_slice);
+    end_marker = end_marker_type_slice.stringView();
   }
   options.end_marker = irs::ViewCast<irs::byte_type>(end_marker);
 
   // stream bytes
-  if (slice.hasKey(STREAM_TYPE_PARAM_NAME)) {
-    auto stream_type_slice = slice.get(STREAM_TYPE_PARAM_NAME);
+  if (auto stream_type_slice = slice.get(STREAM_TYPE_PARAM_NAME);
+      !stream_type_slice.isNone()) {
     if (!stream_type_slice.isString()) {
-      IR_FRMT_WARN(
-        "Non-string value in '%s' while constructing ngram_token_stream "
-        "from VPack arguments",
-        STREAM_TYPE_PARAM_NAME.data());
+      IRS_LOG_WARN(absl::StrCat(
+        "Non-string value in '", STREAM_TYPE_PARAM_NAME,
+        "' while constructing ngram_token_stream from VPack arguments"));
       return false;
     }
     auto stream_type = stream_type_slice.stringView();
     auto itr = STREAM_TYPE_CONVERT_MAP.find(
       std::string_view(stream_type.data(), stream_type.size()));
     if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
-      IR_FRMT_WARN(
-        "Invalid value in '%s' while constructing ngram_token_stream from "
-        "VPack arguments",
-        STREAM_TYPE_PARAM_NAME.data());
+      IRS_LOG_WARN(absl::StrCat(
+        "Invalid value in '", STREAM_TYPE_PARAM_NAME,
+        "' while constructing ngram_token_stream from VPack arguments"));
       return false;
     }
     stream_bytes_type = itr->second;
@@ -212,9 +202,9 @@ bool make_vpack_config(
       builder->add(STREAM_TYPE_PARAM_NAME,
                    VPackValue(stream_type_value->first));
     } else {
-      IR_FRMT_ERROR("Invalid %s value in ngram analyzer options: %d",
-                    STREAM_TYPE_PARAM_NAME.data(),
-                    static_cast<int>(options.stream_bytes_type));
+      IRS_LOG_ERROR(absl::StrCat("Invalid ", STREAM_TYPE_PARAM_NAME,
+                                 " value in ngram analyzer options: ",
+                                 static_cast<int>(options.stream_bytes_type)));
       return false;
     }
 
@@ -285,17 +275,17 @@ bool normalize_vpack_config(std::string_view args, std::string& config) {
 irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while constructing ngram_token_stream");
+      IRS_LOG_ERROR("Null arguments while constructing ngram_token_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing ngram_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing ngram_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing ngram_token_stream from JSON");
   }
   return nullptr;
@@ -304,7 +294,7 @@ irs::analysis::analyzer::ptr make_json(std::string_view args) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while normalizing ngram_token_stream");
+      IRS_LOG_ERROR("Null arguments while normalizing ngram_token_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -314,11 +304,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing ngram_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing ngram_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing ngram_token_stream from JSON");
   }
   return false;

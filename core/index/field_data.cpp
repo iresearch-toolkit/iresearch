@@ -1003,14 +1003,16 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
   const payload* pay = nullptr;
 
   if (!inc) {
-    IR_FRMT_ERROR("field '%s' missing required token_stream attribute '%s'",
-                  meta_.name.c_str(), type<increment>::name().data());
+    IRS_LOG_ERROR(absl::StrCat("field '", meta_.name,
+                               "' missing required token_stream attribute '",
+                               type<increment>::name(), "'"));
     return false;
   }
 
   if (!term) {
-    IR_FRMT_ERROR("field '%s' missing required token_stream attribute '%s'",
-                  meta_.name.c_str(), type<term_attribute>::name().data());
+    IRS_LOG_ERROR(absl::StrCat("field '", meta_.name,
+                               "' missing required token_stream attribute '",
+                               type<term_attribute>::name(), "'"));
     return false;
   }
 
@@ -1028,14 +1030,15 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
     pos_ += inc->value;
 
     if (pos_ < last_pos_) {
-      IR_FRMT_ERROR("invalid position %u < %u in field '%s'", pos_, last_pos_,
-                    meta_.name.c_str());
+      IRS_LOG_ERROR(absl::StrCat("invalid position ", pos_, " < ", last_pos_,
+                                 " in field '", meta_.name, "'"));
       return false;
     }
 
     if (pos_ >= pos_limits::eof()) {
-      IR_FRMT_ERROR("invalid position %u >= %u in field '%s'", pos_,
-                    pos_limits::eof(), meta_.name.c_str());
+      IRS_LOG_ERROR(absl::StrCat("invalid position ", pos_,
+                                 " >= ", pos_limits::eof(), " in field '",
+                                 meta_.name, "'"));
       return false;
     }
 
@@ -1048,8 +1051,9 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
       const uint32_t end_offset = offs_ + offs->end;
 
       if (start_offset < last_start_offs_ || end_offset < start_offset) {
-        IR_FRMT_ERROR("invalid offset start=%u end=%u in field '%s'",
-                      start_offset, end_offset, meta_.name.c_str());
+        IRS_LOG_ERROR(absl::StrCat("invalid offset start=", start_offset,
+                                   " end=", end_offset, " in field '",
+                                   meta_.name, "'"));
         return false;
       }
 
@@ -1059,20 +1063,20 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
     const auto res = terms_.emplace(term->value);
 
     if (nullptr == res.first) {
-      IR_FRMT_WARN("skipping too long term of size '" IR_SIZE_T_SPECIFIER
-                   "' in field '%s'",
-                   term->value.size(), meta_.name.c_str());
-      IR_FRMT_TRACE("field '%s' contains too long term '%s'",
-                    meta_.name.c_str(), ViewCast<char>(term->value).data());
+      IRS_LOG_WARN(absl::StrCat("skipping too long term of size '",
+                                term->value.size(), "' in field '", meta_.name,
+                                "'"));
+      IRS_LOG_TRACE(absl::StrCat("field '", meta_.name,
+                                 "' contains too long term '",
+                                 ViewCast<char>(term->value), "'"));
       continue;
     }
 
     (this->*proc_table_[size_t(res.second)])(*res.first, id, pay, offs);
 
     if (0 == ++stats_.len) {
-      IR_FRMT_ERROR(
-        "too many tokens in field '%s', document '" IR_UINT32_T_SPECIFIER "'",
-        meta_.name.c_str(), id);
+      IRS_LOG_ERROR(absl::StrCat("too many tokens in field '", meta_.name,
+                                 "', document '", id, "'"));
       return false;
     }
 

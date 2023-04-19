@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "absl/strings/str_cat.h"
 #include "analysis/token_attributes.hpp"
 #include "formats/formats.hpp"
 #include "fst/closure.h"
@@ -359,10 +360,10 @@ inline bool validate(const automaton& a,
                      bool test_props = TEST_AUTOMATON_PROPS) {
   if (fst::kError ==
       a.Properties(automaton_table_matcher::FST_PROPERTIES, test_props)) {
-    IR_FRMT_ERROR(
-      "Expected deterministic, epsilon-free acceptor, "
-      "got the following properties " IR_UINT64_T_SPECIFIER "",
-      a.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+    IRS_LOG_ERROR(absl::StrCat(
+      "Expected deterministic, epsilon-free acceptor, got the following "
+      "properties ",
+      a.Properties(automaton_table_matcher::FST_PROPERTIES, false)));
 
     return false;
   }

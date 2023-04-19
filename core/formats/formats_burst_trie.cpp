@@ -88,13 +88,13 @@
 #include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/directory_utils.hpp"
-#include "utils/fstext/fst_string_weight.h"
+#include "utils/fstext/fst_string_weight.hpp"
 #include "utils/fstext/fst_builder.hpp"
 #include "utils/fstext/fst_decl.hpp"
 #include "utils/fstext/fst_matcher.hpp"
-#include "utils/fstext/fst_string_ref_weight.h"
+#include "utils/fstext/fst_string_ref_weight.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
-#include "utils/fstext/immutable_fst.h"
+#include "utils/fstext/immutable_fst.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
@@ -2200,7 +2200,7 @@ class term_iterator : public term_iterator_base {
 
       if (!terms_in_) {
         // implementation returned wrong pointer
-        IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
+        IRS_LOG_ERROR("Failed to reopen terms input");
 
         throw io_error("failed to reopen terms input");
       }
@@ -3050,7 +3050,7 @@ class field_reader final : public irs::field_reader {
 
         if (!terms_in) {
           // implementation returned wrong pointer
-          IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
+          IRS_LOG_ERROR("Failed to reopen terms input");
 
           throw io_error("failed to reopen terms input");
         }
@@ -3151,7 +3151,7 @@ class field_reader final : public irs::field_reader {
 
       if (!terms_in) {
         // implementation returned wrong pointer
-        IR_FRMT_ERROR("Failed to reopen terms input in: %s", __FUNCTION__);
+        IRS_LOG_ERROR("Failed to reopen terms input");
 
         throw io_error{"Failed to reopen terms input"};  // FIXME
       }

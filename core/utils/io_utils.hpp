@@ -22,8 +22,12 @@
 
 #pragma once
 
-#include "memory.hpp"
+#include "utils/assert.hpp"
+#include "utils/log.hpp"
+#include "utils/memory.hpp"
 #include "utils/string.hpp"
+
+#include <absl/strings/str_cat.h>
 
 #define MAKE_DELETER(method)                                               \
   template<typename T>                                                     \
@@ -32,17 +36,15 @@
     typedef std::default_delete<type> base;                                \
     typedef std::unique_ptr<type, auto_##method<type>> ptr;                \
     void operator()(type* p) const noexcept {                              \
-      if (p) {                                                             \
-        try {                                                              \
-          p->method();                                                     \
-          base::operator()(p);                                             \
-        } catch (const std::exception& e) {                                \
-          IR_FRMT_ERROR("caught exception while closing i/o stream: '%s'", \
-                        e.what());                                         \
-        } catch (...) {                                                    \
-          IR_FRMT_ERROR(                                                   \
-            "caught an unspecified exception while closing i/o stream");   \
-        }                                                                  \
+      try {                                                                \
+        p->method();                                                       \
+        base::operator()(p);                                               \
+      } catch (const std::exception& e) {                                  \
+        IRS_LOG_ERROR(absl::StrCat(                                        \
+          "caught exception while closing i/o stream: '", e.what(), "'")); \
+      } catch (...) {                                                      \
+        IRS_LOG_ERROR(                                                     \
+          "caught an unspecified exception while closing i/o stream");     \
       }                                                                    \
     }                                                                      \
   }

@@ -23,7 +23,7 @@ add_subdirectory(highway)
 
 add_library(sse2neon INTERFACE)
 
-if (IS_ARM)
+if (ARCH_AARCH64)
   set(SSE2NEON_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/sse2neon)
 
   target_include_directories(

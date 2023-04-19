@@ -25,12 +25,14 @@
 #include "log.hpp"
 #include "shared.hpp"
 
+#include <absl/strings/str_cat.h>
+
 #ifdef _WIN32
 #include <WinSock2.h>
 #pragma comment(lib, "Ws2_32.lib")
 #else
 #include <unistd.h>
-#endif  // _WIN32
+#endif
 
 #include <cstring>
 
@@ -46,7 +48,7 @@ int get_host_name(char* name, size_t size) {
   int err;
 
   if (err = WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-    IR_FRMT_ERROR("WSAStartup failed with error: %d", err);
+    IRS_LOG_ERROR(absl::StrCat("WSAStartup failed with error: ", err));
     return -1;
   }
 
@@ -58,17 +60,17 @@ int get_host_name(char* name, size_t size) {
   return err;
 #else
   return gethostname(name, size);
-#endif  // _WIN32
+#endif
 }
 
 #ifdef _WIN32
 #pragma warning(default : 4706)
-#endif  // _WIN32
+#endif
 
 bool is_same_hostname(const char* rhs, size_t size) {
   char name[256] = {};
   if (const int err = get_host_name(name, sizeof name)) {
-    IR_FRMT_ERROR("Unable to get hostname, error: %d", err);
+    IRS_LOG_ERROR(absl::StrCat("Unable to get hostname, error: ", err));
     return false;
   }
 

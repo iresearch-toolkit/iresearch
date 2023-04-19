@@ -22,6 +22,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cstdlib>
+#include <exception>
+
+#include "utils/assert.hpp"
+#include "utils/source_location.hpp"
 #if defined(_MSC_VER)
 #pragma warning(disable : 4101)
 #pragma warning(disable : 4267)
@@ -62,16 +67,15 @@ bool init_handlers(handlers_t&);
 
 namespace {
 
-void AssertCallback(std::string_view file, std::size_t line,
-                    std::string_view function, std::string_view condition,
-                    std::string_view message) noexcept {
-  std::cerr << file << ":" << line << ": " << function << ": Condition '"
-            << condition << "' is false.";
-  if (!message.empty()) {
-    std::cerr << "With message '" << message;
-  }
-  std::cerr << "'\n ";
+void AssertCallback(irs::SourceLocation&& source, std::string_view message) {
+  std::cerr << source.file << ":" << source.line << ": " << source.func
+            << ": Assert failed: " << message << std::endl;
   std::abort();
+}
+
+void LogCallback(irs::SourceLocation&& source, std::string_view message) {
+  std::cerr << source.file << ":" << source.line << ": " << source.func << ": "
+            << message << std::endl;
 }
 
 const std::string HELP = "help";
@@ -89,7 +93,7 @@ std::string get_modes_description(const handlers_t& handlers) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  irs::SetAssertCallback(AssertCallback);
+  irs::assert::SetCallback(AssertCallback);
   handlers_t handlers;
 
   // initialize supported modes
@@ -110,7 +114,8 @@ int main(int argc, char* argv[]) {
   };
 
   // set error level
-  irs::logger::output_le(irs::logger::IRL_ERROR, stderr);
+  irs::log::SetCallback(irs::log::Level::kFatal, &LogCallback);
+  irs::log::SetCallback(irs::log::Level::kError, &LogCallback);
 
   // general description
   cmdline::parser cmdroot;

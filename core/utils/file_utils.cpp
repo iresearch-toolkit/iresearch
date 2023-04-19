@@ -23,6 +23,8 @@
 
 #include "file_utils.hpp"
 
+#include <absl/strings/str_cat.h>
+
 #if defined(__APPLE__)
 #include <sys/param.h>  // for MAXPATHLEN
 #endif
@@ -31,6 +33,7 @@
 #include <sys/types.h>
 
 #ifdef _WIN32
+#define NO_SHLWAPI_STRFCNS
 #include <Shlwapi.h>
 #include <io.h>  // for _get_osfhandle
 
@@ -74,7 +77,7 @@ std::filesystem::path::string_type ensure_path_prefix(
 
 #endif
 
-inline int path_stats(file_stat_t& info, const file_path_t path) {
+inline int path_stats(file_stat_t& info, const irs::path_char_t* path) {
 #ifdef WIN32
   if (wcslen(path) >= path_prefix.size() &&
       !wcsncmp(path, path_prefix.c_str(), path_prefix.size())) {
@@ -133,7 +136,7 @@ void lock_file_deleter::operator()(void* handle) const {
   }
 }
 
-bool exists(const file_path_t file) {
+bool exists(const path_char_t* file) {
 #ifdef _WIN32
   return TRUE == ::PathFileExists(file);
 #else
@@ -239,13 +242,7 @@ int fseek(void* fd, long pos, int origin) {
 #endif
 }
 
-int ferror(void*) {
-#ifdef _WIN32
-  return static_cast<int>(GetLastError());
-#else
-  return errno;
-#endif
-}
+int ferror(void*) { return static_cast<int>(GET_ERROR()); }
 
 long ftell(void* fd) {
 #ifdef _WIN32
@@ -267,7 +264,7 @@ constexpr DWORD FS_DEFERRED_DELETE_TIMEOUT = 10;
 constexpr int CREATE_FILE_TRIES = 3;
 }  // namespace
 
-bool verify_lock_file(const file_path_t file) {
+bool verify_lock_file(const path_char_t* file) {
   if (!exists(file)) {
     return false;  // not locked
   }
@@ -282,7 +279,7 @@ bool verify_lock_file(const file_path_t file) {
                   NULL);
 
   if (INVALID_HANDLE_VALUE == handle) {
-    if (ERROR_SHARING_VIOLATION == GetLastError()) {
+    if (ERROR_SHARING_VIOLATION == GET_ERROR()) {
       return true;  // locked
     }
     return false;  // not locked
@@ -304,23 +301,24 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf);
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'",
-                 buf, std::filesystem::path{file}.c_str());
+    IRS_LOG_INFO(absl::StrCat("Index locked by another host, hostname: '",
+                              std::string_view{buf, len}, "', file: '",
+                              ToStr(file), "'"));
     return true;  // locked
   }
 
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid,
-                 std::filesystem::path{file}.c_str());
+    IRS_LOG_INFO(absl::StrCat("Index locked by another process, PID: '", pid,
+                              "', file: '", ToStr(file), "'"));
     return true;  // locked
   }
 
   return false;  // not locked
 }
 
-lock_handle_t create_lock_file(const file_path_t file) {
+lock_handle_t create_lock_file(const path_char_t* file) {
   HANDLE fd = INVALID_HANDLE_VALUE;
   // windows has a deferred deletion and with rapid locking/unlocking same lock
   // file could fail to be created so we try several times
@@ -335,7 +333,7 @@ lock_handle_t create_lock_file(const file_path_t file) {
                                                    // when process finished
                        NULL);
 
-    if (ERROR_ACCESS_DENIED != GetLastError()) {
+    if (ERROR_ACCESS_DENIED != GET_ERROR()) {
       break;
     } else {
       ::Sleep(FS_DEFERRED_DELETE_TIMEOUT);  // give some time for file system to
@@ -344,8 +342,8 @@ lock_handle_t create_lock_file(const file_path_t file) {
   } while ((--try_count) > 0);
 
   if (INVALID_HANDLE_VALUE == fd) {
-    IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d",
-                  std::filesystem::path{file}.c_str(), GetLastError());
+    IRS_LOG_ERROR(absl::StrCat("Unable to create lock file: '", ToStr(file),
+                               "', error: ", GET_ERROR()));
     return nullptr;
   }
 
@@ -354,13 +352,13 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // write hostname to lock file
   if (const int err = get_host_name(buf, sizeof buf - 1)) {
-    IR_FRMT_ERROR("Unable to get hostname, error: %d", err);
+    IRS_LOG_ERROR(absl::StrCat("Unable to get hostname, error: ", err));
     return nullptr;
   }
 
   if (!file_utils::write(fd, buf, strlen(buf) + 1)) {  // include terminate 0
-    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
-                  std::filesystem::path{file}.c_str(), GetLastError());
+    IRS_LOG_ERROR(absl::StrCat("Unable to write lock file: '", ToStr(file),
+                               "', error: ", GET_ERROR()));
     return nullptr;
   }
 
@@ -371,8 +369,8 @@ lock_handle_t create_lock_file(const file_path_t file) {
   // write PID to lock file
   const size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(fd, buf, size)) {
-    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d",
-                  std::filesystem::path{file}.c_str(), GetLastError());
+    IRS_LOG_ERROR(absl::StrCat("Unable to write lock file: '", ToStr(file),
+                               "', error: ", GET_ERROR()));
     return nullptr;
   }
 
@@ -382,15 +380,15 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // flush buffers
   if (::FlushFileBuffers(fd) <= 0) {
-    IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d ",
-                  std::filesystem::path{file}.c_str(), GetLastError());
+    IRS_LOG_ERROR(absl::StrCat("Unable to flush lock file: '", ToStr(file),
+                               "', error: ", GET_ERROR()));
     return nullptr;
   }
 
   return handle;
 }
 
-bool file_sync(const file_path_t file) noexcept {
+bool file_sync(const path_char_t* file) noexcept {
   HANDLE handle =
     ::CreateFileW(file, GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, NULL,
                   OPEN_EXISTING, 0, NULL);
@@ -416,7 +414,7 @@ bool file_sync(int fd) noexcept {
 
 #else
 
-bool verify_lock_file(const file_path_t file) {
+bool verify_lock_file(const path_char_t* file) {
   if (!exists(file)) {
     return false;  // not locked
   }
@@ -424,8 +422,8 @@ bool verify_lock_file(const file_path_t file) {
   const int fd = ::open(file, O_RDONLY);
 
   if (fd < 0) {
-    IR_FRMT_ERROR("Unable to open lock file '%s' for verification, error: %d",
-                  file, errno);
+    IRS_LOG_ERROR(absl::StrCat("Unable to open lock file '", file,
+                               "' for verification, error: ", errno));
     return false;  // not locked
   }
 
@@ -438,11 +436,11 @@ bool verify_lock_file(const file_path_t file) {
     // try to apply advisory lock on lock file
     if (flock(fd, LOCK_EX | LOCK_NB)) {
       if (EWOULDBLOCK == errno) {
-        IR_FRMT_ERROR("Lock file '%s' is already locked", file);
+        IRS_LOG_ERROR(absl::StrCat("Lock file '", file, "' is already locked"));
         return true;  // locked
       } else {
-        IR_FRMT_ERROR("Unable to apply lock on lock file: '%s', error: %d",
-                      file, errno);
+        IRS_LOG_ERROR(absl::StrCat("Unable to apply lock on lock file: '", file,
+                                   "', error: ", errno));
         return false;  // not locked
       }
     }
@@ -459,8 +457,9 @@ bool verify_lock_file(const file_path_t file) {
   // check hostname
   const size_t len = strlen(buf);  // hostname length
   if (!is_same_hostname(buf, len)) {
-    IR_FRMT_INFO("Index locked by another host, hostname: '%s', file: '%s'",
-                 buf, file);
+    IRS_LOG_INFO(absl::StrCat("Index locked by another host, hostname: '",
+                              std::string_view{buf, len}, "', file: '", file,
+                              "'"));
     return true;  // locked
   }
 
@@ -472,19 +471,20 @@ bool verify_lock_file(const file_path_t file) {
   // check pid
   const char* pid = buf + len + 1;
   if (is_valid_pid(pid)) {
-    IR_FRMT_INFO("Index locked by another process, PID: '%s', file: '%s'", pid,
-                 file);
+    IRS_LOG_INFO(absl::StrCat("Index locked by another process, PID: '", pid,
+                              "', file: '", file, "'"));
     return true;  // locked
   }
 
   return false;  // not locked
 }
 
-lock_handle_t create_lock_file(const file_path_t file) {
+lock_handle_t create_lock_file(const path_char_t* file) {
   const int fd = ::open(file, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
-    IR_FRMT_ERROR("Unable to create lock file: '%s', error: %d", file, errno);
+    IRS_LOG_ERROR(
+      absl::StrCat("Unable to create lock file: '", file, "', error: ", errno));
     return nullptr;
   }
 
@@ -493,40 +493,43 @@ lock_handle_t create_lock_file(const file_path_t file) {
 
   // write hostname to lock file
   if (const int err = get_host_name(buf, sizeof buf - 1)) {
-    IR_FRMT_ERROR("Unable to get hostname, error: %d", err);
+    IRS_LOG_ERROR(absl::StrCat("Unable to get hostname, error: ", err));
     return nullptr;
   }
 
   if (!file_utils::write(reinterpret_cast<void*>(fd), buf,
                          strlen(buf) + 1)) {  // include terminated 0
-    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
+    IRS_LOG_ERROR(
+      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
     return nullptr;
   }
 
   // write PID to lock file
   size_t size = sprintf(buf, "%d", get_pid());
   if (!file_utils::write(reinterpret_cast<void*>(fd), buf, size)) {
-    IR_FRMT_ERROR("Unable to write lock file: '%s', error: %d", file, errno);
+    IRS_LOG_ERROR(
+      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
     return nullptr;
   }
 
   // flush buffers
   if (fsync(fd)) {
-    IR_FRMT_ERROR("Unable to flush lock file: '%s', error: %d", file, errno);
+    IRS_LOG_ERROR(
+      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
     return nullptr;
   }
 
   // try to apply advisory lock on lock file
   if (flock(fd, LOCK_EX)) {
-    IR_FRMT_ERROR("Unable to apply lock on lock file: '%s', error: %d", file,
-                  errno);
+    IRS_LOG_ERROR(
+      absl::StrCat("Unable to write lock file: '", file, "', error: ", errno));
     return nullptr;
   }
 
   return handle;
 }
 
-bool file_sync(const file_path_t file) noexcept {
+bool file_sync(const path_char_t* file) noexcept {
   const int handle = ::open(file, O_WRONLY, S_IRWXU);
   if (handle < 0) {
     return false;
@@ -545,7 +548,7 @@ bool file_sync(int fd) noexcept { return 0 == fsync(fd); }
 // --SECTION--                                                             stats
 // -----------------------------------------------------------------------------
 
-bool absolute(bool& result, const file_path_t path) noexcept {
+bool absolute(bool& result, const path_char_t* path) noexcept {
   if (!path) {
     return false;
   }
@@ -567,7 +570,7 @@ bool absolute(bool& result, const file_path_t path) noexcept {
   return true;
 }
 
-bool block_size(file_blksize_t& result, const file_path_t file) noexcept {
+bool block_size(file_blksize_t& result, const path_char_t* file) noexcept {
   IRS_ASSERT(file != nullptr);
 #ifdef _WIN32
   // TODO FIXME find a workaround
@@ -606,7 +609,7 @@ bool block_size(file_blksize_t& result, int fd) noexcept {
 }
 #endif  // _WIN32
 
-bool byte_size(uint64_t& result, const file_path_t file) noexcept {
+bool byte_size(uint64_t& result, const path_char_t* file) noexcept {
   IRS_ASSERT(file != nullptr);
   file_stat_t info;
 
@@ -645,21 +648,21 @@ bool byte_size(uint64_t& result, int fd) noexcept {
   return true;
 }
 
-bool exists(bool& result, const file_path_t file) noexcept {
+bool exists(bool& result, const path_char_t* file) noexcept {
   IRS_ASSERT(file != nullptr);
   file_stat_t info;
 
   result = 0 == path_stats(info, file);
 
   if (!result && ENOENT != errno) {
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno,
-                  std::filesystem::path{file}.c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to get stat, error ", errno,
+                               " path: ", ToStr(file)));
   }
 
   return true;
 }
 
-bool exists_directory(bool& result, const file_path_t name) noexcept {
+bool exists_directory(bool& result, const path_char_t* name) noexcept {
   IRS_ASSERT(name != nullptr);
   file_stat_t info;
 
@@ -672,14 +675,14 @@ bool exists_directory(bool& result, const file_path_t name) noexcept {
     result = (info.st_mode & S_IFDIR) > 0;
 #endif
   } else if (ENOENT != errno) {
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno,
-                  std::filesystem::path{name}.c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to get stat, error ", errno,
+                               " path: ", ToStr(name)));
   }
 
   return true;
 }
 
-bool exists_file(bool& result, const file_path_t name) noexcept {
+bool exists_file(bool& result, const path_char_t* name) noexcept {
   IRS_ASSERT(name != nullptr);
   file_stat_t info;
 
@@ -692,14 +695,14 @@ bool exists_file(bool& result, const file_path_t name) noexcept {
     result = (info.st_mode & S_IFREG) > 0;
 #endif
   } else if (ENOENT != errno) {
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno,
-                  std::filesystem::path{name}.c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to get stat, error ", errno,
+                               " path: ", ToStr(name)));
   }
 
   return true;
 }
 
-bool mtime(time_t& result, const file_path_t file) noexcept {
+bool mtime(time_t& result, const path_char_t* file) noexcept {
   IRS_ASSERT(file != nullptr);
   file_stat_t info;
 
@@ -716,7 +719,7 @@ bool mtime(time_t& result, const file_path_t file) noexcept {
 // --SECTION--                                                         open file
 // -----------------------------------------------------------------------------
 
-handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
+handle_t open(const path_char_t* path, OpenMode mode, int advice) noexcept {
   // Should be Read or Write but not both or none of them
   IRS_ASSERT(((mode & OpenMode::Read) == OpenMode::Invalid) !=
              ((mode & OpenMode::Write) == OpenMode::Invalid));
@@ -743,8 +746,8 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
         CREATE_ALWAYS;  // while opening for write we infer creation
       break;
     default:
-      IR_FRMT_ERROR("Invalid OpenMode %d specified for file %s",
-                    static_cast<int>(mode), path);
+      IRS_LOG_ERROR(absl::StrCat("Invalid OpenMode ", static_cast<int>(mode),
+                                 " specified for file ", ToStr(path)));
       IRS_ASSERT(false);
       return handle_t(nullptr);
   }
@@ -764,7 +767,7 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
     }
     // this could be pending deletion blocking, if we are recreating file - this
     // is ok, we just try again if this is reading, file is gone, we give up
-    if (ERROR_ACCESS_DENIED != GetLastError() || OpenMode::Write != mode) {
+    if (ERROR_ACCESS_DENIED != GET_ERROR() || OpenMode::Write != mode) {
       break;
     } else {
       Sleep(FS_DEFERRED_DELETE_TIMEOUT);
@@ -783,9 +786,8 @@ handle_t open(const file_path_t path, OpenMode mode, int advice) noexcept {
 #endif
   auto fd = ::open(path ? path : "/dev/null", posix_mode, S_IRUSR | S_IWUSR);
   if (fd < 0) {
-    IR_FRMT_ERROR(
-      "Failed to open file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno,
-      path);
+    IRS_LOG_ERROR(
+      absl::StrCat("Failed to open file, error: ", errno, ", path: ", path));
     return handle_t(nullptr);
   }
 #ifdef __APPLE__
@@ -815,8 +817,8 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
                                          VOLUME_NAME_DOS);  // -1 for \0
 
   if (!length) {
-    IR_FRMT_ERROR("Failed to get filename from file handle, error %d",
-                  GetLastError());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Failed to get filename from file handle, error ", GET_ERROR()));
 
     return nullptr;
   }
@@ -826,10 +828,9 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
     return open(path, mode, advice);
   }
 
-  IR_FRMT_WARN(
-    "Required file path buffer size of %d is greater than the expected size of "
-    "%d, malloc necessary",
-    length + 1, size);  // +1 for \0
+  IRS_LOG_WARN(absl::StrCat("Required file path buffer size of ", length + 1,
+                            " is greater than the expected size of ", size,
+                            ", malloc necessary"));  // +1 for \0
 
   auto buf_size = length + 1;  // +1 for \0
   auto buf = std::make_unique<TCHAR[]>(buf_size);
@@ -842,10 +843,10 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
     return open(buf.get(), mode, advice);
   }
 
-  IR_FRMT_ERROR(
-    "Failed to get filename from file handle, inconsistent length detected, "
-    "first %d then %d",
-    buf_size, length + 1);  // +1 for \0
+  IRS_LOG_ERROR(
+    absl::StrCat("Failed to get filename from file handle, inconsistent length "
+                 "detected, first ",
+                 buf_size, " then ", length + 1));  // +1 for \0
 
   return nullptr;
 #elif defined(__APPLE__)
@@ -860,22 +861,23 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
                               // MAXPATHLEN, +1 for \0
 
   if (0 > fd || 0 > fcntl(fd, F_GETPATH, path)) {
-    IR_FRMT_ERROR("Failed to get file path from file handle, error %d", errno);
+    IRS_LOG_ERROR(
+      absl::StrCat("Failed to get file path from file handle, error ", errno));
     return nullptr;
   }
 
   return open(path, mode, advice);
 #else
   // posix approach is to open the original file via the file descriptor link
-  // under /proc/self/fd the link is garanteed to point to the original inode
+  // under /proc/self/fd the link is guaranteed to point to the original inode
   // even if the original file was removed
   auto fd = handle_cast(file);
   char path[strlen("/proc/self/fd/") + sizeof(fd) * 3 +
             1];  // approximate maximum number of chars, +1 for \0
 
   if (0 > fd || 0 > sprintf(path, "/proc/self/fd/%d", fd)) {
-    IR_FRMT_ERROR("Failed to get system handle from file handle, error %d",
-                  errno);
+    IRS_LOG_ERROR(absl::StrCat(
+      "Failed to get system handle from file handle, error ", errno));
     return nullptr;
   }
 
@@ -887,7 +889,7 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path, bool createNew) noexcept {
+bool mkdir(const path_char_t* path, bool createNew) noexcept {
   bool result;
 
   if (!exists_directory(result, path)) {
@@ -924,12 +926,12 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
   // '\\?\' cannot be used with relative paths
   if (!abs) {
     if (0 == ::CreateDirectoryW(path, nullptr)) {
-      if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
+      if (GET_ERROR() != ERROR_ALREADY_EXISTS || createNew) {
         // failed to create directory  or directory exist, but we are asked to
         // perform creation
 
-        IR_FRMT_ERROR("Failed to create relative path: '%s', error %d",
-                      std::filesystem::path{path}.c_str(), GetLastError());
+        IRS_LOG_ERROR(absl::StrCat("Failed to create relative path: '",
+                                   ToStr(path), "', error ", GET_ERROR()));
         return false;
       }
     }
@@ -947,12 +949,12 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
   dirname = ensure_path_prefix(dirname);
 
   if (0 == ::CreateDirectoryW(dirname.c_str(), nullptr)) {
-    if (::GetLastError() != ERROR_ALREADY_EXISTS || createNew) {
+    if (GET_ERROR() != ERROR_ALREADY_EXISTS || createNew) {
       // failed to create directory  or directory exist, but we are asked to
       // perform creation
 
-      IR_FRMT_ERROR("Failed to create absolute path: '%s', error %d",
-                    std::filesystem::path{path}.c_str(), GetLastError());
+      IRS_LOG_ERROR(absl::StrCat("Failed to create absolute path: '",
+                                 ToStr(path), "', error ", GET_ERROR()));
 
       return false;
     }
@@ -962,7 +964,8 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
     if (errno != EEXIST || createNew) {
       // failed to create directory  or directory exist, but we are asked to
       // perform creation
-      IR_FRMT_ERROR("Failed to create path: '%s', error %d", path, errno);
+      IRS_LOG_ERROR(
+        absl::StrCat("Failed to create path: '", path, "', error ", errno));
       return false;
     }
   }
@@ -971,7 +974,7 @@ bool mkdir(const file_path_t path, bool createNew) noexcept {
   return true;
 }
 
-bool move(const file_path_t src_path, const file_path_t dst_path) noexcept {
+bool move(const path_char_t* src_path, const path_char_t* dst_path) noexcept {
 #ifdef _WIN32
   return 0 != ::MoveFileExW(src_path, dst_path,
                             MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED);
@@ -980,7 +983,7 @@ bool move(const file_path_t src_path, const file_path_t dst_path) noexcept {
 #endif
 }
 
-path_parts_t path_parts(const file_path_t path) noexcept {
+path_parts_t path_parts(const path_char_t* path) noexcept {
   if (!path) {
     return path_parts_t();
   }
@@ -1051,9 +1054,9 @@ bool read_cwd(
     auto size = GetCurrentDirectory(0, nullptr);
 
     if (!size) {
-      IR_FRMT_ERROR(
-        "Failed to get length of the current working directory, error %d",
-        GetLastError());
+      IRS_LOG_ERROR(absl::StrCat(
+        "Failed to get length of the current working directory, error ",
+        GET_ERROR()));
 
       return false;
     }
@@ -1066,8 +1069,8 @@ bool read_cwd(
 
     // if error or more space required than available
     if (!size || size >= result.size()) {
-      IR_FRMT_ERROR("Failed to get the current working directory, error %d",
-                    GetLastError());
+      IRS_LOG_ERROR(absl::StrCat(
+        "Failed to get the current working directory, error ", GET_ERROR()));
 
       return false;
     }
@@ -1099,8 +1102,8 @@ bool read_cwd(
     }
 
     if (ERANGE != errno) {
-      IR_FRMT_ERROR("Failed to get the current working directory, error %d",
-                    errno);
+      IRS_LOG_ERROR(absl::StrCat(
+        "Failed to get the current working directory, error ", errno));
 
       return false;
     }
@@ -1111,8 +1114,8 @@ bool read_cwd(
     std::unique_ptr<char, deleter_t> pcwd(getcwd(nullptr, 0));
 
     if (!pcwd) {
-      IR_FRMT_ERROR(
-        "Failed to allocate the current working directory, error %d", errno);
+      IRS_LOG_ERROR(absl::StrCat(
+        "Failed to allocate the current working directory, error ", errno));
 
       return false;
     }
@@ -1121,15 +1124,14 @@ bool read_cwd(
 #endif
 
     return true;
-  } catch (std::bad_alloc& e) {
-    IR_FRMT_ERROR(
-      "Memory allocation failure while getting the current working directory: "
-      "%s",
-      e.what());
-  } catch (std::exception& e) {
-    IR_FRMT_ERROR(
-      "Caught exception while getting the current working directory: %s",
-      e.what());
+  } catch (const std::bad_alloc& e) {
+    IRS_LOG_ERROR(absl::StrCat(
+      "Memory allocation failure while getting the current working directory: ",
+      e.what()));
+  } catch (const std::exception& e) {
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught exception while getting the current working directory: ",
+      e.what()));
   }
 
   return false;
@@ -1144,7 +1146,7 @@ void ensure_absolute(std::filesystem::path& path) {
   }
 }
 
-bool remove(const file_path_t path) noexcept {
+bool remove(const path_char_t* path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
     std::basic_string<std::filesystem::path::value_type> buf;
@@ -1153,7 +1155,7 @@ bool remove(const file_path_t path) noexcept {
     // ::remove() instead)
     visit_directory(
       path,
-      [path, &buf](const file_path_t name) -> bool {
+      [path, &buf](const path_char_t* name) -> bool {
         buf.assign(path);
         buf += std::filesystem::path::preferred_separator;
         buf += name;
@@ -1181,14 +1183,14 @@ bool remove(const file_path_t path) noexcept {
                  : ::DeleteFileW(path);
 
     if (!res) {  // 0 == error
-      const auto system_error = GetLastError();
-      if (ERROR_FILE_NOT_FOUND ==
-          system_error) {  // file is just not here, so we are done actually
-        IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
-                      std::filesystem::path{path}.c_str(), system_error);
+      const auto system_error = GET_ERROR();
+      if (ERROR_FILE_NOT_FOUND == system_error) {
+        // file is just not here, so we are done actually
+        IRS_LOG_DEBUG(absl::StrCat("Failed to remove path: '", ToStr(path),
+                                   "', error ", system_error));
       } else {
-        IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
-                      std::filesystem::path{path}.c_str(), system_error);
+        IRS_LOG_ERROR(absl::StrCat("Failed to remove path: '", ToStr(path),
+                                   "', error ", system_error));
       }
       return false;
     }
@@ -1212,14 +1214,14 @@ bool remove(const file_path_t path) noexcept {
                : ::DeleteFileW(fullpath.c_str());
 
   if (!res) {  // 0 == error
-    const auto system_error = GetLastError();
-    if (ERROR_FILE_NOT_FOUND ==
-        system_error) {  // file is just not here, so we are done actually
-      IR_FRMT_DEBUG("Failed to remove path: '%s', error %d",
-                    std::filesystem::path{path}.c_str(), system_error);
+    const auto system_error = GET_ERROR();
+    if (ERROR_FILE_NOT_FOUND == system_error) {
+      // file is just not here, so we are done actually
+      IRS_LOG_DEBUG(absl::StrCat("Failed to remove path: '", ToStr(path),
+                                 "', error ", system_error));
     } else {
-      IR_FRMT_ERROR("Failed to remove path: '%s', error %d",
-                    std::filesystem::path{path}.c_str(), system_error);
+      IRS_LOG_ERROR(absl::StrCat("Failed to remove path: '", ToStr(path),
+                                 "', error ", system_error));
     }
 
     return false;
@@ -1229,9 +1231,11 @@ bool remove(const file_path_t path) noexcept {
 
   if (res) {                // non-0 == error
     if (ENOENT == errno) {  // file is just not here, so we are done actually
-      IR_FRMT_DEBUG("Failed to remove path: '%s', error %d", path, errno);
+      IRS_LOG_DEBUG(
+        absl::StrCat("Failed to remove path: '", path, "', error ", errno));
     } else {
-      IR_FRMT_ERROR("Failed to remove path: '%s', error %d", path, errno);
+      IRS_LOG_ERROR(
+        absl::StrCat("Failed to remove path: '", path, "', error ", errno));
     }
     return false;
   }
@@ -1240,7 +1244,7 @@ bool remove(const file_path_t path) noexcept {
   return true;
 }
 
-bool set_cwd(const file_path_t path) noexcept {
+bool set_cwd(const path_char_t* path) noexcept {
 #ifdef _WIN32
   bool abs;
 
@@ -1272,9 +1276,10 @@ bool set_cwd(const file_path_t path) noexcept {
 // --SECTION--                                                   directory utils
 // -----------------------------------------------------------------------------
 
-bool visit_directory(const file_path_t name,
-                     const std::function<bool(const file_path_t name)>& visitor,
-                     bool include_dot_dir /*= true*/) {
+bool visit_directory(
+  const path_char_t* name,
+  const std::function<bool(const path_char_t* name)>& visitor,
+  bool include_dot_dir /*= true*/) {
 #ifdef _WIN32
   std::wstring dirname(name);
 

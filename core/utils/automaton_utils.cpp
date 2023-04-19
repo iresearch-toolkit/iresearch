@@ -394,11 +394,11 @@ filter::prepared::ptr prepare_automaton_filter(
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {
-    IR_FRMT_ERROR(
-      "Expected deterministic, epsilon-free acceptor, "
-      "got the following properties " IR_UINT64_T_SPECIFIER,
-      matcher.GetFst().Properties(automaton_table_matcher::FST_PROPERTIES,
-                                  false));
+    IRS_LOG_ERROR(
+      absl::StrCat("Expected deterministic, epsilon-free acceptor, got the "
+                   "following properties ",
+                   matcher.GetFst().Properties(
+                     automaton_table_matcher::FST_PROPERTIES, false)));
 
     return filter::prepared::empty();
   }

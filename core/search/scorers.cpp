@@ -104,7 +104,7 @@ Scorer::ptr scorers::get(std::string_view name, const type_info& args_format,
 
     return factory ? factory(args) : nullptr;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception while getting a scorer instance");
+    IRS_LOG_ERROR("Caught exception while getting a scorer instance");
   }
 
   return nullptr;
@@ -149,25 +149,26 @@ scorer_registrar::scorer_registrar(
       scorer_register::instance().tag(entry_key_t(type.name(), args_format));
 
     if (source && registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type "
-        "'%s' from %s, previously from %s",
-        type.name().data(), source, registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering scorer, "
+                     "ignoring: type '",
+                     type.name(), "' from ", source_ref, ", previously from ",
+                     *registered_source));
     } else if (source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type "
-        "'%s' from %s",
-        type.name().data(), source);
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering scorer, "
+                     "ignoring: type '",
+                     type.name(), "' from ", source_ref));
     } else if (registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type "
-        "'%s', previously from %s",
-        type.name().data(), registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering scorer, "
+                     "ignoring: type '",
+                     type.name(), "', previously from ", *registered_source));
     } else {
-      IR_FRMT_WARN(
-        "type name collision detected while registering scorer, ignoring: type "
-        "'%s'",
-        type.name().data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering scorer, "
+                     "ignoring: type '",
+                     type.name(), "'"));
     }
   }
 }

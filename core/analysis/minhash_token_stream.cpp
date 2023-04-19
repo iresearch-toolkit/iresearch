@@ -229,10 +229,10 @@ std::pair<std::string_view, velocypack::Slice> ParseAnalyzer(
   const auto typeSlice = slice.get(kTypeParam);
 
   if (!typeSlice.isString()) {
-    IR_FRMT_ERROR(
-      "Failed to read '%s' attribute of '%s' member as string while "
-      "constructing MinHashTokenStream from VPack arguments",
-      kTypeParam.data(), kAnalyzerParam.data());
+    IRS_LOG_ERROR(absl::StrCat("Failed to read '", kTypeParam,
+                               "' attribute of '", kAnalyzerParam,
+                               "' member as string while constructing "
+                               "MinHashTokenStream from VPack arguments"));
     return {};
   }
 
@@ -244,20 +244,18 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
 
   if (const auto num_hashesSlice = slice.get(kNumHashes);
       !num_hashesSlice.isNumber()) {
-    IR_FRMT_ERROR(
-      "Failed to read '%s' attribute as number while "
-      "constructing MinHashTokenStream from VPack arguments",
-      kNumHashes.data());
+    IRS_LOG_ERROR(absl::StrCat("Failed to read '", kNumHashes,
+                               "' attribute as number while constructing "
+                               "MinHashTokenStream from VPack arguments"));
     return false;
   } else {
     opts->num_hashes = num_hashesSlice.getNumber<decltype(opts->num_hashes)>();
   }
 
   if (opts->num_hashes < kMinHashes) {
-    IR_FRMT_ERROR(
-      "Number of hashes must be at least 1, failed to "
-      "construct MinHashTokenStream from VPack arguments",
-      kNumHashes.data());
+    IRS_LOG_ERROR(
+      "Number of hashes must be at least 1, failed to construct "
+      "MinHashTokenStream from VPack arguments");
     return false;
   }
 
@@ -290,11 +288,11 @@ bool ParseVPack(velocypack::Slice slice, MinHashTokenStream::Options* opts) {
       opts->analyzer = std::move(analyzer);
       return true;
     } else {
-      IR_FRMT_ERROR(
-        "Failed to create analyzer of type '%s' with properties '%s' while "
-        "constructing "
-        "MinHashTokenStream pipeline_token_stream from VPack arguments",
-        type.data(), irs::slice_to_string(props).c_str());
+      IRS_LOG_ERROR(absl::StrCat("Failed to create analyzer of type '", type,
+                                 "' with properties '",
+                                 irs::slice_to_string(props),
+                                 "' while constructing MinHashTokenStream "
+                                 "pipeline_token_stream from VPack arguments"));
     }
   }
 
@@ -320,17 +318,17 @@ irs::analysis::analyzer::ptr MakeVPack(std::string_view args) {
 analyzer::ptr MakeJson(std::string_view args) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while constructing MinHashAnalyzer");
+      IRS_LOG_ERROR("Null arguments while constructing MinHashAnalyzer");
       return nullptr;
     }
     auto vpack = velocypack::Parser::fromJson(args.data(), args.size());
     return MakeVPack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing MinHashAnalyzer from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing MinHashAnalyzer from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing MinHashAnalyzer from JSON");
+    IRS_LOG_ERROR("Caught error while constructing MinHashAnalyzer from JSON");
   }
   return nullptr;
 }
@@ -345,7 +343,7 @@ bool MakeVPackOptions(const MinHashTokenStream::Options& opts,
       props = velocypack::Slice::emptyObjectSlice();
     }
   } else if (!analyzerSlice.isNone()) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Failed to normalize definition of MinHashAnalyzer, 'properties' field "
       "must be object");
     return false;
@@ -409,7 +407,7 @@ bool NormalizeVPack(std::string_view args, std::string& definition) {
 bool NormalizeJson(std::string_view args, std::string& definition) {
   try {
     if (IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while normalizing MinHashAnalyzer");
+      IRS_LOG_ERROR("Null arguments while normalizing MinHashAnalyzer");
       return false;
     }
     auto vpack = velocypack::Parser::fromJson(args.data(), args.size());
@@ -419,11 +417,11 @@ bool NormalizeJson(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing MinHashAnalyzer from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing MinHashAnalyzer from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing MinHashAnalyzerfrom from JSON");
   }
   return false;

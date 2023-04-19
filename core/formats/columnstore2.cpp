@@ -404,12 +404,9 @@ class column_base : public column_reader, private util::noncopyable {
       if (irs::IsNull(column_name)) {
         column_name = "<anonymous>";
       }
-      // use string to have always null-terminated name
-      std::string col{column_name};
-      IR_FRMT_WARN(
-        "Failed to allocate memory for buffered column id %llu name: %s of "
-        "size " IR_SIZE_T_SPECIFIER,
-        header().id, col.c_str(), size);
+      IRS_LOG_WARN(
+        absl::StrCat("Failed to allocate memory for buffered column id ",
+                     header().id, " name: ", column_name, " of size ", size));
       return false;
     }
     // should be only one alllocation
@@ -498,7 +495,7 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f,
 
   if (!value_in) {
     // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
+    IRS_LOG_ERROR("Failed to reopen input");
 
     throw io_error{"failed to reopen input"};
   }
@@ -510,7 +507,7 @@ doc_iterator::ptr column_base::make_iterator(Factory&& f,
 
     if (!index_in) {
       // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to duplicate input");
 
       throw io_error{"failed to duplicate input"};
     }
@@ -621,7 +618,7 @@ doc_iterator::ptr make_mask_iterator(const column_base& column,
 
   if (!dup) {
     // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen input in: %s", __FUNCTION__);
+    IRS_LOG_ERROR("Failed to reopen input");
 
     throw io_error{"failed to reopen input"};
   }
@@ -1562,7 +1559,8 @@ bool writer::commit(const flush_state& /*state*/) {
     data_out_.reset();
 
     if (!dir_->remove(data_filename_)) {  // ignore error
-      IR_FRMT_ERROR("Failed to remove file, path: %s", data_filename_.c_str());
+      IRS_LOG_ERROR(
+        absl::StrCat("Failed to remove file, path: ", data_filename_));
     }
 
     return false;  // nothing to flush
@@ -1768,18 +1766,17 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
         if (!direct_data_input) {
           direct_data_input = dir.open(data_filename, IOAdvice::DIRECT_READ);
           if (!direct_data_input) {
-            IR_FRMT_WARN(
-              "Failed to open direct access file, path: %s. Columns buffering "
-              "stopped.",
-              data_filename.data());
+            IRS_LOG_WARN(absl::StrCat(
+              "Failed to open direct access file, path: ", data_filename,
+              ". Columns buffering stopped."));
             break;
           }
         }
-        IR_FRMT_TRACE("Making buffered: %llu", cb->header().id);
+        IRS_LOG_TRACE(absl::StrCat("Making buffered: ", cb->header().id));
         cb->make_buffered(*direct_data_input, memory_accounting,
                           std::span(sorted_columns.data() + i + 1,
                                     sorted_columns.size() - i - 1));
-        IR_FRMT_TRACE("Finished buffered: %llu", cb->header().id);
+        IRS_LOG_TRACE(absl::StrCat("Finished buffered: ", cb->header().id));
       }
     }
   }

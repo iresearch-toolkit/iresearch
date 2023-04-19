@@ -244,7 +244,7 @@ set(IResearch_core_headers
   ./utils/fstext/fst_builder.hpp
   ./utils/fstext/fst_decl.hpp
   ./utils/fstext/fst_table_matcher.hpp
-  ./utils/fstext/fst_string_weight.h
+  ./utils/fstext/fst_string_weight.hpp
   ./utils/mmap_utils.hpp
   ./utils/io_utils.hpp
   ./utils/iterator.hpp
@@ -275,8 +275,9 @@ if (uring_FOUND)
   list(APPEND IResearch_core_sources ./store/async_directory.cpp)
 endif ()
 
-# TODO: use FindLibDL and check linux distr version
-if (NOT MSVC)
+if (MSVC)
+  set(DL_LIBRARY "Dbghelp.lib")  # TODO Try to remove it
+else ()
   set(DL_LIBRARY dl)
 endif ()
 
@@ -287,10 +288,8 @@ include_directories(
 set(IRESEARCH_EXTERNAL_INCLUDES
   ${EXTERNAL_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
-  ${BFD_INCLUDE_DIR}
   ${Lz4_INCLUDE_DIR}
   ${Fasttext_INCLUDE_DIR}
-  ${Unwind_INCLUDE_DIR}
   ${FROZEN_INCLUDE_DIR})
 
 if (SUPPRESS_EXTERNAL_WARNINGS)
@@ -398,12 +397,6 @@ if (USE_IWYU)
   set_property(TARGET iresearch-static PROPERTY CXX_INCLUDE_WHAT_YOU_USE ${IWYU_PATH})
 endif ()
 
-if (MSVC)
-  set(MSVC_ONLY_LIBRARIES "Dbghelp.lib")
-else ()
-  set(MSVC_ONLY_LIBRARIES "")
-endif ()
-
 target_link_libraries(iresearch-static
   PUBLIC iresearch-analyzer-delimiter-static
   PUBLIC iresearch-analyzer-ngram-static
@@ -426,11 +419,8 @@ target_link_libraries(iresearch-static
   PUBLIC absl::flat_hash_set
   PUBLIC absl::crc32c
   ${GCOV_LIBRARY}
-  ${BFD_STATIC_LIBS}
   ${Lz4_STATIC_LIB}
-  ${Unwind_STATIC_LIBS}
   ${DL_LIBRARY}
-  ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
   velocypack
   )

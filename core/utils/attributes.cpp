@@ -23,6 +23,7 @@
 
 #include "attributes.hpp"
 
+#include "absl/strings/str_cat.h"
 #include "utils/register.hpp"
 
 namespace {
@@ -46,7 +47,7 @@ type_info attributes::get(std::string_view name,
   try {
     return attribute_register::instance().get(name, load_library);
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught exception while getting an attribute instance");  // cppcheck-suppress
                                                                 // syntaxError
   }
@@ -67,25 +68,26 @@ attribute_registrar::attribute_registrar(const type_info& type,
     auto* registered_source = attribute_register::instance().tag(type.name());
 
     if (source && registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s' from %s, previously from %s",
-        type.name().data(), source, registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "attribute, ignoring: type '",
+                     type.name(), "' from ", source_ref, ", previously from ",
+                     *registered_source));
     } else if (source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s' from %s",
-        type.name().data(), source);
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "attribute, ignoring: type '",
+                     type.name(), "' from ", source_ref));
     } else if (registered_source) {
-      IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s', previously from %s",
-        type.name().data(), registered_source->data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "attribute, ignoring: type '",
+                     type.name(), "' previously from ", *registered_source));
     } else {
-      IR_FRMT_WARN(
-        "type name collision detected while registering attribute, ignoring: "
-        "type '%s'",
-        type.name().data());
+      IRS_LOG_WARN(
+        absl::StrCat("type name collision detected while registering "
+                     "attribute, ignoring: type '",
+                     type.name(), "'"));
     }
   }
 }

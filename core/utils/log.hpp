@@ -23,152 +23,52 @@
 
 #pragma once
 
-#include <cstdarg>
-#include <exception>
-#include <string>
+#include <string_view>
 
 #include "shared.hpp"
+#include "utils/source_location.hpp"
 
-#if defined(_MSC_VER) || defined(__MINGW32__)
-#define IR_FILEPATH_SPECIFIER "%ws"
-#define IR_UINT32_T_SPECIFIER "%u"
-#define IR_UINT64_T_SPECIFIER "%I64u"
-#define IR_SIZE_T_SPECIFIER "%Iu"
-#define IR_SSIZE_T_SPECIFIER "%Id"
-#define IR_PTRDIFF_T_SPECIFIER "%Id"
-#elif defined(__APPLE__)
-#define IR_FILEPATH_SPECIFIER "%s"
-#define IR_UINT32_T_SPECIFIER "%u"
-#define IR_UINT64_T_SPECIFIER "%llu"
-#define IR_SIZE_T_SPECIFIER "%zu"
-#define IR_SSIZE_T_SPECIFIER "%zd"
-#define IR_PTRDIFF_T_SPECIFIER "%zd"
-#elif defined(__GNUC__)
-#define IR_FILEPATH_SPECIFIER "%s"
-#define IR_UINT32_T_SPECIFIER "%u"
-#define IR_UINT64_T_SPECIFIER "%lu"
-#define IR_SIZE_T_SPECIFIER "%zu"
-#define IR_SSIZE_T_SPECIFIER "%zd"
-#define IR_PTRDIFF_T_SPECIFIER "%zd"
-#else
-static_assert(false, "Unknown size_t, ssize_t, ptrdiff_t specifiers");
-#endif
+namespace irs::log {
 
-namespace irs::logger {
-
-// Use a prefix that doesn't clash with any predefined macros e.g. Win32 'ERROR'
-enum level_t {
-  IRL_FATAL,
-  IRL_ERROR,
-  IRL_WARN,
-  IRL_INFO,
-  IRL_DEBUG,
-  IRL_TRACE,
+enum class Level : uint8_t {
+  kFatal,
+  kError,
+  kWarn,
+  kInfo,
+  kDebug,
+  kTrace,
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief log appender callback
-/// @param context user defined context supplied with the appender callback
-/// @param function source function name. Could be a nullptr.
-/// @param file source file name. Could be a nullptr
-/// @param line source line number
-/// @param level message log level
-/// @param message text to log. Null terminated. Could be a nullptr.
-/// @param message_len length of message text in bytes not including null
-/// terminator.
-////////////////////////////////////////////////////////////////////////////////
-using log_appender_callback_t = void (*)(void* context, const char* function,
-                                         const char* file, int line,
-                                         level_t level, const char* message,
-                                         size_t message_len);
+using Callback = void (*)(SourceLocation&& location, std::string_view message);
 
-bool enabled(level_t level);
+// thread-safe
+Callback GetCallback(Level level) noexcept;
+Callback SetCallback(Level level, Callback callback) noexcept;
 
-// Backward compatible fd-appender control functions
-void output(level_t level, FILE* out);     // nullptr == /dev/null
-void output_le(level_t level, FILE* out);  // nullptr == /dev/null
-// Custom appender control functions
-void output(level_t level, log_appender_callback_t appender,
-            void* context);  // nullptr == appender -> log level disabled
-void output_le(level_t level, log_appender_callback_t appender,
-               void* context);  // nullptr == appender -> log level disabled
-void log(const char* function, const char* file, int line, level_t level,
-         const char* message, size_t len);
-void stack_trace(level_t level);
-void stack_trace(level_t level, const std::exception_ptr& eptr);
-irs::logger::level_t stack_trace_level();  // stack trace output level
-void stack_trace_level(level_t level);     // stack trace output level
+}  // namespace irs::log
 
-#ifndef _MSC_VER  // +1 to skip stack_trace_nomalloc(...)
-void stack_trace_nomalloc(level_t level, int fd, size_t skip = 1);
+// We want to disable log for coverage run
+#ifdef IRS_DISABLE_LOG
+
+#define IRS_LOG(...) ((void)1)
+
+#else
+
+// unlikely because trace/debug/info is commonly disabled,
+// but warn/error/fatal is rare situation
+#define IRS_LOG(level, message)                      \
+  do {                                               \
+    auto* callback = ::irs::log::GetCallback(level); \
+    if (IRS_UNLIKELY(callback != nullptr)) {         \
+      callback(IRS_SOURCE_LOCATION, message);        \
+    }                                                \
+  } while (false)
+
 #endif
 
-namespace detail {
-
-// not everyone who includes header actually logs something, that`s ok
-[[maybe_unused]] inline void log_formatted(const char* function,
-                                           const char* file, int line,
-                                           level_t level, const char* format,
-                                           ...) {
-  va_list args;
-  va_start(args, format);
-  const ptrdiff_t required_len = vsnprintf(nullptr, 0, format, args);
-  va_end(args);
-  if (required_len > 0) {
-    std::string buf(static_cast<size_t>(required_len) + 1, 0);
-    va_list args1;
-    va_start(args1, format);
-    static_cast<void>(vsnprintf(buf.data(), buf.size(), format, args1));
-    va_end(args1);
-    log(function, file, line, level, buf.data(),
-        static_cast<size_t>(required_len));
-  }
-}
-
-}  // namespace detail
-}  // namespace irs::logger
-
-#if defined(_MSC_VER)
-#define IR_LOG_FORMATED(level, format, ...)                               \
-  if (::irs::logger::enabled(level))                                      \
-  ::irs::logger::detail::log_formatted(IRS_FUNC_NAME, __FILE__, __LINE__, \
-                                       level, format, __VA_ARGS__)
-
-#define IR_FRMT_FATAL(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_FATAL, format, __VA_ARGS__)
-#define IR_FRMT_ERROR(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_ERROR, format, __VA_ARGS__)
-#define IR_FRMT_WARN(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_WARN, format, __VA_ARGS__)
-#define IR_FRMT_INFO(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_INFO, format, __VA_ARGS__)
-#define IR_FRMT_DEBUG(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_DEBUG, format, __VA_ARGS__)
-#define IR_FRMT_TRACE(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_TRACE, format, __VA_ARGS__)
-#else  // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
-#define IR_LOG_FORMATED(level, format, ...)                               \
-  if (::irs::logger::enabled(level))                                      \
-  ::irs::logger::detail::log_formatted(IRS_FUNC_NAME, __FILE__, __LINE__, \
-                                       level, format, ##__VA_ARGS__)
-
-#define IR_FRMT_FATAL(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_FATAL, format, ##__VA_ARGS__)
-#define IR_FRMT_ERROR(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_ERROR, format, ##__VA_ARGS__)
-#define IR_FRMT_WARN(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_WARN, format, ##__VA_ARGS__)
-#define IR_FRMT_INFO(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_INFO, format, ##__VA_ARGS__)
-#define IR_FRMT_DEBUG(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_DEBUG, format, ##__VA_ARGS__)
-#define IR_FRMT_TRACE(format, ...) \
-  IR_LOG_FORMATED(::irs::logger::IRL_TRACE, format, ##__VA_ARGS__)
-#endif
-
-#define IR_LOG_STACK_TRACE()                                        \
-  if (::irs::logger::enabled(::irs::logger::stack_trace_level())) { \
-    IR_LOG_FORMATED(::irs::logger::stack_trace_level(),             \
-                    "@%s\nstack trace:", IRS_FUNC_NAME);            \
-    ::irs::logger::stack_trace(::irs::logger::stack_trace_level()); \
-  }
+#define IRS_LOG_FATAL(message) IRS_LOG(::irs::log::Level::kFatal, message)
+#define IRS_LOG_ERROR(message) IRS_LOG(::irs::log::Level::kError, message)
+#define IRS_LOG_WARN(message) IRS_LOG(::irs::log::Level::kWarn, message)
+#define IRS_LOG_INFO(message) IRS_LOG(::irs::log::Level::kInfo, message)
+#define IRS_LOG_DEBUG(message) IRS_LOG(::irs::log::Level::kDebug, message)
+#define IRS_LOG_TRACE(message) IRS_LOG(::irs::log::Level::kTrace, message)

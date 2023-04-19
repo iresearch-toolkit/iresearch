@@ -23,6 +23,8 @@
 
 #include "index_writer.hpp"
 
+#include <cstdint>
+
 #include "formats/format_utils.hpp"
 #include "index/comparer.hpp"
 #include "index/directory_reader_impl.hpp"
@@ -469,14 +471,12 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
       // no more docs in merged reader
       if (!merged_itr->next()) {
         if (current_itr->next()) {
-          IR_FRMT_WARN(
-            "Failed to map removals for consolidated segment '%s' version "
-            "'" IR_UINT64_T_SPECIFIER
-            "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER
-            "', current segment has doc_id '" IR_UINT32_T_SPECIFIER
-            "' not present in the consolidated segment",
-            old_meta.name.c_str(), old_meta.version, new_meta.name.c_str(),
-            new_meta.version, current_itr->value());
+          IRS_LOG_WARN(absl::StrCat(
+            "Failed to map removals for consolidated segment '", old_meta.name,
+            "' version '", old_meta.version, "' from current segment '",
+            new_meta.name, "' version '", new_meta.version,
+            "', current segment has doc_id '", current_itr->value(),
+            "' not present in the consolidated segment"));
 
           return false;  // current reader has unmerged docs
         }
@@ -504,28 +504,25 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
 
           if (!merged_itr->next()) {
-            IR_FRMT_WARN(
-              "Failed to map removals for consolidated segment '%s' version "
-              "'" IR_UINT64_T_SPECIFIER
-              "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER
-              "', current segment has doc_id '" IR_UINT32_T_SPECIFIER
-              "' not present in the consolidated segment",
-              old_meta.name.c_str(), old_meta.version, new_meta.name.c_str(),
-              new_meta.version, current_itr->value());
+            IRS_LOG_WARN(absl::StrCat(
+              "Failed to map removals for consolidated segment '",
+              old_meta.name, "' version '", old_meta.version,
+              "' from current segment '", new_meta.name, "' version '",
+              new_meta.version, "', current segment has doc_id '",
+              current_itr->value(),
+              "' not present in the consolidated segment"));
 
             return false;  // current reader has unmerged docs
           }
         }
 
         if (merged_itr->value() > current_itr->value()) {
-          IR_FRMT_WARN(
-            "Failed to map removals for consolidated segment '%s' version "
-            "'" IR_UINT64_T_SPECIFIER
-            "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER
-            "', current segment has doc_id '" IR_UINT32_T_SPECIFIER
-            "' not present in the consolidated segment",
-            old_meta.name.c_str(), old_meta.version, new_meta.name.c_str(),
-            new_meta.version, current_itr->value());
+          IRS_LOG_WARN(absl::StrCat(
+            "Failed to map removals for consolidated segment '", old_meta.name,
+            "' version '", old_meta.version, "' from current segment '",
+            new_meta.name, "' version '", new_meta.version,
+            "', current segment has doc_id '", current_itr->value(),
+            "' not present in the consolidated segment"));
 
           return false;  // current reader has unmerged docs
         }
@@ -533,14 +530,13 @@ bool MapRemovals(const CandidatesMapping& candidates_mapping,
         // no more docs in merged reader
         if (!merged_itr->next()) {
           if (current_itr->next()) {
-            IR_FRMT_WARN(
-              "Failed to map removals for consolidated segment '%s' version "
-              "'" IR_UINT64_T_SPECIFIER
-              "' from current segment '%s' version '" IR_UINT64_T_SPECIFIER
-              "', current segment has doc_id '" IR_UINT32_T_SPECIFIER
-              "' not present in the consolidated segment",
-              old_meta.name.c_str(), old_meta.version, new_meta.name.c_str(),
-              new_meta.version, current_itr->value());
+            IRS_LOG_WARN(absl::StrCat(
+              "Failed to map removals for consolidated segment '",
+              old_meta.name, "' version '", old_meta.version,
+              "' from current segment '", new_meta.name, "' version '",
+              new_meta.version, "', current segment has doc_id '",
+              current_itr->value(),
+              "' not present in the consolidated segment"));
 
             return false;  // current reader has unmerged docs
           }
@@ -768,19 +764,18 @@ void IndexWriter::Transaction::UpdateSegment(bool disable_flush) {
       return;
     }
     // Force flush of a full segment
-    IR_FRMT_TRACE(
-      "Flushing segment '%s', docs=" IR_SIZE_T_SPECIFIER
-      ", memory=" IR_SIZE_T_SPECIFIER ", docs limit=" IR_SIZE_T_SPECIFIER
-      ", memory limit=" IR_SIZE_T_SPECIFIER "",
-      writer.name().c_str(), writer.buffered_docs(), writer.memory_active(),
-      writer_.segment_limits_.segment_docs_max.load(),
-      writer_.segment_limits_.segment_memory_max.load());
+    IRS_LOG_TRACE(absl::StrCat(
+      "Flushing segment '", writer.name(), "', docs=", writer.buffered_docs(),
+      ", memory=", writer.memory_active(),
+      ", docs limit=", writer_.segment_limits_.segment_docs_max.load(),
+      ", memory limit=", writer_.segment_limits_.segment_memory_max.load()));
+
     try {
       segment.Flush();
     } catch (...) {
-      IR_FRMT_ERROR(
-        "while flushing segment '%s', error: failed to flush segment",
-        segment.writer_meta_.meta.name.c_str());
+      IRS_LOG_ERROR(absl::StrCat("while flushing segment '",
+                                 segment.writer_meta_.meta.name,
+                                 "', error: failed to flush segment"));
       // TODO(MBkkt) What the goal are we want to achieve
       //  with keeping already flushed data?
       segment.Reset(true);
@@ -1336,7 +1331,7 @@ ConsolidationResult IndexWriter::Consolidate(
   }
 
   Consolidation candidates;
-  const auto run_id = reinterpret_cast<size_t>(&candidates);
+  const auto run_id = reinterpret_cast<uintptr_t>(&candidates);
 
   decltype(committed_reader_) committed_reader;
   // collect a list of consolidation candidates
@@ -1412,8 +1407,8 @@ ConsolidationResult IndexWriter::Consolidate(
   }
 #endif
 
-  IR_FRMT_TRACE("Starting consolidation id='" IR_SIZE_T_SPECIFIER "':\n%s",
-                run_id, ToString(candidates).c_str());
+  IRS_LOG_TRACE(absl::StrCat("Starting consolidation id='", run_id, "':\n",
+                             ToString(candidates)));
 
   // do lock-free merge
 
@@ -1469,12 +1464,10 @@ ConsolidationResult IndexWriter::Consolidate(
                          return candidate == s.Meta().name;
                        })) {
             // not all candidates are valid
-            IR_FRMT_DEBUG(
-              "Failed to start consolidation for index generation "
-              "'" IR_UINT64_T_SPECIFIER
-              "', not found segment %s in committed state",
-              committed_reader->Meta().index_meta.gen,
-              candidate->Meta().name.c_str());
+            IRS_LOG_DEBUG(absl::StrCat(
+              "Failed to start consolidation for index generation '",
+              committed_reader->Meta().index_meta.gen, "', not found segment ",
+              candidate->Meta().name, " in committed state"));
             return result;
           }
         }
@@ -1499,9 +1492,8 @@ ConsolidationResult IndexWriter::Consolidate(
         std::move(committed_reader),  // consolidation context meta
         std::move(merger));           // merge context
 
-      IR_FRMT_TRACE("Consolidation id='" IR_SIZE_T_SPECIFIER
-                    "' successfully finished: pending",
-                    run_id);
+      IRS_LOG_TRACE(absl::StrCat("Consolidation id='", run_id,
+                                 "' successfully finished: pending"));
     } else if (committed_reader == current_committed_reader) {
       // before new transaction was started:
       // no commits happened in since consolidation was started
@@ -1538,13 +1530,12 @@ ConsolidationResult IndexWriter::Consolidate(
         segment_mask.emplace(candidate->Meta().name);
       }
 
-      IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER
-        "' successfully finished: Name='%s', docs_count=" IR_UINT64_T_SPECIFIER
-        ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER
-        "",
-        run_id, consolidation_meta.name.c_str(), consolidation_meta.docs_count,
-        consolidation_meta.live_docs_count, consolidation_meta.byte_size);
+      IRS_LOG_TRACE(
+        absl::StrCat("Consolidation id='", run_id,
+                     "' successfully finished: Name='", consolidation_meta.name,
+                     "', docs_count=", consolidation_meta.docs_count,
+                     ", live_docs_count=", consolidation_meta.live_docs_count,
+                     ", size=", consolidation_meta.byte_size));
     } else {
       // before new transaction was started:
       // there was a commit(s) since consolidation was started,
@@ -1564,14 +1555,11 @@ ConsolidationResult IndexWriter::Consolidate(
         MapCandidates(mappings, candidates, *current_committed_reader);
 
       if (count != candidates.size()) {
-        // at least one candidate is missing
-        // can't finish consolidation
-        IR_FRMT_DEBUG("Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER
-                      "' for segment '%s', "
-                      "found only '" IR_SIZE_T_SPECIFIER
-                      "' out of '" IR_SIZE_T_SPECIFIER "' candidates",
-                      run_id, consolidation_segment.meta.name.c_str(), count,
-                      candidates.size());
+        // at least one candidate is missing can't finish consolidation
+        IRS_LOG_DEBUG(absl::StrCat(
+          "Failed to finish consolidation id='", run_id, "' for segment '",
+          consolidation_segment.meta.name, "', found only '", count,
+          "' out of '", candidates.size(), "' candidates"));
 
         return result;
       }
@@ -1583,11 +1571,11 @@ ConsolidationResult IndexWriter::Consolidate(
         if (!MapRemovals(mappings, merger, docs_mask)) {
           // consolidated segment has docs missing from
           // current_committed_meta->segments()
-          IR_FRMT_DEBUG(
-            "Failed to finish consolidation id='" IR_SIZE_T_SPECIFIER
-            "' for segment '%s', "
-            "due removed documents still present the consolidation candidates",
-            run_id, consolidation_segment.meta.name.c_str());
+          IRS_LOG_DEBUG(absl::StrCat("Failed to finish consolidation id='",
+                                     run_id, "' for segment '",
+                                     consolidation_segment.meta.name,
+                                     "', due removed documents still present "
+                                     "the consolidation candidates"));
 
           return result;
         }
@@ -1631,13 +1619,12 @@ ConsolidationResult IndexWriter::Consolidate(
         }
       }
 
-      IR_FRMT_TRACE(
-        "Consolidation id='" IR_SIZE_T_SPECIFIER
-        "' successfully finished:\nName='%s', docs_count=" IR_UINT64_T_SPECIFIER
-        ", live_docs_count=" IR_UINT64_T_SPECIFIER ", size=" IR_SIZE_T_SPECIFIER
-        "",
-        run_id, consolidation_meta.name.c_str(), consolidation_meta.docs_count,
-        consolidation_meta.live_docs_count, consolidation_meta.byte_size);
+      IRS_LOG_TRACE(absl::StrCat(
+        "Consolidation id='", run_id, "' successfully finished:\nName='",
+        consolidation_meta.name,
+        "', docs_count=", consolidation_meta.docs_count,
+        ", live_docs_count=", consolidation_meta.live_docs_count,
+        ", size=", consolidation_meta.byte_size));
     }
   }
 
@@ -1977,11 +1964,9 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       if (count != candidates.size()) {
         // At least one candidate is missing in pending meta can't finish
         // consolidation
-        IR_FRMT_DEBUG(
-          "Failed to finish merge for segment '%s', found only "
-          "'" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER
-          "' candidates",
-          meta.name.c_str(), count, candidates.size());
+        IRS_LOG_DEBUG(absl::StrCat(
+          "Failed to finish merge for segment '", meta.name, "', found only '",
+          count, "' out of '", candidates.size(), "' candidates"));
 
         continue;  // Skip this particular consolidation
       }
@@ -2008,10 +1993,10 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
 
         if (!success) {
           // Consolidated segment has docs missing from 'segments'
-          IR_FRMT_WARN(
-            "Failed to finish merge for segment '%s', due to removed documents "
-            "still present the consolidation candidates",
-            meta.name.c_str());
+          IRS_LOG_WARN(absl::StrCat("Failed to finish merge for segment '",
+                                    meta.name,
+                                    "', due to removed documents still present "
+                                    "the consolidation candidates"));
 
           continue;  // Skip this particular consolidation
         }

@@ -30,6 +30,8 @@
 #include "utils/misc.hpp"
 #include "utils/std.hpp"
 
+#include <absl/strings/str_cat.h>
+
 using namespace std::chrono_literals;
 
 namespace irs {
@@ -322,9 +324,10 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         } catch (const std::bad_alloc&) {
           fprintf(stderr, "Failed to allocate memory while spawning a worker");
         } catch (const std::exception& e) {
-          IR_FRMT_ERROR("Failed to grow pool, error '%s'", e.what());
+          IRS_LOG_ERROR(
+            absl::StrCat("Failed to grow pool, error '", e.what(), "'"));
         } catch (...) {
-          IR_FRMT_ERROR("Failed to grow pool");
+          IRS_LOG_ERROR("Failed to grow pool");
         }
 
         lock.unlock();
@@ -333,9 +336,10 @@ void thread_pool::worker_impl(std::unique_lock<std::mutex>& lock,
         } catch (const std::bad_alloc&) {
           fprintf(stderr, "Failed to allocate memory while executing task");
         } catch (const std::exception& e) {
-          IR_FRMT_ERROR("Failed to execute task, error '%s'", e.what());
+          IRS_LOG_ERROR(
+            absl::StrCat("Failed to execute task, error '", e.what(), "'"));
         } catch (...) {
-          IR_FRMT_ERROR("Failed to execute task");
+          IRS_LOG_ERROR("Failed to execute task");
         }
         fn = nullptr;
         lock.lock();

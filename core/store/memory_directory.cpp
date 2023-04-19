@@ -509,13 +509,12 @@ index_input::ptr memory_directory::open(std::string_view name,
       return std::make_unique<memory_index_input>(*it->second);
     }
 
-    IR_FRMT_ERROR("Failed to open input file, error: File not found, path: %s",
-                  std::string{name}.c_str());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Failed to open input file, error: File not found, path: ", name));
 
     return nullptr;
   } catch (...) {
-    IR_FRMT_ERROR("Failed to open input file, path: %s",
-                  std::string{name}.c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to open input file, path: ", name));
   }
 
   return nullptr;

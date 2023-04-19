@@ -48,39 +48,39 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
     IRS_ASSERT(options.empty());
   }
   if (!slice.isObject()) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Not a VPack object passed while constructing pipeline_token_stream ");
     return false;
   }
 
-  if (slice.hasKey(PIPELINE_PARAM_NAME)) {
-    auto pipeline_slice = slice.get(PIPELINE_PARAM_NAME);
+  if (auto pipeline_slice = slice.get(PIPELINE_PARAM_NAME);
+      !pipeline_slice.isNone()) {
     if (pipeline_slice.isArray()) {
       for (const auto pipe : VPackArrayIterator(pipeline_slice)) {
         if (pipe.isObject()) {
           std::string_view type;
-          if (pipe.hasKey(TYPE_PARAM_NAME)) {
-            auto type_attr_slice = pipe.get(TYPE_PARAM_NAME);
+          if (auto type_attr_slice = pipe.get(TYPE_PARAM_NAME);
+              !type_attr_slice.isNone()) {
             if (type_attr_slice.isString()) {
-              type = irs::get_string<std::string_view>(type_attr_slice);
+              type = type_attr_slice.stringView();
             } else {
-              IR_FRMT_ERROR(
-                "Failed to read '%s' attribute of  '%s' member as string while "
-                "constructing "
-                "pipeline_token_stream from VPack arguments",
-                TYPE_PARAM_NAME.data(), PIPELINE_PARAM_NAME.data());
+              IRS_LOG_ERROR(
+                absl::StrCat("Failed to read '", TYPE_PARAM_NAME,
+                             "' attribute of '", PIPELINE_PARAM_NAME,
+                             "' member as string while constructing "
+                             "pipeline_token_stream from VPack arguments"));
               return false;
             }
           } else {
-            IR_FRMT_ERROR(
-              "Failed to get '%s' attribute of  '%s' member while constructing "
-              "pipeline_token_stream from VPack arguments",
-              TYPE_PARAM_NAME.data(), PIPELINE_PARAM_NAME.data());
+            IRS_LOG_ERROR(
+              absl::StrCat("Failed to get '", TYPE_PARAM_NAME,
+                           "' attribute of '", PIPELINE_PARAM_NAME,
+                           "' member while constructing pipeline_token_stream "
+                           "from VPack arguments"));
             return false;
           }
-          if (pipe.hasKey(PROPERTIES_PARAM_NAME)) {
-            auto properties_attr_slice = pipe.get(PROPERTIES_PARAM_NAME);
-
+          if (auto properties_attr_slice = pipe.get(PROPERTIES_PARAM_NAME);
+              !properties_attr_slice.isNone()) {
             if constexpr (std::is_same_v<
                             T,
                             irs::analysis::pipeline_token_stream::options_t>) {
@@ -99,12 +99,12 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
               if (analyzer) {
                 options.push_back(std::move(analyzer));
               } else {
-                IR_FRMT_ERROR(
-                  "Failed to create pipeline member of type '%s' with "
-                  "properties '%s' while constructing "
-                  "pipeline_token_stream from VPack arguments",
-                  type.data(),
-                  irs::slice_to_string(properties_attr_slice).c_str());
+                IRS_LOG_ERROR(
+                  absl::StrCat("Failed to create pipeline member of type '",
+                               type, "' with properties '",
+                               irs::slice_to_string(properties_attr_slice),
+                               "' while constructing pipeline_token_stream "
+                               "from VPack arguments"));
                 return false;
               }
             } else {
@@ -133,45 +133,44 @@ bool parse_vpack_options(const VPackSlice slice, T& options) {
                   std::forward_as_tuple(vpack->slice().startAs<char>(),
                                         vpack->slice().byteSize()));
               } else {
-                IR_FRMT_ERROR(
-                  "Failed to normalize pipeline member of type '%s' with "
-                  "properties '%s' while constructing "
-                  "pipeline_token_stream from VPack arguments",
-                  type.data(),
-                  irs::slice_to_string(properties_attr_slice).c_str());
+                IRS_LOG_ERROR(
+                  absl::StrCat("Failed to normalize pipeline member of type '",
+                               type, "' with properties '",
+                               irs::slice_to_string(properties_attr_slice),
+                               "' while constructing pipeline_token_stream "
+                               "from VPack arguments"));
                 return false;
               }
             }
           } else {
-            IR_FRMT_ERROR(
-              "Failed to get '%s' attribute of  '%s' member while constructing "
-              "pipeline_token_stream from VPack arguments",
-              PROPERTIES_PARAM_NAME.data(), PIPELINE_PARAM_NAME.data());
+            IRS_LOG_ERROR(
+              absl::StrCat("Failed to get '", PROPERTIES_PARAM_NAME,
+                           "' attribute of '", PIPELINE_PARAM_NAME,
+                           "' member while constructing pipeline_token_stream "
+                           "from VPack arguments"));
             return false;
           }
         } else {
-          IR_FRMT_ERROR(
-            "Failed to read '%s' member as object while constructing "
-            "pipeline_token_stream from VPack arguments",
-            PIPELINE_PARAM_NAME.data());
+          IRS_LOG_ERROR(
+            absl::StrCat("Failed to read '", PIPELINE_PARAM_NAME,
+                         "' member as object while constructing "
+                         "pipeline_token_stream from VPack arguments"));
           return false;
         }
       }
     } else {
-      IR_FRMT_ERROR(
-        "Failed to read '%s' attribute as array while constructing "
-        "pipeline_token_stream from VPack arguments",
-        PIPELINE_PARAM_NAME.data());
+      IRS_LOG_ERROR(absl::StrCat("Failed to read '", PIPELINE_PARAM_NAME,
+                                 "' attribute as array while constructing "
+                                 "pipeline_token_stream from VPack arguments"));
       return false;
     }
   } else {
-    IR_FRMT_ERROR(
-      "Not found parameter '%s' while constructing pipeline_token_stream",
-      PIPELINE_PARAM_NAME.data());
+    IRS_LOG_ERROR(absl::StrCat("Not found parameter '", PIPELINE_PARAM_NAME,
+                               "' while constructing pipeline_token_stream"));
     return false;
   }
   if (options.empty()) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Empty pipeline found while constructing pipeline_token_stream");
     return false;
   }
@@ -235,17 +234,17 @@ irs::analysis::analyzer::ptr make_vpack(std::string_view args) {
 irs::analysis::analyzer::ptr make_json(std::string_view args) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while constructing pipeline_token_stream");
+      IRS_LOG_ERROR("Null arguments while constructing pipeline_token_stream");
       return nullptr;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
     return make_vpack(vpack->slice());
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while constructing pipeline_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while constructing pipeline_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while constructing pipeline_token_stream from JSON");
   }
   return nullptr;
@@ -254,7 +253,7 @@ irs::analysis::analyzer::ptr make_json(std::string_view args) {
 bool normalize_json_config(std::string_view args, std::string& definition) {
   try {
     if (irs::IsNull(args)) {
-      IR_FRMT_ERROR("Null arguments while normalizing pipeline_token_stream");
+      IRS_LOG_ERROR("Null arguments while normalizing pipeline_token_stream");
       return false;
     }
     auto vpack = VPackParser::fromJson(args.data(), args.size());
@@ -264,11 +263,11 @@ bool normalize_json_config(std::string_view args, std::string& definition) {
       return !definition.empty();
     }
   } catch (const VPackException& ex) {
-    IR_FRMT_ERROR(
-      "Caught error '%s' while normalizing pipeline_token_stream from JSON",
-      ex.what());
+    IRS_LOG_ERROR(
+      absl::StrCat("Caught error '", ex.what(),
+                   "' while normalizing pipeline_token_stream from JSON"));
   } catch (...) {
-    IR_FRMT_ERROR(
+    IRS_LOG_ERROR(
       "Caught error while normalizing pipeline_token_stream from JSON");
   }
   return false;

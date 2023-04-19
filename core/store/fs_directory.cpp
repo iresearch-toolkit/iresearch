@@ -59,9 +59,9 @@ inline int get_posix_fadvice(IOAdvice advice) noexcept {
       return IR_FADVICE_RANDOM | IR_FADVICE_NOREUSE;
   }
 
-  IR_FRMT_ERROR(
-    "fadvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
-    uint32_t(advice));
+  IRS_LOG_ERROR(
+    absl::StrCat("fadvice '", static_cast<uint32_t>(advice),
+                 "' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL"));
 
   return IR_FADVICE_NORMAL;
 }
@@ -93,13 +93,13 @@ class fs_lock : public index_lock {
     bool exists;
 
     if (!file_utils::exists(exists, dir_.c_str())) {
-      IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Error caught");
       return false;
     }
 
     // create directory if it is not exists
     if (!exists && !file_utils::mkdir(dir_.c_str(), true)) {
-      IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Error caught");
       return false;
     }
 
@@ -109,7 +109,7 @@ class fs_lock : public index_lock {
     if (!file_utils::verify_lock_file(path.c_str())) {
       if (!file_utils::exists(exists, path.c_str()) ||
           (exists && !file_utils::remove(path.c_str()))) {
-        IR_FRMT_ERROR("Error caught in: %s", __FUNCTION__);
+        IRS_LOG_ERROR("Error caught");
         return false;
       }
 
@@ -162,20 +162,16 @@ class fs_index_output : public buffered_index_output {
  public:
   DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
 
-  static index_output::ptr open(const file_path_t name) noexcept {
+  static index_output::ptr open(const path_char_t* name) noexcept {
     IRS_ASSERT(name);
 
     file_utils::handle_t handle(
       file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
-#ifdef _WIN32
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s",
-                    GetLastError(), std::filesystem::path{name}.c_str());
-#else
-      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno,
-                    std::filesystem::path{name}.c_str());
-#endif
+      IRS_LOG_ERROR(
+        absl::StrCat("Failed to open output file, error: ", GET_ERROR(),
+                     ", path: ", file_utils::ToStr(name)));
 
       return nullptr;
     }
@@ -255,7 +251,7 @@ class fs_index_input : public buffered_index_input {
 
   ptr dup() const override { return ptr(new fs_index_input(*this)); }
 
-  static index_input::ptr open(const file_path_t name, size_t pool_size,
+  static index_input::ptr open(const path_char_t* name, size_t pool_size,
                                IOAdvice advice) noexcept {
     IRS_ASSERT(name);
 
@@ -266,27 +262,18 @@ class fs_index_input : public buffered_index_input {
                             get_posix_fadvice(handle->io_advice));
 
     if (nullptr == handle->handle) {
-#ifdef _WIN32
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s",
-                    GetLastError(), std::filesystem::path{name}.c_str());
-#else
-      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno,
-                    std::filesystem::path{name}.c_str());
-#endif
+      IRS_LOG_ERROR(
+        absl::StrCat("Failed to open input file, error: ", GET_ERROR(),
+                     ", path: ", file_utils::ToStr(name)));
 
       return nullptr;
     }
 
     uint64_t size;
     if (!file_utils::byte_size(size, *handle)) {
-#ifdef _WIN32
-      auto error = GetLastError();
-#else
-      auto error = errno;
-#endif
-
-      IR_FRMT_ERROR("Failed to get stat for input file, error: %d, path: %s",
-                    error, std::filesystem::path{name}.c_str());
+      IRS_LOG_ERROR(
+        absl::StrCat("Failed to get stat for input file, error: ", GET_ERROR(),
+                     ", path: ", file_utils::ToStr(name)));
 
       return nullptr;
     }
@@ -439,13 +426,8 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
-      throw io_error{absl::StrCat("Failed to reopen input file, error: ",
-#ifdef _WIN32
-                                  GetLastError()
-#else
-                                  errno
-#endif
-                                    )};
+      throw io_error{
+        absl::StrCat("Failed to reopen input file, error: ", GET_ERROR())};
     }
     handle->io_advice = src.io_advice;
   }
@@ -455,13 +437,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   if (pos < 0) {
     throw io_error{absl::StrCat(
-      "Failed to obtain current position of input file, error: ",
-#ifdef _WIN32
-      GetLastError()
-#else
-      errno
-#endif
-        )};
+      "Failed to obtain current position of input file, error: ", GET_ERROR())};
   }
 
   handle->pos = pos;
@@ -483,8 +459,7 @@ index_output::ptr FSDirectory::create(std::string_view name) noexcept {
     auto out = fs_index_output::open(path.c_str());
 
     if (!out) {
-      IR_FRMT_ERROR("Failed to open output file, path: %s",
-                    std::string{name}.c_str());
+      IRS_LOG_ERROR(absl::StrCat("Failed to open output file, path: ", name));
     }
 
     return out;
@@ -566,7 +541,7 @@ bool FSDirectory::visit(const directory::visitor_f& visitor) const {
 
 #ifdef _WIN32
   std::filesystem::path path;
-  auto dir_visitor = [&path, &visitor](const file_path_t name) {
+  auto dir_visitor = [&path, &visitor](const path_char_t* name) {
     path = name;
 
     auto filename = path.string();
@@ -574,7 +549,7 @@ bool FSDirectory::visit(const directory::visitor_f& visitor) const {
   };
 #else
   std::string filename;
-  auto dir_visitor = [&filename, &visitor](const file_path_t name) {
+  auto dir_visitor = [&filename, &visitor](const path_char_t* name) {
     filename.assign(name);
     return visitor(filename);
   };
@@ -591,16 +566,10 @@ bool FSDirectory::sync(std::string_view name) noexcept {
       return true;
     }
 
-#ifdef _WIN32
-    auto error = GetLastError();
-#else
-    auto error = errno;
-#endif
-
-    IR_FRMT_ERROR("Failed to sync file, error: %d, path: %s", error,
-                  path.u8string().c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to sync file, error: ", GET_ERROR(),
+                               ", path: ", path.string()));
   } catch (...) {
-    IR_FRMT_ERROR("Failed to sync file, name : %s", std::string{name}.c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to sync file, name: ", name));
   }
 
   return false;

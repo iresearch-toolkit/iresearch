@@ -1144,9 +1144,9 @@ struct position_impl<IteratorTraits, FieldTraits, true, true>
 
     if (!pay_in_) {
       // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to reopen payload input in");
 
-      throw io_error("failed to reopen payload input");
+      throw io_error{"failed to reopen payload input"};
     }
 
     pay_in_->seek(state.term_state->pay_start);
@@ -1274,7 +1274,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, true>
 
     if (!pay_in_) {
       // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to reopen payload input");
 
       throw io_error("failed to reopen payload input");
     }
@@ -1395,7 +1395,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, false>
 
     if (!pay_in_) {
       // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen payload input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to reopen payload input");
 
       throw io_error("failed to reopen payload input");
     }
@@ -1496,7 +1496,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, false> {
 
     if (!pos_in_) {
       // implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen positions input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to reopen positions input");
 
       throw io_error("failed to reopen positions input");
     }
@@ -2186,7 +2186,7 @@ void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::prepare(
 
     if (!this->doc_in_) {
       // Implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to reopen document input");
 
       throw io_error("failed to reopen document input");
     }
@@ -2326,7 +2326,7 @@ void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek_to_block(
   auto skip_in = this->doc_in_->dup();
 
   if (!skip_in) {
-    IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+    IRS_LOG_ERROR("Failed to duplicate document input");
 
     throw io_error("Failed to duplicate document input");
   }
@@ -2664,7 +2664,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
 
     if (!this->doc_in_) {
       // Implementation returned wrong pointer
-      IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+      IRS_LOG_ERROR("Failed to reopen document input");
 
       throw io_error("failed to reopen document input");
     }
@@ -2707,7 +2707,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
   auto skip_in = this->doc_in_->dup();
 
   if (!skip_in) {
-    IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+    IRS_LOG_ERROR("Failed to duplicate document input");
 
     throw io_error("Failed to duplicate document input");
   }
@@ -2948,17 +2948,17 @@ void IndexMetaWriter::rollback() noexcept {
   try {
     seg_file = PendingFileName(pending_gen_);
   } catch (const std::exception& e) {
-    IR_FRMT_ERROR(
-      "Caught error while generating file name for index meta, reason: %s",
-      e.what());
+    IRS_LOG_ERROR(absl::StrCat(
+      "Caught error while generating file name for index meta, reason: ",
+      e.what()));
     return;
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while generating file name for index meta");
+    IRS_LOG_ERROR("Caught error while generating file name for index meta");
     return;
   }
 
   if (!dir_->remove(seg_file)) {  // suppress all errors
-    IR_FRMT_ERROR("Failed to remove file, path: %s", seg_file.c_str());
+    IRS_LOG_ERROR(absl::StrCat("Failed to remove file, path: ", seg_file));
   }
 
   // clear pending state
@@ -3706,7 +3706,7 @@ size_t postings_reader<FormatTraits>::bit_union(
 
   if (!doc_in) {
     // implementation returned wrong pointer
-    IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+    IRS_LOG_ERROR("Failed to reopen document input");
 
     throw io_error("failed to reopen document input");
   }

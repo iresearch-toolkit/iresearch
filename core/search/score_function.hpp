@@ -120,7 +120,7 @@ class ScoreFunction : util::noncopyable {
   [[nodiscard]] score_ctx* Ctx() const noexcept { return ctx_; }
   [[nodiscard]] score_f Func() const noexcept { return score_; }
   static ScoreFunction Empty() noexcept {
-    return {nullptr, [](score_ctx* ctx, score_t* res) noexcept {}, &Noop};
+    return {nullptr, [](score_ctx*, score_t*) noexcept {}, &Noop};
   }
 
  private:
