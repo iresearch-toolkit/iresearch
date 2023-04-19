@@ -747,7 +747,7 @@ handle_t open(const path_char_t* path, OpenMode mode, int advice) noexcept {
       break;
     default:
       IRS_LOG_ERROR(absl::StrCat("Invalid OpenMode ", static_cast<int>(mode),
-                    " specified for file ", ToStr(path)));
+                                 " specified for file ", ToStr(path)));
       IRS_ASSERT(false);
       return handle_t(nullptr);
   }
@@ -1217,11 +1217,11 @@ bool remove(const path_char_t* path) noexcept {
     const auto system_error = GET_ERROR();
     if (ERROR_FILE_NOT_FOUND == system_error) {
       // file is just not here, so we are done actually
-      IRS_LOG_DEBUG(absl::StrCat("Failed to remove path: '", ToStr(path), "', error ",
-                                 system_error));
+      IRS_LOG_DEBUG(absl::StrCat("Failed to remove path: '", ToStr(path),
+                                 "', error ", system_error));
     } else {
-      IRS_LOG_ERROR(absl::StrCat("Failed to remove path: '", ToStr(path), "', error ",
-                                 system_error));
+      IRS_LOG_ERROR(absl::StrCat("Failed to remove path: '", ToStr(path),
+                                 "', error ", system_error));
     }
 
     return false;
