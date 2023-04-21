@@ -114,12 +114,8 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
                     return cost::extract(lhs, cost::kMax) <
                            cost::extract(rhs, cost::kMax);
                   });
-#if defined(__GNUC__) && (__GNUC__ < 11)
-        // Circumvent GCC10 compilation issue.
+        // NRVO doesn't work for function parameters
         return std::move(itrs);
-#else
-        return itrs;
-#endif
       }(std::move(itrs))},
       front_{itrs_.front().it.get()},
       front_doc_{irs::get_mutable<document>(front_)} {
