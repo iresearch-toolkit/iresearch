@@ -22,7 +22,8 @@
 
 #pragma once
 
-#include "type_id.hpp"
+#include "utils/memory.hpp"
+#include "utils/type_id.hpp"
 
 namespace irs {
 
@@ -30,9 +31,7 @@ namespace irs {
 struct attribute {};
 
 // Base class for all objects with externally visible attributes
-struct attribute_provider {
-  virtual ~attribute_provider() = default;
-
+struct attribute_provider : memory::Managed {
   // Return pointer to attribute of a specified type.
   // External users should prefer using const version.
   // External users should avoid modifying attributes treat that as UB.

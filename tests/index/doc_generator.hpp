@@ -24,6 +24,7 @@
 #pragma once
 
 #include <atomic>
+#include <boost/iterator/iterator_facade.hpp>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -202,6 +203,103 @@ class binary_field : public field_base {
   irs::bstring value_;
 };
 
+namespace detail {
+
+template<typename Ptr>
+struct extract_element_type {
+  using value_type = typename Ptr::element_type;
+  using reference = typename Ptr::element_type&;
+  using pointer = typename Ptr::element_type*;
+};
+
+template<typename Ptr>
+struct extract_element_type<const Ptr> {
+  using value_type = const typename Ptr::element_type;
+  using reference = const typename Ptr::element_type&;
+  using pointer = const typename Ptr::element_type*;
+};
+
+template<typename Ptr>
+struct extract_element_type<Ptr*> {
+  using value_type = Ptr;
+  using reference = Ptr&;
+  using pointer = Ptr*;
+};
+
+}  // namespace detail
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class const_ptr_iterator
+/// @brief iterator adapter for containers with the smart pointers
+//////////////////////////////////////////////////////////////////////////////
+template<typename IteratorImpl>
+class ptr_iterator
+  : public ::boost::iterator_facade<
+      ptr_iterator<IteratorImpl>,
+      typename detail::extract_element_type<
+        std::remove_reference_t<typename IteratorImpl::reference>>::value_type,
+      ::boost::random_access_traversal_tag> {
+ private:
+  using element_type = detail::extract_element_type<
+    std::remove_reference_t<typename IteratorImpl::reference>>;
+
+  using base_element_type = typename element_type::value_type;
+
+  using base =
+    ::boost::iterator_facade<ptr_iterator<IteratorImpl>, base_element_type,
+                             ::boost::random_access_traversal_tag>;
+
+  using iterator_facade = typename base::iterator_facade_;
+
+  template<typename T>
+  struct adjust_const : irs::irstd::adjust_const<base_element_type, T> {};
+
+ public:
+  using reference = typename iterator_facade::reference;
+  using difference_type = typename iterator_facade::difference_type;
+
+  ptr_iterator(const IteratorImpl& it) : it_(it) {}
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns downcasted reference to the iterator's value
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename T>
+  typename adjust_const<T>::reference as() const {
+    static_assert(std::is_base_of_v<base_element_type, T>);
+    return irs::down_cast<T>(dereference());
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns downcasted pointer to the iterator's value
+  ///        or nullptr if there is no available conversion
+  //////////////////////////////////////////////////////////////////////////////
+  template<typename T>
+  typename adjust_const<T>::pointer safe_as() const {
+    static_assert(std::is_base_of_v<base_element_type, T>);
+    reference it = dereference();
+    return dynamic_cast<typename adjust_const<T>::pointer>(&it);
+  }
+
+  bool is_null() const noexcept { return *it_ == nullptr; }
+
+ private:
+  friend class ::boost::iterator_core_access;
+
+  reference dereference() const {
+    IRS_ASSERT(*it_);
+    return **it_;
+  }
+  void advance(difference_type n) { it_ += n; }
+  difference_type distance_to(const ptr_iterator& rhs) const {
+    return rhs.it_ - it_;
+  }
+  void increment() { ++it_; }
+  void decrement() { --it_; }
+  bool equal(const ptr_iterator& rhs) const { return it_ == rhs.it_; }
+
+  IteratorImpl it_;
+};
+
 /* -------------------------------------------------------------------
  * document
  * ------------------------------------------------------------------*/
@@ -209,8 +307,8 @@ class binary_field : public field_base {
 class particle : irs::util::noncopyable {
  public:
   typedef std::vector<ifield::ptr> fields_t;
-  typedef irs::ptr_iterator<fields_t::const_iterator> const_iterator;
-  typedef irs::ptr_iterator<fields_t::iterator> iterator;
+  typedef ptr_iterator<fields_t::const_iterator> const_iterator;
+  typedef ptr_iterator<fields_t::iterator> iterator;
 
   particle() = default;
   particle(particle&& rhs) noexcept;

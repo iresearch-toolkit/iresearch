@@ -707,7 +707,7 @@ int search(std::string_view path, std::string_view dir_type,
                    const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                   return lhs.first > rhs.first;
                 }));
-              threshold->value = sorted.front().first;
+              threshold->min = sorted.front().first;
             }
 
             for (float_t score_value; docs->next();) {
@@ -726,7 +726,7 @@ int search(std::string_view path, std::string_view dir_type,
                       return lhs.first > rhs.first;
                     });
 
-                  threshold->value = sorted.front().first;
+                  threshold->min = sorted.front().first;
                 }
               } else if (sorted.front().first < score_value) {
                 std::pop_heap(
@@ -747,7 +747,7 @@ int search(std::string_view path, std::string_view dir_type,
                     return lhs.first > rhs.first;
                   });
 
-                threshold->value = sorted.front().first;
+                threshold->min = sorted.front().first;
               }
             }
           }

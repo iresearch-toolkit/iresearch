@@ -1248,14 +1248,18 @@ TEST(boolean_query_estimation, or_filter) {
 
     // check that subqueries were not estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      ASSERT_FALSE(it.safe_as<detail::estimated>()->evaluated);
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
+      ASSERT_TRUE(est_query != nullptr);
+      ASSERT_FALSE(est_query->evaluated);
     }
 
     ASSERT_EQ(531, irs::cost::extract(*docs));
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      ASSERT_TRUE(it.safe_as<detail::estimated>()->evaluated);
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
+      ASSERT_TRUE(est_query != nullptr);
+      ASSERT_TRUE(est_query->evaluated);
     }
   }
 
@@ -1291,7 +1295,7 @@ TEST(boolean_query_estimation, or_filter) {
 
     /* check that subqueries were not estimated */
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_FALSE(est_query->evaluated);
       }
@@ -1301,7 +1305,7 @@ TEST(boolean_query_estimation, or_filter) {
 
     /* check that subqueries were estimated */
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_TRUE(est_query->evaluated);
       }
@@ -1335,7 +1339,7 @@ TEST(boolean_query_estimation, or_filter) {
 
     // check that subqueries were not estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_FALSE(est_query->evaluated);
       }
@@ -1345,7 +1349,7 @@ TEST(boolean_query_estimation, or_filter) {
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_TRUE(est_query->evaluated);
       }
@@ -1379,7 +1383,7 @@ TEST(boolean_query_estimation, and_filter) {
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_TRUE(est_query->evaluated);
       }
@@ -1402,7 +1406,7 @@ TEST(boolean_query_estimation, and_filter) {
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_TRUE(est_query->evaluated);
       }
@@ -1430,7 +1434,7 @@ TEST(boolean_query_estimation, and_filter) {
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_TRUE(est_query->evaluated);
       }
@@ -1460,7 +1464,7 @@ TEST(boolean_query_estimation, and_filter) {
 
     // check that subqueries were estimated
     for (auto it = root.begin(), end = root.end(); it != end; ++it) {
-      auto est_query = it.safe_as<detail::estimated>();
+      auto* est_query = dynamic_cast<detail::estimated*>(it->get());
       if (est_query) {
         ASSERT_TRUE(est_query->evaluated);
       }

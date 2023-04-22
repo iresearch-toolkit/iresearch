@@ -43,8 +43,7 @@ namespace irs {
 //   - `next()` must constantly return `false`
 //   - `seek()` to any value must return `doc_limits::eof()`
 //   - `value()` must return `doc_limits::eof()`
-// TODO(MBkkt) two vptr, probably should be fixed
-struct doc_iterator : iterator<doc_id_t>, attribute_provider {
+struct doc_iterator : iterator<doc_id_t, attribute_provider> {
   using ptr = memory::managed_ptr<doc_iterator>;
 
   // Return an empty iterator
@@ -90,7 +89,7 @@ struct column_iterator : iterator<const column_reader&> {
 };
 
 // An iterator providing sequential access to term dictionary
-struct term_iterator : iterator<bytes_view>, public attribute_provider {
+struct term_iterator : iterator<bytes_view, attribute_provider> {
   using ptr = memory::managed_ptr<term_iterator>;
 
   // Return an empty iterator
@@ -152,7 +151,7 @@ bool seek(Iterator& it, const T& target, Less less = Less()) {
 
 // Position iterator to the specified min term or to the next term
 // after the min term depending on the specified `Include` value.
-// Returns true in case if iterator has been succesfully positioned,
+// Returns true in case if iterator has been successfully positioned,
 // false otherwise.
 template<bool Include>
 bool seek_min(seek_term_iterator& it, bytes_view min) {
@@ -163,7 +162,7 @@ bool seek_min(seek_term_iterator& it, bytes_view min) {
 }
 
 // Position iterator `count` items after the current position.
-// Returns true if the iterator has been succesfully positioned
+// Returns true if the iterator has been successfully positioned
 template<typename Iterator>
 bool skip(Iterator& itr, size_t count) {
   while (count--) {

@@ -216,12 +216,22 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
 }
 
 void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
-                    std::span<const irs::score_t> actual_freqs) {
-  ASSERT_EQ(expected_freqs.Size(), actual_freqs.size());
-  for (size_t i = 0, size = expected_freqs.Size(); i < size; ++i) {
-    const auto expected_freq = expected_freqs.At(i, doc);
-    ASSERT_EQ(expected_freq, actual_freqs[i]);
+                    irs::score_threshold* threshold) {
+  if (!threshold) {
+    return;
   }
+  const auto size = expected_freqs.Size();
+  ASSERT_EQ(size >= 1, threshold->leaf_max != nullptr);
+  if (threshold->leaf_max) {
+    ASSERT_EQ(expected_freqs.At(size - 1, doc), *threshold->leaf_max);
+  }
+#ifdef IRESEARCH_DEBUG
+  ASSERT_EQ(size, threshold->levels_max.size());
+  for (size_t i = 0; i < size; ++i) {
+    const auto expected_freq = expected_freqs.At(i, doc);
+    ASSERT_EQ(expected_freq, threshold->levels_max[i]);
+  }
+#endif
 }
 
 class Format15TestCase : public tests::format_test_case {
@@ -399,7 +409,7 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
   if (threshold_value) {
-    threshold_value->value = threshold;
+    threshold_value->min = threshold;
   }
 
   return actual;
@@ -518,9 +528,7 @@ void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
     // seek to the smaller doc
     ASSERT_EQ(expected_doc_id, actual->seek(irs::doc_limits::invalid()));
 
-    if (threshold_value) {
-      AssertSkipList(skip_list, expected_doc_id, threshold_value->skip_scores);
-    }
+    AssertSkipList(skip_list, expected_doc_id, threshold_value);
     AssertFrequencyAndPositions(expected, *actual);
   }
 

@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <boost/iterator/iterator_facade.hpp>
 #include <memory>
 
 #include "misc.hpp"
@@ -32,9 +31,10 @@
 
 namespace irs {
 
-template<typename T>
-struct iterator : memory::Managed {
+template<typename T, typename Base = memory::Managed>
+struct iterator : Base {
   virtual T value() const = 0;
+  // TODO(MBkkt) return T? In such case some algorithms probably will be faster
   virtual bool next() = 0;
 };
 
@@ -73,111 +73,6 @@ class iterator_adaptor : public Base {
   iterator_type cur_;
   iterator_type end_;
   IRS_NO_UNIQUE_ADDRESS Less less_;
-};
-
-namespace detail {
-
-template<typename Ptr>
-struct extract_element_type {
-  typedef typename Ptr::element_type value_type;
-  typedef typename Ptr::element_type& reference;
-  typedef typename Ptr::element_type* pointer;
-};
-
-template<typename Ptr>
-struct extract_element_type<const Ptr> {
-  typedef const typename Ptr::element_type value_type;
-  typedef const typename Ptr::element_type& reference;
-  typedef const typename Ptr::element_type* pointer;
-};
-
-template<typename Ptr>
-struct extract_element_type<Ptr*> {
-  typedef Ptr value_type;
-  typedef Ptr& reference;
-  typedef Ptr* pointer;
-};
-
-}  // namespace detail
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class const_ptr_iterator
-/// @brief iterator adapter for containers with the smart pointers
-//////////////////////////////////////////////////////////////////////////////
-template<typename IteratorImpl>
-class ptr_iterator
-  : public ::boost::iterator_facade<
-      ptr_iterator<IteratorImpl>,
-      typename detail::extract_element_type<typename std::remove_reference<
-        typename IteratorImpl::reference>::type>::value_type,
-      ::boost::random_access_traversal_tag> {
- private:
-  typedef detail::extract_element_type<
-    typename std::remove_reference<typename IteratorImpl::reference>::type>
-    element_type;
-
-  typedef ::boost::iterator_facade<
-    ptr_iterator<IteratorImpl>,
-    typename detail::extract_element_type<typename std::remove_reference<
-      typename IteratorImpl::reference>::type>::value_type,
-    ::boost::random_access_traversal_tag>
-    base;
-
-  typedef typename base::iterator_facade_ iterator_facade;
-
-  typedef typename element_type::value_type base_element_type;
-
-  template<typename T>
-  struct adjust_const
-    : irstd::adjust_const<typename element_type::value_type, T> {};
-
- public:
-  typedef typename iterator_facade::reference reference;
-  typedef typename iterator_facade::difference_type difference_type;
-
-  ptr_iterator(const IteratorImpl& it) : it_(it) {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns downcasted reference to the iterator's value
-  //////////////////////////////////////////////////////////////////////////////
-  template<typename T>
-  typename adjust_const<T>::reference as() const {
-    typedef
-      typename std::enable_if_t<std::is_base_of_v<base_element_type, T>, T>
-        type;
-
-    return down_cast<type>(dereference());
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief returns downcasted pointer to the iterator's value
-  ///        or nullptr if there is no available conversion
-  //////////////////////////////////////////////////////////////////////////////
-  template<typename T>
-  typename adjust_const<T>::pointer safe_as() const {
-    static_assert(std::is_base_of_v<base_element_type, T>);
-    reference it = dereference();
-    return dynamic_cast<typename adjust_const<T>::pointer>(&it);
-  }
-
-  bool is_null() const noexcept { return *it_ == nullptr; }
-
- private:
-  friend class ::boost::iterator_core_access;
-
-  reference dereference() const {
-    IRS_ASSERT(*it_);
-    return **it_;
-  }
-  void advance(difference_type n) { it_ += n; }
-  difference_type distance_to(const ptr_iterator& rhs) const {
-    return rhs.it_ - it_;
-  }
-  void increment() { ++it_; }
-  void decrement() { --it_; }
-  bool equal(const ptr_iterator& rhs) const { return it_ == rhs.it_; }
-
-  IteratorImpl it_;
 };
 
 }  // namespace irs

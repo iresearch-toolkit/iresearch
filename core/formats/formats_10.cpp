@@ -1052,14 +1052,18 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 #endif
 
 struct SkipState {
-  uint64_t pay_ptr{};  // pointer to the payloads of the first document in a
-                       // document block
-  uint64_t pos_ptr{};  // pointer to the positions of the first document in a
-                       // document block
-  size_t pend_pos{};   // positions to skip before new document block
-  uint64_t doc_ptr{};  // pointer to the beginning of document block
-  doc_id_t doc{doc_limits::invalid()};  // last document in a previous block
-  uint32_t pay_pos{};  // payload size to skip before in new document block
+  // pointer to the payloads of the first document in a document block
+  uint64_t pay_ptr{};
+  // pointer to the positions of the first document in a document block
+  uint64_t pos_ptr{};
+  // positions to skip before new document block
+  size_t pend_pos{};
+  // pointer to the beginning of document block
+  uint64_t doc_ptr{};
+  // last document in a previous block
+  doc_id_t doc{doc_limits::invalid()};
+  // payload size to skip before in new document block
+  uint32_t pay_pos{};
 };
 
 template<typename IteratorTraits>
@@ -2364,12 +2368,12 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   using attributes = std::conditional_t<
     IteratorTraits::frequency() && IteratorTraits::position(),
-    std::tuple<document, frequency, cost, score_threshold, score,
+    std::tuple<document, frequency, score_threshold, score, cost,
                position<IteratorTraits, FieldTraits>>,
     std::conditional_t<
       IteratorTraits::frequency(),
-      std::tuple<document, frequency, cost, score_threshold, score>,
-      std::tuple<document, cost, score_threshold, score>>>;
+      std::tuple<document, frequency, score_threshold, score, cost>,
+      std::tuple<document, score_threshold, score, cost>>>;
 
  public:
   // Hide 'ptr' defined in irs::doc_iterator
@@ -2423,8 +2427,6 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
              WandIndex index, WandExtent extent)
       : ctx_{scorer.prepare_wand_source()},
         func_{factory(*ctx_, scorer)},
-        skip_levels_(1),
-        skip_scores_(1),
         index_{index},
         extent_{extent} {
       IRS_ASSERT(extent_.GetExtent() > 0);
@@ -2454,7 +2456,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     std::vector<SkipState> skip_levels_;
     std::vector<score_t> skip_scores_;
     SkipState prev_skip_;  // skip context used by skip reader
-    const score_threshold* threshold_{};
+    const score_t* threshold_min_{};
     IRS_NO_UNIQUE_ADDRESS WandIndex index_;
     IRS_NO_UNIQUE_ADDRESS WandExtent extent_;
   };
@@ -2508,14 +2510,17 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
                 Strict>::ReadSkip::Init(const version10::term_meta& term_state,
                                         size_t num_levels,
                                         score_threshold& threshold) {
-  // Don't use wanderator for short posting lists, must be ensured by the
-  // caller
+  // Don't use wanderator for short posting lists, must be ensured by the caller
   IRS_ASSERT(term_state.docs_count > IteratorTraits::block_size());
 
   skip_levels_.resize(num_levels);
   skip_scores_.resize(num_levels);
-  threshold_ = &threshold;
-  threshold.skip_scores = std::span{skip_scores_};
+  // threshold.list_max = ...;
+  threshold.leaf_max = &skip_scores_.back();
+#ifdef IRESEARCH_DEBUG
+  threshold.levels_max = std::span{skip_scores_};
+#endif
+  threshold_min_ = &threshold.min;
 
   // Since we store pointer deltas, add postings offset
   auto& top = skip_levels_.front();
@@ -2529,7 +2534,7 @@ bool wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
   const noexcept {
   if constexpr (FieldTraits::frequency()) {
     return skip_levels_.back().doc < target ||
-           ScoreLess(skip_scores_.back(), threshold_->value);
+           ScoreLess(skip_scores_.back(), *threshold_min_);
   } else {
     return skip_levels_.back().doc < target;
   }
@@ -2542,7 +2547,7 @@ bool wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
                                           doc_id_t target) const noexcept {
   if constexpr (FieldTraits::frequency()) {
     return skip_levels_[level].doc < target ||
-           ScoreLess(skip_scores_[level], threshold_->value);
+           ScoreLess(skip_scores_[level], *threshold_min_);
   } else {
     return skip_levels_[level].doc < target;
   }
@@ -2650,8 +2655,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
   IRS_ASSERT(!IteratorTraits::payload() ||
              IteratorTraits::payload() == FieldTraits::payload());
 
-  // Don't use wanderator for short posting lists, must be ensured by the
-  // caller
+  // Don't use wanderator for short posting lists, must be ensured by the caller
   IRS_ASSERT(meta.docs_count > IteratorTraits::block_size());
   IRS_ASSERT(this->begin_ == std::end(this->buf_.docs));
 
@@ -2675,33 +2679,31 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
 
   std::get<cost>(attrs_).reset(term_state.docs_count);  // Estimate iterator
 
-  if constexpr (IteratorTraits::frequency()) {
-    IRS_ASSERT(meta.freq);
+  IRS_ASSERT(!IteratorTraits::frequency() || meta.freq);
 
-    if constexpr (IteratorTraits::position()) {
-      const auto term_freq = meta.freq;
+  if constexpr (IteratorTraits::frequency() && IteratorTraits::position()) {
+    const auto term_freq = meta.freq;
 
-      auto get_tail_start = [&]() noexcept {
-        if (term_freq < IteratorTraits::block_size()) {
-          return term_state.pos_start;
-        } else if (term_freq == IteratorTraits::block_size()) {
-          return address_limits::invalid();
-        } else {
-          return term_state.pos_start + term_state.pos_end;
-        }
-      };
+    auto get_tail_start = [&]() noexcept {
+      if (term_freq < IteratorTraits::block_size()) {
+        return term_state.pos_start;
+      } else if (term_freq == IteratorTraits::block_size()) {
+        return address_limits::invalid();
+      } else {
+        return term_state.pos_start + term_state.pos_end;
+      }
+    };
 
-      const DocState state{
-        .pos_in = pos_in,
-        .pay_in = pay_in,
-        .term_state = &term_state,
-        .freq = &std::get<frequency>(attrs_).value,
-        .enc_buf = this->enc_buf_,
-        .tail_start = get_tail_start(),
-        .tail_length = term_freq % IteratorTraits::block_size()};
+    const DocState state{
+      .pos_in = pos_in,
+      .pay_in = pay_in,
+      .term_state = &term_state,
+      .freq = &std::get<frequency>(attrs_).value,
+      .enc_buf = this->enc_buf_,
+      .tail_start = get_tail_start(),
+      .tail_length = term_freq % IteratorTraits::block_size()};
 
-      std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
-    }
+    std::get<position<IteratorTraits, FieldTraits>>(attrs_).prepare(state);
   }
 
   auto skip_in = this->doc_in_->dup();
@@ -2764,7 +2766,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       doc.value += doc_id_t{!doc_limits::valid(doc.value)};
     }
 
-    const auto min_competitive_score = std::get<score_threshold>(attrs_).value;
+    const auto min_competitive_score = std::get<score_threshold>(attrs_).min;
     [[maybe_unused]] uint32_t notify{0};
 
     while (this->begin_ != std::end(this->buf_.docs)) {
@@ -2901,7 +2903,7 @@ bool IndexMetaWriter::prepare(directory& dir, IndexMeta& meta,
         irs::write_string(*out, payload);
       }
     } else {
-      // Earliler versions don't support payload.
+      // Earlier versions don't support payload.
       meta.payload.reset();
     }
 

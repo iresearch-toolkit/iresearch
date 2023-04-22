@@ -146,8 +146,8 @@ class SkipReaderBase : util::noncopyable {
     // Pointer to child level.
     uint64_t child{};
     // Number of documents left at a level.
-    // ptrdiff_t to be able to go below 0.
-    ptrdiff_t left;
+    // int64_t to be able to go below 0.
+    int64_t left;
     // How many docs we jump over with a single skip
     const doc_id_t step;
   };
@@ -215,10 +215,10 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
     }
   }
 
-  for (uint64_t child_ptr{0}; id != size;) {
+  while (id != size) {
     auto& level = levels_[id];
     auto& stream = *level.stream;
-    child_ptr = level.child;
+    uint64_t child_ptr = level.child;
     const bool is_leaf = (child_ptr == kUndefined);
 
     if (const auto left = (level.left -= level.step); IRS_LIKELY(left > 0)) {

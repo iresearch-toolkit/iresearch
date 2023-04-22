@@ -30,15 +30,11 @@
 
 namespace irs {
 
-// Represents user-side boolean filter as the container for other
-// filters.
+// Represents user-side boolean filter as the container for other filters
 class boolean_filter : public filter, public AllDocsProvider {
  public:
-  auto begin() const { return ptr_iterator{std::begin(filters_)}; }
-  auto end() const { return ptr_iterator{std::end(filters_)}; }
-
-  auto begin() { return ptr_iterator{std::begin(filters_)}; }
-  auto end() { return ptr_iterator{std::end(filters_)}; }
+  auto begin() const { return filters_.begin(); }
+  auto end() const { return filters_.end(); }
 
   ScoreMergeType merge_type() const noexcept { return merge_type_; }
 
@@ -61,7 +57,7 @@ class boolean_filter : public filter, public AllDocsProvider {
 
   size_t hash() const noexcept final;
 
-  void clear() { return filters_.clear(); }
+  void clear() { filters_.clear(); }
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
