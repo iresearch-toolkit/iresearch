@@ -30,12 +30,12 @@
 #include <cstdint>
 
 #include "analysis/token_attributes.hpp"
+#include "formats/wand_writer.hpp"
 #include "index/field_meta.hpp"
 #include "index/index_reader.hpp"
 #include "index/norm.hpp"
 #include "scorer.hpp"
 #include "search/scorer_impl.hpp"
-#include "search/wand_writer.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/misc.hpp"
 

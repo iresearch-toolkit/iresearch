@@ -129,17 +129,17 @@ class FreqNormProducer : public ValueProducerBase {
  public:
   struct Value {
     uint32_t freq{};
-    uint32_t norm{};
+    uint32_t delta_norm{};
   };
 
   static void Write(Value value, memory_index_output& out) {
     out.write_vint(value.freq);
-    out.write_vint(value.norm);
+    out.write_vint(value.delta_norm);
   }
 
   static size_t Size(Value value) noexcept {
     return bytes_io<uint32_t>::vsize(value.freq) +
-           bytes_io<uint32_t>::vsize(value.norm);
+           bytes_io<uint32_t>::vsize(value.delta_norm);
   }
 
   explicit FreqNormProducer(const Scorer& scorer) : ValueProducerBase{scorer} {}
@@ -177,7 +177,10 @@ class FreqNormProducer : public ValueProducerBase {
   }
 
   Value GetValue() const noexcept {
-    return {.freq = freq_->value, .norm = norm_()};
+    const auto freq = freq_->value;
+    const auto norm = norm_();
+    IRS_ASSERT(freq <= norm);
+    return {.freq = freq, .delta_norm = norm - freq};
   }
 
  private:
@@ -199,7 +202,7 @@ class FreqNormSource final : public WandSource {
 
   void Read(data_input& in) final {
     freq_.value = in.read_vint();
-    norm_.value = in.read_vint();
+    norm_.value = freq_.value + in.read_vint();
   }
 
  private:

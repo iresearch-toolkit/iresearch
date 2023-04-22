@@ -1402,11 +1402,8 @@ doc_iterator::ptr MakeWeakDisjunction(
     IRS_ASSERT(min_match == size);
     using Conjunction = typename RebindIterator<WeakConjunction>::Conjunction;
 
-    return memory::make_managed<Conjunction>(
-      typename Conjunction::doc_iterators_t{
-        std::make_move_iterator(std::begin(itrs)),
-        std::make_move_iterator(std::end(itrs))},
-      std::forward<Merger>(merger));
+    return memory::make_managed<Conjunction>(std::move(itrs),
+                                             std::forward<Merger>(merger));
   }
 
   return memory::make_managed<WeakConjunction>(std::move(itrs), min_match,

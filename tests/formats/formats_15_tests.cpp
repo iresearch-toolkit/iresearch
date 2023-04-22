@@ -22,8 +22,8 @@
 
 #include "formats/formats_10.hpp"
 #include "formats/formats_10_attributes.hpp"
+#include "formats/wand_writer.hpp"
 #include "formats_test_case_base.hpp"
-#include "search/wand_writer.hpp"
 #include "tests_shared.hpp"
 
 namespace {

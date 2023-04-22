@@ -26,20 +26,15 @@
 #include "utils/type_limits.hpp"
 
 namespace irs {
-
 // Writer for storing skip-list in a directory
 // Example (skip_0 = skip_n = 3):
-//
-//                                                        c         (skip level
-//                                                        2)
-//                    c                 c                 c         (skip level
-//                    1)
-//        x     x     x     x     x     x     x     x     x     x   (skip level
-//        0)
-//  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting
-//  list)
+// clang-format off
+//                                                        c         (skip level 2)
+//                    c                 c                 c         (skip level 1)
+//        x     x     x     x     x     x     x     x     x     x   (skip level 0)
+//  d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d d (posting list)
 //        3     6     9     12    15    18    21    24    27    30  (doc_count)
-//
+// clang-format on
 // d - document
 // x - skip data
 // c - skip data with child pointer
