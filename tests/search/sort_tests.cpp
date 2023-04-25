@@ -797,10 +797,10 @@ TEST(sort_tests, prepare_order) {
     ASSERT_TRUE(5 == scorers.size());
 
     irs::score score;
-    ASSERT_TRUE(score.IsNoop());
+    ASSERT_TRUE(score.Ctx() == nullptr);
     ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
     score = irs::CompileScorers(std::move(scorers));
-    ASSERT_FALSE(score.IsNoop());
+    ASSERT_FALSE(score.Ctx() == nullptr);
     ASSERT_FALSE(score.Func() == &irs::ScoreFunction::DefaultScore);
   }
 }
@@ -808,7 +808,7 @@ TEST(sort_tests, prepare_order) {
 TEST(ScoreFunctionTest, Invalid) {
   auto func = irs::ScoreFunction::Invalid();
   ASSERT_FALSE(func);
-  ASSERT_FALSE(func.IsNoop());
+  ASSERT_FALSE(func.Ctx() == nullptr);
 }
 
 TEST(ScoreFunctionTest, Noop) {
@@ -817,7 +817,7 @@ TEST(ScoreFunctionTest, Noop) {
   {
     auto func = irs::ScoreFunction::Default(0);
     ASSERT_TRUE(func);
-    ASSERT_TRUE(func.IsNoop());
+    ASSERT_TRUE(func.Ctx() == nullptr);
     func(&value);
     ASSERT_EQ(42.f, value);
   }
@@ -825,7 +825,7 @@ TEST(ScoreFunctionTest, Noop) {
   {
     auto func = irs::ScoreFunction::Constant(0.f, 0);
     ASSERT_TRUE(func);
-    ASSERT_TRUE(func.IsNoop());
+    ASSERT_TRUE(func.Ctx() == nullptr);
     func(&value);
     ASSERT_EQ(42.f, value);
   }
@@ -836,7 +836,7 @@ TEST(ScoreFunctionTest, Default) {
   std::fill_n(std::begin(values), values.size(), 42.f);
   auto func = irs::ScoreFunction::Default(values.size());
   ASSERT_TRUE(func);
-  ASSERT_FALSE(func.IsNoop());
+  ASSERT_FALSE(func.Ctx() == nullptr);
   func(values.data());
   ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
                           [](auto v) { return 0.f == v; }));
@@ -849,7 +849,7 @@ TEST(ScoreFunctionTest, Constant) {
   {
     auto func = irs::ScoreFunction::Constant(43.f, values.size());
     ASSERT_TRUE(func);
-    ASSERT_FALSE(func.IsNoop());
+    ASSERT_FALSE(func.Ctx() == nullptr);
     func(values.data());
     ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
                             [](auto v) { return 43.f == v; }));
@@ -858,7 +858,7 @@ TEST(ScoreFunctionTest, Constant) {
   {
     auto func = irs::ScoreFunction::Constant(42.f, 1);
     ASSERT_TRUE(func);
-    ASSERT_FALSE(func.IsNoop());
+    ASSERT_FALSE(func.Ctx() == nullptr);
     func(values.data());
     ASSERT_EQ(42.f, values.front());
     ASSERT_TRUE(std::all_of(std::begin(values) + 1, std::end(values),
@@ -868,7 +868,7 @@ TEST(ScoreFunctionTest, Constant) {
   {
     auto func = irs::ScoreFunction::Constant(43.f);
     ASSERT_TRUE(func);
-    ASSERT_FALSE(func.IsNoop());
+    ASSERT_FALSE(func.Ctx() == nullptr);
     func(values.data());
     ASSERT_TRUE(std::all_of(std::begin(values), std::end(values),
                             [](auto v) { return 43.f == v; }));

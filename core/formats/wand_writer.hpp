@@ -35,8 +35,8 @@ template<typename ValueProducer>
 class WandWriterImpl final : public WandWriter {
  public:
   WandWriterImpl(const Scorer& scorer, size_t max_levels)
-    : score_levels_{max_levels}, producer_{scorer} {
-    IRS_ASSERT(!score_levels_.empty());
+    : score_levels_{max_levels + 1}, producer_{scorer} {
+    IRS_ASSERT(max_levels != 0);
   }
 
   bool Prepare(const ColumnProvider& reader, const feature_map_t& features,
@@ -54,31 +54,38 @@ class WandWriterImpl final : public WandWriter {
     score_t score;
     producer_.GetScore(&score);
 
-    Update(score_levels_.front(), score,
-           [&]() { return producer_.GetValue(); });
+    Update(score_levels_.front(), score, [&] { return producer_.GetValue(); });
   }
 
   void Write(size_t level, memory_index_output& out) final {
-    IRS_ASSERT(level < score_levels_.size());
+    IRS_ASSERT(level + 1 < score_levels_.size());
     auto& score = score_levels_[level];
-    if (level < score_levels_.size() - 1) {
-      // Accumulate score on less granular level
-      Update(score_levels_[level + 1], score.score,
-             [&]() { return score.value; });
+    // Accumulate score on less granular level
+    Update(score_levels_[level + 1], score.score, [&] { return score.value; });
 
-      IRS_ASSERT(std::is_sorted(score_levels_.begin(),
-                                score_levels_.begin() + level + 2,
-                                [](const auto& lhs, const auto& rhs) noexcept {
-                                  return lhs.score < rhs.score;
-                                }));
-    }
+    IRS_ASSERT(std::is_sorted(score_levels_.begin(),
+                              score_levels_.begin() + level + 2,
+                              [](const auto& lhs, const auto& rhs) noexcept {
+                                return lhs.score < rhs.score;
+                              }));
+    ValueProducer::Write(score.value, out);
+    score.score = 0.f;
+  }
+
+  void WriteRoot(index_output& out) final {
+    auto& score = score_levels_.back();
     ValueProducer::Write(score.value, out);
     score.score = 0.f;
   }
 
   byte_type Size(size_t level) const noexcept final {
-    IRS_ASSERT(level < score_levels_.size());
+    IRS_ASSERT(level + 1 < score_levels_.size());
     const auto& entry = score_levels_[level];
+    return ValueProducer::Size(entry.value);
+  }
+
+  byte_type SizeRoot() const noexcept final {
+    const auto& entry = score_levels_.back();
     return ValueProducer::Size(entry.value);
   }
 
@@ -98,7 +105,7 @@ class WandWriterImpl final : public WandWriter {
     }
   }
 
-  absl::InlinedVector<Entry, 10> score_levels_;
+  absl::InlinedVector<Entry, 9 + 1> score_levels_;
   IRS_NO_UNIQUE_ADDRESS ValueProducer producer_;
 };
 
@@ -132,7 +139,8 @@ class FreqNormProducer : public ValueProducerBase {
     uint32_t delta_norm{};
   };
 
-  static void Write(Value value, memory_index_output& out) {
+  template<typename Output>
+  static void Write(Value value, Output& out) {
     out.write_vint(value.freq);
     out.write_vint(value.delta_norm);
   }
@@ -216,7 +224,8 @@ class FreqProducer : public ValueProducerBase {
     uint32_t freq{};
   };
 
-  static void Write(Value value, memory_index_output& out) {
+  template<typename Output>
+  static void Write(Value value, Output& out) {
     out.write_vint(value.freq);
   }
 

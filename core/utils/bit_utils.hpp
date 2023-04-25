@@ -188,25 +188,30 @@ inline constexpr T enum_bitwise_not(T v) noexcept {
 
 }  // namespace irs
 
-#define ENABLE_BITMASK_ENUM(x)                                           \
-  [[maybe_unused]] inline constexpr x operator&(x lhs, x rhs) noexcept { \
-    return irs::enum_bitwise_and(lhs, rhs);                              \
-  }                                                                      \
-  [[maybe_unused]] inline x& operator&=(x& lhs, x rhs) noexcept {        \
-    return lhs = irs::enum_bitwise_and(lhs, rhs);                        \
-  }                                                                      \
-  [[maybe_unused]] inline constexpr x operator|(x lhs, x rhs) noexcept { \
-    return irs::enum_bitwise_or(lhs, rhs);                               \
-  }                                                                      \
-  [[maybe_unused]] inline x& operator|=(x& lhs, x rhs) noexcept {        \
-    return lhs = irs::enum_bitwise_or(lhs, rhs);                         \
-  }                                                                      \
-  [[maybe_unused]] inline constexpr x operator^(x lhs, x rhs) noexcept { \
-    return irs::enum_bitwise_xor(lhs, rhs);                              \
-  }                                                                      \
-  [[maybe_unused]] inline x& operator^=(x& lhs, x rhs) noexcept {        \
-    return lhs = irs::enum_bitwise_xor(lhs, rhs);                        \
-  }                                                                      \
-  [[maybe_unused]] inline constexpr x operator~(x v) noexcept {          \
-    return irs::enum_bitwise_not(v);                                     \
+// TODO(MBkkt) PLEASE DON'T USE IT!
+//  For an example, you have enum with 1 and 2:
+//  you make OR, it produces 3 which is not part of enum!
+// TODO(MBkkt) Remove all usage, then remove it
+
+#define ENABLE_BITMASK_ENUM(x)                                              \
+  [[maybe_unused]] inline constexpr x operator&(x lhs, x rhs) noexcept {    \
+    return irs::enum_bitwise_and(lhs, rhs);                                 \
+  }                                                                         \
+  [[maybe_unused]] inline constexpr x& operator&=(x& lhs, x rhs) noexcept { \
+    return lhs = irs::enum_bitwise_and(lhs, rhs);                           \
+  }                                                                         \
+  [[maybe_unused]] inline constexpr x operator|(x lhs, x rhs) noexcept {    \
+    return irs::enum_bitwise_or(lhs, rhs);                                  \
+  }                                                                         \
+  [[maybe_unused]] inline constexpr x& operator|=(x& lhs, x rhs) noexcept { \
+    return lhs = irs::enum_bitwise_or(lhs, rhs);                            \
+  }                                                                         \
+  [[maybe_unused]] inline constexpr x operator^(x lhs, x rhs) noexcept {    \
+    return irs::enum_bitwise_xor(lhs, rhs);                                 \
+  }                                                                         \
+  [[maybe_unused]] inline constexpr x& operator^=(x& lhs, x rhs) noexcept { \
+    return lhs = irs::enum_bitwise_xor(lhs, rhs);                           \
+  }                                                                         \
+  [[maybe_unused]] inline constexpr x operator~(x v) noexcept {             \
+    return irs::enum_bitwise_not(v);                                        \
   }

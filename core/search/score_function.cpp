@@ -25,19 +25,33 @@
 #include <absl/base/casts.h>
 
 namespace irs {
+namespace {
+
+void Constant1(score_ctx* ctx, score_t* res) noexcept {
+  IRS_ASSERT(res != nullptr);
+  const auto boost = reinterpret_cast<uintptr_t>(ctx);
+  std::memcpy(res, &boost, sizeof(score_t));
+}
+
+struct ConstantCtx {
+  score_t value;
+  uint32_t count;
+};
+
+void ConstantN(score_ctx* ctx, score_t* res) noexcept {
+  IRS_ASSERT(res != nullptr);
+  const auto score_ctx = absl::bit_cast<ConstantCtx>(ctx);
+  std::fill_n(res, score_ctx.count, score_ctx.value);
+}
+
+}  // namespace
 
 ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
   static_assert(sizeof(score_t) <= sizeof(uintptr_t));
   uintptr_t boost = 0;
   std::memcpy(&boost, &value, sizeof(score_t));
   static_assert(sizeof(score_ctx*) == sizeof(uintptr_t));
-  return {reinterpret_cast<score_ctx*>(boost),
-          [](score_ctx* ctx, score_t* res) noexcept {
-            IRS_ASSERT(res != nullptr);
-            const auto boost = reinterpret_cast<uintptr_t>(ctx);
-            std::memcpy(res, &boost, sizeof(score_t));
-          },
-          &Noop};
+  return {reinterpret_cast<score_ctx*>(boost), &Constant1, &Noop};
 }
 
 ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
@@ -46,18 +60,13 @@ ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
   } else if (1 == count) {
     return Constant(value);
   } else {
-    struct ScoreCtx {
-      score_t value;
-      uint32_t count;
-    };
-    return {absl::bit_cast<score_ctx*>(ScoreCtx{value, count}),
-            [](score_ctx* ctx, score_t* res) noexcept {
-              IRS_ASSERT(res != nullptr);
-              const auto score_ctx = absl::bit_cast<ScoreCtx>(ctx);
-              std::fill_n(res, score_ctx.count, score_ctx.value);
-            },
+    return {absl::bit_cast<score_ctx*>(ConstantCtx{value, count}), &ConstantN,
             &Noop};
   }
+}
+
+bool ScoreFunction::IsConstant() const noexcept {
+  return IsDefault() || score_ == &Constant1 || score_ == &ConstantN;
 }
 
 }  // namespace irs

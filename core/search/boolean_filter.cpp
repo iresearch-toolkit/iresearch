@@ -323,7 +323,10 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
   }
   const auto& typed_rhs = down_cast<boolean_filter>(rhs);
   return filters_.size() == typed_rhs.size() &&
-         std::equal(begin(), end(), typed_rhs.begin());
+         std::equal(begin(), end(), typed_rhs.begin(),
+                    [](const filter::ptr& lhs, const filter::ptr& rhs) {
+                      return *lhs == *rhs;
+                    });
 }
 
 filter::prepared::ptr boolean_filter::prepare(

@@ -30,18 +30,22 @@
 
 namespace irs {
 
+// Adapter to use doc_iterator with conjunction and disjunction.
 template<typename DocIterator>
-struct doc_iterator_adapter {
+struct score_iterator_adapter {
   using doc_iterator_t = DocIterator;
 
-  doc_iterator_adapter() noexcept = default;
-  doc_iterator_adapter(doc_iterator_t&& it) noexcept
-    : it(std::move(it)), doc(irs::get<irs::document>(*this->it)) {
+  score_iterator_adapter() noexcept = default;
+  score_iterator_adapter(doc_iterator_t&& it) noexcept
+    : it{std::move(it)},
+      doc{irs::get<irs::document>(*this->it)},
+      score{&irs::score::get(*this->it)} {
     IRS_ASSERT(doc);
   }
 
-  doc_iterator_adapter(doc_iterator_adapter&&) noexcept = default;
-  doc_iterator_adapter& operator=(doc_iterator_adapter&&) noexcept = default;
+  score_iterator_adapter(score_iterator_adapter&&) noexcept = default;
+  score_iterator_adapter& operator=(score_iterator_adapter&&) noexcept =
+    default;
 
   typename doc_iterator_t::element_type* operator->() const noexcept {
     return it.get();
@@ -64,24 +68,6 @@ struct doc_iterator_adapter {
 
   doc_iterator_t it;
   const irs::document* doc{};
-};
-
-// Adapter to use doc_iterator with conjunction and disjunction.
-template<typename DocIterator>
-struct score_iterator_adapter : public doc_iterator_adapter<DocIterator> {
-  typedef DocIterator doc_iterator_t;
-
-  score_iterator_adapter() noexcept = default;
-  score_iterator_adapter(doc_iterator_t&& it) noexcept
-    : doc_iterator_adapter<DocIterator>(std::move(it)),
-      score{&irs::score::get(*this->it)} {
-    IRS_ASSERT(this->doc);
-  }
-
-  score_iterator_adapter(score_iterator_adapter&&) noexcept = default;
-  score_iterator_adapter& operator=(score_iterator_adapter&&) noexcept =
-    default;
-
   const irs::score* score{};
 };
 
@@ -173,10 +159,10 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     scores_.reserve(itrs_.size());
     for (auto& it : itrs_) {
       // FIXME(gnus): remove const cast
-      auto* score = const_cast<irs::score*>(it.score);
+      auto* sub_score = const_cast<irs::score*>(it.score);
       IRS_ASSERT(score);  // ensured by score_iterator_adapter
-      if (!score->IsDefault()) {
-        scores_.emplace_back(score);
+      if (!sub_score->IsDefault()) {
+        scores_.emplace_back(sub_score);
       }
     }
 
@@ -216,7 +202,6 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
           auto begin = std::begin(self.scores_);
           auto end = std::end(self.scores_);
 
-          std::memset(res, 0, merger.byte_size());
           (**begin)(res);
           for (++begin; begin != end; ++begin) {
             (**begin)(merger.temp());

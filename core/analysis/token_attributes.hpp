@@ -163,7 +163,7 @@ class attribute_provider_change final : public attribute {
 };
 
 // min score set by document consumers
-// max score set by document producers
+// *_max set by document producers
 struct score_threshold final : public attribute {
   // DO NOT CHANGE NAME
   static constexpr std::string_view type_name() noexcept {
@@ -174,13 +174,11 @@ struct score_threshold final : public attribute {
   // For disjunction/conjunction it's just sum of sub-iterators max score
   // For iterator without score it depends on count of documents in iterator
   // For wanderator it's max score for whole skip-list
-  // TODO(gnusi) write it to the begin of skip-list
   // TODO(MBkkt) tail_max better here and not affect correctness
   //  but to support it we need to know max value in the tail blocks.
   //  Open question: how do it without read next blocks?
-  // score_t list_max;
-  // TODO(MBkkt) Maybe better to make leaf_max value?
-  const score_t* leaf_max;              // never null
+  score_t list_max{};
+  const score_t* leaf_max{};
 #ifdef IRESEARCH_DEBUG                  // Used for tests
   std::span<const score_t> levels_max;  // levels_max.back() == *leaf_max
 #endif

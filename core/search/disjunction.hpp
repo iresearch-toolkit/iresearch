@@ -724,7 +724,7 @@ class disjunction : public compound_doc_iterator<Adapter>,
 
       const auto its = self.hitch_all_iterators();
 
-      if (auto& score = *self.lead().score; !score.IsNoop()) {
+      if (auto& score = *self.lead().score; !score.IsDefault()) {
         score(res);
       } else {
         std::memset(res, 0, self.byte_size());
@@ -739,7 +739,7 @@ class disjunction : public compound_doc_iterator<Adapter>,
           },
           [&self, res](size_t it) {
             IRS_ASSERT(it < self.itrs_.size());
-            if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
+            if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
               auto& merger = static_cast<Merger&>(self);
               score(merger.temp());
               merger(res, merger.temp());
@@ -852,7 +852,7 @@ struct block_disjunction_traits {
 };
 
 // The implementation reads ahead 64*NumBlocks documents.
-// It isn't optimized for conjunction case when the requected min match
+// It isn't optimized for conjunction case when the requested min match
 // count equals to a number of input iterators.
 // It's better to to use a dedicated "conjunction" iterator.
 template<typename DocIterator, typename Merger, typename Traits,
@@ -1389,7 +1389,6 @@ doc_iterator::ptr MakeWeakDisjunction(
 
   if (1 == min_match) {
     // Pure disjunction
-    IRS_ASSERT(size >= min_match);
     using Disjunction = typename RebindIterator<WeakConjunction>::Disjunction;
 
     return MakeDisjunction<Disjunction>(std::move(itrs),
@@ -1399,7 +1398,6 @@ doc_iterator::ptr MakeWeakDisjunction(
 
   if (min_match == size) {
     // Pure conjunction
-    IRS_ASSERT(min_match == size);
     using Conjunction = typename RebindIterator<WeakConjunction>::Conjunction;
 
     return memory::make_managed<Conjunction>(std::move(itrs),

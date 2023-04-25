@@ -242,7 +242,7 @@ class min_match_disjunction : public doc_iterator,
       std::memset(res, 0, static_cast<Merger&>(self).byte_size());
       std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
         IRS_ASSERT(it < self.itrs_.size());
-        if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
+        if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
           auto& merger = static_cast<Merger&>(self);
           score(merger.temp());
           merger(res, merger.temp());

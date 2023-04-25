@@ -52,6 +52,14 @@ struct doc_iterator : iterator<doc_id_t, attribute_provider> {
   // Position iterator at a specified target and returns current value
   // (for more information see class description)
   virtual doc_id_t seek(doc_id_t target) = 0;
+
+  // Position iterator at block with a specified target
+  // return last document in this block
+  // (for more information see class description)
+  virtual doc_id_t shallow_seek(doc_id_t target) {
+    IRS_ASSERT(false);
+    return {};
+  }
 };
 
 // Same as `doc_iterator` but also support `reset()` operation

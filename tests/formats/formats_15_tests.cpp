@@ -224,6 +224,7 @@ void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
   ASSERT_EQ(size >= 1, threshold->leaf_max != nullptr);
   if (threshold->leaf_max) {
     ASSERT_EQ(expected_freqs.At(size - 1, doc), *threshold->leaf_max);
+    ASSERT_LE(expected_freqs.At(0, doc), threshold->list_max);
   }
 #ifdef IRESEARCH_DEBUG
   ASSERT_EQ(size, threshold->levels_max.size());

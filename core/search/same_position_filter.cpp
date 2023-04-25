@@ -31,9 +31,8 @@
 #include "shared.hpp"
 #include "utils/misc.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 template<typename Conjunction>
 class same_position_iterator : public Conjunction {
@@ -176,9 +175,8 @@ class same_position_query : public filter::prepared {
 
     return irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, ord.buckets().size(),
-      [&]<typename Aggregator>(
-        Aggregator&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction_t = conjunction<doc_iterator::ptr, Aggregator>;
+      [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
+        using conjunction_t = conjunction<doc_iterator::ptr, A>;
 
         return MakeConjunction<same_position_iterator<conjunction_t>>(
           std::move(itrs), std::move(aggregator), std::move(positions));
@@ -191,8 +189,6 @@ class same_position_query : public filter::prepared {
 };
 
 }  // namespace
-
-namespace irs {
 
 filter::prepared::ptr by_same_position::prepare(
   const IndexReader& index, const Scorers& ord, score_t boost,

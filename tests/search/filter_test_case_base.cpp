@@ -163,10 +163,10 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
     auto* score = irs::get<irs::score>(rhs);
 
     if (expected.empty()) {
-      ASSERT_TRUE(nullptr == score || score->IsNoop());
+      ASSERT_TRUE(nullptr == score || score->Ctx() == nullptr);
     } else {
       ASSERT_NE(nullptr, score);
-      ASSERT_FALSE(score->IsNoop());
+      ASSERT_FALSE(score->Ctx() == nullptr);
 
       std::vector<irs::score_t> actual(ord.buckets().size());
       if (score) {

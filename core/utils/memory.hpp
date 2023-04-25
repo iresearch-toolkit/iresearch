@@ -221,6 +221,8 @@ class allocator_array_deallocator {
 
   allocator_array_deallocator(const allocator_type& alloc, size_t size) noexcept
     : alloc_{alloc}, size_{size} {}
+  allocator_array_deallocator(allocator_type&& alloc, size_t size) noexcept
+    : alloc_{std::move(alloc)}, size_{size} {}
 
   void operator()(pointer p) noexcept {
     traits_t::deallocate(alloc_, p, size_);
@@ -441,8 +443,8 @@ inline constexpr allocate_only_tag allocate_only{};
 template<
   typename T, typename Alloc,
   typename = std::enable_if_t<std::is_array_v<T> && std::extent_v<T> == 0>>
-auto allocate_unique(Alloc& alloc, size_t size, allocate_only_tag /*tag*/) {
-  using traits_t = std::allocator_traits<std::remove_cv_t<Alloc>>;
+auto allocate_unique(Alloc&& alloc, size_t size, allocate_only_tag /*tag*/) {
+  using traits_t = std::allocator_traits<std::remove_cvref_t<Alloc>>;
   using pointer = typename traits_t::pointer;
   using allocator_type = typename traits_t::allocator_type;
   using deleter_t = allocator_array_deallocator<allocator_type>;
@@ -451,12 +453,12 @@ auto allocate_unique(Alloc& alloc, size_t size, allocate_only_tag /*tag*/) {
   pointer p = nullptr;
 
   if (!size) {
-    return unique_ptr_t{p, deleter_t{alloc, size}};
+    return unique_ptr_t{p, deleter_t{std::forward<Alloc>(alloc), size}};
   }
 
   p = alloc.allocate(size);  // allocate space for 'size' object
 
-  return unique_ptr_t{p, deleter_t{alloc, size}};
+  return unique_ptr_t{p, deleter_t{std::forward<Alloc>(alloc), size}};
 }
 
 // Decline wrong syntax
