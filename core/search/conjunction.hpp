@@ -96,7 +96,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
 
         // sort subnodes in ascending order by their cost
         std::sort(std::begin(itrs), std::end(itrs),
-                  [](const auto& lhs, const auto& rhs) {
+                  [](const auto& lhs, const auto& rhs) noexcept {
                     return cost::extract(lhs, cost::kMax) <
                            cost::extract(rhs, cost::kMax);
                   });

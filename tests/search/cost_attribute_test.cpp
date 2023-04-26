@@ -58,7 +58,7 @@ TEST(cost_attribute_test, estimation) {
     auto evaluated = false;
     auto est = 7;
 
-    cost.reset([&evaluated, est]() {
+    cost.reset([&evaluated, est]() noexcept {
       evaluated = true;
       return est;
     });
@@ -78,7 +78,7 @@ TEST(cost_attribute_test, lazy_estimation) {
   // set estimation function and evaluate
   {
     evaluated = false;
-    cost.reset([&evaluated, est]() {
+    cost.reset([&evaluated, est]() noexcept {
       evaluated = true;
       return est;
     });
@@ -97,7 +97,7 @@ TEST(cost_attribute_test, lazy_estimation) {
   // change estimation func
   {
     evaluated = false;
-    cost.reset([&evaluated, est]() {
+    cost.reset([&evaluated, est]() noexcept {
       evaluated = true;
       return est + 1;
     });
@@ -137,7 +137,7 @@ TEST(cost_attribute_test, extract) {
 
   // set estimation function and evaluate
   {
-    cost.reset([&evaluated, est]() {
+    cost.reset([&evaluated, est]() noexcept {
       evaluated = true;
       return est;
     });
@@ -149,7 +149,7 @@ TEST(cost_attribute_test, extract) {
   // change estimation func
   {
     evaluated = false;
-    cost.reset([&evaluated, est]() {
+    cost.reset([&evaluated, est]() noexcept {
       evaluated = true;
       return est + 1;
     });

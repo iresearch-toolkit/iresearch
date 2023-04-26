@@ -592,7 +592,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
 
         irs::sparse_bitmap_iterator it{stream->dup(),
                                        iterator_options(bitmap_index, true),
-                                       [count]() { return count; }};
+                                       [count]() noexcept { return count; }};
         auto* index = irs::get<irs::value_index>(it);
         ASSERT_NE(nullptr,
                   index);  // index value is unspecified for invalid docs
@@ -822,7 +822,7 @@ TEST_P(sparse_bitmap_test_case, rw_sparse_blocks) {
     for (irs::doc_id_t expected_doc = irs::doc_limits::min() + 1;;) {
       irs::sparse_bitmap_iterator it{
         stream->dup(), iterator_options(bitmap_index, true),
-        []() -> irs::cost::cost_t { return 65536; }};
+        []() noexcept -> irs::cost::cost_t { return 65536; }};
       auto* index = irs::get<irs::value_index>(it);
       ASSERT_NE(nullptr, index);  // index value is unspecified for invalid docs
       auto* doc = irs::get<irs::document>(it);

@@ -557,7 +557,7 @@ class PhraseIterator : public doc_iterator {
 
     // FIXME find a better estimation
     std::get<irs::cost>(attrs_).reset(
-      [this]() { return cost::extract(approx_); });
+      [this]() noexcept { return cost::extract(approx_); });
   }
 
   PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,

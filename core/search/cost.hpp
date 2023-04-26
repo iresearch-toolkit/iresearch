@@ -22,7 +22,7 @@
 
 #pragma once
 
-#include <functional>
+#include <function2/function2.hpp>
 
 #include "utils/assert.hpp"
 #include "utils/attribute_provider.hpp"
@@ -34,7 +34,11 @@ namespace irs {
 class cost final : public attribute {
  public:
   using cost_t = uint64_t;
-  using cost_f = std::function<cost_t()>;
+
+  using cost_f = fu2::function_base<true, false, fu2::capacity_default, false,
+                                    true, cost_t() noexcept>;
+  static_assert(std::is_nothrow_move_constructible_v<cost_f>);
+  static_assert(std::is_nothrow_move_assignable_v<cost_f>);
 
   static constexpr std::string_view type_name() noexcept { return "irs::cost"; }
 
@@ -42,11 +46,11 @@ class cost final : public attribute {
 
   cost() = default;
 
-  explicit cost(cost_t value) noexcept : value_(value), init_(true) {}
+  explicit cost(cost_t value) noexcept : value_{value} {}
 
-  explicit cost(cost_f&& func) noexcept(
-    std::is_nothrow_move_constructible_v<cost_f>)
-    : func_(std::move(func)), init_(false) {}
+  explicit cost(cost_f&& func) noexcept : func_{std::move(func)} {
+    IRS_ASSERT(func_);
+  }
 
   // Returns a value of the "cost" attribute in the specified "src"
   // collection, or "def" value if there is no "cost" attribute in "src".
@@ -62,32 +66,28 @@ class cost final : public attribute {
   // Sets the estimation value.
   void reset(cost_t value) noexcept {
     value_ = value;
-    init_ = true;
+    func_ = nullptr;
   }
 
   // Sets the estimation rule.
-  void reset(cost_f&& eval) noexcept(
-    std::is_nothrow_move_assignable_v<cost_f>) {
-    IRS_ASSERT(eval);
-    func_ = std::move(eval);
-    init_ = false;
+  void reset(cost_f&& func) noexcept {
+    func_ = std::move(func);
+    IRS_ASSERT(func_);
   }
 
   // Estimate the query according to the provided estimation function.
   // Return estimated cost.
-  cost_t estimate() const {
-    if (!init_) {
-      IRS_ASSERT(func_);
+  cost_t estimate() const noexcept {
+    if (IRS_UNLIKELY(func_)) {
       value_ = func_();
-      init_ = true;
+      func_ = nullptr;
     }
     return value_;
   }
 
  private:
-  cost_f func_{[] { return 0; }};  // evaluation function
+  mutable cost_f func_;  // evaluation function
   mutable cost_t value_{0};
-  mutable bool init_{true};
 };
 
 }  // namespace irs

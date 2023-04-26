@@ -1173,7 +1173,7 @@ struct unestimated : public irs::filter {
 struct estimated : public irs::filter {
   struct doc_iterator : irs::doc_iterator {
     doc_iterator(irs::cost::cost_t est, bool* evaluated) {
-      cost.reset([est, evaluated]() {
+      cost.reset([est, evaluated]() noexcept {
         *evaluated = true;
         return est;
       });
