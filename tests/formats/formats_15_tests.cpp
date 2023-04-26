@@ -18,6 +18,7 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <limits>
 #include <random>
 
 #include "formats/formats_10.hpp"
@@ -221,10 +222,14 @@ void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
     return;
   }
   const auto size = expected_freqs.Size();
-  ASSERT_EQ(size >= 1, threshold->leaf_max != nullptr);
-  if (threshold->leaf_max) {
+  if (size != 0) {
     ASSERT_EQ(expected_freqs.At(size - 1, doc), *threshold->leaf_max);
-    ASSERT_LE(expected_freqs.At(0, doc), threshold->list_max);
+    for (size_t i = 0; i < size; ++i) {
+      auto score = expected_freqs.At(i, doc);
+      if (score != std::numeric_limits<irs::score_t>::max()) {
+        ASSERT_LE(score, threshold->list_max);
+      }
+    }
   }
 #ifdef IRESEARCH_DEBUG
   ASSERT_EQ(size, threshold->levels_max.size());
@@ -375,11 +380,11 @@ void Format15TestCase::AssertWanderator(irs::doc_iterator::ptr& actual,
   ASSERT_NE(nullptr, actual);
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
-  if (docs.size() <= kVersion10PostingsWriterBlockSize ||
-      irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
-    ASSERT_EQ(nullptr, threshold_value);
+  ASSERT_NE(threshold_value, nullptr);
+  if (irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
+    ASSERT_EQ(nullptr, threshold_value->leaf_max);
   } else {
-    ASSERT_NE(nullptr, threshold_value);
+    ASSERT_NE(nullptr, threshold_value->leaf_max);
   }
 }
 
@@ -510,7 +515,7 @@ void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
 
-  if (threshold_value) {
+  if (!threshold_value->levels_max.empty()) {
     postings tmp{docs, field_features};
     skip_list = SkipList::Make(tmp, kVersion10PostingsWriterBlockSize, 8,
                                irs::doc_id_t(docs.size()));

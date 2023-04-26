@@ -482,7 +482,7 @@ class postings_writer_base : public irs::postings_writer {
 
   void WriteSkip(size_t level, memory_index_output& out) const;
   void BeginTerm();
-  void EndTerm(version10::term_meta& meta, bool wand);
+  void EndTerm(version10::term_meta& meta);
   void EndDocument();
   void PrepareWriters(const irs::feature_map_t& features);
 
@@ -634,7 +634,9 @@ void postings_writer_base::encode(data_output& out,
     }
   }
 
-  if (1U == meta.docs_count || meta.docs_count > skip_.Skip0()) {
+  if (1 == meta.docs_count) {
+    out.write_vint(meta.e_single_doc);
+  } else if (skip_.Skip0() < meta.docs_count) {
     out.write_vlong(meta.e_skip_start);
   }
 
@@ -697,10 +699,19 @@ void postings_writer_base::EndDocument() {
   }
 }
 
-void postings_writer_base::EndTerm(version10::term_meta& meta, bool wand) {
+void postings_writer_base::EndTerm(version10::term_meta& meta) {
   if (meta.docs_count == 0) {
     return;  // no documents to write
   }
+
+  const bool has_skip_list = skip_.Skip0() < meta.docs_count;
+  auto write_max_score = [&] {
+    ApplyWriters([&](auto& writer) {
+      const byte_type size = writer.SizeRoot();
+      doc_out_->write_byte(size);
+    });
+    ApplyWriters([&](auto& writer) { writer.WriteRoot(*doc_out_); });
+  };
 
   if (1 == meta.docs_count) {
     meta.e_single_doc = doc_.docs[0] - doc_limits::min();
@@ -711,13 +722,8 @@ void postings_writer_base::EndTerm(version10::term_meta& meta, bool wand) {
     auto doc = doc_.docs.begin();
     auto prev = doc_.block_last;
 
-    if (wand) {
-      // root wand data
-      ApplyWriters([&](auto& writer) {
-        const byte_type size = writer.SizeRoot();
-        out.write_byte(size);
-      });
-      ApplyWriters([&](auto& writer) { writer.WriteRoot(out); });
+    if (!has_skip_list) {
+      write_max_score();
     }
     if (features_.HasFrequency()) {
       auto doc_freq = doc_.freqs.begin();
@@ -806,8 +812,9 @@ void postings_writer_base::EndTerm(version10::term_meta& meta, bool wand) {
   // if we have flushed at least
   // one block there was buffered
   // skip data, so we need to flush it
-  if (meta.docs_count > skip_.Skip0()) {
+  if (has_skip_list) {
     meta.e_skip_start = doc_out_->file_pointer() - doc_.start;
+    write_max_score();
     skip_.Flush(*doc_out_);
   }
 
@@ -1033,6 +1040,8 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
     BeginDocument();
     if constexpr (FormatTraits::wand()) {
       ApplyWriters([](auto& writer) { writer.Update(); });
+    } else {
+      IRS_ASSERT(valid_writers_.empty());
     }
     IRS_ASSERT(attrs_.pos_);
     while (attrs_.pos_->next()) {
@@ -1048,7 +1057,7 @@ irs::postings_writer::state postings_writer<FormatTraits>::write(
 
   meta->docs_count = docs_count;
   meta->freq = total_freq;
-  EndTerm(*meta, FormatTraits::wand());
+  EndTerm(*meta);
 
   return make_state(*meta.release());
 }
@@ -2043,14 +2052,26 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
                    const ScoreFunctionFactory& factory, const Scorer& scorer,
                    byte_type wand_index) {
     prepare(meta, doc_in, pos_in, pay_in, wand_index);
-    auto& threshold = std::get<score_threshold>(attrs_);
-    if (meta.docs_count <= FieldTraits::block_size()) {
-      auto ctx = scorer.prepare_wand_source();
-      auto func = factory(*ctx, scorer);
-      skip_.Reader().ReadMaxScore(wand_index, func, *ctx, *this->doc_in_,
-                                  threshold.list_max);
-      threshold.leaf_max = &threshold.list_max;
+    if (meta.docs_count > FieldTraits::block_size()) {
+      return;
     }
+    auto& threshold = std::get<score_threshold>(attrs_);
+    auto ctx = scorer.prepare_wand_source();
+    auto func = factory(*ctx, scorer);
+    const bool is_full_block = meta.docs_count == FieldTraits::block_size();
+    const auto was = this->doc_in_->file_pointer();
+    if (is_full_block) {
+      FieldTraits::skip_block(*this->doc_in_);
+      if constexpr (FieldTraits::frequency()) {
+        FieldTraits::skip_block(*this->doc_in_);
+      }
+    }
+    skip_.Reader().ReadMaxScore(wand_index, func, *ctx, *this->doc_in_,
+                                threshold.list_max);
+    if (is_full_block) {
+      this->doc_in_->seek(was);
+    }
+    threshold.leaf_max = &threshold.list_max;
   }
 
   void prepare(const term_meta& meta, const index_input* doc_in,
@@ -2495,7 +2516,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
     void EnsureSorted() const noexcept;
 
-    void InitMaxScore(score_threshold& threshold, index_input& input);
+    void ReadMaxScore(score_threshold& threshold, index_input& input);
     void Init(const version10::term_meta& state, size_t num_levels,
               score_threshold& threshold);
     bool IsLess(size_t level, doc_id_t target) const noexcept;
@@ -2574,7 +2595,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
 template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
          typename WandExtent, bool Strict>
 void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
-                Strict>::ReadSkip::InitMaxScore(score_threshold& threshold,
+                Strict>::ReadSkip::ReadMaxScore(score_threshold& threshold,
                                                 index_input& in) {
   CommonReadWandData(extent_, index_, func_, *ctx_, in, threshold.list_max);
   threshold.leaf_max = &threshold.list_max;
@@ -2734,7 +2755,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent, Strict>::
   skip_in->seek(term_state.doc_start + term_state.e_skip_start);
 
   auto& threshold = std::get<score_threshold>(attrs_);
-  skip_.Reader().InitMaxScore(threshold, *skip_in);
+  skip_.Reader().ReadMaxScore(threshold, *skip_in);
 
   skip_.Prepare(std::move(skip_in), term_state.docs_count);
 
@@ -3450,7 +3471,9 @@ size_t postings_reader_base::decode(const byte_type* in, IndexFeatures features,
     }
   }
 
-  if (1U == term_meta.docs_count || term_meta.docs_count > block_size_) {
+  if (1 == term_meta.docs_count) {
+    term_meta.e_single_doc = vread<uint32_t>(p);
+  } else if (block_size_ < term_meta.docs_count) {
     term_meta.e_skip_start = vread<uint64_t>(p);
   }
 

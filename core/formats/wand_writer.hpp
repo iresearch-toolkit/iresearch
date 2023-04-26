@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <algorithm>
+
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
 #include "search/scorer.hpp"
@@ -63,19 +65,16 @@ class WandWriterImpl final : public WandWriter {
     // Accumulate score on less granular level
     Update(score_levels_[level + 1], score.score, [&] { return score.value; });
 
-    IRS_ASSERT(std::is_sorted(score_levels_.begin(),
-                              score_levels_.begin() + level + 2,
-                              [](const auto& lhs, const auto& rhs) noexcept {
-                                return lhs.score < rhs.score;
-                              }));
+    IRS_ASSERT(
+      std::is_sorted(score_levels_.begin(), score_levels_.begin() + level + 2));
     ValueProducer::Write(score.value, out);
     score.score = 0.f;
   }
 
   void WriteRoot(index_output& out) final {
-    auto& score = score_levels_.back();
-    ValueProducer::Write(score.value, out);
-    score.score = 0.f;
+    auto max = std::max_element(score_levels_.begin(), score_levels_.end());
+    IRS_ASSERT(max != score_levels_.end());
+    ValueProducer::Write(max->value, out);
   }
 
   byte_type Size(size_t level) const noexcept final {
@@ -95,6 +94,10 @@ class WandWriterImpl final : public WandWriter {
   struct Entry {
     score_t score{};
     ValueType value;
+
+    friend bool operator<(const Entry& lhs, const Entry& rhs) noexcept {
+      return lhs.score < rhs.score;
+    }
   };
 
   template<typename Func>
