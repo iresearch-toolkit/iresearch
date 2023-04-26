@@ -72,9 +72,7 @@ class WandWriterImpl final : public WandWriter {
   }
 
   void WriteRoot(index_output& out) final {
-    auto max = std::max_element(score_levels_.begin(), score_levels_.end());
-    IRS_ASSERT(max != score_levels_.end());
-    ValueProducer::Write(max->value, out);
+    ValueProducer::Write(score_levels_.back().value, out);
   }
 
   byte_type Size(size_t level) const noexcept final {
@@ -83,9 +81,11 @@ class WandWriterImpl final : public WandWriter {
     return ValueProducer::Size(entry.value);
   }
 
-  byte_type SizeRoot() const noexcept final {
-    const auto& entry = score_levels_.back();
-    return ValueProducer::Size(entry.value);
+  byte_type SizeRoot() noexcept final {
+    auto max = std::max_element(score_levels_.begin(), score_levels_.end());
+    IRS_ASSERT(max != score_levels_.end());
+    score_levels_.back() = *max;
+    return ValueProducer::Size(max->value);
   }
 
  private:

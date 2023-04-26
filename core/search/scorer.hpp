@@ -138,7 +138,7 @@ struct WandWriter {
   virtual void WriteRoot(index_output& out) = 0;
 
   virtual byte_type Size(size_t level) const = 0;
-  virtual byte_type SizeRoot() const = 0;
+  virtual byte_type SizeRoot() = 0;
 };
 
 // Base class for all scorers.

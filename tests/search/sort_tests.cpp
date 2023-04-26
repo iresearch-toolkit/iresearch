@@ -808,7 +808,7 @@ TEST(sort_tests, prepare_order) {
 TEST(ScoreFunctionTest, Invalid) {
   auto func = irs::ScoreFunction::Invalid();
   ASSERT_FALSE(func);
-  ASSERT_FALSE(func.Ctx() == nullptr);
+  ASSERT_FALSE(func.IsDefault());
 }
 
 TEST(ScoreFunctionTest, Noop) {

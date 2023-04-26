@@ -141,9 +141,9 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
     EXPECT_NE(nullptr, score);
     auto* threshold = irs::get_mutable<irs::score_threshold>(docs.get());
     if (wand_idx != irs::WandContext::kDisable && can_use_wand) {
-      EXPECT_NE(nullptr, threshold);
+      EXPECT_NE(nullptr, threshold->leaf_max);
     } else {
-      EXPECT_EQ(nullptr, threshold);
+      EXPECT_EQ(nullptr, threshold->leaf_max);
       threshold = &tmp;
     }
 
