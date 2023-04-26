@@ -179,7 +179,7 @@ struct score_threshold final : public attribute {
   //  Open question: how do it without read next blocks?
   score_t list_max{};
   const score_t* leaf_max{};
-#ifdef IRESEARCH_DEBUG                  // Used for tests
+#ifdef IRESEARCH_TEST                   // Used for tests
   std::span<const score_t> levels_max;  // levels_max.back() == *leaf_max
 #endif
 };

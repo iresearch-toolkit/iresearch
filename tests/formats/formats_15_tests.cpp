@@ -231,13 +231,11 @@ void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
       }
     }
   }
-#ifdef IRESEARCH_DEBUG
   ASSERT_EQ(size, threshold->levels_max.size());
   for (size_t i = 0; i < size; ++i) {
     const auto expected_freq = expected_freqs.At(i, doc);
     ASSERT_EQ(expected_freq, threshold->levels_max[i]);
   }
-#endif
 }
 
 class Format15TestCase : public tests::format_test_case {

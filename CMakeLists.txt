@@ -280,6 +280,9 @@ if (IRESEARCH_COVERAGE)
 elseif (IRESEARCH_DEBUG)
   add_definitions(-DIRESEARCH_DEBUG)
 endif ()
+if (USE_TESTS)
+  add_definitions(-DIRESEARCH_TEST)
+endif ()
 
 add_subdirectory(core)
 

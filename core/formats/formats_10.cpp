@@ -2614,7 +2614,7 @@ void wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
   skip_levels_.resize(num_levels);
   skip_scores_.resize(num_levels);
   threshold.leaf_max = &skip_scores_.back();
-#ifdef IRESEARCH_DEBUG
+#ifdef IRESEARCH_TEST
   threshold.levels_max = std::span{skip_scores_};
 #endif
 
