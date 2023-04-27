@@ -106,11 +106,18 @@ constexpr uint32_t ceil32(uint32_t value, uint32_t step) noexcept {
   return div_ceil32(value, step) * step;
 }
 
-uint32_t log2_64(uint64_t value) noexcept;
+constexpr uint32_t log(uint64_t x, uint64_t base) noexcept {
+  uint32_t res = 0;
+  while (x >= base) {
+    x /= base;
+    ++res;
+  }
+  return res;
+}
 
-uint32_t log2_32(uint32_t value) noexcept;
+constexpr uint32_t log2_64(uint64_t value) noexcept { return log(value, 2); }
 
-uint32_t log(uint64_t x, uint64_t base) noexcept;
+constexpr uint32_t log2_32(uint32_t value) noexcept { return log(value, 2); }
 
 IRS_FORCE_INLINE uint32_t log2_floor_32(uint32_t v) {
 #if __GNUC__ >= 4

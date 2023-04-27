@@ -37,6 +37,7 @@ namespace irs {
 struct data_output;
 struct IndexReader;
 class memory_index_output;
+class index_output;
 struct SubReader;
 struct ColumnProvider;
 struct term_reader;
@@ -134,8 +135,10 @@ struct WandWriter {
   virtual void Update() = 0;
 
   virtual void Write(size_t level, memory_index_output& out) = 0;
+  virtual void WriteRoot(index_output& out) = 0;
 
   virtual byte_type Size(size_t level) const = 0;
+  virtual byte_type SizeRoot() = 0;
 };
 
 // Base class for all scorers.
@@ -333,11 +336,8 @@ class Aggregator<Merger, std::numeric_limits<size_t>::max()> {
 
  public:
   explicit Aggregator(size_t size) noexcept
-    : buf_{[size]() {
-        std::allocator<score_t> alloc{};  // TODO(MBkkt) remove
-        return memory::allocate_unique<score_t[]>(alloc, size,
-                                                  memory::allocate_only);
-      }()} {
+    : buf_{memory::allocate_unique<score_t[]>(std::allocator<score_t>{}, size,
+                                              memory::allocate_only)} {
     IRS_ASSERT(size);
   }
 
@@ -375,6 +375,9 @@ struct SumMerger {
     *dst += *src;
   }
 };
+
+// ScoreFunction::Default doesn't work if we will add MulMerger
+// And probably can work strange with Max/MinMerger
 
 struct MaxMerger {
   void operator()(score_t* IRS_RESTRICT dst,

@@ -26,9 +26,8 @@
 #include "search/phrase_filter.hpp"
 #include "search/phrase_iterator.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 // Get index features required for offsets
 constexpr IndexFeatures kRequireOffs =
@@ -46,8 +45,6 @@ using VariadicPhraseIterator = PhraseIterator<
   VariadicPhraseFrequency<Adapter, VolatileBoost, OneShot, HasFreq>>;
 
 }  // namespace
-
-namespace irs {
 
 doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   auto& rdr = ctx.segment;

@@ -56,6 +56,8 @@ struct WandContext {
   // Optimization is turned off by default.
   byte_type index{kDisable};
   bool strict{false};
+  // Use maxscore instead of wand in disjunction
+  bool maxscore{false};
 };
 
 struct IndexReaderOptions {

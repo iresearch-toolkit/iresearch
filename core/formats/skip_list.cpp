@@ -27,25 +27,27 @@
 #include "store/store_utils.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/std.hpp"
+#include "utils/type_limits.hpp"
 
+namespace irs {
 namespace {
 
 // returns maximum number of skip levels needed to store specified
 // count of objects for skip list with
 // step skip_0 for 0 level, step skip_n for other levels
-constexpr size_t max_levels(size_t skip_0, size_t skip_n,
-                            size_t count) noexcept {
-  return skip_0 < count ? 1 + irs::math::log(count / skip_0, skip_n) : 0;
+constexpr size_t CountMaxLevels(size_t skip_0, size_t skip_n,
+                                size_t count) noexcept {
+  return skip_0 < count ? 1 + math::log(count / skip_0, skip_n) : 0;
 }
 
-}  // namespace
+static_assert(CountMaxLevels(128, 8, doc_limits::eof()) == 9);
 
-namespace irs {
+}  // namespace
 
 void SkipWriter::Prepare(
   size_t max_levels, size_t count,
   const memory_allocator& alloc /* = memory_allocator::global() */) {
-  max_levels_ = std::min(max_levels, ::max_levels(skip_0_, skip_n_, count));
+  max_levels_ = std::min(max_levels, CountMaxLevels(skip_0_, skip_n_, count));
   levels_.reserve(max_levels_);
 
   // reset existing skip levels

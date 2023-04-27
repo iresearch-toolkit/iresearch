@@ -65,7 +65,7 @@ irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
 
   for (; begin != end; ++begin) {
     // execute query - get doc iterator
-    auto docs = begin->execute(ctx);
+    auto docs = (*begin)->execute(ctx);
 
     // filter out empty iterators
     if (!irs::doc_limits::eof(docs->value())) {
@@ -98,14 +98,14 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
     case 0:
       return irs::doc_iterator::empty();
     case 1:
-      return begin->execute(ctx);
+      return (*begin)->execute(ctx);
   }
 
   std::vector<irs::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
   itrs.reserve(size);
 
   for (; begin != end; ++begin) {
-    auto docs = begin->execute(ctx);
+    auto docs = (*begin)->execute(ctx);
 
     // filter out empty iterators
     if (irs::doc_limits::eof(docs->value())) {
@@ -132,8 +132,8 @@ namespace irs {
 // Base class for boolean queries
 class BooleanQuery : public filter::prepared {
  public:
-  typedef std::vector<filter::prepared::ptr> queries_t;
-  typedef ptr_iterator<queries_t::const_iterator> iterator;
+  using queries_t = std::vector<filter::prepared::ptr>;
+  using iterator = queries_t::const_iterator;
 
   BooleanQuery() noexcept : excl_{0} {}
 
@@ -176,7 +176,7 @@ class BooleanQuery : public filter::prepared {
 
     // FIXME(gnusi): visit exclude group?
     for (auto it = begin(), end = excl_begin(); it != end; ++it) {
-      it->visit(segment, visitor, boost);
+      (*it)->visit(segment, visitor, boost);
     }
   }
 
@@ -209,9 +209,9 @@ class BooleanQuery : public filter::prepared {
     merge_type_ = merge_type;
   }
 
-  iterator begin() const { return iterator(std::begin(queries_)); }
-  iterator excl_begin() const { return iterator(std::begin(queries_) + excl_); }
-  iterator end() const { return iterator(std::end(queries_)); }
+  iterator begin() const { return queries_.begin(); }
+  iterator excl_begin() const { return begin() + excl_; }
+  iterator end() const { return queries_.end(); }
 
   bool empty() const { return queries_.empty(); }
   size_t size() const { return queries_.size(); }
@@ -282,7 +282,7 @@ class MinMatchQuery : public BooleanQuery {
     auto it = std::begin(itrs);
     for (; begin != end; ++begin) {
       // execute query - get doc iterator
-      *it = begin->execute(ctx);
+      *it = (*begin)->execute(ctx);
 
       // filter out empty iterators
       if (IRS_LIKELY(*it && !doc_limits::eof(it->value()))) {
@@ -323,7 +323,10 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
   }
   const auto& typed_rhs = down_cast<boolean_filter>(rhs);
   return filters_.size() == typed_rhs.size() &&
-         std::equal(begin(), end(), typed_rhs.begin());
+         std::equal(begin(), end(), typed_rhs.begin(),
+                    [](const filter::ptr& lhs, const filter::ptr& rhs) {
+                      return *lhs == *rhs;
+                    });
 }
 
 filter::prepared::ptr boolean_filter::prepare(
@@ -372,12 +375,12 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
   const irs::filter* empty_filter{nullptr};
   const auto is_or = type() == irs::type<Or>::id();
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
-    if (irs::type<irs::empty>::id() == begin->type()) {
-      empty_filter = &*begin;
+    if (irs::type<irs::empty>::id() == (*begin)->type()) {
+      empty_filter = begin->get();
       continue;
     }
-    if (irs::type<Not>::id() == begin->type()) {
-      const auto res = optimize_not(down_cast<Not>(*begin));
+    if (irs::type<Not>::id() == (*begin)->type()) {
+      const auto res = optimize_not(down_cast<Not>(**begin));
 
       if (!res.first) {
         continue;
@@ -403,7 +406,7 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
         incl.push_back(res.first);
       }
     } else {
-      incl.push_back(&*begin);
+      incl.push_back(begin->get());
     }
   }
   if (empty_filter != nullptr) {

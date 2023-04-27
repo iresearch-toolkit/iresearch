@@ -47,6 +47,7 @@ class ScoreFunction : util::noncopyable {
   static void Noop(score_ctx* /*ctx*/) noexcept {}
 
  public:
+  // TODO(MBkkt) Default score probably should do nothing instead of set 0
   static void DefaultScore(score_ctx* ctx, score_t* res) noexcept {
     IRS_ASSERT(res != nullptr);
     const auto size = reinterpret_cast<size_t>(ctx);
@@ -102,8 +103,8 @@ class ScoreFunction : util::noncopyable {
     deleter_ = &Noop;
   }
 
-  bool IsNoop() const noexcept { return ctx_ == nullptr && IsDefault(); }
   bool IsDefault() const noexcept { return score_ == &DefaultScore; }
+  bool IsConstant() const noexcept;
 
   IRS_FORCE_INLINE void operator()(score_t* res) const noexcept {
     IRS_ASSERT(score_ != nullptr);

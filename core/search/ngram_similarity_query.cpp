@@ -442,7 +442,8 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
       irs::get_mutable<document>(&approx_);
 
     // FIXME find a better estimation
-    std::get<cost>(attrs_).reset([this]() { return cost::extract(approx_); });
+    std::get<cost>(attrs_).reset(
+      [this]() noexcept { return cost::extract(approx_); });
   }
 
   NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,

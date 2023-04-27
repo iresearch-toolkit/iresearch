@@ -198,8 +198,6 @@ struct postings_reader {
 };
 
 struct basic_term_reader : public attribute_provider {
-  virtual ~basic_term_reader() = default;
-
   virtual term_iterator::ptr iterator() const = 0;
 
   // Returns field metadata
@@ -224,8 +222,6 @@ enum class SeekMode : uint32_t {
 struct term_reader : public attribute_provider {
   using ptr = std::unique_ptr<term_reader>;
   using cookie_provider = std::function<const seek_cookie*()>;
-
-  virtual ~term_reader() = default;
 
   // `mode` argument defines seek mode for term iterator
   // Returns an iterator over terms for a field.

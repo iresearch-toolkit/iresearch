@@ -184,10 +184,12 @@ class basic_disjunction : public compound_doc_iterator<Adapter>,
   using merger_type = Merger;
 
   basic_disjunction(adapter&& lhs, adapter&& rhs, Merger&& merger = Merger{})
-    : basic_disjunction{
-        std::move(lhs), std::move(rhs), std::move(merger),
-        [this]() { return cost::extract(lhs_, 0) + cost::extract(rhs_, 0); },
-        resolve_overload_tag{}} {}
+    : basic_disjunction{std::move(lhs), std::move(rhs), std::move(merger),
+                        [this]() noexcept {
+                          return cost::extract(lhs_, 0) +
+                                 cost::extract(rhs_, 0);
+                        },
+                        resolve_overload_tag{}} {}
 
   basic_disjunction(adapter&& lhs, adapter&& rhs, Merger&& merger,
                     cost::cost_t est)
@@ -354,10 +356,10 @@ class small_disjunction : public compound_doc_iterator<Adapter>,
 
   explicit small_disjunction(doc_iterators_t&& itrs, Merger&& merger = Merger{})
     : small_disjunction{std::move(itrs), std::move(merger),
-                        [this]() {
+                        [this]() noexcept {
                           return std::accumulate(
                             begin_, end_, cost::cost_t(0),
-                            [](cost::cost_t lhs, const adapter& rhs) {
+                            [](cost::cost_t lhs, const adapter& rhs) noexcept {
                               return lhs + cost::extract(rhs, 0);
                             });
                         },
@@ -599,10 +601,10 @@ class disjunction : public compound_doc_iterator<Adapter>,
 
   explicit disjunction(doc_iterators_t&& itrs, Merger&& merger = Merger{})
     : disjunction{std::move(itrs), std::move(merger),
-                  [this]() {
+                  [this]() noexcept {
                     return std::accumulate(
                       itrs_.begin(), itrs_.end(), cost::cost_t(0),
-                      [](cost::cost_t lhs, const adapter& rhs) {
+                      [](cost::cost_t lhs, const adapter& rhs) noexcept {
                         return lhs + cost::extract(rhs, 0);
                       });
                   },
@@ -724,7 +726,7 @@ class disjunction : public compound_doc_iterator<Adapter>,
 
       const auto its = self.hitch_all_iterators();
 
-      if (auto& score = *self.lead().score; !score.IsNoop()) {
+      if (auto& score = *self.lead().score; !score.IsDefault()) {
         score(res);
       } else {
         std::memset(res, 0, self.byte_size());
@@ -739,7 +741,7 @@ class disjunction : public compound_doc_iterator<Adapter>,
           },
           [&self, res](size_t it) {
             IRS_ASSERT(it < self.itrs_.size());
-            if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
+            if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
               auto& merger = static_cast<Merger&>(self);
               score(merger.temp());
               merger(res, merger.temp());
@@ -852,7 +854,7 @@ struct block_disjunction_traits {
 };
 
 // The implementation reads ahead 64*NumBlocks documents.
-// It isn't optimized for conjunction case when the requected min match
+// It isn't optimized for conjunction case when the requested min match
 // count equals to a number of input iterators.
 // It's better to to use a dedicated "conjunction" iterator.
 template<typename DocIterator, typename Merger, typename Traits,
@@ -886,10 +888,10 @@ class block_disjunction : public doc_iterator,
   block_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
                     Merger&& merger = Merger{})
     : block_disjunction{std::move(itrs), min_match_count, std::move(merger),
-                        [this]() {
+                        [this]() noexcept {
                           return std::accumulate(
                             itrs_.begin(), itrs_.end(), cost::cost_t(0),
-                            [](cost::cost_t lhs, const adapter& rhs) {
+                            [](cost::cost_t lhs, const adapter& rhs) noexcept {
                               return lhs + cost::extract(rhs, 0);
                             });
                         },
@@ -1107,7 +1109,7 @@ class block_disjunction : public doc_iterator,
       // sort subnodes in ascending order by their cost
       // FIXME(gnusi) don't use extract
       std::sort(std::begin(itrs_), std::end(itrs_),
-                [](const adapter& lhs, const adapter& rhs) {
+                [](const adapter& lhs, const adapter& rhs) noexcept {
                   return cost::extract(lhs, 0) < cost::extract(rhs, 0);
                 });
 
@@ -1389,7 +1391,6 @@ doc_iterator::ptr MakeWeakDisjunction(
 
   if (1 == min_match) {
     // Pure disjunction
-    IRS_ASSERT(size >= min_match);
     using Disjunction = typename RebindIterator<WeakConjunction>::Disjunction;
 
     return MakeDisjunction<Disjunction>(std::move(itrs),
@@ -1399,7 +1400,6 @@ doc_iterator::ptr MakeWeakDisjunction(
 
   if (min_match == size) {
     // Pure conjunction
-    IRS_ASSERT(min_match == size);
     using Conjunction = typename RebindIterator<WeakConjunction>::Conjunction;
 
     return memory::make_managed<Conjunction>(std::move(itrs),

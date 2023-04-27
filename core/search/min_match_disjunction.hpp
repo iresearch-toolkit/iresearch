@@ -71,16 +71,18 @@ class min_match_disjunction : public doc_iterator,
     IRS_ASSERT(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
     // sort subnodes in ascending order by their cost
-    std::sort(itrs_.begin(), itrs_.end(),
-              [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
-                return cost::extract(lhs, 0) < cost::extract(rhs, 0);
-              });
+    std::sort(
+      itrs_.begin(), itrs_.end(),
+      [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) noexcept {
+        return cost::extract(lhs, 0) < cost::extract(rhs, 0);
+      });
 
-    std::get<cost>(attrs_).reset([this]() {
-      return std::accumulate(itrs_.begin(), itrs_.end(), cost::cost_t(0),
-                             [](cost::cost_t lhs, const doc_iterator_t& rhs) {
-                               return lhs + cost::extract(rhs, 0);
-                             });
+    std::get<cost>(attrs_).reset([this]() noexcept {
+      return std::accumulate(
+        itrs_.begin(), itrs_.end(), cost::cost_t(0),
+        [](cost::cost_t lhs, const doc_iterator_t& rhs) noexcept {
+          return lhs + cost::extract(rhs, 0);
+        });
     });
 
     // prepare external heap
@@ -242,7 +244,7 @@ class min_match_disjunction : public doc_iterator,
       std::memset(res, 0, static_cast<Merger&>(self).byte_size());
       std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
         IRS_ASSERT(it < self.itrs_.size());
-        if (auto& score = *self.itrs_[it].score; !score.IsNoop()) {
+        if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
           auto& merger = static_cast<Merger&>(self);
           score(merger.temp());
           merger(res, merger.temp());
