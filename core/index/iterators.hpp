@@ -36,12 +36,12 @@ namespace irs {
 //
 // After creation iterator is in uninitialized state:
 //   - `value()` returns `doc_limits::invalid()` or `doc_limits::eof()`
-// `seek()` to:
+// `seek()`, `shallow_seek()` to:
 //   - `doc_limits::invalid()` is undefined and implementation dependent
 //   - `doc_limits::eof()` must always return `doc_limits::eof()`
 // Once iterator is exhausted:
 //   - `next()` must constantly return `false`
-//   - `seek()` to any value must return `doc_limits::eof()`
+//   - `seek()`, `shallow_seek()` to any value must return `doc_limits::eof()`
 //   - `value()` must return `doc_limits::eof()`
 struct doc_iterator : iterator<doc_id_t, attribute_provider> {
   using ptr = memory::managed_ptr<doc_iterator>;

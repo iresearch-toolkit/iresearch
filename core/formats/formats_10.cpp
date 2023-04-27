@@ -22,6 +22,8 @@
 
 #include "formats_10.hpp"
 
+#include <limits>
+
 extern "C" {
 #include <avxbitpacking.h>
 #include <simdbitpacking.h>
@@ -2058,9 +2060,9 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     auto& threshold = std::get<score_threshold>(attrs_);
     auto ctx = scorer.prepare_wand_source();
     auto func = factory(*ctx, scorer);
-    const bool is_full_block = meta.docs_count == FieldTraits::block_size();
-    const auto was = this->doc_in_->file_pointer();
-    if (is_full_block) {
+    auto old_offset = std::numeric_limits<size_t>::max();
+    if (meta.docs_count == FieldTraits::block_size()) {
+      old_offset = this->doc_in_->file_pointer();
       FieldTraits::skip_block(*this->doc_in_);
       if constexpr (FieldTraits::frequency()) {
         FieldTraits::skip_block(*this->doc_in_);
@@ -2068,8 +2070,8 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
     }
     skip_.Reader().ReadMaxScore(wand_index, func, *ctx, *this->doc_in_,
                                 threshold.list_max);
-    if (is_full_block) {
-      this->doc_in_->seek(was);
+    if (old_offset != std::numeric_limits<size_t>::max()) {
+      this->doc_in_->seek(old_offset);
     }
     threshold.leaf_max = &threshold.list_max;
   }
@@ -2547,7 +2549,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
   doc_id_t shallow_seek(doc_id_t target) final {
     seek_to_block(target, 1);
-    return skip_.Reader().Next().doc + 1;
+    return skip_.Reader().Next().doc;
   }
 
   void seek_to_block(doc_id_t target, doc_id_t add) {
