@@ -246,14 +246,17 @@ void segment_writer::FlushFields(flush_state& state) {
 
   // Flush all cached columns
   IRS_ASSERT(column_ids_.empty());
-  column_ids_.reserve(cached_columns_.empty());
+  column_ids_.reserve(cached_columns_.size());
   for (BufferedColumn::BufferedValues buffer; auto& column : cached_columns_) {
     if (IRS_LIKELY(!field_limits::valid(column.id()))) {
       column.Flush(*col_writer_, docmap, buffer);
     }
-    IRS_ASSERT(field_limits::valid(column.id()));
-    [[maybe_unused]] auto [_, yes] = column_ids_.emplace(column.id(), &column);
-    IRS_ASSERT(yes);
+    // invalid when was empty column
+    if (IRS_LIKELY(!field_limits::valid(column.id()))) {
+      [[maybe_unused]] auto [_, emplaced] =
+        column_ids_.emplace(column.id(), &column);
+      IRS_ASSERT(emplaced);
+    }
   }
 
   // Flush columnstore
