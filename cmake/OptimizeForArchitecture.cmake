@@ -90,8 +90,8 @@ function(graviton3)
 endfunction()
 
 
-if (NOT TARGET_ARCHITECTURE OR TARGET_ARCHITECTURE STREQUAL "auto" OR TARGET_ARCHITECTURE STREQUAL "sandybridge")
-  # It's our default mode. empty and auto for backward compatibility
+if (NOT TARGET_ARCHITECTURE OR TARGET_ARCHITECTURE STREQUAL "auto" OR TARGET_ARCHITECTURE STREQUAL "sandybridge" OR TARGET_ARCHITECTURE STREQUAL "sandy-bridge")
+  # It's our default mode. empty and auto and sandy-bridge for backward compatibility
   # TODO(MBkkt) iresearch now probably doesn't work without any host specific options, should be fixed?
   if (ARCH_AMD64)
     # We use sandybridge instead of westmere because it's more easy for MSVC, in general difference only in avx and xsave
