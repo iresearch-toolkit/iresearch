@@ -29,7 +29,6 @@
 #include "index/index_writer.hpp"
 #include "store/memory_directory.hpp"
 #include "tests_shared.hpp"
-#include "utils/version_utils.hpp"
 
 using namespace std::chrono_literals;
 
@@ -496,7 +495,7 @@ TEST(segment_reader_test, open) {
     meta.docs_count = 5;
     meta.live_docs_count = 5;
     meta.name = "_1";
-    meta.version = IRESEARCH_VERSION;
+    meta.version = 130;
 
     auto rdr = irs::SegmentReader(dir, meta, irs::IndexReaderOptions{});
     ASSERT_FALSE(!rdr);

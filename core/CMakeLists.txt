@@ -21,16 +21,6 @@ if (NOT MSVC AND NOT APPLE)
   set(ATOMIC_LIBRARY atomic)
 endif ()
 
-# calculate version
-math(EXPR IResearch_int_version "(${IResearch_version_major} * 1000000) + (${IResearch_version_minor} * 10000) + (${IResearch_version_revision} * 100) + (${IResearch_version_patch} * 1)")
-set(IResearch_version "${IResearch_version_major}.${IResearch_version_minor}.${IResearch_version_revision}.${IResearch_version_patch}")
-
-# generate version_defines.hpp
-configure_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/utils/version_defines.template.hpp"
-  "${CMAKE_CURRENT_BINARY_DIR}/utils/version_defines.hpp"
-)
-
 set(IResearch_INCLUDE_DIR
   "${PROJECT_SOURCE_DIR}/core"
   CACHE INTERNAL
@@ -163,9 +153,7 @@ set(IResearch_core_sources
   ./utils/levenshtein_default_pdp.cpp
   ./utils/memory.cpp
   ./utils/timer_utils.cpp
-  ./utils/version_utils.cpp
   ./utils/log.cpp
-  ./utils/result.cpp
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
@@ -256,14 +244,12 @@ set(IResearch_core_headers
   ./utils/std.hpp
   ./utils/string.hpp
   ./utils/log.hpp
-  ./utils/result.hpp
   ./utils/thread_utils.hpp
   ./utils/object_pool.hpp
   ./utils/so_utils.hpp
   ./utils/process_utils.hpp
   ./utils/network_utils.hpp
   ./utils/numeric_utils.hpp
-  ./utils/version_utils.hpp
   ./utils/bitset.hpp
   ./utils/type_id.hpp
   ./shared.hpp
@@ -304,49 +290,7 @@ add_library(iresearch-static
 
 set_ipo(iresearch-static)
 
-# trigger generation of BUILD_IDENTIFIER if needed
-add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER
-  COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER
-)
-
-# trigger regeneration of utils/version_utils.cpp with build_id from file: BUILD_IDENTIFIER
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx
-  COMMAND ${CMAKE_COMMAND} -DSRC="${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER" -DDST="${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx" -P "${PROJECT_SOURCE_DIR}/cmake/HexEncodeFile.cmake"
-  COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${CMAKE_CURRENT_SOURCE_DIR}/version_utils.cpp
-  DEPENDS utils ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER
-  WORKING_DIRECTORY utils
-)
-
-add_custom_target(
-  iresearch-build_identifier
-  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/utils/build_identifier.csx
-)
-
-# trigger generation of BUILD_VERSION if needed
-add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/BUILD_VERSION
-  COMMAND ${CMAKE_COMMAND} -E echo_append "${IResearch_version}" > ${CMAKE_BINARY_DIR}/BUILD_VERSION
-)
-
-# trigger regeneration of utils/version_utils.cpp with build_id from file: BUILD_VERSION
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx
-  COMMAND ${CMAKE_COMMAND} -DSRC="${CMAKE_BINARY_DIR}/BUILD_VERSION" -DDST="${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx" -P "${PROJECT_SOURCE_DIR}/cmake/HexEncodeFile.cmake"
-  COMMAND ${CMAKE_COMMAND} -E touch_nocreate ${CMAKE_CURRENT_SOURCE_DIR}/version_utils.cpp
-  DEPENDS utils ${CMAKE_BINARY_DIR}/BUILD_VERSION
-  WORKING_DIRECTORY utils
-)
-
-add_custom_target(
-  iresearch-build_version
-  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/utils/build_version.csx
-)
-
 add_dependencies(iresearch-static
-  iresearch-build_identifier
-  iresearch-build_version
   iresearch-analyzer-delimiter-static
   iresearch-analyzer-ngram-static
   iresearch-analyzer-text-static

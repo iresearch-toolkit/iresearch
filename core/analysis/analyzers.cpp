@@ -166,30 +166,6 @@ bool normalize(std::string& out, std::string_view name,
   return false;
 }
 
-result get(analyzer::ptr& analyzer, std::string_view name,
-           const type_info& args_format, std::string_view args,
-           bool load_library /*= true*/) noexcept {
-  try {
-    auto* factory = analyzer_register::instance()
-                      .get(::key(name, args_format), load_library)
-                      .factory;
-
-    if (!factory) {
-      return result::make<result::NOT_FOUND>();
-    }
-
-    analyzer = factory(args);
-  } catch (const std::exception& e) {
-    return result::make<result::INVALID_ARGUMENT>(
-      "Caught exception while getting an analyzer instance", e.what());
-  } catch (...) {
-    return result::make<result::INVALID_ARGUMENT>(
-      "Caught exception while getting an analyzer instance");
-  }
-
-  return {};
-}
-
 analyzer::ptr get(std::string_view name, const type_info& args_format,
                   std::string_view args,
                   bool load_library /*= true*/) noexcept {
