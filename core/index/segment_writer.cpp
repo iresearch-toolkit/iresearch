@@ -252,7 +252,7 @@ void segment_writer::FlushFields(flush_state& state) {
       column.Flush(*col_writer_, docmap, buffer);
     }
     // invalid when was empty column
-    if (IRS_LIKELY(!field_limits::valid(column.id()))) {
+    if (IRS_LIKELY(field_limits::valid(column.id()))) {
       [[maybe_unused]] auto [_, emplaced] =
         column_ids_.emplace(column.id(), &column);
       IRS_ASSERT(emplaced);
