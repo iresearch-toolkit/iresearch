@@ -245,11 +245,15 @@ void segment_writer::FlushFields(flush_state& state) {
   }
 
   // Flush all cached columns
-  for (irs::BufferedColumn::BufferedValues buffer;
-       auto& column : cached_columns_) {
+  IRS_ASSERT(column_ids_.empty());
+  column_ids_.reserve(cached_columns_.empty());
+  for (BufferedColumn::BufferedValues buffer; auto& column : cached_columns_) {
     if (IRS_LIKELY(!field_limits::valid(column.id()))) {
       column.Flush(*col_writer_, docmap, buffer);
     }
+    IRS_ASSERT(field_limits::valid(column.id()));
+    [[maybe_unused]] auto [_, yes] = column_ids_.emplace(column.id(), &column);
+    IRS_ASSERT(yes);
   }
 
   // Flush columnstore
@@ -281,6 +285,7 @@ void segment_writer::reset() noexcept {
   docs_mask_.count = 0;
   fields_.reset();
   columns_.clear();
+  column_ids_.clear();
   cached_columns_.clear();  // FIXME(@gnusi): we loose all per-column buffers
   sort_.stream.Clear();
 

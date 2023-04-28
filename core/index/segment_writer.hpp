@@ -24,10 +24,10 @@
 #pragma once
 
 #include "analysis/token_stream.hpp"
+#include "index/buffered_column.hpp"
 #include "index/column_info.hpp"
 #include "index/field_data.hpp"
 #include "index/index_reader.hpp"
-#include "index/buffered_column.hpp"
 #include "utils/bitset.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
@@ -35,6 +35,7 @@
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
 
+#include <absl/container/flat_hash_map.h>
 #include <absl/container/node_hash_set.h>
 
 namespace irs {
@@ -164,21 +165,19 @@ class segment_writer : public ColumnProvider, util::noncopyable {
                  const SegmentWriterOptions& options) noexcept;
 
   const column_reader* column(field_id id) const final {
-    if (id < cached_columns_.size()) {
-      return &cached_columns_[id];
+    const auto it = column_ids_.find(id);
+    if (it != column_ids_.end()) {
+      return it->second;
     }
-
     return nullptr;
   }
 
   const column_reader* column(std::string_view name) const final {
     const auto it = columns_.find(hashed_string_view{name});
-
-    if (it == columns_.end()) {
-      return nullptr;
+    if (it != columns_.end()) {
+      return it->cached;
     }
-
-    return it->cached;
+    return nullptr;
   }
 
  private:
@@ -379,6 +378,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
 
   ScorersView scorers_;
   std::deque<cached_column> cached_columns_;  // pointers remain valid
+  absl::flat_hash_map<field_id, cached_column*> column_ids_;
   sorted_column sort_;
   std::vector<DocContext> docs_context_;
   // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
