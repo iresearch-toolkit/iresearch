@@ -151,7 +151,6 @@ set(IResearch_core_sources
   ./utils/levenshtein_utils.cpp
   ./utils/wildcard_utils.cpp
   ./utils/levenshtein_default_pdp.cpp
-  ./utils/memory.cpp
   ./utils/timer_utils.cpp
   ./utils/log.cpp
   ./utils/so_utils.cpp

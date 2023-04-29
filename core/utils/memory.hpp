@@ -39,9 +39,6 @@ constexpr size_t align_up(size_t size, size_t alignment) noexcept {
   return (size + alignment - 1) & (0 - alignment);
 }
 
-// Dump memory statistics and stack trace to stderr
-void dump_mem_stats_trace() noexcept;
-
 // Same as 'std::aligned_storage' but MSVC doesn't honor alignment on
 // MSVC2013, 2017 (prior 15.8)
 template<size_t Size, size_t Alignment>
