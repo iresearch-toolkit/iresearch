@@ -1,6 +1,10 @@
 master
 -------------------------
 
+
+1.3 (2023-05-02)
+-------------------------
+
 * Add WAND support to `by_term`.
 
 * Allow to store WAND-specific data in skip list.
