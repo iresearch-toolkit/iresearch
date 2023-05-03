@@ -81,9 +81,9 @@ ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
       return ScoreFunction::Make<Ctx>(
         [](score_ctx* ctx, score_t* res) noexcept {
           IRS_ASSERT(res != nullptr);
-          auto* scorers = static_cast<Ctx*>(ctx);
-          scorers->func0(res);
-          scorers->func1(res + 1);
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          scorers_ctx->func0(res);
+          scorers_ctx->func1(res + 1);
         },
         std::move(scorers.front()), std::move(scorers.back()));
     }

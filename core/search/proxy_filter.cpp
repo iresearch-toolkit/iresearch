@@ -181,7 +181,7 @@ class proxy_query : public filter::prepared {
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     // first try to find segment in cache.
-    auto& [unused, cached] =
+    [[maybe_unused]] auto& [_, cached] =
       *cache_->readers_.emplace(&ctx.segment, nullptr).first;
 
     if (!cached) {

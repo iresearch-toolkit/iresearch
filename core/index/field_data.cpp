@@ -527,7 +527,7 @@ class term_iterator : public irs::term_iterator {
                          const DocMap* docmap) noexcept
     : postings_(&postings), doc_map_(docmap) {}
 
-  void reset(const field_data& field, bytes_view min, bytes_view max) {
+  void reset(const field_data& field, bytes_view& min, bytes_view& max) {
     field_ = &field;
 
     doc_itr_.reset(field);
@@ -666,8 +666,8 @@ class term_reader final : public irs::basic_term_reader,
 
  private:
   mutable detail::term_iterator it_;
-  const irs::bytes_view min_{};
-  const irs::bytes_view max_{};
+  irs::bytes_view min_{};
+  irs::bytes_view max_{};
 };
 
 }  // namespace detail
@@ -1161,9 +1161,7 @@ void fields_data::flush(field_writer& fw, flush_state& state) {
     terms.reset(*field);
 
     // Write inverted data
-    const auto& meta = field->meta();
-    auto it = terms.iterator();
-    fw.write(meta.name, meta.index_features, meta.features, *it);
+    fw.write(terms, terms.meta().features);
   }
 
   fw.end();

@@ -23,6 +23,9 @@
 
 #include "merge_writer.hpp"
 
+#include "utils/assert.hpp"
+#include "utils/string.hpp"
+
 #if defined(IRESEARCH_DEBUG) && !defined(__clang__)
 #include <ranges>
 #endif
@@ -42,7 +45,6 @@
 #include "utils/memory.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/version_utils.hpp"
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/strings/internal/resize_uninitialized.h>
@@ -775,9 +777,9 @@ void CompoundFiledIterator::add(const SubReader& reader,
   IRS_ASSERT(it);
 
   if (IRS_LIKELY(it)) {
+    // mark as used to trigger next()
     field_iterator_mask_.emplace_back(
-      TermIterator{field_iterators_.size(), nullptr,
-                   nullptr});  // mark as used to trigger next()
+      TermIterator{field_iterators_.size(), nullptr, nullptr});
     field_iterators_.emplace_back(std::move(it), reader, doc_id_map);
   }
 }
@@ -836,8 +838,16 @@ bool CompoundFiledIterator::next() {
       TermIterator{i, &field_meta, field_terms});
 
     // update min and max terms
-    min_ = std::min(min_, field_terms->min());
-    max_ = std::max(max_, field_terms->max());
+    const auto min = field_terms->min();
+    const auto max = field_terms->max();
+    IRS_ASSERT(!IsNull(min));
+    IRS_ASSERT(!IsNull(max));
+    if (irs::IsNull(min_) || min < min_) {
+      min_ = min;
+    }
+    if (max_ < max) {
+      max_ = max;
+    }
   }
 
   if (!field_iterator_mask_.empty()) {
@@ -1455,10 +1465,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
     }
 
     // Write field terms
-    auto terms = field_itr.iterator();
-
-    field_writer->write(field_meta.name, field_meta.index_features, features,
-                        *terms);
+    field_writer->write(field_itr, features);
   }
 
   field_writer->end();

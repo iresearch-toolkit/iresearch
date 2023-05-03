@@ -388,7 +388,7 @@ using CandidatesMapping =
 struct MapCandidatesResult {
   // Number of mapped candidates.
   size_t count{0};
-  bool has_removals{false};
+  bool has_removals{false};  // cppcheck-suppress unusedStructMember
 };
 
 // candidates_mapping output mapping
@@ -2236,6 +2236,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
     std::vector<std::string_view> filenames;
     filenames.reserve(pending_meta.segments.size());
     for (const auto& meta : pending_meta.segments) {
+      // cppcheck-suppress useStlAlgorithm
       filenames.emplace_back(meta.filename);
     }
     std::sort(filenames.begin(), filenames.end());

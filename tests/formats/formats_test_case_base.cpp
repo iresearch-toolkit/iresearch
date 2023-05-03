@@ -23,6 +23,8 @@
 
 #include "formats_test_case_base.hpp"
 
+#include <algorithm>
+#include <cstddef>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -790,10 +792,14 @@ TEST_P(format_test_case, fields_read_write) {
     // should use sorted terms on write
     terms<sorted_terms_t::iterator> terms(sorted_terms.begin(),
                                           sorted_terms.end());
+    tests::MockTermReader term_reader{
+      terms, irs::field_meta{field.name, field.index_features},
+      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
+      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
 
     auto writer = codec()->get_field_writer(false);
     writer->prepare(state);
-    writer->write(field.name, field.index_features, field.features, terms);
+    writer->write(term_reader, field.features);
     writer->end();
   }
 
@@ -3705,11 +3711,15 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
     // should use sorted terms on write
     tests::format_test_case::terms<sorted_terms_t::iterator> terms(
       sorted_terms.begin(), sorted_terms.end());
+    tests::MockTermReader term_reader{
+      terms, irs::field_meta{field.name, field.index_features},
+      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
+      (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
 
     auto writer = codec()->get_field_writer(false);
     ASSERT_NE(nullptr, writer);
     writer->prepare(state);
-    writer->write(field.name, field.index_features, field.features, terms);
+    writer->write(term_reader, field.features);
     writer->end();
   }
 

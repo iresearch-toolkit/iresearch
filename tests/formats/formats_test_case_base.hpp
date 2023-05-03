@@ -23,12 +23,39 @@
 
 #pragma once
 
+#include <algorithm>
 #include <unordered_set>
 
 #include "analysis/token_attributes.hpp"
 #include "index/index_tests.hpp"
 
 namespace tests {
+
+class MockTermReader final : public irs::basic_term_reader {
+ public:
+  explicit MockTermReader(irs::term_iterator& it, irs::field_meta meta,
+                          irs::bytes_view min_term, irs::bytes_view max_term)
+    : it_{it},
+      meta_{std::move(meta)},
+      min_term_{min_term},
+      max_term_(max_term) {}
+
+ private:
+  irs::attribute* get_mutable(irs::type_info::type_id type) final {
+    return nullptr;
+  }
+  irs::term_iterator::ptr iterator() const final {
+    return irs::memory::to_managed<irs::term_iterator>(it_);
+  }
+  const irs::field_meta& meta() const final { return meta_; }
+  irs::bytes_view min() const final { return min_term_; }
+  irs::bytes_view max() const final { return max_term_; }
+
+  irs::term_iterator& it_;
+  irs::field_meta meta_;
+  irs::bytes_view min_term_;
+  irs::bytes_view max_term_;
+};
 
 class format_test_case : public index_test_base {
  public:
@@ -189,13 +216,16 @@ class format_test_case : public index_test_base {
 
     terms(const Iterator& begin, const Iterator& end)
       : next_(begin), end_(end) {
+      IRS_ASSERT(std::is_sorted(begin, end));
       docs_.emplace_back((irs::doc_limits::min)(), 0);
     }
 
     terms(const Iterator& begin, const Iterator& end,
           docs_type::const_iterator doc_begin,
           docs_type::const_iterator doc_end)
-      : docs_(doc_begin, doc_end), next_(begin), end_(end) {}
+      : docs_(doc_begin, doc_end), next_(begin), end_(end) {
+      IRS_ASSERT(std::is_sorted(begin, end));
+    }
 
     bool next() final {
       if (next_ == end_) {
