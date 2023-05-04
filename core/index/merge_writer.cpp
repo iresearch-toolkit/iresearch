@@ -534,6 +534,9 @@ class CompoundColumnIterator final {
 // Iterator over documents for a term over all readers
 class CompoundTermIterator : public term_iterator {
  public:
+  CompoundTermIterator(const CompoundTermIterator&) = delete;
+  CompoundTermIterator& operator=(const CompoundTermIterator&) = delete;
+
   static constexpr const size_t kProgressStepTerms = size_t(1) << 7;
 
   explicit CompoundTermIterator(const MergeWriter::FlushProgress& progress,
@@ -547,10 +550,13 @@ class CompoundTermIterator : public term_iterator {
   }
 
   void reset(const field_meta& meta) noexcept {
+    current_term_ = {};
     meta_ = &meta;
     term_iterator_mask_.clear();
     term_iterators_.clear();
-    current_term_ = {};
+    min_term_.clear();
+    max_term_.clear();
+    has_min_term_ = false;
   }
 
   const field_meta& meta() const noexcept { return *meta_; }
@@ -570,7 +576,19 @@ class CompoundTermIterator : public term_iterator {
       }
     }
   }
-  bytes_view value() const final { return current_term_; }
+
+  bytes_view value() const final {
+    if (IRS_UNLIKELY(!has_min_term_)) {
+      has_min_term_ = true;
+      min_term_ = current_term_;
+    }
+    IRS_ASSERT(max_term_ <= current_term_);
+    max_term_ = current_term_;
+    return current_term_;
+  }
+
+  bytes_view MinTerm() const noexcept { return min_term_; }
+  bytes_view MaxTerm() const noexcept { return max_term_; }
 
  private:
   struct TermIterator {
@@ -578,24 +596,21 @@ class CompoundTermIterator : public term_iterator {
     const doc_map_f* second;
 
     TermIterator(seek_term_iterator::ptr&& term_itr, const doc_map_f* doc_map)
-      : first(std::move(term_itr)), second(doc_map) {}
+      : first{std::move(term_itr)}, second{doc_map} {}
 
-    TermIterator(TermIterator&& other) noexcept
-      : first(std::move(other.first)), second(std::move(other.second)) {}
+    TermIterator(TermIterator&& other) noexcept = default;
   };
-
-  CompoundTermIterator(const CompoundTermIterator&) =
-    delete;  // due to references
-  CompoundTermIterator& operator=(const CompoundTermIterator&) =
-    delete;  // due to references
 
   bytes_view current_term_;
   const field_meta* meta_{};
   std::vector<size_t> term_iterator_mask_;  // valid iterators for current term
   std::vector<TermIterator> term_iterators_;  // all term iterators
+  mutable bstring min_term_;
+  mutable bstring max_term_;
   mutable CompoundDocIterator doc_itr_;
   mutable SortingCompoundDocIterator sorting_doc_itr_{doc_itr_};
   bool has_comparer_;
+  mutable bool has_min_term_{false};
   ProgressTracker progress_;
 };
 
@@ -648,13 +663,7 @@ bool CompoundTermIterator::next() {
     term_iterator_mask_.emplace_back(i);
   }
 
-  if (!term_iterator_mask_.empty()) {
-    return true;
-  }
-
-  current_term_ = {};
-
-  return false;
+  return !term_iterator_mask_.empty();
 }
 
 doc_iterator::ptr CompoundTermIterator::postings(
@@ -679,7 +688,7 @@ doc_iterator::ptr CompoundTermIterator::postings(
 
   if (has_comparer_) {
     sorting_doc_itr_.reset(add_iterators);
-    // TODO(MBkkt) Why?
+    // we need to use sorting_doc_itr_ wrapper only
     if (doc_itr_.size() > 1) {
       return memory::to_managed<doc_iterator>(sorting_doc_itr_);
     }
@@ -724,9 +733,9 @@ class CompoundFiledIterator final : public basic_term_reader {
     return *current_meta_;
   }
 
-  bytes_view(min)() const noexcept final { return min_; }
+  bytes_view(min)() const noexcept final { return term_itr_.MinTerm(); }
 
-  bytes_view(max)() const noexcept final { return max_; }
+  bytes_view(max)() const noexcept final { return term_itr_.MaxTerm(); }
 
   attribute* get_mutable(irs::type_info::type_id) noexcept final {
     return nullptr;
@@ -762,8 +771,6 @@ class CompoundFiledIterator final : public basic_term_reader {
 
   std::string_view current_field_;
   const field_meta* current_meta_{&field_meta::kEmpty};
-  bytes_view min_{};
-  bytes_view max_{};
   // valid iterators for current field
   std::vector<TermIterator> field_iterator_mask_;
   std::vector<FieldIterator> field_iterators_;  // all segment iterators
@@ -791,7 +798,6 @@ bool CompoundFiledIterator::next() {
     field_iterators_.clear();
     field_iterator_mask_.clear();
     current_field_ = {};
-    max_ = min_ = {};
     return false;
   }
 
@@ -805,7 +811,6 @@ bool CompoundFiledIterator::next() {
 
   // reset for next pass
   field_iterator_mask_.clear();
-  max_ = min_ = {};
 
   for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
     auto& field_itr = field_iterators_[i];
@@ -836,18 +841,6 @@ bool CompoundFiledIterator::next() {
 
     field_iterator_mask_.emplace_back(
       TermIterator{i, &field_meta, field_terms});
-
-    // update min and max terms
-    const auto min = field_terms->min();
-    const auto max = field_terms->max();
-    IRS_ASSERT(!IsNull(min));
-    IRS_ASSERT(!IsNull(max));
-    if (irs::IsNull(min_) || min < min_) {
-      min_ = min;
-    }
-    if (max_ < max) {
-      max_ = max;
-    }
   }
 
   if (!field_iterator_mask_.empty()) {
