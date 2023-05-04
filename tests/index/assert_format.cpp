@@ -1003,9 +1003,7 @@ void assert_column(const irs::column_reader* actual_reader,
 
   if (irs::IsNull(expected_values.name())) {
     // field features are stored as annonymous columns
-    if (!irs::IsNull(actual_reader->name())) {
-      EXPECT_TRUE(irs::IsNull(actual_reader->name()));
-    }
+    ASSERT_TRUE(irs::IsNull(actual_reader->name()));
   } else {
     ASSERT_EQ(expected_values.name(), actual_reader->name());
   }
