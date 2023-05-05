@@ -1176,12 +1176,11 @@ void field_writer::prepare(const flush_state& state) {
   stats_.reset(allocator);
 }
 
-void field_writer::write(
-  const basic_term_reader& reader,
-  const std::map<type_info::type_id, field_id>& features) {
+void field_writer::write(const basic_term_reader& reader,
+                         const irs::feature_map_t& features) {
   REGISTER_TIMER_DETAILED();
-  const auto& meta = reader.meta();
-  const auto index_features = meta.index_features;
+  const auto& reader_meta = reader.meta();
+  const auto index_features = reader_meta.index_features;
   BeginField(index_features, features);
 
   uint64_t term_count = 0;
@@ -1201,7 +1200,7 @@ void field_writer::write(
       sum_tfreq += meta->freq;
     }
 
-    if (meta->docs_count) {
+    if (meta->docs_count != 0) {
       sum_dfreq += meta->docs_count;
 
       const bytes_view term = terms->value();
@@ -1214,8 +1213,8 @@ void field_writer::write(
     }
   }
 
-  EndField(meta.name, index_features, features, reader.min(), reader.max(),
-           sum_dfreq, sum_tfreq, term_count);
+  EndField(reader_meta.name, index_features, features, reader.min(),
+           reader.max(), sum_dfreq, sum_tfreq, term_count);
 }
 
 void field_writer::BeginField(IndexFeatures index_features,
