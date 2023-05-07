@@ -33,7 +33,6 @@ using namespace irs;
 class NormWriter : public FeatureWriter {
  public:
   void write(const field_stats& stats, doc_id_t doc,
-             // cppcheck-suppress constParameter
              columnstore_writer::values_writer_f& writer) final {
     if (stats.len > 0) {
       const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));

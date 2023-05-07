@@ -44,15 +44,9 @@ class classification_stream final : public TypedAnalyzer<classification_stream>,
     model_provider_f provider) noexcept;
 
   struct Options {
-    explicit Options(std::string model_location = "", int32_t top_k = 1,
-                     double threshold = 0.0) noexcept
-      : model_location{std::move(model_location)},
-        threshold{threshold},
-        top_k{top_k} {}
-
     std::string model_location;
-    double threshold;
-    int32_t top_k;
+    double threshold{0.0};
+    int32_t top_k{1};
   };
 
   static constexpr std::string_view type_name() noexcept {

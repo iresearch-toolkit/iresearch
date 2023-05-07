@@ -46,12 +46,8 @@ class nearest_neighbors_stream final
     model_provider_f provider) noexcept;
 
   struct options {
-    explicit options(std::string model_location = "",
-                     int32_t top_k = 1) noexcept
-      : model_location{std::move(model_location)}, top_k{top_k} {}
-
     std::string model_location;
-    int32_t top_k;
+    int32_t top_k{1};
   };
 
   static constexpr std::string_view type_name() noexcept {

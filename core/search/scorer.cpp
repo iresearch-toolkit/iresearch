@@ -30,7 +30,6 @@
 namespace irs {
 
 size_t Scorers::PushBack(const Scorer& scorer) {
-  // cppcheck-suppress shadowFunction
   const auto [bucket_stats_size, bucket_stats_align] = scorer.stats_size();
   IRS_ASSERT(bucket_stats_align <= alignof(std::max_align_t));
   // math::is_power2(0) returns true
