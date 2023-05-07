@@ -27,7 +27,6 @@
 
 #include "analyzer.hpp"
 #include "shared.hpp"
-#include "utils/result.hpp"
 #include "utils/text_format.hpp"
 
 namespace irs::analysis {
@@ -58,13 +57,6 @@ bool exists(std::string_view name, const type_info& args_format,
 bool normalize(std::string& out, std::string_view name,
                const type_info& args_format, std::string_view args,
                bool load_library = true) noexcept;
-
-// Find an analyzer by name, or nullptr if not found
-// indirect call to <class>::make(...).
-// NOTE: make(...) MUST be defined in CPP to ensire proper code scope
-result get(analyzer::ptr& analyzer, std::string_view name,
-           const type_info& args_format, std::string_view args,
-           bool load_library = true) noexcept;
 
 // Find an analyzer by name, or nullptr if not found
 // indirect call to <class>::make(...).

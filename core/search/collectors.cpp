@@ -108,9 +108,7 @@ term_collectors::term_collectors(const Scorers& buckets, size_t size)
                                             buckets) {
   // add term collectors from each bucket
   // layout order [t0.b0, t0.b1, ... t0.bN, t1.b0, t1.b1 ... tM.BN]
-  // cppcheck-suppress shadowFunction
   auto begin = collectors_.begin();
-  // cppcheck-suppress shadowFunction
   auto end = collectors_.end();
   for (; begin != end;) {
     for (auto& entry : buckets.buckets()) {
@@ -163,7 +161,6 @@ void term_collectors::collect(const SubReader& segment,
 }
 
 size_t term_collectors::push_back() {
-  // cppcheck-suppress shadowFunction
   const size_t size = buckets_.size();
   IRS_ASSERT(0 == size || 0 == collectors_.size() % size);
 
@@ -232,7 +229,6 @@ void term_collectors::finish(byte_type* stats_buf, size_t term_idx,
     default: {
       term_idx *= bucket_count;
 
-      // cppcheck-suppress shadowFunction
       auto begin = field_collectors.begin();
       for (auto& bucket : buckets_) {
         bucket.bucket->collect(stats_buf + bucket.stats_offset, begin->get(),

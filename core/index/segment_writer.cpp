@@ -33,7 +33,6 @@
 #include "utils/lz4compression.hpp"
 #include "utils/timer_utils.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/version_utils.hpp"
 
 namespace irs {
 namespace {

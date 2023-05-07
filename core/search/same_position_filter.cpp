@@ -54,10 +54,12 @@ class same_position_iterator : public Conjunction {
 #endif
 
   bool next() final {
-    bool next = false;
-    while (true == (next = Conjunction::next()) && !find_same_position()) {
+    while (Conjunction::next()) {
+      if (find_same_position()) {
+        return true;
+      }
     }
-    return next;
+    return false;
   }
 
 #if defined(_MSC_VER)

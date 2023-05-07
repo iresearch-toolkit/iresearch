@@ -841,8 +841,8 @@ class field_writer final : public irs::field_writer {
 
   void end() final;
 
-  void write(std::string_view name, IndexFeatures index_features,
-             const irs::feature_map_t& features, term_iterator& terms) final;
+  void write(const basic_term_reader& reader,
+             const irs::feature_map_t& features) final;
 
  private:
   static constexpr size_t DEFAULT_SIZE = 8;
@@ -851,7 +851,8 @@ class field_writer final : public irs::field_writer {
                   const irs::feature_map_t& features);
 
   void EndField(std::string_view name, IndexFeatures index_features,
-                const irs::feature_map_t& features, uint64_t total_doc_freq,
+                const irs::feature_map_t& features, bytes_view min_term,
+                bytes_view max_term, uint64_t total_doc_freq,
                 uint64_t total_term_freq, uint64_t doc_count);
 
   // prefix - prefix length (in last_term)
@@ -884,8 +885,6 @@ class field_writer final : public irs::field_writer {
   fst_buffer* fst_buf_;  // pimpl buffer used for building FST for fields
   volatile_byte_ref last_term_;  // last pushed term
   std::vector<size_t> prefixes_;
-  std::pair<bool, volatile_byte_ref> min_term_;  // current min term in a block
-  volatile_byte_ref max_term_;                   // current max term in a block
   size_t fields_count_{};
   const burst_trie::Version version_;
   const uint32_t min_block_size_;
@@ -1112,8 +1111,6 @@ field_writer::field_writer(
   IRS_ASSERT(2 * (min_block_size - 1) <= max_block_size);
   IRS_ASSERT(version_ >= burst_trie::Version::MIN &&
              version_ <= burst_trie::Version::MAX);
-
-  min_term_.first = false;
 }
 
 field_writer::~field_writer() { delete fst_buf_; }
@@ -1123,9 +1120,6 @@ void field_writer::prepare(const flush_state& state) {
 
   // reset writer state
   last_term_.clear();
-  max_term_.clear();
-  min_term_.first = false;
-  min_term_.second.clear();
   prefixes_.assign(DEFAULT_SIZE, 0);
   stack_.clear();
   stats_.reset();
@@ -1182,10 +1176,11 @@ void field_writer::prepare(const flush_state& state) {
   stats_.reset(allocator);
 }
 
-void field_writer::write(std::string_view name, IndexFeatures index_features,
-                         const irs::feature_map_t& features,
-                         term_iterator& terms) {
+void field_writer::write(const basic_term_reader& reader,
+                         const irs::feature_map_t& features) {
   REGISTER_TIMER_DETAILED();
+  const auto& reader_meta = reader.meta();
+  const auto index_features = reader_meta.index_features;
   BeginField(index_features, features);
 
   uint64_t term_count = 0;
@@ -1195,35 +1190,31 @@ void field_writer::write(std::string_view name, IndexFeatures index_features,
   const bool freq_exists =
     IndexFeatures::NONE != (index_features & IndexFeatures::FREQ);
 
-  while (terms.next()) {
-    auto postings = terms.postings(index_features);
+  auto terms = reader.iterator();
+  IRS_ASSERT(terms != nullptr);
+  while (terms->next()) {
+    auto postings = terms->postings(index_features);
     auto meta = pw_->write(*postings);
 
     if (freq_exists) {
       sum_tfreq += meta->freq;
     }
 
-    if (meta->docs_count) {
+    if (meta->docs_count != 0) {
       sum_dfreq += meta->docs_count;
 
-      const bytes_view term = terms.value();
+      const bytes_view term = terms->value();
       Push(term);
 
       // push term to the top of the stack
       stack_.emplace_back(term, std::move(meta), consolidation_);
 
-      if (!min_term_.first) {
-        min_term_.first = true;
-        min_term_.second.assign(term, consolidation_);
-      }
-
-      max_term_.assign(term, consolidation_);
-
       ++term_count;
     }
   }
 
-  EndField(name, index_features, features, sum_dfreq, sum_tfreq, term_count);
+  EndField(reader_meta.name, index_features, features, reader.min(),
+           reader.max(), sum_dfreq, sum_tfreq, term_count);
 }
 
 void field_writer::BeginField(IndexFeatures index_features,
@@ -1234,15 +1225,12 @@ void field_writer::BeginField(IndexFeatures index_features,
   // At the beginning of the field there should be no pending entries at all
   IRS_ASSERT(stack_.empty());
 
-  // Reset first field term
-  min_term_.first = false;
-  min_term_.second.clear();
-
   pw_->begin_field(index_features, features);
 }
 
 void field_writer::EndField(std::string_view name, IndexFeatures index_features,
                             const irs::feature_map_t& features,
+                            bytes_view min_term, bytes_view max_term,
                             uint64_t total_doc_freq, uint64_t total_term_freq,
                             uint64_t term_count) {
   IRS_ASSERT(terms_out_);
@@ -1273,8 +1261,8 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
   index_out_->write_vlong(term_count);
   index_out_->write_vlong(doc_count);
   index_out_->write_vlong(total_doc_freq);
-  write_string<irs::bytes_view>(*index_out_, min_term_.second);
-  write_string<irs::bytes_view>(*index_out_, max_term_);
+  write_string<irs::bytes_view>(*index_out_, min_term);
+  write_string<irs::bytes_view>(*index_out_, max_term);
   if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     index_out_->write_vlong(total_term_freq);
   }
@@ -1318,7 +1306,7 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
 
   if (IRS_UNLIKELY(!ok)) {
     throw irs::index_error{
-      absl::StrCat("Failed to write term index for field '", name, "'")};
+      absl::StrCat("Failed to write term index for field: ", name)};
   }
 
   stack_.clear();
@@ -2766,7 +2754,6 @@ class automaton_term_iterator : public term_iterator_base {
   const automaton* acceptor_;
   automaton_table_matcher* matcher_;
   explicit_matcher<FST> fst_matcher_;
-  byte_weight weight_;
   std::vector<block_iterator> block_stack_;
   block_iterator* cur_block_{};
   automaton::Weight::PayloadType payload_value_;

@@ -23,6 +23,7 @@
 
 #include "directory_reader_impl.hpp"
 
+#include "shared.hpp"
 #include "utils/directory_utils.hpp"
 
 #include <absl/container/flat_hash_map.h>

@@ -69,7 +69,7 @@ int get_host_name(char* name, size_t size) {
 
 bool is_same_hostname(const char* rhs, size_t size) {
   char name[256] = {};
-  if (const int err = get_host_name(name, sizeof name)) {
+  if (const int err = get_host_name(name, sizeof name); err) {
     IRS_LOG_ERROR(absl::StrCat("Unable to get hostname, error: ", err));
     return false;
   }
