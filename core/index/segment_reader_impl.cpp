@@ -150,6 +150,7 @@ FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
 
   auto& refs = dir.attributes().refs();
   for (auto& file : meta.files) {
+    // cppcheck-suppress useStlAlgorithm
     file_refs.emplace_back(refs.add(file));
   }
 

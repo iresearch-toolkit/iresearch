@@ -102,10 +102,13 @@ class BM25 final : public irs::ScorerBase<BM25, BM25Stats> {
 
   bool use_boost_as_score() const noexcept { return boost_as_score_; }
 
-  // Norms are not needed for BM15
   bool IsBM15() const noexcept { return b_ == 0.f; }
 
   bool IsBM11() const noexcept { return b_ == 1.f; }
+
+  bool IsBM1() const noexcept { return k_ == 0.f; }
+
+  bool NeedsNorm() const noexcept { return !IsBM1() && !IsBM15(); }
 
  private:
   float_t k_;

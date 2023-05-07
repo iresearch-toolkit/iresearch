@@ -28,6 +28,7 @@
 
 #include "formats/seek_cookie.hpp"
 #include "index/column_info.hpp"
+#include "index/field_meta.hpp"
 #include "index/index_features.hpp"
 #include "index/index_meta.hpp"
 #include "index/index_reader_options.hpp"
@@ -142,14 +143,26 @@ void postings_writer::releaser::operator()(term_meta* meta) const noexcept {
   owner_->release(meta);
 }
 
+struct basic_term_reader : public attribute_provider {
+  virtual term_iterator::ptr iterator() const = 0;
+
+  // Returns field metadata
+  virtual const field_meta& meta() const = 0;
+
+  // Returns the least significant term
+  virtual bytes_view(min)() const = 0;
+
+  // Returns the most significant term
+  virtual bytes_view(max)() const = 0;
+};
+
 struct field_writer {
   using ptr = std::unique_ptr<field_writer>;
 
   virtual ~field_writer() = default;
   virtual void prepare(const flush_state& state) = 0;
-  virtual void write(std::string_view name, IndexFeatures index_features,
-                     const std::map<type_info::type_id, field_id>& features,
-                     term_iterator& data) = 0;
+  virtual void write(const basic_term_reader& reader,
+                     const irs::feature_map_t& features) = 0;
   virtual void end() = 0;
 };
 
@@ -195,19 +208,6 @@ struct postings_reader {
   // This API is experimental.
   virtual size_t bit_union(IndexFeatures field_features,
                            const term_provider_f& provider, size_t* set) = 0;
-};
-
-struct basic_term_reader : public attribute_provider {
-  virtual term_iterator::ptr iterator() const = 0;
-
-  // Returns field metadata
-  virtual const field_meta& meta() const = 0;
-
-  // Returns the least significant term
-  virtual bytes_view(min)() const = 0;
-
-  // Returns the most significant term
-  virtual bytes_view(max)() const = 0;
 };
 
 // Expected usage pattern of seek_term_iterator

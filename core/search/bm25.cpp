@@ -195,21 +195,27 @@ Scorer::ptr make_json(std::string_view args) {
 REGISTER_SCORER_JSON(irs::BM25, make_json);
 REGISTER_SCORER_VPACK(irs::BM25, make_vpack);
 
-struct BM15Context : public irs::score_ctx {
+struct BM1Context : public irs::score_ctx {
+  BM1Context(float_t k, irs::score_t boost, const BM25Stats& stats,
+             const irs::filter_boost* fb = nullptr) noexcept
+    : filter_boost{fb}, num{boost * (k + 1) * stats.idf} {}
+
+  const irs::filter_boost* filter_boost;
+  float_t num;  // partially precomputed numerator : boost * (k + 1) * idf
+};
+
+struct BM15Context : public BM1Context {
   BM15Context(float_t k, irs::score_t boost, const BM25Stats& stats,
               const frequency* freq,
               const irs::filter_boost* fb = nullptr) noexcept
-    : freq{freq ? freq : &kEmptyFreq},
-      filter_boost{fb},
-      num{boost * (k + 1) * stats.idf},
+    : BM1Context{k, boost, stats, fb},
+      freq{freq ? freq : &kEmptyFreq},
       norm_const{stats.norm_const} {
     IRS_ASSERT(this->freq);
   }
 
   const frequency* freq;  // document frequency
-  const irs::filter_boost* filter_boost;
-  float_t num;  // partially precomputed numerator : boost * (k + 1) * idf
-  float_t norm_const;  // 'k' factor
+  float_t norm_const;     // 'k' factor
 };
 
 template<typename Norm>
@@ -252,6 +258,30 @@ auto MakeBM25NormAdapter(Reader&& reader) {
 }
 
 }  // namespace
+
+template<>
+struct MakeScoreFunctionImpl<BM1Context> {
+  using Ctx = BM1Context;
+
+  template<bool HasFilterBoost, typename... Args>
+  static auto Make(Args&&... args) {
+    return ScoreFunction::Make<Ctx>(
+      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        IRS_ASSERT(res);
+        IRS_ASSERT(ctx);
+
+        auto& state = *static_cast<Ctx*>(ctx);
+
+        if constexpr (HasFilterBoost) {
+          IRS_ASSERT(state.filter_boost);
+          *res = state.filter_boost->value * state.num;
+        } else {
+          *res = state.num;
+        }
+      },
+      std::forward<Args>(args)...);
+  }
+};
 
 template<>
 struct MakeScoreFunctionImpl<BM15Context> {
@@ -351,8 +381,7 @@ void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
   IRS_ASSERT(stats->idf >= 0.f);
 
   // - stats were already initialized
-  // - BM15 without norms
-  if (IsBM15()) {
+  if (!NeedsNorm()) {
     stats->norm_const = k_;
     return;
   }
@@ -399,6 +428,10 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
 
   auto* stats = stats_cast(query_stats);
   auto* filter_boost = irs::get<irs::filter_boost>(doc_attrs);
+
+  if (IsBM1()) {
+    return MakeScoreFunction<BM1Context>(filter_boost, k_, boost, *stats);
+  }
 
   if (IsBM15()) {
     return MakeScoreFunction<BM15Context>(filter_boost, k_, boost, *stats,
@@ -453,14 +486,14 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
 }
 
 void BM25::get_features(std::set<type_info::type_id>& features) const {
-  if (!IsBM15()) {
+  if (NeedsNorm()) {
     features.emplace(irs::type<Norm2>::id());
   }
 }
 
 WandWriter::ptr BM25::prepare_wand_writer(size_t max_levels) const {
   return ResolveBool(
-    !IsBM15(),
+    NeedsNorm(),
     [&]<bool HasNorms>(
       std::integral_constant<bool, HasNorms>) -> WandWriter::ptr {
       return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
@@ -469,7 +502,7 @@ WandWriter::ptr BM25::prepare_wand_writer(size_t max_levels) const {
 }
 
 WandSource::ptr BM25::prepare_wand_source() const {
-  return ResolveBool(!IsBM15(),
+  return ResolveBool(NeedsNorm(),
                      [&]<bool HasNorms>(std::integral_constant<bool, HasNorms>)
                        -> WandSource::ptr {
                        return std::make_unique<WandAttributes<HasNorms>>();
