@@ -78,7 +78,7 @@ class CachingHelper {
   }
 
   void Rename(std::string_view src, std::string_view dst) noexcept {
-    const auto src_hash = cache_.hash_ref()(src);
+    const auto src_hash = cache_.hash_function()(src);
 
     std::lock_guard lock{mutex_};
     if (auto src_it = cache_.find(src, src_hash); src_it != cache_.end()) {
