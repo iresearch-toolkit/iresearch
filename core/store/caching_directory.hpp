@@ -39,7 +39,7 @@ class CachingHelper {
 
   template<typename Visitor>
   bool Visit(std::string_view key, Visitor&& visitor) const noexcept {
-    const size_t key_hash = cache_.hash_ref()(key);
+    const size_t key_hash = cache_.hash_function()(key);
 
     {
       std::shared_lock lock{mutex_};
@@ -69,7 +69,7 @@ class CachingHelper {
   }
 
   void Remove(std::string_view key) noexcept {
-    const size_t key_hash = cache_.hash_ref()(key);
+    const size_t key_hash = cache_.hash_function()(key);
 
     std::lock_guard lock{mutex_};
     if (const auto it = cache_.find(key, key_hash); it != cache_.end()) {

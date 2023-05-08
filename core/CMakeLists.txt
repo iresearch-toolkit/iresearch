@@ -416,7 +416,6 @@ target_link_libraries(iresearch-static
   ${URING_LIBRARIES}
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
-  PUBLIC absl::crc32c
   ${GCOV_LIBRARY}
   ${Lz4_STATIC_LIB}
   ${DL_LIBRARY}

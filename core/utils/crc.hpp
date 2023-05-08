@@ -20,38 +20,90 @@
 /// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#ifndef IRESEARCH_CRC_H
+#define IRESEARCH_CRC_H
 
 #include <shared.hpp>
 
-#include <absl/crc/crc32c.h>
+#ifdef IRESEARCH_SSE4_2
+
+#include <nmmintrin.h>
 
 namespace irs {
 
 class crc32c {
-  // TODO(MBkkt) kCrc32Xor == 0 is incorrect, we ignore all first zero bytes,
-  //  We can fix it with new directory format and kCrc32Xor = 0xffffffff
-  static constexpr uint32_t kCrc32Xor = 0;
-
  public:
-  explicit crc32c(uint32_t seed = 0) noexcept : value_{seed ^ kCrc32Xor} {}
+  explicit crc32c(uint32_t seed = 0) noexcept : value_(seed) {}
 
-  IRS_FORCE_INLINE void process_bytes(const void* data, size_t size) noexcept {
-    value_ = absl::ExtendCrc32c(
-      value_, std::string_view{static_cast<const char*>(data), size}, 0);
+  FORCE_INLINE void process_bytes(const void* buffer, size_t size) noexcept {
+    const auto* begin = reinterpret_cast<const uint8_t*>(buffer);
+    process_block(begin, begin + size);
   }
 
-  IRS_FORCE_INLINE void process_block(const void* begin,
-                                      const void* end) noexcept {
-    process_bytes(begin, std::distance(static_cast<const char*>(begin),
-                                       static_cast<const char*>(end)));
+  FORCE_INLINE void process_block(const void* buffer_begin,
+                                  const void* buffer_end) noexcept {
+    const auto* begin = process_block_32(buffer_begin, buffer_end);
+    const auto* end = reinterpret_cast<const uint8_t*>(buffer_end);
+
+    for (; begin < end; ++begin) {
+      value_ = _mm_crc32_u8(value_, *begin);
+    }
   }
 
-  IRS_FORCE_INLINE uint32_t checksum() const noexcept {
-    return static_cast<uint32_t>(value_) ^ kCrc32Xor;
+  FORCE_INLINE void process_byte(unsigned char b) {
+    process_bytes(&b, sizeof(b));
   }
 
-  absl::crc32c_t value_;
-};
+  FORCE_INLINE uint32_t checksum() const noexcept { return value_; }
 
-}  // namespace irs
+ private:
+  FORCE_INLINE const uint8_t* process_block_32(
+    const void* buffer_begin, const void* buffer_end) noexcept {
+    constexpr size_t BS = 8 * sizeof(uint32_t);
+
+    const auto k = std::distance(reinterpret_cast<const uint8_t*>(buffer_begin),
+                                 reinterpret_cast<const uint8_t*>(buffer_end)) /
+                   BS;
+
+    const auto* begin = reinterpret_cast<const uint32_t*>(buffer_begin);
+    const auto* end = reinterpret_cast<const uint32_t*>(
+      reinterpret_cast<const uint8_t*>(buffer_begin) + k * BS);
+
+    for (; begin < end; ++begin) {
+      value_ = _mm_crc32_u32(value_, *begin);
+    }
+
+    return reinterpret_cast<const uint8_t*>(begin);
+  }
+
+  uint32_t value_;
+};  // crc32c
+
+}  // namespace iresearch
+
+#else
+
+#if defined(_MSC_VER)
+#pragma warning(disable : 4244)
+#pragma warning(disable : 4245)
+#elif defined(__GNUC__)
+// NOOP
+#endif
+
+#include <boost/crc.hpp>
+
+#if defined(_MSC_VER)
+#pragma warning(default : 4244)
+#pragma warning(default : 4245)
+#elif defined(__GNUC__)
+// NOOP
+#endif
+
+namespace irs {
+
+typedef boost::crc_optimal<32, 0x1EDC6F41, 0, 0, true, true> crc32c;
+
+}
+
+#endif  // IRESEARCH_SSE
+#endif  // IRESEARCH_CRC_H
