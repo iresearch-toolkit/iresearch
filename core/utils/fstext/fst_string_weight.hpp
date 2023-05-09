@@ -539,7 +539,7 @@ inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
     return Weight();
   }
 
-  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
+  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs), absl::StrCat(rhs, " is not prefix ", rhs));
 
   return Weight(lhs.c_str() + rhs.size(), lhs.Size() - rhs.size());
 }
