@@ -192,7 +192,7 @@ endif ()
 ### setup platform dependent optimizations
 ################################################################################
 
-include(OptimizeForArchitecture)
+include(OptimizeForArchitectureLocal)
 
 ################################################################################
 ### find 3rd party libraries
