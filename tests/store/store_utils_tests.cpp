@@ -245,25 +245,25 @@ void packed_read_write_block_core(const std::vector<uint32_t>& src) {
   static constexpr size_t BLOCK_SIZE = 128;
   uint32_t encoded[BLOCK_SIZE];
 
-  auto pack = [](const uint32_t* decoded, uint32_t* encoded, size_t size,
+  auto pack = [](const uint32_t* decoded, uint32_t* encoded,
                  const uint32_t bits) {
-    irs::packed::pack(decoded, decoded + size, encoded, bits);
+    irs::packed::pack(decoded, decoded + BLOCK_SIZE, encoded, bits);
   };
 
-  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, size_t size,
+  auto unpack = [](uint32_t* decoded, const uint32_t* encoded,
                    const uint32_t bits) {
-    irs::packed::unpack(decoded, decoded + size, encoded, bits);
+    irs::packed::unpack(decoded, decoded + BLOCK_SIZE, encoded, bits);
   };
 
   // compress data to stream
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::bitpack::write_block32(pack, out, src.data(), BLOCK_SIZE, encoded);
+  irs::bitpack::write_block32<BLOCK_SIZE>(pack, out, src.data(), encoded);
 
   // decompress data from stream
   std::vector<uint32_t> read(src.size());
   irs::bytes_view_input in(buf);
-  irs::bitpack::read_block32(unpack, in, encoded, BLOCK_SIZE, read.data());
+  irs::bitpack::read_block32<BLOCK_SIZE>(unpack, in, encoded, read.data());
 
   ASSERT_EQ(src, read);
 }
@@ -314,27 +314,28 @@ void read_write_core_container(
 
 void read_write_block(const std::vector<uint32_t>& source,
                       std::vector<uint32_t>& enc_dec_buf) {
-  auto pack = [](const uint32_t* decoded, uint32_t* encoded, size_t size,
-                 const uint32_t bits) {
+  const auto size = source.size();
+  auto pack = [&](const uint32_t* decoded, uint32_t* encoded,
+                  const uint32_t bits) {
     irs::packed::pack(decoded, decoded + size, encoded, bits);
   };
 
-  auto unpack = [](uint32_t* decoded, const uint32_t* encoded, size_t size,
-                   const uint32_t bits) {
+  auto unpack = [&](uint32_t* decoded, const uint32_t* encoded,
+                    const uint32_t bits) {
     irs::packed::unpack(decoded, decoded + size, encoded, bits);
   };
 
   // write block
   irs::bstring buf;
   irs::bytes_output out(buf);
-  irs::bitpack::write_block32(pack, out, &source[0], source.size(),
-                              &enc_dec_buf[0]);
+  irs::bitpack::write_block32(pack, out, source.data(), size,
+                              enc_dec_buf.data());
 
   // read block
   bytes_input in(buf);
-  std::vector<uint32_t> read(source.size());
-  irs::bitpack::read_block32(unpack, in, &enc_dec_buf[0], source.size(),
-                             read.data());
+  std::vector<uint32_t> read(size);
+  irs::bitpack::read_block_impl32(unpack, in, enc_dec_buf.data(), size,
+                                  read.data());
 
   ASSERT_EQ(source, read);
 }

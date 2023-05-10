@@ -95,9 +95,9 @@ struct format_traits {
   static constexpr uint32_t pos_min() noexcept { return PosMin; }
   static constexpr bool wand() noexcept { return Wand; }
 
-  IRS_FORCE_INLINE static void pack_block32(
-    const uint32_t* IRS_RESTRICT decoded, uint32_t* IRS_RESTRICT encoded,
-    const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack_block(const uint32_t* IRS_RESTRICT decoded,
+                                          uint32_t* IRS_RESTRICT encoded,
+                                          uint32_t bits) noexcept {
     packed::pack_block(decoded, encoded, bits);
     packed::pack_block(decoded + packed::BLOCK_SIZE_32, encoded + bits, bits);
     packed::pack_block(decoded + 2 * packed::BLOCK_SIZE_32, encoded + 2 * bits,
@@ -106,9 +106,9 @@ struct format_traits {
                        bits);
   }
 
-  IRS_FORCE_INLINE static void unpack_block32(
+  IRS_FORCE_INLINE static void unpack_block(
     uint32_t* IRS_RESTRICT decoded, const uint32_t* IRS_RESTRICT encoded,
-    const uint32_t bits) noexcept {
+    uint32_t bits) noexcept {
     packed::unpack_block(encoded, decoded, bits);
     packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_32, bits);
     packed::unpack_block(encoded + 2 * bits,
@@ -117,34 +117,20 @@ struct format_traits {
                          decoded + 3 * packed::BLOCK_SIZE_32, bits);
   }
 
-  IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
-                                      uint32_t* IRS_RESTRICT encoded,
-                                      size_t size,
-                                      const uint32_t bits) noexcept {
-    IRS_ASSERT(encoded);
-    IRS_ASSERT(decoded);
-    IRS_ASSERT(size);
-    packed::pack(decoded, decoded + size, encoded, bits);
-  }
-
-  IRS_FORCE_INLINE static void pack64(const uint64_t* IRS_RESTRICT decoded,
-                                      uint64_t* IRS_RESTRICT encoded,
-                                      size_t size,
-                                      const uint32_t bits) noexcept {
-    IRS_ASSERT(encoded);
-    IRS_ASSERT(decoded);
-    IRS_ASSERT(size);
-    packed::pack(decoded, decoded + size, encoded, bits);
+  IRS_FORCE_INLINE static void write_delta_block(index_output& out,
+                                                 uint32_t* in, uint32_t* buf,
+                                                 uint32_t init) {
+    bitpack::write_delta_block32<block_size()>(pack_block, out, in, buf, init);
   }
 
   IRS_FORCE_INLINE static void write_block(index_output& out,
                                            const uint32_t* in, uint32_t* buf) {
-    bitpack::write_block32<block_size()>(&pack_block32, out, in, buf);
+    bitpack::write_block32<block_size()>(pack_block, out, in, buf);
   }
 
   IRS_FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
                                           uint32_t* out) {
-    bitpack::read_block32<block_size()>(&unpack_block32, in, buf, out);
+    bitpack::read_block32<block_size()>(unpack_block, in, buf, out);
   }
 
   IRS_FORCE_INLINE static void skip_block(index_input& in) {
@@ -906,10 +892,8 @@ void postings_writer<FormatTraits>::BeginDocument() {
     doc_.push(id, attrs_.freq_value_.value);
 
     if (doc_.full()) {
-      // FIXME do aligned?
-      simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.data(),
-                                                            doc_.block_last);
-      FormatTraits::write_block(*doc_out_, doc_.docs.data(), buf_);
+      FormatTraits::write_delta_block(*doc_out_, doc_.docs.data(), buf_,
+                                      doc_.block_last);
       if (features_.HasFrequency()) {
         FormatTraits::write_block(*doc_out_, doc_.freqs.data(), buf_);
       }
@@ -4148,25 +4132,31 @@ struct format_traits_sse4 {
 
   IRS_FORCE_INLINE static void pack_block(const uint32_t* IRS_RESTRICT decoded,
                                           uint32_t* IRS_RESTRICT encoded,
-                                          const uint32_t bits) noexcept {
+                                          uint32_t bits) noexcept {
     ::simdpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded),
                           bits);
   }
 
-  IRS_FORCE_INLINE static void unpack_block(uint32_t* decoded,
-                                            const uint32_t* encoded,
-                                            const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void unpack_block(
+    uint32_t* IRS_RESTRICT decoded, const uint32_t* IRS_RESTRICT encoded,
+    uint32_t bits) noexcept {
     ::simdunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
+  }
+
+  IRS_FORCE_INLINE static void write_delta_block(index_output& out,
+                                                 uint32_t* in, uint32_t* buf,
+                                                 uint32_t init) {
+    bitpack::write_delta_block32<block_size()>(pack_block, out, in, buf, init);
   }
 
   IRS_FORCE_INLINE static void write_block(index_output& out,
                                            const uint32_t* in, uint32_t* buf) {
-    bitpack::write_block32<block_size()>(&pack_block, out, in, buf);
+    bitpack::write_block32<block_size()>(pack_block, out, in, buf);
   }
 
   IRS_FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
                                           uint32_t* out) {
-    bitpack::read_block32<block_size()>(&unpack_block, in, buf, out);
+    bitpack::read_block32<block_size()>(unpack_block, in, buf, out);
   }
 
   IRS_FORCE_INLINE static void skip_block(index_input& in) {

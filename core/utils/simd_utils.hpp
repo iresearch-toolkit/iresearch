@@ -29,8 +29,7 @@
 #include "shared.hpp"
 #include "utils/bit_packing.hpp"
 
-namespace irs {
-namespace simd {
+namespace irs::simd {
 
 using namespace hwy::HWY_NAMESPACE;
 
@@ -116,11 +115,6 @@ uint32_t maxbits(const T* begin, size_t size) noexcept {
   }
 
   return math::math_traits<T>::bits_required(max);
-}
-
-template<size_t Length, bool Aligned, typename T>
-IRS_FORCE_INLINE uint32_t maxbits(const T* begin) noexcept {
-  return maxbits<Aligned>(begin, Length);
 }
 
 template<bool Aligned, typename T>
@@ -326,5 +320,4 @@ void avg_decode(const T* begin, T* out, T base, T avg) noexcept {
   }
 }
 
-}  // namespace simd
-}  // namespace irs
+}  // namespace irs::simd

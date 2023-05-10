@@ -69,7 +69,7 @@ struct FlushedSegmentContext {
                         IndexWriter::FlushedSegment& flushed)
     : reader{std::move(reader)}, segment{segment}, flushed{flushed} {
     IRS_ASSERT(this->reader != nullptr);
-    if (flushed.document_mask.empty()) {
+    if (flushed.docs_mask.count != doc_limits::eof()) {
       Init();
     }
   }
@@ -131,12 +131,18 @@ struct FlushedSegmentContext {
     document_mask.reserve(flushed.docs_mask.count + (invalid_end - end));
 
     // translate removes
-    for (size_t old_pos = 0,
-                end_pos = std::min(end, flushed.docs_mask.set.size());
-         old_pos < end_pos; ++old_pos) {
-      if (flushed.docs_mask.set.test(old_pos)) {
-        const auto new_doc = Old2New(old_pos + doc_limits::min());
+    // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly
+    const auto word_count =
+      std::min(bitset::bits_to_words(end), flushed.docs_mask.set.words());
+    for (size_t word_idx = 0; word_idx != word_count; ++word_idx) {
+      auto word = flushed.docs_mask.set[word_idx];
+      const auto old_doc = word_idx * sizeof(word) + doc_limits::min();
+      while (word != 0) {
+        const auto t = word & -word;
+        const auto offset = std::countr_zero(word);
+        const auto new_doc = Old2New(old_doc + offset);
         document_mask.insert(new_doc);
+        word ^= t;
       }
     }
     IRS_ASSERT(document_mask.size() == flushed.docs_mask.count);
@@ -152,8 +158,10 @@ struct FlushedSegmentContext {
       document_mask.insert(new_doc);
     }
 
-    flushed.docs_mask = {};
     flushed.document_mask = std::move(document_mask);
+    flushed.docs_mask.set = {};
+    // set count to invalid
+    flushed.docs_mask.count = doc_limits::eof();
   }
 
   static doc_id_t Translate(const auto& map, auto from) noexcept {

@@ -570,10 +570,10 @@ class CompoundTermIterator : public term_iterator {
   bool next() final;
   doc_iterator::ptr postings(IndexFeatures features) const final;
   void read() final {
-    for (auto& itr_id : term_iterator_mask_) {
-      if (term_iterators_[itr_id].first) {
-        term_iterators_[itr_id].first->read();
-      }
+    for (const auto itr_id : term_iterator_mask_) {
+      auto& it = term_iterators_[itr_id].first;
+      IRS_ASSERT(it);
+      it->read();
     }
   }
 
@@ -636,34 +636,39 @@ bool CompoundTermIterator::next() {
   }
 
   // advance all used iterators
-  for (auto& itr_id : term_iterator_mask_) {
+  for (const auto itr_id : term_iterator_mask_) {
     auto& it = term_iterators_[itr_id].first;
-    if (it && !it->next()) {
+    IRS_ASSERT(it);
+    if (!it->next()) {
       it.reset();
     }
   }
 
-  term_iterator_mask_.clear();  // reset for next pass
+  term_iterator_mask_.clear();
+  current_term_ = {};
 
-  for (size_t i = 0, count = term_iterators_.size(); i < count; ++i) {
-    auto& term_itr = term_iterators_[i];
-
-    if (!term_itr.first || (!term_iterator_mask_.empty() &&
-                            term_itr.first->value() > current_term_)) {
-      continue;  // empty iterator or value too large
+  // TODO(MBkkt) use k way merge
+  for (size_t i = 0, count = term_iterators_.size(); i != count; ++i) {
+    auto& it = term_iterators_[i].first;
+    if (!it) {
+      continue;
     }
-
-    // found a smaller term
-    if (term_iterator_mask_.empty() ||
-        term_itr.first->value() < current_term_) {
-      term_iterator_mask_.clear();
-      current_term_ = term_itr.first->value();
+    const bytes_view value = it->value();
+    IRS_ASSERT(!IsNull(value));
+    if (!IsNull(current_term_)) {
+      const auto cmp = value.compare(current_term_);
+      if (cmp > 0) {
+        continue;
+      }
+      if (cmp < 0) {
+        term_iterator_mask_.clear();
+      }
     }
-
+    current_term_ = value;
     term_iterator_mask_.emplace_back(i);
   }
 
-  return !term_iterator_mask_.empty();
+  return !IsNull(current_term_);
 }
 
 doc_iterator::ptr CompoundTermIterator::postings(
@@ -674,7 +679,7 @@ doc_iterator::ptr CompoundTermIterator::postings(
 
     for (auto& itr_id : term_iterator_mask_) {
       auto& term_itr = term_iterators_[itr_id];
-
+      IRS_ASSERT(term_itr.first);
       auto it = term_itr.first->postings(meta().index_features);
       IRS_ASSERT(it);
 

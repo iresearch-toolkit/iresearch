@@ -68,17 +68,26 @@ inline void skip_block32(index_input& in, uint32_t size) {
   }
 }
 
-// skip block of the specified size that was previously
-// written with the corresponding 'write_block' function
-inline void skip_block64(index_input& in, uint64_t size) {
+template<typename PackFunc>
+uint32_t write_block_impl32(PackFunc&& pack, data_output& out,
+                            const uint32_t* IRS_RESTRICT decoded, uint32_t size,
+                            uint32_t bits, uint32_t* IRS_RESTRICT encoded) {
+  IRS_ASSERT(decoded);
   IRS_ASSERT(size);
+  IRS_ASSERT(bits);
+  IRS_ASSERT(encoded);
 
-  const uint32_t bits = in.read_byte();
-  if (ALL_EQUAL == bits) {
-    in.read_vlong();
-  } else {
-    in.seek(in.file_pointer() + packed::bytes_required_64(size, bits));
-  }
+  const size_t buf_size = packed::bytes_required_32(size, bits);
+  // TODO(MBkkt) memset looks unnecessary
+  std::memset(encoded, 0, buf_size);
+  pack(decoded, encoded, bits);
+
+  // TODO(MBkkt) direct write api?
+  //  out.get_buffer(buf_size + 1, /*fallback=*/encoded)?
+  out.write_byte(static_cast<byte_type>(bits & 0xFF));
+  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
+
+  return bits;
 }
 
 // writes block of 'size' 32 bit integers to a stream
@@ -90,9 +99,7 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
                        const uint32_t* IRS_RESTRICT decoded, uint32_t size,
                        uint32_t* IRS_RESTRICT encoded) {
   IRS_ASSERT(size);
-  IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
-
   if (simd::all_equal<false>(decoded, size)) {
     out.write_byte(ALL_EQUAL);
     out.write_vint(*decoded);
@@ -105,16 +112,20 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
 #else
   const uint32_t bits = packed::maxbits32(decoded, decoded + size);
 #endif
-  IRS_ASSERT(bits);
+  return write_block_impl32(std::forward<PackFunc>(pack), out, decoded, size,
+                            bits, encoded);
+}
 
-  const size_t buf_size = packed::bytes_required_32(size, bits);
-  std::memset(encoded, 0, buf_size);
-  pack(decoded, encoded, size, bits);
-
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
-
-  return bits;
+// writes block of 'Size' 32 bit integers to a stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
+// returns number of bits used to encoded the block (0 == RL)
+template<uint32_t Size, typename PackFunc>
+uint32_t write_block32(PackFunc&& pack, data_output& out,
+                       const uint32_t* IRS_RESTRICT decoded,
+                       uint32_t* IRS_RESTRICT encoded) {
+  return write_block32(std::forward<PackFunc>(pack), out, decoded, Size,
+                       encoded);
 }
 
 // writes block of 'Size' 32 bit integers to a stream
@@ -122,35 +133,24 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<size_t Size, typename PackFunc>
-uint32_t write_block32(PackFunc&& pack, data_output& out,
-                       const uint32_t* IRS_RESTRICT decoded,
-                       uint32_t* IRS_RESTRICT encoded) {
+uint32_t write_delta_block32(PackFunc&& pack, data_output& out,
+                             uint32_t* IRS_RESTRICT decoded,
+                             uint32_t* IRS_RESTRICT encoded, uint32_t init) {
   static_assert(Size);
-  IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
+  IRS_ASSERT(!simd::all_equal<false>(decoded, Size));
 
-  if (simd::all_equal<false>(decoded, Size)) {
-    out.write_byte(ALL_EQUAL);
-    out.write_vint(*decoded);
-    return ALL_EQUAL;
-  }
+  // TODO(MBkkt) unify delta encode and maxbits compute!
+  simd::delta_encode<Size, false>(decoded, init);
 
   // prior AVX2 scalar version works faster for 32-bit values
 #ifdef HWY_CAP_GE256
-  const uint32_t bits = simd::maxbits<Size, false>(decoded);
+  const uint32_t bits = simd::maxbits<false>(decoded, Size);
 #else
   const uint32_t bits = packed::maxbits32(decoded, decoded + Size);
 #endif
-  IRS_ASSERT(bits);
-
-  const size_t buf_size = packed::bytes_required_32(Size, bits);
-  std::memset(encoded, 0, buf_size);
-  pack(decoded, encoded, bits);
-
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
-
-  return bits;
+  return write_block_impl32(std::forward<PackFunc>(pack), out, decoded, Size,
+                            bits, encoded);
 }
 
 // writes block of 'size' 64 bit integers to a stream
@@ -184,35 +184,20 @@ uint32_t write_block64(PackFunc&& pack, data_output& out,
   return bits;
 }
 
-// writes block of 'Size' 64 bit integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-template<size_t Size, typename PackFunc>
-uint32_t write_block64(PackFunc&& pack, data_output& out,
-                       const uint64_t* IRS_RESTRICT decoded,
-                       uint64_t* IRS_RESTRICT encoded) {
-  static_assert(Size);
-  return write_block64(std::forward<PackFunc>(pack), out, decoded, Size,
-                       encoded);
-}
-
-// reads block of 'Size' 32 bit integers from the stream
-// that was previously encoded with the corresponding
-// 'write_block32' function
-template<size_t Size, typename UnpackFunc>
-void read_block32(UnpackFunc&& unpack, data_input& in,
-                  uint32_t* IRS_RESTRICT encoded,
-                  uint32_t* IRS_RESTRICT decoded) {
-  static_assert(Size);
+template<typename UnpackFunc>
+IRS_FORCE_INLINE void read_block_impl32(UnpackFunc&& unpack, data_input& in,
+                                        uint32_t* IRS_RESTRICT encoded,
+                                        uint32_t size,
+                                        uint32_t* IRS_RESTRICT decoded) {
+  IRS_ASSERT(size);
   IRS_ASSERT(encoded);
   IRS_ASSERT(decoded);
 
   const uint32_t bits = in.read_byte();
   if (ALL_EQUAL == bits) {
-    std::fill_n(decoded, Size, in.read_vint());
+    std::fill_n(decoded, size, in.read_vint());
   } else {
-    const size_t required = packed::bytes_required_32(Size, bits);
+    const size_t required = packed::bytes_required_32(size, bits);
 
     const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
 
@@ -229,68 +214,15 @@ void read_block32(UnpackFunc&& unpack, data_input& in,
   }
 }
 
-// reads block of 'size' 32 bit integers from the stream
+// reads block of 'Size' 32 bit integers from the stream
 // that was previously encoded with the corresponding
 // 'write_block32' function
-template<typename UnpackFunc>
+template<uint32_t Size, typename UnpackFunc>
 void read_block32(UnpackFunc&& unpack, data_input& in,
-                  uint32_t* IRS_RESTRICT encoded, uint32_t size,
+                  uint32_t* IRS_RESTRICT encoded,
                   uint32_t* IRS_RESTRICT decoded) {
-  IRS_ASSERT(size);
-  IRS_ASSERT(encoded);
-  IRS_ASSERT(decoded);
-
-  const uint32_t bits = in.read_byte();
-  if (ALL_EQUAL == bits) {
-    std::fill_n(decoded, size, in.read_vint());
-  } else {
-    const size_t required = packed::bytes_required_32(size, bits);
-
-    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
-
-    if (buf) {
-      unpack(decoded, reinterpret_cast<const uint32_t*>(buf), size, bits);
-      return;
-    }
-
-    [[maybe_unused]] const auto read =
-      in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-    IRS_ASSERT(read == required);
-
-    unpack(decoded, encoded, size, bits);
-  }
-}
-
-// reads block of 'Size' 64 bit integers from the stream
-// that was previously encoded with the corresponding
-// 'write_block64' function
-template<size_t Size, typename UnpackFunc>
-void read_block64(UnpackFunc&& unpack, data_input& in,
-                  uint64_t* IRS_RESTRICT encoded,
-                  uint64_t* IRS_RESTRICT decoded) {
-  static_assert(Size);
-  IRS_ASSERT(encoded);
-  IRS_ASSERT(decoded);
-
-  const uint32_t bits = in.read_byte();
-  if (ALL_EQUAL == bits) {
-    std::fill_n(decoded, Size, in.read_vlong());
-  } else {
-    const size_t required = packed::bytes_required_64(Size, bits);
-
-    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
-
-    if (buf) {
-      unpack(decoded, reinterpret_cast<const uint64_t*>(buf), bits);
-      return;
-    }
-
-    [[maybe_unused]] const auto read =
-      in.read_bytes(reinterpret_cast<byte_type*>(encoded), required);
-    IRS_ASSERT(read == required);
-
-    unpack(decoded, encoded, bits);
-  }
+  return read_block_impl32(std::forward<UnpackFunc>(unpack), in, encoded, Size,
+                           decoded);
 }
 
 }  // namespace bitpack
