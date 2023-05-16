@@ -274,11 +274,11 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
                 const auto res = search_buf_.try_emplace(
                   current_pos, std::move(new_candidate));
                 if (!res.second) {
-                  // pos already used. This could be if same ngram used
-                  // several times. replace with new length through swap cache
-                  // - to not spoil candidate for following positions of same
-                  // ngram
+                  // pos already used. This could be if same ngram used several
+                  // times. Replace with new length through swap cache - to not
+                  // spoil candidate for following positions of same ngram
                   swap_cache.emplace_back(current_pos,
+                                          // cppcheck-suppress accessMoved
                                           std::move(new_candidate));
                 }
               } else if (initial_found->second->scr == pos_iterator.scr &&
@@ -342,7 +342,7 @@ bool SerialPositionsChecker<Base>::Check(size_t potential, doc_id_t doc) {
 
     // try to optimize case with one longest candidate
     // performance profiling shows it is majority of cases
-    for (auto& [_, state] : search_buf_) {
+    for ([[maybe_unused]] auto& [_, state] : search_buf_) {
       if (state->len == longest_sequence_len) {
         ++count_longest;
         if constexpr (HasPosition) {
@@ -467,11 +467,12 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
   }
 
   bool next() final {
-    bool next = false;
-    while ((next = approx_.next()) &&
-           !checker_.Check(approx_.match_count(), value())) {
+    while (approx_.next()) {
+      if (checker_.Check(approx_.match_count(), value())) {
+        return true;
+      }
     }
-    return next;
+    return false;
   }
 
   doc_id_t value() const final {

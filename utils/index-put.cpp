@@ -340,17 +340,13 @@ int put(const std::string& path, const std::string& dir_type,
     text_features = {LEGACY_TEXT_FEATURES.data(), LEGACY_TEXT_FEATURES.size()};
   }
   analyzer_factory_f analyzer_factory = [&analyzer_type, &analyzer_options]() {
-    irs::analysis::analyzer::ptr analyzer;
-
-    const auto res = irs::analysis::analyzers::get(
-      analyzer, analyzer_type, irs::type<irs::text_format::json>::get(),
+    auto analyzer = irs::analysis::analyzers::get(
+      analyzer_type, irs::type<irs::text_format::json>::get(),
       analyzer_options);
-
-    if (!res) {
+    if (!analyzer) {
       std::cerr << "Unable to load an analyzer of type '" << analyzer_type
-                << "', error '" << res.c_str() << "'\n";
+                << "', error 'NOT_FOUND'\n";
     }
-
     return analyzer;
   };
 

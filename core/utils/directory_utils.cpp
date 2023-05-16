@@ -130,7 +130,6 @@ RefTrackingDirectory::RefTrackingDirectory(
     track_open_(std::move(other.track_open_)) {}
 
 void RefTrackingDirectory::clear_refs() const {
-  // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex_};
   refs_.clear();
 }
@@ -229,7 +228,6 @@ bool RefTrackingDirectory::rename(std::string_view src,
 }
 
 std::vector<index_file_refs::ref_t> RefTrackingDirectory::GetRefs() const {
-  // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex_};
 
   return {refs_.begin(), refs_.end()};

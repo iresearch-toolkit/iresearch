@@ -48,6 +48,7 @@ static_assert(std::variant_size_v<ByNestedOptions::MatchType> == 2);
 
 const Scorers& GetOrder(const ByNestedOptions::MatchType& match,
                         const Scorers& ord) noexcept {
+  // cppcheck-suppress returnTempReference
   return std::visit(
     irs::Visitor{[&](Match v) noexcept -> const Scorers& {
                    return kMatchNone == v ? Scorers::kUnordered : ord;
