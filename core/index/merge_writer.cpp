@@ -655,6 +655,7 @@ bool CompoundTermIterator::next() {
     }
     const bytes_view value = it->value();
     IRS_ASSERT(!IsNull(value));
+    IRS_ASSERT(term_iterator_mask_.empty() == IsNull(current_term_));
     if (!IsNull(current_term_)) {
       const auto cmp = value.compare(current_term_);
       if (cmp > 0) {
