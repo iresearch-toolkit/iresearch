@@ -68,12 +68,29 @@ inline void skip_block32(index_input& in, uint32_t size) {
   }
 }
 
+// writes block of 'size' 32 bit integers to a stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
+// returns number of bits used to encoded the block (0 == RL)
 template<typename PackFunc>
-uint32_t write_block_impl32(PackFunc&& pack, data_output& out,
-                            const uint32_t* IRS_RESTRICT decoded, uint32_t size,
-                            uint32_t bits, uint32_t* IRS_RESTRICT encoded) {
+IRS_FORCE_INLINE uint32_t write_block32(PackFunc&& pack, data_output& out,
+                                        const uint32_t* IRS_RESTRICT decoded,
+                                        uint32_t size,
+                                        uint32_t* IRS_RESTRICT encoded) {
   IRS_ASSERT(decoded);
   IRS_ASSERT(size);
+  if (simd::all_equal<false>(decoded, size)) {
+    out.write_byte(ALL_EQUAL);
+    out.write_vint(*decoded);
+    return ALL_EQUAL;
+  }
+
+  // prior AVX2 scalar version works faster for 32-bit values
+#ifdef HWY_CAP_GE256
+  const uint32_t bits = simd::maxbits<false>(decoded, size);
+#else
+  const uint32_t bits = packed::maxbits32(decoded, decoded + size);
+#endif
   IRS_ASSERT(bits);
   IRS_ASSERT(encoded);
 
@@ -90,67 +107,12 @@ uint32_t write_block_impl32(PackFunc&& pack, data_output& out,
   return bits;
 }
 
-// writes block of 'size' 32 bit integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-template<typename PackFunc>
-uint32_t write_block32(PackFunc&& pack, data_output& out,
-                       const uint32_t* IRS_RESTRICT decoded, uint32_t size,
-                       uint32_t* IRS_RESTRICT encoded) {
-  IRS_ASSERT(size);
-  IRS_ASSERT(decoded);
-  if (simd::all_equal<false>(decoded, size)) {
-    out.write_byte(ALL_EQUAL);
-    out.write_vint(*decoded);
-    return ALL_EQUAL;
-  }
-
-  // prior AVX2 scalar version works faster for 32-bit values
-#ifdef HWY_CAP_GE256
-  const uint32_t bits = simd::maxbits<false>(decoded, size);
-#else
-  const uint32_t bits = packed::maxbits32(decoded, decoded + size);
-#endif
-  return write_block_impl32(std::forward<PackFunc>(pack), out, decoded, size,
-                            bits, encoded);
-}
-
-// writes block of 'Size' 32 bit integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
 template<uint32_t Size, typename PackFunc>
 uint32_t write_block32(PackFunc&& pack, data_output& out,
                        const uint32_t* IRS_RESTRICT decoded,
                        uint32_t* IRS_RESTRICT encoded) {
   return write_block32(std::forward<PackFunc>(pack), out, decoded, Size,
                        encoded);
-}
-
-// writes block of 'Size' 32 bit integers to a stream
-//   all values are equal -> RL encoding,
-//   otherwise            -> bit packing
-// returns number of bits used to encoded the block (0 == RL)
-template<size_t Size, typename PackFunc>
-uint32_t write_delta_block32(PackFunc&& pack, data_output& out,
-                             uint32_t* IRS_RESTRICT decoded,
-                             uint32_t* IRS_RESTRICT encoded, uint32_t init) {
-  static_assert(Size);
-  IRS_ASSERT(decoded);
-  IRS_ASSERT(!simd::all_equal<false>(decoded, Size));
-
-  // TODO(MBkkt) unify delta encode and maxbits compute!
-  simd::delta_encode<Size, false>(decoded, init);
-
-  // prior AVX2 scalar version works faster for 32-bit values
-#ifdef HWY_CAP_GE256
-  const uint32_t bits = simd::maxbits<false>(decoded, Size);
-#else
-  const uint32_t bits = packed::maxbits32(decoded, decoded + Size);
-#endif
-  return write_block_impl32(std::forward<PackFunc>(pack), out, decoded, Size,
-                            bits, encoded);
 }
 
 // writes block of 'size' 64 bit integers to a stream

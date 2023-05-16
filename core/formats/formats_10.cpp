@@ -117,12 +117,6 @@ struct format_traits {
                          decoded + 3 * packed::BLOCK_SIZE_32, bits);
   }
 
-  IRS_FORCE_INLINE static void write_delta_block(index_output& out,
-                                                 uint32_t* in, uint32_t* buf,
-                                                 uint32_t init) {
-    bitpack::write_delta_block32<block_size()>(pack_block, out, in, buf, init);
-  }
-
   IRS_FORCE_INLINE static void write_block(index_output& out,
                                            const uint32_t* in, uint32_t* buf) {
     bitpack::write_block32<block_size()>(pack_block, out, in, buf);
@@ -892,8 +886,10 @@ void postings_writer<FormatTraits>::BeginDocument() {
     doc_.push(id, attrs_.freq_value_.value);
 
     if (doc_.full()) {
-      FormatTraits::write_delta_block(*doc_out_, doc_.docs.data(), buf_,
-                                      doc_.block_last);
+      // FIXME do aligned?
+      simd::delta_encode<FormatTraits::block_size(), false>(doc_.docs.data(),
+                                                            doc_.block_last);
+      FormatTraits::write_block(*doc_out_, doc_.docs.data(), buf_);
       if (features_.HasFrequency()) {
         FormatTraits::write_block(*doc_out_, doc_.freqs.data(), buf_);
       }
@@ -4141,12 +4137,6 @@ struct format_traits_sse4 {
     uint32_t* IRS_RESTRICT decoded, const uint32_t* IRS_RESTRICT encoded,
     uint32_t bits) noexcept {
     ::simdunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
-  }
-
-  IRS_FORCE_INLINE static void write_delta_block(index_output& out,
-                                                 uint32_t* in, uint32_t* buf,
-                                                 uint32_t init) {
-    bitpack::write_delta_block32<block_size()>(pack_block, out, in, buf, init);
   }
 
   IRS_FORCE_INLINE static void write_block(index_output& out,
