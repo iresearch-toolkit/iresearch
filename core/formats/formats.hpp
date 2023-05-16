@@ -167,8 +167,8 @@ struct field_writer {
 };
 
 struct WandInfo {
-  byte_type mapped_index;
-  byte_type count;
+  byte_type mapped_index{WandContext::kDisable};
+  byte_type count{0};
 };
 
 struct postings_reader {
