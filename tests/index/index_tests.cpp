@@ -4044,9 +4044,13 @@ TEST_P(index_test_case, document_context) {
 
     auto reader = irs::DirectoryReader(dir(), codec());
     ASSERT_EQ(2, reader.size());
+    EXPECT_EQ(3, reader.docs_count());
+    EXPECT_EQ(2, reader.live_docs_count());
 
     {
       auto& segment = reader[0];  // assume 0 is id of first segment
+      EXPECT_EQ(2, segment.docs_count());
+      EXPECT_EQ(1, segment.live_docs_count());
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -4068,6 +4072,8 @@ TEST_P(index_test_case, document_context) {
 
     {
       auto& segment = reader[1];  // assume 1 is id of second segment
+      EXPECT_EQ(1, segment.docs_count());
+      EXPECT_EQ(1, segment.live_docs_count());
       const auto* column = segment.column("name");
       ASSERT_NE(nullptr, column);
       auto values = column->iterator(irs::ColumnHint::kNormal);
