@@ -285,8 +285,9 @@ class Format15TestCase : public tests::format_test_case {
                          irs::IndexFeatures field_features,
                          irs::IndexFeatures features,
                          const irs::term_meta& meta, bool strict);
-  void AssertPostings(DocsView docs, irs::IndexFeatures features,
-                      uint32_t threshold, bool strict);
+  void AssertPostings(DocsView docs, irs::IndexFeatures field_features,
+                      irs::IndexFeatures features, uint32_t threshold,
+                      bool strict);
   void AssertPostings(DocsView docs, uint32_t threshold, bool strict);
   void AssertPostings(DocsView docs, uint32_t threshold);
 
@@ -302,6 +303,10 @@ std::pair<irs::version10::term_meta, irs::postings_reader::ptr>
 Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
                                 irs::ScorersView scorers,
                                 irs::IndexFeatures features) {
+  // If this assertion breaks and you really need to test wanderators
+  // with different number of buckets you should adjust GetWanderator
+  // and set it proper count of scorers as it currently expect only one.
+  EXPECT_EQ(scorers.size(), 1);
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   EXPECT_NE(nullptr, codec);
@@ -397,14 +402,20 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
                                    nullptr, attrs, irs::kNoBoost);
     }};
 
-  const bool has_freq =
+  const bool iterator_has_freq =
     irs::IndexFeatures::NONE != (features & irs::IndexFeatures::FREQ);
+  const bool field_has_freq =
+    irs::IndexFeatures::NONE != (field_features & irs::IndexFeatures::FREQ);
   irs::WandContext ctx{};
   irs::WandInfo info{};
-  if (has_freq) {
+  EXPECT_EQ((field_features & features), features);
+  if (field_has_freq) {
+    info.count = 1;
+  }
+  if (iterator_has_freq) {
     ctx.index = 0;
     ctx.strict = strict;
-    info.count = 1;
+    info.mapped_index = 0;
   }
 
   auto actual =
@@ -438,7 +449,7 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
       continue;
     }
 
-    postings expected_postings{docs, field_features};
+    postings expected_postings{docs, features};
     FreqThresholdDocIterator expected{expected_postings, threshold, strict};
 
     auto actual =
@@ -467,7 +478,7 @@ void Format15TestCase::AssertDocsRandom(irs::postings_reader& reader,
                                         const irs::term_meta& meta,
                                         uint32_t threshold, bool strict,
                                         size_t seed, size_t inc) {
-  postings expected_postings{docs, field_features};
+  postings expected_postings{docs, features};
   FreqThresholdDocIterator expected{expected_postings, threshold, strict};
 
   auto actual =
@@ -503,7 +514,7 @@ void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
                                      irs::IndexFeatures features,
                                      const irs::term_meta& meta,
                                      uint32_t threshold, bool strict) {
-  postings expected_postings{docs, field_features};
+  postings expected_postings{docs, features};
   FreqThresholdDocIterator expected{expected_postings, threshold, strict};
   SkipList skip_list;
 
@@ -607,6 +618,7 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
 }
 
 void Format15TestCase::AssertPostings(DocsView docs,
+                                      irs::IndexFeatures field_features,
                                       irs::IndexFeatures features,
                                       uint32_t threshold, bool strict) {
   FreqScorer scorer;
@@ -615,44 +627,46 @@ void Format15TestCase::AssertPostings(DocsView docs,
   auto dir = get_directory(*this);
   ASSERT_NE(nullptr, dir);
   auto [meta, reader] =
-    WriteReadMeta(*dir, docs, std::span{&scorer_ptr, 1}, features);
+    WriteReadMeta(*dir, docs, std::span{&scorer_ptr, 1}, field_features);
   ASSERT_NE(nullptr, reader);
 
-  AssertCornerCases(*reader, docs, features, features, meta, strict);
+  AssertCornerCases(*reader, docs, field_features, features, meta, strict);
 
-  AssertDocsSeq(*reader, docs, features, features, meta, threshold, strict);
+  AssertDocsSeq(*reader, docs, field_features, features, meta, threshold,
+                strict);
 
   // Seek to every document 127th document in a block
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
-                   kVersion10PostingsWriterBlockSize - 1,
+  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
+                   strict, kVersion10PostingsWriterBlockSize - 1,
                    kVersion10PostingsWriterBlockSize);
 
   // Seek to every 128th document in a block
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
-                   kVersion10PostingsWriterBlockSize,
+  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
+                   strict, kVersion10PostingsWriterBlockSize,
                    kVersion10PostingsWriterBlockSize);
 
   // Seek to every document
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
-                   0, 1);
+  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
+                   strict, 0, 1);
 
   // Seek to every 5th document
-  AssertDocsRandom(*reader, docs, features, features, meta, threshold, strict,
-                   0, 5);
+  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
+                   strict, 0, 5);
 
   // Seek backwards && next
-  AssertBackwardsNext(*reader, docs, features, features, meta, threshold,
+  AssertBackwardsNext(*reader, docs, field_features, features, meta, threshold,
                       strict);
 }
 
 void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold,
                                       bool strict) {
-  AssertPostings(docs, kNone, threshold, strict);
-  AssertPostings(docs, kFreq, threshold, strict);
-  AssertPostings(docs, kPos, threshold, strict);
-  AssertPostings(docs, kOffs, threshold, strict);
-  AssertPostings(docs, kPay, threshold, strict);
-  AssertPostings(docs, kAll, threshold, strict);
+  AssertPostings(docs, kNone, kNone, threshold, strict);
+  AssertPostings(docs, kAll, kNone, threshold, strict);
+  AssertPostings(docs, kFreq, kFreq, threshold, strict);
+  AssertPostings(docs, kPos, kPos, threshold, strict);
+  AssertPostings(docs, kOffs, kOffs, threshold, strict);
+  AssertPostings(docs, kPay, kPay, threshold, strict);
+  AssertPostings(docs, kAll, kAll, threshold, strict);
 }
 
 void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold) {

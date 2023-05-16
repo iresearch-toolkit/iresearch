@@ -2325,7 +2325,8 @@ void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::prepare(
     skip_.Reader().Enable(term_state);
     skip_offs_ = term_state.doc_start + term_state.e_skip_start;
     docs_count_ = term_state.docs_count;
-  } else if (wand_index == WandContext::kDisable) {
+  } else if (term_state.docs_count != IteratorTraits::block_size() &&
+             wand_index == WandContext::kDisable) {
     skip_.Reader().SkipWandData(*this->doc_in_);
   }
 }
