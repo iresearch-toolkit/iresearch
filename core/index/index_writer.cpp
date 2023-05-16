@@ -70,6 +70,7 @@ struct FlushedSegmentContext {
     : reader{std::move(reader)}, segment{segment}, flushed{flushed} {
     IRS_ASSERT(this->reader != nullptr);
     if (flushed.docs_mask.count != doc_limits::eof()) {
+      IRS_ASSERT(flushed.document_mask.empty());
       Init();
     }
   }
