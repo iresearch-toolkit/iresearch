@@ -165,7 +165,6 @@ set(IResearch_core_sources
   ./utils/timer_utils.cpp
   ./utils/version_utils.cpp
   ./utils/log.cpp
-  ./utils/result.cpp
   ./utils/so_utils.cpp
   ./utils/process_utils.cpp
   ./utils/network_utils.cpp
@@ -256,7 +255,6 @@ set(IResearch_core_headers
   ./utils/std.hpp
   ./utils/string.hpp
   ./utils/log.hpp
-  ./utils/result.hpp
   ./utils/thread_utils.hpp
   ./utils/object_pool.hpp
   ./utils/so_utils.hpp

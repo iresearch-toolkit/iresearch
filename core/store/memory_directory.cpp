@@ -51,7 +51,6 @@ class single_instance_lock : public index_lock {
   }
 
   bool lock() final {
-    // cppcheck-suppress unreadVariable
     std::lock_guard lock{parent->llock_};
     return parent->locks_.insert(name).second;
   }
@@ -133,7 +132,7 @@ int64_t memory_index_input::checksum(size_t offset) const {
     auto& buf = file_->get_buffer(last_buffer_idx);
     to_process = std::min(offset, file_->length() - buf.offset);
     crc.process_bytes(buf.data, to_process);
-    offset -= to_process;
+    // offset -= to_process; offset unused after this, so comment out it
   }
 
   return crc.checksum();
@@ -417,7 +416,6 @@ memory_directory::memory_directory(directory_attributes attrs)
   : attrs_{std::move(attrs)} {}
 
 memory_directory::~memory_directory() noexcept {
-  // cppcheck-suppress unreadVariable
   std::lock_guard lock{flock_};
 
   files_.clear();
@@ -425,7 +423,6 @@ memory_directory::~memory_directory() noexcept {
 
 bool memory_directory::exists(bool& result,
                               std::string_view name) const noexcept {
-  // cppcheck-suppress unreadVariable
   std::shared_lock lock{flock_};
 
   result = files_.find(name) != files_.end();
@@ -458,7 +455,6 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
 
 bool memory_directory::length(uint64_t& result,
                               std::string_view name) const noexcept {
-  // cppcheck-suppress unreadVariable
   std::shared_lock lock{flock_};
 
   const auto it = files_.find(name);
@@ -484,7 +480,6 @@ index_lock::ptr memory_directory::make_lock(std::string_view name) noexcept {
 
 bool memory_directory::mtime(std::time_t& result,
                              std::string_view name) const noexcept {
-  // cppcheck-suppress unreadVariable
   std::shared_lock lock{flock_};
 
   const auto it = files_.find(name);
@@ -562,7 +557,6 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
   // take a snapshot of existing files in directory
   // to avoid potential recursive read locks in visitor
   {
-    // cppcheck-suppress unreadVariable
     std::shared_lock lock{flock_};
 
     files.reserve(files_.size());

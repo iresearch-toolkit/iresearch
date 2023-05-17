@@ -810,10 +810,13 @@ TEST_P(format_10_test_case, ires336) {
   irs::field_meta field_meta;
   field_meta.name = field;
   {
+    tests::MockTermReader term_reader{
+      trms, field_meta, (terms.empty() ? irs::bytes_view{} : *terms.begin()),
+      (terms.empty() ? irs::bytes_view{} : *terms.rbegin())};
+
     auto fw = get_codec()->get_field_writer(true);
     fw->prepare(flush_state);
-    fw->write(field_meta.name, field_meta.index_features, field_meta.features,
-              trms);
+    fw->write(term_reader, field_meta.features);
     fw->end();
   }
 

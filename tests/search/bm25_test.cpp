@@ -1515,52 +1515,58 @@ TEST_P(bm25_test_case, test_order) {
   irs::BM25 sort25;
   irs::BM25 sort15{irs::BM25::K(), 0.f};
   irs::BM25 sort11{irs::BM25::K(), 1.f};
-  for (auto& sort : {sort25, sort15, sort11}) {
-    const irs::Scorer* impl{&sort};
+  irs::BM25 sort1{0.f, 0.1337f};
+  for (irs::score_t boost : {0.f, 0.5f, irs::kNoBoost}) {
+    for (auto& sort : {sort25, sort15, sort11, sort1}) {
+      const irs::Scorer* impl{&sort};
 
-    auto prepared_order = irs::Scorers::Prepare(std::span{&impl, 1});
-    ASSERT_EQ(sizeof(irs::score_t), prepared_order.score_size());
-    ASSERT_EQ(1, prepared_order.buckets().size());
+      auto prepared_order = irs::Scorers::Prepare(std::span{&impl, 1});
+      ASSERT_EQ(sizeof(irs::score_t), prepared_order.score_size());
+      ASSERT_EQ(1, prepared_order.buckets().size());
 
-    uint64_t seq = 0;
-    const auto* column = segment.column("seq");
-    ASSERT_NE(nullptr, column);
+      uint64_t seq = 0;
+      const auto* column = segment.column("seq");
+      ASSERT_NE(nullptr, column);
 
-    {
-      auto values = column->iterator(irs::ColumnHint::kNormal);
-      ASSERT_NE(nullptr, values);
-      auto* actual_value = irs::get<irs::payload>(*values);
-      ASSERT_NE(nullptr, actual_value);
+      {
+        auto values = column->iterator(irs::ColumnHint::kNormal);
+        ASSERT_NE(nullptr, values);
+        auto* actual_value = irs::get<irs::payload>(*values);
+        ASSERT_NE(nullptr, actual_value);
 
-      query.mutable_options()->term =
-        irs::ViewCast<irs::byte_type>(std::string_view("7"));
+        query.mutable_options()->term =
+          irs::ViewCast<irs::byte_type>(std::string_view("7"));
 
-      std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
-      constexpr std::array expected{0, 1, 5, 7};
+        std::multimap<irs::score_t, uint32_t, std::greater<>> sorted;
+        constexpr std::array expected{0, 1, 5, 7};
 
-      irs::bytes_view_input in;
-      auto prepared = query.prepare(reader, prepared_order);
-      auto docs = prepared->execute(segment, prepared_order);
-      auto* score = irs::get<irs::score>(*docs);
-      ASSERT_TRUE(bool(score));
+        irs::bytes_view_input in;
+        auto prepared =
+          boost == irs::kNoBoost
+            ? query.prepare(reader, prepared_order)
+            : query.prepare(reader, prepared_order, boost, nullptr);
+        auto docs = prepared->execute(segment, prepared_order);
+        auto* score = irs::get<irs::score>(*docs);
+        ASSERT_TRUE(bool(score));
 
-      for (; docs->next();) {
-        irs::score_t score_value;
-        (*score)(&score_value);
+        for (; docs->next();) {
+          irs::score_t score_value;
+          (*score)(&score_value);
 
-        ASSERT_EQ(docs->value(), values->seek(docs->value()));
-        in.reset(actual_value->value);
+          ASSERT_EQ(docs->value(), values->seek(docs->value()));
+          in.reset(actual_value->value);
 
-        auto str_seq = irs::read_string<std::string>(in);
-        seq = strtoull(str_seq.c_str(), nullptr, 10);
-        sorted.emplace(score_value, seq);
+          auto str_seq = irs::read_string<std::string>(in);
+          seq = strtoull(str_seq.c_str(), nullptr, 10);
+          sorted.emplace(score_value, seq);
+        }
+
+        ASSERT_EQ(expected.size(), sorted.size());
+        const bool eq = std::equal(
+          sorted.begin(), sorted.end(), expected.begin(),
+          [](const auto& lhs, uint64_t rhs) { return lhs.second == rhs; });
+        EXPECT_TRUE(eq);
       }
-
-      ASSERT_EQ(expected.size(), sorted.size());
-      const bool eq = std::equal(
-        sorted.begin(), sorted.end(), expected.begin(),
-        [](const auto& lhs, uint64_t rhs) { return lhs.second == rhs; });
-      EXPECT_TRUE(eq);
     }
   }
 }

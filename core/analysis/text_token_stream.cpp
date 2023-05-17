@@ -972,7 +972,6 @@ void text_token_stream::init() {
 }
 
 void text_token_stream::clear_cache() {
-  // cppcheck-suppress unreadVariable
   std::lock_guard lock{mutex};
   cached_state_by_key.clear();
 }
@@ -1104,7 +1103,6 @@ bool text_token_stream::next_ngram() {
   }
 
   bool finished{};
-  // cppcheck-suppress unreadVariable
   Finally set_ngram_finished = [this, &finished]() noexcept -> void {
     if (finished) {
       state_->set_ngram_finished();

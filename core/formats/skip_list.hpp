@@ -157,9 +157,8 @@ class SkipReaderBase : util::noncopyable {
   static void SeekToChild(Level& lvl, uint64_t ptr, const Level& prev) {
     IRS_ASSERT(lvl.stream);
     auto& stream = *lvl.stream;
-
-    if (const auto absolute_ptr = lvl.begin + ptr;
-        absolute_ptr > stream.file_pointer()) {
+    const auto absolute_ptr = lvl.begin + ptr;
+    if (absolute_ptr > stream.file_pointer()) {
       stream.seek(absolute_ptr);
       lvl.left = prev.left + prev.step;
       if (lvl.child != kUndefined) {

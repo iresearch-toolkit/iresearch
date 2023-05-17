@@ -25,6 +25,7 @@
 
 #include <cstring>
 
+#include "shared.hpp"
 #include "utils/assert.hpp"
 
 namespace {

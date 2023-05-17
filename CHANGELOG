@@ -3,6 +3,10 @@ NOTE: This is 1.3 version but with old abseil-cpp.
       CRC calculation is done by boost like in 1.2 version.
 -------------------------
 
+* Fix wand data skipping
+
+* Fix BM1 implementation
+
 * Add WAND support to `by_term`.
 
 * Allow to store WAND-specific data in skip list.

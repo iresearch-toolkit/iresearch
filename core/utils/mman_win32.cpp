@@ -31,6 +31,8 @@
 #include "log.hpp"
 #include "shared.hpp"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 
 DWORD page_protection(int prot) noexcept {
@@ -56,7 +58,8 @@ DWORD page_protection(int prot) noexcept {
       return PAGE_EXECUTE_READWRITE;
   }
 
-  IRS_LOG_ERROR("Can't convert protection level %d, use PAGE_NOACCESS", prot);
+  IRS_LOG_ERROR(absl::StrCat("Can't convert protection level ", prot,
+                             ", use PAGE_NOACCESS"));
 
   return PAGE_NOACCESS;  // fallback
 }
@@ -97,9 +100,7 @@ void *mmap(void * /*addr*/, size_t len, int prot, int flags, int fd,
   const DWORD dwFileOffsetHigh =
     (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(0)
-      : static_cast<DWORD>(
-          (off >> 32) &
-          UINT32_C(0xFFFFFFFF));  // cppcheck-suppress shiftTooManyBits
+      : static_cast<DWORD>((off >> 32) & UINT32_C(0xFFFFFFFF));
 
   const DWORD dwMaxSizeLow =
     (sizeof(OffsetType) <= sizeof(DWORD))
@@ -109,9 +110,7 @@ void *mmap(void * /*addr*/, size_t len, int prot, int flags, int fd,
   const DWORD dwMaxSizeHigh =
     (sizeof(OffsetType) <= sizeof(DWORD))
       ? static_cast<DWORD>(0)
-      : static_cast<DWORD>(
-          (maxSize >> 32) &
-          UINT32_C(0xFFFFFFFF));  // cppcheck-suppress shiftTooManyBits
+      : static_cast<DWORD>((maxSize >> 32) & UINT32_C(0xFFFFFFFF));
 
   const DWORD protect = page_protection(prot);
 
