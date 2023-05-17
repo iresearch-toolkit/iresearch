@@ -38,6 +38,21 @@ void Message(SourceLocation&& location, std::string_view message);
 
 #ifdef IRESEARCH_DEBUG
 
+// https://stackoverflow.com/questions/9183993/msvc-variadic-macro-expansion
+#define IRS_GLUE(x, y) x y
+#define IRS_RETURN_ARG_COUNT(_1_, _2_, _3_, _4_, _5_, count, ...) count
+#define IRS_EXPAND_ARGS(args) IRS_RETURN_ARG_COUNT args
+#define IRS_COUNT_ARGS_MAX5(...) \
+  IRS_EXPAND_ARGS((__VA_ARGS__, 5, 4, 3, 2, 1, 0))
+
+#define IRS_OVERLOAD_MACRO2(name, count) name##count
+#define IRS_OVERLOAD_MACRO1(name, count) IRS_OVERLOAD_MACRO2(name, count)
+#define IRS_OVERLOAD_MACRO(name, count) IRS_OVERLOAD_MACRO1(name, count)
+
+#define IRS_CALL_OVERLOAD(name, ...)                                   \
+  IRS_GLUE(IRS_OVERLOAD_MACRO(name, IRS_COUNT_ARGS_MAX5(__VA_ARGS__)), \
+           (__VA_ARGS__))
+
 #define IRS_ASSERT2(condition, message)                     \
   do {                                                      \
     if (IRS_UNLIKELY(!(condition))) {                       \
@@ -52,10 +67,7 @@ void Message(SourceLocation&& location, std::string_view message);
     }                                                          \
   } while (false)
 
-#define IRS_GET_MACRO(arg1, arg2, macro, ...) macro
-
-#define IRS_ASSERT(...) \
-  IRS_GET_MACRO(__VA_ARGS__, IRS_ASSERT2, IRS_ASSERT1)(__VA_ARGS__)
+#define IRS_ASSERT(...) IRS_CALL_OVERLOAD(IRS_ASSERT, __VA_ARGS__)
 
 #else
 

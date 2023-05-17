@@ -218,7 +218,7 @@ void BM_maxbits64_simd_aligned(benchmark::State& state) {
   HWY_ALIGN uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto bits = irs::simd::maxbits<std::size(values), true>(values);
+    auto bits = irs::simd::maxbits<true>(values, std::size(values));
     benchmark::DoNotOptimize(bits);
   }
 }
@@ -229,7 +229,7 @@ void BM_maxbits64_simd_unaligned(benchmark::State& state) {
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
-    auto maxbits = irs::simd::maxbits<std::size(values), false>(values);
+    auto maxbits = irs::simd::maxbits<false>(values, std::size(values));
     benchmark::DoNotOptimize(maxbits);
   }
 }
@@ -273,7 +273,7 @@ void BM_maxbits32_simd_aligned(benchmark::State& state) {
   std::iota(std::begin(values), std::end(values), ::rand());
 
   for (auto _ : state) {
-    auto maxbits = irs::simd::maxbits<std::size(values), false>(values);
+    auto maxbits = irs::simd::maxbits<false>(values, std::size(values));
     benchmark::DoNotOptimize(maxbits);
   }
 }
@@ -285,7 +285,7 @@ void BM_maxbits32_simd_unaligned(benchmark::State& state) {
   std::iota(std::begin(values), std::end(values), ::rand());
 
   for (auto _ : state) {
-    auto maxbits = irs::simd::maxbits<std::size(values), false>(values);
+    auto maxbits = irs::simd::maxbits<false>(values, std::size(values));
     benchmark::DoNotOptimize(maxbits);
   }
 }
