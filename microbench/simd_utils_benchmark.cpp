@@ -65,6 +65,7 @@ BENCHMARK(BM_delta_encode_simd_unaligned);
 // -----------------------------------------------------------------------------
 
 void BM_avg_encode32(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
@@ -75,6 +76,7 @@ void BM_avg_encode32(benchmark::State& state) {
 BENCHMARK(BM_avg_encode32);
 
 void BM_avg_encode32_simd_aligned(benchmark::State& state) {
+  ::srand(42);
   HWY_ALIGN uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
@@ -85,6 +87,7 @@ void BM_avg_encode32_simd_aligned(benchmark::State& state) {
 BENCHMARK(BM_avg_encode32_simd_aligned);
 
 void BM_avg_encode32_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
@@ -99,6 +102,7 @@ BENCHMARK(BM_avg_encode32_simd_unaligned);
 // -----------------------------------------------------------------------------
 
 void BM_avg_encode64(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[BLOCK_SIZE];
   for (auto _ : state) {
     std::iota(std::begin(values), std::end(values), ::rand());
@@ -114,6 +118,7 @@ BENCHMARK(BM_avg_encode64);
 // -----------------------------------------------------------------------------
 
 void BM_maxmin64(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -133,6 +138,7 @@ void BM_maxmin64(benchmark::State& state) {
 BENCHMARK(BM_maxmin64);
 
 void BM_maxmin64_simd_aligned(benchmark::State& state) {
+  ::srand(42);
   HWY_ALIGN uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -144,6 +150,7 @@ void BM_maxmin64_simd_aligned(benchmark::State& state) {
 BENCHMARK(BM_maxmin64_simd_aligned);
 
 void BM_maxmin64_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -159,6 +166,7 @@ BENCHMARK(BM_maxmin64_simd_unaligned);
 // -----------------------------------------------------------------------------
 
 void BM_maxmin32(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -178,6 +186,7 @@ void BM_maxmin32(benchmark::State& state) {
 BENCHMARK(BM_maxmin32);
 
 void BM_maxmin32_simd_aligned(benchmark::State& state) {
+  ::srand(42);
   HWY_ALIGN uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -189,6 +198,7 @@ void BM_maxmin32_simd_aligned(benchmark::State& state) {
 BENCHMARK(BM_maxmin32_simd_aligned);
 
 void BM_maxmin32_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -204,6 +214,7 @@ BENCHMARK(BM_maxmin32_simd_unaligned);
 // -----------------------------------------------------------------------------
 
 void BM_maxbits64(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -215,6 +226,7 @@ void BM_maxbits64(benchmark::State& state) {
 BENCHMARK(BM_maxbits64);
 
 void BM_maxbits64_simd_aligned(benchmark::State& state) {
+  ::srand(42);
   HWY_ALIGN uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -226,6 +238,7 @@ void BM_maxbits64_simd_aligned(benchmark::State& state) {
 BENCHMARK(BM_maxbits64_simd_aligned);
 
 void BM_maxbits64_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
   for (auto _ : state) {
@@ -241,6 +254,7 @@ BENCHMARK(BM_maxbits64_simd_unaligned);
 // -----------------------------------------------------------------------------
 
 void BM_maxbits32(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
 
@@ -253,6 +267,7 @@ void BM_maxbits32(benchmark::State& state) {
 BENCHMARK(BM_maxbits32);
 
 void BM_maxbits32_lemire(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
 
@@ -269,11 +284,12 @@ void BM_maxbits32_lemire(benchmark::State& state) {
 BENCHMARK(BM_maxbits32_lemire);
 
 void BM_maxbits32_simd_aligned(benchmark::State& state) {
+  ::srand(42);
   HWY_ALIGN uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
 
   for (auto _ : state) {
-    auto maxbits = irs::simd::maxbits<false>(values, std::size(values));
+    auto maxbits = irs::simd::maxbits<true>(values, std::size(values));
     benchmark::DoNotOptimize(maxbits);
   }
 }
@@ -281,6 +297,7 @@ void BM_maxbits32_simd_aligned(benchmark::State& state) {
 BENCHMARK(BM_maxbits32_simd_aligned);
 
 void BM_maxbits32_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   std::iota(std::begin(values), std::end(values), ::rand());
 
@@ -297,6 +314,7 @@ BENCHMARK(BM_maxbits32_simd_unaligned);
 // -----------------------------------------------------------------------------
 
 void BM_all_equal32(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
@@ -309,6 +327,7 @@ void BM_all_equal32(benchmark::State& state) {
 BENCHMARK(BM_all_equal32);
 
 void BM_all_equal32_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[BLOCK_SIZE];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
@@ -322,6 +341,7 @@ void BM_all_equal32_simd_unaligned(benchmark::State& state) {
 BENCHMARK(BM_all_equal32_simd_unaligned);
 
 void BM_all_equal32_small(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[32];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
@@ -334,6 +354,7 @@ void BM_all_equal32_small(benchmark::State& state) {
 BENCHMARK(BM_all_equal32_small);
 
 void BM_all_equal32_small_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint32_t values[32];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
@@ -351,6 +372,7 @@ BENCHMARK(BM_all_equal32_small_simd_unaligned);
 // -----------------------------------------------------------------------------
 
 void BM_all_equal64(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[BLOCK_SIZE];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
@@ -363,6 +385,7 @@ void BM_all_equal64(benchmark::State& state) {
 BENCHMARK(BM_all_equal64);
 
 void BM_all_equal64_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[BLOCK_SIZE];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
@@ -376,6 +399,7 @@ void BM_all_equal64_simd_unaligned(benchmark::State& state) {
 BENCHMARK(BM_all_equal64_simd_unaligned);
 
 void BM_all_equal64_small(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[64];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
@@ -388,6 +412,7 @@ void BM_all_equal64_small(benchmark::State& state) {
 BENCHMARK(BM_all_equal64_small);
 
 void BM_all_equal64_small_simd_unaligned(benchmark::State& state) {
+  ::srand(42);
   uint64_t values[64];
   std::fill_n(std::begin(values), std::size(values), ::rand());
 
