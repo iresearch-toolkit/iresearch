@@ -40,6 +40,8 @@
 #include "utils/std.hpp"
 #include "utils/string.hpp"
 
+#include <absl/strings/str_cat.h>
+
 namespace fst {
 
 template<typename Label>
@@ -497,51 +499,30 @@ inline StringLeftWeight<irs::byte_type> Times(
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
-                                  const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef irs::bytes_view Weight;
-
-  if (rhs.Size() > lhs.Size()) {
-    return Weight();
+inline irs::bytes_view DivideLeftImpl(irs::bytes_view lhs,
+                                      irs::bytes_view rhs) {
+  if (rhs.size() > lhs.size()) {
+    return {};
   }
-
-  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
-
-  return Weight(lhs.c_str() + rhs.Size(), lhs.Size() - rhs.Size());
+  IRS_ASSERT(lhs.starts_with(rhs),
+             absl::StrCat(irs::ViewCast<char>(rhs), " is not prefix of ",
+                          irs::ViewCast<char>(lhs)));
+  return {lhs.data() + rhs.size(), lhs.size() - rhs.size()};
 }
 
-// Left division in a left string semiring.
-// For binary strings that's impossible to use
-// Zero() or NoWeight() as they may interfere
-// with real values
+inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
+                                  const StringLeftWeight<irs::byte_type>& rhs) {
+  return DivideLeftImpl(lhs, rhs);
+}
+
 inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
                                   const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef irs::bytes_view Weight;
-
-  if (rhs.Size() > lhs.size()) {
-    return Weight();
-  }
-
-  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
-
-  return Weight(lhs.data() + rhs.Size(), lhs.size() - rhs.Size());
+  return DivideLeftImpl(lhs, rhs);
 }
 
-// Left division in a left string semiring.
-// For binary strings that's impossible to use
-// Zero() or NoWeight() as they may interfere
-// with real values
 inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
                                   irs::bytes_view rhs) {
-  typedef irs::bytes_view Weight;
-
-  if (rhs.size() > lhs.Size()) {
-    return Weight();
-  }
-
-  IRS_ASSERT(std::basic_string_view<irs::byte_type>(lhs).starts_with(rhs));
-
-  return Weight(lhs.c_str() + rhs.size(), lhs.Size() - rhs.size());
+  return DivideLeftImpl(lhs, rhs);
 }
 
 inline StringLeftWeight<irs::byte_type> Divide(
