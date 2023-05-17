@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +15,22 @@
 
 #include "hwy/nanobenchmark.h"
 
-#include <stddef.h>
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS  // before inttypes.h
+#endif
+#include <inttypes.h>  // IWYU pragma: keep
 #include <stdio.h>
-#include <stdlib.h>  // abort
-#include <string.h>  // memcpy
+#include <stdlib.h>
 #include <time.h>    // clock_gettime
 
-#include <algorithm>  // sort
+#include <algorithm>  // std::sort, std::find_if
 #include <array>
-#include <atomic>
+#include <chrono>  //NOLINT
 #include <limits>
-#include <numeric>  // iota
+#include <numeric>  // std::iota
 #include <random>
 #include <string>
+#include <utility>  // std::pair
 #include <vector>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -36,7 +40,7 @@
 #include <windows.h>
 #endif
 
-#if defined(__MACH__)
+#if defined(__APPLE__)
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 #endif
@@ -121,6 +125,9 @@ inline Ticks Start() {
   Ticks t;
 #if HWY_ARCH_PPC && defined(__GLIBC__)
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
+#elif HWY_ARCH_ARM_A64 && !HWY_COMPILER_MSVC
+  // pmccntr_el0 is privileged but cntvct_el0 is accessible in Linux and QEMU.
+  asm volatile("mrs %0, cntvct_el0" : "=r"(t));
 #elif HWY_ARCH_X86 && HWY_COMPILER_MSVC
   _ReadWriteBarrier();
   _mm_lfence();
@@ -142,12 +149,12 @@ inline Ticks Start() {
       // "cc" = flags modified by SHL.
       : "rdx", "memory", "cc");
 #elif HWY_ARCH_RVV
-  asm volatile("rdcycle %0" : "=r"(t));
+  asm volatile("rdtime %0" : "=r"(t));
 #elif defined(_WIN32) || defined(_WIN64)
   LARGE_INTEGER counter;
   (void)QueryPerformanceCounter(&counter);
   t = counter.QuadPart;
-#elif defined(__MACH__)
+#elif defined(__APPLE__)
   t = mach_absolute_time();
 #elif defined(__HAIKU__)
   t = system_time_nsecs();  // since boot
@@ -159,10 +166,14 @@ inline Ticks Start() {
   return t;
 }
 
+// WARNING: on x86, caller must check HasRDTSCP before using this!
 inline Ticks Stop() {
   uint64_t t;
 #if HWY_ARCH_PPC && defined(__GLIBC__)
   asm volatile("mfspr %0, %1" : "=r"(t) : "i"(268));
+#elif HWY_ARCH_ARM_A64 && !HWY_COMPILER_MSVC
+  // pmccntr_el0 is privileged but cntvct_el0 is accessible in Linux and QEMU.
+  asm volatile("mrs %0, cntvct_el0" : "=r"(t));
 #elif HWY_ARCH_X86 && HWY_COMPILER_MSVC
   _ReadWriteBarrier();
   unsigned aux;
@@ -301,7 +312,8 @@ T MedianAbsoluteDeviation(const T* values, const size_t num_values,
   std::vector<T> abs_deviations;
   abs_deviations.reserve(num_values);
   for (size_t i = 0; i < num_values; ++i) {
-    const int64_t abs = std::abs(int64_t(values[i]) - int64_t(median));
+    const int64_t abs = std::abs(static_cast<int64_t>(values[i]) -
+                                 static_cast<int64_t>(median));
     abs_deviations.push_back(static_cast<T>(abs));
   }
   return Median(abs_deviations.data(), num_values);
@@ -312,22 +324,36 @@ T MedianAbsoluteDeviation(const T* values, const size_t num_values,
 namespace platform {
 namespace {
 
-// Prevents the compiler from eliding the computations that led to "output".
-template <class T>
-inline void PreventElision(T&& output) {
-#if HWY_COMPILER_MSVC == 0
-  // Works by indicating to the compiler that "output" is being read and
-  // modified. The +r constraint avoids unnecessary writes to memory, but only
-  // works for built-in types (typically FuncOutput).
-  asm volatile("" : "+r"(output) : : "memory");
-#else
-  // MSVC does not support inline assembly anymore (and never supported GCC's
-  // RTL constraints). Self-assignment with #pragma optimize("off") might be
-  // expected to prevent elision, but it does not with MSVC 2015. Type-punning
-  // with volatile pointers generates inefficient code on MSVC 2017.
-  static std::atomic<T> dummy(T{});
-  dummy.store(output, std::memory_order_relaxed);
-#endif
+// Measures the actual current frequency of Ticks. We cannot rely on the nominal
+// frequency encoded in x86 BrandString because it is misleading on M1 Rosetta,
+// and not reported by AMD. CPUID 0x15 is also not yet widely supported. Also
+// used on RISC-V and aarch64.
+HWY_MAYBE_UNUSED double MeasureNominalClockRate() {
+  double max_ticks_per_sec = 0.0;
+  // Arbitrary, enough to ignore 2 outliers without excessive init time.
+  for (int rep = 0; rep < 3; ++rep) {
+    auto time0 = std::chrono::steady_clock::now();
+    using Time = decltype(time0);
+    const timer::Ticks ticks0 = timer::Start();
+    const Time time_min = time0 + std::chrono::milliseconds(10);
+
+    Time time1;
+    timer::Ticks ticks1;
+    for (;;) {
+      time1 = std::chrono::steady_clock::now();
+      // Ideally this would be Stop, but that requires RDTSCP on x86. To avoid
+      // another codepath, just use Start instead. now() presumably has its own
+      // fence-like behavior.
+      ticks1 = timer::Start();  // Do not use Stop, see comment above
+      if (time1 >= time_min) break;
+    }
+
+    const double dticks = static_cast<double>(ticks1 - ticks0);
+    std::chrono::duration<double, std::ratio<1>> dtime = time1 - time0;
+    const double ticks_per_sec = dticks / dtime.count();
+    max_ticks_per_sec = std::max(max_ticks_per_sec, ticks_per_sec);
+  }
+  return max_ticks_per_sec;
 }
 
 #if HWY_ARCH_X86
@@ -353,6 +379,12 @@ void Cpuid(const uint32_t level, const uint32_t count,
 #endif
 }
 
+bool HasRDTSCP() {
+  uint32_t abcd[4];
+  Cpuid(0x80000001U, 0, abcd);         // Extended feature flags
+  return (abcd[3] & (1u << 27)) != 0;  // RDTSCP
+}
+
 std::string BrandString() {
   char brand_string[49];
   std::array<uint32_t, 4> abcd;
@@ -365,74 +397,65 @@ std::string BrandString() {
 
   for (size_t i = 0; i < 3; ++i) {
     Cpuid(static_cast<uint32_t>(0x80000002U + i), 0, abcd.data());
-    memcpy(brand_string + i * 16, abcd.data(), sizeof(abcd));
+    CopyBytes<sizeof(abcd)>(&abcd[0], brand_string + i * 16);  // not same size
   }
   brand_string[48] = 0;
   return brand_string;
-}
-
-// Returns the frequency quoted inside the brand string. This does not
-// account for throttling nor Turbo Boost.
-double NominalClockRate() {
-  const std::string& brand_string = BrandString();
-  // Brand strings include the maximum configured frequency. These prefixes are
-  // defined by Intel CPUID documentation.
-  const char* prefixes[3] = {"MHz", "GHz", "THz"};
-  const double multipliers[3] = {1E6, 1E9, 1E12};
-  for (size_t i = 0; i < 3; ++i) {
-    const size_t pos_prefix = brand_string.find(prefixes[i]);
-    if (pos_prefix != std::string::npos) {
-      const size_t pos_space = brand_string.rfind(' ', pos_prefix - 1);
-      if (pos_space != std::string::npos) {
-        const std::string digits =
-            brand_string.substr(pos_space + 1, pos_prefix - pos_space - 1);
-        return std::stod(digits) * multipliers[i];
-      }
-    }
-  }
-
-  return 0.0;
 }
 
 #endif  // HWY_ARCH_X86
 
 }  // namespace
 
-double InvariantTicksPerSecond() {
+HWY_DLLEXPORT double InvariantTicksPerSecond() {
 #if HWY_ARCH_PPC && defined(__GLIBC__)
-  return double(__ppc_get_timebase_freq());
-#elif HWY_ARCH_X86
-  // We assume the TSC is invariant; it is on all recent Intel/AMD CPUs.
-  return NominalClockRate();
+  return static_cast<double>(__ppc_get_timebase_freq());
+#elif HWY_ARCH_X86 || HWY_ARCH_RVV || (HWY_ARCH_ARM_A64 && !HWY_COMPILER_MSVC)
+  // We assume the x86 TSC is invariant; it is on all recent Intel/AMD CPUs.
+  static const double freq = MeasureNominalClockRate();
+  return freq;
 #elif defined(_WIN32) || defined(_WIN64)
   LARGE_INTEGER freq;
   (void)QueryPerformanceFrequency(&freq);
-  return double(freq.QuadPart);
-#elif defined(__MACH__)
+  return static_cast<double>(freq.QuadPart);
+#elif defined(__APPLE__)
   // https://developer.apple.com/library/mac/qa/qa1398/_index.html
   mach_timebase_info_data_t timebase;
   (void)mach_timebase_info(&timebase);
-  return double(timebase.denom) / timebase.numer * 1E9;
+  return static_cast<double>(timebase.denom) / timebase.numer * 1E9;
 #else
-  // TODO(janwas): ARM? Unclear how to reliably query cntvct_el0 frequency.
   return 1E9;  // Haiku and clock_gettime return nanoseconds.
 #endif
 }
 
-double Now() {
+HWY_DLLEXPORT double Now() {
   static const double mul = 1.0 / InvariantTicksPerSecond();
   return static_cast<double>(timer::Start()) * mul;
 }
 
-uint64_t TimerResolution() {
+HWY_DLLEXPORT uint64_t TimerResolution() {
+#if HWY_ARCH_X86
+  bool can_use_stop = platform::HasRDTSCP();
+#else
+  constexpr bool can_use_stop = true;
+#endif
+
   // Nested loop avoids exceeding stack/L1 capacity.
   timer::Ticks repetitions[Params::kTimerSamples];
   for (size_t rep = 0; rep < Params::kTimerSamples; ++rep) {
     timer::Ticks samples[Params::kTimerSamples];
-    for (size_t i = 0; i < Params::kTimerSamples; ++i) {
-      const timer::Ticks t0 = timer::Start();
-      const timer::Ticks t1 = timer::Stop();
-      samples[i] = t1 - t0;
+    if (can_use_stop) {
+      for (size_t i = 0; i < Params::kTimerSamples; ++i) {
+        const timer::Ticks t0 = timer::Start();
+        const timer::Ticks t1 = timer::Stop();  // we checked HasRDTSCP above
+        samples[i] = t1 - t0;
+      }
+    } else {
+      for (size_t i = 0; i < Params::kTimerSamples; ++i) {
+        const timer::Ticks t0 = timer::Start();
+        const timer::Ticks t1 = timer::Start();  // do not use Stop, see above
+        samples[i] = t1 - t0;
+      }
     }
     repetitions[rep] = robust_statistics::Mode(samples);
   }
@@ -452,7 +475,7 @@ timer::Ticks SampleUntilStable(const double max_rel_mad, double* rel_mad,
   // Choose initial samples_per_eval based on a single estimated duration.
   timer::Ticks t0 = timer::Start();
   lambda();
-  timer::Ticks t1 = timer::Stop();
+  timer::Ticks t1 = timer::Stop();  // Caller checks HasRDTSCP
   timer::Ticks est = t1 - t0;
   static const double ticks_per_second = platform::InvariantTicksPerSecond();
   const size_t ticks_per_eval =
@@ -476,7 +499,7 @@ timer::Ticks SampleUntilStable(const double max_rel_mad, double* rel_mad,
     for (size_t i = 0; i < samples_per_eval; ++i) {
       t0 = timer::Start();
       lambda();
-      t1 = timer::Stop();
+      t1 = timer::Stop();  // Caller checks HasRDTSCP
       samples.push_back(t1 - t0);
     }
 
@@ -495,17 +518,21 @@ timer::Ticks SampleUntilStable(const double max_rel_mad, double* rel_mad,
 
     if (*rel_mad <= max_rel_mad || abs_mad <= max_abs_mad) {
       if (p.verbose) {
-        printf("%6zu samples => %5zu (abs_mad=%4zu, rel_mad=%4.2f%%)\n",
-               samples.size(), size_t(est), size_t(abs_mad), *rel_mad * 100.0);
+        printf("%6" PRIu64 " samples => %5" PRIu64 " (abs_mad=%4" PRIu64
+               ", rel_mad=%4.2f%%)\n",
+               static_cast<uint64_t>(samples.size()),
+               static_cast<uint64_t>(est), static_cast<uint64_t>(abs_mad),
+               *rel_mad * 100.0);
       }
       return est;
     }
   }
 
   if (p.verbose) {
-    printf(
-        "WARNING: rel_mad=%4.2f%% still exceeds %4.2f%% after %6zu samples.\n",
-        *rel_mad * 100.0, max_rel_mad * 100.0, samples.size());
+    printf("WARNING: rel_mad=%4.2f%% still exceeds %4.2f%% after %6" PRIu64
+           " samples.\n",
+           *rel_mad * 100.0, max_rel_mad * 100.0,
+           static_cast<uint64_t>(samples.size()));
   }
   return est;
 }
@@ -530,7 +557,7 @@ size_t NumSkip(const Func func, const uint8_t* arg, const InputVec& unique,
     double rel_mad;
     const timer::Ticks total = SampleUntilStable(
         p.target_rel_mad, &rel_mad, p,
-        [func, arg, input]() { platform::PreventElision(func(arg, input)); });
+        [func, arg, input]() { PreventElision(func(arg, input)); });
     min_duration = HWY_MIN(min_duration, total - timer_resolution);
   }
 
@@ -542,8 +569,11 @@ size_t NumSkip(const Func func, const uint8_t* arg, const InputVec& unique,
           ? 0
           : static_cast<size_t>((max_skip + min_duration - 1) / min_duration);
   if (p.verbose) {
-    printf("res=%zu max_skip=%zu min_dur=%zu num_skip=%zu\n",
-           size_t(timer_resolution), max_skip, size_t(min_duration), num_skip);
+    printf("res=%" PRIu64 " max_skip=%" PRIu64 " min_dur=%" PRIu64
+           " num_skip=%" PRIu64 "\n",
+           static_cast<uint64_t>(timer_resolution),
+           static_cast<uint64_t>(max_skip), static_cast<uint64_t>(min_duration),
+           static_cast<uint64_t>(num_skip));
   }
   return num_skip;
 }
@@ -615,7 +645,7 @@ timer::Ticks TotalDuration(const Func func, const uint8_t* arg,
   const timer::Ticks duration =
       SampleUntilStable(p.target_rel_mad, &rel_mad, p, [func, arg, inputs]() {
         for (const FuncInput input : *inputs) {
-          platform::PreventElision(func(arg, input));
+          PreventElision(func(arg, input));
         }
       });
   *max_rel_mad = HWY_MAX(*max_rel_mad, rel_mad);
@@ -635,18 +665,28 @@ timer::Ticks Overhead(const uint8_t* arg, const InputVec* inputs,
   // Zero tolerance because repeatability is crucial and EmptyFunc is fast.
   return SampleUntilStable(0.0, &rel_mad, p, [arg, inputs]() {
     for (const FuncInput input : *inputs) {
-      platform::PreventElision(EmptyFunc(arg, input));
+      PreventElision(EmptyFunc(arg, input));
     }
   });
 }
 
 }  // namespace
 
-int Unpredictable1() { return timer::Start() != ~0ULL; }
+HWY_DLLEXPORT int Unpredictable1() { return timer::Start() != ~0ULL; }
 
-size_t Measure(const Func func, const uint8_t* arg, const FuncInput* inputs,
-               const size_t num_inputs, Result* results, const Params& p) {
+HWY_DLLEXPORT size_t Measure(const Func func, const uint8_t* arg,
+                             const FuncInput* inputs, const size_t num_inputs,
+                             Result* results, const Params& p) {
   NANOBENCHMARK_CHECK(num_inputs != 0);
+
+#if HWY_ARCH_X86
+  if (!platform::HasRDTSCP()) {
+    fprintf(stderr, "CPU '%s' does not support RDTSCP, skipping benchmark.\n",
+            platform::BrandString().c_str());
+    return 0;
+  }
+#endif
+
   const InputVec& unique = UniqueInputs(inputs, num_inputs);
 
   const size_t num_skip = NumSkip(func, arg, unique, p);  // never 0
@@ -661,14 +701,19 @@ size_t Measure(const Func func, const uint8_t* arg, const FuncInput* inputs,
   const timer::Ticks overhead = Overhead(arg, &full, p);
   const timer::Ticks overhead_skip = Overhead(arg, &subset, p);
   if (overhead < overhead_skip) {
-    fprintf(stderr, "Measurement failed: overhead %zu < %zu\n",
-            size_t(overhead), size_t(overhead_skip));
+    fprintf(stderr, "Measurement failed: overhead %" PRIu64 " < %" PRIu64 "\n",
+            static_cast<uint64_t>(overhead),
+            static_cast<uint64_t>(overhead_skip));
     return 0;
   }
 
   if (p.verbose) {
-    printf("#inputs=%5zu,%5zu overhead=%5zu,%5zu\n", full.size(), subset.size(),
-           size_t(overhead), size_t(overhead_skip));
+    printf("#inputs=%5" PRIu64 ",%5" PRIu64 " overhead=%5" PRIu64 ",%5" PRIu64
+           "\n",
+           static_cast<uint64_t>(full.size()),
+           static_cast<uint64_t>(subset.size()),
+           static_cast<uint64_t>(overhead),
+           static_cast<uint64_t>(overhead_skip));
   }
 
   double max_rel_mad = 0.0;
@@ -680,8 +725,8 @@ size_t Measure(const Func func, const uint8_t* arg, const FuncInput* inputs,
         TotalDuration(func, arg, &subset, p, &max_rel_mad);
 
     if (total < total_skip) {
-      fprintf(stderr, "Measurement failed: total %zu < %zu\n", size_t(total),
-              size_t(total_skip));
+      fprintf(stderr, "Measurement failed: total %" PRIu64 " < %" PRIu64 "\n",
+              static_cast<uint64_t>(total), static_cast<uint64_t>(total_skip));
       return 0;
     }
 

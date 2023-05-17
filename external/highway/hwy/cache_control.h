@@ -1,4 +1,5 @@
 // Copyright 2020 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,9 +16,6 @@
 #ifndef HIGHWAY_HWY_CACHE_CONTROL_H_
 #define HIGHWAY_HWY_CACHE_CONTROL_H_
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "hwy/base.h"
 
 // Requires SSE2; fails to compile on 32-bit Clang 7 (see
@@ -30,15 +28,8 @@
 // intrin.h is sufficient on MSVC and already included by base.h.
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL) && !HWY_COMPILER_MSVC
 #include <emmintrin.h>  // SSE2
+#include <xmmintrin.h>  // _mm_prefetch
 #endif
-
-// Windows.h #defines these, which causes infinite recursion. Temporarily
-// undefine them in this header; these functions are anyway deprecated.
-// TODO(janwas): remove when these functions are removed.
-#pragma push_macro("LoadFence")
-#pragma push_macro("StoreFence")
-#undef LoadFence
-#undef StoreFence
 
 namespace hwy {
 
@@ -52,15 +43,24 @@ namespace hwy {
 #define HWY_ATTR_CACHE
 #endif
 
-// Delays subsequent loads until prior loads are visible. On Intel CPUs, also
-// serves as a full fence (waits for all prior instructions to complete).
-// No effect on non-x86.
-// DEPRECATED due to differing behavior across architectures AND vendors.
+// Windows.h #defines this, which causes infinite recursion. Temporarily
+// undefine to avoid conflict with our function.
+// TODO(janwas): remove when this function is removed.
+#pragma push_macro("LoadFence")
+#undef LoadFence
+
+// Delays subsequent loads until prior loads are visible. Beware of potentially
+// differing behavior across architectures and vendors: on Intel but not
+// AMD CPUs, also serves as a full fence (waits for all prior instructions to
+// complete).
 HWY_INLINE HWY_ATTR_CACHE void LoadFence() {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
   _mm_lfence();
 #endif
 }
+
+// TODO(janwas): remove when this function is removed. (See above.)
+#pragma pop_macro("LoadFence")
 
 // Ensures values written by previous `Stream` calls are visible on the current
 // core. This is NOT sufficient for synchronizing across cores; when `Stream`
@@ -72,16 +72,13 @@ HWY_INLINE HWY_ATTR_CACHE void FlushStream() {
 #endif
 }
 
-// DEPRECATED, replace with `FlushStream`.
-HWY_INLINE HWY_ATTR_CACHE void StoreFence() { FlushStream(); }
-
 // Optionally begins loading the cache line containing "p" to reduce latency of
 // subsequent actual loads.
 template <typename T>
 HWY_INLINE HWY_ATTR_CACHE void Prefetch(const T* p) {
 #if HWY_ARCH_X86 && !defined(HWY_DISABLE_CACHE_CONTROL)
   _mm_prefetch(reinterpret_cast<const char*>(p), _MM_HINT_T0);
-#elif HWY_COMPILER_GCC || HWY_COMPILER_CLANG
+#elif HWY_COMPILER_GCC  // includes clang
   // Hint=0 (NTA) behavior differs, but skipping outer caches is probably not
   // desirable, so use the default 3 (keep in caches).
   __builtin_prefetch(p, /*write=*/0, /*hint=*/3);
@@ -107,9 +104,5 @@ HWY_INLINE HWY_ATTR_CACHE void Pause() {
 }
 
 }  // namespace hwy
-
-// TODO(janwas): remove when these functions are removed. (See above.)
-#pragma pop_macro("StoreFence")
-#pragma pop_macro("LoadFence")
 
 #endif  // HIGHWAY_HWY_CACHE_CONTROL_H_

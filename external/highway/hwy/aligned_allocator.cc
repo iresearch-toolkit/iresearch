@@ -1,4 +1,5 @@
 // Copyright 2019 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +28,7 @@
 namespace hwy {
 namespace {
 
-#if HWY_ARCH_RVV && defined(__riscv_vector)
+#if HWY_ARCH_RVV && defined(__riscv_v_intrinsic) && __riscv_v_intrinsic >= 11000
 // Not actually an upper bound on the size, but this value prevents crossing a
 // 4K boundary (relevant on Andes).
 constexpr size_t kAlignment = HWY_MAX(HWY_ALIGNMENT, 4096);
@@ -62,8 +63,8 @@ size_t NextAlignedOffset() {
 
 }  // namespace
 
-void* AllocateAlignedBytes(const size_t payload_size, AllocPtr alloc_ptr,
-                           void* opaque_ptr) {
+HWY_DLLEXPORT void* AllocateAlignedBytes(const size_t payload_size,
+                                         AllocPtr alloc_ptr, void* opaque_ptr) {
   HWY_ASSERT(payload_size != 0);  // likely a bug in caller
   if (payload_size >= std::numeric_limits<size_t>::max() / 2) {
     HWY_DASSERT(false && "payload_size too large");
@@ -109,8 +110,8 @@ void* AllocateAlignedBytes(const size_t payload_size, AllocPtr alloc_ptr,
   return HWY_ASSUME_ALIGNED(reinterpret_cast<void*>(payload), kAlignment);
 }
 
-void FreeAlignedBytes(const void* aligned_pointer, FreePtr free_ptr,
-                      void* opaque_ptr) {
+HWY_DLLEXPORT void FreeAlignedBytes(const void* aligned_pointer,
+                                    FreePtr free_ptr, void* opaque_ptr) {
   if (aligned_pointer == nullptr) return;
 
   const uintptr_t payload = reinterpret_cast<uintptr_t>(aligned_pointer);
@@ -126,9 +127,10 @@ void FreeAlignedBytes(const void* aligned_pointer, FreePtr free_ptr,
 }
 
 // static
-void AlignedDeleter::DeleteAlignedArray(void* aligned_pointer, FreePtr free_ptr,
-                                        void* opaque_ptr,
-                                        ArrayDeleter deleter) {
+HWY_DLLEXPORT void AlignedDeleter::DeleteAlignedArray(void* aligned_pointer,
+                                                      FreePtr free_ptr,
+                                                      void* opaque_ptr,
+                                                      ArrayDeleter deleter) {
   if (aligned_pointer == nullptr) return;
 
   const uintptr_t payload = reinterpret_cast<uintptr_t>(aligned_pointer);
