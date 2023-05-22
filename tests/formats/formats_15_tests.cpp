@@ -414,7 +414,6 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   }
   if (iterator_has_freq) {
     ctx.index = 0;
-    ctx.strict = strict;
     info.mapped_index = 0;
   }
 
@@ -424,7 +423,9 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
 
   auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
   if (threshold_value) {
-    threshold_value->min = threshold;
+    threshold_value->min =
+      strict ? static_cast<irs::score_t>(threshold)
+             : std::nextafter(static_cast<irs::score_t>(threshold), 0.f);
   }
 
   return actual;

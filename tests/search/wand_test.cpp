@@ -119,6 +119,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
                                        const irs::Scorer& scorer,
                                        irs::byte_type wand_idx,
                                        bool can_use_wand, size_t limit) {
+  constexpr bool strict = false;
   auto scorers = irs::Scorers::Prepare(scorer);
   EXPECT_FALSE(scorers.empty());
   auto query = filter.prepare(index, scorers);
@@ -150,7 +151,8 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
     if (!left) {
       EXPECT_TRUE(!sorted.empty());
       EXPECT_TRUE(std::is_heap(std::begin(sorted), std::end(sorted)));
-      threshold->min = sorted.front().score;
+      threshold->min = strict ? sorted.front().score
+                              : std::nextafter(sorted.front().score, 0.f);
     }
 
     for (float_t score_value; docs->next();) {
@@ -161,7 +163,8 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
         if (0 == --left) {
           std::make_heap(std::begin(sorted), std::end(sorted));
-          threshold->min = sorted.front().score;
+          threshold->min = strict ? sorted.front().score
+                                  : std::nextafter(sorted.front().score, 0.f);
         }
       } else if (sorted.front().score < score_value) {
         std::pop_heap(std::begin(sorted), std::end(sorted));
@@ -173,7 +176,8 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
         std::push_heap(std::begin(sorted), std::end(sorted));
 
-        threshold->min = sorted.front().score;
+        threshold->min = strict ? sorted.front().score
+                                : std::nextafter(sorted.front().score, 0.f);
       }
     }
 

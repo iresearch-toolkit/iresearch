@@ -485,7 +485,7 @@ int search(std::string_view path, std::string_view dir_type,
       return {};
     }
 
-    return {.index = 0, .strict = (mode == ExecutionMode::kStrictTop)};
+    return {.index = 0};
   }();
 
   auto arg_format_itr = kTextFormats.find(scorer_arg_format);
@@ -640,7 +640,7 @@ int search(std::string_view path, std::string_view dir_type,
   // indexer threads
   for (size_t i = search_threads; i; --i) {
     thread_pool.run([&task_provider, &reader, &order, limit, &out, csv,
-                     scored_terms_limit, wand]() -> void {
+                     scored_terms_limit, wand, mode]() -> void {
       static const std::string analyzer_name("text");
       static const std::string analyzer_args(
         "{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", "
@@ -707,7 +707,9 @@ int search(std::string_view path, std::string_view dir_type,
                    const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                   return lhs.first > rhs.first;
                 }));
-              threshold->min = sorted.front().first;
+              threshold->min = mode == ExecutionMode::kStrictTop
+                                 ? sorted.front().first
+                                 : std::nextafter(sorted.front().first, 0.f);
             }
 
             for (float_t score_value; docs->next();) {
@@ -726,7 +728,10 @@ int search(std::string_view path, std::string_view dir_type,
                       return lhs.first > rhs.first;
                     });
 
-                  threshold->min = sorted.front().first;
+                  threshold->min =
+                    mode == ExecutionMode::kStrictTop
+                      ? sorted.front().first
+                      : std::nextafter(sorted.front().first, 0.f);
                 }
               } else if (sorted.front().first < score_value) {
                 std::pop_heap(
@@ -747,7 +752,9 @@ int search(std::string_view path, std::string_view dir_type,
                     return lhs.first > rhs.first;
                   });
 
-                threshold->min = sorted.front().first;
+                threshold->min = mode == ExecutionMode::kStrictTop
+                                   ? sorted.front().first
+                                   : std::nextafter(sorted.front().first, 0.f);
               }
             }
           }
