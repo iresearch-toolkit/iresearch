@@ -132,7 +132,6 @@ int64_t memory_index_input::checksum(size_t offset) const {
     auto& buf = file_->get_buffer(last_buffer_idx);
     to_process = std::min(offset, file_->length() - buf.offset);
     crc.process_bytes(buf.data, to_process);
-    // offset -= to_process; offset unused after this, so comment out it
   }
 
   return crc.checksum();

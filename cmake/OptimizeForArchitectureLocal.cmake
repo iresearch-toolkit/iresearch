@@ -18,7 +18,10 @@ endif ()
 # https://gitlab.com/x86-psABIs/x86-64-ABI/-/blob/master/x86-64-ABI/low-level-sys-info.tex
 set(AMD64_V1 -mfxsr -mmmx -msse -msse2)
 # "cx16 sse4.2 popcnt pclmul" are specially important
-set(AMD64_V2 -mcx16 -msahf -mpopcnt -msse3 -msse4.1 -msse4.2 -mssse3 -mpclmul -mavx -mxsave)
+# aes needed for sse4.2 mode in highway, it's available for all sandybridge or newer
+# except some mobile (for smartphone) intel proccessors
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71235
+set(AMD64_V2 -mcx16 -msahf -mpopcnt -msse3 -msse4.1 -msse4.2 -mssse3 -mpclmul -mavx -mxsave -maes)
 set(AMD64_V3 -mavx2 -mbmi -mbmi2 -mf16c -mfma -mlzcnt -mmovbe)
 set(AMD64_V4 -mavx512f -mavx512bw -mavx512cd -mavx512dq -mavx512vl -mavx512vbmi -mavx512vbmi2)
 

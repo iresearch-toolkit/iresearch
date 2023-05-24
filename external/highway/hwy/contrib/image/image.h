@@ -1,4 +1,5 @@
 // Copyright 2020 Google LLC
+// SPDX-License-Identifier: Apache-2.0
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,11 +18,8 @@
 
 // SIMD/multicore-friendly planar image representation with row accessors.
 
-#include <stddef.h>
-#include <stdint.h>
 #include <string.h>
 
-#include <cstddef>
 #include <utility>  // std::move
 
 #include "hwy/aligned_allocator.h"
@@ -31,13 +29,13 @@ namespace hwy {
 
 // Type-independent parts of Image<> - reduces code duplication and facilitates
 // moving member function implementations to cc file.
-struct ImageBase {
+struct HWY_CONTRIB_DLLEXPORT ImageBase {
   // Returns required alignment in bytes for externally allocated memory.
   static size_t VectorSize();
 
   // Returns distance [bytes] between the start of two consecutive rows, a
   // multiple of VectorSize but NOT kAlias (see implementation).
-  static size_t BytesPerRow(const size_t xsize, const size_t sizeof_t);
+  static size_t BytesPerRow(size_t xsize, size_t sizeof_t);
 
   // No allocation (for output params or unused images)
   ImageBase()
@@ -99,10 +97,9 @@ struct ImageBase {
  protected:
   // Returns pointer to the start of a row.
   HWY_INLINE void* VoidRow(const size_t y) const {
-#if defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
-    defined(THREAD_SANITIZER)
+#if HWY_IS_ASAN || HWY_IS_MSAN || HWY_IS_TSAN
     if (y >= ysize_) {
-      HWY_ABORT("Row(%zu) >= %u\n", y, ysize_);
+      HWY_ABORT("Row(%d) >= %u\n", static_cast<int>(y), ysize_);
     }
 #endif
 
@@ -221,9 +218,11 @@ class Image3 {
 
   Image3(ImageT&& plane0, ImageT&& plane1, ImageT&& plane2) {
     if (!SameSize(plane0, plane1) || !SameSize(plane0, plane2)) {
-      HWY_ABORT("Not same size: %zu x %zu, %zu x %zu, %zu x %zu\n",
-                plane0.xsize(), plane0.ysize(), plane1.xsize(), plane1.ysize(),
-                plane2.xsize(), plane2.ysize());
+      HWY_ABORT(
+          "Not same size: %d x %d, %d x %d, %d x %d\n",
+          static_cast<int>(plane0.xsize()), static_cast<int>(plane0.ysize()),
+          static_cast<int>(plane1.xsize()), static_cast<int>(plane1.ysize()),
+          static_cast<int>(plane2.xsize()), static_cast<int>(plane2.ysize()));
     }
     planes_[0] = std::move(plane0);
     planes_[1] = std::move(plane1);
@@ -285,10 +284,10 @@ class Image3 {
  private:
   // Returns pointer to the start of a row.
   HWY_INLINE void* VoidPlaneRow(const size_t c, const size_t y) const {
-#if defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
-    defined(THREAD_SANITIZER)
+#if HWY_IS_ASAN || HWY_IS_MSAN || HWY_IS_TSAN
     if (c >= kNumPlanes || y >= ysize()) {
-      HWY_ABORT("PlaneRow(%zu, %zu) >= %zu\n", c, y, ysize());
+      HWY_ABORT("PlaneRow(%d, %d) >= %d\n", static_cast<int>(c),
+                static_cast<int>(y), static_cast<int>(ysize()));
     }
 #endif
     // Use the first plane's stride because the compiler might not realize they

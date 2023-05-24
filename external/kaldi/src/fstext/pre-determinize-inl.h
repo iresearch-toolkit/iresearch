@@ -236,7 +236,7 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
   const char *prefix_ptr = prefix.c_str();
   size_t prefix_len = strlen(prefix_ptr);  // allowed to be zero but not encouraged.
   for (SymbolTableIterator siter(*symTable); !siter.Done(); siter.Next()) {
-    const string &sym = siter.Symbol();
+    const std::string &sym = siter.Symbol();
     if (!strncmp(prefix_ptr, sym.c_str(), prefix_len)) {  // has prefix.
       if (isdigit(sym[prefix_len])) {  // we don't allow prefix followed by a digit, as a symbol.
         // Has at least one digit.
@@ -689,11 +689,9 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   typedef typename Arc::Weight Weight;
   assert(fst != NULL);
   StateId num_states = fst->NumStates();
-  StateId num_final = 0;
   std::vector<StateId> final_states;
   for (StateId s = 0; s < num_states; s++) {
     if (fst->Final(s) != Weight::Zero()) {
-      num_final++;
       final_states.push_back(s);
     }
   }
