@@ -2767,9 +2767,8 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
     return doc_value;
   }
 
-  auto seek_target = target;
   while (true) {
-    seek_to_block(seek_target);
+    seek_to_block(target);
 
     if (this->begin_ == std::end(this->buf_.docs)) {
       if (IRS_UNLIKELY(!this->left_)) {
@@ -2840,7 +2839,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
     }
 
-    seek_target = doc_value + 1;
+    target = doc_value + 1;
   }
 }
 
