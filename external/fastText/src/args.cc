@@ -8,6 +8,7 @@
 
 #include "args.h"
 
+#include <cstdint>
 #include <stdlib.h>
 
 #include <iostream>
