@@ -2079,11 +2079,11 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 #endif
 
   bool next() final {
-    auto& doc = std::get<document>(attrs_);
+    auto& doc_value = std::get<document>(attrs_).value;
 
     if (this->begin_ == std::end(this->buf_.docs)) {
       if (IRS_UNLIKELY(!this->left_)) {
-        doc.value = doc_limits::eof();
+        doc_value = doc_limits::eof();
         return false;
       }
 
@@ -2091,10 +2091,10 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
       // If this is the initial doc_id then
       // set it to min() for proper delta value
-      doc.value += doc_id_t{!doc_limits::valid(doc.value)};
+      doc_value += doc_id_t{!doc_limits::valid(doc_value)};
     }
 
-    doc.value += *this->begin_++;  // update document attribute
+    doc_value += *this->begin_++;  // update document attribute
 
     if constexpr (IteratorTraits::frequency()) {
       auto& freq = std::get<frequency>(attrs_);
@@ -2314,10 +2314,10 @@ void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::prepare(
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
 doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
   doc_id_t target) {
-  auto& doc = std::get<document>(attrs_);
+  auto& doc_value = std::get<document>(attrs_).value;
 
-  if (IRS_UNLIKELY(target <= doc.value)) {
-    return doc.value;
+  if (IRS_UNLIKELY(target <= doc_value)) {
+    return doc_value;
   }
 
   // Check whether it makes sense to use skip-list
@@ -2325,30 +2325,29 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
     seek_to_block(target);
 
     if (IRS_UNLIKELY(!this->left_)) {
-      doc.value = doc_limits::eof();
-      return doc_limits::eof();
+      return doc_value = doc_limits::eof();
     }
 
     this->refill();
 
     // If this is the initial doc_id then
     // set it to min() for proper delta value
-    doc.value += doc_id_t{!doc_limits::valid(doc.value)};
+    doc_value += doc_id_t{!doc_limits::valid(doc_value)};
   }
 
   [[maybe_unused]] uint32_t notify{0};
   while (this->begin_ != std::end(this->buf_.docs)) {
-    doc.value += *this->begin_++;
+    doc_value += *this->begin_++;
 
     if constexpr (!IteratorTraits::position()) {
-      if (doc.value >= target) {
+      if (doc_value >= target) {
         if constexpr (IteratorTraits::frequency()) {
           this->freq_ = this->buf_.freqs + this->relative_pos();
           IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
           IRS_ASSERT((this->freq_ - 1) < std::end(this->buf_.freqs));
           std::get<frequency>(attrs_).value = this->freq_[-1];
         }
-        return doc.value;
+        return doc_value;
       }
     } else {
       IRS_ASSERT(IteratorTraits::frequency());
@@ -2357,10 +2356,10 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
       freq.value = *this->freq_++;
       notify += freq.value;
 
-      if (doc.value >= target) {
+      if (doc_value >= target) {
         pos.notify(notify);
         pos.clear();
-        return doc.value;
+        return doc_value;
       }
     }
   }
@@ -2368,11 +2367,11 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
   if constexpr (IteratorTraits::position()) {
     std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
   }
-  while (doc.value < target) {
+  while (doc_value < target) {
     next();
   }
 
-  return doc.value;
+  return doc_value;
 }
 
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
@@ -2529,11 +2528,11 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   };
 
   doc_id_t shallow_seek(doc_id_t target) final {
-    seek_to_block(target, 1);
+    seek_to_block(target);
     return skip_.Reader().Next().doc;
   }
 
-  void seek_to_block(doc_id_t target, doc_id_t add) {
+  void seek_to_block(doc_id_t target) {
     skip_.Reader().EnsureSorted();
 
     // Check whether we have to use skip-list
@@ -2543,7 +2542,11 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       IRS_ASSERT(0 == skip_.Reader().State().doc_ptr);
 
       this->left_ = skip_.Seek(target);
-      std::get<document>(attrs_).value = skip_.Reader().State().doc + add;
+      // If this is the initial doc_id then
+      // set it to min() for proper delta value
+      const auto doc = skip_.Reader().State().doc;
+      std::get<document>(attrs_).value =
+        doc + doc_id_t{!doc_limits::valid(doc)};
       // Will trigger refill in "next"
       this->begin_ = std::end(this->buf_.docs);
     }
@@ -2758,19 +2761,18 @@ template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
          typename WandExtent, bool Strict>
 doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
                     Strict>::seek(doc_id_t target) {
-  auto& doc = std::get<document>(attrs_);
+  auto& doc_value = std::get<document>(attrs_).value;
 
-  if (IRS_UNLIKELY(target <= doc.value)) {
-    return doc.value;
+  if (IRS_UNLIKELY(target <= doc_value)) {
+    return doc_value;
   }
 
   while (true) {
-    seek_to_block(target, 0);
+    seek_to_block(target);
 
     if (this->begin_ == std::end(this->buf_.docs)) {
       if (IRS_UNLIKELY(!this->left_)) {
-        doc.value = doc_limits::eof();
-        return doc_limits::eof();
+        return doc_value = doc_limits::eof();
       }
 
       if (auto& state = skip_.Reader().State(); state.doc_ptr) {
@@ -2783,20 +2785,16 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       }
 
       this->refill();
-
-      // If this is the initial doc_id then set it to min() for proper delta
-      // value
-      doc.value += doc_id_t{!doc_limits::valid(doc.value)};
     }
 
     const auto min_competitive_score = std::get<score_threshold>(attrs_).min;
     [[maybe_unused]] uint32_t notify{0};
 
     while (this->begin_ != std::end(this->buf_.docs)) {
-      doc.value += *this->begin_++;
+      doc_value += *this->begin_++;
 
       if constexpr (!IteratorTraits::position()) {
-        if (doc.value >= target) {
+        if (doc_value >= target) {
           if constexpr (IteratorTraits::frequency()) {
             this->freq_ = this->buf_.freqs + this->relative_pos();
             IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
@@ -2813,27 +2811,26 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
               continue;
             }
           }
-          return doc.value;
+          return doc_value;
         }
       } else {
         static_assert(IteratorTraits::frequency());
         auto& freq = std::get<frequency>(attrs_);
         freq.value = *this->freq_++;
         notify += freq.value;
+        if (doc_value >= target) {
+          // FIXME(gnusi): can we use approximation before actual score
+          //               evaluation? e.g. frequency in case of tfidf
+          scorer_(&score_);
 
-        // FIXME(gnusi): can we use approximation before actual score
-        //               evaluation? e.g. frequency in case of tfidf
-        scorer_(&score_);
+          if (ScoreLess(score_, min_competitive_score)) {
+            continue;
+          }
 
-        if (ScoreLess(score_, min_competitive_score)) {
-          continue;
-        }
-
-        if (doc.value >= target) {
           auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
           pos.notify(notify);
           pos.clear();
-          return doc.value;
+          return doc_value;
         }
       }
     }
@@ -2842,7 +2839,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
     }
 
-    target = doc.value + 1;
+    target = doc_value + 1;
   }
 }
 
