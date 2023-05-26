@@ -27,10 +27,8 @@
 #include "shared.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-#include "utils/bitpack.hpp"
 #include "utils/encryption.hpp"
 #include "utils/math_utils.hpp"
-#include "utils/simd_utils.hpp"
 
 namespace irs {
 namespace columnstore2 {
