@@ -137,7 +137,8 @@ struct FlushedSegmentContext {
       std::min(bitset::bits_to_words(end), flushed.docs_mask.set.words());
     for (size_t word_idx = 0; word_idx != word_count; ++word_idx) {
       auto word = flushed.docs_mask.set[word_idx];
-      const auto old_doc = word_idx * sizeof(word) + doc_limits::min();
+      const auto old_doc =
+        word_idx * bits_required<bitset::word_t>() + doc_limits::min();
       while (word != 0) {
         const auto t = word & -word;
         const auto offset = std::countr_zero(word);
