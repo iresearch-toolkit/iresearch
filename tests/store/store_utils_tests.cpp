@@ -30,6 +30,7 @@ extern "C" {
 #include <array>
 #include <unordered_set>
 
+#include "store/store_avg_utils.hpp"
 #include "store/store_utils.hpp"
 #include "utils/bytes_utils.hpp"
 

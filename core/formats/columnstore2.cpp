@@ -27,6 +27,8 @@
 #include "index/file_names.hpp"
 #include "search/all_iterator.hpp"
 #include "search/score.hpp"
+#include "store/store_avg_utils.hpp"
+#include "utils/bitpack.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 

@@ -31,6 +31,7 @@
 #include "search/cost.hpp"
 #include "search/score.hpp"
 #include "store/memory_directory.hpp"
+#include "store/store_avg_utils.hpp"
 #include "store/store_utils.hpp"
 #include "utils/attribute_helper.hpp"
 #include "utils/bit_utils.hpp"

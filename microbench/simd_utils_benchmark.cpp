@@ -26,6 +26,7 @@ extern "C" {
 #include <simdcomputil.h>
 }
 
+#include "store/store_avg_utils.hpp"
 #include "store/store_utils.hpp"
 #include "utils/misc.hpp"
 #include "utils/simd_utils.hpp"
