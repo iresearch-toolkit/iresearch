@@ -89,44 +89,33 @@ class column final : public irs::column_output {
   class address_table {
    public:
     uint64_t back() const noexcept {
-      IRS_ASSERT(offset_ > offsets_);
-      return *(offset_ - 1);
+      IRS_ASSERT(!empty());
+      return offsets_.back();
     }
 
-    void push_back(uint64_t offset) noexcept {
-      IRS_ASSERT(offset_ >= offsets_);
-      IRS_ASSERT(offset_ < offsets_ + kBlockSize);
-      *offset_++ = offset;
-      IRS_ASSERT(offset >= offset_[-1]);
-    }
+    void push_back(uint64_t offset) { offsets_.push_back(offset); }
 
     void pop_back() noexcept {
-      IRS_ASSERT(offset_ > offsets_);
-      *--offset_ = 0;
+      IRS_ASSERT(!empty());
+      offsets_.pop_back();
     }
 
-    // returns number of items to be flushed
-    uint32_t size() const noexcept {
-      IRS_ASSERT(offset_ >= offsets_);
-      return uint32_t(offset_ - offsets_);
+    uint32_t size() const noexcept { return offsets_.size(); }
+
+    bool empty() const noexcept { return offsets_.empty(); }
+
+    bool full() const noexcept { return offsets_.size() == kBlockSize; }
+
+    void reset() noexcept { offsets_.clear(); }
+
+    uint64_t* begin() noexcept { return offsets_.data(); }
+    uint64_t* current() noexcept {
+      IRS_ASSERT(!empty());
+      return begin() + offsets_.size() - 1;
     }
-
-    bool empty() const noexcept { return offset_ == offsets_; }
-
-    bool full() const noexcept { return offset_ == std::end(offsets_); }
-
-    void reset() noexcept {
-      std::memset(offsets_, 0, sizeof offsets_);
-      offset_ = std::begin(offsets_);
-    }
-
-    uint64_t* begin() noexcept { return std::begin(offsets_); }
-    uint64_t* current() noexcept { return offset_; }
-    uint64_t* end() noexcept { return std::end(offsets_); }
 
    private:
-    uint64_t offsets_[kBlockSize]{};
-    uint64_t* offset_{offsets_};
+    std::vector<uint64_t> offsets_;
   };
 
   void prepare(doc_id_t key);
