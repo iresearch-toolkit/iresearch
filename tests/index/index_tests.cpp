@@ -4094,6 +4094,75 @@ TEST_P(index_test_case, document_context) {
     }
   }
 
+  // rollback flushed but not committed doc
+  {
+    constexpr size_t kWordSize = 256;
+    irs::IndexWriterOptions options;
+    options.segment_docs_max = kWordSize + 2;
+    auto writer = open_writer(irs::OM_CREATE, options);
+    {
+      auto ctx = writer->GetBatch();
+      {
+        auto doc = ctx.Insert();
+        ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                                   doc1->indexed.end()));
+        ASSERT_TRUE(doc.Insert<irs::Action::STORE>(doc1->stored.begin(),
+                                                   doc1->stored.end()));
+      }
+      ctx.Commit();
+      for (size_t i = 0; i != kWordSize; ++i) {
+        auto doc = ctx.Insert();
+        ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(doc2->indexed.begin(),
+                                                   doc2->indexed.end()));
+        ASSERT_TRUE(doc.Insert<irs::Action::STORE>(doc2->stored.begin(),
+                                                   doc2->stored.end()));
+      }
+      ctx.Reset();
+      {
+        auto doc = ctx.Insert();
+        ASSERT_TRUE(doc.Insert<irs::Action::INDEX>(doc1->indexed.begin(),
+                                                   doc1->indexed.end()));
+        ASSERT_TRUE(doc.Insert<irs::Action::STORE>(doc1->stored.begin(),
+                                                   doc1->stored.end()));
+      }
+      ctx.Commit();
+    }
+
+    writer->Commit();
+    AssertSnapshotEquality(*writer);
+
+    auto reader = irs::DirectoryReader(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    EXPECT_EQ(2 + kWordSize, reader.docs_count());
+    EXPECT_EQ(2, reader.live_docs_count());
+
+    {
+      auto& segment = reader[0];  // assume 0 is id of first segment
+      EXPECT_EQ(2 + kWordSize, segment.docs_count());
+      EXPECT_EQ(2, segment.live_docs_count());
+      const auto* column = segment.column("name");
+      ASSERT_NE(nullptr, column);
+      auto values = column->iterator(irs::ColumnHint::kNormal);
+      ASSERT_NE(nullptr, values);
+      auto* actual_value = irs::get<irs::payload>(*values);
+      ASSERT_NE(nullptr, actual_value);
+      auto terms = segment.field("same");
+      ASSERT_NE(nullptr, terms);
+      auto termItr = terms->iterator(irs::SeekMode::NORMAL);
+      ASSERT_TRUE(termItr->next());
+      auto docsItr = segment.mask(termItr->postings(irs::IndexFeatures::NONE));
+      for (size_t i = 0; i != 2; ++i) {
+        ASSERT_TRUE(docsItr->next()) << i;
+        ASSERT_EQ(docsItr->value(), values->seek(docsItr->value())) << i;
+        // 'name' value in doc1
+        ASSERT_EQ("A",
+                  irs::to_string<std::string_view>(actual_value->value.data()))
+          << i;
+      }
+      ASSERT_FALSE(docsItr->next());
+    }
+  }
+
   // rollback replacements (single doc) split over multiple segment_writers
   {
     auto query_doc1 = MakeByTerm("name", "A");
