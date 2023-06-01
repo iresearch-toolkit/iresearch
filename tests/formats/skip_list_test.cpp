@@ -433,6 +433,149 @@ TEST_F(SkipReaderTest, Prepare) {
   }
 }
 
+TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
+  struct WriteSkip {
+    __declspec(noinline) void Write(size_t level, irs::index_output& out) {
+      auto idx = scores_.size() - 1 - level;
+      out.write_vlong(scores_[idx]);
+      out.write_vlong(docs_[idx]);
+      if (idx && scores_[idx - 1] <
+                     scores_[idx]) {
+        scores_[idx-1] =
+                     scores_[idx];
+      }
+      if (idx && docs_[idx - 1] < docs_[idx]) {
+        docs_[idx - 1] = docs_[idx];
+      }
+      scores_[idx] = 0;
+      docs_[idx] = 0;
+    }
+
+    __declspec(noinline) void Update(irs::doc_id_t doc, size_t value) { 
+        if (scores_.back() < value) {
+            scores_.back() = value;
+        }
+        if (docs_.back() < doc) {
+            docs_.back() = doc;
+        }
+    }
+
+    std::vector<size_t> scores_;
+    std::vector<irs::doc_id_t> docs_;
+  };
+
+  struct ReadSkip {
+    size_t count_;
+    size_t* threshold_{};
+    std::vector<size_t> scores_;
+    std::vector<irs::doc_id_t> docs_;
+
+    explicit ReadSkip(size_t count, size_t skip_levels) noexcept
+      : count_{count}, scores_(skip_levels), docs_(skip_levels) {}
+
+    bool IsLess(size_t level, irs::doc_id_t target) const {
+        EXPECT_LT(level, scores_.size());
+        return docs_[level] < target ||
+               (threshold_ && scores_[level]  < *threshold_);
+    }
+
+    size_t AdjustLevel(size_t id) const noexcept { 
+        while (id && docs_[id] >= docs_[id - 1]) {
+            --id;
+        }
+        return id;
+    }
+
+    void MoveDown(size_t level) {
+
+    }
+
+    void Read(size_t level, irs::data_input& in) {
+        scores_[level] = in.read_vlong();
+        docs_[level] = in.read_vlong();
+    }
+
+    void Seal(size_t level) {
+        docs_[level] = irs::doc_limits::eof();
+    }
+
+    void Reset() noexcept {
+    }
+  };
+
+  irs::memory_directory dir;
+  static constexpr size_t kCount = 81;
+  static constexpr size_t kMaxLevels = 5;
+  static constexpr size_t kSkipLevels = 2;
+  static constexpr size_t kSkip0 = 8;
+  static constexpr size_t kSkipN = 8;
+  static constexpr std::string_view kFile = "docs";
+  // write data
+  {
+    WriteSkip scoreWriter;
+    irs::SkipWriter writer(kSkip0, kSkipN);
+    ASSERT_EQ(0, writer.MaxLevels());
+
+    // write data
+    writer.Prepare(kMaxLevels, kCount);
+    ASSERT_EQ(kSkipLevels, writer.MaxLevels());
+    scoreWriter.scores_.resize(writer.MaxLevels());
+    scoreWriter.docs_.resize(writer.MaxLevels());
+    size_t size = 0;
+    for (size_t doc = 0; doc <= kCount; ++doc, ++size) {
+      // skip every "skip" document
+        auto score = [](size_t doc) {
+          doc = doc % 64;
+          if (doc > 0 && doc < 8) {
+            return 100;
+          }
+          return 1;
+        };
+      scoreWriter.Update(doc, score(doc));
+      if (size == kSkip0) {
+            writer.Skip(doc, [&](size_t level, irs::index_output& out) {
+              scoreWriter.Write(level, out);
+            });
+            size = 0;
+      }
+    }
+
+    auto out = dir.create(kFile);
+    ASSERT_FALSE(!out);
+    writer.Flush(*out);
+  }
+  // check written data
+  {
+    irs::SkipReader<ReadSkip> reader(kSkip0, kSkipN,
+                                     ReadSkip{kCount, kSkipLevels});
+    auto& ctx = reader.Reader();
+    size_t threshold{0};
+    ctx.threshold_ = &threshold;
+
+    auto docs_left = [&](irs::doc_id_t target) -> irs::doc_id_t {
+      return kCount - kSkip0 * (target / kSkip0);
+    };
+
+    ASSERT_EQ(0, reader.NumLevels());
+    auto in = dir.open(kFile, irs::IOAdvice::NORMAL);
+    ASSERT_FALSE(!in);
+    reader.Prepare(std::move(in), kCount);
+    ASSERT_EQ(kSkipLevels, reader.NumLevels());
+    ASSERT_EQ(kSkip0, reader.Skip0());
+    ASSERT_EQ(kSkipN, reader.SkipN());
+
+    threshold = 0;
+    ASSERT_EQ(docs_left(62), reader.Seek(62));
+    threshold = 79;
+    // that must not only move level 1 BUT! level 0 also should be moved
+    // to maintain sorted order of levels the in skiplist reader!
+    ASSERT_EQ(docs_left(64), reader.Seek(63));
+    threshold = 0;
+    // This should actually do not move skiplist at all.
+    ASSERT_EQ(docs_left(65), reader.Seek(65));
+  }
+}
+
 TEST_F(SkipReaderTest, Seek) {
   struct WriteSkip {
     size_t* low;
@@ -463,7 +606,9 @@ TEST_F(SkipReaderTest, Seek) {
       return upper_bounds[level] < target;
     }
 
-    size_t AdjustLevel(size_t id) const noexcept { return id; }
+    size_t AdjustLevel(size_t id) const noexcept {
+      return id;
+    }
 
     void MoveDown(size_t level) {
       ASSERT_LT(level, upper_bounds.size());
