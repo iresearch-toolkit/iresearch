@@ -435,14 +435,12 @@ TEST_F(SkipReaderTest, Prepare) {
 
 TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
   struct WriteSkip {
-    __declspec(noinline) void Write(size_t level, irs::index_output& out) {
+    void Write(size_t level, irs::index_output& out) {
       auto idx = scores_.size() - 1 - level;
       out.write_vlong(scores_[idx]);
       out.write_vlong(docs_[idx]);
-      if (idx && scores_[idx - 1] <
-                     scores_[idx]) {
-        scores_[idx-1] =
-                     scores_[idx];
+      if (idx && scores_[idx - 1] < scores_[idx]) {
+        scores_[idx - 1] = scores_[idx];
       }
       if (idx && docs_[idx - 1] < docs_[idx]) {
         docs_[idx - 1] = docs_[idx];
@@ -451,13 +449,13 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
       docs_[idx] = 0;
     }
 
-    __declspec(noinline) void Update(irs::doc_id_t doc, size_t value) { 
-        if (scores_.back() < value) {
-            scores_.back() = value;
-        }
-        if (docs_.back() < doc) {
-            docs_.back() = doc;
-        }
+    void Update(irs::doc_id_t doc, size_t value) {
+      if (scores_.back() < value) {
+        scores_.back() = value;
+      }
+      if (docs_.back() < doc) {
+        docs_.back() = doc;
+      }
     }
 
     std::vector<size_t> scores_;
@@ -474,33 +472,28 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
       : count_{count}, scores_(skip_levels), docs_(skip_levels) {}
 
     bool IsLess(size_t level, irs::doc_id_t target) const {
-        EXPECT_LT(level, scores_.size());
-        return docs_[level] < target ||
-               (threshold_ && scores_[level]  < *threshold_);
+      EXPECT_LT(level, scores_.size());
+      return docs_[level] < target ||
+             (threshold_ && scores_[level] < *threshold_);
     }
 
-    size_t AdjustLevel(size_t id) const noexcept { 
-        while (id && docs_[id] >= docs_[id - 1]) {
-            --id;
-        }
-        return id;
+    size_t AdjustLevel(size_t id) const noexcept {
+      while (id && docs_[id] >= docs_[id - 1]) {
+        --id;
+      }
+      return id;
     }
 
-    void MoveDown(size_t level) {
-
-    }
+    void MoveDown(size_t level) {}
 
     void Read(size_t level, irs::data_input& in) {
-        scores_[level] = in.read_vlong();
-        docs_[level] = in.read_vlong();
+      scores_[level] = in.read_vlong();
+      docs_[level] = in.read_vlong();
     }
 
-    void Seal(size_t level) {
-        docs_[level] = irs::doc_limits::eof();
-    }
+    void Seal(size_t level) { docs_[level] = irs::doc_limits::eof(); }
 
-    void Reset() noexcept {
-    }
+    void Reset() noexcept {}
   };
 
   irs::memory_directory dir;
@@ -524,19 +517,19 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
     size_t size = 0;
     for (size_t doc = 0; doc <= kCount; ++doc, ++size) {
       // skip every "skip" document
-        auto score = [](size_t doc) {
-          doc = doc % 64;
-          if (doc > 0 && doc < 8) {
-            return 100;
-          }
-          return 1;
-        };
+      auto score = [](size_t doc) {
+        doc = doc % 64;
+        if (doc > 0 && doc < 8) {
+          return 100;
+        }
+        return 1;
+      };
       scoreWriter.Update(doc, score(doc));
       if (size == kSkip0) {
-            writer.Skip(doc, [&](size_t level, irs::index_output& out) {
-              scoreWriter.Write(level, out);
-            });
-            size = 0;
+        writer.Skip(doc, [&](size_t level, irs::index_output& out) {
+          scoreWriter.Write(level, out);
+        });
+        size = 0;
       }
     }
 
