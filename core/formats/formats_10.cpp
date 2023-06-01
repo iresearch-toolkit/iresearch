@@ -2653,6 +2653,7 @@ template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
 size_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
                   Strict>::ReadSkip::AdjustLevel(size_t level) const noexcept {
   while (level && skip_levels_[level].doc >= skip_levels_[level - 1].doc) {
+    IRS_ASSERT(skip_levels_[level - 1].doc != doc_limits::eof());
     --level;
   }
   return level;
