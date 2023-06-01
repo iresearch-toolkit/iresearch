@@ -599,9 +599,7 @@ TEST_F(SkipReaderTest, Seek) {
       return upper_bounds[level] < target;
     }
 
-    size_t AdjustLevel(size_t id) const noexcept {
-      return id;
-    }
+    size_t AdjustLevel(size_t id) const noexcept { return id; }
 
     void MoveDown(size_t level) {
       ASSERT_LT(level, upper_bounds.size());
