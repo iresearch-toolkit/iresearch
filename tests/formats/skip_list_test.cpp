@@ -561,7 +561,7 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
     ASSERT_EQ(docs_left(62), reader.Seek(62));
     threshold = 79;
     // that must not only move level 1 BUT! level 0 also should be moved
-    // to maintain sorted order of levels the in skiplist reader!
+    // to maintain sorted order of levels in the skiplist reader!
     ASSERT_EQ(docs_left(64), reader.Seek(63));
     threshold = 0;
     // This should actually do not move skiplist at all.
