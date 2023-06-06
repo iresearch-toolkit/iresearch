@@ -36,7 +36,8 @@ void BM_Calculate2(benchmark::State& state) {
     benchmark::DoNotOptimize(data);
     irs::crc32c crc;
     crc.process_bytes(data.data(), data.size());
-    benchmark::DoNotOptimize(crc.checksum());
+    auto tmp = crc.checksum();
+    benchmark::DoNotOptimize(tmp);
   }
 }
 
@@ -62,7 +63,8 @@ void BM_Extend2(benchmark::State& state) {
     benchmark::DoNotOptimize(base);
     benchmark::DoNotOptimize(extension);
     base.process_bytes(extension.data(), extension.size());
-    benchmark::DoNotOptimize(base.checksum());
+    auto tmp = base.checksum();
+    benchmark::DoNotOptimize(tmp);
   }
 }
 
