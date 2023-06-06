@@ -1533,7 +1533,7 @@ TEST(concurrent_linked_list_test, concurrent_pop_push) {
   const size_t THREADS = 16;
 
   struct data {
-    std::atomic_flag visited = ATOMIC_FLAG_INIT;
+    std::atomic_flag visited{false};
     std::atomic<size_t> num_owners{};
     size_t value{};
   };
