@@ -723,26 +723,22 @@ void IndexWriter::Transaction::Reset() noexcept {
 
 void IndexWriter::Transaction::RegisterFlush() {
   if (active_.Segment() != nullptr && active_.Flush() == nullptr) {
-    writer_.GetFlushContext()->AddToPending(active_);
+    writer_->GetFlushContext()->AddToPending(active_);
   }
 }
 
-bool IndexWriter::Transaction::Commit(uint64_t last_tick) noexcept {
+bool IndexWriter::Transaction::CommitImpl(uint64_t last_tick) noexcept try {
   auto* segment = active_.Segment();
-  if (segment == nullptr) {
-    return true;  // nothing to do
-  }
-  try {
-    segment->Commit(queries_, last_tick);
-    writer_.GetFlushContext()->Emplace(std::move(active_));
-    IRS_ASSERT(active_.Segment() == nullptr);
-    return true;
-  } catch (...) {
-    IRS_ASSERT(active_.Segment() != nullptr);
-    // Can be implemented better but I more want to allow Commit throw
-    Abort();
-    return false;
-  }
+  IRS_ASSERT(segment != nullptr);
+  segment->Commit(queries_, last_tick);
+  writer_->GetFlushContext()->Emplace(std::move(active_));
+  IRS_ASSERT(active_.Segment() == nullptr);
+  return true;
+} catch (...) {
+  IRS_ASSERT(active_.Segment() != nullptr);
+  // TODO(MBkkt) Use intrusive list to avoid possibility bad_alloc here
+  Abort();
+  return false;
 }
 
 void IndexWriter::Transaction::Abort() noexcept {
@@ -757,28 +753,29 @@ void IndexWriter::Transaction::Abort() noexcept {
   }
   segment->Rollback();
   // cannot throw because active_.Flush() not null
-  writer_.GetFlushContext()->Emplace(std::move(active_));
+  writer_->GetFlushContext()->Emplace(std::move(active_));
   IRS_ASSERT(active_.Segment() == nullptr);
 }
 
 void IndexWriter::Transaction::UpdateSegment(bool disable_flush) {
+  IRS_ASSERT(Valid());
   while (active_.Segment() == nullptr) {  // lazy init
-    active_ = writer_.GetSegmentContext();
+    active_ = writer_->GetSegmentContext();
   }
 
   auto& segment = *active_.Segment();
   auto& writer = *segment.writer_;
 
   if (IRS_LIKELY(writer.initialized())) {
-    if (disable_flush || !writer_.FlushRequired(writer)) {
+    if (disable_flush || !writer_->FlushRequired(writer)) {
       return;
     }
     // Force flush of a full segment
     IRS_LOG_TRACE(absl::StrCat(
       "Flushing segment '", writer.name(), "', docs=", writer.buffered_docs(),
       ", memory=", writer.memory_active(),
-      ", docs limit=", writer_.segment_limits_.segment_docs_max.load(),
-      ", memory limit=", writer_.segment_limits_.segment_memory_max.load()));
+      ", docs limit=", writer_->segment_limits_.segment_docs_max.load(),
+      ", memory limit=", writer_->segment_limits_.segment_memory_max.load()));
 
     try {
       segment.Flush();
