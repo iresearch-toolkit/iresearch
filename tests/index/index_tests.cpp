@@ -16931,7 +16931,10 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   irs::IndexWriterOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
-    auto trx = writer->GetBatch();
+    irs::IndexWriter::Transaction trx;
+    ASSERT_FALSE(trx.Valid());
+    trx = writer->GetBatch();
+    ASSERT_TRUE(trx.Valid());
     {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
