@@ -95,9 +95,9 @@ struct format_traits {
   static constexpr uint32_t pos_min() noexcept { return PosMin; }
   static constexpr bool wand() noexcept { return Wand; }
 
-  IRS_FORCE_INLINE static void pack_block32(
-    const uint32_t* IRS_RESTRICT decoded, uint32_t* IRS_RESTRICT encoded,
-    const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void pack_block(const uint32_t* IRS_RESTRICT decoded,
+                                          uint32_t* IRS_RESTRICT encoded,
+                                          uint32_t bits) noexcept {
     packed::pack_block(decoded, encoded, bits);
     packed::pack_block(decoded + packed::BLOCK_SIZE_32, encoded + bits, bits);
     packed::pack_block(decoded + 2 * packed::BLOCK_SIZE_32, encoded + 2 * bits,
@@ -106,9 +106,9 @@ struct format_traits {
                        bits);
   }
 
-  IRS_FORCE_INLINE static void unpack_block32(
+  IRS_FORCE_INLINE static void unpack_block(
     uint32_t* IRS_RESTRICT decoded, const uint32_t* IRS_RESTRICT encoded,
-    const uint32_t bits) noexcept {
+    uint32_t bits) noexcept {
     packed::unpack_block(encoded, decoded, bits);
     packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_32, bits);
     packed::unpack_block(encoded + 2 * bits,
@@ -117,34 +117,14 @@ struct format_traits {
                          decoded + 3 * packed::BLOCK_SIZE_32, bits);
   }
 
-  IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
-                                      uint32_t* IRS_RESTRICT encoded,
-                                      size_t size,
-                                      const uint32_t bits) noexcept {
-    IRS_ASSERT(encoded);
-    IRS_ASSERT(decoded);
-    IRS_ASSERT(size);
-    packed::pack(decoded, decoded + size, encoded, bits);
-  }
-
-  IRS_FORCE_INLINE static void pack64(const uint64_t* IRS_RESTRICT decoded,
-                                      uint64_t* IRS_RESTRICT encoded,
-                                      size_t size,
-                                      const uint32_t bits) noexcept {
-    IRS_ASSERT(encoded);
-    IRS_ASSERT(decoded);
-    IRS_ASSERT(size);
-    packed::pack(decoded, decoded + size, encoded, bits);
-  }
-
   IRS_FORCE_INLINE static void write_block(index_output& out,
                                            const uint32_t* in, uint32_t* buf) {
-    bitpack::write_block32<block_size()>(&pack_block32, out, in, buf);
+    bitpack::write_block32<block_size()>(pack_block, out, in, buf);
   }
 
   IRS_FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
                                           uint32_t* out) {
-    bitpack::read_block32<block_size()>(&unpack_block32, in, buf, out);
+    bitpack::read_block32<block_size()>(unpack_block, in, buf, out);
   }
 
   IRS_FORCE_INLINE static void skip_block(index_input& in) {
@@ -2099,11 +2079,11 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 #endif
 
   bool next() final {
-    auto& doc = std::get<document>(attrs_);
+    auto& doc_value = std::get<document>(attrs_).value;
 
     if (this->begin_ == std::end(this->buf_.docs)) {
       if (IRS_UNLIKELY(!this->left_)) {
-        doc.value = doc_limits::eof();
+        doc_value = doc_limits::eof();
         return false;
       }
 
@@ -2111,10 +2091,10 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
       // If this is the initial doc_id then
       // set it to min() for proper delta value
-      doc.value += doc_id_t{!doc_limits::valid(doc.value)};
+      doc_value += doc_id_t{!doc_limits::valid(doc_value)};
     }
 
-    doc.value += *this->begin_++;  // update document attribute
+    doc_value += *this->begin_++;  // update document attribute
 
     if constexpr (IteratorTraits::frequency()) {
       auto& freq = std::get<frequency>(attrs_);
@@ -2334,10 +2314,10 @@ void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::prepare(
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
 doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
   doc_id_t target) {
-  auto& doc = std::get<document>(attrs_);
+  auto& doc_value = std::get<document>(attrs_).value;
 
-  if (IRS_UNLIKELY(target <= doc.value)) {
-    return doc.value;
+  if (IRS_UNLIKELY(target <= doc_value)) {
+    return doc_value;
   }
 
   // Check whether it makes sense to use skip-list
@@ -2345,30 +2325,29 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
     seek_to_block(target);
 
     if (IRS_UNLIKELY(!this->left_)) {
-      doc.value = doc_limits::eof();
-      return doc_limits::eof();
+      return doc_value = doc_limits::eof();
     }
 
     this->refill();
 
     // If this is the initial doc_id then
     // set it to min() for proper delta value
-    doc.value += doc_id_t{!doc_limits::valid(doc.value)};
+    doc_value += doc_id_t{!doc_limits::valid(doc_value)};
   }
 
   [[maybe_unused]] uint32_t notify{0};
   while (this->begin_ != std::end(this->buf_.docs)) {
-    doc.value += *this->begin_++;
+    doc_value += *this->begin_++;
 
     if constexpr (!IteratorTraits::position()) {
-      if (doc.value >= target) {
+      if (doc_value >= target) {
         if constexpr (IteratorTraits::frequency()) {
           this->freq_ = this->buf_.freqs + this->relative_pos();
           IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
           IRS_ASSERT((this->freq_ - 1) < std::end(this->buf_.freqs));
           std::get<frequency>(attrs_).value = this->freq_[-1];
         }
-        return doc.value;
+        return doc_value;
       }
     } else {
       IRS_ASSERT(IteratorTraits::frequency());
@@ -2377,10 +2356,10 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
       freq.value = *this->freq_++;
       notify += freq.value;
 
-      if (doc.value >= target) {
+      if (doc_value >= target) {
         pos.notify(notify);
         pos.clear();
-        return doc.value;
+        return doc_value;
       }
     }
   }
@@ -2388,11 +2367,11 @@ doc_id_t doc_iterator<IteratorTraits, FieldTraits, WandExtent>::seek(
   if constexpr (IteratorTraits::position()) {
     std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
   }
-  while (doc.value < target) {
+  while (doc_value < target) {
     next();
   }
 
-  return doc.value;
+  return doc_value;
 }
 
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
@@ -2549,11 +2528,11 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   };
 
   doc_id_t shallow_seek(doc_id_t target) final {
-    seek_to_block(target, 1);
+    seek_to_block(target);
     return skip_.Reader().Next().doc;
   }
 
-  void seek_to_block(doc_id_t target, doc_id_t add) {
+  void seek_to_block(doc_id_t target) {
     skip_.Reader().EnsureSorted();
 
     // Check whether we have to use skip-list
@@ -2563,7 +2542,11 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       IRS_ASSERT(0 == skip_.Reader().State().doc_ptr);
 
       this->left_ = skip_.Seek(target);
-      std::get<document>(attrs_).value = skip_.Reader().State().doc + add;
+      // If this is the initial doc_id then
+      // set it to min() for proper delta value
+      const auto doc = skip_.Reader().State().doc;
+      std::get<document>(attrs_).value =
+        doc + doc_id_t{!doc_limits::valid(doc)};
       // Will trigger refill in "next"
       this->begin_ = std::end(this->buf_.docs);
     }
@@ -2670,6 +2653,7 @@ template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
 size_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
                   Strict>::ReadSkip::AdjustLevel(size_t level) const noexcept {
   while (level && skip_levels_[level].doc >= skip_levels_[level - 1].doc) {
+    IRS_ASSERT(skip_levels_[level - 1].doc != doc_limits::eof());
     --level;
   }
   return level;
@@ -2778,19 +2762,18 @@ template<typename IteratorTraits, typename FieldTraits, typename WandIndex,
          typename WandExtent, bool Strict>
 doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
                     Strict>::seek(doc_id_t target) {
-  auto& doc = std::get<document>(attrs_);
+  auto& doc_value = std::get<document>(attrs_).value;
 
-  if (IRS_UNLIKELY(target <= doc.value)) {
-    return doc.value;
+  if (IRS_UNLIKELY(target <= doc_value)) {
+    return doc_value;
   }
 
   while (true) {
-    seek_to_block(target, 0);
+    seek_to_block(target);
 
     if (this->begin_ == std::end(this->buf_.docs)) {
       if (IRS_UNLIKELY(!this->left_)) {
-        doc.value = doc_limits::eof();
-        return doc_limits::eof();
+        return doc_value = doc_limits::eof();
       }
 
       if (auto& state = skip_.Reader().State(); state.doc_ptr) {
@@ -2803,20 +2786,16 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       }
 
       this->refill();
-
-      // If this is the initial doc_id then set it to min() for proper delta
-      // value
-      doc.value += doc_id_t{!doc_limits::valid(doc.value)};
     }
 
     const auto min_competitive_score = std::get<score_threshold>(attrs_).min;
     [[maybe_unused]] uint32_t notify{0};
 
     while (this->begin_ != std::end(this->buf_.docs)) {
-      doc.value += *this->begin_++;
+      doc_value += *this->begin_++;
 
       if constexpr (!IteratorTraits::position()) {
-        if (doc.value >= target) {
+        if (doc_value >= target) {
           if constexpr (IteratorTraits::frequency()) {
             this->freq_ = this->buf_.freqs + this->relative_pos();
             IRS_ASSERT((this->freq_ - 1) >= this->buf_.freqs);
@@ -2833,27 +2812,26 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
               continue;
             }
           }
-          return doc.value;
+          return doc_value;
         }
       } else {
         static_assert(IteratorTraits::frequency());
         auto& freq = std::get<frequency>(attrs_);
         freq.value = *this->freq_++;
         notify += freq.value;
+        if (doc_value >= target) {
+          // FIXME(gnusi): can we use approximation before actual score
+          //               evaluation? e.g. frequency in case of tfidf
+          scorer_(&score_);
 
-        // FIXME(gnusi): can we use approximation before actual score
-        //               evaluation? e.g. frequency in case of tfidf
-        scorer_(&score_);
+          if (ScoreLess(score_, min_competitive_score)) {
+            continue;
+          }
 
-        if (ScoreLess(score_, min_competitive_score)) {
-          continue;
-        }
-
-        if (doc.value >= target) {
           auto& pos = std::get<position<IteratorTraits, FieldTraits>>(attrs_);
           pos.notify(notify);
           pos.clear();
-          return doc.value;
+          return doc_value;
         }
       }
     }
@@ -2862,7 +2840,7 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandIndex, WandExtent,
       std::get<position<IteratorTraits, FieldTraits>>(attrs_).notify(notify);
     }
 
-    target = doc.value + 1;
+    target = doc_value + 1;
   }
 }
 
@@ -4148,25 +4126,25 @@ struct format_traits_sse4 {
 
   IRS_FORCE_INLINE static void pack_block(const uint32_t* IRS_RESTRICT decoded,
                                           uint32_t* IRS_RESTRICT encoded,
-                                          const uint32_t bits) noexcept {
+                                          uint32_t bits) noexcept {
     ::simdpackwithoutmask(decoded, reinterpret_cast<align_type*>(encoded),
                           bits);
   }
 
-  IRS_FORCE_INLINE static void unpack_block(uint32_t* decoded,
-                                            const uint32_t* encoded,
-                                            const uint32_t bits) noexcept {
+  IRS_FORCE_INLINE static void unpack_block(
+    uint32_t* IRS_RESTRICT decoded, const uint32_t* IRS_RESTRICT encoded,
+    uint32_t bits) noexcept {
     ::simdunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
   }
 
   IRS_FORCE_INLINE static void write_block(index_output& out,
                                            const uint32_t* in, uint32_t* buf) {
-    bitpack::write_block32<block_size()>(&pack_block, out, in, buf);
+    bitpack::write_block32<block_size()>(pack_block, out, in, buf);
   }
 
   IRS_FORCE_INLINE static void read_block(index_input& in, uint32_t* buf,
                                           uint32_t* out) {
-    bitpack::read_block32<block_size()>(&unpack_block, in, buf, out);
+    bitpack::read_block32<block_size()>(unpack_block, in, buf, out);
   }
 
   IRS_FORCE_INLINE static void skip_block(index_input& in) {

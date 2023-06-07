@@ -277,6 +277,96 @@ TEST(fst_builder_test, build_fst) {
   }
 }
 
+TEST(fst_builder_test, build_fst_bug) {
+  std::vector<std::pair<irs::bstring, irs::bstring>> expected_data;
+  auto make = [](std::string_view str) {
+    return irs::bstring{irs::ViewCast<irs::byte_type>(str)};
+  };
+  expected_data = {
+    {make("5"), make("12")},
+    {make("56"), make("1234")},
+    {make("567"), make("12312")},
+  };
+  ASSERT_FALSE(expected_data.empty());
+  ASSERT_TRUE(std::is_sorted(
+    expected_data.begin(), expected_data.end(),
+    [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; }));
+
+  irs::vector_byte_fst fst;
+  fst_stats stats;
+
+  // build fst
+  {
+    fst_byte_builder builder(fst);
+    builder.reset();
+
+    for (auto& data : expected_data) {
+      builder.add(data.first,
+                  irs::byte_weight(data.second.begin(), data.second.end()));
+    }
+
+    stats = builder.finish();
+  }
+
+  fst_stats expected_stats;
+  for (fst::StateIterator<irs::vector_byte_fst> states(fst); !states.Done();
+       states.Next()) {
+    const auto stateid = states.Value();
+    ++expected_stats.num_states;
+    expected_stats.num_arcs += fst.NumArcs(stateid);
+    expected_stats(fst.Final(stateid));
+    for (fst::ArcIterator<irs::vector_byte_fst> arcs(fst, stateid);
+         !arcs.Done(); arcs.Next()) {
+      expected_stats(arcs.Value().weight);
+    }
+  }
+  ASSERT_EQ(expected_stats, stats);
+
+  // check fst
+  {
+    typedef fst::SortedMatcher<irs::vector_byte_fst> sorted_matcher_t;
+    typedef fst::explicit_matcher<sorted_matcher_t>
+      matcher_t;  // avoid implicit loops
+
+    ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
+    ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
+    irs::bstring expected_arcs[6] = {
+      make("12"), make("12"), make("3"), make("12"), make("3"), make("12"),
+    };
+    irs::bstring expected_final[3] = {
+      make(""),
+      make("4"),
+      make(""),
+    };
+    auto* expected_arcs_it = &expected_arcs[0];
+    auto* expected_final_it = &expected_final[0];
+
+    for (auto& data : expected_data) {
+      irs::byte_weight actual_weight;
+
+      auto state = fst.Start();  // root node
+
+      matcher_t matcher(fst, fst::MATCH_INPUT);
+      for (irs::byte_type c : data.first) {
+        matcher.SetState(state);
+        ASSERT_TRUE(matcher.Find(c));
+
+        const auto& arc = matcher.Value();
+        ASSERT_EQ(c, arc.ilabel);
+        EXPECT_EQ(*expected_arcs_it++, irs::bytes_view{arc.weight});
+        actual_weight.PushBack(arc.weight);
+        state = arc.nextstate;
+      }
+
+      auto final = fst.Final(state);
+      EXPECT_EQ(*expected_final_it++, irs::bytes_view{final});
+      actual_weight = fst::Times(actual_weight, final);
+
+      ASSERT_EQ(irs::bytes_view(actual_weight), irs::bytes_view(data.second));
+    }
+  }
+}
+
 TEST(fst_builder_test, test_read_write) {
   assert_fst_read_write("fst");
   assert_fst_read_write("fst_binary");

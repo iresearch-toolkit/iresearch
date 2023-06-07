@@ -582,13 +582,6 @@ inline uint32_t write_block(
 }
 
 // Skips average encoded 64-bit block
-inline void skip_block64(index_input& in, size_t size) {
-  in.read_vlong();  // skip base
-  in.read_vlong();  // skip avg
-  bitpack::skip_block64(in, size);
-}
-
-// Skips average encoded 64-bit block
 inline void skip_block32(index_input& in, uint32_t size) {
   in.read_vint();  // skip base
   in.read_vint();  // skip avg

@@ -35,7 +35,7 @@ void BM_lower_bound(benchmark::State& state) {
 
   for (auto _ : state) {
     for (auto v : nums) {
-      const auto it = std::upper_bound(nums.begin(), nums.end(), v);
+      auto it = std::upper_bound(nums.begin(), nums.end(), v);
       benchmark::DoNotOptimize(it);
     }
   }
@@ -49,7 +49,7 @@ void BM_linear_scan(benchmark::State& state) {
 
   for (auto _ : state) {
     for (auto v : nums) {
-      const auto it = std::find(nums.begin(), nums.end(), v);
+      auto it = std::find(nums.begin(), nums.end(), v);
       benchmark::DoNotOptimize(it);
     }
   }

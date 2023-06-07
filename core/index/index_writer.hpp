@@ -207,6 +207,7 @@ class IndexWriter : private util::noncopyable {
 
     ~ActiveSegmentContext();
 
+    auto* Segment() const noexcept { return segment_.get(); }
     auto* Segment() noexcept { return segment_.get(); }
     auto* Flush() noexcept { return flush_; }
 
@@ -223,6 +224,7 @@ class IndexWriter : private util::noncopyable {
   };
 
   static_assert(std::is_nothrow_move_constructible_v<ActiveSegmentContext>);
+  static_assert(std::is_nothrow_move_assignable_v<ActiveSegmentContext>);
 
  public:
   // Additional information required for remove/replace requests
@@ -342,10 +344,11 @@ class IndexWriter : private util::noncopyable {
 
   class Transaction : private util::noncopyable {
    public:
-    explicit Transaction(IndexWriter& writer) noexcept : writer_{writer} {}
+    Transaction() = default;
+    explicit Transaction(IndexWriter& writer) noexcept : writer_{&writer} {}
 
     Transaction(Transaction&& other) = default;
-    Transaction& operator=(Transaction&& other) = delete;
+    Transaction& operator=(Transaction&& other) = default;
 
     ~Transaction() {
       // FIXME(gnusi): consider calling Abort in future
@@ -359,6 +362,7 @@ class IndexWriter : private util::noncopyable {
     // `disable_flush` don't trigger segment flush
     //
     // The changes are not visible until commit()
+    // Transaction should be valid
     Document Insert(bool disable_flush = false) {
       UpdateSegment(disable_flush);
       return {*active_.Segment(), segment_writer::DocContext{queries_}};
@@ -371,6 +375,7 @@ class IndexWriter : private util::noncopyable {
     // Note that filter must be valid until commit().
     // Remove</*TickBound=*/false> is applied even for documents created after
     // the Remove call and until next TickBound Remove or Replace.
+    // Transaction should be valid
     template<bool TickBound = true, typename Filter>
     void Remove(Filter&& filter) {
       UpdateSegment(/*disable_flush=*/true);
@@ -388,6 +393,7 @@ class IndexWriter : private util::noncopyable {
     // filter the filter selecting which documents should be replaced
     // Note the changes are not visible until commit()
     // Note that filter must be valid until commit()
+    // Transaction should be valid
     template<typename Filter>
     Document Replace(Filter&& filter, bool disable_flush = false) {
       UpdateSegment(disable_flush);
@@ -411,28 +417,51 @@ class IndexWriter : private util::noncopyable {
     // Commit all accumulated modifications and release resources
     // return successful or not, if not call Abort
     bool Commit() noexcept {
+      auto* segment = active_.Segment();
+      if (segment == nullptr) {
+        return true;
+      }
       const auto first_tick =
-        writer_.tick_.fetch_add(queries_, std::memory_order_relaxed);
-      return Commit(first_tick + queries_);
+        writer_->tick_.fetch_add(queries_, std::memory_order_relaxed);
+      return CommitImpl(first_tick + queries_);
     }
-    bool Commit(uint64_t last_tick) noexcept;
+
+    bool Commit(uint64_t last_tick) noexcept {
+      auto* segment = active_.Segment();
+      if (segment == nullptr) {
+        return true;
+      }
+      return CommitImpl(last_tick);
+    }
 
     // Reset all accumulated modifications and release resources
     void Abort() noexcept;
 
+    bool FlushRequired() const noexcept {
+      auto* segment = active_.Segment();
+      if (segment == nullptr) {
+        return false;
+      }
+      return writer_->FlushRequired(*segment->writer_);
+    }
+
+    bool Valid() const noexcept { return writer_ != nullptr; }
+
    private:
+    bool CommitImpl(uint64_t last_tick) noexcept;
     // refresh segment if required (guarded by FlushContext::context_mutex_)
     // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
     // since active 'flush_context' will not change and hence no reload required
     void UpdateSegment(bool disable_flush);
 
-    IndexWriter& writer_;
+    IndexWriter* writer_{nullptr};
     // the segment_context used for storing changes (lazy-initialized)
     ActiveSegmentContext active_;
     // We can use active_.Segment()->queries_.size() for same purpose
     uint64_t queries_{0};
   };
   static_assert(std::is_nothrow_move_constructible_v<Transaction>);
+  static_assert(std::is_nothrow_move_assignable_v<Transaction>);
 
   // Returns a context allowing index modification operations
   // All document insertions will be applied to the same segment on a
