@@ -100,8 +100,7 @@ static_assert(std::is_nothrow_move_constructible_v<column_meta>,
 struct format_traits {
   IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
                                       uint32_t* IRS_RESTRICT encoded,
-                                      size_t size,
-                                      const uint32_t bits) noexcept {
+                                      size_t size, uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);
@@ -110,8 +109,7 @@ struct format_traits {
 
   IRS_FORCE_INLINE static void pack64(const uint64_t* IRS_RESTRICT decoded,
                                       uint64_t* IRS_RESTRICT encoded,
-                                      size_t size,
-                                      const uint32_t bits) noexcept {
+                                      size_t size, uint32_t bits) noexcept {
     IRS_ASSERT(encoded);
     IRS_ASSERT(decoded);
     IRS_ASSERT(size);
@@ -528,8 +526,12 @@ class index_block {
       IRS_ASSERT(std::is_sorted(keys_, key_));
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
-        &format_traits::pack32, out, stats.first, stats.second, keys_,
-        block_size, reinterpret_cast<uint32_t*>(buf));
+        [&](const uint32_t* IRS_RESTRICT decoded,
+            uint32_t* IRS_RESTRICT encoded, uint32_t bits) {
+          format_traits::pack32(decoded, encoded, block_size, bits);
+        },
+        out, stats.first, stats.second, keys_, block_size,
+        reinterpret_cast<uint32_t*>(buf));
 
       if (1 == stats.second && 0 == keys_[0] && bitpack::rl(bits)) {
         props |= CP_DENSE;

@@ -215,6 +215,7 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   }
 
   while (id != size) {
+    id = reader_.AdjustLevel(id);
     auto& level = levels_[id];
     auto& stream = *level.stream;
     uint64_t child_ptr = level.child;
@@ -226,7 +227,6 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
         level.child = stream.read_vlong();
       }
       if (reader_.IsLess(id, target)) {
-        id = reader_.AdjustLevel(id);
         continue;
       }
     } else {

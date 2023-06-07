@@ -69,7 +69,8 @@ struct FlushedSegmentContext {
                         IndexWriter::FlushedSegment& flushed)
     : reader{std::move(reader)}, segment{segment}, flushed{flushed} {
     IRS_ASSERT(this->reader != nullptr);
-    if (flushed.document_mask.empty()) {
+    if (flushed.docs_mask.count != doc_limits::eof()) {
+      IRS_ASSERT(flushed.document_mask.empty());
       Init();
     }
   }
@@ -131,12 +132,19 @@ struct FlushedSegmentContext {
     document_mask.reserve(flushed.docs_mask.count + (invalid_end - end));
 
     // translate removes
-    for (size_t old_pos = 0,
-                end_pos = std::min(end, flushed.docs_mask.set.size());
-         old_pos < end_pos; ++old_pos) {
-      if (flushed.docs_mask.set.test(old_pos)) {
-        const auto new_doc = Old2New(old_pos + doc_limits::min());
+    // https://lemire.me/blog/2018/02/21/iterating-over-set-bits-quickly
+    const auto word_count =
+      std::min(bitset::bits_to_words(end), flushed.docs_mask.set.words());
+    for (size_t word_idx = 0; word_idx != word_count; ++word_idx) {
+      auto word = flushed.docs_mask.set[word_idx];
+      const auto old_doc =
+        word_idx * bits_required<bitset::word_t>() + doc_limits::min();
+      while (word != 0) {
+        const auto t = word & -word;
+        const auto offset = std::countr_zero(word);
+        const auto new_doc = Old2New(old_doc + offset);
         document_mask.insert(new_doc);
+        word ^= t;
       }
     }
     IRS_ASSERT(document_mask.size() == flushed.docs_mask.count);
@@ -152,8 +160,10 @@ struct FlushedSegmentContext {
       document_mask.insert(new_doc);
     }
 
-    flushed.docs_mask = {};
     flushed.document_mask = std::move(document_mask);
+    flushed.docs_mask.set = {};
+    // set count to invalid
+    flushed.docs_mask.count = doc_limits::eof();
   }
 
   static doc_id_t Translate(const auto& map, auto from) noexcept {
@@ -713,26 +723,22 @@ void IndexWriter::Transaction::Reset() noexcept {
 
 void IndexWriter::Transaction::RegisterFlush() {
   if (active_.Segment() != nullptr && active_.Flush() == nullptr) {
-    writer_.GetFlushContext()->AddToPending(active_);
+    writer_->GetFlushContext()->AddToPending(active_);
   }
 }
 
-bool IndexWriter::Transaction::Commit(uint64_t last_tick) noexcept {
+bool IndexWriter::Transaction::CommitImpl(uint64_t last_tick) noexcept try {
   auto* segment = active_.Segment();
-  if (segment == nullptr) {
-    return true;  // nothing to do
-  }
-  try {
-    segment->Commit(queries_, last_tick);
-    writer_.GetFlushContext()->Emplace(std::move(active_));
-    IRS_ASSERT(active_.Segment() == nullptr);
-    return true;
-  } catch (...) {
-    IRS_ASSERT(active_.Segment() != nullptr);
-    // Can be implemented better but I more want to allow Commit throw
-    Abort();
-    return false;
-  }
+  IRS_ASSERT(segment != nullptr);
+  segment->Commit(queries_, last_tick);
+  writer_->GetFlushContext()->Emplace(std::move(active_));
+  IRS_ASSERT(active_.Segment() == nullptr);
+  return true;
+} catch (...) {
+  IRS_ASSERT(active_.Segment() != nullptr);
+  // TODO(MBkkt) Use intrusive list to avoid possibility bad_alloc here
+  Abort();
+  return false;
 }
 
 void IndexWriter::Transaction::Abort() noexcept {
@@ -747,28 +753,29 @@ void IndexWriter::Transaction::Abort() noexcept {
   }
   segment->Rollback();
   // cannot throw because active_.Flush() not null
-  writer_.GetFlushContext()->Emplace(std::move(active_));
+  writer_->GetFlushContext()->Emplace(std::move(active_));
   IRS_ASSERT(active_.Segment() == nullptr);
 }
 
 void IndexWriter::Transaction::UpdateSegment(bool disable_flush) {
+  IRS_ASSERT(Valid());
   while (active_.Segment() == nullptr) {  // lazy init
-    active_ = writer_.GetSegmentContext();
+    active_ = writer_->GetSegmentContext();
   }
 
   auto& segment = *active_.Segment();
   auto& writer = *segment.writer_;
 
   if (IRS_LIKELY(writer.initialized())) {
-    if (disable_flush || !writer_.FlushRequired(writer)) {
+    if (disable_flush || !writer_->FlushRequired(writer)) {
       return;
     }
     // Force flush of a full segment
     IRS_LOG_TRACE(absl::StrCat(
       "Flushing segment '", writer.name(), "', docs=", writer.buffered_docs(),
       ", memory=", writer.memory_active(),
-      ", docs limit=", writer_.segment_limits_.segment_docs_max.load(),
-      ", memory limit=", writer_.segment_limits_.segment_memory_max.load()));
+      ", docs limit=", writer_->segment_limits_.segment_docs_max.load(),
+      ", memory limit=", writer_->segment_limits_.segment_memory_max.load()));
 
     try {
       segment.Flush();

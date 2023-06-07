@@ -39,7 +39,7 @@ void BM_segmentation_analyzer(benchmark::State& state) {
   const std::string_view str = "QUICK BROWN FOX JUMPS OVER THE LAZY DOG";
   for (auto _ : state) {
     stream.reset(str);
-    while (const bool has_next = stream.next()) {
+    while (bool has_next = stream.next()) {
       benchmark::DoNotOptimize(has_next);
     }
   }
