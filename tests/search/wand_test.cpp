@@ -314,8 +314,12 @@ TEST_P(WandTestCase, TermFilterMultipleScorersDense) {
   Scorers scorers;
   scorers.PushBack<irs::TFIDF>(false);
   scorers.PushBack<irs::TFIDF>(true);
-  scorers.PushBack<irs::BM25>();
-  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+  const auto& bm25 = scorers.PushBack<irs::BM25>();
+  ASSERT_FALSE(bm25.IsBM15() || bm25.IsBM11());
+  const auto& bm15 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.f);
+  ASSERT_TRUE(bm15.IsBM15());
+  const auto& bm11 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 1.f);
+  ASSERT_TRUE(bm11.IsBM11());
 
   GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
@@ -339,8 +343,12 @@ TEST_P(WandTestCase, TermFilterMultipleScorersSparse) {
   Scorers scorers;
   scorers.PushBack<irs::TFIDF>(false);
   scorers.PushBack<irs::TFIDF>(true);
-  scorers.PushBack<irs::BM25>();
-  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+  const auto& bm25 = scorers.PushBack<irs::BM25>();
+  ASSERT_FALSE(bm25.IsBM15() || bm25.IsBM11());
+  const auto& bm15 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.f);
+  ASSERT_TRUE(bm15.IsBM15());
+  const auto& bm11 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 1.f);
+  ASSERT_TRUE(bm11.IsBM11());
 
   GenerateSegment(scorers, false);
   AssertTermFilter(scorers);
@@ -380,8 +388,17 @@ TEST_P(WandTestCase, TermFilterBM25) {
 
 TEST_P(WandTestCase, TermFilterBM15) {
   Scorers scorers;
-  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.f);
   ASSERT_TRUE(scorer.IsBM15());
+
+  GenerateSegment(scorers, true);
+  AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, TermFilterBM11) {
+  Scorers scorers;
+  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 1.f);
+  ASSERT_TRUE(scorer.IsBM11());
 
   GenerateSegment(scorers, true);
   AssertTermFilter(scorers);

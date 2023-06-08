@@ -687,12 +687,12 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
   }
 
   const bool has_skip_list = skip_.Skip0() < meta.docs_count;
-  auto write_max_score = [&] {
+  auto write_max_score = [&](size_t level) {
     ApplyWriters([&](auto& writer) {
-      const byte_type size = writer.SizeRoot();
+      const byte_type size = writer.SizeRoot(level);
       doc_out_->write_byte(size);
     });
-    ApplyWriters([&](auto& writer) { writer.WriteRoot(*doc_out_); });
+    ApplyWriters([&](auto& writer) { writer.WriteRoot(level, *doc_out_); });
   };
 
   if (1 == meta.docs_count) {
@@ -705,8 +705,9 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
     auto prev = doc_.block_last;
 
     if (!has_skip_list) {
-      write_max_score();
+      write_max_score(0);
     }
+    // TODO(MBkkt) using bits not full block encoding
     if (features_.HasFrequency()) {
       auto doc_freq = doc_.freqs.begin();
       for (; doc < doc_.doc; ++doc) {
@@ -796,8 +797,9 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
   // skip data, so we need to flush it
   if (has_skip_list) {
     meta.e_skip_start = doc_out_->file_pointer() - doc_.start;
-    write_max_score();
-    skip_.Flush(*doc_out_);
+    const auto num_levels = skip_.CountLevels();
+    write_max_score(num_levels);
+    skip_.FlushLevels(num_levels, *doc_out_);
   }
 
   doc_.doc = doc_.docs.begin();
@@ -1973,11 +1975,11 @@ void CommonReadWandData(WandExtent wextent, WandIndex windex,
   const auto extent = wextent.GetExtent();
   IRS_ASSERT(extent);
   if (IRS_LIKELY(extent == 1)) {
-    in.read_byte();
-    ctx.Read(in);
+    auto size = in.read_byte();
+    ctx.Read(in, size);
     func(&score);
   } else {
-    const auto [scorer_offset, block_offset] = [&]() {
+    const auto [scorer_offset, size, block_offset] = [&]() {
       const auto index = windex.GetExtent();
       IRS_ASSERT(index < extent);
 
@@ -1988,7 +1990,7 @@ void CommonReadWandData(WandExtent wextent, WandIndex windex,
         offset_before += in.read_byte();
       }
 
-      std::ignore = in.read_byte();
+      const auto size = in.read_byte();
       ++i;
 
       uint64_t offset_after = 0;
@@ -1996,13 +1998,13 @@ void CommonReadWandData(WandExtent wextent, WandIndex windex,
         offset_after += in.read_byte();
       }
 
-      return std::pair{offset_before, offset_after};
+      return std::tuple{offset_before, size, offset_after};
     }();
 
     if (scorer_offset) {
       in.skip(scorer_offset);
     }
-    ctx.Read(in);
+    ctx.Read(in, size);
     func(&score);
     if (block_offset) {
       in.skip(block_offset);

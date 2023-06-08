@@ -229,7 +229,7 @@ struct BM25Context final : public BM15Context {
       norm_cache{stats.norm_cache} {}
 
   Norm norm;
-  float_t norm_length;  // precomputed 'k*b/avgD'
+  float_t norm_length;  // precomputed 'k*b/avg_dl'
   const float_t* norm_cache;
 };
 
@@ -492,25 +492,53 @@ void BM25::get_features(std::set<type_info::type_id>& features) const {
 }
 
 WandWriter::ptr BM25::prepare_wand_writer(size_t max_levels) const {
-  return ResolveBool(
-    NeedsNorm(),
-    [&]<bool HasNorms>(
-      std::integral_constant<bool, HasNorms>) -> WandWriter::ptr {
-      return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
-        *this, max_levels);
-    });
+  if (IsBM1()) {
+    return {};
+  }
+  if (IsBM15()) {
+    return std::make_unique<FreqNormWriter<kWandTagMaxFreq>>(*this, max_levels);
+  }
+  if (IsBM11()) {
+    // idf * (k + 1) * tf / (k * (1 - b + b * dl / avg_dl) + tf)
+    // idf * (k + 1) -- doesn't affect compare
+    // tf / (k * (1 - b + b * dl / avg_dl) + tf)
+    // replacement tf = x * dl
+    // x * dl / (k * (1 - b + b * dl / avg_dl) + x * dl)
+    // divide by dl
+    // x / (k * ((1 - b) / dl + b / avg_dl) + x)
+    // b == 1
+    // x / (k / avg_dl + x)
+    return std::make_unique<FreqNormWriter<kWandTagDivNorm>>(*this, max_levels);
+  }
+  // Approximation that suited for any BM25
+  return std::make_unique<FreqNormWriter<kWandTagMinNorm>>(*this, max_levels);
 }
 
 WandSource::ptr BM25::prepare_wand_source() const {
-  return ResolveBool(NeedsNorm(),
-                     [&]<bool HasNorms>(std::integral_constant<bool, HasNorms>)
-                       -> WandSource::ptr {
-                       return std::make_unique<WandAttributes<HasNorms>>();
-                     });
+  if (IsBM1()) {
+    return {};
+  }
+  if (IsBM15()) {
+    return std::make_unique<FreqNormSource<kWandTagFreq>>();
+  }
+  return std::make_unique<FreqNormSource<kWandTagNorm>>();
 }
 
 TermCollector::ptr BM25::prepare_term_collector() const {
   return std::make_unique<TermCollectorImpl>();
+}
+
+Scorer::WandType BM25::wand_type() const noexcept {
+  if (IsBM1()) {
+    return WandType::kNone;
+  }
+  if (IsBM15()) {
+    return WandType::kMaxFreq;
+  }
+  if (IsBM11()) {
+    return WandType::kDivNorm;
+  }
+  return WandType::kMinNorm;
 }
 
 bool BM25::equals(const Scorer& other) const noexcept {
