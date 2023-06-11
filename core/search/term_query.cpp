@@ -70,7 +70,8 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   if (!ord.empty()) {
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
-    if (score->IsDefault()) {
+    if (score->IsDefault() || ord.buckets().size() > 1) {
+      // TODO(MBkkt) use wand score as first here
       *score = CompileScore(ord.buckets(), rdr, *state->reader, stats_.c_str(),
                             *docs, boost());
     }
