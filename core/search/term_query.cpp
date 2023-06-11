@@ -52,9 +52,9 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
       return reader->wanderator(
         *state->cookie, ord.features(),
         {.factory = [&](const attribute_provider& attrs,
-                        const Scorer& scorer) -> ScoreFunction {
-          return scorer.prepare_scorer(rdr, state->reader->meta().features,
-                                       stats_.c_str(), attrs, boost());
+                        const Scorer&) -> ScoreFunction {
+          return CompileScore(ord.buckets(), rdr, *state->reader,
+                              stats_.c_str(), attrs, boost());
         }},
         ctx.wand);
     } else {
@@ -70,8 +70,7 @@ doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
   if (!ord.empty()) {
     auto* score = irs::get_mutable<irs::score>(docs.get());
 
-    if (score) {
-      // FIXME(gnusi): honor cached wanderator score
+    if (score->IsDefault()) {
       *score = CompileScore(ord.buckets(), rdr, *state->reader, stats_.c_str(),
                             *docs, boost());
     }
