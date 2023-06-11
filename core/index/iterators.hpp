@@ -29,6 +29,7 @@
 #include "utils/attributes.hpp"
 #include "utils/iterator.hpp"
 #include "utils/memory.hpp"
+#include "utils/type_limits.hpp"
 
 namespace irs {
 
@@ -57,8 +58,8 @@ struct doc_iterator : iterator<doc_id_t, attribute_provider> {
   // return last document in this block
   // (for more information see class description)
   virtual doc_id_t shallow_seek(doc_id_t target) {
-    IRS_ASSERT(false);
-    return {};
+    seek(target);
+    return doc_limits::eof();
   }
 };
 

@@ -51,7 +51,7 @@ ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
   uintptr_t boost = 0;
   std::memcpy(&boost, &value, sizeof(score_t));
   static_assert(sizeof(score_ctx*) == sizeof(uintptr_t));
-  return {reinterpret_cast<score_ctx*>(boost), &Constant1, &Noop};
+  return {reinterpret_cast<score_ctx*>(boost), &Constant1, &DefaultMin, &Noop};
 }
 
 ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
@@ -61,7 +61,7 @@ ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
     return Constant(value);
   } else {
     return {absl::bit_cast<score_ctx*>(ConstantCtx{value, count}), &ConstantN,
-            &Noop};
+            &DefaultMin, &Noop};
   }
 }
 

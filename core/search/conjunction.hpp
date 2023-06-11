@@ -90,8 +90,7 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
                 "default move constructor expected");
 
   explicit conjunction(doc_iterators_t&& itrs, Merger&& merger = Merger{})
-    : Merger{std::move(merger)},
-      itrs_{[](doc_iterators_t&& itrs) {
+    : Merger{std::move(merger)}, itrs_{[](doc_iterators_t&& itrs) {
         IRS_ASSERT(!itrs.empty());
 
         // sort subnodes in ascending order by their cost
@@ -102,15 +101,10 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
                   });
         // NRVO doesn't work for function parameters
         return std::move(itrs);
-      }(std::move(itrs))},
-      front_{itrs_.front().it.get()},
-      front_doc_{irs::get_mutable<document>(front_)} {
+      }(std::move(itrs))} {
     IRS_ASSERT(!itrs_.empty());
-    IRS_ASSERT(front_);
-    IRS_ASSERT(front_doc_);
-    std::get<attribute_ptr<document>>(attrs_) =
-      const_cast<document*>(front_doc_);
-    std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(front_);
+    std::get<attribute_ptr<cost>>(attrs_) =
+      irs::get_mutable<cost>(itrs_.front().it.get());
 
     if constexpr (HasScore_v<Merger>) {
       prepare_score();
@@ -127,27 +121,146 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t value() const final { return front_doc_->value; }
+  auto& doc() { return std::get<document>(attrs_); }
+  auto& score() { return std::get<irs::score>(attrs_); }
 
-  bool next() override {
-    if (!front_->next()) {
-      return false;
+  doc_id_t value() const final { return std::get<document>(attrs_).value; }
+
+  bool next() override { return !doc_limits::eof(seek(value() + 1)); }
+
+  IRS_NO_INLINE doc_id_t Seal() {
+    leafs_doc_ = doc_limits::eof();
+    doc().value = doc_limits::eof();
+    score().leaf_max = {};
+    score().list_max = {};
+    return doc_limits::eof();
+  }
+
+  doc_id_t ShallowSeekImpl(doc_id_t target) {
+    auto& doc_value = doc().value;
+    auto& merger = static_cast<Merger&>(*this);
+    if (target <= leafs_doc_) {
+    score_check:
+      if constexpr (HasScore_v<Merger>) {
+        if (min_competitive_score_ < score().leaf_max) {
+          return target;
+        }
+      } else {
+        return target;
+      }
+      target = leafs_doc_ + !doc_limits::eof(leafs_doc_);
+    }
+    IRS_ASSERT(doc_value <= leafs_doc_);
+  eof_check:
+    if (IRS_UNLIKELY(doc_limits::eof(target))) {
+      return target;
     }
 
-    return !doc_limits::eof(converge(front_doc_->value));
+    auto max_leafs = doc_limits::eof();
+    auto min_leafs = doc_value;
+    score_t max_leafs_score = {};
+
+    for (auto& it : itrs_) {
+      auto max_leaf = it->shallow_seek(target);
+      auto min_leaf = it.doc->value;
+      IRS_ASSERT(min_leaf <= max_leaf);
+      if (target < min_leaf) {
+        target = min_leaf;
+      }
+      if (max_leafs < min_leaf) {
+        goto eof_check;
+      }
+      if (min_leafs < min_leaf) {
+        min_leafs = min_leaf;
+      }
+      if (max_leafs > max_leaf) {
+        max_leafs = max_leaf;
+      }
+      IRS_ASSERT(min_leafs <= max_leafs);
+      if constexpr (HasScore_v<Merger>) {
+        merger(&max_leafs_score, &it.score->leaf_max);
+      }
+    }
+
+    leafs_doc_ = max_leafs;
+    doc_value = min_leafs;
+    score().leaf_max = max_leafs_score;
+    IRS_ASSERT(doc_value <= target);
+    IRS_ASSERT(target <= leafs_doc_);
+    goto score_check;
+  }
+
+  doc_id_t shallow_seek(doc_id_t target) final {
+    target = ShallowSeekImpl(target);
+    if (IRS_UNLIKELY(doc_limits::eof(target))) {
+      return Seal();
+    }
+    return leafs_doc_;
   }
 
   doc_id_t seek(doc_id_t target) override {
-    if (doc_limits::eof(target = front_->seek(target))) {
-      return doc_limits::eof();
+    auto& doc_value = doc().value;
+    if (IRS_UNLIKELY(target <= doc_value)) {
+      if (min_competitive_score_ < score_) {
+        return doc_value;
+      }
+      target = doc_value + !doc_limits::eof(doc_value);
+    }
+    auto& merger = static_cast<Merger&>(*this);
+  align_leafs:
+    target = ShallowSeekImpl(target);
+  align_docs:
+    if (IRS_UNLIKELY(doc_limits::eof(target))) {
+      return Seal();
+    }
+    auto it = itrs_.begin();
+    const auto seek_target = (*it)->seek(target);
+    if (seek_target > leafs_doc_) {
+      target = seek_target;
+      goto align_leafs;
+    }
+    if (IRS_UNLIKELY(doc_limits::eof(seek_target))) {
+      return Seal();
+    }
+    ++it;
+    const auto end = itrs_.end();
+    do {
+      target = (*it)->seek(seek_target);
+      if (target != seek_target) {
+        if (target > leafs_doc_) {
+          goto align_leafs;
+        }
+        goto align_docs;
+      }
+      ++it;
+    } while (it != end);
+    doc_value = seek_target;
+
+    if constexpr (HasScore_v<Merger>) {
+      auto begin = std::begin(scores_);
+      auto end = std::end(scores_);
+
+      (**begin)(&score_);
+      for (++begin; begin != end; ++begin) {
+        (**begin)(merger.temp());
+        merger(&score_, merger.temp());
+      }
+      if (min_competitive_score_ < score_) {
+        return target;
+      }
+    } else {
+      return target;
     }
 
-    return converge(target);
+    ++target;
+    if (target > leafs_doc_) {
+      goto align_leafs;
+    }
+    goto align_docs;
   }
 
  private:
-  using attributes =
-    std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
+  using attributes = std::tuple<document, attribute_ptr<cost>, irs::score>;
 
   void prepare_score() {
     IRS_ASSERT(Merger::size());
@@ -157,6 +270,8 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
     // copy scores into separate container
     // to avoid extra checks
     scores_.reserve(itrs_.size());
+    sumScores_ = {};
+    minScores_ = std::numeric_limits<score_t>::max();
     for (auto& it : itrs_) {
       // FIXME(gnus): remove const cast
       auto* sub_score = const_cast<irs::score*>(it.score);
@@ -164,91 +279,36 @@ class conjunction : public doc_iterator, private Merger, private score_ctx {
       if (!sub_score->IsDefault()) {
         scores_.emplace_back(sub_score);
       }
+      sumScores_ += sub_score->list_max;
+      minScores_ = std::min(sub_score->list_max, minScores_);
     }
-
-    // prepare score
-    switch (scores_.size()) {
-      case 0:
-        IRS_ASSERT(score.IsDefault());
-        score = ScoreFunction::Default(Merger::size());
-        break;
-      case 1:
-        score = std::move(*scores_.front());
-        break;
-      case 2:
-        score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-          auto& self = *static_cast<conjunction*>(ctx);
-          auto& merger = static_cast<Merger&>(self);
-          (*self.scores_.front())(res);
-          (*self.scores_.back())(merger.temp());
-          merger(res, merger.temp());
-        });
-        break;
-      case 3:
-        score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-          auto& self = *static_cast<conjunction*>(ctx);
-          auto& merger = static_cast<Merger&>(self);
-          (*self.scores_.front())(res);
-          (*self.scores_[1])(merger.temp());
-          merger(res, merger.temp());
-          (*self.scores_.back())(merger.temp());
-          merger(res, merger.temp());
-        });
-        break;
-      default:
-        score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-          auto& self = *static_cast<conjunction*>(ctx);
-          auto& merger = static_cast<Merger&>(self);
-          auto begin = std::begin(self.scores_);
-          auto end = std::end(self.scores_);
-
-          (**begin)(res);
-          for (++begin; begin != end; ++begin) {
-            (**begin)(merger.temp());
-            merger(res, merger.temp());
-          }
-        });
-        break;
-    }
-  }
-
-  // tries to converge front_ and other iterators to the specified target.
-  // if it impossible tries to find first convergence place
-  doc_id_t converge(doc_id_t target) {
-    IRS_ASSERT(!doc_limits::eof(target));
-
-    for (auto rest = seek_rest(target); target != rest;
-         rest = seek_rest(target)) {
-      target = front_->seek(rest);
-      if (doc_limits::eof(target)) {
-        break;
+    score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
+      auto& self = *static_cast<conjunction*>(ctx);
+      *res = self.score_;
+    });
+    score.min_ = [](score_ctx* ctx, score_t min) noexcept {
+      auto& self = *static_cast<conjunction*>(ctx);
+      self.min_competitive_score_ = min;
+      if (min <= self.minScores_) {
+        return;
       }
-    }
-
-    return target;
-  }
-
-  // seeks all iterators except the
-  // first to the specified target
-  doc_id_t seek_rest(doc_id_t target) {
-    IRS_ASSERT(!doc_limits::eof(target));
-
-    for (auto it = itrs_.begin() + 1, end = itrs_.end(); it != end; ++it) {
-      const auto doc = (*it)->seek(target);
-
-      if (target < doc) {
-        return doc;
+      for (auto* score : self.scores_) {
+        auto others = self.sumScores_ - score->list_max;
+        if (min > others) {
+          score->SetMin(min - others);
+        }
       }
-    }
-
-    return target;
+    };
   }
 
   attributes attrs_;
   doc_iterators_t itrs_;
-  std::vector<score*> scores_;  // valid sub-scores
-  irs::doc_iterator* front_;
-  const irs::document* front_doc_{};
+  doc_id_t leafs_doc_{doc_limits::invalid()};
+  score_t min_competitive_score_{};
+  score_t score_{};
+  score_t sumScores_{};
+  score_t minScores_{std::numeric_limits<score_t>::max()};
+  std::vector<irs::score*> scores_;  // valid sub-scores
 };
 
 // Returns conjunction iterator created from the specified sub iterators

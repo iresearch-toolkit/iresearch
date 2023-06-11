@@ -28,6 +28,8 @@
 namespace irs {
 
 // Represents a score related for the particular document
+// min score set by document consumers
+// *_max set by document producers
 struct score : attribute, ScoreFunction {
   static const score kNoScore;
 
@@ -42,6 +44,18 @@ struct score : attribute, ScoreFunction {
   }
 
   using ScoreFunction::operator=;
+
+  // For disjunction/conjunction it's just sum of sub-iterators max score
+  // For iterator without score it depends on count of documents in iterator
+  // For wanderator it's max score for whole skip-list
+  // TODO(MBkkt) tail_max better here and not affect correctness
+  //  but to support it we need to know max value in the tail blocks.
+  //  Open question: how do it without read next blocks?
+  score_t list_max{};
+  score_t leaf_max{};
+#ifdef IRESEARCH_TEST                   // Used for tests
+  std::span<const score_t> levels_max;  // levels_max.back() == leaf_max
+#endif
 };
 
 using ScoreFunctions = SmallVector<ScoreFunction, 2>;
