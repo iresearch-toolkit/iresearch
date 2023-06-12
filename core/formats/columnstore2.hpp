@@ -261,6 +261,13 @@ struct column_header {
 
 class reader final : public columnstore_reader {
  public:
+  void CountMemory(const MemoryStats& stats) const final {
+    // TODO(Dronplane) compute stats.pinned_memory
+    if (data_in_ != nullptr) {
+      data_in_->CountMemory(stats);
+    }
+  }
+
   bool prepare(const directory& dir, const SegmentMeta& meta,
                const options& opts = options{}) final;
 

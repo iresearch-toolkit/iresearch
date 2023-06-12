@@ -34,6 +34,7 @@
 #include "search/term_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
@@ -101,6 +102,8 @@ irs::filter::ptr MakeOr(
 class SubReaderMock final : public irs::SubReader {
  public:
   explicit SubReaderMock(const irs::SegmentInfo meta) : meta_{meta} {}
+
+  void CountMemory(const irs::MemoryStats& stats) const final {}
 
   const irs::SegmentInfo& Meta() const final { return meta_; }
 
@@ -16928,8 +16931,20 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
+  uint64_t fd_count = 0;
+  uint64_t mmaped_memory = 0;
+  uint64_t pinned_memory = 0;
+
   irs::IndexWriterOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
+  {
+    auto reader = writer->GetSnapshot();
+    reader->CountMemory({&fd_count, &mmaped_memory, &pinned_memory});
+    EXPECT_EQ(fd_count, 0);
+    EXPECT_EQ(mmaped_memory, 0);
+    EXPECT_EQ(pinned_memory, 0);
+  }
+
   {
     irs::IndexWriter::Transaction trx;
     ASSERT_FALSE(trx.Valid());
@@ -16939,14 +16954,16 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
                                      doc0->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      doc.Insert<irs::Action::INDEX | irs::Action::STORE>(doc0->stored.begin(),
+                                                          doc0->stored.end());
       ASSERT_TRUE(doc);
     }
     {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc1->indexed.begin(),
                                      doc1->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc1->stored.begin(), doc1->stored.end());
+      doc.Insert<irs::Action::INDEX | irs::Action::STORE>(doc1->stored.begin(),
+                                                          doc1->stored.end());
       ASSERT_TRUE(doc);
     }
     // subcontext with remove
@@ -16961,6 +16978,19 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   writer->Commit();
   AssertSnapshotEquality(*writer);
   auto reader = irs::DirectoryReader(directory);
+  reader.CountMemory({&fd_count, &mmaped_memory, &pinned_memory});
+  if (dynamic_cast<irs::memory_directory*>(&directory) == nullptr) {
+    EXPECT_EQ(fd_count, 3);
+  }
+#ifdef __linux__
+  if (dynamic_cast<irs::MMapDirectory*>(&directory) != nullptr) {
+    EXPECT_GT(mmaped_memory, 0);
+    mmaped_memory = 0;
+  }
+#endif
+  EXPECT_EQ(mmaped_memory, 0);
+  EXPECT_EQ(pinned_memory, 0);
+
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
   ASSERT_EQ(2, segment.docs_count());

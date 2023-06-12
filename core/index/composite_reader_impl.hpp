@@ -53,6 +53,12 @@ class CompositeReaderImpl : public IndexReader {
   std::span<const ReaderType> GetReaders() const noexcept { return readers_; }
   std::span<ReaderType> GetMutReaders() noexcept { return readers_; }
 
+  void CountMemory(const MemoryStats& stats) const final {
+    for (const auto& segment : readers_) {
+      segment.CountMemory(stats);
+    }
+  }
+
   // maximum number of documents
   uint64_t docs_count() const noexcept final { return docs_count_; }
 

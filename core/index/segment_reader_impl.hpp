@@ -40,7 +40,7 @@ class SegmentReaderImpl final : public SubReader {
 
  public:
   SegmentReaderImpl(PrivateTag) noexcept;
-  ~SegmentReaderImpl();
+  ~SegmentReaderImpl() final;
 
   static std::shared_ptr<const SegmentReaderImpl> Open(
     const directory& dir, const SegmentMeta& meta,
@@ -52,6 +52,8 @@ class SegmentReaderImpl final : public SubReader {
   std::shared_ptr<const SegmentReaderImpl> ReopenDocsMask(
     const directory& dir, const SegmentMeta& meta,
     DocumentMask&& docs_mask) const;
+
+  void CountMemory(const MemoryStats& stats) const final;
 
   const SegmentInfo& Meta() const final { return info_; }
 

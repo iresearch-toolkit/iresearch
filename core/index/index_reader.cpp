@@ -28,6 +28,8 @@ namespace {
 const SegmentInfo kEmptyInfo;
 
 struct EmptySubReader final : SubReader {
+  void CountMemory(const MemoryStats& /*stats*/) const final {}
+
   column_iterator::ptr columns() const final {
     return irs::column_iterator::empty();
   }

@@ -3001,6 +3001,16 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
+  void CountMemory(const MemoryStats& stats) const final {
+    // TODO(Dronplane) compute stats.pinned_memory
+    if (pr_ != nullptr) {
+      pr_->CountMemory(stats);
+    }
+    if (terms_in_ != nullptr) {
+      terms_in_->CountMemory(stats);
+    }
+  }
+
   void prepare(const ReaderState& state) final;
 
   const irs::term_reader* field(std::string_view field) const final;

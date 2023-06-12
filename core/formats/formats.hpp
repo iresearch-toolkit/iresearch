@@ -177,6 +177,8 @@ struct postings_reader {
 
   virtual ~postings_reader() = default;
 
+  virtual void CountMemory(const MemoryStats& stats) const = 0;
+
   // in - corresponding stream
   // features - the set of features available for segment
   virtual void prepare(index_input& in, const ReaderState& state,
@@ -280,6 +282,8 @@ struct field_reader {
 
   virtual ~field_reader() = default;
 
+  virtual void CountMemory(const MemoryStats& stats) const = 0;
+
   virtual void prepare(const ReaderState& stat) = 0;
 
   virtual const term_reader* field(std::string_view field) const = 0;
@@ -364,6 +368,8 @@ struct columnstore_reader {
   };
 
   virtual ~columnstore_reader() = default;
+
+  virtual void CountMemory(const MemoryStats& stats) const = 0;
 
   // Returns true if conlumnstore is present in a segment, false - otherwise.
   // May throw `io_error` or `index_error`.
