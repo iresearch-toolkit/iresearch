@@ -104,6 +104,40 @@ std::shared_ptr<mmap_handle> OpenHandle(const std::filesystem::path& dir,
   return nullptr;
 }
 
+#ifdef __linux__
+size_t BytesInCache(uint8_t* addr, size_t length) {
+  static const size_t kPageSize = sysconf(_SC_PAGESIZE);
+  IRS_ASSERT(reinterpret_cast<uintptr_t>(addr) % kPageSize == 0);
+  std::vector<uint8_t> pages(
+    std::min(8 * kPageSize, (length + kPageSize - 1) / kPageSize), 0);
+  size_t bytes = 0;
+  auto count = [&](uint8_t* data, size_t bytes_size, size_t pages_size) {
+    mincore(static_cast<void*>(data), bytes_size, pages.data());
+    auto it = pages.begin();
+    auto end = it + pages_size;
+    for (; it != end; ++it) {
+      if (*it != 0) {
+        bytes += kPageSize;
+      }
+    }
+  };
+
+  const auto available_pages = pages.size();
+  const auto available_space = available_pages * kPageSize;
+
+  const auto* end = addr + length;
+  while (addr + available_space < end) {
+    count(addr, available_space, available_pages);
+    addr += available_space;
+  }
+  if (addr != end) {
+    const size_t bytes_size = end - addr;
+    count(addr, bytes_size, (bytes_size + kPageSize - 1) / kPageSize);
+  }
+  return bytes;
+}
+#endif
+
 // Input stream for memory mapped directory
 class MMapIndexInput final : public bytes_view_input {
  public:
@@ -116,6 +150,21 @@ class MMapIndexInput final : public bytes_view_input {
     } else {
       handle_.reset();
     }
+  }
+
+  void CountMemory(MemoryStats stats) const final {
+    if (handle_ == nullptr) {
+      return;
+    }
+    if (stats.fd_count != nullptr) {
+      ++*stats.fd_count;
+    }
+#ifdef __linux__
+    if (stats.mmaped_memory != nullptr) {
+      *stats.mmaped_memory +=
+        BytesInCache(static_cast<uint8_t*>(handle_->addr()), handle_->size());
+    }
+#endif
   }
 
   MMapIndexInput(const MMapIndexInput& rhs) noexcept

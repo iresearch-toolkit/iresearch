@@ -109,6 +109,12 @@ struct data_input {
   data_input& operator++(int) noexcept { return *this; }
 };
 
+struct MemoryStats {
+  uint64_t* fd_count{};
+  uint64_t* mmaped_memory{};
+  uint64_t* pinned_memory{};
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @struct index_input
 //////////////////////////////////////////////////////////////////////////////
@@ -141,6 +147,8 @@ struct index_input : public data_input {
   /// specified offset without changing current position
   //////////////////////////////////////////////////////////////////////////////
   virtual int64_t checksum(size_t offset) const = 0;
+
+  virtual void CountMemory(MemoryStats stats) const {}
 
  protected:
   index_input() = default;

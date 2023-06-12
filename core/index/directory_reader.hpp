@@ -69,6 +69,8 @@ class DirectoryReader final : public IndexReader {
 
   const SubReader& operator[](size_t i) const final;
 
+  void CountMemory(MemoryStats stats) const final;
+
   uint64_t docs_count() const final;
 
   uint64_t live_docs_count() const final;

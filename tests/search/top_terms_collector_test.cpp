@@ -204,6 +204,9 @@ struct sub_reader final : irs::SubReader {
     info.docs_count = num_docs;
     info.live_docs_count = num_docs;
   }
+
+  void CountMemory(irs::MemoryStats stats) const final {}
+
   const irs::SegmentInfo& Meta() const final { return info; }
 
   const irs::DocumentMask* docs_mask() const final { return nullptr; }

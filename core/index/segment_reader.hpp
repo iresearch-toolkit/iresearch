@@ -54,6 +54,8 @@ class SegmentReader final : public SubReader {
   SegmentReader* operator->() noexcept { return this; }
   const SegmentReader* operator->() const noexcept { return this; }
 
+  void CountMemory(MemoryStats stats) const final;
+
   const SegmentInfo& Meta() const final;
 
   column_iterator::ptr columns() const final;

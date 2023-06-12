@@ -230,6 +230,16 @@ void SegmentReaderImpl::Update(const directory& dir, const SegmentMeta& meta,
   info_.live_docs_count = info_.docs_count - docs_mask_.size();
 }
 
+void SegmentReaderImpl::CountMemory(MemoryStats stats) const {
+  // TODO(Dronplane) compute stats.pinned_memory
+  if (field_reader_ != nullptr) {
+    field_reader_->CountMemory(stats);
+  }
+  if (data_ != nullptr && data_->columnstore_reader_ != nullptr) {
+    data_->columnstore_reader_->CountMemory(stats);
+  }
+}
+
 const irs::column_reader* SegmentReaderImpl::column(
   std::string_view name) const {
   const auto& named_columns = data_->named_columns_;

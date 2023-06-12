@@ -117,6 +117,9 @@ class seek_term_iterator : public irs::seek_term_iterator {
 struct SubReader final : irs::SubReader {
   explicit SubReader(size_t num_docs)
     : info{.docs_count = num_docs, .live_docs_count = num_docs} {}
+
+  void CountMemory(irs::MemoryStats stats) const final {}
+
   const irs::SegmentInfo& Meta() const noexcept final { return info; }
   const irs::column_reader* column(std::string_view) const override {
     return nullptr;
