@@ -103,7 +103,7 @@ class SubReaderMock final : public irs::SubReader {
  public:
   explicit SubReaderMock(const irs::SegmentInfo meta) : meta_{meta} {}
 
-  void CountMemory(irs::MemoryStats stats) const final {}
+  void CountMemory(const irs::MemoryStats& stats) const final {}
 
   const irs::SegmentInfo& Meta() const final { return meta_; }
 

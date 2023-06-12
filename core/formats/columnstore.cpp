@@ -2307,7 +2307,7 @@ class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
-  void CountMemory(MemoryStats stats) const final {
+  void CountMemory(const MemoryStats& stats) const final {
     // TODO(MBkkt) should we implement it for old columnstore?
   }
 

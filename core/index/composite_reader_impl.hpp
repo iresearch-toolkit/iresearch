@@ -53,7 +53,7 @@ class CompositeReaderImpl : public IndexReader {
   std::span<const ReaderType> GetReaders() const noexcept { return readers_; }
   std::span<ReaderType> GetMutReaders() noexcept { return readers_; }
 
-  void CountMemory(MemoryStats stats) const final {
+  void CountMemory(const MemoryStats& stats) const final {
     for (const auto& segment : readers_) {
       segment.CountMemory(stats);
     }

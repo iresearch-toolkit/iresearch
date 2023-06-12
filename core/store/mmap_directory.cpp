@@ -152,7 +152,7 @@ class MMapIndexInput final : public bytes_view_input {
     }
   }
 
-  void CountMemory(MemoryStats stats) const final {
+  void CountMemory(const MemoryStats& stats) const final {
     if (handle_ == nullptr) {
       return;
     }

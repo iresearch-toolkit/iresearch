@@ -53,7 +53,7 @@ class SegmentReaderImpl final : public SubReader {
     const directory& dir, const SegmentMeta& meta,
     DocumentMask&& docs_mask) const;
 
-  void CountMemory(MemoryStats stats) const final;
+  void CountMemory(const MemoryStats& stats) const final;
 
   const SegmentInfo& Meta() const final { return info_; }
 

@@ -85,7 +85,7 @@ struct IndexReader {
   virtual ~IndexReader() = default;
 
   // count memory
-  virtual void CountMemory(MemoryStats stats) const = 0;
+  virtual void CountMemory(const MemoryStats& stats) const = 0;
 
   // number of live documents
   virtual uint64_t live_docs_count() const = 0;

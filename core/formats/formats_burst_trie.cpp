@@ -3001,7 +3001,7 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  void CountMemory(MemoryStats stats) const final {
+  void CountMemory(const MemoryStats& stats) const final {
     // TODO(Dronplane) compute stats.pinned_memory
     if (pr_ != nullptr) {
       pr_->CountMemory(stats);

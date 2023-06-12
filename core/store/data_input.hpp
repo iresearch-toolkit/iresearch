@@ -148,7 +148,7 @@ struct index_input : public data_input {
   //////////////////////////////////////////////////////////////////////////////
   virtual int64_t checksum(size_t offset) const = 0;
 
-  virtual void CountMemory(MemoryStats stats) const {}
+  virtual void CountMemory(const MemoryStats& stats) const {}
 
  protected:
   index_input() = default;

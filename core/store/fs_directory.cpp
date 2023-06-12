@@ -226,7 +226,7 @@ class fs_index_output : public buffered_index_output {
 class pooled_fs_index_input;  // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
-  void CountMemory(MemoryStats stats) const final {
+  void CountMemory(const MemoryStats& stats) const final {
     // TODO(Dronplane) compute stats.pinned_memory
     //  Also don't forget about pooled_fs_index_input
     if (handle_ == nullptr) {

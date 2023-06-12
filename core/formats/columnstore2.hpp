@@ -261,7 +261,7 @@ struct column_header {
 
 class reader final : public columnstore_reader {
  public:
-  void CountMemory(MemoryStats stats) const final {
+  void CountMemory(const MemoryStats& stats) const final {
     // TODO(Dronplane) compute stats.pinned_memory
     if (data_in_ != nullptr) {
       data_in_->CountMemory(stats);

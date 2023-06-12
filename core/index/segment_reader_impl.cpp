@@ -230,7 +230,7 @@ void SegmentReaderImpl::Update(const directory& dir, const SegmentMeta& meta,
   info_.live_docs_count = info_.docs_count - docs_mask_.size();
 }
 
-void SegmentReaderImpl::CountMemory(MemoryStats stats) const {
+void SegmentReaderImpl::CountMemory(const MemoryStats& stats) const {
   // TODO(Dronplane) compute stats.pinned_memory
   if (field_reader_ != nullptr) {
     field_reader_->CountMemory(stats);
