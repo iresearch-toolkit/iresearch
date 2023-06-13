@@ -3793,9 +3793,10 @@ size_t postings_reader<FormatTraits>::bit_union(
 
     if (term_state.docs_count > 1) {
       doc_in->seek(term_state.doc_start);
+      IRS_ASSERT(!doc_in->eof());
       if (FormatTraits::wand() &&
           term_state.docs_count < FormatTraits::block_size()) {
-        CommonSkipWandData(Extent<kDynamicValue>{wand_count}, *doc_in_);
+        CommonSkipWandData(Extent<kDynamicValue>{wand_count}, *doc_in);
       }
       IRS_ASSERT(!doc_in->eof());
 
