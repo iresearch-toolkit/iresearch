@@ -1968,6 +1968,28 @@ auto ResolveExtent(byte_type extent, Func&& func) {
   }
 }
 
+// TODO(MBkkt) Make it overloads
+// Remove to many Readers implementations
+
+template<typename WandExtent>
+void CommonSkipWandData(WandExtent extent, index_input& in) {
+  switch (auto count = extent.GetExtent(); count) {
+    case 0:
+      return;
+    case 1:
+      in.skip(in.read_byte());
+      return;
+    default: {
+      uint64_t skip{};
+      for (; count; --count) {
+        skip += in.read_byte();
+      }
+      in.skip(skip);
+      return;
+    }
+  }
+}
+
 template<typename WandExtent, typename WandIndex>
 void CommonReadWandData(WandExtent wextent, WandIndex windex,
                         const ScoreFunction& func, WandSource& ctx,
@@ -2179,7 +2201,11 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       return skip_levels_.back().doc;
     }
 
-    void SkipWandData(index_input& in);
+    void SkipWandData(index_input& in) {
+      if constexpr (FieldTraits::wand()) {
+        CommonSkipWandData(static_cast<WandExtent>(*this), in);
+      }
+    }
 
    private:
     void Enable() noexcept {
@@ -2199,28 +2225,6 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   attributes attrs_;
   doc_id_t docs_count_{};
 };
-
-template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
-void doc_iterator<IteratorTraits, FieldTraits,
-                  WandExtent>::ReadSkip::SkipWandData(index_input& in) {
-  if constexpr (FieldTraits::wand()) {
-    switch (auto count = WandExtent::GetExtent(); count) {
-      case 0:
-        return;
-      case 1:
-        in.skip(in.read_byte());
-        return;
-      default: {
-        uint64_t skip{};
-        for (; count; --count) {
-          skip += in.read_byte();
-        }
-        in.skip(skip);
-        return;
-      }
-    }
-  }
-}
 
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
 void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::ReadSkip::Read(
@@ -3542,7 +3546,7 @@ class postings_reader final : public postings_reader_base {
   }
 
   size_t bit_union(IndexFeatures field, const term_provider_f& provider,
-                   size_t* set) final;
+                   size_t* set, byte_type wand_count) final;
 
  private:
   irs::doc_iterator::ptr MakeWanderator(IndexFeatures field_features,
@@ -3766,7 +3770,7 @@ void bit_union(index_input& doc_in, doc_id_t docs_count, uint32_t (&docs)[N],
 template<typename FormatTraits>
 size_t postings_reader<FormatTraits>::bit_union(
   const IndexFeatures field_features, const term_provider_f& provider,
-  size_t* set) {
+  size_t* set, byte_type wand_count) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[FormatTraits::block_size()];
   uint32_t docs[FormatTraits::block_size()];
@@ -3789,6 +3793,10 @@ size_t postings_reader<FormatTraits>::bit_union(
 
     if (term_state.docs_count > 1) {
       doc_in->seek(term_state.doc_start);
+      if (FormatTraits::wand() &&
+          term_state.docs_count < FormatTraits::block_size()) {
+        CommonSkipWandData(Extent<kDynamicValue>{wand_count}, *doc_in_);
+      }
       IRS_ASSERT(!doc_in->eof());
 
       if (has_freq) {

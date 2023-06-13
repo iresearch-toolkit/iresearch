@@ -3112,7 +3112,10 @@ class field_reader final : public irs::field_reader {
         return nullptr;
       };
 
-      return owner_->pr_->bit_union(meta().index_features, term_provider, set);
+      IRS_ASSERT(owner_ != nullptr);
+      IRS_ASSERT(owner_->pr_ != nullptr);
+      return owner_->pr_->bit_union(meta().index_features, term_provider, set,
+                                    WandCount());
     }
 
     seek_term_iterator::ptr iterator(
