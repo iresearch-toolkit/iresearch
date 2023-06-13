@@ -746,6 +746,10 @@ void normalized_string_json_field_factory(
   tests::document& doc, const std::string& name,
   const json_doc_generator::json_value& data);
 
+void norm2_string_json_field_factory(
+  tests::document& doc, const std::string& name,
+  const json_doc_generator::json_value& data);
+
 template<typename Indexed>
 bool insert(irs::IndexWriter& writer, Indexed ibegin, Indexed iend) {
   auto ctx = writer.GetBatch();
