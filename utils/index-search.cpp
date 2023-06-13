@@ -510,6 +510,7 @@ int search(std::string_view path, std::string_view dir_type,
     }
     return 1;
   }
+  auto* score = scr.get();
 
   auto dir = create_directory(dir_type, path);
 
@@ -550,10 +551,14 @@ int search(std::string_view path, std::string_view dir_type,
   irs::DirectoryReader reader;
   irs::Scorers order;
   irs::async_utils::thread_pool thread_pool(search_threads);
+  irs::IndexReaderOptions options;
+  if (wand.Enabled()) {
+    options.scorers = {&score, 1};
+  }
 
   {
     SCOPED_TIMER("Index read time");
-    reader = irs::DirectoryReader(*dir, codec);
+    reader = irs::DirectoryReader(*dir, codec, options);
   }
 
   std::cout << "Index stats:\n"
