@@ -62,9 +62,9 @@ struct StringLeftWeightTraits {
 template<typename Label>
 class StringLeftWeight : public StringLeftWeightTraits<Label> {
  public:
-  typedef StringLeftWeight<Label> ReverseWeight;
-  typedef std::basic_string<Label> str_t;
-  typedef typename str_t::const_iterator iterator;
+  using ReverseWeight = StringLeftWeight<Label>;
+  using str_t = std::basic_string<Label>;
+  using iterator = typename str_t::const_iterator;
 
   static const std::string& Type() {
     static const std::string type = "left_string";
@@ -516,6 +516,10 @@ inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
 
 inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
                                   irs::bytes_view rhs) {
+  return DivideLeftImpl(lhs, rhs);
+}
+
+inline irs::bytes_view DivideLeft(irs::bytes_view lhs, irs::bytes_view rhs) {
   return DivideLeftImpl(lhs, rhs);
 }
 

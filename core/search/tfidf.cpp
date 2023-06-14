@@ -242,7 +242,6 @@ struct MakeScoreFunctionImpl<TFIDFContext<Norm>> {
 
         auto& state = *static_cast<Ctx*>(ctx);
 
-        // FIXME(gnusi): we don't need idf for WAND evaluation
         float_t idf;
         if constexpr (HasFilterBoost) {
           IRS_ASSERT(state.filter_boost);
@@ -251,7 +250,7 @@ struct MakeScoreFunctionImpl<TFIDFContext<Norm>> {
           idf = state.idf;
         }
 
-        if constexpr (std::is_same_v<Norm, Empty>) {
+        if constexpr (std::is_same_v<Norm, utils::Empty>) {
           *res = tfidf(state.freq.value, idf);
         } else {
           *res = tfidf(state.freq.value, idf) * state.norm();
@@ -350,8 +349,8 @@ ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
     }
   }
 
-  return MakeScoreFunction<TFIDFContext<Empty>>(filter_boost, Empty{}, boost,
-                                                *stats, freq);
+  return MakeScoreFunction<TFIDFContext<utils::Empty>>(
+    filter_boost, utils::Empty{}, boost, *stats, freq);
 }
 
 TermCollector::ptr TFIDF::prepare_term_collector() const {
@@ -363,21 +362,27 @@ FieldCollector::ptr TFIDF::prepare_field_collector() const {
 }
 
 WandWriter::ptr TFIDF::prepare_wand_writer(size_t max_levels) const {
-  return ResolveBool(
-    normalize_,
-    [&]<bool HasNorms>(
-      std::integral_constant<bool, HasNorms>) -> WandWriter::ptr {
-      return std::make_unique<WandWriterImpl<WandProducer<HasNorms>>>(
-        *this, max_levels);
-    });
+  if (normalize_) {
+    // idf * sqrt(tf) / sqrt(dl)
+    // sqrt(tf) / sqrt(dl)
+    // tf / dl
+    return std::make_unique<FreqNormWriter<kWandTagDivNorm>>(*this, max_levels);
+  }
+  return std::make_unique<FreqNormWriter<kWandTagMaxFreq>>(*this, max_levels);
 }
 
 WandSource::ptr TFIDF::prepare_wand_source() const {
-  return ResolveBool(normalize_,
-                     [&]<bool HasNorms>(std::integral_constant<bool, HasNorms>)
-                       -> WandSource::ptr {
-                       return std::make_unique<WandAttributes<HasNorms>>();
-                     });
+  if (normalize_) {
+    return std::make_unique<FreqNormSource<kWandTagNorm>>();
+  }
+  return std::make_unique<FreqNormSource<kWandTagFreq>>();
+}
+
+Scorer::WandType TFIDF::wand_type() const noexcept {
+  if (normalize_) {
+    return WandType::kDivNorm;
+  }
+  return WandType::kMaxFreq;
 }
 
 bool TFIDF::equals(const Scorer& other) const noexcept {

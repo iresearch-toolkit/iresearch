@@ -29,6 +29,41 @@
 
 namespace irs {
 
+uint8_t Scorer::compatible(WandType index, WandType query) noexcept {
+  auto bin_case = [](WandType index, WandType query) noexcept -> uint8_t {
+    return (static_cast<uint8_t>(index) * 8) + static_cast<uint8_t>(query);
+  };
+  switch (bin_case(index, query)) {
+    // no needed wand data
+    case bin_case(WandType::kNone, WandType::kNone):
+    case bin_case(WandType::kNone, WandType::kDivNorm):
+    case bin_case(WandType::kNone, WandType::kMaxFreq):
+    case bin_case(WandType::kNone, WandType::kMinNorm):
+    case bin_case(WandType::kDivNorm, WandType::kNone):
+    case bin_case(WandType::kMaxFreq, WandType::kNone):
+    case bin_case(WandType::kMinNorm, WandType::kNone):
+      IRS_ASSERT(false);
+      [[fallthrough]];
+    // DivNorm very precise and is not compatible with other types
+    case bin_case(WandType::kDivNorm, WandType::kMaxFreq):
+    case bin_case(WandType::kDivNorm, WandType::kMinNorm):
+      return 0;
+    // MaxFreq suitable for any other type
+    case bin_case(WandType::kMaxFreq, WandType::kDivNorm):
+    case bin_case(WandType::kMaxFreq, WandType::kMinNorm):
+    // MinNorm suitable for any score
+    case bin_case(WandType::kMinNorm, WandType::kMaxFreq):
+      return 1;
+    case bin_case(WandType::kMinNorm, WandType::kDivNorm):
+      return 2;
+    case bin_case(WandType::kDivNorm, WandType::kDivNorm):
+    case bin_case(WandType::kMaxFreq, WandType::kMaxFreq):
+    case bin_case(WandType::kMinNorm, WandType::kMinNorm):
+      return std::numeric_limits<uint8_t>::max();
+  }
+  return 0;
+}
+
 size_t Scorers::PushBack(const Scorer& scorer) {
   const auto [bucket_stats_size, bucket_stats_align] = scorer.stats_size();
   IRS_ASSERT(bucket_stats_align <= alignof(std::max_align_t));

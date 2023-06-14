@@ -61,21 +61,27 @@ void SkipWriter::Prepare(
   }
 }
 
-void SkipWriter::Flush(index_output& out) {
-  const auto rbegin =
-    std::make_reverse_iterator(std::begin(levels_) + max_levels_);
+uint32_t SkipWriter::CountLevels() const {
+  auto level = std::make_reverse_iterator(std::begin(levels_) + max_levels_);
   const auto rend = std::rend(levels_);
 
   // find first filled level
-  auto level = std::find_if(rbegin, rend, [](const memory_output& level) {
+  level = std::find_if(level, rend, [](const memory_output& level) {
     return level.stream.file_pointer();
   });
 
-  // write number of levels
+  // count number of levels
   const auto num_levels = static_cast<uint32_t>(std::distance(level, rend));
+  return num_levels;
+}
+
+void SkipWriter::FlushLevels(uint32_t num_levels, index_output& out) {
+  // write number of levels
   out.write_vint(num_levels);
 
   // write levels from n downto 0
+  auto level = std::make_reverse_iterator(std::begin(levels_) + num_levels);
+  const auto rend = std::rend(levels_);
   for (; level != rend; ++level) {
     auto& stream = level->stream;
     stream.flush();  // update length of each buffer

@@ -209,7 +209,8 @@ struct postings_reader {
   // It's up to the caller to allocate enough space for a bitset.
   // This API is experimental.
   virtual size_t bit_union(IndexFeatures field_features,
-                           const term_provider_f& provider, size_t* set) = 0;
+                           const term_provider_f& provider, size_t* set,
+                           byte_type wand_count) = 0;
 };
 
 // Expected usage pattern of seek_term_iterator

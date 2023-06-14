@@ -200,8 +200,9 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     return irs::IndexWriter::Make(*dir_, codec_, mode, options);
   }
 
-  irs::DirectoryReader open_reader() const {
-    return irs::DirectoryReader{*dir_, codec_};
+  irs::DirectoryReader open_reader(
+    const irs::IndexReaderOptions& options = {}) const {
+    return irs::DirectoryReader{*dir_, codec_, options};
   }
 
   void AssertSnapshotEquality(const irs::IndexWriter& writer);

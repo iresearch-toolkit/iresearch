@@ -59,12 +59,12 @@ struct FreqScorer : irs::ScorerBase<void> {
   }
 
   irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const {
-    return std::make_unique<irs::WandWriterImpl<irs::FreqProducer>>(*this,
-                                                                    max_levels);
+    return std::make_unique<irs::FreqNormWriter<irs::kWandTagMaxScore>>(
+      *this, max_levels);
   }
 
   irs::WandSource::ptr prepare_wand_source() const {
-    return std::make_unique<irs::FreqSource>();
+    return std::make_unique<irs::FreqNormSource<irs::kWandTagFreq>>();
   }
 };
 

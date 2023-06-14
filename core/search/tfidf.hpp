@@ -67,6 +67,8 @@ class TFIDF final : public irs::ScorerBase<TFIDF, TFIDFStats> {
 
   WandSource::ptr prepare_wand_source() const final;
 
+  WandType wand_type() const noexcept final;
+
   bool equals(const Scorer& other) const noexcept final;
 
   bool normalize() const noexcept { return normalize_; }

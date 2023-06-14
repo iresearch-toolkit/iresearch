@@ -62,7 +62,9 @@ class SkipWriter : util::noncopyable {
                const memory_allocator& alloc = memory_allocator::global());
 
   // Flushes all internal data into the specified output stream
-  void Flush(index_output& out);
+  uint32_t CountLevels() const;
+  void FlushLevels(uint32_t num_levels, index_output& out);
+  void Flush(index_output& out) { FlushLevels(CountLevels(), out); }
 
   // Resets skip writer internal state
   void Reset() noexcept {
