@@ -2307,8 +2307,9 @@ class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
-  void CountMemory(const MemoryStats& stats) const final {
-    // TODO(MBkkt) should we implement it for old columnstore?
+  uint64_t CountMappedMemory() const final {
+      // We don;t support it for old columnstore
+      return 0;
   }
 
   bool prepare(const directory& dir, const SegmentMeta& meta,

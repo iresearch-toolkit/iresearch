@@ -28,7 +28,7 @@ namespace {
 const SegmentInfo kEmptyInfo;
 
 struct EmptySubReader final : SubReader {
-  void CountMemory(const MemoryStats& /*stats*/) const final {}
+  uint64_t CountMappedMemory() const final { return 0; }
 
   column_iterator::ptr columns() const final {
     return irs::column_iterator::empty();
@@ -54,5 +54,8 @@ const EmptySubReader kEmpty;
 }  // namespace
 
 const SubReader& SubReader::empty() noexcept { return kEmpty; }
+
+
+IResourceManager IResourceManager::kNoopManager;
 
 }  // namespace irs

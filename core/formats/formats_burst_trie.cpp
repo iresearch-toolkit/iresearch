@@ -3001,14 +3001,15 @@ class field_reader final : public irs::field_reader {
  public:
   explicit field_reader(irs::postings_reader::ptr&& pr);
 
-  void CountMemory(const MemoryStats& stats) const final {
-    // TODO(Dronplane) compute stats.pinned_memory
+  uint64_t CountMappedMemory() const final {
+    uint64_t mapped{0};
     if (pr_ != nullptr) {
-      pr_->CountMemory(stats);
+      mapped += pr_->CountMappedMemory();
     }
     if (terms_in_ != nullptr) {
-      terms_in_->CountMemory(stats);
+      mapped += terms_in_->CountMappedMemory();
     }
+    return mapped;
   }
 
   void prepare(const ReaderState& state) final;

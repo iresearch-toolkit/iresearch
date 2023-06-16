@@ -230,14 +230,15 @@ void SegmentReaderImpl::Update(const directory& dir, const SegmentMeta& meta,
   info_.live_docs_count = info_.docs_count - docs_mask_.size();
 }
 
-void SegmentReaderImpl::CountMemory(const MemoryStats& stats) const {
-  // TODO(Dronplane) compute stats.pinned_memory
+uint64_t SegmentReaderImpl::CountMappedMemory() const {
+  uint64_t mapped{0};
   if (field_reader_ != nullptr) {
-    field_reader_->CountMemory(stats);
+    mapped += field_reader_->CountMappedMemory();
   }
   if (data_ != nullptr && data_->columnstore_reader_ != nullptr) {
-    data_->columnstore_reader_->CountMemory(stats);
+    mapped += data_->columnstore_reader_->CountMappedMemory();
   }
+  return mapped;
 }
 
 const irs::column_reader* SegmentReaderImpl::column(
@@ -303,14 +304,13 @@ const irs::column_reader* SegmentReaderImpl::ColumnData::Open(
   }
 
   // initialize optional columnstore
-  columnstore_reader::options columnstore_opts;
+  columnstore_reader::options columnstore_opts{.resource_manager = options.resouce_manager};
   if (options.warmup_columns) {
     columnstore_opts.warmup_column = [warmup = options.warmup_columns,
                                       &field_reader,
                                       &meta](const column_reader& column) {
       return warmup(meta, field_reader, column);
     };
-    columnstore_opts.pinned_memory = options.pinned_memory_accounting;
   }
 
   if (!columnstore_reader_->prepare(dir, meta, columnstore_opts)) {

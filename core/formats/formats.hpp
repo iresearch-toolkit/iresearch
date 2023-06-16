@@ -177,7 +177,7 @@ struct postings_reader {
 
   virtual ~postings_reader() = default;
 
-  virtual void CountMemory(const MemoryStats& stats) const = 0;
+  virtual uint64_t CountMappedMemory() const = 0;
 
   // in - corresponding stream
   // features - the set of features available for segment
@@ -282,7 +282,7 @@ struct field_reader {
 
   virtual ~field_reader() = default;
 
-  virtual void CountMemory(const MemoryStats& stats) const = 0;
+  virtual uint64_t CountMappedMemory() const = 0;
 
   virtual void prepare(const ReaderState& stat) = 0;
 
@@ -364,12 +364,12 @@ struct columnstore_reader {
     // allows to select "hot" columns
     column_visitor_f warmup_column;
     // allows to restrict "hot" columns memory usage
-    MemoryAccountingFunc pinned_memory;
+    IResourceManager& resource_manager{IResourceManager::kNoopManager};
   };
 
   virtual ~columnstore_reader() = default;
 
-  virtual void CountMemory(const MemoryStats& stats) const = 0;
+  virtual uint64_t CountMappedMemory() const = 0;
 
   // Returns true if conlumnstore is present in a segment, false - otherwise.
   // May throw `io_error` or `index_error`.

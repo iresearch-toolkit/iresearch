@@ -103,7 +103,7 @@ class SubReaderMock final : public irs::SubReader {
  public:
   explicit SubReaderMock(const irs::SegmentInfo meta) : meta_{meta} {}
 
-  void CountMemory(const irs::MemoryStats& stats) const final {}
+  virtual uint64_t CountMappedMemory() const { return 0; }
 
   const irs::SegmentInfo& Meta() const final { return meta_; }
 
@@ -16932,16 +16932,14 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc1 = gen.next();
 
   uint64_t fd_count = 0;
-  uint64_t mmaped_memory = 0;
   uint64_t pinned_memory = 0;
 
   irs::IndexWriterOptions writer_options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto reader = writer->GetSnapshot();
-    reader->CountMemory({&fd_count, &mmaped_memory, &pinned_memory});
+    EXPECT_EQ(reader->CountMappedMemory(), 0);
     EXPECT_EQ(fd_count, 0);
-    EXPECT_EQ(mmaped_memory, 0);
     EXPECT_EQ(pinned_memory, 0);
   }
 
@@ -16978,17 +16976,15 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   writer->Commit();
   AssertSnapshotEquality(*writer);
   auto reader = irs::DirectoryReader(directory);
-  reader.CountMemory({&fd_count, &mmaped_memory, &pinned_memory});
   if (dynamic_cast<irs::memory_directory*>(&directory) == nullptr) {
     EXPECT_EQ(fd_count, 3);
   }
 #ifdef __linux__
   if (dynamic_cast<irs::MMapDirectory*>(&directory) != nullptr) {
-    EXPECT_GT(mmaped_memory, 0);
+    EXPECT_GT(reader.CountMMappedMemory(), 0);
     mmaped_memory = 0;
   }
 #endif
-  EXPECT_EQ(mmaped_memory, 0);
   EXPECT_EQ(pinned_memory, 0);
 
   ASSERT_EQ(1, reader.size());

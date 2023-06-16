@@ -38,9 +38,6 @@ using ColumnWarmupCallback =
   std::function<bool(const SegmentMeta& meta, const field_reader& fields,
                      const column_reader& column)>;
 
-// Should never throw as may be used in dtors
-using MemoryAccountingFunc = fu2::function<bool(int64_t) noexcept>;
-
 // Scorers allowed to be used in conjunction with wanderator.
 using ScorersView = std::span<const Scorer* const>;
 
@@ -60,10 +57,35 @@ struct WandContext {
   bool maxscore{false};
 };
 
+struct IResourceManager {
+
+  static IResourceManager kNoopManager;
+
+  virtual bool changeFileDescritors(int64_t) noexcept { return true; }
+
+  virtual bool changeCachedColumnsMemory(int64_t) noexcept {
+    return true;
+  }
+
+  // memory allocated by Inserts/Removes/Replaces:
+  // Buffered column values, docs contexts, pending removals
+  // fst buffer for inserted data.
+  virtual bool changeTransactionPinnedMemory(int64_t) noexcept {
+    return true;
+  }
+
+  // memory allocated by index readers, consolidation (including fst
+  // buffer for consolidated segments), commit.
+  virtual bool changeIndexPinnedMemory(int64_t) noexcept { 
+    return true;
+  }
+};
+
+
 struct IndexReaderOptions {
   ColumnWarmupCallback warmup_columns;
 
-  MemoryAccountingFunc pinned_memory_accounting;
+  IResourceManager& resouce_manager{IResourceManager::kNoopManager};
 
   // A list of wand scorers.
   ScorersView scorers;

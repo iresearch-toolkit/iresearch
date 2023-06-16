@@ -3339,17 +3339,18 @@ bool DocumentMaskReader::read(const directory& dir, const SegmentMeta& meta,
 
 class postings_reader_base : public irs::postings_reader {
  public:
-  void CountMemory(const MemoryStats& stats) const final {
-    // TODO(Dronplane) compute stats.pinned_memory
+  uint64_t CountMappedMemory() const final {
+    uint64_t mapped{0};
     if (doc_in_ != nullptr) {
-      doc_in_->CountMemory(stats);
+      mapped += doc_in_->CountMappedMemory();
     }
     if (pos_in_ != nullptr) {
-      pos_in_->CountMemory(stats);
+      mapped += pos_in_->CountMappedMemory();
     }
     if (pay_in_ != nullptr) {
-      pay_in_->CountMemory(stats);
+      mapped += pay_in_->CountMappedMemory();
     }
+    return mapped;
   }
 
   void prepare(index_input& in, const ReaderState& state,

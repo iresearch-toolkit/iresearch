@@ -152,18 +152,12 @@ class MMapIndexInput final : public bytes_view_input {
     }
   }
 
-  void CountMemory(const MemoryStats& stats) const final {
-    if (handle_ == nullptr) {
-      return;
-    }
-    if (stats.fd_count != nullptr) {
-      ++*stats.fd_count;
-    }
+  uint64_t CountMappedMemory() const final {
 #ifdef __linux__
-    if (stats.mmaped_memory != nullptr) {
-      *stats.mmaped_memory +=
+    return
         BytesInCache(static_cast<uint8_t*>(handle_->addr()), handle_->size());
-    }
+#else
+    return 0;
 #endif
   }
 

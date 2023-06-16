@@ -150,9 +150,10 @@ void write_blocks_dense(index_output& out,
 }
 
 std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
-                                        index_input& in) {
-  std::vector<uint64_t> blocks(
-    math::div_ceil32(hdr.docs_count, column::kBlockSize));
+                                        index_input& in, IResourceManager& resource_manager) {
+  const auto blocks_count = math::div_ceil32(hdr.docs_count, column::kBlockSize);
+  resource_manager.changeIndexPinnedMemory(static_cast<int64_t>(sizeof(uint64_t) * blocks_count));
+  std::vector<uint64_t> blocks(blocks_count);
 
   in.read_bytes(reinterpret_cast<byte_type*>(blocks.data()),
                 sizeof(uint64_t) * blocks.size());
@@ -258,7 +259,7 @@ class range_column_iterator : public resettable_doc_iterator,
 
   void reset() noexcept final {
     min_doc_ = min_base_;
-    max_doc_ = min_doc_ + std::get<cost>(attrs_).estimate() - 1;
+    max_doc_ = min_doc_ + static_cast<irs::doc_id_t>(std::get<cost>(attrs_).estimate() - 1);
     std::get<document>(attrs_).value = doc_limits::invalid();
   }
 
@@ -335,10 +336,12 @@ class bitmap_column_iterator : public resettable_doc_iterator,
 
 class column_base : public column_reader, private util::noncopyable {
  public:
-  column_base(std::optional<std::string>&& name, bstring&& payload,
+  column_base(std::optional<std::string>&& name, IResourceManager& resource_manager,
+              bstring&& payload,
               column_header&& hdr, column_index&& index,
               const index_input& stream, encryption::stream* cipher)
-    : stream_{&stream},
+    : resource_manager_{resource_manager},
+      stream_{&stream},
       cipher_{cipher},
       hdr_{std::move(hdr)},
       index_{std::move(index)},
@@ -352,8 +355,8 @@ class column_base : public column_reader, private util::noncopyable {
       auto released = static_cast<int64_t>(column_data_.size());
       // force memory release
       column_data_ = {};
-      if (buffered_memory_accounter_) {
-        buffered_memory_accounter_(-released);
+      if (released) {
+        resource_manager_.changeCachedColumnsMemory(-released);
       }
     }
   }
@@ -387,7 +390,7 @@ class column_base : public column_reader, private util::noncopyable {
     return *stream_;
   }
 
-  virtual void make_buffered(irs::index_input&, MemoryAccountingFunc&,
+  virtual void make_buffered(irs::index_input&,
                              std::span<std::unique_ptr<column_reader>>) {}
 
  protected:
@@ -398,10 +401,9 @@ class column_base : public column_reader, private util::noncopyable {
   void reset_stream(const index_input* stream) { stream_ = stream; }
 
   bool allocate_buffered_memory(
-    size_t size, MemoryAccountingFunc& buffered_memory_accounter) {
+    size_t size) {
     IRS_ASSERT(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
-    IRS_ASSERT(buffered_memory_accounter);
-    if (!buffered_memory_accounter(static_cast<int64_t>(size))) {
+    if (!resource_manager_.changeCachedColumnsMemory(static_cast<int64_t>(size))) {
       auto column_name = name();
       if (irs::IsNull(column_name)) {
         column_name = "<anonymous>";
@@ -414,7 +416,6 @@ class column_base : public column_reader, private util::noncopyable {
     // should be only one alllocation
     IRS_ASSERT(column_data_.empty());
     column_data_.resize(size);
-    buffered_memory_accounter_ = buffered_memory_accounter;
     return true;
   }
 
@@ -453,13 +454,13 @@ class column_base : public column_reader, private util::noncopyable {
 
   std::vector<irs::byte_type> column_data_;
   irs::index_input::ptr buffered_input_;
+  IResourceManager& resource_manager_;
 
  private:
   template<typename ValueReader>
   doc_iterator::ptr make_iterator(ValueReader&& f, index_input::ptr&& in,
                                   ColumnHint hint) const;
 
-  MemoryAccountingFunc buffered_memory_accounter_;
   const index_input* stream_;
   encryption::stream* cipher_;
   column_header hdr_;
@@ -632,20 +633,22 @@ doc_iterator::ptr make_mask_iterator(const column_base& column,
 }
 
 struct mask_column final : public column_base {
-  static column_ptr read(std::optional<std::string>&& name, bstring&& payload,
+  static column_ptr read(std::optional<std::string>&& name,
+                         IResourceManager& resource_manager, bstring&& payload,
                          column_header&& hdr, column_index&& index,
                          index_input& /*index_in*/, const index_input& data_in,
                          compression::decompressor::ptr&& /*inflater*/,
                          encryption::stream* cipher) {
-    return std::make_unique<mask_column>(std::move(name), std::move(payload),
+    return std::make_unique<mask_column>(std::move(name), resource_manager, std::move(payload),
                                          std::move(hdr), std::move(index),
                                          data_in, cipher);
   }
 
-  mask_column(std::optional<std::string>&& name, bstring&& payload,
+  mask_column(std::optional<std::string>&& name,
+              IResourceManager& resource_manager, bstring&& payload,
               column_header&& hdr, column_index&& index,
               const index_input& data_in, encryption::stream* cipher)
-    : column_base{std::move(name), std::move(payload),
+    : column_base{std::move(name), resource_manager, std::move(payload),
                   std::move(hdr),  std::move(index),
                   data_in,         cipher} {
     IRS_ASSERT(ColumnType::kMask == header().type);
@@ -660,19 +663,20 @@ doc_iterator::ptr mask_column::iterator(ColumnHint hint) const {
 
 class dense_fixed_length_column final : public column_base {
  public:
-  static column_ptr read(std::optional<std::string>&& name, bstring&& payload,
+  static column_ptr read(std::optional<std::string>&& name, 
+                         IResourceManager& resource_manager, bstring&& payload,
                          column_header&& hdr, column_index&& index,
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher);
 
-  dense_fixed_length_column(std::optional<std::string>&& name,
+  dense_fixed_length_column(std::optional<std::string>&& name, IResourceManager& resource_manager,
                             bstring&& payload, column_header&& hdr,
                             column_index&& index, const index_input& data_in,
                             compression::decompressor::ptr&& inflater,
                             encryption::stream* cipher, uint64_t data,
                             uint64_t len)
-    : column_base{std::move(name), std::move(payload),
+    : column_base{std::move(name), resource_manager,std::move(payload),
                   std::move(hdr),  std::move(index),
                   data_in,         cipher},
       inflater_{std::move(inflater)},
@@ -685,14 +689,14 @@ class dense_fixed_length_column final : public column_base {
   doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   void make_buffered(
-    irs::index_input& in, MemoryAccountingFunc& memory_accounter,
+    irs::index_input& in,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
     const auto data_size = len_ * hdr.docs_count;
     const auto bitmap_size =
       calculate_bitmap_size(in.length(), next_sorted_columns);
     const auto total_size = data_size + bitmap_size;
-    if (!allocate_buffered_memory(total_size, memory_accounter)) {
+    if (!allocate_buffered_memory(total_size)) {
       return;
     }
     in.read_bytes(data_, column_data_.data(), data_size);
@@ -738,14 +742,15 @@ class dense_fixed_length_column final : public column_base {
 };
 
 column_ptr dense_fixed_length_column::read(
-  std::optional<std::string>&& name, bstring&& payload, column_header&& hdr,
+  std::optional<std::string>&& name, IResourceManager& resource_manager,
+  bstring&& payload, column_header&& hdr,
   column_index&& index, index_input& index_in, const index_input& data_in,
   compression::decompressor::ptr&& inflater, encryption::stream* cipher) {
   const uint64_t len = index_in.read_long();
   const uint64_t data = index_in.read_long();
 
   return std::make_unique<dense_fixed_length_column>(
-    std::move(name), std::move(payload), std::move(hdr), std::move(index),
+    std::move(name), resource_manager, std::move(payload), std::move(hdr), std::move(index),
     data_in, std::move(inflater), cipher, data, len);
 }
 
@@ -778,26 +783,28 @@ doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
 
 class fixed_length_column final : public column_base {
  public:
-  static column_ptr read(std::optional<std::string>&& name, bstring&& payload,
+  static column_ptr read(std::optional<std::string>&& name,
+                         IResourceManager& resource_manager, bstring&& payload,
                          column_header&& hdr, column_index&& index,
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
     const uint64_t len = index_in.read_long();
-    auto blocks = read_blocks_dense(hdr, index_in);
+    auto blocks = read_blocks_dense(hdr, index_in, resource_manager);
 
     return std::make_unique<fixed_length_column>(
-      std::move(name), std::move(payload), std::move(hdr), std::move(index),
+      std::move(name), resource_manager, std::move(payload), std::move(hdr), std::move(index),
       data_in, std::move(inflater), cipher, std::move(blocks), len);
   }
 
-  fixed_length_column(std::optional<std::string>&& name, bstring&& payload,
+  fixed_length_column(std::optional<std::string>&& name, IResourceManager& resource_manager,
+                      bstring&& payload,
                       column_header&& hdr, column_index&& index,
                       const index_input& data_in,
                       compression::decompressor::ptr&& inflater,
                       encryption::stream* cipher,
                       std::vector<uint64_t>&& blocks, uint64_t len)
-    : column_base{std::move(name), std::move(payload),
+    : column_base{std::move(name), resource_manager, std::move(payload),
                   std::move(hdr),  std::move(index),
                   data_in,         cipher},
       blocks_{blocks},
@@ -807,15 +814,20 @@ class fixed_length_column final : public column_base {
     IRS_ASSERT(ColumnType::kFixed == header().type);
   }
 
+  ~fixed_length_column() override {
+    resource_manager_.changeIndexPinnedMemory(
+      -static_cast<int64_t>(sizeof(column_block) * blocks_.size()));
+  }
+
   doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   void make_buffered(
-    irs::index_input& in, MemoryAccountingFunc& memory_accounter,
+    irs::index_input& in,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
       if (make_buffered_data<false>(len_, hdr, in, blocks_, column_data_,
-                                    next_sorted_columns, memory_accounter,
+                                    next_sorted_columns,
                                     nullptr)) {
         buffered_input_ = std::make_unique<bytes_view_input>(
           bytes_view{column_data_.data(), column_data_.size()});
@@ -823,7 +835,7 @@ class fixed_length_column final : public column_base {
     } else {
       irs::remapped_bytes_view_input::mapping mapping;
       if (make_buffered_data<true>(len_, hdr, in, blocks_, column_data_,
-                                   next_sorted_columns, memory_accounter,
+                                   next_sorted_columns,
                                    &mapping)) {
         buffered_input_ = std::make_unique<irs::remapped_bytes_view_input>(
           bytes_view{column_data_.data(), column_data_.size()},
@@ -864,7 +876,6 @@ class fixed_length_column final : public column_base {
     uint64_t len, column_header& hdr, irs::index_input& in,
     std::vector<uint64_t>& blocks, std::vector<irs::byte_type>& column_data,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns,
-    MemoryAccountingFunc& memory_accounter,
     remapped_bytes_view_input::mapping* mapping) {
     IRS_ASSERT(!blocks.empty());
     const auto last_block_full = hdr.docs_count % column::kBlockSize == 0;
@@ -883,8 +894,7 @@ class fixed_length_column final : public column_base {
     }
     const auto bitmap_index_size =
       calculate_bitmap_size(in.length(), next_sorted_columns);
-    if (!allocate_buffered_memory(bitmap_index_size + blocks_data_size,
-                                  memory_accounter)) {
+    if (!allocate_buffered_memory(bitmap_index_size + blocks_data_size)) {
       return false;
     }
     std::sort(blocks_offsets.begin(), blocks_offsets.end(),
@@ -946,25 +956,26 @@ class sparse_column final : public column_base {
   struct column_block : column::column_block {
     doc_id_t last;
   };
-
-  static column_ptr read(std::optional<std::string>&& name, bstring&& payload,
+  
+  static column_ptr read(std::optional<std::string>&& name,
+                         IResourceManager& resource_manager, bstring&& payload,
                          column_header&& hdr, column_index&& index,
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
-    auto blocks = read_blocks_sparse(hdr, index_in);
-
+    auto blocks = read_blocks_sparse(hdr, index_in, resource_manager);
     return std::make_unique<sparse_column>(
-      std::move(name), std::move(payload), std::move(hdr), std::move(index),
+      std::move(name), resource_manager, std::move(payload), std::move(hdr), std::move(index),
       data_in, std::move(inflater), cipher, std::move(blocks));
   }
 
-  sparse_column(std::optional<std::string>&& name, bstring&& payload,
+  sparse_column(std::optional<std::string>&& name,
+                IResourceManager& resource_manager, bstring&& payload,
                 column_header&& hdr, column_index&& index,
                 const index_input& data_in,
                 compression::decompressor::ptr&& inflater,
                 encryption::stream* cipher, std::vector<column_block>&& blocks)
-    : column_base{std::move(name), std::move(payload),
+    : column_base{std::move(name), resource_manager, std::move(payload),
                   std::move(hdr),  std::move(index),
                   data_in,         cipher},
       blocks_{std::move(blocks)},
@@ -973,23 +984,27 @@ class sparse_column final : public column_base {
     IRS_ASSERT(ColumnType::kSparse == header().type);
   }
 
+  ~sparse_column() override {
+    resource_manager_.changeIndexPinnedMemory(
+      -static_cast<int64_t>(sizeof(column_block) * blocks_.size()));
+  }
+
   doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   void make_buffered(
-    irs::index_input& in, MemoryAccountingFunc& memory_accounter,
+    irs::index_input& in,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns) final {
     auto& hdr = mutable_header();
     if (!is_encrypted(hdr)) {
       if (make_buffered_data<false>(hdr, in, blocks_, column_data_,
-                                    next_sorted_columns, memory_accounter,
-                                    nullptr)) {
+                                    next_sorted_columns, nullptr)) {
         buffered_input_ = std::make_unique<bytes_view_input>(
           bytes_view{column_data_.data(), column_data_.size()});
       }
     } else {
       irs::remapped_bytes_view_input::mapping mapping;
       if (make_buffered_data<true>(hdr, in, blocks_, column_data_,
-                                   next_sorted_columns, memory_accounter,
+                                   next_sorted_columns,
                                    &mapping)) {
         buffered_input_ = std::make_unique<irs::remapped_bytes_view_input>(
           bytes_view{column_data_.data(), column_data_.size()},
@@ -1003,7 +1018,8 @@ class sparse_column final : public column_base {
 
  private:
   static std::vector<column_block> read_blocks_sparse(const column_header& hdr,
-                                                      index_input& in);
+                                                      index_input& in,
+                                                      IResourceManager& resource_manager);
 
   template<typename ValueReader>
   class payload_reader : private ValueReader {
@@ -1023,7 +1039,6 @@ class sparse_column final : public column_base {
     column_header& hdr, irs::index_input& in, std::vector<column_block>& blocks,
     std::vector<irs::byte_type>& column_data,
     std::span<std::unique_ptr<column_reader>> next_sorted_columns,
-    MemoryAccountingFunc& memory_accounter,
     remapped_bytes_view_input::mapping* mapping) {
     // idx adr/block offset length source
     std::vector<std::tuple<size_t, bool, size_t, size_t, size_t>> chunks;
@@ -1065,8 +1080,7 @@ class sparse_column final : public column_base {
     }
     const auto bitmap_size =
       calculate_bitmap_size(in.length(), next_sorted_columns);
-    if (!allocate_buffered_memory(bitmap_size + chunks_size,
-                                  memory_accounter)) {
+    if (!allocate_buffered_memory(bitmap_size + chunks_size)) {
       return false;
     }
 
@@ -1172,9 +1186,14 @@ bytes_view sparse_column::payload_reader<ValueReader>::payload(doc_id_t i) {
 }
 
 std::vector<sparse_column::column_block> sparse_column::read_blocks_sparse(
-  const column_header& hdr, index_input& in) {
+  const column_header& hdr, index_input& in,
+  IResourceManager& resource_manager) {
+  const auto blocks_count =
+    math::div_ceil32(hdr.docs_count, column::kBlockSize);
+  resource_manager.changeIndexPinnedMemory(blocks_count *
+                                           sizeof(sparse_column::column_block));
   std::vector<sparse_column::column_block> blocks{
-    math::div_ceil32(hdr.docs_count, column::kBlockSize)};
+    blocks_count};
 
   // FIXME optimize
   for (auto& block : blocks) {
@@ -1217,7 +1236,8 @@ doc_iterator::ptr sparse_column::iterator(ColumnHint hint) const {
   return make_iterator(factory{this}, hint);
 }
 
-using column_factory_f = column_ptr (*)(std::optional<std::string>&&, bstring&&,
+using column_factory_f = column_ptr (*)(std::optional<std::string>&&,
+                                        IResourceManager&, bstring&&,
                                         column_header&&, column_index&&,
                                         index_input&, const index_input&,
                                         compression::decompressor::ptr&&,
@@ -1739,7 +1759,7 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
     if (const size_t idx = static_cast<size_t>(hdr.type);
         IRS_LIKELY(idx < std::size(kFactories))) {
       auto column = kFactories[idx](
-        std::move(name), std::move(payload), std::move(hdr), std::move(index),
+        std::move(name), opts.resource_manager, std::move(payload), std::move(hdr), std::move(index),
         *index_in, *data_in_, std::move(inflater), data_cipher_.get());
       IRS_ASSERT(column);
 
@@ -1760,8 +1780,6 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
   }
   if (opts.warmup_column) {
     index_input::ptr direct_data_input;
-    auto memory_accounting =
-      opts.pinned_memory ? opts.pinned_memory : NoopMemoryAccounter;
     for (size_t i = 0; i < sorted_columns.size(); ++i) {
       auto cb = static_cast<column_base*>(sorted_columns[i].get());
       if (opts.warmup_column(*cb)) {
@@ -1775,7 +1793,7 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
           }
         }
         IRS_LOG_TRACE(absl::StrCat("Making buffered: ", cb->header().id));
-        cb->make_buffered(*direct_data_input, memory_accounting,
+        cb->make_buffered(*direct_data_input,
                           std::span(sorted_columns.data() + i + 1,
                                     sorted_columns.size() - i - 1));
         IRS_LOG_TRACE(absl::StrCat("Finished buffered: ", cb->header().id));
