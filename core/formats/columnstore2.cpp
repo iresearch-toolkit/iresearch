@@ -399,11 +399,10 @@ class column_base : public column_reader, private util::noncopyable {
 
   column_header& mutable_header() { return hdr_; }
   void reset_stream(const index_input* stream) { stream_ = stream; }
-
   bool allocate_buffered_memory(
-    size_t size) {
+    size_t size, size_t mappings) {
     IRS_ASSERT(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
-    if (!resource_manager_.changeCachedColumnsMemory(static_cast<int64_t>(size))) {
+    if (!resource_manager_.changeCachedColumnsMemory(static_cast<int64_t>(size + mappings))) {
       auto column_name = name();
       if (irs::IsNull(column_name)) {
         column_name = "<anonymous>";
@@ -687,12 +686,13 @@ class dense_fixed_length_column final : public column_base {
   }
 
   ~dense_fixed_length_column() override {
-    if (is_encrypted(header())) {
+    if (is_encrypted(header()) && !column_data_.empty()) {
       // account approximated number of mappings
       // We don not want to store actual number to not increase column size
       resource_manager_.changeCachedColumnsMemory(-static_cast<int64_t>(
         sizeof(remapped_bytes_view_input::mapping_value) * 2));
     }
+    resource_manager_.changeIndexPinnedMemory(-static_cast<int64_t>(sizeof(*this)));
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final;
@@ -705,14 +705,14 @@ class dense_fixed_length_column final : public column_base {
     const auto bitmap_size =
       calculate_bitmap_size(in.length(), next_sorted_columns);
     const auto total_size = data_size + bitmap_size;
-    if (!allocate_buffered_memory(total_size)) {
-      return;
-    }
-    if (is_encrypted (hdr)) {
+    size_t mapping_size{0};
+    if (is_encrypted(hdr)) {
       // account approximated number of mappings
       // We don not want to store actual number to not increase column size
-      resource_manager_.changeCachedColumnsMemory(static_cast<int64_t>(
-        sizeof(remapped_bytes_view_input::mapping_value) * 2));
+      mapping_size = sizeof(remapped_bytes_view_input::mapping_value) * 2;
+    }
+    if (!allocate_buffered_memory(total_size, mapping_size)) {
+      return;
     }
     in.read_bytes(data_, column_data_.data(), data_size);
     irs::remapped_bytes_view_input::mapping mapping;
@@ -830,15 +830,13 @@ class fixed_length_column final : public column_base {
   }
 
   ~fixed_length_column() override {
-
-    int64_t released =
-      static_cast<int64_t>(sizeof(column_block) * blocks_.size());
-    if (is_encrypted(header())) {
-      released += static_cast<int64_t>(
-        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size());
+    if (is_encrypted(header()) && !column_data_.empty()) {
+      resource_manager_.changeCachedColumnsMemory(-
+        static_cast<int64_t>(
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size()));
     }
-    resource_manager_.changeIndexPinnedMemory(
-      -released);
+    resource_manager_.changeIndexPinnedMemory(-static_cast<int64_t>(
+      sizeof(column_block) * blocks_.size() + sizeof(*this)));
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final;
@@ -906,10 +904,10 @@ class fixed_length_column final : public column_base {
     size_t blocks_data_size{0};
     size_t block_index{0};
     blocks_offsets.reserve(blocks.size());
+    size_t mapping_size{0};
     if constexpr (encrypted) {
-      resource_manager_.changeCachedColumnsMemory(
-        static_cast<int64_t>(sizeof(remapped_bytes_view_input::mapping_value) *
-        blocks.size()));
+      mapping_size = static_cast<int64_t>(
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks.size());
     }
     for (auto& block : blocks) {
       size_t length = (block != last_offset || last_block_full)
@@ -921,7 +919,7 @@ class fixed_length_column final : public column_base {
     }
     const auto bitmap_index_size =
       calculate_bitmap_size(in.length(), next_sorted_columns);
-    if (!allocate_buffered_memory(bitmap_index_size + blocks_data_size)) {
+    if (!allocate_buffered_memory(bitmap_index_size + blocks_data_size, mapping_size)) {
       return false;
     }
     std::sort(blocks_offsets.begin(), blocks_offsets.end(),
@@ -990,6 +988,7 @@ class sparse_column final : public column_base {
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
+    resource_manager.changeIndexPinnedMemory(static_cast<int64_t>(sizeof(sparse_column)));
     auto blocks = read_blocks_sparse(hdr, index_in, resource_manager);
     return std::make_unique<sparse_column>(
       std::move(name), resource_manager, std::move(payload), std::move(hdr), std::move(index),
@@ -1012,14 +1011,12 @@ class sparse_column final : public column_base {
   }
 
   ~sparse_column() override {
-    int64_t released =
-      static_cast<int64_t>(sizeof(column_block) * blocks_.size());
-    if (is_encrypted(header())) {
-      released += static_cast<int64_t>(
-        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size() * 2);
+    resource_manager_.changeIndexPinnedMemory(-static_cast<int64_t>(
+      sizeof(column_block) * blocks_.size() + sizeof(*this)));
+    if (is_encrypted(header()) && !column_data_.empty()) {
+      resource_manager_.changeCachedColumnsMemory(-static_cast<int64_t>(
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size() * 2));
     }
-    resource_manager_.changeIndexPinnedMemory(
-      -released);
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final;
@@ -1079,11 +1076,12 @@ class sparse_column final : public column_base {
     size_t block_idx{0};
     std::vector<irs::byte_type> addr_buffer;
     chunks.reserve(blocks.size());  // minimum, we may even need more chunks
+    size_t mapping_size{0};
     if constexpr (encrypted) {
       // account approximated number of mappings
       // We don not want to store actual number to not increase column size
-      resource_manager_.changeCachedColumnsMemory(
-        static_cast<int64_t>(sizeof(remapped_bytes_view_input::mapping_value) * blocks.size() * 2));
+      mapping_size =
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks.size() * 2;
     }
     for (auto& block : blocks) {
       size_t length{0};
@@ -1119,7 +1117,7 @@ class sparse_column final : public column_base {
     }
     const auto bitmap_size =
       calculate_bitmap_size(in.length(), next_sorted_columns);
-    if (!allocate_buffered_memory(bitmap_size + chunks_size)) {
+    if (!allocate_buffered_memory(bitmap_size + chunks_size, mapping_size)) {
       return false;
     }
 
