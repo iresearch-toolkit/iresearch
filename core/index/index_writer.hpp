@@ -139,6 +139,11 @@ using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
 // Options the the writer should use after creation
 struct IndexWriterOptions : public SegmentOptions {
+
+  IndexWriterOptions() = default;
+
+  explicit IndexWriterOptions(IResourceManager& manager)
+    : reader_options{.resouce_manager = manager} {};
   // Options for snapshot management
   IndexReaderOptions reader_options;
 
@@ -164,8 +169,6 @@ struct IndexWriterOptions : public SegmentOptions {
   // Acquire an exclusive lock on the repository to guard against index
   // corruption from multiple index_writers
   bool lock_repository{true};
-
-  IndexWriterOptions() {}  // compiler requires non-default definition
 };
 
 struct CommitInfo {

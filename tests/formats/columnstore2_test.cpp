@@ -28,6 +28,24 @@
 
 using namespace irs::columnstore2;
 
+namespace {
+
+template<bool cache_res = true>
+struct SimpleMemoryAccounter : public irs::IResourceManager {
+  bool changeCachedColumnsMemory(int64_t value) noexcept override {
+    cached_columns_.fetch_add(value);
+    return cache_res;
+  }
+  bool changeIndexPinnedMemory(int64_t value) noexcept override {
+    pinned_.fetch_add(value);
+    return true;
+  }
+
+  std::atomic<int64_t> cached_columns_{0};
+  std::atomic<int64_t> pinned_{0};
+};
+}  // namespace
+
 class columnstore2_test_case
   : public virtual tests::directory_test_case_base<
       irs::ColumnHint, irs::columnstore2::Version, bool> {
@@ -70,8 +88,8 @@ class columnstore2_test_case
     return hint() == irs::ColumnHint::kConsolidation;
   }
 
-  irs::columnstore_reader::options reader_options() {
-    irs::columnstore_reader::options options;
+  irs::columnstore_reader::options reader_options(irs::IResourceManager& man) {
+    irs::columnstore_reader::options options{.resource_manager = man};
     options.warmup_column = [this](const irs::column_reader&) {
       return this->buffered();
     };
@@ -168,7 +186,7 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
   ASSERT_FALSE(writer.commit(state));
 
   irs::columnstore2::reader reader;
-  ASSERT_FALSE(reader.prepare(dir(), meta, reader_options()));
+  ASSERT_FALSE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
 }
 
 TEST_P(columnstore2_test_case, empty_column) {
@@ -205,7 +223,7 @@ TEST_P(columnstore2_test_case, empty_column) {
   ASSERT_TRUE(writer.commit(state));
 
   irs::columnstore2::reader reader;
-  ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+  ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
   ASSERT_EQ(2, reader.size());
 
   // column 0
@@ -308,7 +326,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -435,11 +453,6 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
     .name = meta.name,
     .doc_count = MAX,
   };
-  int64_t memory{0};
-  auto mem = [&memory](int64_t diff) noexcept {
-    memory += diff;
-    return true;
-  };
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -462,17 +475,18 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
 
     ASSERT_TRUE(writer.commit(state));
   }
+  SimpleMemoryAccounter mem;
   {
     irs::columnstore2::reader reader;
-    auto options = reader_options();
-    options.pinned_memory = mem;
+    auto options = reader_options(mem);
     ASSERT_TRUE(reader.prepare(dir(), meta, options));
     ASSERT_EQ(1, reader.size());
     if (this->buffered()) {
-      ASSERT_GT(memory, 0);
+      ASSERT_GT(mem.cached_columns_, 0);
     } else {
-      ASSERT_EQ(0, memory);
+      ASSERT_EQ(0, mem.cached_columns_);
     }
+    ASSERT_GT(mem.pinned_, 0);
     auto* header = reader.header(0);
     ASSERT_NE(nullptr, header);
     ASSERT_EQ(MAX / 2, header->docs_count);
@@ -483,7 +497,8 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
       has_encryption ? ColumnProperty::kEncrypt : ColumnProperty::kNormal,
       header->props);
   }
-  ASSERT_EQ(0, memory);
+  ASSERT_EQ(0, mem.cached_columns_);
+  ASSERT_EQ(0, mem.pinned_);
 }
 
 TEST_P(columnstore2_test_case, sparse_column_mr) {
@@ -496,11 +511,7 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
     .name = meta.name,
     .doc_count = MAX,
   };
-  int64_t memory{0};
-  auto mem = [&memory](int64_t diff) noexcept {
-    memory += diff;
-    return false;
-  };
+
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -523,18 +534,19 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
 
     ASSERT_TRUE(writer.commit(state));
   }
+  SimpleMemoryAccounter<false> mem;
   {
     irs::columnstore2::reader reader;
-    auto options = reader_options();
-    options.pinned_memory = mem;
+    auto options = reader_options(mem);
     ASSERT_TRUE(reader.prepare(dir(), meta, options));
     ASSERT_EQ(1, reader.size());
     if (this->buffered()) {
       // we still record an attempt of allocating
-      ASSERT_GT(memory, 0);
+      ASSERT_GT(mem.cached_columns_, 0);
     } else {
-      ASSERT_EQ(0, memory);
+      ASSERT_EQ(0, mem.cached_columns_);
     }
+    ASSERT_GT(mem.pinned_, 0);
     auto* header = reader.header(0);
     ASSERT_NE(nullptr, header);
     ASSERT_EQ(MAX / 2, header->docs_count);
@@ -547,10 +559,11 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
   }
   // should not be a deallocation
   if (this->buffered()) {
-    ASSERT_GT(memory, 0);
+    ASSERT_GT(mem.cached_columns_, 0);
   } else {
-    ASSERT_EQ(0, memory);
+    ASSERT_EQ(0, mem.cached_columns_);
   }
+  ASSERT_EQ(mem.pinned_, 0);
 }
 
 TEST_P(columnstore2_test_case, sparse_column) {
@@ -586,7 +599,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -821,7 +834,8 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
     };
 
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(
+      dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -991,7 +1005,8 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(
+      dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1175,7 +1190,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1365,7 +1380,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1553,7 +1568,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1726,7 +1741,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -1886,7 +1901,7 @@ TEST_P(columnstore2_test_case, dense_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -2090,7 +2105,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     auto* header = reader.header(0);
@@ -2245,11 +2260,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
     .name = meta.name,
     .doc_count = MAX,
   };
-  int64_t memory{0};
-  auto mem = [&memory](int64_t diff) noexcept {
-    memory += diff;
-    return true;
-  };
+  SimpleMemoryAccounter mem;
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -2290,14 +2301,13 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
   }
   {
     irs::columnstore2::reader reader;
-    auto options = reader_options();
-    options.pinned_memory = mem;
+    auto options = reader_options(mem);
     ASSERT_TRUE(reader.prepare(dir(), meta, options));
     ASSERT_EQ(2, reader.size());
     if (buffered()) {
-      ASSERT_GT(memory, 0);
+      ASSERT_GT(mem.cached_columns_, 0);
     } else {
-      ASSERT_EQ(0, memory);
+      ASSERT_EQ(0, mem.cached_columns_);
     }
     auto* header = reader.header(0);
     ASSERT_NE(nullptr, header);
@@ -2311,7 +2321,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
                 : ColumnProperty::kNoName,
               header->props);
   }
-  ASSERT_EQ(0, memory);
+  ASSERT_EQ(0, mem.cached_columns_);
 }
 
 TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
@@ -2324,11 +2334,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
     .name = meta.name,
     .doc_count = MAX,
   };
-  int64_t memory{0};
-  auto mem = [&memory](int64_t diff) noexcept {
-    memory += diff;
-    return false;
-  };
+  SimpleMemoryAccounter<false> mem;
 
   {
     irs::columnstore2::writer writer(version(), consolidation());
@@ -2369,15 +2375,14 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
   }
   {
     irs::columnstore2::reader reader;
-    auto options = reader_options();
-    options.pinned_memory = mem;
+    auto options = reader_options(mem);
     ASSERT_TRUE(reader.prepare(dir(), meta, options));
     ASSERT_EQ(2, reader.size());
     if (this->buffered()) {
       // we still record an attempt of allocating
-      ASSERT_GT(memory, 0);
+      ASSERT_GT(mem.cached_columns_, 0);
     } else {
-      ASSERT_EQ(0, memory);
+      ASSERT_EQ(0, mem.cached_columns_);
     }
     auto* header = reader.header(0);
     ASSERT_NE(nullptr, header);
@@ -2393,9 +2398,9 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
   }
   // should not be a deallocation
   if (this->buffered()) {
-    ASSERT_GT(memory, 0);
+    ASSERT_GT(mem.cached_columns_, 0);
   } else {
-    ASSERT_EQ(0, memory);
+    ASSERT_EQ(0, mem.cached_columns_);
   }
 }
 
@@ -2447,7 +2452,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(2, reader.size());
 
     {
@@ -2758,7 +2763,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 
   {
     irs::columnstore2::reader reader;
-    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options()));
+    ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
     ASSERT_EQ(1, reader.size());
 
     {

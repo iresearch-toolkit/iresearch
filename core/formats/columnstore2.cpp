@@ -686,6 +686,15 @@ class dense_fixed_length_column final : public column_base {
     IRS_ASSERT(ColumnType::kDenseFixed == header().type);
   }
 
+  ~dense_fixed_length_column() override {
+    if (is_encrypted(header())) {
+      // account approximated number of mappings
+      // We don not want to store actual number to not increase column size
+      resource_manager_.changeCachedColumnsMemory(-static_cast<int64_t>(
+        sizeof(remapped_bytes_view_input::mapping_value) * 2));
+    }
+  }
+
   doc_iterator::ptr iterator(ColumnHint hint) const final;
 
   void make_buffered(
@@ -698,6 +707,12 @@ class dense_fixed_length_column final : public column_base {
     const auto total_size = data_size + bitmap_size;
     if (!allocate_buffered_memory(total_size)) {
       return;
+    }
+    if (is_encrypted (hdr)) {
+      // account approximated number of mappings
+      // We don not want to store actual number to not increase column size
+      resource_manager_.changeCachedColumnsMemory(static_cast<int64_t>(
+        sizeof(remapped_bytes_view_input::mapping_value) * 2));
     }
     in.read_bytes(data_, column_data_.data(), data_size);
     irs::remapped_bytes_view_input::mapping mapping;
@@ -815,8 +830,15 @@ class fixed_length_column final : public column_base {
   }
 
   ~fixed_length_column() override {
+
+    int64_t released =
+      static_cast<int64_t>(sizeof(column_block) * blocks_.size());
+    if (is_encrypted(header())) {
+      released += static_cast<int64_t>(
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size());
+    }
     resource_manager_.changeIndexPinnedMemory(
-      -static_cast<int64_t>(sizeof(column_block) * blocks_.size()));
+      -released);
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final;
@@ -884,6 +906,11 @@ class fixed_length_column final : public column_base {
     size_t blocks_data_size{0};
     size_t block_index{0};
     blocks_offsets.reserve(blocks.size());
+    if constexpr (encrypted) {
+      resource_manager_.changeCachedColumnsMemory(
+        static_cast<int64_t>(sizeof(remapped_bytes_view_input::mapping_value) *
+        blocks.size()));
+    }
     for (auto& block : blocks) {
       size_t length = (block != last_offset || last_block_full)
                         ? column::kBlockSize
@@ -985,8 +1012,14 @@ class sparse_column final : public column_base {
   }
 
   ~sparse_column() override {
+    int64_t released =
+      static_cast<int64_t>(sizeof(column_block) * blocks_.size());
+    if (is_encrypted(header())) {
+      released += static_cast<int64_t>(
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size() * 2);
+    }
     resource_manager_.changeIndexPinnedMemory(
-      -static_cast<int64_t>(sizeof(column_block) * blocks_.size()));
+      -released);
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final;
@@ -1046,6 +1079,12 @@ class sparse_column final : public column_base {
     size_t block_idx{0};
     std::vector<irs::byte_type> addr_buffer;
     chunks.reserve(blocks.size());  // minimum, we may even need more chunks
+    if constexpr (encrypted) {
+      // account approximated number of mappings
+      // We don not want to store actual number to not increase column size
+      resource_manager_.changeCachedColumnsMemory(
+        static_cast<int64_t>(sizeof(remapped_bytes_view_input::mapping_value) * blocks.size() * 2));
+    }
     for (auto& block : blocks) {
       size_t length{0};
       if (bitpack::ALL_EQUAL == block.bits) {

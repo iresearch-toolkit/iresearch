@@ -47,6 +47,14 @@ using namespace std::literals;
 
 namespace {
 
+struct SimpleMemoryAccounter : public irs::IResourceManager {
+  bool changeCachedColumnsMemory(int64_t value) noexcept override {
+    cached_columns_.fetch_add(value);
+    return true;
+  }
+  std::atomic<int64_t> cached_columns_{0};
+};
+
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
@@ -17065,12 +17073,8 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
   auto doc4 = gen.next();
 
   bool cache = false;
-  int64_t memory = 0;
-  irs::IndexWriterOptions opts;
-  opts.reader_options.pinned_memory_accounting = [&](int64_t diff) noexcept {
-    memory += diff;
-    return true;
-  };
+  SimpleMemoryAccounter memory;
+  irs::IndexWriterOptions opts{memory};
   opts.reader_options.warmup_columns =
     [&](const irs::SegmentMeta& /*meta*/, const irs::field_reader& /*fields*/,
         const irs::column_reader& /*column*/) { return cache; };
@@ -17084,19 +17088,19 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc2->stored.begin(), doc2->stored.end()));
   writer->Commit();
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns_);
 
   // empty commit: enable cache
   cache = true;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory);
+  EXPECT_LT(0, memory.cached_columns_);
 
   // empty commit: disable cache
   cache = false;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns_);
 
   // not empty commit: enable cache
   cache = true;
@@ -17104,7 +17108,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory);
+  EXPECT_LT(0, memory.cached_columns_);
 
   // not empty commit: disable cache
   cache = false;
@@ -17112,5 +17116,5 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc4->stored.begin(), doc4->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns_);
 }
