@@ -2590,7 +2590,6 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
       this->left_ = skip_.Seek(target);
       auto& doc_value = std::get<document>(attrs_).value;
       doc_value = skip_.Reader().State().doc;
-      IRS_ASSERT(doc_value < target);
       std::get<score>(attrs_).max.leaf = skip_.Reader().skip_scores_.back();
       // Will trigger refill in "next"
       this->begin_ = std::end(this->buf_.docs);
