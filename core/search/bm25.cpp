@@ -279,7 +279,7 @@ struct MakeScoreFunctionImpl<BM1Context> {
           *res = state.num;
         }
       },
-      std::forward<Args>(args)...);
+      ScoreFunction::DefaultMin, std::forward<Args>(args)...);
   }
 };
 
@@ -311,7 +311,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
 
         *res = c0 - c0 / (1.f + tf / c1);
       },
-      std::forward<Args>(args)...);
+      ScoreFunction::DefaultMin, std::forward<Args>(args)...);
   }
 };
 
@@ -357,7 +357,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           *res = c0 - c0 * c1 / (c1 + tf);
         }
       },
-      std::forward<Args>(args)...);
+      ScoreFunction::DefaultMin, std::forward<Args>(args)...);
   }
 };
 
@@ -418,7 +418,7 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
 
   if (!freq) {
     if (!boost_as_score_ || 0.f == boost) {
-      return ScoreFunction::Invalid();
+      return ScoreFunction::Default(1);
     }
 
     // if there is no frequency then all the scores
@@ -454,7 +454,7 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
 
   if (IRS_UNLIKELY(!doc)) {
     // We need 'document' attribute to be exposed.
-    return ScoreFunction::Invalid();
+    return ScoreFunction::Default(1);
   }
 
   if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {

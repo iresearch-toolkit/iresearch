@@ -129,7 +129,7 @@ struct DocIdScorer : irs::ScorerBase<void> {
         const auto& state = *static_cast<ScorerContext*>(ctx);
         *res = state.doc->value;
       },
-      doc);
+      irs::ScoreFunction::DefaultMin, doc);
   }
 };
 

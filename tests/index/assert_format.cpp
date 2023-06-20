@@ -741,12 +741,13 @@ void assert_docs(const irs::term_iterator& expected_term,
   assert_docs(expected_term.postings(requested_features), [&]() {
     // FIXME(gnusi)
     const irs::WanderatorOptions options{
-      .factory = [](const irs::attribute_provider&, const irs::Scorer& score) {
+      .factory = [](const irs::attribute_provider&) {
         return irs::ScoreFunction::Default(1);
       }};
 
-    return actual_terms.wanderator(*actual_cookie, requested_features, options,
-                                   {.index = 0, .strict = false});
+    return actual_terms.wanderator(
+      *actual_cookie, requested_features, options,
+      {.index = 0, .type = irs::WandContext::Type::kWeakRoot});
   });
 
   // FIXME(gnusi): check bit_union

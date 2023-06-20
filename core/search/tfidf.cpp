@@ -256,7 +256,7 @@ struct MakeScoreFunctionImpl<TFIDFContext<Norm>> {
           *res = tfidf(state.freq.value, idf) * state.norm();
         }
       },
-      std::forward<Args>(args)...);
+      ScoreFunction::DefaultMin, std::forward<Args>(args)...);
   }
 };
 
@@ -292,7 +292,7 @@ ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
 
   if (!freq) {
     if (!boost_as_score_ || 0.f == boost) {
-      return ScoreFunction::Invalid();
+      return ScoreFunction::Default(1);
     }
 
     // if there is no frequency then all the
@@ -322,7 +322,7 @@ ScoreFunction TFIDF::prepare_scorer(const ColumnProvider& segment,
 
     if (IRS_UNLIKELY(!doc)) {
       // we need 'document' attribute to be exposed
-      return ScoreFunction::Invalid();
+      return ScoreFunction::Default(1);
     }
 
     if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {

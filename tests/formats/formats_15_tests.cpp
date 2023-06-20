@@ -25,6 +25,7 @@
 #include "formats/formats_10_attributes.hpp"
 #include "formats/wand_writer.hpp"
 #include "formats_test_case_base.hpp"
+#include "search/score.hpp"
 #include "tests_shared.hpp"
 
 namespace {
@@ -55,7 +56,8 @@ struct FreqScorer : irs::ScorerBase<void> {
       reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         *res = reinterpret_cast<irs::frequency*>(ctx)->value;
-      }};
+      },
+      irs::ScoreFunction::DefaultMin};
   }
 
   irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const {
@@ -217,24 +219,21 @@ SkipList SkipList::Make(irs::doc_iterator& it, irs::doc_id_t skip_0,
 }
 
 void AssertSkipList(const SkipList& expected_freqs, irs::doc_id_t doc,
-                    irs::score_threshold* threshold) {
+                    irs::score* threshold) {
   if (!threshold) {
     return;
   }
   const auto size = expected_freqs.Size();
+  ASSERT_EQ(size, threshold->max.levels.size());
   if (size != 0) {
-    ASSERT_EQ(expected_freqs.At(size - 1, doc), *threshold->leaf_max);
-    for (size_t i = 0; i < size; ++i) {
-      auto score = expected_freqs.At(i, doc);
-      if (score != std::numeric_limits<irs::score_t>::max()) {
-        ASSERT_LE(score, threshold->list_max);
-      }
-    }
+    ASSERT_EQ(expected_freqs.At(size - 1, doc), threshold->max.leaf);
   }
-  ASSERT_EQ(size, threshold->levels_max.size());
   for (size_t i = 0; i < size; ++i) {
     const auto expected_freq = expected_freqs.At(i, doc);
-    ASSERT_EQ(expected_freq, threshold->levels_max[i]);
+    ASSERT_EQ(expected_freq, threshold->max.levels[i]);
+    if (expected_freq != std::numeric_limits<irs::score_t>::max()) {
+      ASSERT_LE(expected_freq, threshold->max.tail);
+    }
   }
 }
 
@@ -267,22 +266,22 @@ class Format15TestCase : public tests::format_test_case {
 
   void AssertWanderator(irs::doc_iterator::ptr& actual,
                         irs::IndexFeatures features, DocsView docs);
-  void AssertBackwardsNext(irs::postings_reader& reader, DocsView docs,
-                           irs::IndexFeatures field_features,
+  void AssertBackwardsNext(irs::postings_reader& reader, irs::Scorer& scorer,
+                           DocsView docs, irs::IndexFeatures field_features,
                            irs::IndexFeatures features,
                            const irs::term_meta& meta, uint32_t threshold,
                            bool strict);
-  void AssertDocsSeq(irs::postings_reader& reader, DocsView docs,
-                     irs::IndexFeatures field_features,
+  void AssertDocsSeq(irs::postings_reader& reader, irs::Scorer& scorer,
+                     DocsView docs, irs::IndexFeatures field_features,
                      irs::IndexFeatures features, const irs::term_meta& meta,
                      uint32_t threshold, bool strict);
-  void AssertDocsRandom(irs::postings_reader& reader, DocsView docs,
-                        irs::IndexFeatures field_features,
+  void AssertDocsRandom(irs::postings_reader& reader, irs::Scorer& scorer,
+                        DocsView docs, irs::IndexFeatures field_features,
                         irs::IndexFeatures features, const irs::term_meta& meta,
                         uint32_t threshold, bool strict, size_t seed,
                         size_t inc);
-  void AssertCornerCases(irs::postings_reader& reader, DocsView docs,
-                         irs::IndexFeatures field_features,
+  void AssertCornerCases(irs::postings_reader& reader, irs::Scorer& scorer,
+                         DocsView docs, irs::IndexFeatures field_features,
                          irs::IndexFeatures features,
                          const irs::term_meta& meta, bool strict);
   void AssertPostings(DocsView docs, irs::IndexFeatures field_features,
@@ -293,6 +292,7 @@ class Format15TestCase : public tests::format_test_case {
 
  private:
   irs::doc_iterator::ptr GetWanderator(irs::postings_reader& reader,
+                                       irs::Scorer& scorer,
                                        irs::IndexFeatures field_features,
                                        irs::IndexFeatures features,
                                        const irs::term_meta& meta,
@@ -382,22 +382,23 @@ void Format15TestCase::AssertWanderator(irs::doc_iterator::ptr& actual,
                                         DocsView docs) {
   ASSERT_NE(nullptr, actual);
 
-  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+  auto* threshold_value = irs::get_mutable<irs::score>(actual.get());
   ASSERT_NE(threshold_value, nullptr);
   if (irs::IndexFeatures::NONE == (features & irs::IndexFeatures::FREQ)) {
-    ASSERT_EQ(nullptr, threshold_value->leaf_max);
+    ASSERT_EQ(std::numeric_limits<irs::score_t>::max(),
+              threshold_value->max.tail);
   } else {
-    ASSERT_NE(nullptr, threshold_value->leaf_max);
+    ASSERT_NE(std::numeric_limits<irs::score_t>::max(),
+              threshold_value->max.tail);
   }
 }
 
 irs::doc_iterator::ptr Format15TestCase::GetWanderator(
-  irs::postings_reader& reader, irs::IndexFeatures field_features,
-  irs::IndexFeatures features, const irs::term_meta& meta, uint32_t threshold,
-  bool strict) {
+  irs::postings_reader& reader, irs::Scorer& scorer,
+  irs::IndexFeatures field_features, irs::IndexFeatures features,
+  const irs::term_meta& meta, uint32_t threshold, bool strict) {
   const irs::WanderatorOptions options{
-    .factory = [](const irs::attribute_provider& attrs,
-                  const irs::Scorer& scorer) {
+    .factory = [&](const irs::attribute_provider& attrs) {
       return scorer.prepare_scorer(EmptyColumnProvider{}, irs::feature_map_t{},
                                    nullptr, attrs, irs::kNoBoost);
     }};
@@ -414,7 +415,8 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   }
   if (iterator_has_freq) {
     ctx.index = 0;
-    ctx.strict = strict;
+    ctx.type = strict ? irs::WandContext::Type::kRoot
+                      : irs::WandContext::Type::kWeakRoot;
     info.mapped_index = 0;
   }
 
@@ -422,16 +424,14 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
     reader.wanderator(field_features, features, meta, options, ctx, info);
   EXPECT_NE(nullptr, actual);
 
-  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
-  if (threshold_value) {
-    threshold_value->min = threshold;
-  }
+  auto* score = irs::get_mutable<irs::score>(actual.get());
+  score->Min(threshold);
 
   return actual;
 }
 
 void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
-                                           DocsView docs,
+                                           irs::Scorer& scorer, DocsView docs,
                                            irs::IndexFeatures field_features,
                                            irs::IndexFeatures features,
                                            const irs::term_meta& meta,
@@ -452,8 +452,8 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
     postings expected_postings{docs, features};
     FreqThresholdDocIterator expected{expected_postings, threshold, strict};
 
-    auto actual =
-      GetWanderator(reader, field_features, features, meta, threshold, strict);
+    auto actual = GetWanderator(reader, scorer, field_features, features, meta,
+                                threshold, strict);
     AssertWanderator(actual, features, docs);
 
     ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
@@ -472,7 +472,7 @@ void Format15TestCase::AssertBackwardsNext(irs::postings_reader& reader,
 }
 
 void Format15TestCase::AssertDocsRandom(irs::postings_reader& reader,
-                                        DocsView docs,
+                                        irs::Scorer& scorer, DocsView docs,
                                         irs::IndexFeatures field_features,
                                         irs::IndexFeatures features,
                                         const irs::term_meta& meta,
@@ -481,8 +481,8 @@ void Format15TestCase::AssertDocsRandom(irs::postings_reader& reader,
   postings expected_postings{docs, features};
   FreqThresholdDocIterator expected{expected_postings, threshold, strict};
 
-  auto actual =
-    GetWanderator(reader, field_features, features, meta, threshold, strict);
+  auto actual = GetWanderator(reader, scorer, field_features, features, meta,
+                              threshold, strict);
   AssertWanderator(actual, features, docs);
 
   ASSERT_FALSE(irs::doc_limits::valid(actual->value()));
@@ -509,7 +509,7 @@ void Format15TestCase::AssertDocsRandom(irs::postings_reader& reader,
 }
 
 void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
-                                     DocsView docs,
+                                     irs::Scorer& scorer, DocsView docs,
                                      irs::IndexFeatures field_features,
                                      irs::IndexFeatures features,
                                      const irs::term_meta& meta,
@@ -518,13 +518,13 @@ void Format15TestCase::AssertDocsSeq(irs::postings_reader& reader,
   FreqThresholdDocIterator expected{expected_postings, threshold, strict};
   SkipList skip_list;
 
-  auto actual =
-    GetWanderator(reader, field_features, features, meta, threshold, strict);
+  auto actual = GetWanderator(reader, scorer, field_features, features, meta,
+                              threshold, strict);
   AssertWanderator(actual, features, docs);
 
-  auto* threshold_value = irs::get_mutable<irs::score_threshold>(actual.get());
+  auto* threshold_value = irs::get_mutable<irs::score>(actual.get());
 
-  if (!threshold_value->levels_max.empty()) {
+  if (!threshold_value->max.levels.empty()) {
     postings tmp{docs, field_features};
     skip_list = SkipList::Make(tmp, kVersion10PostingsWriterBlockSize, 8,
                                irs::doc_id_t(docs.size()));
@@ -584,14 +584,15 @@ Format15TestCase::Docs Format15TestCase::GenerateDocs(size_t count,
 }
 
 void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
-                                         DocsView docs,
+                                         irs::Scorer& scorer, DocsView docs,
                                          irs::IndexFeatures field_features,
                                          irs::IndexFeatures features,
                                          const irs::term_meta& meta,
                                          bool strict) {
   // next + seek to eof
   {
-    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
+    auto it =
+      GetWanderator(reader, scorer, field_features, features, meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(it->next());
     ASSERT_EQ(docs.front().first, it->value());
@@ -600,7 +601,8 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
 
   // Seek to irs::doc_limits::invalid()
   {
-    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
+    auto it =
+      GetWanderator(reader, scorer, field_features, features, meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_FALSE(irs::doc_limits::valid(it->seek(irs::doc_limits::invalid())));
     ASSERT_TRUE(it->next());
@@ -609,7 +611,8 @@ void Format15TestCase::AssertCornerCases(irs::postings_reader& reader,
 
   // Seek to irs::doc_limits::eof()
   {
-    auto it = GetWanderator(reader, field_features, features, meta, 0, strict);
+    auto it =
+      GetWanderator(reader, scorer, field_features, features, meta, 0, strict);
     ASSERT_FALSE(irs::doc_limits::valid(it->value()));
     ASSERT_TRUE(irs::doc_limits::eof(it->seek(irs::doc_limits::eof())));
     ASSERT_FALSE(it->next());
@@ -630,32 +633,33 @@ void Format15TestCase::AssertPostings(DocsView docs,
     WriteReadMeta(*dir, docs, std::span{&scorer_ptr, 1}, field_features);
   ASSERT_NE(nullptr, reader);
 
-  AssertCornerCases(*reader, docs, field_features, features, meta, strict);
+  AssertCornerCases(*reader, scorer, docs, field_features, features, meta,
+                    strict);
 
-  AssertDocsSeq(*reader, docs, field_features, features, meta, threshold,
-                strict);
+  AssertDocsSeq(*reader, scorer, docs, field_features, features, meta,
+                threshold, strict);
 
   // Seek to every document 127th document in a block
-  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
-                   strict, kVersion10PostingsWriterBlockSize - 1,
+  AssertDocsRandom(*reader, scorer, docs, field_features, features, meta,
+                   threshold, strict, kVersion10PostingsWriterBlockSize - 1,
                    kVersion10PostingsWriterBlockSize);
 
   // Seek to every 128th document in a block
-  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
-                   strict, kVersion10PostingsWriterBlockSize,
+  AssertDocsRandom(*reader, scorer, docs, field_features, features, meta,
+                   threshold, strict, kVersion10PostingsWriterBlockSize,
                    kVersion10PostingsWriterBlockSize);
 
   // Seek to every document
-  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
-                   strict, 0, 1);
+  AssertDocsRandom(*reader, scorer, docs, field_features, features, meta,
+                   threshold, strict, 0, 1);
 
   // Seek to every 5th document
-  AssertDocsRandom(*reader, docs, field_features, features, meta, threshold,
-                   strict, 0, 5);
+  AssertDocsRandom(*reader, scorer, docs, field_features, features, meta,
+                   threshold, strict, 0, 5);
 
   // Seek backwards && next
-  AssertBackwardsNext(*reader, docs, field_features, features, meta, threshold,
-                      strict);
+  AssertBackwardsNext(*reader, scorer, docs, field_features, features, meta,
+                      threshold, strict);
 }
 
 void Format15TestCase::AssertPostings(DocsView docs, uint32_t threshold,

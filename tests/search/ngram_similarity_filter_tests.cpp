@@ -964,7 +964,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_scored_test) {
         freq.filter_boost->push_back(freq.boost_from_filter->value);
         *res = {};
       },
-      &frequency, freq, &filter_boost, boost);
+      irs::ScoreFunction::DefaultMin, &frequency, freq, &filter_boost, boost);
   };
   std::vector<size_t> expectedFrequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{
@@ -1036,7 +1036,7 @@ TEST_P(ngram_similarity_filter_test_case, missed_frequency_test) {
         freq.filter_boost->push_back(freq.boost_from_filter->value);
         *res = {};
       },
-      &frequency, freq, &filter_boost, boost);
+      irs::ScoreFunction::DefaultMin, &frequency, freq, &filter_boost, boost);
   };
   std::vector<size_t> expected_frequency{1, 1, 2, 1, 1, 1, 1};
   std::vector<irs::score_t> expected_filter_boost{
