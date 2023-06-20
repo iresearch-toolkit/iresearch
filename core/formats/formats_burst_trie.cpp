@@ -115,8 +115,8 @@ using namespace irs;
 template<typename Char>
 class volatile_ref : util::noncopyable {
  public:
-  typedef std::basic_string_view<Char> ref_t;
-  typedef std::basic_string<Char> str_t;
+  using ref_t = basic_string_view<Char>;
+  using str_t = basic_string<Char>;
 
   volatile_ref() = default;
 
@@ -2304,7 +2304,7 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
 
   // inspect suffix and determine our current position
   // with respect to target term (before, after, equal)
-  ptrdiff_t cmp = std::char_traits<byte_type>::compare(
+  ptrdiff_t cmp = char_traits<byte_type>::compare(
     pterm, ptarget, std::min(target.size(), term.size()) - prefix);
 
   if (!cmp) {

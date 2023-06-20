@@ -63,7 +63,7 @@ template<typename Label>
 class StringLeftWeight : public StringLeftWeightTraits<Label> {
  public:
   using ReverseWeight = StringLeftWeight<Label>;
-  using str_t = std::basic_string<Label>;
+  using str_t = irs::basic_string<Label>;
   using iterator = typename str_t::const_iterator;
 
   static const std::string& Type() {
@@ -86,13 +86,13 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   StringLeftWeight(const StringLeftWeight&) = default;
   StringLeftWeight(StringLeftWeight&&) = default;
 
-  explicit StringLeftWeight(std::basic_string_view<Label> rhs)
+  explicit StringLeftWeight(irs::basic_string_view<Label> rhs)
     : str_(rhs.data(), rhs.size()) {}
 
   StringLeftWeight& operator=(StringLeftWeight&&) = default;
   StringLeftWeight& operator=(const StringLeftWeight&) = default;
 
-  StringLeftWeight& operator=(std::basic_string_view<Label> rhs) {
+  StringLeftWeight& operator=(irs::basic_string_view<Label> rhs) {
     str_.assign(rhs.data(), rhs.size());
     return *this;
   }
@@ -177,10 +177,10 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   iterator end() const noexcept { return str_.end(); }
 
   // intentionally implicit
-  operator std::basic_string_view<Label>() const noexcept { return str_; }
+  operator irs::basic_string_view<Label>() const noexcept { return str_; }
 
   // intentionally implicit
-  operator std::basic_string<Label>() && noexcept { return std::move(str_); }
+  operator irs::basic_string<Label>() && noexcept { return std::move(str_); }
 
  private:
   str_t str_;
@@ -345,7 +345,7 @@ inline StringLeftWeight<Label> DivideLeft(const StringLeftWeight<Label>& lhs,
     return Weight();
   }
 
-  IRS_ASSERT(std::basic_string_view<Label>(lhs).starts_with(rhs));
+  IRS_ASSERT(irs::basic_string_view<Label>(lhs).starts_with(rhs));
 
   return Weight(lhs.begin() + rhs.Size(), lhs.end());
 }

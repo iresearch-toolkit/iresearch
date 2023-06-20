@@ -82,7 +82,7 @@ class fst_builder : util::noncopyable {
  public:
   typedef Fst fst_t;
   typedef Char char_t;
-  typedef std::basic_string_view<char_t> key_t;
+  typedef irs::basic_string_view<char_t> key_t;
   typedef Stats stats_t;
   typedef typename fst_t::Weight weight_t;
   typedef typename fst_t::Arc arc_t;
