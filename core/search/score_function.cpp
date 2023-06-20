@@ -65,4 +65,15 @@ ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
   }
 }
 
+score_t ScoreFunction::Max() const noexcept {
+  if (score_ == ScoreFunction::DefaultScore) {
+    return 0.f;
+  } else if (score_ == Constant1 || score_ == ConstantN) {
+    score_t score;
+    Score(&score);
+    return score;
+  }
+  return std::numeric_limits<score_t>::max();
+}
+
 }  // namespace irs

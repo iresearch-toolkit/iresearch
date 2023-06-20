@@ -104,10 +104,7 @@ class ScoreFunction : util::noncopyable {
     deleter_ = Noop;
   }
 
-  bool IsDefault() const noexcept {
-    IRS_ASSERT(score_ != DefaultScore || min_ == DefaultMin);
-    return score_ == DefaultScore;
-  }
+  bool IsDefault() const noexcept { return score_ == DefaultScore; }
 
   IRS_FORCE_INLINE void Score(score_t* res) const noexcept {
     IRS_ASSERT(score_ != nullptr);
@@ -118,6 +115,8 @@ class ScoreFunction : util::noncopyable {
     IRS_ASSERT(min_ != nullptr);
     min_(ctx_, arg);
   }
+
+  score_t Max() const noexcept;
 
   // TODO(MBkkt) Remove it, use Score
   IRS_FORCE_INLINE void operator()(score_t* res) const noexcept { Score(res); }

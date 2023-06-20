@@ -71,12 +71,11 @@ ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
 
 // Compiles a set of prepared scorers into a single score function.
 ScoreFunction CompileScorers(ScoreFunctions&& scorers);
-ScoreFunction CompileScorers(ScoreFunction&& score, ScoreFunctions&& scorers);
 
-template<typename... Args>
-ScoreFunction CompileScore(Args&&... args) {
-  return CompileScorers(PrepareScorers(std::forward<Args>(args)...));
-}
+void CompileScore(irs::score& score, std::span<const ScorerBucket> buckets,
+                  const ColumnProvider& segment, const term_reader& field,
+                  const byte_type* stats, const attribute_provider& doc,
+                  score_t boost);
 
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,

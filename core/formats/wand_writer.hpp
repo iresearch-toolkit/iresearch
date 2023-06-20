@@ -198,9 +198,6 @@ class FreqNormProducer {
   template<typename Output>
   static void Write(Entry entry, Output& out) {
     // TODO(MBkkt) Compute difference second time looks unnecessary.
-    // TODO(MBkkt) Saving freq == 1 and freq == norm looks unnecessary.
-    //  We can avoid it because we're storing size, but do we want it?
-    //  It could makes read slower.
     IRS_ASSERT(entry.freq >= 1);
     out.write_vint(entry.freq);
     if constexpr (kNorm) {

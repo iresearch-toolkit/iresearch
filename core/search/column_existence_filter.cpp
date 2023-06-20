@@ -61,9 +61,9 @@ class column_existence_query : public irs::filter::prepared {
 
     if (!ord.empty()) {
       if (auto* score = irs::get_mutable<irs::score>(it.get()); score) {
-        *score =
-          CompileScore(ord.buckets(), segment, empty_term_reader(column.size()),
-                       stats_.c_str(), *it, boost());
+        CompileScore(*score, ord.buckets(), segment,
+                     empty_term_reader(column.size()), stats_.c_str(), *it,
+                     boost());
       }
     }
 

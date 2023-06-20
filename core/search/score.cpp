@@ -57,9 +57,12 @@ ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
 
 // TODO(MBkkt) Do we really need to optimize >= 2 scorers case?
 
-ScoreFunction CompileScorers(ScoreFunction&& wand, ScoreFunctions&& tail) {
+static ScoreFunction CompileScorers(ScoreFunction&& wand,
+                                    ScoreFunctions&& tail) {
   IRS_ASSERT(!tail.empty());
   switch (tail.size()) {
+    case 0:
+      return std::move(wand);
     case 1: {
       struct Ctx final : score_ctx {
         Ctx(ScoreFunction&& wand, ScoreFunction&& tail) noexcept
@@ -165,6 +168,29 @@ void PrepareCollectors(std::span<const ScorerBucket> order,
       entry.bucket->collect(stats_buf + entry.stats_offset, nullptr, nullptr);
     }
   }
+}
+
+void CompileScore(irs::score& score, std::span<const ScorerBucket> buckets,
+                  const ColumnProvider& segment, const term_reader& field,
+                  const byte_type* stats, const attribute_provider& doc,
+                  score_t boost) {
+  IRS_ASSERT(!buckets.empty());
+  // wanderator could have score for first bucket and score upper bounds.
+  if (score.IsDefault()) {
+    auto scorers = PrepareScorers(buckets, segment, field, stats, doc, boost);
+    // wanderator could have score upper bounds.
+    if (score.max.tail == std::numeric_limits<score_t>::max()) {
+      score.max.leaf = score.max.tail =
+        scorers.empty() ? 0.f : scorers.front().Max();
+    }
+    score = CompileScorers(std::move(scorers));
+  } else if (buckets.size() > 1) {
+    auto scorers =
+      PrepareScorers(buckets.subspan(1), segment, field, stats, doc, boost);
+    score = CompileScorers(std::move(score), std::move(scorers));
+    IRS_ASSERT(score.max.tail != std::numeric_limits<score_t>::max());
+  }
+  IRS_ASSERT(score.max.leaf <= score.max.tail);
 }
 
 }  // namespace irs

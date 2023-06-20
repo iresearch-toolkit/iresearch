@@ -148,14 +148,11 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
 
     if (!no_score) {
       auto* score = irs::get_mutable<irs::score>(docs.get());
-
-      if (score) {
-        IRS_ASSERT(entry.stat_offset < stats.size());
-        auto* stat = stats[entry.stat_offset].c_str();
-
-        *score = CompileScore(ord.buckets(), segment, *state->reader, stat,
-                              *docs, entry.boost * boost());
-      }
+      IRS_ASSERT(score);
+      IRS_ASSERT(entry.stat_offset < stats.size());
+      auto* stat = stats[entry.stat_offset].c_str();
+      CompileScore(*score, ord.buckets(), segment, *state->reader, stat, *docs,
+                   entry.boost * boost());
     }
 
     IRS_ASSERT(it != std::end(itrs));
