@@ -576,7 +576,7 @@ class PhraseIterator : public doc_iterator {
     : PhraseIterator{std::move(itrs), std::move(pos)} {
     if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);
-      score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
+      CompileScore(score, ord.buckets(), segment, field, stats, *this, boost);
     }
   }
 

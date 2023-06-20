@@ -2532,12 +2532,12 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
                                 std::greater<>{}));
     }
 
-    void ReadMaxScore(irs::score& score, index_input& input) {
-      CommonReadWandData(extent_, index_, func_, *ctx_, input, score.max.tail);
-      score.max.leaf = score.max.tail;
+    void ReadMaxScore(irs::score::UpperBounds& max, index_input& input) {
+      CommonReadWandData(extent_, index_, func_, *ctx_, input, max.tail);
+      max.leaf = max.tail;
     }
     void Init(const version10::term_meta& state, size_t num_levels,
-              irs::score& score);
+              irs::score::UpperBounds& max);
     bool IsLess(size_t level, doc_id_t target) const noexcept {
       return skip_levels_[level].doc < target ||
              skip_scores_[level] <= threshold_;
@@ -2607,15 +2607,15 @@ template<typename IteratorTraits, typename FieldTraits, typename WandExtent,
          bool Root>
 void wanderator<IteratorTraits, FieldTraits, WandExtent, Root>::ReadSkip::Init(
   const version10::term_meta& term_state, size_t num_levels,
-  irs::score& score) {
+  irs::score::UpperBounds& max) {
   // Don't use wanderator for short posting lists, must be ensured by the caller
   IRS_ASSERT(term_state.docs_count > IteratorTraits::block_size());
 
   skip_levels_.resize(num_levels);
   skip_scores_.resize(num_levels);
-  score.max.leaf = skip_scores_.back();
+  max.leaf = skip_scores_.back();
 #ifdef IRESEARCH_TEST
-  score.max.levels = std::span{skip_scores_};
+  max.levels = std::span{skip_scores_};
 #endif
 
   // Since we store pointer deltas, add postings offset
@@ -2730,15 +2730,15 @@ void wanderator<IteratorTraits, FieldTraits, WandExtent, Root>::WandPrepare(
 
   skip_in->seek(term_state.doc_start + term_state.e_skip_start);
 
-  auto& score = std::get<irs::score>(attrs_);
-  skip_.Reader().ReadMaxScore(score, *skip_in);
+  auto& max = std::get<irs::score>(attrs_).max;
+  skip_.Reader().ReadMaxScore(max, *skip_in);
 
   skip_.Prepare(std::move(skip_in), term_state.docs_count);
 
   // Initialize skip levels
   if (const auto num_levels = skip_.NumLevels(); IRS_LIKELY(
         num_levels > 0 && num_levels <= postings_writer_base::kMaxSkipLevels)) {
-    skip_.Reader().Init(term_state, num_levels, score);
+    skip_.Reader().Init(term_state, num_levels, max);
   } else {
     IRS_ASSERT(false);
     throw index_error{absl::StrCat("Invalid number of skip levels ", num_levels,

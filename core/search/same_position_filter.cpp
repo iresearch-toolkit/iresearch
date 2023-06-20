@@ -161,11 +161,10 @@ class same_position_query : public filter::prepared {
 
       if (!no_score) {
         auto* score = irs::get_mutable<irs::score>(docs.get());
+        IRS_ASSERT(score);
 
-        if (score) {
-          *score = CompileScore(ord.buckets(), segment, *term_state.reader,
-                                term_stats->c_str(), *docs, boost());
-        }
+        CompileScore(*score, ord.buckets(), segment, *term_state.reader,
+                     term_stats->c_str(), *docs, boost());
       }
 
       // add iterator

@@ -265,21 +265,22 @@ struct MakeScoreFunctionImpl<BM1Context> {
 
   template<bool HasFilterBoost, typename... Args>
   static auto Make(Args&&... args) {
-    return ScoreFunction::Make<Ctx>(
-      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-        IRS_ASSERT(res);
-        IRS_ASSERT(ctx);
+    if constexpr (HasFilterBoost) {
+      return ScoreFunction::Make<Ctx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          IRS_ASSERT(res);
+          IRS_ASSERT(ctx);
 
-        auto& state = *static_cast<Ctx*>(ctx);
+          auto& state = *static_cast<Ctx*>(ctx);
 
-        if constexpr (HasFilterBoost) {
           IRS_ASSERT(state.filter_boost);
           *res = state.filter_boost->value * state.num;
-        } else {
-          *res = state.num;
-        }
-      },
-      ScoreFunction::DefaultMin, std::forward<Args>(args)...);
+        },
+        ScoreFunction::DefaultMin, std::forward<Args>(args)...);
+    } else {
+      Ctx ctx{std::forward<Args>(args)...};
+      return ScoreFunction::Constant(ctx.num);
+    }
   }
 };
 
