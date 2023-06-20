@@ -48,16 +48,20 @@ using ScorersView = std::span<const Scorer* const>;
 inline constexpr size_t kMaxScorers = bits_required<uint64_t>();
 
 struct WandContext {
-  static constexpr auto kDisable = std::numeric_limits<byte_type>::max();
+  bool Weak() const noexcept { return type == Type::kWeakRoot; }
+  bool Root() const noexcept { return type != Type::kLeaf; }
 
+  static constexpr auto kDisable = std::numeric_limits<byte_type>::max();
   bool Enabled() const noexcept { return index != kDisable; }
 
-  // Index of the scorer to use for optimization.
+  // Index of the wand data in the IndexWriter to use for optimization.
   // Optimization is turned off by default.
   byte_type index{kDisable};
-  bool strict{false};
-  // Use maxscore instead of wand in disjunction
-  bool maxscore{false};
+  enum class Type : byte_type {
+    kWeakRoot = 0,
+    kRoot = 1,
+    kLeaf = 2,
+  } type{Type::kWeakRoot};
 };
 
 struct IndexReaderOptions {

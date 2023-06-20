@@ -84,7 +84,7 @@ class column_prefix_existence_query : public column_existence_query {
   }
 
   irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
-    using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
+    using adapter_t = irs::ScoreAdapter<irs::doc_iterator::ptr>;
 
     IRS_ASSERT(acceptor_);
 
@@ -117,8 +117,9 @@ class column_prefix_existence_query : public column_existence_query {
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t =
           irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
-
-        return irs::MakeDisjunction<disjunction_t>(std::move(itrs),
+        // TODO(MBkkt) wand support,
+        //  it looks like here we have just bunch of constant scored iterators
+        return irs::MakeDisjunction<disjunction_t>({}, std::move(itrs),
                                                    std::move(aggregator));
       });
   }

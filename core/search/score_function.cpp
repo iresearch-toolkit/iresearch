@@ -51,7 +51,7 @@ ScoreFunction ScoreFunction::Constant(score_t value) noexcept {
   uintptr_t boost = 0;
   std::memcpy(&boost, &value, sizeof(score_t));
   static_assert(sizeof(score_ctx*) == sizeof(uintptr_t));
-  return {reinterpret_cast<score_ctx*>(boost), &Constant1, &Noop};
+  return {reinterpret_cast<score_ctx*>(boost), Constant1, DefaultMin, Noop};
 }
 
 ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
@@ -60,13 +60,9 @@ ScoreFunction ScoreFunction::Constant(score_t value, uint32_t count) noexcept {
   } else if (1 == count) {
     return Constant(value);
   } else {
-    return {absl::bit_cast<score_ctx*>(ConstantCtx{value, count}), &ConstantN,
-            &Noop};
+    return {absl::bit_cast<score_ctx*>(ConstantCtx{value, count}), ConstantN,
+            DefaultMin, Noop};
   }
-}
-
-bool ScoreFunction::IsConstant() const noexcept {
-  return IsDefault() || score_ == &Constant1 || score_ == &ConstantN;
 }
 
 }  // namespace irs

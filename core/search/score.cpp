@@ -49,14 +49,64 @@ ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
       bucket.prepare_scorer(segment, field.meta().features,
                             stats_buf + entry.stats_offset, doc, boost);
 
-    if (IRS_LIKELY(scorer)) {
-      scorers.emplace_back(std::move(scorer));
-    } else {
-      scorers.emplace_back(ScoreFunction::Default(1));
-    }
+    scorers.emplace_back(std::move(scorer));
   }
 
   return scorers;
+}
+
+// TODO(MBkkt) Do we really need to optimize >= 2 scorers case?
+
+ScoreFunction CompileScorers(ScoreFunction&& wand, ScoreFunctions&& tail) {
+  IRS_ASSERT(!tail.empty());
+  switch (tail.size()) {
+    case 1: {
+      struct Ctx final : score_ctx {
+        Ctx(ScoreFunction&& wand, ScoreFunction&& tail) noexcept
+          : wand{std::move(wand)}, tail{std::move(tail)} {}
+
+        ScoreFunction wand;
+        ScoreFunction tail;
+      };
+
+      return ScoreFunction::Make<Ctx>(
+        [](score_ctx* ctx, score_t* res) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          IRS_ASSERT(res != nullptr);
+          scorers_ctx->wand.Score(res);
+          scorers_ctx->tail.Score(res + 1);
+        },
+        [](score_ctx* ctx, score_t arg) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          scorers_ctx->wand.Min(arg);
+        },
+        std::move(wand), std::move(tail.front()));
+    }
+    default: {
+      struct Ctx final : score_ctx {
+        explicit Ctx(ScoreFunction&& wand, ScoreFunctions&& tail) noexcept
+          : wand{std::move(wand)}, tail{std::move(tail)} {}
+
+        ScoreFunction wand;
+        ScoreFunctions tail;
+      };
+
+      return ScoreFunction::Make<Ctx>(
+        [](score_ctx* ctx, score_t* res) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          IRS_ASSERT(res != nullptr);
+          scorers_ctx->wand(res);
+          for (auto& other : scorers_ctx->tail) {
+            other.Score(++res);
+          }
+        },
+        [](score_ctx* ctx, score_t arg) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          scorers_ctx->wand.Min(arg);
+        },
+        std::move(wand), std::move(tail));
+    }
+  }
 }
 
 ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
@@ -85,7 +135,8 @@ ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
           scorers_ctx->func0(res);
           scorers_ctx->func1(res + 1);
         },
-        std::move(scorers.front()), std::move(scorers.back()));
+        ScoreFunction::DefaultMin, std::move(scorers.front()),
+        std::move(scorers.back()));
     }
     default: {
       struct Ctx final : score_ctx {
@@ -102,7 +153,7 @@ ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
             scorer(res++);
           }
         },
-        std::move(scorers));
+        ScoreFunction::DefaultMin, std::move(scorers));
     }
   }
 }

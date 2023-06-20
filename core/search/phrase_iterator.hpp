@@ -165,10 +165,10 @@ class FixedPhraseFrequency {
 };
 
 // Adapter to use doc_iterator with positions for disjunction
-struct VariadicPhraseAdapter : score_iterator_adapter<doc_iterator::ptr> {
+struct VariadicPhraseAdapter : ScoreAdapter<doc_iterator::ptr> {
   VariadicPhraseAdapter() = default;
   VariadicPhraseAdapter(doc_iterator::ptr&& it, score_t boost) noexcept
-    : score_iterator_adapter<doc_iterator::ptr>(std::move(it)),
+    : ScoreAdapter<doc_iterator::ptr>(std::move(it)),
       position(irs::get_mutable<irs::position>(this->it.get())),
       boost(boost) {}
 
@@ -549,18 +549,27 @@ class PhraseIterator : public doc_iterator {
  public:
   using TermPosition = typename Frequency::TermPosition;
 
-  PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
+  PhraseIterator(ScoreAdapters<doc_iterator::ptr>&& itrs,
                  std::vector<TermPosition>&& pos)
-    : approx_{std::move(itrs), NoopAggregator{}}, freq_{std::move(pos)} {
+    : approx_{NoopAggregator{},
+              [](auto&& itrs) {
+                std::sort(itrs.begin(), itrs.end(),
+                          [](const auto& lhs, const auto& rhs) noexcept {
+                            return cost::extract(lhs, cost::kMax) <
+                                   cost::extract(rhs, cost::kMax);
+                          });
+                return std::move(itrs);
+              }(std::move(itrs))},
+      freq_{std::move(pos)} {
     std::get<attribute_ptr<document>>(attrs_) =
       irs::get_mutable<document>(&approx_);
 
     // FIXME find a better estimation
-    std::get<irs::cost>(attrs_).reset(
-      [this]() noexcept { return cost::extract(approx_); });
+    std::get<attribute_ptr<irs::cost>>(attrs_) =
+      irs::get_mutable<irs::cost>(&approx_);
   }
 
-  PhraseIterator(typename Conjunction::doc_iterators_t&& itrs,
+  PhraseIterator(ScoreAdapters<doc_iterator::ptr>&& itrs,
                  std::vector<typename Frequency::TermPosition>&& pos,
                  const SubReader& segment, const term_reader& field,
                  const byte_type* stats, const Scorers& ord, score_t boost)
@@ -614,7 +623,8 @@ class PhraseIterator : public doc_iterator {
   }
 
  private:
-  using attributes = std::tuple<attribute_ptr<document>, cost, score>;
+  using attributes =
+    std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
   // first approximation (conjunction over all words in a phrase)
   Conjunction approx_;

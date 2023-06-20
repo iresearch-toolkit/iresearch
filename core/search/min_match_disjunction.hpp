@@ -43,9 +43,9 @@ class min_match_disjunction : public doc_iterator,
                               private Merger,
                               private score_ctx {
  public:
-  struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
+  struct cost_iterator_adapter : ScoreAdapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
-      : score_iterator_adapter<DocIterator>(std::move(it)) {
+      : ScoreAdapter<DocIterator>(std::move(it)) {
       est = cost::extract(*this->it, cost::kMax);
     }
 
@@ -234,23 +234,26 @@ class min_match_disjunction : public doc_iterator,
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-      auto& self = *static_cast<min_match_disjunction*>(ctx);
-      IRS_ASSERT(!self.heap_.empty());
+    score.Reset(
+      *this,
+      [](score_ctx* ctx, score_t* res) noexcept {
+        auto& self = *static_cast<min_match_disjunction*>(ctx);
+        IRS_ASSERT(!self.heap_.empty());
 
-      self.push_valid_to_lead();
+        self.push_valid_to_lead();
 
-      // score lead iterators
-      std::memset(res, 0, static_cast<Merger&>(self).byte_size());
-      std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
-        IRS_ASSERT(it < self.itrs_.size());
-        if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
-          auto& merger = static_cast<Merger&>(self);
-          score(merger.temp());
-          merger(res, merger.temp());
-        }
-      });
-    });
+        // score lead iterators
+        std::memset(res, 0, static_cast<Merger&>(self).byte_size());
+        std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
+          IRS_ASSERT(it < self.itrs_.size());
+          if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
+            auto& merger = static_cast<Merger&>(self);
+            score(merger.temp());
+            merger(res, merger.temp());
+          }
+        });
+      },
+      ScoreFunction::DefaultMin);
   }
 
   // Push all valid iterators to lead.
@@ -404,15 +407,6 @@ class min_match_disjunction : public doc_iterator,
   size_t min_match_count_;  // minimum number of hits
   size_t lead_;             // number of iterators in lead group
   attributes attrs_;
-};
-
-template<typename DocIterator, typename Merger>
-struct RebindIterator<min_match_disjunction<DocIterator, Merger>> {
-  using Adapter =
-    typename min_match_disjunction<DocIterator, Merger>::cost_iterator_adapter;
-
-  using Disjunction = disjunction<DocIterator, Merger, Adapter>;
-  using Conjunction = conjunction<DocIterator, Merger>;
 };
 
 }  // namespace irs

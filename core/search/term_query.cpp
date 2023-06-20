@@ -35,45 +35,47 @@ TermQuery::TermQuery(States&& states, bstring&& stats, score_t boost)
     stats_{std::move(stats)} {}
 
 doc_iterator::ptr TermQuery::execute(const ExecutionContext& ctx) const {
-  auto& rdr = ctx.segment;
-  auto& ord = ctx.scorers;
-  auto state = states_.find(rdr);  // Get term state for the specified reader
+  const auto& rdr = ctx.segment;
+  const auto& ord = ctx.scorers;
+  // Get term state for the specified reader
+  const auto* state = states_.find(rdr);
 
-  if (!state) {
-    // Invalid state
+  if (IRS_UNLIKELY(!state)) {  // Invalid state
     return doc_iterator::empty();
   }
 
-  auto* reader = state->reader;
+  const auto* reader = state->reader;
   IRS_ASSERT(reader);
-
-  auto docs = [&]() -> irs::doc_iterator::ptr {
-    if (ctx.wand.Enabled()) {
-      return reader->wanderator(
-        *state->cookie, ord.features(),
-        {.factory = [&](const attribute_provider& attrs,
-                        const Scorer& scorer) -> ScoreFunction {
-          return scorer.prepare_scorer(rdr, state->reader->meta().features,
-                                       stats_.c_str(), attrs, boost());
+  doc_iterator::ptr docs;
+  auto ord_buckets = ord.buckets();
+  if (ctx.wand.Enabled() && !ord_buckets.empty()) {
+    const auto& front = ord_buckets.front();
+    if (front.bucket != nullptr) {
+      docs = reader->wanderator(
+        *state->cookie, ord.features(), {[&](const attribute_provider& attrs) {
+          return front.bucket->prepare_scorer(
+            rdr, state->reader->meta().features,
+            stats_.c_str() + front.stats_offset, attrs, boost());
         }},
         ctx.wand);
-    } else {
-      return reader->postings(*state->cookie, ord.features());
     }
-  }();
-
-  if (IRS_UNLIKELY(!docs)) {
-    IRS_ASSERT(false);
-    return doc_iterator::empty();
   }
+  if (!docs) {
+    docs = reader->postings(*state->cookie, ord.features());
+  }
+  IRS_ASSERT(docs);
 
-  if (!ord.empty()) {
+  if (!ord_buckets.empty()) {
     auto* score = irs::get_mutable<irs::score>(docs.get());
-
-    if (score) {
-      // FIXME(gnusi): honor cached wanderator score
-      *score = CompileScore(ord.buckets(), rdr, *state->reader, stats_.c_str(),
+    IRS_ASSERT(score);
+    if (score->IsDefault()) {
+      *score = CompileScore(ord_buckets, rdr, *state->reader, stats_.c_str(),
                             *docs, boost());
+    } else if (ord_buckets.size() > 1) {
+      *score = CompileScorers(
+        std::move(*score),
+        PrepareScorers(ord_buckets.subspan(1), rdr, *state->reader,
+                       stats_.c_str(), *docs, boost()));
     }
   }
 
@@ -84,7 +86,6 @@ void TermQuery::visit(const SubReader& segment, PreparedStateVisitor& visitor,
                       score_t boost) const {
   if (auto state = states_.find(segment); state) {
     visitor.Visit(*this, *state, boost * this->boost());
-    return;
   }
 }
 
