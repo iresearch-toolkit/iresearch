@@ -29,35 +29,6 @@
 
 namespace irs {
 
-// A reusable thread-safe allocator for memory files
-class memory_allocator : public memory::Managed {
- private:
-  struct buffer {
-    using ptr = std::unique_ptr<byte_type[]>;
-    static ptr make(size_t size);
-  };
-
- public:
-  using ptr = memory::managed_ptr<memory_allocator>;
-
-  static ptr make(size_t pool_size);
-
-  using allocator_type =
-    container_utils::memory::bucket_allocator<buffer,
-                                              16>;  // as in memory_file
-
-  static memory_allocator& global() noexcept;
-
-  explicit memory_allocator(size_t pool_size);
-
-  operator allocator_type&() const noexcept {
-    return const_cast<allocator_type&>(allocator_);
-  }
-
- private:
-  allocator_type allocator_;
-};
-
 // Directory encryption provider
 struct encryption {
   // FIXME check if it's possible to rename to irs::encryption?
@@ -118,19 +89,16 @@ using FileRefs = std::vector<index_file_refs::ref_t>;
 class directory_attributes {
  public:
   // 0 == pool_size -> use global allocator, noexcept
-  explicit directory_attributes(size_t memory_pool_size = 0,
-                                std::unique_ptr<irs::encryption> enc = nullptr);
+  explicit directory_attributes(std::unique_ptr<irs::encryption> enc = nullptr);
   virtual ~directory_attributes() = default;
 
   directory_attributes(directory_attributes&&) = default;
   directory_attributes& operator=(directory_attributes&&) = default;
 
-  memory_allocator& allocator() const noexcept { return *alloc_; }
   irs::encryption* encryption() const noexcept { return enc_.get(); }
   index_file_refs& refs() const noexcept { return *refs_; }
 
  private:
-  memory_allocator::ptr alloc_;
   std::unique_ptr<irs::encryption> enc_;
   std::unique_ptr<index_file_refs> refs_;
 };

@@ -1462,7 +1462,6 @@ void column::finish(index_output& index_out) {
 
 writer::writer(Version version, bool consolidation)
   : dir_{nullptr},
-    alloc_{&memory_allocator::global()},
     buf_{std::make_unique<byte_type[]>(column::kBlockSize * sizeof(uint64_t))},
     ver_{version},
     consolidation_{consolidation} {}
@@ -1490,7 +1489,6 @@ void writer::prepare(directory& dir, const SegmentMeta& meta) {
 
   // noexcept block
   dir_ = &dir;
-  alloc_ = &dir.attributes().allocator();
   data_filename_ = std::move(filename);
   data_out_ = std::move(data_out);
   data_cipher_ = std::move(data_cipher);
@@ -1528,8 +1526,7 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
   }
 
   auto& column = columns_.emplace_back(
-    column::context{.alloc = alloc_,
-                    .data_out = data_out_.get(),
+    column::context{.data_out = data_out_.get(),
                     .cipher = cipher,
                     .u8buf = buf_.get(),
                     .consolidation = consolidation_,

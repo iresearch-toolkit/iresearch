@@ -1096,8 +1096,6 @@ field_writer::field_writer(
 #ifdef __cpp_lib_memory_resource
     block_index_buf_{sizeof(block_t::prefixed_output) * 32},
 #endif
-    suffix_(memory_allocator::global()),
-    stats_(memory_allocator::global()),
     pw_(std::move(pw)),
     fst_buf_(new fst_buffer()),
     prefixes_(DEFAULT_SIZE, 0),
@@ -1170,10 +1168,8 @@ void field_writer::prepare(const flush_state& state) {
   // prepare postings writer
   pw_->prepare(*terms_out_, state);
 
-  // reset allocator from a directory
-  auto& allocator = state.dir->attributes().allocator();
-  suffix_.reset(allocator);
-  stats_.reset(allocator);
+  suffix_.reset();
+  stats_.reset();
 }
 
 void field_writer::write(const basic_term_reader& reader,

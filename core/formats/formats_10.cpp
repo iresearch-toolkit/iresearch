@@ -579,8 +579,7 @@ void postings_writer_base::prepare(index_output& out,
     }
   }
 
-  skip_.Prepare(kMaxSkipLevels, state.doc_count,
-                state.dir->attributes().allocator());
+  skip_.Prepare(kMaxSkipLevels, state.doc_count);
 
   format_utils::write_header(out, kTermsFormatName,
                              static_cast<int32_t>(terms_format_version_));
