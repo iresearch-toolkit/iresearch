@@ -126,8 +126,7 @@ using char_traits =
 
 #else
 
-template<typename Char>
-using char_traits = std::char_traits<byte_type>;
+using std::char_traits;
 
 #endif
 
