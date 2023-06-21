@@ -72,13 +72,13 @@ TEST_F(utf8_path_tests, current) {
 
 #ifdef _WIN32
     wchar_t buf[_MAX_PATH];
-    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
-    // std::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir()
+    irs::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
+    // irs::basic_string<wchar_t> prefix(L"\\\\?\\"); // prepended by chdir()
     // and returned by win32
 #else
     char buf[PATH_MAX];
-    std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
-    // std::basic_string<char> prefix;
+    irs::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
+    // irs::basic_string<char> prefix;
 #endif
 
     ASSERT_TRUE(current_dir == path.native());
@@ -125,13 +125,13 @@ TEST_F(utf8_path_tests, current) {
 
 #ifdef _WIN32
     wchar_t buf[_MAX_PATH];
-    std::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
-    std::basic_string<wchar_t> prefix(
+    irs::basic_string<wchar_t> current_dir(_wgetcwd(buf, _MAX_PATH));
+    irs::basic_string<wchar_t> prefix(
       L"\\\\?\\");  // prepended by chdir() and returned by win32
 #else
     char buf[PATH_MAX];
-    std::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
-    std::basic_string<char> prefix;
+    irs::basic_string<char> current_dir(getcwd(buf, PATH_MAX));
+    irs::basic_string<char> prefix;
 #endif
 
     ASSERT_TRUE(irs::file_utils::exists(tmpBool, path.c_str()) && !tmpBool);

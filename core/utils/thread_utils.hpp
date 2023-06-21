@@ -27,6 +27,7 @@
 #include <string>
 
 #include "shared.hpp"
+#include "utils/string.hpp"
 
 #ifdef _WIN32
 #define thread_name_t wchar_t*
@@ -41,6 +42,6 @@ namespace irs {
 bool set_thread_name(const thread_name_t name) noexcept;
 
 bool get_thread_name(
-  std::basic_string<std::remove_pointer_t<thread_name_t>>& name);
+  irs::basic_string<std::remove_pointer_t<thread_name_t>>& name);
 
 }  // namespace irs

@@ -67,9 +67,9 @@ void assert_description(
                                          std::back_inserter(utf8_target));
     irs::utf8_utils::utf8_to_utf32<true>(candidate,
                                          std::back_inserter(utf8_candidate));
-    const std::basic_string_view<uint32_t> utf8_target_ref(utf8_target.data(),
+    const irs::basic_string_view<uint32_t> utf8_target_ref(utf8_target.data(),
                                                            utf8_target.size());
-    const std::basic_string_view<uint32_t> utf8_candidate_ref(
+    const irs::basic_string_view<uint32_t> utf8_candidate_ref(
       utf8_candidate.data(), utf8_candidate.size());
 
     ASSERT_EQ(expected_distance_precise,
