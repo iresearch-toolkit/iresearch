@@ -670,49 +670,6 @@ class index_test_case : public tests::index_test_base {
     }
   }
 
-  void open_writer_check_directory_allocator() {
-    // use global allocator everywhere
-    {
-      irs::memory_directory dir;
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-
-      // open writer
-      auto writer = irs::IndexWriter::Make(dir, codec(), irs::OM_CREATE);
-      ASSERT_NE(nullptr, writer);
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-    }
-
-    // use global allocator in directory
-    {
-      irs::memory_directory dir;
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-
-      // open writer
-      irs::IndexWriterOptions options;
-      auto writer =
-        irs::IndexWriter::Make(dir, codec(), irs::OM_CREATE, options);
-      ASSERT_NE(nullptr, writer);
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-    }
-
-    // use memory directory allocator everywhere
-    {
-      irs::memory_directory dir{irs::directory_attributes{42}};
-      ASSERT_NE(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-
-      // open writer
-      auto writer = irs::IndexWriter::Make(dir, codec(), irs::OM_CREATE);
-      ASSERT_NE(nullptr, writer);
-      ASSERT_NE(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-    }
-  }
-
   void open_writer_check_lock() {
     {
       // open writer
@@ -2536,10 +2493,7 @@ TEST_P(index_test_case, check_attributes_order) { iterate_attributes(); }
 
 TEST_P(index_test_case, clear_writer) { clear_writer(); }
 
-TEST_P(index_test_case, open_writer) {
-  open_writer_check_lock();
-  open_writer_check_directory_allocator();
-}
+TEST_P(index_test_case, open_writer) { open_writer_check_lock(); }
 
 TEST_P(index_test_case, check_writer_open_modes) { writer_check_open_modes(); }
 
