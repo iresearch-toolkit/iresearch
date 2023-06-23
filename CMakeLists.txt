@@ -136,6 +136,9 @@ if (MSVC)
     set(CMAKE_C_FLAGS "/Zc:static_assert- ${CMAKE_C_FLAGS}")
     set(CMAKE_CXX_FLAGS "/Zc:static_assert- ${CMAKE_CXX_FLAGS}")
   endif ()
+else ()
+  # We want to force clang to use it
+  add_compile_options(-fsized-deallocation)
 endif ()
 
 # fix strange issue with utf_8_to_32_iterator failing
