@@ -30,7 +30,7 @@ using namespace irs;
 
 TEST(memory_index_output_tests, reset) {
   memory_file file{irs::memory_allocator::global()};
-  memory_index_output out(file);
+  memory_index_output out(file, IResourceManager::kNoopManager, IResourceManager::kTransactions);
 
   std::vector<std::string> data0{
     "JhPHnhXNpYvbEjq", "g7gyby2SdUdNvGQ", "U98XcyIXfllcXZH", "4ibtjQKrCYNXiVj",

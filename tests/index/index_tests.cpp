@@ -48,7 +48,7 @@ using namespace std::literals;
 namespace {
 
 struct SimpleMemoryAccounter : public irs::IResourceManager {
-  bool changeCachedColumnsMemory(int64_t value) noexcept override {
+  bool ChangeCachedColumnsMemory(int64_t value) noexcept override {
     cached_columns_.fetch_add(value);
     return true;
   }

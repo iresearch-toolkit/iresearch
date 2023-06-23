@@ -620,7 +620,7 @@ class writer final : public irs::columnstore_writer {
         finalizer_{std::move(finalizer)},
         cipher_(cipher),
         id_(id),
-        blocks_index_(*ctx.alloc_),
+        blocks_index_(*ctx.alloc_, IResourceManager::kNoopManager, IResourceManager::kTransactions),
         block_buf_(2 * MAX_DATA_BLOCK_SIZE, 0) {
       IRS_ASSERT(comp_);   // ensured by `push_column'
       block_buf_.clear();  // reset size to '0'

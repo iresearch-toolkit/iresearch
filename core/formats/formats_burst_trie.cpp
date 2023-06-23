@@ -1096,8 +1096,10 @@ field_writer::field_writer(
 #ifdef __cpp_lib_memory_resource
     block_index_buf_{sizeof(block_t::prefixed_output) * 32},
 #endif
-    suffix_(memory_allocator::global()),
-    stats_(memory_allocator::global()),
+    suffix_(memory_allocator::global(), IResourceManager::kNoopManager,
+            IResourceManager::kConsolidations),
+    stats_(memory_allocator::global(), IResourceManager::kNoopManager,
+           IResourceManager::kConsolidations),
     pw_(std::move(pw)),
     fst_buf_(new fst_buffer()),
     prefixes_(DEFAULT_SIZE, 0),

@@ -296,7 +296,7 @@ class reader final : public columnstore_reader {
   index_input::ptr data_in_;
 };
 
-irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
+irs::columnstore_writer::ptr make_writer(Version version, IResourceManager& resource_manager, bool consolidation);
 irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore2
