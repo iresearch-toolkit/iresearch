@@ -27,6 +27,7 @@
 
 #include "search/scorer.hpp"
 #include "utils/bit_utils.hpp"
+#include "resource_manager.hpp"
 
 namespace irs {
 
@@ -55,30 +56,6 @@ struct WandContext {
   bool strict{false};
   // Use maxscore instead of wand in disjunction
   bool maxscore{false};
-};
-
-struct IResourceManager {
-
-  static IResourceManager kNoopManager;
-
-  virtual bool changeFileDescritors(int64_t) noexcept { return true; }
-
-  virtual bool changeCachedColumnsMemory(int64_t) noexcept {
-    return true;
-  }
-
-  // memory allocated by Inserts/Removes/Replaces:
-  // Buffered column values, docs contexts, pending removals
-  // fst buffer for inserted data.
-  virtual bool changeTransactionPinnedMemory(int64_t) noexcept {
-    return true;
-  }
-
-  // memory allocated by index readers, consolidation (including fst
-  // buffer for consolidated segments), commit.
-  virtual bool changeIndexPinnedMemory(int64_t) noexcept { 
-    return true;
-  }
 };
 
 

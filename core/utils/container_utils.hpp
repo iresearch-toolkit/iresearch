@@ -262,9 +262,10 @@ class raw_block_vector_base : private util::noncopyable {
     return buffers_[i];
   }
 
-  IRS_FORCE_INLINE buffer_t& get_buffer(size_t i) noexcept {
-    return buffers_[i];
-  }
+  // TODO: Dangerous for memory accounting. Could we remove that?
+  //IRS_FORCE_INLINE buffer_t& get_buffer(size_t i) noexcept {
+  //  return buffers_[i];
+  //}
 
   IRS_FORCE_INLINE void pop_buffer() { buffers_.pop_back(); }
 
@@ -289,11 +290,13 @@ class raw_block_vector_base : private util::noncopyable {
 
   buffer_t& push_buffer(size_t offset, const bucket_size_t& bucket) {
     buffers_.emplace_back(offset, bucket.size, alloc_.get().allocate(bucket));
+    allocated_ += bucket.size;
     return buffers_.back();
   }
 
   IRS_NO_UNIQUE_ADDRESS EboRef<allocator_type> alloc_;
   std::vector<buffer_entry_t> buffers_;
+  size_t allocated_{0};
 };
 
 //////////////////////////////////////////////////////////////////////////////

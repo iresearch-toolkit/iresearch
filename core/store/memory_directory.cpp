@@ -275,8 +275,8 @@ uint64_t memory_index_input::read_vlong() {
 //////////////////////////////////////////////////////////////////////////////
 class checksum_memory_index_output final : public memory_index_output {
  public:
-  explicit checksum_memory_index_output(memory_file& file) noexcept
-    : memory_index_output(file) {
+  explicit checksum_memory_index_output(memory_file& file, IResourceManager& rm, IResourceManager::Call c) noexcept
+    : memory_index_output(file, rm, c) {
     crc_begin_ = pos_;
   }
 
@@ -304,12 +304,13 @@ class checksum_memory_index_output final : public memory_index_output {
   mutable crc32c crc_;
 };
 
-memory_index_output::memory_index_output(memory_file& file) noexcept
-  : file_(file) {
+memory_index_output::memory_index_output(memory_file& file, IResourceManager& rm, IResourceManager::Call call) noexcept
+  : resource_manager_(rm), call_(call), file_(file) {
   reset();
 }
 
 void memory_index_output::reset() noexcept {
+  resource_manager_.Decrease(call_, buf_.offset + buf_.size);
   buf_.data = nullptr;
   buf_.offset = 0;
   buf_.size = 0;
@@ -317,22 +318,31 @@ void memory_index_output::reset() noexcept {
   end_ = nullptr;
 }
 
-void memory_index_output::seek(size_t pos) {
+void memory_index_output::truncate(size_t pos) {
+  auto prev_size = buf_.offset + buf_.size;
   auto idx = file_.buffer_offset(pos);
 
   buf_ =
     idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
   pos_ = buf_.data + pos - buf_.offset;
   end_ = buf_.data + buf_.size;
+  auto new_size = buf_.offset + buf_.size;
+  IRS_ASSERT(new_size <= prev_size);
+  resource_manager_.Decrease(call_, prev_size - new_size);
 }
 
 void memory_index_output::switch_buffer() {
+#ifdef IRESEARCH_DEBUG
+  const auto old_size = buf_.offset + buf_.size;
+#endif
   auto idx = file_.buffer_offset(file_pointer());
 
   buf_ =
     idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
   pos_ = buf_.data;
   end_ = buf_.data + buf_.size;
+  IRS_ASSERT(old_size < (buf_.offset + buf_.size));
+  resource_manager_.Increase(call_, buf_.size);
 }
 
 void memory_index_output::write_long(int64_t value) {
@@ -445,7 +455,7 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
 
     file->reset(attrs_.allocator());
 
-    return index_output::make<checksum_memory_index_output>(*file);
+    return index_output::make<checksum_memory_index_output>(*file, IResourceManager::kNoopManager, IResourceManager::kTransactions);
   } catch (...) {
   }
 

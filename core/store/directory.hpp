@@ -30,6 +30,7 @@
 #include "store/data_output.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
+#include "resource_manager.hpp"
 
 namespace irs {
 
@@ -165,6 +166,7 @@ struct directory : private util::noncopyable {
   const directory_attributes& attributes() const noexcept {
     return const_cast<directory*>(this)->attributes();
   }
+
 };
 
 }  // namespace irs

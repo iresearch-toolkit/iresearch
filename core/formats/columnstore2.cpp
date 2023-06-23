@@ -40,6 +40,13 @@ using namespace irs::columnstore2;
 using column_ptr = std::unique_ptr<column_reader>;
 using column_index = std::vector<sparse_bitmap_writer::block>;
 
+constexpr size_t kWriterBufSize = column::kBlockSize * sizeof(uint64_t);
+
+IResourceManager::Call CallType(bool consolidation) noexcept {
+  return consolidation ? IResourceManager::kConsolidations
+                       : IResourceManager::kTransactions;
+}
+
 constexpr SparseBitmapVersion ToSparseBitmapVersion(
   const ColumnInfo& info) noexcept {
   static_assert(SparseBitmapVersion::kPrevDoc == SparseBitmapVersion{1});
@@ -152,7 +159,7 @@ void write_blocks_dense(index_output& out,
 std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
                                         index_input& in, IResourceManager& resource_manager) {
   const auto blocks_count = math::div_ceil32(hdr.docs_count, column::kBlockSize);
-  resource_manager.changeIndexPinnedMemory(static_cast<int64_t>(sizeof(uint64_t) * blocks_count));
+  resource_manager.Increase(IResourceManager::kReaders, sizeof(uint64_t) * blocks_count);
   std::vector<uint64_t> blocks(blocks_count);
 
   in.read_bytes(reinterpret_cast<byte_type*>(blocks.data()),
@@ -356,7 +363,7 @@ class column_base : public column_reader, private util::noncopyable {
       // force memory release
       column_data_ = {};
       if (released) {
-        resource_manager_.changeCachedColumnsMemory(-released);
+        resource_manager_.Decrease(IResourceManager::kCachedColumns,released);
       }
     }
   }
@@ -401,8 +408,8 @@ class column_base : public column_reader, private util::noncopyable {
   void reset_stream(const index_input* stream) { stream_ = stream; }
   bool allocate_buffered_memory(
     size_t size, size_t mappings) {
-    IRS_ASSERT(size < static_cast<size_t>(std::numeric_limits<int64_t>::max()));
-    if (!resource_manager_.changeCachedColumnsMemory(static_cast<int64_t>(size + mappings))) {
+    if (!resource_manager_.Increase(IResourceManager::kCachedColumns,
+          size + mappings)) {
       auto column_name = name();
       if (irs::IsNull(column_name)) {
         column_name = "<anonymous>";
@@ -689,10 +696,10 @@ class dense_fixed_length_column final : public column_base {
     if (is_encrypted(header()) && !column_data_.empty()) {
       // account approximated number of mappings
       // We don not want to store actual number to not increase column size
-      resource_manager_.changeCachedColumnsMemory(-static_cast<int64_t>(
-        sizeof(remapped_bytes_view_input::mapping_value) * 2));
+      resource_manager_.Decrease(IResourceManager::kCachedColumns,
+        sizeof(remapped_bytes_view_input::mapping_value) * 2);
     }
-    resource_manager_.changeIndexPinnedMemory(-static_cast<int64_t>(sizeof(*this)));
+    resource_manager_.Decrease(IResourceManager::kReaders, sizeof(*this));
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final;
@@ -804,6 +811,8 @@ class fixed_length_column final : public column_base {
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
+    resource_manager.Increase(IResourceManager::kReaders,
+                              sizeof(fixed_length_column));
     const uint64_t len = index_in.read_long();
     auto blocks = read_blocks_dense(hdr, index_in, resource_manager);
 
@@ -831,12 +840,11 @@ class fixed_length_column final : public column_base {
 
   ~fixed_length_column() override {
     if (is_encrypted(header()) && !column_data_.empty()) {
-      resource_manager_.changeCachedColumnsMemory(-
-        static_cast<int64_t>(
-        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size()));
+      resource_manager_.Decrease(IResourceManager::kCachedColumns,
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size());
     }
-    resource_manager_.changeIndexPinnedMemory(-static_cast<int64_t>(
-      sizeof(column_block) * blocks_.size() + sizeof(*this)));
+    resource_manager_.Decrease(IResourceManager::kReaders,
+      sizeof(column_block) * blocks_.size() + sizeof(*this));
   }
 
   doc_iterator::ptr iterator(ColumnHint hint) const final;
@@ -906,8 +914,8 @@ class fixed_length_column final : public column_base {
     blocks_offsets.reserve(blocks.size());
     size_t mapping_size{0};
     if constexpr (encrypted) {
-      mapping_size = static_cast<int64_t>(
-        sizeof(remapped_bytes_view_input::mapping_value) * blocks.size());
+      mapping_size =
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks.size();
     }
     for (auto& block : blocks) {
       size_t length = (block != last_offset || last_block_full)
@@ -988,7 +996,7 @@ class sparse_column final : public column_base {
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
-    resource_manager.changeIndexPinnedMemory(static_cast<int64_t>(sizeof(sparse_column)));
+    resource_manager.Increase(IResourceManager::kReaders, sizeof(sparse_column));
     auto blocks = read_blocks_sparse(hdr, index_in, resource_manager);
     return std::make_unique<sparse_column>(
       std::move(name), resource_manager, std::move(payload), std::move(hdr), std::move(index),
@@ -1011,11 +1019,11 @@ class sparse_column final : public column_base {
   }
 
   ~sparse_column() override {
-    resource_manager_.changeIndexPinnedMemory(-static_cast<int64_t>(
-      sizeof(column_block) * blocks_.size() + sizeof(*this)));
+    resource_manager_.Decrease(IResourceManager::kReaders,
+      sizeof(column_block) * blocks_.size() + sizeof(*this));
     if (is_encrypted(header()) && !column_data_.empty()) {
-      resource_manager_.changeCachedColumnsMemory(-static_cast<int64_t>(
-        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size() * 2));
+      resource_manager_.Decrease(IResourceManager::kCachedColumns,
+        sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size() * 2);
     }
   }
 
@@ -1227,7 +1235,7 @@ std::vector<sparse_column::column_block> sparse_column::read_blocks_sparse(
   IResourceManager& resource_manager) {
   const auto blocks_count =
     math::div_ceil32(hdr.docs_count, column::kBlockSize);
-  resource_manager.changeIndexPinnedMemory(blocks_count *
+  resource_manager.Increase(IResourceManager::kReaders, blocks_count *
                                            sizeof(sparse_column::column_block));
   std::vector<sparse_column::column_block> blocks{
     blocks_count};
@@ -1324,7 +1332,7 @@ void column::reset() {
 
   [[maybe_unused]] const bool res = docs_writer_.erase(pend_);
   IRS_ASSERT(res);
-  data_.stream.seek(addr_table_.back());
+  data_.stream.truncate(addr_table_.back());
   addr_table_.pop_back();
   pend_ = prev_;
 }
@@ -1335,7 +1343,14 @@ void column::flush_block() {
   data_.stream.flush();
 
   auto& data_out = *ctx_.data_out;
+  const auto before_capacity = blocks_.capacity();
   auto& block = blocks_.emplace_back();
+  const auto after_capacity = blocks_.capacity();
+  if (after_capacity != before_capacity) {
+    IRS_ASSERT(after_capacity > before_capacity);
+    resource_manager_.Increase(CallType(ctx_.consolidation),
+      after_capacity - before_capacity);
+  }
 
   block.addr = data_out.file_pointer();
   block.last_size = data_.file.length() - addr_table_.back();
@@ -1407,13 +1422,41 @@ void column::flush_block() {
       data_.file >> data_out;
     }
 
-    data_.stream.seek(0);
+    data_.stream.truncate(0);
     data_.file.reset();
   }
 
   addr_table_.reset();
 
   docs_count_ += docs_count;
+}
+
+column::column(const context& ctx, field_id id,
+                const irs::type_info& compression,
+                columnstore_writer::column_finalizer_f&& finalizer,
+                compression::compressor::ptr deflater,
+                IResourceManager& resource_manager)
+  : ctx_{ctx},
+    compression_{compression},
+    deflater_{std::move(deflater)},
+    finalizer_{std::move(finalizer)},
+    resource_manager_{resource_manager},
+    data_{*ctx_.alloc, resource_manager_,
+          CallType(ctx_.consolidation)},
+    docs_{*ctx_.alloc, resource_manager_,
+          CallType(ctx_.consolidation)},
+    id_{id} {
+  resource_manager_.Increase(
+    CallType(ctx_.consolidation),
+    blocks_.capacity() * sizeof(decltype(blocks_)::value_type));
+  IRS_ASSERT(field_limits::valid(id_));
+}
+
+column::~column() {
+  resource_manager_.Decrease(
+    CallType(ctx_.consolidation),
+    sizeof(column) +
+      blocks_.capacity() * sizeof(decltype(blocks_)::value_type));
 }
 
 void column::finish(index_output& index_out) {
@@ -1517,12 +1560,20 @@ void column::finish(index_output& index_out) {
   }
 }
 
-writer::writer(Version version, bool consolidation)
-  : dir_{nullptr},
+writer::writer(Version version, IResourceManager& resource_manager, bool consolidation)
+  : resource_manager_ {resource_manager},
+    dir_{nullptr},
     alloc_{&memory_allocator::global()},
-    buf_{std::make_unique<byte_type[]>(column::kBlockSize * sizeof(uint64_t))},
     ver_{version},
-    consolidation_{consolidation} {}
+    consolidation_{consolidation} {
+  resource_manager_.Increase(CallType(consolidation_), kWriterBufSize);
+  buf_ = std::make_unique<byte_type[]>(kWriterBufSize);
+}
+
+writer::~writer() {
+  buf_.reset();
+  resource_manager_.Decrease(CallType(consolidation_), kWriterBufSize);
+}
 
 void writer::prepare(directory& dir, const SegmentMeta& meta) {
   columns_.clear();
@@ -1584,6 +1635,7 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
     columns_.back().flush();
   }
 
+  resource_manager_.Increase(CallType(consolidation_), sizeof(column));
   auto& column = columns_.emplace_back(
     column::context{.alloc = alloc_,
                     .data_out = data_out_.get(),
@@ -1592,7 +1644,7 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
                     .consolidation = consolidation_,
                     .version = ToSparseBitmapVersion(info)},
     static_cast<field_id>(id), compression, std::move(finalizer),
-    std::move(compressor));
+    std::move(compressor), resource_manager_);
 
   return {id, [&column](doc_id_t doc) -> column_output& {
             // to avoid extra (and useless in our case) check for block index
@@ -1894,8 +1946,8 @@ bool reader::visit(const column_visitor_f& visitor) const {
   return true;
 }
 
-irs::columnstore_writer::ptr make_writer(Version version, bool consolidation) {
-  return std::make_unique<writer>(version, consolidation);
+irs::columnstore_writer::ptr make_writer(Version version, IResourceManager& resource_manager, bool consolidation) {
+  return std::make_unique<writer>(version, resource_manager, consolidation);
 }
 
 irs::columnstore_reader::ptr make_reader() {
