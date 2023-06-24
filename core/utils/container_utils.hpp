@@ -135,7 +135,7 @@ class raw_block_vector_base : private util::noncopyable {
 template<size_t NumBuckets, size_t SkipBits>
 class raw_block_vector : public raw_block_vector_base {
  public:
-  static constexpr BucketMeta<NumBuckets, SkipBits> kMeta;
+  static constexpr BucketMeta<NumBuckets, SkipBits> kMeta{};
   static constexpr BucketInfo kLast = kMeta[NumBuckets - 1];
 
   IRS_FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
