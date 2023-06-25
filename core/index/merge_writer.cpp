@@ -1055,12 +1055,8 @@ class MergeContext {
     IRS_ASSERT(&lhs != &rhs);
     const bytes_view lhs_value = lhs.payload->value;
     const bytes_view rhs_value = rhs.payload->value;
-    if (const auto r = compare_->Compare(lhs_value, rhs_value); r) {
-      return r < 0;
-    }
-    // tie breaker to avoid splitting document blocks,
-    // can use pointer as we always merge different segments
-    return &lhs > &rhs;
+    const auto r = compare_->Compare(lhs_value, rhs_value);
+    return r < 0;
   }
 
  private:
