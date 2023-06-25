@@ -146,7 +146,11 @@ class raw_block_vector : public raw_block_vector_base {
 
   const buffer_t& push_buffer() {
     auto v = CreateValue();
-    Finally f = [&]() noexcept { alloc_.deallocate(v.data, v.size); };
+    Finally f = [&]() noexcept {
+      if (v.data) {
+        alloc_.deallocate(v.data, v.size);
+      }
+    };
     const auto& buffer = buffers_.emplace_back(v);
     v.data = nullptr;
     return buffer;
