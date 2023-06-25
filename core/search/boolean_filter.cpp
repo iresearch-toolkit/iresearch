@@ -165,7 +165,7 @@ class BooleanQuery : public filter::prepared {
     // exclusion part does not affect scoring at all
     auto excl = ::make_disjunction(
       {.segment = ctx.segment, .scorers = Scorers::kUnordered, .ctx = ctx.ctx},
-      irs::ScoreMergeType::kSum, excl_begin, end);
+      irs::ScoreMergeType::kNoop, excl_begin, end);
 
     // got empty iterator for excluded
     if (doc_limits::eof(excl->value())) {

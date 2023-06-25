@@ -100,33 +100,30 @@ class min_match_disjunction : public doc_iterator,
 
   doc_id_t value() const final { return std::get<document>(attrs_).value; }
 
-  bool next() final {
-    auto& doc_ = std::get<document>(attrs_);
+  doc_id_t next() final {
+    auto& doc_value = std::get<document>(attrs_).value;
 
-    if (doc_limits::eof(doc_.value)) {
-      return false;
+    if (doc_limits::eof(doc_value)) {
+      return doc_value;
     }
 
     while (check_size()) {
       // start next iteration. execute next for all lead iterators
       // and move them to head
       if (!pop_lead()) {
-        doc_.value = doc_limits::eof();
-        return false;
+        return doc_value = doc_limits::eof();
       }
 
       // make step for all head iterators less or equal current doc (doc_)
-      while (top().value() <= doc_.value) {
-        const bool exhausted = top().value() == doc_.value
+      while (top().value() <= doc_value) {
+        const bool exhausted = top().value() == doc_value
                                  ? !top()->next()
-                                 : doc_limits::eof(top()->seek(doc_.value + 1));
+                                 : doc_limits::eof(top()->seek(doc_value + 1));
 
         if (exhausted && !remove_top()) {
-          doc_.value = doc_limits::eof();
-          return false;
-        } else {
-          refresh_top();
+          return doc_value = doc_limits::eof();
         }
+        refresh_top();
       }
 
       // count equal iterators
@@ -135,24 +132,19 @@ class min_match_disjunction : public doc_iterator,
       do {
         add_lead();
         if (lead_ >= min_match_count_) {
-          return !doc_limits::eof(doc_.value = top);
+          return doc_value = top;
         }
       } while (top == this->top().value());
     }
 
-    doc_.value = doc_limits::eof();
-    return false;
+    return doc_value = doc_limits::eof();
   }
 
   doc_id_t seek(doc_id_t target) final {
-    auto& doc_ = std::get<document>(attrs_);
+    auto& doc_value = std::get<document>(attrs_).value;
 
-    if (target <= doc_.value) {
-      return doc_.value;
-    }
-
-    if (doc_limits::eof(doc_.value)) {
-      return doc_.value;
+    if (target <= doc_value) {
+      return doc_value;
     }
 
     // execute seek for all lead iterators and
@@ -166,7 +158,7 @@ class min_match_disjunction : public doc_iterator,
 
         // iterator exhausted
         if (!remove_lead(it)) {
-          return (doc_.value = doc_limits::eof());
+          return doc_value = doc_limits::eof();
         }
 
         it = lead();
@@ -183,7 +175,7 @@ class min_match_disjunction : public doc_iterator,
 
     // check if we still satisfy search criteria
     if (lead_ >= min_match_count_) {
-      return doc_.value = target;
+      return doc_value = target;
     }
 
     // main search loop
@@ -194,13 +186,13 @@ class min_match_disjunction : public doc_iterator,
         if (doc_limits::eof(doc)) {
           // iterator exhausted
           if (!remove_top()) {
-            return (doc_.value = doc_limits::eof());
+            return doc_value = doc_limits::eof();
           }
         } else if (doc == target) {
           // valid iterator, doc == target
           add_lead();
           if (lead_ >= min_match_count_) {
-            return (doc_.value = target);
+            return doc_value = target;
           }
         } else {
           // invalid iterator, doc != target
@@ -212,7 +204,7 @@ class min_match_disjunction : public doc_iterator,
       // start next iteration. execute next for all lead iterators
       // and move them to head
       if (!pop_lead()) {
-        return doc_.value = doc_limits::eof();
+        return doc_value = doc_limits::eof();
       }
     }
   }

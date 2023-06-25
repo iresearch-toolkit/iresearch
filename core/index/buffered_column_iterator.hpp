@@ -57,27 +57,22 @@ class BufferedColumnIterator : public doc_iterator {
         return value.key < target;
       });
 
-    next();
-
-    return value();
+    return next();
   }
 
-  bool next() noexcept final {
-    auto& doc = std::get<document>(attrs_);
+  doc_id_t next() noexcept final {
+    auto& doc = std::get<document>(attrs_).value;
 
     if (IRS_UNLIKELY(next_ == end_)) {
-      doc.value = doc_limits::eof();
-      return false;
+      return doc = doc_limits::eof();
     }
 
-    auto& payload = std::get<irs::payload>(attrs_);
-
-    doc.value = next_->key;
-    payload.value = {data_.data() + next_->begin, next_->size};
+    doc = next_->key;
+    std::get<irs::payload>(attrs_).value = {data_.data() + next_->begin,
+                                            next_->size};
 
     ++next_;
-
-    return true;
+    return doc;
   }
 
  private:

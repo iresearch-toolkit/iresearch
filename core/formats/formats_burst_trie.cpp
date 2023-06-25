@@ -2667,9 +2667,9 @@ class automaton_term_iterator : public term_iterator_base {
   bool next() final;
 
   SeekResult seek_ge(bytes_view term) final {
-    if (!irs::seek(*this, term)) {
-      return SeekResult::END;
-    }
+    // if (!irs::seek(*this, term)) {
+    //   return SeekResult::END;
+    // }
 
     return value() == term ? SeekResult::FOUND : SeekResult::NOT_FOUND;
   }

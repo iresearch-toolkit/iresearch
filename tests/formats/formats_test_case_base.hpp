@@ -168,8 +168,7 @@ class format_test_case : public index_test_base {
     irs::doc_id_t value() const final { return doc_.value; }
 
     irs::doc_id_t seek(irs::doc_id_t target) final {
-      irs::seek(*this, target);
-      return value();
+      return irs::seek(*this, target);
     }
 
     irs::attribute* get_mutable(irs::type_info::type_id type) noexcept final {

@@ -435,14 +435,9 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
                              bool collect_all_states)
     : checker_{std::begin(itrs), std::end(itrs), total_terms_count,
                min_match_count, collect_all_states},
-      // we are not interested in disjunction`s // scoring
-      approx_(std::move(itrs), min_match_count, NoopAggregator{}) {
-    // avoid runtime conversion
-    std::get<attribute_ptr<document>>(attrs_) =
-      irs::get_mutable<document>(&approx_);
-
-    // FIXME find a better estimation
-    std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(&approx_);
+      // we are not interested in disjunction`s scoring
+      approx_{std::move(itrs), min_match_count, NoopAggregator{}} {
+    // FIXME find a better cost estimation
   }
 
   NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
@@ -454,54 +449,44 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
     : NGramSimilarityDocIterator{std::move(itrs), total_terms_count,
                                  min_match_count, !ord.empty()} {
     if (!ord.empty()) {
-      auto& score = std::get<irs::score>(attrs_);
-      CompileScore(score, ord.buckets(), segment, field, stats, *this, boost);
+      CompileScore(score_, ord.buckets(), segment, field, stats, *this, boost);
     }
   }
 
   attribute* get_mutable(type_info::type_id type) noexcept final {
-    auto* attr = irs::get_mutable(attrs_, type);
-
+    if (type == irs::type<score>::id()) {
+      return &score_;
+    }
+    auto* attr = approx_.get_mutable(type);
     return attr ? attr : checker_.GetMutable(type);
   }
 
-  bool next() final {
-    while (approx_.next()) {
-      if (checker_.Check(approx_.match_count(), value())) {
-        return true;
-      }
-    }
-    return false;
-  }
+  doc_id_t next() final { return NextImpl(approx_.next()); }
 
-  doc_id_t value() const final {
-    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
-  }
+  doc_id_t value() const final { return approx_.value(); }
 
   doc_id_t seek(doc_id_t target) final {
-    auto* doc_ = std::get<attribute_ptr<document>>(attrs_).ptr;
-
-    if (doc_->value >= target) {
-      return doc_->value;
-    }
-    const auto doc = approx_.seek(target);
-
-    if (doc_limits::eof(doc) ||
-        checker_.Check(approx_.match_count(), doc_->value)) {
-      return doc;
-    }
-
-    next();
-    return doc_->value;
+    // TODO(MBkkt) Is it necessary? Maybe really common case?
+    // if (const auto doc = value(); doc >= target) {
+    //   return doc;
+    // }
+    return NextImpl(approx_.seek(target));
   }
 
  private:
-  using attributes =
-    std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
+  IRS_FORCE_INLINE doc_id_t NextImpl(doc_id_t target) {
+    while (true) {
+      if (doc_limits::eof(target) ||
+          checker_.Check(approx_.match_count(), target)) {
+        return target;
+      }
+      target = approx_.next();
+    }
+  }
 
   Checker checker_;
   NGramApprox approx_;
-  attributes attrs_;
+  score score_;
 };
 
 NGramApprox::doc_iterators_t Execute(const NGramState& query_state,

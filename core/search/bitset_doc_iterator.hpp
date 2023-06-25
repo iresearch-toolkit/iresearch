@@ -36,7 +36,7 @@ class bitset_doc_iterator : public doc_iterator, private util::noncopyable {
 
   bitset_doc_iterator(const word_t* begin, const word_t* end) noexcept;
 
-  bool next() noexcept final;
+  doc_id_t next() noexcept final;
   doc_id_t seek(doc_id_t target) noexcept final;
   doc_id_t value() const noexcept final { return doc_.value; }
   attribute* get_mutable(irs::type_info::type_id id) noexcept override;

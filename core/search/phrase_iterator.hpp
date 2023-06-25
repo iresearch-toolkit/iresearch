@@ -597,12 +597,13 @@ class PhraseIterator : public doc_iterator {
     return std::get<attribute_ptr<document>>(attrs_).ptr->value;
   }
 
-  bool next() final {
-    bool next = false;
-    while ((next = approx_.next()) && !freq_.EvaluateFreq()) {
+  doc_id_t next() final {
+    while (true) {
+      const auto value = approx_.next();
+      if (doc_limits::eof(value) || freq_.EvaluateFreq()) {
+        return value;
+      }
     }
-
-    return next;
   }
 
   doc_id_t seek(doc_id_t target) final {

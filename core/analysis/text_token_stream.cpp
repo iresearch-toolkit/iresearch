@@ -948,8 +948,7 @@ REGISTER_ANALYZER_TEXT(analysis::text_token_stream, make_text,
                        normalize_text_config);
 }  // namespace
 
-namespace irs {
-namespace analysis {
+namespace irs::analysis {
 
 void text_token_stream::state_deleter_t::operator()(state_t* p) const noexcept {
   delete p;
@@ -1148,5 +1147,4 @@ bool text_token_stream::next_ngram() {
   return false;
 }
 
-}  // namespace analysis
-}  // namespace irs
+}  // namespace irs::analysis
