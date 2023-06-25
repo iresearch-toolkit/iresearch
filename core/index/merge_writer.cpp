@@ -196,11 +196,11 @@ bool RemappingDocIterator::next() {
 // Iterator over doc_ids for a term over all readers
 class CompoundDocIterator : public doc_iterator {
  public:
-  typedef std::pair<doc_iterator::ptr, std::reference_wrapper<const doc_map_f>>
-    doc_iterator_t;
-  typedef std::vector<doc_iterator_t> iterators_t;
+  using doc_iterator_t =
+    std::pair<doc_iterator::ptr, std::reference_wrapper<const doc_map_f>>;
+  using iterators_t = std::vector<doc_iterator_t>;
 
-  static constexpr const size_t kProgressStepDocs = size_t(1) << 14;
+  static constexpr auto kProgressStepDocs = size_t{1} << size_t{14};
 
   explicit CompoundDocIterator(
     const MergeWriter::FlushProgress& progress) noexcept
@@ -296,7 +296,7 @@ bool CompoundDocIterator::next() {
 class SortingCompoundDocIterator : public doc_iterator {
  public:
   explicit SortingCompoundDocIterator(CompoundDocIterator& doc_it) noexcept
-    : doc_it_{&doc_it}, heap_it_{min_heap_context{doc_it.iterators_}} {}
+    : doc_it_{&doc_it} {}
 
   template<typename Func>
   bool reset(Func&& func) {
@@ -304,7 +304,7 @@ class SortingCompoundDocIterator : public doc_iterator {
       return false;
     }
 
-    heap_it_.reset(doc_it_->iterators_.size());
+    merge_it_.Reset(doc_it_->iterators_);
     lead_ = nullptr;
 
     return true;
@@ -324,18 +324,15 @@ class SortingCompoundDocIterator : public doc_iterator {
   doc_id_t value() const noexcept final { return doc_it_->value(); }
 
  private:
-  class min_heap_context {
+  class Context {
    public:
-    explicit min_heap_context(CompoundDocIterator::iterators_t& itrs) noexcept
-      : itrs_{&itrs} {}
+    using Value = CompoundDocIterator::doc_iterator_t;
 
     // advance
-    bool operator()(const size_t i) const {
-      IRS_ASSERT(i < itrs_->size());
-      auto& doc_it = (*itrs_)[i];
-      const auto& map = doc_it.second.get();
-      while (doc_it.first->next()) {
-        if (!doc_limits::eof(map(doc_it.first->value()))) {
+    bool operator()(const Value& value) const {
+      const auto& map = value.second.get();
+      while (value.first->next()) {
+        if (!doc_limits::eof(map(value.first->value()))) {
           return true;
         }
       }
@@ -343,39 +340,29 @@ class SortingCompoundDocIterator : public doc_iterator {
     }
 
     // compare
-    bool operator()(const size_t lhs, const size_t rhs) const {
-      return remap(lhs) > remap(rhs);
+    bool operator()(const Value& lhs, const Value& rhs) const {
+      return lhs.second.get()(lhs.first->value()) <
+             rhs.second.get()(rhs.first->value());
     }
-
-   private:
-    doc_id_t remap(const size_t i) const {
-      IRS_ASSERT(i < itrs_->size());
-      auto& doc_it = (*itrs_)[i];
-      return doc_it.second.get()(doc_it.first->value());
-    }
-
-    CompoundDocIterator::iterators_t* itrs_;
   };
 
   CompoundDocIterator* doc_it_;
-  ExternalHeapIterator<min_heap_context> heap_it_;
+  ExternalMergeIterator<Context> merge_it_;
   CompoundDocIterator::doc_iterator_t* lead_{};
 };
 
 bool SortingCompoundDocIterator::next() {
-  auto& iterators = doc_it_->iterators_;
-  auto& current_id = doc_it_->doc_;
-
   doc_it_->progress_();
 
+  auto& current_id = doc_it_->doc_.value;
   if (doc_it_->aborted()) {
-    current_id.value = doc_limits::eof();
-    iterators.clear();
+    current_id = doc_limits::eof();
+    doc_it_->iterators_.clear();
     return false;
   }
 
-  while (heap_it_.next()) {
-    auto& new_lead = iterators[heap_it_.value()];
+  while (merge_it_.Next()) {
+    auto& new_lead = merge_it_.Lead();
     auto& it = new_lead.first;
     auto& doc_map = new_lead.second.get();
 
@@ -385,17 +372,13 @@ bool SortingCompoundDocIterator::next() {
       lead_ = &new_lead;
     }
 
-    current_id.value = doc_map(it->value());
-
-    if (doc_limits::eof(current_id.value)) {
-      continue;
+    current_id = doc_map(it->value());
+    if (!doc_limits::eof(current_id)) {
+      return true;
     }
-
-    return true;
   }
 
-  current_id.value = doc_limits::eof();
-
+  current_id = doc_limits::eof();
   return false;
 }
 
@@ -1055,43 +1038,32 @@ struct PrimarySortIteratorAdapter {
   doc_id_t min{};
 };
 
-class MinHeapContext {
+class MergeContext {
  public:
-  MinHeapContext(std::span<PrimarySortIteratorAdapter> itrs,
-                 const Comparer& compare) noexcept
-    : itrs_{itrs}, compare_{&compare} {}
+  using Value = PrimarySortIteratorAdapter;
+
+  MergeContext(const Comparer& compare) noexcept : compare_{&compare} {}
 
   // advance
-  bool operator()(const size_t i) const {
-    IRS_ASSERT(i < itrs_.size());
-    auto& it = itrs_[i];
-    it.min = it.doc->value + 1;
-    return it.it->next();
+  bool operator()(Value& value) const {
+    value.min = value.doc->value + 1;
+    return value.it->next();
   }
 
   // compare
-  bool operator()(const size_t lhs_idx, const size_t rhs_idx) const {
-    IRS_ASSERT(lhs_idx != rhs_idx);
-    IRS_ASSERT(lhs_idx < itrs_.size());
-    IRS_ASSERT(rhs_idx < itrs_.size());
-
-    const auto& lhs = itrs_[lhs_idx];
-    const auto& rhs = itrs_[rhs_idx];
-
+  bool operator()(const Value& lhs, const Value& rhs) const {
+    IRS_ASSERT(&lhs != &rhs);
     const bytes_view lhs_value = lhs.payload->value;
     const bytes_view rhs_value = rhs.payload->value;
-
     if (const auto r = compare_->Compare(lhs_value, rhs_value); r) {
-      return r > 0;
+      return r < 0;
     }
-
-    // tie breaker to avoid splitting document blocks, can use index as we
-    // always merge different segments
-    return rhs_idx > lhs_idx;
+    // tie breaker to avoid splitting document blocks,
+    // can use pointer as we always merge different segments
+    return &lhs > &rhs;
   }
 
  private:
-  std::span<PrimarySortIteratorAdapter> itrs_;
   const Comparer* compare_;
 };
 
@@ -1788,14 +1760,14 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     return true;
   };
 
-  ExternalHeapIterator columns_it{MinHeapContext{itrs, *comparator_}};
+  ExternalMergeIterator<MergeContext> columns_it{*comparator_};
 
-  for (columns_it.reset(itrs.size()); columns_it.next();) {
-    const auto index = columns_it.value();
-    auto& it = itrs[index];
+  for (columns_it.Reset(itrs); columns_it.Next();) {
+    auto& it = columns_it.Lead();
     IRS_ASSERT(it.valid());
 
     const auto max = it.doc->value;
+    const auto index = &it - itrs.data();
     auto& doc_id_map = readers_[index].doc_id_map;
 
     // Fill doc id map

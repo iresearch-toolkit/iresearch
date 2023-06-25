@@ -30,77 +30,92 @@
 
 namespace irs {
 
-// External heap iterator
-// ----------------------------------------------------------------------------
-//      [0] <-- begin
-//      [1]      |
-//      [2]      | head (heap)
-//      [3]      |
-//      [4] <-- lead_
-//      [5]      |
-//      [6]      | lead (list of accepted iterators)
-//      ...      |
-//      [n] <-- end
-// ----------------------------------------------------------------------------
 template<typename Context>
-class ExternalHeapIterator {
- public:
-  explicit ExternalHeapIterator(Context&& ctx) : ctx_{std::move(ctx)} {}
+class ExternalMergeIterator {
+  using Value = typename Context::Value;
 
-  void reset(size_t size) {
-    heap_.resize(size);
-    std::iota(heap_.begin(), heap_.end(), size_t{0});
-    lead_ = size;
+ public:
+  template<typename... Args>
+  explicit ExternalMergeIterator(Args&&... args)
+    : ctx_{std::forward<Args>(args)...} {}
+
+  void Reset(std::span<Value> values) noexcept {
+    size_ = 0;
+    tree_.clear();
+    values_ = values;
   }
 
-  bool next() {
-    if (heap_.empty()) {
-      return false;
+  bool Next() {
+    if (IRS_UNLIKELY(size_ == 0)) {
+      return LazyReset();
     }
-
-    auto begin = std::begin(heap_);
-
-    while (lead_) {
-      auto it = std::end(heap_) - lead_--;
-
-      if (!ctx_(*it)) {  // advance iterator
-        if (!remove_lead(it)) {
-          IRS_ASSERT(heap_.empty());
-          return false;
-        }
-
-        continue;
+    auto& lead = Lead();
+    auto position = values_.size() + (&lead - values_.data());
+    if (IRS_UNLIKELY(!ctx_(lead))) {
+      if (--size_ == 0) {
+        return false;
       }
-
-      std::push_heap(begin, ++it, ctx_);
+      tree_[position] = nullptr;
     }
-
-    IRS_ASSERT(!heap_.empty());
-    std::pop_heap(begin, std::end(heap_), ctx_);
-    lead_ = 1;
-
+    while ((position /= 2) != 0) {
+      tree_[position] = Compute(position);
+    }
     return true;
   }
 
-  size_t value() const noexcept {
-    IRS_ASSERT(!heap_.empty());
-    return heap_.back();
+  IRS_FORCE_INLINE Value& Lead() const noexcept {
+    IRS_ASSERT(size_ > 0);
+    IRS_ASSERT(tree_.size() > 1);
+    IRS_ASSERT(tree_[1] != nullptr);
+    return *tree_[1];
   }
 
-  size_t size() const noexcept { return heap_.size(); }
-
  private:
-  bool remove_lead(std::vector<size_t>::iterator it) {
-    if (&*it != &heap_.back()) {
-      std::swap(*it, heap_.back());
+  IRS_FORCE_INLINE Value* Compute(size_t position) {
+    auto* lhs = tree_[2 * position];
+    auto* rhs = tree_[2 * position + 1];
+    if ((lhs != nullptr) & (rhs != nullptr)) {
+      return ctx_(*lhs, *rhs) ? lhs : rhs;
     }
-    heap_.pop_back();
-    return !heap_.empty();
+    return reinterpret_cast<Value*>(reinterpret_cast<uintptr_t>(lhs) |
+                                    reinterpret_cast<uintptr_t>(rhs));
+  }
+
+  IRS_NO_INLINE bool LazyReset() {
+    IRS_ASSERT(size_ == 0);
+    if (!tree_.empty()) {
+      return false;
+    }
+    size_ = values_.size();
+    if (size_ == 0) {
+      return false;
+    }
+    // bottom-up min segment tree construction
+    tree_.resize(size_ * 2);
+    // init leafs
+    auto* values = values_.data();
+    for (auto it = tree_.begin() + size_, end = tree_.end(); it != end; ++it) {
+      if (ctx_(*values)) {
+        *it = values;
+      } else {
+        *it = nullptr;
+        --size_;
+      }
+      ++values;
+    }
+    // compute tree
+    for (auto position = values_.size() - 1; position != 0; --position) {
+      tree_[position] = Compute(position);
+    }
+    // stub node for faster compute
+    tree_[0] = nullptr;
+    return size_ != 0;
   }
 
   IRS_NO_UNIQUE_ADDRESS Context ctx_;
-  std::vector<size_t> heap_;
-  size_t lead_{};
+  size_t size_{0};
+  std::vector<Value*> tree_;
+  std::span<Value> values_;
 };
 
 }  // namespace irs
