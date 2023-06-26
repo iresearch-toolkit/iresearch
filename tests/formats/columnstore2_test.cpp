@@ -41,8 +41,21 @@ struct SimpleMemoryAccounter : public irs::IResourceManager {
     return true;
   }
 
+  bool ChangeConsolidationPinnedMemory(int64_t value) noexcept override {
+    consolidation_.fetch_add(value);
+    return true;
+  }
+
+  bool ChangeTransactionPinnedMemory(int64_t value) noexcept override {
+    printf("Change: %I64d\n", value);
+    transaction_.fetch_add(value);
+    return true;
+  }
+
   std::atomic<int64_t> cached_columns_{0};
   std::atomic<int64_t> pinned_{0};
+  std::atomic<int64_t> consolidation_{0};
+  std::atomic<int64_t> transaction_{0};
 };
 }  // namespace
 
@@ -176,17 +189,35 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
     EXPECT_FALSE(true);
     return std::string_view{};
   };
-
-  irs::columnstore2::writer writer(version(),irs::IResourceManager::kNoopManager, consolidation());
-  writer.prepare(dir(), meta);
-  writer.push_column({irs::type<irs::compression::none>::get(), {}, false},
-                     finalizer);
-  writer.push_column({irs::type<irs::compression::none>::get(), {}, false},
-                     finalizer);
-  ASSERT_FALSE(writer.commit(state));
-
-  irs::columnstore2::reader reader;
-  ASSERT_FALSE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
+  SimpleMemoryAccounter memory;
+  {
+    irs::columnstore2::writer writer(
+      version(), memory, consolidation());
+    writer.prepare(dir(), meta);
+    const auto pinned =
+      consolidation() ? memory.consolidation_.load() : memory.transaction_.load();
+    ASSERT_GT(pinned, 0);
+    writer.push_column({irs::type<irs::compression::none>::get(), {}, false},
+                       finalizer);
+    writer.push_column({irs::type<irs::compression::none>::get(), {}, false},
+                       finalizer);
+    const auto pinned2 = consolidation() ? memory.consolidation_.load()
+                                         : memory.transaction_.load();
+    ASSERT_GT(pinned2, pinned);
+    ASSERT_FALSE(writer.commit(state));
+    const auto pinned3 = consolidation() ? memory.consolidation_.load()
+                                         : memory.transaction_.load();
+    ASSERT_LT(pinned3, pinned2);
+    irs::columnstore2::reader reader;
+    ASSERT_FALSE(reader.prepare(
+      dir(), meta, reader_options(memory)));
+    // empty columnstore - no readers to allocate
+    ASSERT_EQ(memory.pinned_, 0);
+  }
+  ASSERT_EQ(memory.consolidation_, 0);
+  ASSERT_EQ(memory.pinned_, 0);
+  ASSERT_EQ(memory.cached_columns_, 0);
+  ASSERT_EQ(memory.transaction_, 0);
 }
 
 TEST_P(columnstore2_test_case, empty_column) {
@@ -198,102 +229,114 @@ TEST_P(columnstore2_test_case, empty_column) {
     .name = meta.name,
     .doc_count = kMax,
   };
-
-  irs::columnstore2::writer writer(version(),irs::IResourceManager::kNoopManager, consolidation());
-  writer.prepare(dir(), meta);
-  [[maybe_unused]] auto [id0, handle0] =
-    writer.push_column(column_info(), [](irs::bstring& out) {
-      EXPECT_TRUE(out.empty());
-      out += 1;
-      return "foobar";
-    });
-  [[maybe_unused]] auto [id1, handle1] =
-    writer.push_column(column_info(), [](irs::bstring& out) {
-      EXPECT_TRUE(out.empty());
-      out += 2;
-      return std::string_view{};
-    });
-  [[maybe_unused]] auto [id2, handle2] =
-    writer.push_column(column_info(), [](auto&) {
-      // Must no be called
-      EXPECT_TRUE(false);
-      return std::string_view{};
-    });
-  handle1(42).write_byte(42);
-  ASSERT_TRUE(writer.commit(state));
-
-  irs::columnstore2::reader reader;
-  ASSERT_TRUE(reader.prepare(dir(), meta, reader_options(irs::IResourceManager::kNoopManager)));
-  ASSERT_EQ(2, reader.size());
-
-  // column 0
+  SimpleMemoryAccounter memory;
   {
-    auto* header = reader.header(0);
-    ASSERT_NE(nullptr, header);
-    ASSERT_EQ(0, header->docs_count);
-    ASSERT_EQ(0, header->docs_index);
-    ASSERT_EQ(irs::doc_limits::invalid(), header->min);
-    ASSERT_EQ(ColumnType::kMask, header->type);
-    ASSERT_EQ(column_property(ColumnProperty::kNormal), header->props);
-
-    auto column = reader.column(0);
-    ASSERT_NE(nullptr, column);
-    ASSERT_EQ(0, column->id());
-    ASSERT_EQ("foobar", column->name());
-    ASSERT_EQ(0, column->size());
-    const auto header_payload = column->payload();
-    ASSERT_EQ(1, header_payload.size());
-    ASSERT_EQ(1, header_payload[0]);
-    auto it = column->iterator(hint());
-    ASSERT_NE(nullptr, it);
-    ASSERT_EQ(0, irs::cost::extract(*it));
-    ASSERT_TRUE(irs::doc_limits::eof(it->value()));
+    irs::columnstore2::writer writer(
+      version(), memory, consolidation());
+    writer.prepare(dir(), meta);
+    [[maybe_unused]] auto [id0, handle0] =
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 1;
+        return "foobar";
+      });
+    [[maybe_unused]] auto [id1, handle1] =
+      writer.push_column(column_info(), [](irs::bstring& out) {
+        EXPECT_TRUE(out.empty());
+        out += 2;
+        return std::string_view{};
+      });
+    [[maybe_unused]] auto [id2, handle2] =
+      writer.push_column(column_info(), [](auto&) {
+        // Must no be called
+        EXPECT_TRUE(false);
+        return std::string_view{};
+      });
+    handle1(42).write_byte(42);
+    const auto pinned = consolidation() ? memory.consolidation_.load()
+                                        : memory.transaction_.load();
+    ASSERT_GT(pinned, 0);
+    ASSERT_TRUE(writer.commit(state));
   }
-
-  // column 1
   {
-    auto* header = reader.header(1);
-    ASSERT_NE(nullptr, header);
-    ASSERT_EQ(1, header->docs_count);
-    ASSERT_EQ(0, header->docs_index);
-    ASSERT_EQ(42, header->min);
-    ASSERT_EQ(ColumnType::kSparse, header->type);  // FIXME why sparse?
-    ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
+    irs::columnstore2::reader reader;
+    ASSERT_TRUE(reader.prepare(
+      dir(), meta, reader_options(memory)));
+    ASSERT_EQ(2, reader.size());
+    ASSERT_GT(memory.pinned_, 0);
+    // column 0
+    {
+      auto* header = reader.header(0);
+      ASSERT_NE(nullptr, header);
+      ASSERT_EQ(0, header->docs_count);
+      ASSERT_EQ(0, header->docs_index);
+      ASSERT_EQ(irs::doc_limits::invalid(), header->min);
+      ASSERT_EQ(ColumnType::kMask, header->type);
+      ASSERT_EQ(column_property(ColumnProperty::kNormal), header->props);
 
-    auto column = reader.column(1);
-    ASSERT_NE(nullptr, column);
-    ASSERT_EQ(1, column->id());
-    ASSERT_TRUE(irs::IsNull(column->name()));
-    ASSERT_EQ(1, column->size());
-    const auto header_payload = column->payload();
-    ASSERT_EQ(1, header_payload.size());
-    ASSERT_EQ(2, header_payload[0]);
-    auto it = column->iterator(hint());
-    auto* document = irs::get<irs::document>(*it);
-    ASSERT_NE(nullptr, document);
-    auto* payload = irs::get<irs::payload>(*it);
-    ASSERT_NE(nullptr, payload);
-    auto* cost = irs::get<irs::cost>(*it);
-    auto* prev = irs::get<irs::prev_doc>(*it);
-    ASSERT_EQ(has_prev_doc(), prev && *prev);
-    ASSERT_NE(nullptr, cost);
-    ASSERT_EQ(column->size(), cost->estimate());
-    ASSERT_NE(nullptr, it);
-    ASSERT_FALSE(irs::doc_limits::valid(it->value()));
-    ASSERT_TRUE(it->next());
-    if (prev && *prev) {
-      ASSERT_EQ(0, (*prev)());
+      auto column = reader.column(0);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(0, column->id());
+      ASSERT_EQ("foobar", column->name());
+      ASSERT_EQ(0, column->size());
+      const auto header_payload = column->payload();
+      ASSERT_EQ(1, header_payload.size());
+      ASSERT_EQ(1, header_payload[0]);
+      auto it = column->iterator(hint());
+      ASSERT_NE(nullptr, it);
+      ASSERT_EQ(0, irs::cost::extract(*it));
+      ASSERT_TRUE(irs::doc_limits::eof(it->value()));
     }
-    ASSERT_EQ(42, it->value());
-    if (has_payload()) {
-      ASSERT_EQ(1, payload->value.size());
-      ASSERT_EQ(42, payload->value[0]);
-    } else {
-      ASSERT_TRUE(payload->value.empty());
+
+    // column 1
+    {
+      auto* header = reader.header(1);
+      ASSERT_NE(nullptr, header);
+      ASSERT_EQ(1, header->docs_count);
+      ASSERT_EQ(0, header->docs_index);
+      ASSERT_EQ(42, header->min);
+      ASSERT_EQ(ColumnType::kSparse, header->type);  // FIXME why sparse?
+      ASSERT_EQ(column_property(ColumnProperty::kNoName), header->props);
+
+      auto column = reader.column(1);
+      ASSERT_NE(nullptr, column);
+      ASSERT_EQ(1, column->id());
+      ASSERT_TRUE(irs::IsNull(column->name()));
+      ASSERT_EQ(1, column->size());
+      const auto header_payload = column->payload();
+      ASSERT_EQ(1, header_payload.size());
+      ASSERT_EQ(2, header_payload[0]);
+      auto it = column->iterator(hint());
+      auto* document = irs::get<irs::document>(*it);
+      ASSERT_NE(nullptr, document);
+      auto* payload = irs::get<irs::payload>(*it);
+      ASSERT_NE(nullptr, payload);
+      auto* cost = irs::get<irs::cost>(*it);
+      auto* prev = irs::get<irs::prev_doc>(*it);
+      ASSERT_EQ(has_prev_doc(), prev && *prev);
+      ASSERT_NE(nullptr, cost);
+      ASSERT_EQ(column->size(), cost->estimate());
+      ASSERT_NE(nullptr, it);
+      ASSERT_FALSE(irs::doc_limits::valid(it->value()));
+      ASSERT_TRUE(it->next());
+      if (prev && *prev) {
+        ASSERT_EQ(0, (*prev)());
+      }
+      ASSERT_EQ(42, it->value());
+      if (has_payload()) {
+        ASSERT_EQ(1, payload->value.size());
+        ASSERT_EQ(42, payload->value[0]);
+      } else {
+        ASSERT_TRUE(payload->value.empty());
+      }
+      ASSERT_FALSE(it->next());
+      ASSERT_FALSE(it->next());
     }
-    ASSERT_FALSE(it->next());
-    ASSERT_FALSE(it->next());
   }
+  ASSERT_EQ(memory.consolidation_, 0);
+  ASSERT_EQ(memory.pinned_, 0);
+  ASSERT_EQ(memory.cached_columns_, 0);
+  ASSERT_EQ(memory.transaction_, 0);
 }
 
 TEST_P(columnstore2_test_case, sparse_mask_column) {

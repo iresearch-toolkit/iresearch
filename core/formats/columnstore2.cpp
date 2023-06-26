@@ -1349,7 +1349,7 @@ void column::flush_block() {
   if (after_capacity != before_capacity) {
     IRS_ASSERT(after_capacity > before_capacity);
     resource_manager_.Increase(CallType(ctx_.consolidation),
-      after_capacity - before_capacity);
+      (after_capacity - before_capacity) * sizeof(decltype(blocks_)::value_type));
   }
 
   block.addr = data_out.file_pointer();
@@ -1446,9 +1446,6 @@ column::column(const context& ctx, field_id id,
     docs_{*ctx_.alloc, resource_manager_,
           CallType(ctx_.consolidation)},
     id_{id} {
-  resource_manager_.Increase(
-    CallType(ctx_.consolidation),
-    blocks_.capacity() * sizeof(decltype(blocks_)::value_type));
   IRS_ASSERT(field_limits::valid(id_));
 }
 

@@ -30,6 +30,7 @@ struct IResourceManager {
   static IResourceManager kNoopManager;
 
   enum Call {
+    kNoop,
     kFileDescriptors,
     kCachedColumns,
     kTransactions,
@@ -52,6 +53,8 @@ struct IResourceManager {
         return ChangeTransactionPinnedMemory(static_cast<int64_t>(v));
       case kConsolidations:
         return ChangeConsolidationPinnedMemory(static_cast<int64_t>(v));
+      case kNoop:
+        return true;
     }
     IRS_ASSERT(false);
     // MSVC issues warning here
@@ -76,6 +79,9 @@ struct IResourceManager {
         break;
       case kConsolidations:
         res = ChangeConsolidationPinnedMemory(-static_cast<int64_t>(v));
+        break;
+      case kNoop:
+        res = true;
         break;
     }
     IRS_ASSERT(res);

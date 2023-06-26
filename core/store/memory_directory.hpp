@@ -47,8 +47,9 @@ class memory_file
     raw_block_vector_t;
 
  public:
-  explicit memory_file(const memory_allocator& alloc) noexcept
-    : raw_block_vector_t{alloc} {
+  explicit memory_file(const memory_allocator& alloc, IResourceManager& rm,
+                       IResourceManager::Call call) noexcept
+    : raw_block_vector_t{alloc, rm, call} {
     touch(meta_.mtime);
   }
 
@@ -197,8 +198,7 @@ class memory_index_input final : public index_input {
 ////////////////////////////////////////////////////////////////////////////////
 class memory_index_output : public index_output {
  public:
-  explicit memory_index_output(memory_file& file, IResourceManager& rm,
-                               IResourceManager::Call call) noexcept;
+  explicit memory_index_output(memory_file& file) noexcept;
   memory_index_output(const memory_index_output&) = default;
   memory_index_output& operator=(const memory_index_output&) = delete;
 
@@ -230,9 +230,6 @@ class memory_index_output : public index_output {
 
   void truncate(size_t pos);
 
-  IResourceManager& ResourceManager() const noexcept { return resource_manager_; }
-  IResourceManager::Call ResourceCall() const noexcept { return call_; }
-
   memory_index_output& operator=(byte_type b) {
     write_byte(b);
     return *this;
@@ -255,8 +252,6 @@ class memory_index_output : public index_output {
   byte_type* pos_;             // position in current buffer
 
  private:
-  IResourceManager& resource_manager_;
-  IResourceManager::Call call_;
   memory_file& file_;  // underlying file
   byte_type* end_;
 };
@@ -314,11 +309,11 @@ class memory_directory final : public directory {
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
   explicit memory_output(const memory_allocator& alloc, IResourceManager& rm, IResourceManager::Call call) noexcept
-    : file(alloc), stream(file, rm, call) {}
+    : file(alloc, rm, call), stream(file) {}
 
   memory_output(memory_output&& rhs) noexcept
     : file(std::move(rhs.file)),
-      stream(file, rhs.stream.ResourceManager(), rhs.stream.ResourceCall()) {}
+      stream(file) {}
 
   void reset() noexcept {
     file.reset();

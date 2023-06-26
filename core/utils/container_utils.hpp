@@ -32,6 +32,7 @@
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/object_pool.hpp"
+#include "resource_manager.hpp"
 
 namespace irs {
 namespace container_utils {
@@ -244,11 +245,20 @@ class raw_block_vector_base : private util::noncopyable {
     size_t size;      // total buffer size
   };
 
-  explicit raw_block_vector_base(const allocator_type& alloc) noexcept
-    : alloc_{alloc} {}
+  explicit raw_block_vector_base(
+    const allocator_type& alloc,
+    IResourceManager& rm = IResourceManager::kNoopManager,
+    IResourceManager::Call call = IResourceManager::kNoop) noexcept
+    : alloc_{alloc}, resource_manager_{rm}, resource_call_{call} {}
 
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept
-    : alloc_{std::move(rhs.alloc_)}, buffers_(std::move(rhs.buffers_)) {}
+    : alloc_{std::move(rhs.alloc_)}, buffers_(std::move(rhs.buffers_)),
+      resource_manager_(rhs.resource_manager_),
+      resource_call_(rhs.resource_call_) {}
+
+  virtual ~raw_block_vector_base() {
+      clear();
+  }
 
   IRS_FORCE_INLINE size_t buffer_count() const noexcept {
     return buffers_.size();
@@ -256,7 +266,13 @@ class raw_block_vector_base : private util::noncopyable {
 
   IRS_FORCE_INLINE bool empty() const noexcept { return buffers_.empty(); }
 
-  IRS_FORCE_INLINE void clear() noexcept { buffers_.clear(); }
+  IRS_FORCE_INLINE void clear() noexcept {
+    const auto size =
+      std::accumulate(buffers_.begin(), buffers_.end(), size_t(0),
+                      [](size_t v, const auto& buf) { return v + buf.size; });
+    buffers_.clear();
+    resource_manager_.Decrease(resource_call_, size);
+  }
 
   IRS_FORCE_INLINE const buffer_t& get_buffer(size_t i) const noexcept {
     return buffers_[i];
@@ -267,7 +283,11 @@ class raw_block_vector_base : private util::noncopyable {
   //  return buffers_[i];
   //}
 
-  IRS_FORCE_INLINE void pop_buffer() { buffers_.pop_back(); }
+  IRS_FORCE_INLINE void pop_buffer() {
+    auto size = !buffers_.empty() ? buffers_.back().size : size_t(0);
+    buffers_.pop_back();
+    resource_manager_.Decrease(resource_call_, size);
+  }
 
  protected:
   struct buffer_entry_t : buffer_t, util::noncopyable {
@@ -289,14 +309,15 @@ class raw_block_vector_base : private util::noncopyable {
                 "default move constructor expected");
 
   buffer_t& push_buffer(size_t offset, const bucket_size_t& bucket) {
+    resource_manager_.Increase(resource_call_, bucket.size);
     buffers_.emplace_back(offset, bucket.size, alloc_.get().allocate(bucket));
-    allocated_ += bucket.size;
     return buffers_.back();
   }
 
   IRS_NO_UNIQUE_ADDRESS EboRef<allocator_type> alloc_;
   std::vector<buffer_entry_t> buffers_;
-  size_t allocated_{0};
+  IResourceManager& resource_manager_;
+  IResourceManager::Call resource_call_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -313,8 +334,10 @@ class raw_block_vector : public raw_block_vector_base<Allocator> {
   typedef raw_block_vector_base<Allocator> base_t;
   typedef typename base_t::allocator_type allocator_type;
 
-  explicit raw_block_vector(const Allocator& alloc /*= Allocator()*/) noexcept
-    : base_t{alloc} {}
+  explicit raw_block_vector(const Allocator& alloc /*= Allocator()*/,
+                            IResourceManager& rm = IResourceManager::kNoopManager,
+                            IResourceManager::Call call = IResourceManager::kNoop) noexcept
+    : base_t{alloc, rm, call} {}
 
   raw_block_vector(raw_block_vector&& other) noexcept
     : base_t{std::move(other)} {}
