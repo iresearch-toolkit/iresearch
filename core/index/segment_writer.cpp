@@ -51,6 +51,7 @@ namespace {
 
 segment_writer::stored_column::stored_column(
   const hashed_string_view& name, columnstore_writer& columnstore,
+  IResourceManager& rm,
   const ColumnInfoProvider& column_info,
   std::deque<cached_column>& cached_columns, bool cache)
   : name{name}, name_hash{name.hash()} {
@@ -63,8 +64,8 @@ segment_writer::stored_column::stored_column(
   if (!cache) {
     std::tie(id, writer) = columnstore.push_column(info, std::move(finalizer));
   } else {
-    cached = &cached_columns.emplace_back(&id, info, std::move(finalizer));
-
+    rm.Increase(IResourceManager::kTransactions, sizeof(cached_column));
+    cached = &cached_columns.emplace_back(&id, info, std::move(finalizer), rm);
     writer = [stream = &cached->Stream()](irs::doc_id_t doc) -> column_output& {
       stream->Prepare(doc);
       return *stream;
@@ -81,12 +82,20 @@ doc_id_t segment_writer::begin(DocContext ctx) {
 
   if (needed_docs >= docs_mask_.set.capacity()) {
     // reserve in blocks of power-of-2
-    docs_mask_.set.reserve(math::roundup_power2(needed_docs));
+    const auto count = math::roundup_power2(needed_docs);
+    resource_manager_.Increase(
+      IResourceManager::kTransactions,
+      (count - docs_mask_.set.capacity()) / bits_required<char>());
+    docs_mask_.set.reserve(count);
   }
 
   if (needed_docs >= docs_context_.capacity()) {
     // reserve in blocks of power-of-2
-    docs_context_.reserve(math::roundup_power2(needed_docs));
+    const auto count = math::roundup_power2(needed_docs);
+    resource_manager_.Increase(
+      IResourceManager::kTransactions,
+      (count - docs_mask_.set.capacity()) * sizeof(DocContext));
+    docs_context_.reserve(count);
   }
 
   docs_context_.emplace_back(ctx);
@@ -160,12 +169,21 @@ bool segment_writer::remove(doc_id_t doc_id) noexcept {
 segment_writer::segment_writer(ConstructToken, directory& dir,
                                const SegmentWriterOptions& options) noexcept
   : scorers_{options.scorers},
-    sort_{options.column_info, {}},
+    sort_{options.column_info, {}, options.resource_manager},
     fields_{options.feature_info, cached_columns_, options.scorers_features,
             options.comparator},
     column_info_{&options.column_info},
     dir_{dir},
     resource_manager_{const_cast<IResourceManager&>(options.resource_manager)} {}
+
+segment_writer::~segment_writer() {
+  resource_manager_.Decrease(
+    IResourceManager::kTransactions,
+    columns_.capacity() * sizeof(stored_column) + 
+    cached_columns_.size() * sizeof(cached_column) +
+    docs_context_.capacity() * sizeof(DocContext) +
+    docs_mask_.set.capacity() / bits_required<char>());
+}
 
 bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
@@ -195,11 +213,18 @@ column_output& segment_writer::stream(const hashed_string_view& name,
                                       const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(column_info_);
-
+  const auto capacity_before = columns_.capacity();
   return columns_
     .lazy_emplace(name,
-                  [this, &name](const auto& ctor) {
-                    ctor(name, *col_writer_, *column_info_, cached_columns_,
+                  [this, &name, capacity_before](const auto& ctor) {
+                    const auto current = columns_.capacity();
+                    if (current != capacity_before) {
+                      IRS_ASSERT(current > capacity_before);
+                      resource_manager_.Increase(
+                        IResourceManager::kTransactions,
+                        sizeof(stored_column) * (current - capacity_before));
+                    }
+                    ctor(name, *col_writer_, resource_manager_, *column_info_, cached_columns_,
                          nullptr != fields_.comparator());
                   })
     ->writer(doc_id);
@@ -289,9 +314,11 @@ void segment_writer::reset() noexcept {
   fields_.reset();
   columns_.clear();
   column_ids_.clear();
+  const auto cached_cols_size = cached_columns_.size();
   cached_columns_.clear();  // FIXME(@gnusi): we loose all per-column buffers
+  resource_manager_.Decrease(IResourceManager::kTransactions,
+                             cached_cols_size * sizeof(cached_column));
   sort_.stream.Clear();
-
   if (col_writer_) {
     col_writer_->rollback();
   }

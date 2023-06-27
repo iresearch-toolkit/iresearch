@@ -65,8 +65,9 @@ class sorting_doc_iterator;
 class cached_column final : public column_reader {
  public:
   cached_column(field_id* id, ColumnInfo info,
-                columnstore_writer::column_finalizer_f finalizer) noexcept
-    : id_{id}, stream_{info}, finalizer_{std::move(finalizer)} {}
+                columnstore_writer::column_finalizer_f finalizer,
+                IResourceManager& rm) noexcept
+    : id_{id}, stream_{info, rm}, finalizer_{std::move(finalizer)} {}
 
   BufferedColumn& Stream() noexcept { return stream_; }
   const BufferedColumn& Stream() const noexcept { return stream_; }

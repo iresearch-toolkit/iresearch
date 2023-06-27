@@ -46,7 +46,13 @@ class BufferedColumn final : public column_output, private util::noncopyable {
  public:
   using BufferedValues = std::vector<BufferedValue>;
 
-  explicit BufferedColumn(const ColumnInfo& info) : info_{info} {}
+  explicit BufferedColumn(const ColumnInfo& info, IResourceManager& rm)
+    : info_{info}, resource_manager_{rm} {}
+
+  ~BufferedColumn() {
+    resource_manager_.Decrease(IResourceManager::kTransactions,
+                               index_.capacity() * sizeof(BufferedValue) + data_buf_.capacity());
+  }
 
   void Prepare(doc_id_t key) {
     IRS_ASSERT(key >= pending_key_);
@@ -56,8 +62,15 @@ class BufferedColumn final : public column_output, private util::noncopyable {
 
       if (IRS_LIKELY(doc_limits::valid(pending_key_))) {
         IRS_ASSERT(offset >= pending_offset_);
+        const auto before_capacity = index_.capacity();
         index_.emplace_back(pending_key_, pending_offset_,
                             offset - pending_offset_);
+        const auto after_capacity = index_.capacity();
+        IRS_ASSERT(before_capacity <= after_capacity);
+        if (before_capacity != after_capacity) {
+          resource_manager_.Increase(IResourceManager::kTransactions,
+            (after_capacity - before_capacity) * sizeof(BufferedValue));
+        }
       }
 
       pending_key_ = key;
@@ -65,10 +78,27 @@ class BufferedColumn final : public column_output, private util::noncopyable {
     }
   }
 
-  void write_byte(byte_type b) final { data_buf_ += b; }
+  void write_byte(byte_type b) final {
+    const auto before_capacity = data_buf_.capacity();
+    data_buf_ += b;
+    const auto after_capacity = data_buf_.capacity();
+    IRS_ASSERT(before_capacity <= after_capacity);
+    if (before_capacity != after_capacity) {
+      resource_manager_.Increase(IResourceManager::kTransactions,
+                                 (after_capacity - before_capacity));
+    }
+  }
 
   void write_bytes(const byte_type* b, size_t size) final {
+    const auto before_capacity = data_buf_.capacity();
     data_buf_.append(b, size);
+    const auto after_capacity = data_buf_.capacity();
+    IRS_ASSERT(before_capacity <= after_capacity);
+    if (before_capacity != after_capacity) {
+      resource_manager_.Increase(
+        IResourceManager::kTransactions,
+        (after_capacity - before_capacity));
+    }
   }
 
   void reset() final {
@@ -147,6 +177,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
   size_t pending_offset_{};
   doc_id_t pending_key_{doc_limits::invalid()};
   ColumnInfo info_;
+  IResourceManager& resource_manager_;
 };
 
 }  // namespace irs

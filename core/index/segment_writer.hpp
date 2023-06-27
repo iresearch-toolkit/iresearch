@@ -164,6 +164,8 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   segment_writer(ConstructToken, directory& dir,
                  const SegmentWriterOptions& options) noexcept;
 
+  ~segment_writer();
+
   const column_reader* column(field_id id) const final {
     const auto it = column_ids_.find(id);
     if (it != column_ids_.end()) {
@@ -215,6 +217,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
 
     stored_column(const hashed_string_view& name,
                   columnstore_writer& columnstore,
+                  IResourceManager& rm,
                   const ColumnInfoProvider& column_info,
                   std::deque<cached_column>& cached_columns, bool cache);
 
@@ -234,8 +237,9 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
       const ColumnInfoProvider& column_info,
-      columnstore_writer::column_finalizer_f finalizer) noexcept
-      : stream{column_info({})},  // compression for sorted column
+      columnstore_writer::column_finalizer_f finalizer,
+      IResourceManager& rm) noexcept
+      : stream{column_info({}), rm},  // compression for sorted column
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};
