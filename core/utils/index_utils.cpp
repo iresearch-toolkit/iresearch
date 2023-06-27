@@ -482,13 +482,13 @@ ConsolidationPolicy MakePolicy(const ConsolidateTier& options) {
 }
 
 void ReadDocumentMask(irs::DocumentMask& docs_mask, const irs::directory& dir,
-                      const irs::SegmentMeta& meta) {
+                      const irs::SegmentMeta& meta, IResourceManager& rm) {
   if (!irs::HasRemovals(meta)) {
     return;  // nothing to read
   }
 
   auto reader = meta.codec->get_document_mask_reader();
-  reader->read(dir, meta, docs_mask);
+  reader->read(dir, meta, rm, docs_mask);
 }
 
 void FlushIndexSegment(directory& dir, IndexSegment& segment) {

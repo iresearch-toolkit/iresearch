@@ -906,9 +906,10 @@ class Columnstore {
     : progress_{progress, kProgressStepColumn}, writer_{std::move(writer)} {}
 
   Columnstore(directory& dir, const SegmentMeta& meta,
-              const MergeWriter::FlushProgress& progress)
+              const MergeWriter::FlushProgress& progress,
+              IResourceManager& rm)
     : progress_{progress, kProgressStepColumn} {
-    auto writer = meta.codec->get_columnstore_writer(true);
+    auto writer = meta.codec->get_columnstore_writer(true, rm);
     writer->prepare(dir, meta);
 
     writer_ = std::move(writer);
@@ -1526,7 +1527,16 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter() noexcept : dir_(NoopDirectory::instance()) {}
+MergeWriter::MergeWriter() noexcept
+  : dir_(NoopDirectory::instance()), resource_manager_(IResourceManager::kNoopManager) {}
+
+MergeWriter::~MergeWriter() {
+  size_t doc_maps{0};
+  for (const auto& reader : readers_) {
+    doc_maps += reader.doc_id_map.size();
+  }
+  resource_manager_.Decrease(IResourceManager::kConsolidations, doc_maps);
+}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1562,7 +1572,9 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
 
     if (reader.live_docs_count() == docs_count) {  // segment has no deletes
       const auto reader_base = base_id - doc_limits::min();
-      base_id += docs_count;
+      IRS_ASSERT(static_cast<uint64_t>(base_id) + docs_count <
+                 std::numeric_limits<doc_id_t>::max());
+      base_id += static_cast<doc_id_t>(docs_count);
 
       reader_ctx.doc_map = [reader_base](doc_id_t doc) noexcept {
         return reader_base + doc;
@@ -1600,7 +1612,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   // write merged segment data
   REGISTER_TIMER_DETAILED();
-  Columnstore cs(dir, segment, progress);
+  Columnstore cs(dir, segment, progress, resource_manager_);
 
   if (!cs.valid()) {
     return false;  // flush failure
@@ -1727,8 +1739,18 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     auto& doc_id_map = reader_ctx.doc_id_map;
 
     try {
+      const auto oldSize = doc_id_map.size();
+      const auto newSize = reader.docs_count() + doc_limits::min();
+      if (oldSize < newSize) {
+        resource_manager_.Increase(IResourceManager::kConsolidations,
+                                   newSize - oldSize);
+      }
       doc_id_map.resize(reader.docs_count() + doc_limits::min(),
                         doc_limits::eof());
+      if (oldSize > newSize) {
+        resource_manager_.Decrease(IResourceManager::kConsolidations,
+                                   oldSize - newSize);
+      }
     } catch (...) {
       IRS_LOG_ERROR(absl::StrCat(
         "Failed to resize merge_writer::doc_id_map to accommodate element: ",
@@ -1754,7 +1776,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   }
 
   // Write new sorted column and fill doc maps for each reader
-  auto writer = segment.codec->get_columnstore_writer(true);
+  auto writer = segment.codec->get_columnstore_writer(true, resource_manager_);
   writer->prepare(dir, segment);
 
   // Get column info for sorted column
@@ -1763,7 +1785,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   doc_id_t next_id = doc_limits::min();
 
-  auto fill_doc_map = [&](doc_id_map_t& doc_id_map,
+  auto fill_doc_map = [&, this](doc_id_map_t& doc_id_map,
                           PrimarySortIteratorAdapter& it, doc_id_t max) {
     if (auto min = it.min; min < max) {
       if (it.live_docs) {

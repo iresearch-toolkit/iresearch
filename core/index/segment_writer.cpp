@@ -164,7 +164,8 @@ segment_writer::segment_writer(ConstructToken, directory& dir,
     fields_{options.feature_info, cached_columns_, options.scorers_features,
             options.comparator},
     column_info_{&options.column_info},
-    dir_{dir} {}
+    dir_{dir},
+    resource_manager_{const_cast<IResourceManager&>(options.resource_manager)} {}
 
 bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
@@ -307,7 +308,7 @@ void segment_writer::reset(const SegmentMeta& meta) {
   }
 
   if (!col_writer_) {
-    col_writer_ = meta.codec->get_columnstore_writer(false);
+    col_writer_ = meta.codec->get_columnstore_writer(false, resource_manager_);
     IRS_ASSERT(col_writer_);
   }
 

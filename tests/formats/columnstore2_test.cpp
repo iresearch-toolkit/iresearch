@@ -259,6 +259,7 @@ TEST_P(columnstore2_test_case, empty_column) {
     ASSERT_TRUE(writer.commit(state));
   }
   {
+    ASSERT_EQ(memory.pinned_, 0);
     irs::columnstore2::reader reader;
     ASSERT_TRUE(reader.prepare(
       dir(), meta, reader_options(memory)));

@@ -1136,7 +1136,7 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
+  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader, IResourceManager& rm)
   : feature_info_{feature_info},
     column_info_{column_info},
     meta_payload_provider_{meta_payload_provider},
@@ -1150,7 +1150,8 @@ IndexWriter::IndexWriter(
     last_gen_{committed_reader_->Meta().index_meta.gen},
     writer_{codec_->get_index_meta_writer()},
     write_lock_{std::move(lock)},
-    write_lock_file_ref_{std::move(lock_file_ref)} {
+    write_lock_file_ref_{std::move(lock_file_ref)},
+    resource_manager_{rm} {
   IRS_ASSERT(column_info);   // ensured by 'make'
   IRS_ASSERT(feature_info);  // ensured by 'make'
   IRS_ASSERT(codec_);
@@ -1283,7 +1284,8 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
     options.comparator,
     options.column_info ? options.column_info : kDefaultColumnInfo,
     options.features ? options.features : kDefaultFeatureInfo,
-    options.meta_payload_provider, std::move(reader));
+    options.meta_payload_provider, std::move(reader),
+    options.reader_options.resource_manager);
 
   // Remove non-index files from directory
   directory_utils::RemoveAllUnreferenced(dir);
@@ -1796,6 +1798,7 @@ SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
     .scorers_features = wand_features_,
     .scorers = wand_scorers_,
     .comparator = comparator_,
+    .resource_manager = resource_manager_
   };
 }
 

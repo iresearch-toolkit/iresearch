@@ -159,18 +159,23 @@ FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
 
 }  // namespace
 
-SegmentReaderImpl::SegmentReaderImpl(PrivateTag) noexcept {}
+SegmentReaderImpl::SegmentReaderImpl(PrivateTag, IResourceManager& rm) noexcept
+  : resource_manager_{rm} {}
 
-SegmentReaderImpl::~SegmentReaderImpl() = default;
+SegmentReaderImpl::~SegmentReaderImpl() {
+  if (!docs_mask_.empty()) {
+    resource_manager_.Decrease(IResourceManager::kReaders, docs_mask_.size() * sizeof(DocumentMask::value_type));
+  }
+}
 
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) {
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{}, options.resource_manager);
   // read optional docs_mask
   DocumentMask docs_mask;
   if (options.doc_mask) {
-    index_utils::ReadDocumentMask(docs_mask, dir, meta);
+    index_utils::ReadDocumentMask(docs_mask, dir, meta, options.resource_manager);
   }
   reader->Update(dir, meta, std::move(docs_mask));
   // open index data
@@ -192,7 +197,7 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) const {
   IRS_ASSERT(meta == info_);
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{}, options.resource_manager);
   // clone removals
   reader->refs_ = refs_;
   reader->info_ = info_;
@@ -208,7 +213,7 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenDocsMask(
   const directory& dir, const SegmentMeta& meta,
   DocumentMask&& docs_mask) const {
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{}, const_cast<IResourceManager&>(resource_manager_));
   // clone field reader
   reader->field_reader_ = field_reader_;
   // clone column store
@@ -304,7 +309,7 @@ const irs::column_reader* SegmentReaderImpl::ColumnData::Open(
   }
 
   // initialize optional columnstore
-  columnstore_reader::options columnstore_opts{.resource_manager = options.resouce_manager};
+  columnstore_reader::options columnstore_opts{.resource_manager = options.resource_manager};
   if (options.warmup_columns) {
     columnstore_opts.warmup_column = [warmup = options.warmup_columns,
                                       &field_reader,
