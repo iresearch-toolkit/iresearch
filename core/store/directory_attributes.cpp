@@ -26,27 +26,6 @@
 #include "error/error.hpp"
 
 namespace irs {
-namespace {
-
-memory_allocator kGlobalAlloc{size_t{128}};
-
-}  // namespace
-
-memory_allocator::buffer::ptr memory_allocator::buffer::make(size_t size) {
-  return std::make_unique<byte_type[]>(size);
-}
-
-memory_allocator& memory_allocator::global() noexcept { return kGlobalAlloc; }
-
-memory_allocator::ptr memory_allocator::make(size_t pool_size) {
-  if (pool_size != 0) {
-    return memory::make_managed<memory_allocator>(pool_size);
-  }
-
-  return memory::to_managed<memory_allocator>(kGlobalAlloc);
-}
-
-memory_allocator::memory_allocator(size_t pool_size) : allocator_(pool_size) {}
 
 void index_file_refs::clear() {
   refs_.visit([](const auto&, size_t) { return true; }, true);
@@ -56,10 +35,7 @@ void index_file_refs::clear() {
   }
 }
 
-directory_attributes::directory_attributes(size_t memory_pool_size,
-                                           std::unique_ptr<irs::encryption> enc)
-  : alloc_{memory_allocator::make(memory_pool_size)},
-    enc_{std::move(enc)},
-    refs_{std::make_unique<index_file_refs>()} {}
+directory_attributes::directory_attributes(std::unique_ptr<irs::encryption> enc)
+  : enc_{std::move(enc)}, refs_{std::make_unique<index_file_refs>()} {}
 
 }  // namespace irs

@@ -28,6 +28,7 @@
 #include "store/store_utils.hpp"
 #include "utils/bytes_utils.hpp"
 #include "utils/crc.hpp"
+#include "utils/misc.hpp"
 
 #include <absl/strings/str_cat.h>
 

@@ -130,8 +130,8 @@ template<dir_generator_f DirectoryGenerator, size_t BlockSize>
 std::pair<std::shared_ptr<irs::directory>, std::string> rot13_directory(
   const test_base* ctx) {
   auto dir = DirectoryGenerator(
-    ctx, irs::directory_attributes{
-           0, std::make_unique<rot13_encryption>(BlockSize)});
+    ctx,
+    irs::directory_attributes{std::make_unique<rot13_encryption>(BlockSize)});
 
   return std::make_pair(dir, to_string(DirectoryGenerator) + "_cipher_rot13_" +
                                std::to_string(BlockSize));

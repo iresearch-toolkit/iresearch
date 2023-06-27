@@ -207,7 +207,7 @@ class encryption_test_case : public tests::directory_test_case_base<> {
  protected:
   void assert_ecnrypted_streams(size_t block_size, size_t header_length,
                                 size_t buf_size) {
-    std::vector<std::string> const data{
+    const std::vector<std::string> data{
       "spM42fEO88t2",        "jNIvCMksYwpoxN", "Re5eZWCkQexrZn",
       "jjj003oxVAIycv",      "N9IJuRjFSlO8Pa", "OPGG6Ic3JYJyVY",
       "ZDGVji8xtjh9zI",      "DvBDXbjKgIfPIk", "bZyCbyByXnGvlL",
@@ -262,7 +262,7 @@ class encryption_test_case : public tests::directory_test_case_base<> {
 
     ASSERT_EQ(nullptr, dir().attributes().encryption());
     dir().attributes() = irs::directory_attributes{
-      0, std::make_unique<tests::rot13_encryption>(block_size, header_length)};
+      std::make_unique<tests::rot13_encryption>(block_size, header_length)};
     auto* enc = dir().attributes().encryption();
     ASSERT_NE(nullptr, enc);
 
@@ -516,7 +516,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   };
 
   tests::rot13_encryption enc(16);
-  irs::memory_output out(irs::memory_allocator::global());
+  irs::memory_output out;
 
   bstring encrypted_header;
   encrypted_header.resize(enc.header_length());

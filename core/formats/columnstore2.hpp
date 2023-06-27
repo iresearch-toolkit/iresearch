@@ -41,7 +41,6 @@ class column final : public irs::column_output {
   static_assert(math::is_power2(kBlockSize));
 
   struct context {
-    memory_allocator* alloc;
     index_output* data_out;
     encryption::stream* cipher;
     union {
@@ -161,8 +160,8 @@ class column final : public irs::column_output {
   compression::compressor::ptr deflater_;
   columnstore_writer::column_finalizer_f finalizer_;
   std::vector<column_block> blocks_;  // at most 65536 blocks
-  memory_output data_{*ctx_.alloc};
-  memory_output docs_{*ctx_.alloc};
+  memory_output data_;
+  memory_output docs_;
   sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};
   address_table addr_table_;
   bstring payload_;
@@ -198,7 +197,6 @@ class writer final : public columnstore_writer {
  private:
   directory* dir_;
   std::string data_filename_;
-  memory_allocator* alloc_;
   std::deque<column> columns_;  // pointers remain valid
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
