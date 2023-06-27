@@ -171,9 +171,6 @@ std::vector<uint64_t> read_blocks_dense(const column_header& hdr,
 template<typename PayloadReader>
 class range_column_iterator : public resettable_doc_iterator,
                               private PayloadReader {
- private:
-  using payload_reader = PayloadReader;
-
   // FIXME(gnusi):
   //  * don't expose payload for noop_value_reader?
   //  * don't expose prev_doc if not requested?
@@ -183,7 +180,7 @@ class range_column_iterator : public resettable_doc_iterator,
   template<typename... Args>
   range_column_iterator(const column_header& header, bool track_prev,
                         Args&&... args)
-    : payload_reader{std::forward<Args>(args)...},
+    : PayloadReader{std::forward<Args>(args)...},
       min_base_{header.min},
       min_doc_{min_base_},
       max_doc_{min_base_ + header.docs_count - 1} {
@@ -219,41 +216,44 @@ class range_column_iterator : public resettable_doc_iterator,
     return std::get<document>(attrs_).value;
   }
 
-  doc_id_t seek(irs::doc_id_t doc) final {
-    if (IRS_LIKELY(min_doc_ <= doc && doc <= max_doc_)) {
-      std::get<document>(attrs_).value = doc;
-      min_doc_ = doc + 1;
-      std::get<irs::payload>(attrs_).value = this->payload(doc - min_base_);
-      return doc;
+  doc_id_t seek(doc_id_t target) final {
+    auto& doc = std::get<document>(attrs_).value;
+    auto& pay = std::get<payload>(attrs_).value;
+
+    if (IRS_LIKELY(min_doc_ <= target && target <= max_doc_)) {
+      min_doc_ = target;
+      pay = this->payload(min_doc_ - min_base_);
+      return doc = min_doc_++;
     }
 
-    if (!doc_limits::valid(value())) {
-      std::get<document>(attrs_).value = min_doc_++;
-      std::get<irs::payload>(attrs_).value = this->payload(value() - min_base_);
-      return value();
+    // TODO(gnusi) Some explanation?
+
+    if (!doc_limits::valid(doc)) {
+      pay = this->payload(min_doc_ - min_base_);
+      return doc = min_doc_++;
     }
 
-    if (value() < doc) {
+    if (doc < target) {
       max_doc_ = doc_limits::invalid();
       min_doc_ = doc_limits::eof();
-      std::get<document>(attrs_).value = doc_limits::eof();
-      std::get<irs::payload>(attrs_).value = {};
-      return doc_limits::eof();
+      pay = {};
+      return doc = doc_limits::eof();
     }
 
-    return value();
+    return doc;
   }
 
-  bool next() final {
-    if (min_doc_ <= max_doc_) {
-      std::get<document>(attrs_).value = min_doc_++;
-      std::get<irs::payload>(attrs_).value = this->payload(value() - min_base_);
-      return true;
+  doc_id_t next() final {
+    auto& doc = std::get<document>(attrs_).value;
+    auto& pay = std::get<payload>(attrs_).value;
+
+    if (IRS_LIKELY(min_doc_ <= max_doc_)) {
+      pay = this->payload(min_doc_ - min_base_);
+      return doc = min_doc_++;
     }
 
-    std::get<document>(attrs_).value = doc_limits::eof();
-    std::get<irs::payload>(attrs_).value = {};
-    return false;
+    pay = {};
+    return doc = doc_limits::eof();
   }
 
   void reset() noexcept final {
@@ -271,66 +271,43 @@ class range_column_iterator : public resettable_doc_iterator,
 
 // Iterator over a specified bitmap of documents
 template<typename PayloadReader>
-class bitmap_column_iterator : public resettable_doc_iterator,
+class bitmap_column_iterator : public SparseBitmapIteratorBase,
                                private PayloadReader {
- private:
-  using payload_reader = PayloadReader;
-
-  using attributes =
-    std::tuple<attribute_ptr<document>, cost, attribute_ptr<score>,
-               attribute_ptr<prev_doc>, irs::payload>;
+  using Base = SparseBitmapIteratorBase;
 
  public:
   template<typename... Args>
   bitmap_column_iterator(index_input::ptr&& bitmap_in,
                          const sparse_bitmap_iterator::options& opts,
                          cost::cost_t cost, Args&&... args)
-    : payload_reader{std::forward<Args>(args)...},
-      bitmap_{std::move(bitmap_in), opts, cost} {
-    std::get<irs::cost>(attrs_).reset(cost);
-    std::get<attribute_ptr<document>>(attrs_) =
-      irs::get_mutable<document>(&bitmap_);
-    std::get<attribute_ptr<score>>(attrs_) = irs::get_mutable<score>(&bitmap_);
-    std::get<attribute_ptr<prev_doc>>(attrs_) =
-      irs::get_mutable<prev_doc>(&bitmap_);
-  }
+    : Base{std::move(bitmap_in), opts, cost},
+      PayloadReader{std::forward<Args>(args)...} {}
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    return irs::get_mutable(attrs_, type);
+    return irs::type<irs::payload>::id() == type ? pay_ ? GetMutableImpl();
   }
 
-  doc_id_t value() const noexcept final {
-    return std::get<attribute_ptr<document>>(attrs_).ptr->value;
+  doc_id_t seek(doc_id_t doc) final {
+    doc = SeekImpl(doc);
+    return SetPayload(doc);
   }
 
-  doc_id_t seek(irs::doc_id_t doc) final {
-    IRS_ASSERT(doc_limits::valid(doc) || doc_limits::valid(value()));
-    doc = bitmap_.seek(doc);
-
-    if (!doc_limits::eof(doc)) {
-      std::get<irs::payload>(attrs_).value = this->payload(bitmap_.index());
-      return doc;
-    }
-
-    std::get<irs::payload>(attrs_).value = {};
-    return doc_limits::eof();
+  doc_id_t next() final {
+    const auto doc = SeekImpl(value() + 1);
+    return SetPayload(doc);
   }
-
-  bool next() final {
-    if (bitmap_.next()) {
-      std::get<irs::payload>(attrs_).value = this->payload(bitmap_.index());
-      return true;
-    }
-
-    std::get<irs::payload>(attrs_).value = {};
-    return false;
-  }
-
-  void reset() final { bitmap_.reset(); }
 
  private:
-  sparse_bitmap_iterator bitmap_;
-  attributes attrs_;
+  doc_id_t SetPayload(doc_id_t doc) {
+    if (IRS_LIKELY(!doc_limits::eof(doc))) {
+      pay_ = this->payload(IndexImpl());
+    } else {
+      pay_ = {};
+    }
+    return doc;
+  }
+
+  irs::payload pay_;
 };
 
 class column_base : public column_reader, private util::noncopyable {

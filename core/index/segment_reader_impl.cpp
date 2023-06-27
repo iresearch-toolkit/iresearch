@@ -34,114 +34,97 @@
 namespace irs {
 namespace {
 
-class AllIterator : public doc_iterator {
+class AllIteratorBase : public doc_iterator {
  public:
-  explicit AllIterator(doc_id_t docs_count) noexcept
+  explicit AllIteratorBase(uint32_t docs_count) noexcept
     : max_doc_{doc_limits::min() + docs_count - 1} {}
-
-  bool next() noexcept final {
-    if (doc_.value < max_doc_) {
-      ++doc_.value;
-      return true;
-    } else {
-      doc_.value = doc_limits::eof();
-      return false;
-    }
-  }
-
-  doc_id_t seek(doc_id_t target) noexcept final {
-    doc_.value = target <= max_doc_ ? target : doc_limits::eof();
-
-    return doc_.value;
-  }
-
-  doc_id_t value() const noexcept final { return doc_.value; }
 
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
     return irs::type<document>::id() == type ? &doc_ : nullptr;
   }
 
- private:
+  doc_id_t value() const noexcept final { return doc_.value; }
+
+ protected:
   document doc_;
   doc_id_t max_doc_;  // largest valid doc_id
+};
+
+class AllIterator : public AllIteratorBase {
+ public:
+  using AllIteratorBase::AllIteratorBase;
+
+  doc_id_t next() noexcept final {
+    auto& doc = doc_.value;
+    return doc = doc < max_doc_ ? doc + 1 : doc_limits::eof();
+  }
+
+  doc_id_t seek(doc_id_t target) noexcept final {
+    IRS_ASSERT(doc_.value <= target);
+    return doc_.value = target <= max_doc_ ? target : doc_limits::eof();
+  }
+};
+
+class MaskAllIterator : public AllIteratorBase {
+ public:
+  explicit MaskAllIterator(uint32_t docs_count,
+                           const DocumentMask& mask) noexcept
+    : AllIteratorBase{docs_count}, mask_{mask} {
+    IRS_ASSERT(!mask.contains(doc_limits::eof()));
+  }
+
+  doc_id_t next() noexcept final {
+    auto& doc = doc_.value;
+    if (IRS_UNLIKELY(doc < max_doc_)) {
+      return seek(doc + 1);
+    }
+    return doc = doc_limits::eof();
+  }
+
+  IRS_NO_INLINE doc_id_t seek(doc_id_t target) noexcept final {
+    IRS_ASSERT(doc_.value <= target);
+    for (; target <= max_doc_; ++target) {
+      if (!mask_.contains(target)) {
+        return doc_.value = target;
+      }
+    }
+    return doc_.value = doc_limits::eof();
+  }
+
+ private:
+  const DocumentMask& mask_;  // excluded document ids
 };
 
 class MaskDocIterator : public doc_iterator {
  public:
   MaskDocIterator(doc_iterator::ptr&& it, const DocumentMask& mask) noexcept
-    : mask_{mask}, it_{std::move(it)} {}
-
-  bool next() final {
-    while (it_->next()) {
-      if (!mask_.contains(value())) {
-        return true;
-      }
-    }
-
-    return false;
+    : it_{std::move(it)}, mask_{mask} {
+    IRS_ASSERT(!mask.contains(doc_limits::eof()));
   }
 
-  doc_id_t seek(doc_id_t target) final {
-    const auto doc = it_->seek(target);
-
-    if (!mask_.contains(doc)) {
-      return doc;
-    }
-
-    next();
-
-    return value();
-  }
-
-  doc_id_t value() const final { return it_->value(); }
-
-  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
+  attribute* get_mutable(irs::type_info::type_id type) final {
     return it_->get_mutable(type);
   }
 
+  doc_id_t value() const final {
+    // TODO(MBkkt) member pointer to avoid double virtual call?
+    return it_->value();
+  }
+
+  doc_id_t next() final { return NextImpl(it_->next()); }
+
+  doc_id_t seek(doc_id_t target) final { return NextImpl(it_->seek(target)); }
+
  private:
-  const DocumentMask& mask_;  // excluded document ids
-  doc_iterator::ptr it_;
-};
-
-class MaskedDocIterator : public doc_iterator {
- public:
-  MaskedDocIterator(doc_id_t begin, doc_id_t end,
-                    const DocumentMask& docs_mask) noexcept
-    : docs_mask_{docs_mask}, end_{end}, next_{begin} {}
-
-  bool next() final {
-    while (next_ < end_) {
-      current_.value = next_++;
-
-      if (!docs_mask_.contains(current_.value)) {
-        return true;
-      }
+  IRS_NO_INLINE doc_id_t NextImpl(doc_id_t target) {
+    while (mask_.contains(target)) {
+      target = it_->next();
     }
-
-    current_.value = doc_limits::eof();
-
-    return false;
+    return target;
   }
 
-  doc_id_t seek(doc_id_t target) final {
-    next_ = target;
-    next();
-
-    return value();
-  }
-
-  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    return irs::type<document>::id() == type ? &current_ : nullptr;
-  }
-
-  doc_id_t value() const final { return current_.value; }
-
- private:
-  const DocumentMask& docs_mask_;
-  document current_;
-  const doc_id_t end_;  // past last valid doc_id
-  doc_id_t next_;
+  doc_iterator::ptr it_;
+  const DocumentMask& mask_;  // excluded document ids
 };
 
 FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
@@ -149,7 +132,7 @@ FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
   file_refs.reserve(meta.files.size());
 
   auto& refs = dir.attributes().refs();
-  for (auto& file : meta.files) {
+  for (const auto& file : meta.files) {
     // cppcheck-suppress useStlAlgorithm
     file_refs.emplace_back(refs.add(file));
   }
@@ -253,33 +236,30 @@ const irs::column_reader* SegmentReaderImpl::column(field_id field) const {
 }
 
 column_iterator::ptr SegmentReaderImpl::columns() const {
-  struct less {
+  struct Less {
     bool operator()(const irs::column_reader& lhs,
                     std::string_view rhs) const noexcept {
       return lhs.name() < rhs;
     }
   };
 
-  using iterator_t =
+  using IteratorT =
     iterator_adaptor<std::string_view, irs::column_reader,
                      decltype(data_->sorted_named_columns_.begin()),
-                     column_iterator, less>;
+                     column_iterator, Less>;
 
-  return memory::make_managed<iterator_t>(
-    std::begin(data_->sorted_named_columns_),
-    std::end(data_->sorted_named_columns_));
+  return memory::make_managed<IteratorT>(data_->sorted_named_columns_.begin(),
+                                         data_->sorted_named_columns_.end());
 }
 
 doc_iterator::ptr SegmentReaderImpl::docs_iterator() const {
+  // Implementations generate doc_ids sequentially
+  const auto docs_count = static_cast<uint32_t>(info_.docs_count);
   if (docs_mask_.empty()) {
-    return memory::make_managed<AllIterator>(
-      static_cast<doc_id_t>(info_.docs_count));
+    return memory::make_managed<AllIterator>(docs_count);
   }
-
-  // the implementation generates doc_ids sequentially
-  return memory::make_managed<MaskedDocIterator>(
-    doc_limits::min(),
-    doc_limits::min() + static_cast<doc_id_t>(info_.docs_count), docs_mask_);
+  // Optimization instead of MaskDocIterator(AllIterator)
+  return memory::make_managed<MaskAllIterator>(docs_count, docs_mask_);
 }
 
 doc_iterator::ptr SegmentReaderImpl::mask(doc_iterator::ptr&& it) const {
@@ -294,7 +274,7 @@ const irs::column_reader* SegmentReaderImpl::ColumnData::Open(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options, const field_reader& field_reader) {
   IRS_ASSERT(meta.codec != nullptr);
-  auto& codec = *meta.codec;
+  const auto& codec = *meta.codec;
   // always instantiate to avoid unnecessary checks
   columnstore_reader_ = codec.get_columnstore_reader();
 
@@ -324,7 +304,7 @@ const irs::column_reader* SegmentReaderImpl::ColumnData::Open(
   if (field_limits::valid(meta.sort)) {
     sort = columnstore_reader_->column(meta.sort);
 
-    if (!sort) {
+    if (sort == nullptr) {
       throw index_error{absl::StrCat(
         "Failed to find sort column '", meta.sort,
         "' (according to meta) in columnstore in segment '", meta.name, "'")};

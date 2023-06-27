@@ -31,41 +31,38 @@
 
 namespace irs {
 
-template<typename T, typename Base = memory::Managed>
+template<typename V, typename N, typename Base = memory::Managed>
 struct iterator : Base {
-  virtual T value() const = 0;
-  // TODO(MBkkt) return T? In such case some algorithms probably will be faster
-  virtual bool next() = 0;
+  virtual V value() const = 0;
+  virtual N next() = 0;
 };
 
 template<typename Key, typename Value, typename Iterator, typename Base,
          typename Less = std::less<Key>>
 class iterator_adaptor : public Base {
  public:
-  typedef Iterator iterator_type;
-  typedef Key key_type;
-  typedef Value value_type;
-  typedef const value_type& const_reference;
+  using iterator_type = Iterator;
+  using key_type = Key;
+  using value_type = Value;
 
   iterator_adaptor(iterator_type begin, iterator_type end,
-                   const Less& less = Less())
+                   const Less& less = Less{})
     : begin_{begin}, cur_{begin}, end_{end}, less_{less} {}
 
-  const_reference value() const noexcept final { return *cur_; }
+  const value_type& value() const noexcept final { return *cur_; }
 
-  bool seek(key_type key) noexcept final {
+  const value_type* seek(key_type key) noexcept final {
     begin_ = std::lower_bound(cur_, end_, key, less_);
     return next();
   }
 
-  bool next() noexcept final {
-    if (begin_ == end_) {
-      cur_ = begin_;  // seal iterator
-      return false;
+  const value_type* next() noexcept final {
+    cur_ = begin_;
+    if (IRS_UNLIKELY(begin_ == end_)) {
+      return nullptr;
     }
-
-    cur_ = begin_++;
-    return true;
+    ++begin_;
+    return &value();
   }
 
  private:

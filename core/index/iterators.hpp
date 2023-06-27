@@ -44,7 +44,7 @@ namespace irs {
 //   - `next()` must constantly return `false`
 //   - `seek()`, `shallow_seek()` to any value must return `doc_limits::eof()`
 //   - `value()` must return `doc_limits::eof()`
-struct doc_iterator : iterator<doc_id_t, attribute_provider> {
+struct doc_iterator : iterator<doc_id_t, doc_id_t, attribute_provider> {
   using ptr = memory::managed_ptr<doc_iterator>;
 
   // Return an empty iterator
@@ -81,33 +81,33 @@ struct resettable_doc_iterator : doc_iterator {
 struct term_reader;
 
 // An iterator providing sequential and random access to indexed fields
-struct field_iterator : iterator<const term_reader&> {
+struct field_iterator : iterator<const term_reader&, const term_reader*> {
   using ptr = memory::managed_ptr<field_iterator>;
 
   // Return an empty iterator
   [[nodiscard]] static field_iterator::ptr empty();
 
   // Position iterator at a specified target.
-  // Return if the target is found, false otherwise.
-  virtual bool seek(std::string_view target) = 0;
+  // Return target if it is found, nullptr otherwise.
+  virtual const term_reader* seek(std::string_view target) = 0;
 };
 
 struct column_reader;
 
 // An iterator providing sequential and random access to stored columns.
-struct column_iterator : iterator<const column_reader&> {
+struct column_iterator : iterator<const column_reader&, const column_reader*> {
   using ptr = memory::managed_ptr<column_iterator>;
 
   // Return an empty iterator.
   [[nodiscard]] static column_iterator::ptr empty();
 
   // Position iterator at a specified target.
-  // Return if the target is found, false otherwise.
-  virtual bool seek(std::string_view name) = 0;
+  // Return target if it is found, nullptr otherwise.
+  virtual const column_reader* seek(std::string_view name) = 0;
 };
 
 // An iterator providing sequential access to term dictionary
-struct term_iterator : iterator<bytes_view, attribute_provider> {
+struct term_iterator : iterator<bytes_view, bool, attribute_provider> {
   using ptr = memory::managed_ptr<term_iterator>;
 
   // Return an empty iterator
@@ -160,11 +160,12 @@ struct seek_term_iterator : term_iterator {
 // Position iterator to the specified target and returns current value
 // of the iterator. Returns `false` if iterator exhausted, `true` otherwise.
 template<typename Iterator, typename T, typename Less = std::less<T>>
-bool seek(Iterator& it, const T& target, Less less = Less()) {
-  bool next = true;
-  while (less(it.value(), target) && true == (next = it.next()))
-    ;
-  return next;
+T seek(Iterator& it, const T& target, Less less = Less()) {
+  auto value = it.value();
+  while (less(value, target)) {
+    value = it.next();
+  }
+  return value;
 }
 
 // Position iterator to the specified min term or to the next term

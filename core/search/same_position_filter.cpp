@@ -52,13 +52,13 @@ class same_position_iterator : public Conjunction {
 #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-  bool next() final {
-    while (Conjunction::next()) {
-      if (find_same_position()) {
-        return true;
+  doc_id_t next() final {
+    while (true) {
+      auto value = Conjunction::next();
+      if (doc_limits::eof(value) || find_same_position()) {
+        return value;
       }
     }
-    return false;
   }
 
 #if defined(_MSC_VER)

@@ -160,14 +160,7 @@ class sparse_bitmap_writer {
   SparseBitmapWriterOptions opts_;
 };
 
-// Denotes a position of a value associated with a document.
-struct value_index : document {
-  static constexpr std::string_view type_name() noexcept {
-    return "value_index";
-  }
-};
-
-class sparse_bitmap_iterator : public resettable_doc_iterator {
+class SparseBitmapIteratorBase : public resettable_doc_iterator {
   static void Noop(index_input* /*in*/) noexcept {}
   static void Delete(index_input* in) noexcept { delete in; }
   // TOOD(MBkkt) unique_ptr isn't optimal here
@@ -190,30 +183,23 @@ class sparse_bitmap_iterator : public resettable_doc_iterator {
     block_index_t blocks;
   };
 
-  sparse_bitmap_iterator(index_input::ptr&& in, const options& opts)
-    : sparse_bitmap_iterator{Ptr{in.release(), &Delete}, opts} {}
-  sparse_bitmap_iterator(index_input* in, const options& opts)
-    : sparse_bitmap_iterator{Ptr{in, &Noop}, opts} {}
+  SparseBitmapIteratorBase(index_input::ptr&& in, const options& opts)
+    : SparseBitmapIteratorBase{Ptr{in.release(), &Delete}, opts} {}
+  SparseBitmapIteratorBase(index_input* in, const options& opts)
+    : SparseBitmapIteratorBase{Ptr{in, &Noop}, opts} {}
 
   template<typename Cost>
-  sparse_bitmap_iterator(index_input::ptr&& in, const options& opts, Cost&& est)
-    : sparse_bitmap_iterator{std::move(in), opts} {
+  SparseBitmapIteratorBase(index_input::ptr&& in, const options& opts,
+                           Cost&& est)
+    : SparseBitmapIteratorBase{std::move(in), opts} {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
 
   template<typename Cost>
-  sparse_bitmap_iterator(index_input* in, const options& opts, Cost&& est)
-    : sparse_bitmap_iterator{in, opts} {
+  SparseBitmapIteratorBase(index_input* in, const options& opts, Cost&& est)
+    : SparseBitmapIteratorBase{in, opts} {
     std::get<cost>(attrs_).reset(std::forward<Cost>(est));
   }
-
-  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
-    return irs::get_mutable(attrs_, type);
-  }
-
-  doc_id_t seek(doc_id_t target) final;
-
-  bool next() final { return !doc_limits::eof(seek(value() + 1)); }
 
   doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
@@ -221,19 +207,24 @@ class sparse_bitmap_iterator : public resettable_doc_iterator {
 
   void reset() final;
 
-  // The value is undefined for
-  // doc_limits::invalid() and doc_limits::eof()
-  doc_id_t index() const noexcept {
-    return std::get<value_index>(attrs_).value;
+ protected:
+  attribute* GetMutableImpl(irs::type_info::type_id type) noexcept {
+    return irs::get_mutable(attrs_, type);
   }
 
+  doc_id_t SeekImpl(doc_id_t target);
+
+  // The value is undefined for
+  // doc_limits::invalid() and doc_limits::eof()
+  doc_id_t IndexImpl() const noexcept { return value_index_; }
+
  private:
-  using block_seek_f = bool (*)(sparse_bitmap_iterator*, doc_id_t);
+  using block_seek_f = bool (*)(SparseBitmapIteratorBase*, doc_id_t);
 
   template<uint32_t, bool>
   friend struct container_iterator;
 
-  static bool initial_seek(sparse_bitmap_iterator* self, doc_id_t target);
+  static bool initial_seek(SparseBitmapIteratorBase* self, doc_id_t target);
 
   struct container_iterator_context {
     union {
@@ -262,9 +253,9 @@ class sparse_bitmap_iterator : public resettable_doc_iterator {
     };
   };
 
-  using attributes = std::tuple<document, value_index, prev_doc, cost, score>;
+  using attributes = std::tuple<document, prev_doc, cost, score>;
 
-  explicit sparse_bitmap_iterator(Ptr&& in, const options& opts);
+  explicit SparseBitmapIteratorBase(Ptr&& in, const options& opts);
 
   void seek_to_block(doc_id_t block);
   void read_block_header();
@@ -277,6 +268,7 @@ class sparse_bitmap_iterator : public resettable_doc_iterator {
   block_index_t block_index_;
   uint64_t cont_begin_;
   uint64_t origin_;
+  doc_id_t value_index_{};
   doc_id_t index_{};  // beginning of the block
   doc_id_t index_max_{};
   doc_id_t block_{};
@@ -284,6 +276,19 @@ class sparse_bitmap_iterator : public resettable_doc_iterator {
   const bool use_block_index_;
   const bool prev_doc_written_;
   const bool track_prev_doc_;
+};
+
+class sparse_bitmap_iterator : public SparseBitmapIteratorBase {
+ public:
+  using SparseBitmapIteratorBase::SparseBitmapIteratorBase;
+
+  attribute* get_mutable(irs::type_info::type_id type) noexcept final {
+    return GetMutableImpl(type);
+  }
+
+  doc_id_t next() final { return SeekImpl(value() + 1); }
+
+  doc_id_t seek(doc_id_t target) final { return SeekImpl(target); }
 };
 
 }  // namespace irs

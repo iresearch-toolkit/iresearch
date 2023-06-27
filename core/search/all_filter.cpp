@@ -35,8 +35,9 @@ class all_query : public filter::prepared {
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
     auto& rdr = ctx.segment;
 
-    return memory::make_managed<AllIterator>(rdr, stats_.c_str(), ctx.scorers,
-                                             rdr.docs_count(), boost());
+    return memory::make_managed<AllIterator>(
+      rdr, stats_.c_str(), ctx.scorers, static_cast<uint32_t>(rdr.docs_count()),
+      boost());
   }
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {

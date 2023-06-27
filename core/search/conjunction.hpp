@@ -191,39 +191,28 @@ class Conjunction : public ConjunctionBase<DocIterator, Merger> {
 
   doc_id_t value() const final { return *front_doc_; }
 
-  bool next() override {
-    if (IRS_UNLIKELY(!front_->next())) {
-      return false;
-    }
-
-    return !doc_limits::eof(converge(*front_doc_));
-  }
+  doc_id_t next() override { return Converge(front_->next()); }
 
   doc_id_t seek(doc_id_t target) override {
-    target = front_->seek(target);
-    if (IRS_UNLIKELY(doc_limits::eof(target))) {
-      return doc_limits::eof();
-    }
-
-    return converge(target);
+    return Converge(front_->seek(target));
   }
 
  private:
   // tries to converge front_ and other iterators to the specified target.
   // if it impossible tries to find first convergence place
-  doc_id_t converge(doc_id_t target) {
+  doc_id_t Converge(doc_id_t target) {
     const auto begin = this->itrs_.begin() + 1;
     const auto end = this->itrs_.end();
   restart:
+    if (IRS_UNLIKELY(doc_limits::eof(target))) {
+      return doc_limits::eof();
+    }
     IRS_ASSERT(!doc_limits::eof(target));
     for (auto it = begin; it != end; ++it) {
       const auto doc = (*it)->seek(target);
       if (target < doc) {
         target = front_->seek(doc);
-        if (IRS_LIKELY(!doc_limits::eof(target))) {
-          goto restart;
-        }
-        return target;
+        goto restart;
       }
     }
     return target;
@@ -231,6 +220,7 @@ class Conjunction : public ConjunctionBase<DocIterator, Merger> {
 
   Attributes attrs_;
   doc_iterator* front_;
+  // TODO(MBkkt) remove it?
   const doc_id_t* front_doc_{};
 };
 
@@ -271,7 +261,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
 
   doc_id_t value() const final { return std::get<document>(attrs_).value; }
 
-  bool next() override { return !doc_limits::eof(seek(value() + 1)); }
+  doc_id_t next() override { return seek(value() + 1); }
 
   doc_id_t shallow_seek(doc_id_t target) final {
     target = ShallowSeekImpl(target);

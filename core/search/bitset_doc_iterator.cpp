@@ -45,7 +45,7 @@ attribute* bitset_doc_iterator::get_mutable(
   return type<cost>::id() == id ? &cost_ : nullptr;
 }
 
-bool bitset_doc_iterator::next() noexcept {
+doc_id_t bitset_doc_iterator::next() noexcept {
   while (!word_) {
     if (next_ >= end_) {
       if (refill(&begin_, &end_)) {
@@ -53,10 +53,8 @@ bool bitset_doc_iterator::next() noexcept {
         continue;
       }
 
-      doc_.value = doc_limits::eof();
       word_ = 0;
-
-      return false;
+      return doc_.value = doc_limits::eof();
     }
 
     word_ = *next_++;
@@ -69,9 +67,7 @@ bool bitset_doc_iterator::next() noexcept {
   IRS_ASSERT(delta < bits_required<word_t>());
 
   word_ = (word_ >> delta) >> 1;
-  doc_.value += 1 + delta;
-
-  return true;
+  return doc_.value += 1 + delta;
 }
 
 doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {

@@ -33,9 +33,9 @@ namespace irs {
 namespace {
 
 // Represents an iterator with no documents
-struct EmptyDocIterator : doc_iterator {
+struct EmptyDocIterator final : doc_iterator {
   doc_id_t value() const final { return doc_limits::eof(); }
-  bool next() final { return false; }
+  doc_id_t next() final { return doc_limits::eof(); }
   doc_id_t seek(doc_id_t /*target*/) final { return doc_limits::eof(); }
   attribute* get_mutable(type_info::type_id id) noexcept final {
     if (type<document>::id() == id) {
@@ -53,7 +53,7 @@ struct EmptyDocIterator : doc_iterator {
 EmptyDocIterator kEmptyDocIterator;
 
 // Represents an iterator without terms
-struct EmptyTermIterator : term_iterator {
+struct EmptyTermIterator final : term_iterator {
   bytes_view value() const noexcept final { return {}; }
   doc_iterator::ptr postings(IndexFeatures /*features*/) const noexcept final {
     return doc_iterator::empty();
@@ -68,7 +68,7 @@ struct EmptyTermIterator : term_iterator {
 EmptyTermIterator kEmptyTermIterator;
 
 // Represents an iterator without terms
-struct EmptySeekTermIterator : seek_term_iterator {
+struct EmptySeekTermIterator final : seek_term_iterator {
   bytes_view value() const noexcept final { return {}; }
   doc_iterator::ptr postings(IndexFeatures /*features*/) const noexcept final {
     return doc_iterator::empty();
@@ -88,15 +88,15 @@ struct EmptySeekTermIterator : seek_term_iterator {
 EmptySeekTermIterator kEmptySeekIterator;
 
 // Represents a reader with no terms
-const empty_term_reader kEmptyTermReader{0};
+constexpr empty_term_reader kEmptyTermReader{0};
 
 // Represents a reader with no fields
-struct EmptyFieldIterator : field_iterator {
+struct EmptyFieldIterator final : field_iterator {
   const term_reader& value() const final { return kEmptyTermReader; }
 
-  bool seek(std::string_view /*target*/) final { return false; }
+  const term_reader* next() final { return nullptr; }
 
-  bool next() final { return false; }
+  const term_reader* seek(std::string_view /*target*/) final { return nullptr; }
 };
 
 EmptyFieldIterator kEmptyFieldIterator;
@@ -120,15 +120,15 @@ struct EmptyColumnReader final : column_reader {
   doc_id_t size() const final { return 0; }
 };
 
-const EmptyColumnReader kEmptyColumnReader;
+constexpr EmptyColumnReader kEmptyColumnReader{};
 
 // Represents a reader with no columns
-struct EmptyColumnIterator : column_iterator {
+struct EmptyColumnIterator final : column_iterator {
   const column_reader& value() const final { return kEmptyColumnReader; }
 
-  bool seek(std::string_view /*name*/) final { return false; }
+  const column_reader* next() final { return nullptr; }
 
-  bool next() final { return false; }
+  const column_reader* seek(std::string_view /*name*/) final { return nullptr; }
 };
 
 EmptyColumnIterator kEmptyColumnIterator;

@@ -98,42 +98,38 @@ class lazy_filter_bitset_iterator : public doc_iterator,
     reset();
   }
 
-  bool next() final {
-    while (!word_) {
-      if (bitset_.get(word_idx_, &word_)) {
-        ++word_idx_;  // move only if ok. Or we could be overflowed!
-        base_ += bits_required<lazy_filter_bitset::word_t>();
-        doc_.value = base_ - 1;
-        continue;
+  doc_id_t next() final {
+    while (word_ == 0) {
+      if (IRS_UNLIKELY(!bitset_.get(word_idx_, &word_))) {
+        word_ = 0;
+        return doc_.value = doc_limits::eof();
       }
-      doc_.value = doc_limits::eof();
-      word_ = 0;
-      return false;
+      ++word_idx_;
+      base_ += bits_required<lazy_filter_bitset::word_t>();
+      doc_.value = base_ - 1;
     }
+    // TODO(MBkkt) xor + and instead of two bit shift, also it breaks dependecy
     const doc_id_t delta = doc_id_t(std::countr_zero(word_));
     IRS_ASSERT(delta < bits_required<lazy_filter_bitset::word_t>());
     word_ = (word_ >> delta) >> 1;
-    doc_.value += 1 + delta;
-    return true;
+    return doc_.value += 1 + delta;
   }
 
   doc_id_t seek(doc_id_t target) final {
     word_idx_ = target / bits_required<lazy_filter_bitset::word_t>();
-    if (bitset_.get(word_idx_, &word_)) {
-      const doc_id_t bit_idx =
-        target % bits_required<lazy_filter_bitset::word_t>();
-      base_ = word_idx_ * bits_required<lazy_filter_bitset::word_t>();
-      word_ >>= bit_idx;
-      doc_.value = base_ - 1 + bit_idx;
-      ++word_idx_;  // mark this word as consumed
-      // FIXME consider inlining to speedup
-      next();
-      return doc_.value;
-    } else {
-      doc_.value = doc_limits::eof();
+    if (IRS_UNLIKELY(!bitset_.get(word_idx_, &word_))) {
       word_ = 0;
-      return doc_.value;
+      return doc_.value = doc_limits::eof();
     }
+    const doc_id_t bit_idx =
+      target % bits_required<lazy_filter_bitset::word_t>();
+    base_ = word_idx_ * bits_required<lazy_filter_bitset::word_t>();
+    word_ >>= bit_idx;
+    doc_.value = base_ - 1 + bit_idx;
+    ++word_idx_;  // mark this word as consumed
+    // FIXME consider inlining to speedup
+    next();
+    return doc_.value;
   }
 
   doc_id_t value() const noexcept final { return doc_.value; }
@@ -148,16 +144,21 @@ class lazy_filter_bitset_iterator : public doc_iterator,
   void reset() noexcept {
     word_idx_ = 0;
     word_ = 0;
-    base_ = doc_limits::invalid() -
-            bits_required<lazy_filter_bitset::word_t>();  // before the
-                                                          // first word
+    // before the first word
+    base_ = doc_limits::invalid() - bits_required<lazy_filter_bitset::word_t>();
     doc_.value = doc_limits::invalid();
   }
 
  private:
   lazy_filter_bitset& bitset_;
+  // TODO(MBkkt) move cost to bitset_
   cost cost_;
   document doc_;
+  // TODO(MBkkt) using iterator instead of word_idx_;
+  // struct WordIterator {
+  //   bool next(word_t& word);
+  //   bool reset()
+  // };
   doc_id_t word_idx_{0};
   lazy_filter_bitset::word_t word_{0};
   doc_id_t base_{doc_limits::invalid()};

@@ -1731,13 +1731,12 @@ class column : public irs::column_reader, private util::noncopyable {
 
 template<typename Column>
 class column_iterator : public irs::doc_iterator {
- private:
   using attributes = std::tuple<document, cost, score, payload>;
 
  public:
-  typedef Column column_t;
-  typedef typename Column::block_t block_t;
-  typedef typename block_t::iterator block_iterator_t;
+  using column_t = Column;
+  using block_t = typename Column::block_t;
+  using block_iterator_t = typename block_t::iterator;
 
   explicit column_iterator(const column_t& column,
                            const typename column_t::block_ref* begin,
@@ -1776,19 +1775,18 @@ class column_iterator : public irs::doc_iterator {
     return value();
   }
 
-  bool next() final {
+  doc_id_t next() final {
     while (!block_.next()) {
       if (!next_block()) {
-        return false;
+        return doc_limits::eof();
       }
     }
 
-    std::get<document>(attrs_).value = block_.value();
-    return true;
+    return std::get<document>(attrs_).value = block_.value();
   }
 
  private:
-  typedef typename column_t::refs_t refs_t;
+  using refs_t = typename column_t::refs_t;
 
   bool next_block() {
     auto& doc = std::get<document>(attrs_);
@@ -2220,32 +2218,26 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       auto& value = std::get<document>(attrs_);
 
       if (doc < min_) {
-        if (!doc_limits::valid(value.value)) {
+        if (IRS_UNLIKELY(!doc_limits::valid(value.value))) {
           next();
         }
-
-        return this->value();
+        return value.value;
       }
 
       min_ = doc;
       next();
-
       return value.value;
     }
 
-    bool next() noexcept final {
+    irs::doc_id_t next() noexcept final {
       // cppcheck-suppress shadowFunction
       auto& value = std::get<document>(attrs_);
 
       if (min_ > max_) {
-        value.value = doc_limits::eof();
-
-        return false;
+        return value.value = doc_limits::eof();
       }
 
-      value.value = min_++;
-
-      return true;
+      return value.value = min_++;
     }
 
    private:
@@ -2267,35 +2259,28 @@ irs::doc_iterator::ptr dense_fixed_offset_column<dense_mask_block>::iterator(
 // --SECTION--                                                 column factories
 // ----------------------------------------------------------------------------
 
-typedef std::function<column::ptr(const context_provider& ctxs, field_id id,
-                                  ColumnProperty prop)>
-  column_factory_f;
-//     Column      |          Blocks
-const column_factory_f COLUMN_FACTORIES[]{
-  // CP_COLUMN_DENSE | CP_MASK CP_FIXED CP_DENSE
-  &sparse_column<sparse_block>::make,  //       0         |    0        0 0
-  &sparse_column<dense_block>::make,   //       0         |    0        0 1
-  &sparse_column<sparse_block>::make,  //       0         |    0        1 0
-  &sparse_column<dense_fixed_offset_block>::make,  //       0         |    0 1 1
-  nullptr,
-  /* invalid properties, should never happen */  //       0         |    1 0 0
-  nullptr,
-  /* invalid properties, should never happen */  //       0         |    1 0 1
-  &sparse_column<sparse_mask_block>::make,  //       0         |    1        1 0
-  &sparse_column<dense_mask_block>::make,   //       0         |    1        1 1
+using ColumnFactoryF = column::ptr (*)(const context_provider& ctxs,
+                                       field_id id, ColumnProperty prop);
 
-  &sparse_column<sparse_block>::make,  //       1         |    0        0 0
-  &sparse_column<dense_block>::make,   //       1         |    0        0 1
-  &sparse_column<sparse_block>::make,  //       1         |    0        1 0
-  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  //       1 |    0
-                                                               //       1 1
-  nullptr,
-  /* invalid properties, should never happen */  //       1         |    1 0 0
-  nullptr,
-  /* invalid properties, should never happen */  //       1         |    1 0 1
-  &sparse_column<sparse_mask_block>::make,  //       1         |    1        1 0
-  &dense_fixed_offset_column<dense_mask_block>::make  //       1         |    1
-                                                      //       1        1
+static constexpr ColumnFactoryF kColumnFactories[]{
+  // Column          | Blocks
+  // CP_COLUMN_DENSE | CP_MASK CP_FIXED CP_DENSE
+  &sparse_column<sparse_block>::make,                          // 0 | 0 0 0
+  &sparse_column<dense_block>::make,                           // 0 | 0 0 1
+  &sparse_column<sparse_block>::make,                          // 0 | 0 1 0
+  &sparse_column<dense_fixed_offset_block>::make,              // 0 | 0 1 1
+  nullptr /*invalid properties, should never happen*/,         // 0 | 1 0 0
+  nullptr /*invalid properties, should never happen*/,         // 0 | 1 0 1
+  &sparse_column<sparse_mask_block>::make,                     // 0 | 1 1 0
+  &sparse_column<dense_mask_block>::make,                      // 0 | 1 1 1
+  &sparse_column<sparse_block>::make,                          // 1 | 0 0 0
+  &sparse_column<dense_block>::make,                           // 1 | 0 0 1
+  &sparse_column<sparse_block>::make,                          // 1 | 0 1 0
+  &dense_fixed_offset_column<dense_fixed_offset_block>::make,  // 1 | 0 1 1
+  nullptr /*invalid properties, should never happen*/,         // 1 | 1 0 0
+  nullptr /*invalid properties, should never happen*/,         // 1 | 1 0 1
+  &sparse_column<sparse_mask_block>::make,                     // 1 | 1 1 0
+  &dense_fixed_offset_column<dense_mask_block>::make           // 1 | 1 1 1
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -2426,14 +2411,14 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
     const auto props = read_enum<ColumnProperty>(*stream);
     const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
 
-    if (factory_id >= std::size(COLUMN_FACTORIES)) {
+    if (factory_id >= std::size(kColumnFactories)) {
       throw index_error{absl::StrCat(
         "Failed to load column id=", i,
         ", got invalid properties=", static_cast<uint32_t>(props))};
     }
 
     // create column
-    const auto& factory = COLUMN_FACTORIES[factory_id];
+    const auto& factory = kColumnFactories[factory_id];
 
     if (!factory) {
       static_assert(

@@ -44,25 +44,9 @@ class exclusion : public doc_iterator {
 
   doc_id_t value() const final { return incl_doc_->value; }
 
-  bool next() final {
-    if (!incl_->next()) {
-      return false;
-    }
+  doc_id_t next() final { return SeekImpl(incl_->next()); }
 
-    return !doc_limits::eof(next(incl_doc_->value));
-  }
-
-  doc_id_t seek(doc_id_t target) final {
-    if (!doc_limits::valid(target)) {
-      return incl_doc_->value;
-    }
-
-    if (doc_limits::eof(target = incl_->seek(target))) {
-      return target;
-    }
-
-    return next(target);
-  }
+  doc_id_t seek(doc_id_t target) final { return SeekImpl(incl_->seek(target)); }
 
   attribute* get_mutable(type_info::type_id type) noexcept final {
     return incl_->get_mutable(type);
@@ -71,26 +55,36 @@ class exclusion : public doc_iterator {
  private:
   // moves iterator to next not excluded
   // document not less than "target"
-  doc_id_t next(doc_id_t target) {
+  doc_id_t SeekImpl(doc_id_t incl) {
+    // auto excl = excl_doc_->value;
+    // while (true) {
+    //   if (incl < excl || doc_limits::eof(incl)) {
+    //     return incl;
+    //   }
+    //   if (incl == excl) {
+    //     incl = incl_->next();
+    //   }
+    //   IRS_ASSERT(incl > excl);
+    //   excl = excl_->seek(incl);
+    // }
+
+    if (IRS_UNLIKELY(doc_limits::eof(incl))) {
+      return incl;
+    }
     auto excl = excl_doc_->value;
-
-    if (excl < target) {
-      excl = excl_->seek(target);
-    }
-
-    for (; excl == target;) {
-      if (!incl_->next()) {
-        return incl_doc_->value;
+    while (true) {
+      if (incl < excl) {
+        return incl;
       }
-
-      target = incl_doc_->value;
-
-      if (excl < target) {
-        excl = excl_->seek(target);
+      if (incl == excl) {
+        incl = incl_->next();
+        if (IRS_UNLIKELY(doc_limits::eof(incl))) {
+          return incl;
+        }
       }
+      IRS_ASSERT(incl > excl);
+      excl = excl_->seek(incl);
     }
-
-    return target;
   }
 
   doc_iterator::ptr incl_;

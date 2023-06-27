@@ -169,7 +169,7 @@ class unary_disjunction : public compound_doc_iterator<Adapter> {
 
   doc_id_t value() const noexcept final { return it_.doc->value; }
 
-  bool next() final { return it_->next(); }
+  doc_id_t next() final { return it_->next(); }
 
   doc_id_t seek(doc_id_t target) final { return it_->seek(target); }
 
@@ -214,12 +214,12 @@ class basic_disjunction : public compound_doc_iterator<Adapter>,
     return std::get<document>(attrs_).value;
   }
 
-  bool next() final {
+  doc_id_t next() final {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
 
     auto& doc = std::get<document>(attrs_);
-    return !doc_limits::eof(doc.value = std::min(lhs_.value(), rhs_.value()));
+    return doc.value = std::min(lhs_.value(), rhs_.value());
   }
 
   doc_id_t seek(doc_id_t target) final {
@@ -405,11 +405,11 @@ class small_disjunction : public compound_doc_iterator<Adapter>,
     return true;
   }
 
-  bool next() final {
+  doc_id_t next() final {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
-      return false;
+      return doc.value;
     }
 
     doc_id_t min = doc_limits::eof();
@@ -418,8 +418,7 @@ class small_disjunction : public compound_doc_iterator<Adapter>,
       auto& it = *begin;
       if (!next_iterator_impl(it)) {
         if (!remove_iterator(begin)) {
-          doc.value = doc_limits::eof();
-          return false;
+          return doc.value = doc_limits::eof();
         }
 #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         // workaround for Microsoft checked iterators
@@ -431,8 +430,7 @@ class small_disjunction : public compound_doc_iterator<Adapter>,
       }
     }
 
-    doc.value = min;
-    return true;
+    return doc.value = min;
   }
 
   doc_id_t seek(doc_id_t target) final {
@@ -639,11 +637,11 @@ class disjunction : public compound_doc_iterator<Adapter>,
     return std::get<document>(attrs_).value;
   }
 
-  bool next() final {
+  doc_id_t next() final {
     auto& doc = std::get<document>(attrs_);
 
     if (doc_limits::eof(doc.value)) {
-      return false;
+      return doc.value;
     }
 
     while (lead().value() <= doc.value) {
@@ -652,16 +650,12 @@ class disjunction : public compound_doc_iterator<Adapter>,
                                : doc_limits::eof(lead()->seek(doc.value + 1));
 
       if (exhausted && !remove_lead()) {
-        doc.value = doc_limits::eof();
-        return false;
-      } else {
-        refresh_lead();
+        return doc.value = doc_limits::eof();
       }
+      refresh_lead();
     }
 
-    doc.value = lead().value();
-
-    return true;
+    return doc.value = lead().value();
   }
 
   doc_id_t seek(doc_id_t target) final {
@@ -676,7 +670,8 @@ class disjunction : public compound_doc_iterator<Adapter>,
 
       if (doc_limits::eof(value) && !remove_lead()) {
         return doc.value = doc_limits::eof();
-      } else if (value != target) {
+      }
+      if (value != target) {
         refresh_lead();
       }
     }
@@ -937,7 +932,7 @@ class block_disjunction : public doc_iterator,
     return std::get<document>(attrs_).value;
   }
 
-  bool next() final {
+  doc_id_t next() final {
     auto& doc = std::get<document>(attrs_);
 
     do {
@@ -948,10 +943,8 @@ class block_disjunction : public doc_iterator,
             break;
           }
 
-          doc.value = doc_limits::eof();
           match_count_ = 0;
-
-          return false;
+          return doc.value = doc_limits::eof();
         }
 
         cur_ = *begin_++;
@@ -979,11 +972,8 @@ class block_disjunction : public doc_iterator,
         score_value_ = score_buf_.get(buf_offset);
       }
 
-      return true;
+      return doc.value;
     } while (traits_type::kMinMatch);
-
-    IRS_ASSERT(false);
-    return true;
   }
 
   doc_id_t seek(doc_id_t target) final {

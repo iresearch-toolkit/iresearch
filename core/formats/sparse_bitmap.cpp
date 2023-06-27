@@ -24,9 +24,8 @@
 
 #include "search/bitset_doc_iterator.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 // We use dense container for blocks having
 // more than this number of documents.
@@ -88,8 +87,6 @@ void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
 
 }  // namespace
 
-namespace irs {
-
 void sparse_bitmap_writer::finish() {
   flush(block_);
 
@@ -144,10 +141,10 @@ struct container_iterator;
 
 template<bool TrackPrev>
 struct container_iterator<BT_RANGE, TrackPrev> {
-  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) noexcept {
+  static bool seek(SparseBitmapIteratorBase* self, doc_id_t target) noexcept {
     std::get<document>(self->attrs_).value = target;
 
-    auto& index = std::get<value_index>(self->attrs_).value;
+    auto& index = self->value_index_;
     index = target - self->ctx_.all.missing;
 
     if constexpr (TrackPrev) {
@@ -163,7 +160,7 @@ struct container_iterator<BT_RANGE, TrackPrev> {
 template<bool TrackPrev>
 struct container_iterator<BT_SPARSE, TrackPrev> {
   template<AccessType Access>
-  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
+  static bool seek(SparseBitmapIteratorBase* self, doc_id_t target) {
     target &= 0x0000FFFF;
 
     auto& ctx = self->ctx_.sparse;
@@ -189,7 +186,7 @@ struct container_iterator<BT_SPARSE, TrackPrev> {
 
       if (doc >= target) {
         std::get<document>(self->attrs_).value = self->block_ | doc;
-        std::get<value_index>(self->attrs_).value = ctx.index;
+        self->value_index_ = ctx.index;
 
         if constexpr (TrackPrev) {
           if (ctx.index != self->index_) {
@@ -214,7 +211,7 @@ struct container_iterator<BT_SPARSE, TrackPrev> {
 template<>
 struct container_iterator<BT_DENSE, false> {
   template<AccessType Access>
-  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
+  static bool seek(SparseBitmapIteratorBase* self, doc_id_t target) {
     auto& ctx = self->ctx_.dense;
 
     const doc_id_t target_block{target & 0x0000FFFF};
@@ -290,8 +287,7 @@ struct container_iterator<BT_DENSE, false> {
       const doc_id_t offset = std::countr_zero(left);
       std::get<document>(self->attrs_).value = target + offset;
 
-      auto& index = std::get<value_index>(self->attrs_).value;
-      index = ctx.popcnt - std::popcount(left);
+      self->value_index_ = ctx.popcnt - std::popcount(left);
 
       return true;
     }
@@ -321,8 +317,7 @@ struct container_iterator<BT_DENSE, false> {
 
         std::get<document>(self->attrs_).value =
           self->block_ + ctx.word_idx * bits_required<size_t>() + offset;
-        auto& index = std::get<value_index>(self->attrs_).value;
-        index = ctx.popcnt;
+        self->value_index_ = ctx.popcnt;
         ctx.popcnt += std::popcount(ctx.word);
 
         return true;
@@ -336,11 +331,11 @@ struct container_iterator<BT_DENSE, false> {
 template<>
 struct container_iterator<BT_DENSE, true> {
   template<AccessType Access>
-  static bool seek(sparse_bitmap_iterator* self, doc_id_t target) {
+  static bool seek(SparseBitmapIteratorBase* self, doc_id_t target) {
     const auto res =
       container_iterator<BT_DENSE, false>::seek<Access>(self, target);
 
-    if (std::get<value_index>(self->attrs_).value != self->index_) {
+    if (self->value_index_ != self->index_) {
       self->seek_func_ = &container_iterator<BT_DENSE, false>::seek<Access>;
       std::get<irs::prev_doc>(self->attrs_).reset(&seek_prev<Access>, self);
     }
@@ -351,7 +346,7 @@ struct container_iterator<BT_DENSE, true> {
  private:
   template<AccessType Access>
   static doc_id_t seek_prev(const void* arg) noexcept(Access != AT_STREAM) {
-    const auto* self = static_cast<const sparse_bitmap_iterator*>(arg);
+    const auto* self = static_cast<const SparseBitmapIteratorBase*>(arg);
     const auto& ctx = self->ctx_.dense;
 
     const size_t offs = self->value() % bits_required<size_t>();
@@ -417,8 +412,8 @@ constexpr auto GetSeekFunc(bool direct, bool track_prev) noexcept {
   }
 }
 
-bool sparse_bitmap_iterator::initial_seek(sparse_bitmap_iterator* self,
-                                          doc_id_t target) {
+bool SparseBitmapIteratorBase::initial_seek(SparseBitmapIteratorBase* self,
+                                            doc_id_t target) {
   IRS_ASSERT(!doc_limits::valid(self->value()));
   IRS_ASSERT(0 == (target & 0xFFFF0000));
 
@@ -430,9 +425,10 @@ bool sparse_bitmap_iterator::initial_seek(sparse_bitmap_iterator* self,
 }
 
 // cppcheck-suppress uninitMemberVarPrivate
-sparse_bitmap_iterator::sparse_bitmap_iterator(Ptr&& in, const options& opts)
+SparseBitmapIteratorBase::SparseBitmapIteratorBase(Ptr&& in,
+                                                   const options& opts)
   : in_{std::move(in)},
-    seek_func_{&sparse_bitmap_iterator::initial_seek},
+    seek_func_{&SparseBitmapIteratorBase::initial_seek},
     block_index_{opts.blocks},
     cont_begin_{in_->file_pointer()},
     origin_{cont_begin_},
@@ -450,15 +446,15 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(Ptr&& in, const options& opts)
   }
 }
 
-void sparse_bitmap_iterator::reset() {
+void SparseBitmapIteratorBase::reset() {
   std::get<document>(attrs_).value = irs::doc_limits::invalid();
-  seek_func_ = &sparse_bitmap_iterator::initial_seek;
+  seek_func_ = &SparseBitmapIteratorBase::initial_seek;
   cont_begin_ = origin_;
   index_max_ = 0;
   in_->seek(cont_begin_);
 }
 
-void sparse_bitmap_iterator::read_block_header() {
+void SparseBitmapIteratorBase::read_block_header() {
   block_ = doc_id_t{uint16_t(in_->read_short())} << 16;
   const uint32_t popcnt = 1 + static_cast<uint16_t>(in_->read_short());
   index_ = index_max_;
@@ -520,7 +516,7 @@ void sparse_bitmap_iterator::read_block_header() {
   }
 }
 
-void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
+void SparseBitmapIteratorBase::seek_to_block(doc_id_t target) {
   IRS_ASSERT(target / sparse_bitmap_writer::kBlockSize);
 
   if (!block_index_.empty()) {
@@ -544,7 +540,7 @@ void sparse_bitmap_iterator::seek_to_block(doc_id_t target) {
   } while (block_ < target);
 }
 
-doc_id_t sparse_bitmap_iterator::seek(doc_id_t target) {
+doc_id_t SparseBitmapIteratorBase::SeekImpl(doc_id_t target) {
   // FIXME
   if (target <= value()) {
     return value();

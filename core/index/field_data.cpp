@@ -278,24 +278,21 @@ class doc_iterator : public irs::doc_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t doc) final {
-    irs::seek(*this, doc);
-    return value();
-  }
+  doc_id_t seek(doc_id_t doc) final { return irs::seek(*this, doc); }
 
   doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() final {
-    auto& doc = std::get<document>(attrs_);
+  doc_id_t next() final {
+    auto& doc = std::get<document>(attrs_).value;
 
     if (freq_in_.eof()) {
       if (!posting_) {
-        return false;
+        return doc_limits::eof();
       }
 
-      doc.value = posting_->doc;
+      doc = posting_->doc;
       freq_.value = posting_->freq;
 
       if (has_cookie_) {
@@ -306,7 +303,7 @@ class doc_iterator : public irs::doc_iterator {
       posting_ = nullptr;
     } else {
       if (std::get<attribute_ptr<frequency>>(attrs_).ptr) {
-        uint64_t delta;
+        uint64_t delta{};
 
         if (shift_unpack_64(irs::vread<uint64_t>(freq_in_), delta)) {
           freq_.value = 1U;
@@ -315,21 +312,21 @@ class doc_iterator : public irs::doc_iterator {
         }
 
         IRS_ASSERT(delta < doc_limits::eof());
-        doc.value += doc_id_t(delta);
+        doc += delta;
 
         if (has_cookie_) {
           cookie_ += read_cookie(freq_in_);
         }
       } else {
-        doc.value += irs::vread<uint32_t>(freq_in_);
+        doc += irs::vread<uint32_t>(freq_in_);
       }
 
-      IRS_ASSERT(doc.value != posting_->doc);
+      IRS_ASSERT(doc != posting_->doc);
     }
 
     pos_.clear();
 
-    return true;
+    return doc;
   }
 
  private:
@@ -404,18 +401,14 @@ class sorting_doc_iterator : public irs::doc_iterator {
     return irs::get_mutable(attrs_, type);
   }
 
-  doc_id_t seek(doc_id_t doc) noexcept final {
-    irs::seek(*this, doc);
-    return value();
-  }
+  doc_id_t seek(doc_id_t doc) noexcept final { return irs::seek(*this, doc); }
 
   doc_id_t value() const noexcept final {
     return std::get<document>(attrs_).value;
   }
 
-  bool next() noexcept final {
-    // cppcheck-suppress shadowFunction
-    auto& value = std::get<document>(attrs_);
+  doc_id_t next() noexcept final {
+    auto& doc = std::get<document>(attrs_).value;
 
     while (it_ != docs_.end()) {
       if (doc_limits::eof(it_->doc)) {
@@ -424,22 +417,20 @@ class sorting_doc_iterator : public irs::doc_iterator {
         continue;
       }
 
-      auto& doc = *it_;
-      value.value = doc.doc;
-      freq_.value = doc.freq;
+      const auto& it = *it_;
+      freq_.value = it.freq;
+      doc = it.doc;
 
-      if (doc.cookie) {
-        // (cookie != 0) -> we have proximity data
-        pos_.reset(greedy_reader(*byte_pool_, doc.cookie));
+      if (it.cookie != 0) {  // we have proximity data
+        pos_.reset(greedy_reader(*byte_pool_, it.cookie));
       }
 
       ++it_;
-      return true;
+      return doc;
     }
 
-    value.value = doc_limits::eof();
     freq_.value = 0;
-    return false;
+    return doc = doc_limits::eof();
   }
 
  private:
@@ -452,9 +443,9 @@ class sorting_doc_iterator : public irs::doc_iterator {
       : doc(doc), freq(freq), cookie(cookie) {}
 
     doc_id_t doc{doc_limits::eof()};  // doc_id
-    uint32_t freq;                    // freq
-    uint64_t cookie;                  // prox_cookie
-  };                                  // doc_entry
+    uint32_t freq{};                  // freq
+    uint64_t cookie{};                // prox_cookie
+  };
 
   void reset_dense(detail::doc_iterator& it, const frequency& freq,
                    std::span<const doc_id_t> docmap) {

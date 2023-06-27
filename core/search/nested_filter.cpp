@@ -80,7 +80,7 @@ class ScorerWrapper : public doc_iterator {
 
   doc_id_t seek(doc_id_t target) final { return it_->seek(target); }
 
-  bool next() final { return it_->next(); }
+  doc_id_t next() final { return it_->next(); }
 
   attribute* get_mutable(irs::type_info::type_id id) final {
     if (irs::type<score>::id() == id) {
@@ -133,27 +133,22 @@ class ChildToParentJoin : public doc_iterator, private Matcher {
   }
 
   doc_id_t seek(doc_id_t target) final {
-    const auto& doc = *std::get<attribute_ptr<document>>(attrs_).ptr;
-
-    if (IRS_UNLIKELY(target <= doc.value)) {
-      return doc.value;
+    if (const auto doc = value(); IRS_UNLIKELY(target <= doc)) {
+      return doc;
     }
 
-    auto parent = parent_->seek(target);
-
-    if (doc_limits::eof(parent)) {
+    const auto parent = parent_->seek(target);
+    if (IRS_UNLIKELY(doc_limits::eof(parent))) {
       return doc_limits::eof();
     }
-
     return SeekInternal(parent);
   }
 
-  bool next() final {
+  doc_id_t next() final {
     if (IRS_LIKELY(parent_->next())) {
-      return !doc_limits::eof(SeekInternal(value()));
+      return SeekInternal(value());
     }
-
-    return false;
+    return doc_limits::eof();
   }
 
  private:
