@@ -36,6 +36,7 @@
 #endif
 
 #include <fstream>
+#include <iostream>
 #include <memory>
 
 #if defined(_MSC_VER)
@@ -53,6 +54,7 @@
 #include "analysis/token_streams.hpp"
 #include "common.hpp"
 #include "index-put.hpp"
+#include "index/comparer.hpp"
 #include "index/index_writer.hpp"
 #include "index/norm.hpp"
 #include "search/scorers.hpp"
@@ -80,10 +82,10 @@ const std::string ANALYZER_OPTIONS = "analyzer-options";
 const std::string SEGMENT_MEM_MAX = "segment-memory-max";
 const std::string CONSOLIDATION_INTERVAL = "consolidation-interval";
 const std::string WAND_TYPE = "wand-type";
+const std::string SORTED_FIELD = "sorted-field";
 
 const std::string DEFAULT_ANALYZER_TYPE = "segmentation";
 const std::string DEFAULT_ANALYZER_OPTIONS = R"({})";
-const std::string DEFAULT_WAND_TYPE = "none";
 
 constexpr size_t DEFAULT_SEGMENT_MEM_MAX = 1 << 28;  // 256M
 constexpr size_t DEFAULT_CONSOLIDATION_INTERVAL_MSEC = 500;
@@ -113,6 +115,12 @@ constexpr frozen::unordered_map<std::string_view, Scorer, 3> WAND_TYPES{
   {"maxfreq", Scorer{.name = "tfidf", .arg = {}}},
   {"divnorm", Scorer{.name = "tfidf", .arg = "true"}},
   {"minnorm", Scorer{.name = "bm25", .arg = {}}},
+};
+
+constexpr frozen::unordered_set<std::string_view, 3> SORTED_FIELDS{
+  "id",
+  "title",
+  "date",
 };
 
 }  // namespace
@@ -247,6 +255,7 @@ struct Doc {
 
   std::vector<std::shared_ptr<Field>> elements;
   std::vector<std::shared_ptr<Field>> store;
+  std::shared_ptr<Field> sorted;
 
   /**
    * Parse line to fields
@@ -254,7 +263,7 @@ struct Doc {
    * @param line
    * @return
    */
-  virtual void fill(std::string* line) = 0;
+  virtual void fill(const std::string& line) = 0;
 };
 
 std::atomic<uint64_t> Doc::next_id(0);
@@ -262,23 +271,36 @@ using analyzer_factory_f = std::function<irs::analysis::analyzer::ptr()>;
 
 struct WikiDoc : Doc {
   explicit WikiDoc(const analyzer_factory_f& analyzer_factory,
-                   const irs::features_t& text_features) {
+                   const irs::features_t& text_features,
+                   std::string_view sorted_name) {
     // id
     id = std::make_shared<StringField>("id", irs::IndexFeatures::NONE,
                                        irs::features_t{});
     elements.emplace_back(id);
-    store.emplace_back(id);
+    if (sorted_name == "id") {
+      sorted = id;
+    } else {
+      store.emplace_back(id);
+    }
 
     // title: string
     title = std::make_shared<StringField>("title", irs::IndexFeatures::NONE,
                                           irs::features_t{});
     elements.push_back(title);
+    if (sorted_name == "title") {
+      sorted = title;
+    }
 
     // date: string
     date = std::make_shared<StringField>("date", irs::IndexFeatures::NONE,
                                          irs::features_t{});
     elements.push_back(date);
     store.push_back(date);
+    if (sorted_name == "date") {
+      sorted = date;
+    } else {
+      store.emplace_back(date);
+    }
 
     // date: uint64_t
     ndate = std::make_shared<NumericField>(
@@ -292,11 +314,11 @@ struct WikiDoc : Doc {
     elements.push_back(body);
   }
 
-  virtual void fill(std::string* line) {
-    std::stringstream lineStream(*line);
+  void fill(const std::string& line) final {
+    std::stringstream lineStream(line);
 
     // id: uint64_t to string, base 36
-    uint64_t id = next_id++;  // atomic fetch and get
+    uint64_t id = next_id.fetch_add(1, std::memory_order_relaxed);
     char str[21];
     itoa(id, str, 36);
     char str2[10];
@@ -327,13 +349,21 @@ struct WikiDoc : Doc {
   std::shared_ptr<TextField> body;
 };
 
+class StringComparer final : public irs::Comparer {
+  int CompareImpl(irs::bytes_view lhs, irs::bytes_view rhs) const final {
+    const auto lhs_value = irs::to_string<irs::bytes_view>(lhs.data());
+    const auto rhs_value = irs::to_string<irs::bytes_view>(rhs.data());
+    return rhs_value.compare(lhs_value);
+  }
+};
+
 int put(const std::string& path, const std::string& dir_type,
         const std::string& format, const std::string& analyzer_type,
         const std::string& analyzer_options, std::istream& stream,
         size_t lines_max, size_t indexer_threads, size_t consolidation_threads,
         size_t commit_interval_ms, size_t consolidation_interval_ms,
         size_t batch_size, size_t segment_mem_max, bool consolidate_all,
-        std::string_view wand_type) {
+        std::string_view wand_type, std::string_view sorted_field) {
   auto dir = create_directory(dir_type, path);
 
   if (!dir) {
@@ -342,7 +372,7 @@ int put(const std::string& path, const std::string& dir_type,
     return 1;
   }
   irs::Scorer::ptr scr;
-  if (wand_type != "none") {
+  if (!wand_type.empty()) {
     Scorer scorer;
     auto it = WAND_TYPES.find(wand_type);
     if (it != WAND_TYPES.end()) {
@@ -358,6 +388,12 @@ int put(const std::string& path, const std::string& dir_type,
     }
   }
   const irs::Scorer* score = scr.get();
+
+  if (!sorted_field.empty() && !SORTED_FIELDS.count(sorted_field)) {
+    std::cerr << "Unable to instatiate index with sorted_field: "
+              << sorted_field << std::endl;
+    return 1;
+  }
 
   auto codec = irs::formats::get(format);
 
@@ -395,6 +431,10 @@ int put(const std::string& path, const std::string& dir_type,
   irs::IndexWriterOptions opts;
   if (score) {
     opts.reader_options.scorers = {&score, 1};
+  }
+  StringComparer comparer;
+  if (!sorted_field.empty()) {
+    opts.comparator = &comparer;
   }
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = segment_mem_max;
@@ -434,7 +474,8 @@ int put(const std::string& path, const std::string& dir_type,
             << ANALYZER_TYPE << "=" << analyzer_type << '\n'
             << ANALYZER_OPTIONS << "=" << analyzer_options << '\n'
             << SEGMENT_MEM_MAX << "=" << segment_mem_max << '\n'
-            << WAND_TYPE << "=" << wand_type << '\n';
+            << WAND_TYPE << "=" << wand_type << '\n'
+            << SORTED_FIELD << "=" << sorted_field << '\n';
 
   struct {
     std::condition_variable cond_;
@@ -566,22 +607,20 @@ int put(const std::string& path, const std::string& dir_type,
 
   // indexer threads
   for (size_t i = indexer_threads; i; --i) {
-    thread_pool.run([text_features, &analyzer_factory, &batch_provider,
-                     &writer]() {
+    thread_pool.run([text_features, sorted_field, &analyzer_factory,
+                     &batch_provider, &writer]() {
       irs::set_thread_name(IR_NATIVE_STRING("indexer"));
 
       std::vector<std::string> buf;
-      WikiDoc doc(analyzer_factory, text_features);
+      WikiDoc doc(analyzer_factory, text_features, sorted_field);
 
       while (batch_provider.swap(buf)) {
         SCOPED_TIMER(std::string("Index batch ") + std::to_string(buf.size()));
         auto ctx = writer->GetBatch();
-        size_t i = 0;
-
-        do {
+        for (auto& line : buf) {
           auto builder = ctx.Insert();
 
-          doc.fill(const_cast<std::string*>(buf.data()));
+          doc.fill(line);
 
           for (auto& field : doc.elements) {
             builder.Insert<irs::Action::INDEX>(*field);
@@ -591,7 +630,10 @@ int put(const std::string& path, const std::string& dir_type,
             builder.Insert<irs::Action::STORE>(*field);
           }
 
-        } while (++i < buf.size());
+          if (doc.sorted) {
+            builder.Insert<irs::Action::STORE_SORTED>(*doc.sorted);
+          }
+        }
 
         std::cout << "." << std::flush;  // newline in commit thread
       }
@@ -664,8 +706,10 @@ int put(const cmdline::parser& args) {
     args.exist(CONSOLIDATION_INTERVAL)
       ? args.get<size_t>(CONSOLIDATION_INTERVAL)
       : DEFAULT_CONSOLIDATION_INTERVAL_MSEC;
-  auto wand_type = args.exist(WAND_TYPE) ? args.get<std::string>(WAND_TYPE)
-                                         : DEFAULT_WAND_TYPE;
+  auto wand_type =
+    args.exist(WAND_TYPE) ? args.get<std::string>(WAND_TYPE) : "";
+  const auto sorted_field =
+    args.exist(SORTED_FIELD) ? args.get<std::string>(SORTED_FIELD) : "";
 
   std::fstream fin;
   std::istream* in;
@@ -687,7 +731,7 @@ int put(const cmdline::parser& args) {
   return put(path, dir_type, format, analyzer_type, analyzer_options, *in,
              lines_max, indexer_threads, consolidation_threads,
              commit_interval_ms, consolidation_internval_ms, batch_size,
-             segment_mem_max, consolidate, wand_type);
+             segment_mem_max, consolidate, wand_type, sorted_field);
 }
 
 int put(int argc, char* argv[]) {
@@ -717,7 +761,9 @@ int put(int argc, char* argv[]) {
              false, DEFAULT_SEGMENT_MEM_MAX);
   cmdput.add(WAND_TYPE, 0,
              "Type of WAND data producer (supported since 1_5 format)", false,
-             DEFAULT_WAND_TYPE);
+             std::string());
+  cmdput.add(SORTED_FIELD, 0, "Field name which will be used for primary sort",
+             false, std::string());
 
   cmdput.parse(argc, argv);
 
