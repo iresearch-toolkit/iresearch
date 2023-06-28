@@ -178,12 +178,12 @@ void AssertIteratorCornerCases(const irs::BufferedColumn& column,
   {
     irs::BufferedColumnIterator it{column.Index(), column.Data()};
     ASSERT_FALSE(irs::doc_limits::valid(it.value()));
-    ASSERT_FALSE(irs::doc_limits::valid(it.seek(irs::doc_limits::invalid())));
+    const auto value = it.seek(irs::doc_limits::invalid());
+    ASSERT_EQ(value, it.value());
     if (!expected_values.empty()) {
-      ASSERT_TRUE(it.next());
-      ASSERT_EQ(1, it.value());
+      ASSERT_EQ(value, 1);
     } else {
-      ASSERT_FALSE(it.next());
+      ASSERT_EQ(value, irs::doc_limits::eof());
     }
   }
 

@@ -49,16 +49,22 @@ class BufferedColumnIterator : public doc_iterator {
   }
 
   doc_id_t seek(doc_id_t target) noexcept final {
-    // Currently the iterator is only used for sequential access during the
-    // segment flushing. We intentionally allow iterator to seek backwards.
-    next_ = std::lower_bound(
-      begin_, end_, target,
-      [](const BufferedValue& value, doc_id_t target) noexcept {
-        return value.key < target;
-      });
+    // Currently the iterator is only used for access during the segment
+    // flushing. We intentionally allow iterator to seek backwards.
+    // We expect a lot of dense ranges.
+    const auto* curr = next_ == end_ ? begin_ : next_;
+    curr = curr + target - curr->key;
 
+    if (IRS_UNLIKELY(curr < begin_ || end_ <= curr || curr->key != target)) {
+      curr = std::lower_bound(
+        begin_, end_, target,
+        [](const BufferedValue& value, doc_id_t target) noexcept {
+          return value.key < target;
+        });
+    }
+
+    next_ = curr;
     next();
-
     return value();
   }
 
