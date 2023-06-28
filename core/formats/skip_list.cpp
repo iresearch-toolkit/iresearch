@@ -44,38 +44,42 @@ static_assert(CountMaxLevels(128, 8, doc_limits::eof()) == 9);
 
 }  // namespace
 
-void SkipWriter::Prepare(
-  size_t max_levels, size_t count,
-  const memory_allocator& alloc /* = memory_allocator::global() */) {
+void SkipWriter::Prepare(size_t max_levels, size_t count) {
   max_levels_ = std::min(max_levels, CountMaxLevels(skip_0_, skip_n_, count));
   levels_.reserve(max_levels_);
 
   // reset existing skip levels
   for (auto& level : levels_) {
-    level.reset(alloc);
+    level.reset();
   }
 
   // add new skip levels if needed
   for (auto size = std::size(levels_); size < max_levels_; ++size) {
-    levels_.emplace_back(alloc, IResourceManager::kNoopManager, IResourceManager::kTransactions);
+    levels_.emplace_back(IResourceManager::kNoopManager, IResourceManager::kTransactions);
   }
 }
 
-void SkipWriter::Flush(index_output& out) {
-  const auto rbegin =
-    std::make_reverse_iterator(std::begin(levels_) + max_levels_);
+uint32_t SkipWriter::CountLevels() const {
+  auto level = std::make_reverse_iterator(std::begin(levels_) + max_levels_);
   const auto rend = std::rend(levels_);
 
   // find first filled level
-  auto level = std::find_if(rbegin, rend, [](const memory_output& level) {
+  level = std::find_if(level, rend, [](const memory_output& level) {
     return level.stream.file_pointer();
   });
 
-  // write number of levels
+  // count number of levels
   const auto num_levels = static_cast<uint32_t>(std::distance(level, rend));
+  return num_levels;
+}
+
+void SkipWriter::FlushLevels(uint32_t num_levels, index_output& out) {
+  // write number of levels
   out.write_vint(num_levels);
 
   // write levels from n downto 0
+  auto level = std::make_reverse_iterator(std::begin(levels_) + num_levels);
+  const auto rend = std::rend(levels_);
   for (; level != rend; ++level) {
     auto& stream = level->stream;
     stream.flush();  // update length of each buffer

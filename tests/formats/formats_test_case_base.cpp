@@ -3624,12 +3624,12 @@ TEST_P(format_test_case_with_encryption,
 
   // replace encryption (hack)
   // can't open encrypted index without encryption
-  dir().attributes() = irs::directory_attributes{0, nullptr};
+  dir().attributes() = irs::directory_attributes{nullptr};
   ASSERT_THROW(reader->prepare(dir(), meta), irs::index_error);
 
   // can't open encrypted index with wrong encryption
   dir().attributes() =
-    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(6)};
+    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
   ASSERT_THROW(reader->prepare(dir(), meta), irs::index_error);
 }
 
@@ -3660,7 +3660,7 @@ TEST_P(format_test_case_with_encryption, read_zero_block_encryption) {
 
   // replace encryption
   dir().attributes() =
-    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(6)};
+    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
 
   // can't open encrypted index without encryption
   ASSERT_THROW(irs::DirectoryReader{dir()}, irs::index_error);
@@ -3731,13 +3731,13 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
   ASSERT_NE(nullptr, reader);
 
   // can't open encrypted index without encryption
-  dir().attributes() = irs::directory_attributes{0, nullptr};
+  dir().attributes() = irs::directory_attributes{nullptr};
   ASSERT_THROW(reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta}),
                irs::index_error);
 
   // can't open encrypted index with wrong encryption
   dir().attributes() =
-    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(6)};
+    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
   ASSERT_THROW(reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta}),
                irs::index_error);
 }
@@ -3767,7 +3767,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_wrong_encryption) {
 
   // can't open encrypted index with wrong encryption
   dir().attributes() =
-    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(6)};
+    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(6)};
   ASSERT_THROW(irs::DirectoryReader{dir()}, irs::index_error);
 }
 
@@ -3795,7 +3795,7 @@ TEST_P(format_test_case_with_encryption, open_ecnrypted_with_non_encrypted) {
   }
 
   // remove encryption
-  dir().attributes() = irs::directory_attributes{0, nullptr};
+  dir().attributes() = irs::directory_attributes{nullptr};
 
   // can't open encrypted index without encryption
   ASSERT_THROW(irs::DirectoryReader{dir()}, irs::index_error);
@@ -3811,7 +3811,7 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
 
   const tests::document* doc1 = gen.next();
 
-  dir().attributes() = irs::directory_attributes{0, nullptr};
+  dir().attributes() = irs::directory_attributes{nullptr};
 
   // write segment with format11
   {
@@ -3827,7 +3827,7 @@ TEST_P(format_test_case_with_encryption, open_non_ecnrypted_with_encrypted) {
 
   // add cipher
   dir().attributes() =
-    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(7)};
+    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(7)};
 
   // check index
   auto index = irs::DirectoryReader(dir());

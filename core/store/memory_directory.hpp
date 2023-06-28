@@ -36,20 +36,14 @@
 
 namespace irs {
 
-class memory_file
-  : public container_utils::raw_block_vector<16, 8,
-                                             memory_allocator::allocator_type> {
- private:
-  typedef container_utils::raw_block_vector<
-    memory_allocator::allocator_type::SIZE,  // total number of levels
-    8,                                       // size of the first level 2^8
-    memory_allocator::allocator_type>
-    raw_block_vector_t;
+class memory_file : public container_utils::raw_block_vector<16, 8> {
+  // total number of levels and size of the first level 2^8
+  using raw_block_vector_t = container_utils::raw_block_vector<16, 8>;
 
  public:
-  explicit memory_file(const memory_allocator& alloc, IResourceManager& rm,
+  explicit memory_file(IResourceManager& rm,
                        IResourceManager::Call call) noexcept
-    : raw_block_vector_t{alloc, rm, call} {
+    : raw_block_vector_t{rm, call} {
     touch(meta_.mtime);
   }
 
@@ -100,12 +94,6 @@ class memory_file
 
   void reset() noexcept { len_ = 0; }
 
-  void reset(const memory_allocator& alloc) noexcept {
-    reset();
-    // change internal allocator
-    alloc_ = static_cast<allocator_type&>(alloc);
-  }
-
   void clear() noexcept {
     raw_block_vector_t::clear();
     reset();
@@ -122,10 +110,6 @@ class memory_file
   }
 
  private:
-  static_assert(raw_block_vector_t::NUM_BUCKETS ==
-                  memory_allocator::allocator_type::SIZE,
-                "memory allocator is not compatible with a file");
-
   // metadata for a memory_file
   struct meta {
     std::time_t mtime;
@@ -308,8 +292,8 @@ class memory_directory final : public directory {
 /// @brief memory_file + memory_stream
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
-  explicit memory_output(const memory_allocator& alloc, IResourceManager& rm, IResourceManager::Call call) noexcept
-    : file(alloc, rm, call), stream(file) {}
+  explicit memory_output(IResourceManager& rm, IResourceManager::Call call) noexcept
+    : file(rm, call), stream(file) {}
 
   memory_output(memory_output&& rhs) noexcept
     : file(std::move(rhs.file)),
@@ -317,11 +301,6 @@ struct memory_output {
 
   void reset() noexcept {
     file.reset();
-    stream.reset();
-  }
-
-  void reset(const memory_allocator& alloc) noexcept {
-    file.reset(alloc);
     stream.reset();
   }
 

@@ -669,7 +669,7 @@ TEST(thread_utils_test, get_set_name) {
   const thread_name_t expected_name = IR_NATIVE_STRING("foo");
 #if (defined(__linux__) || defined(__APPLE__) || \
      (defined(_WIN32) && (_WIN32_WINNT >= _WIN32_WINNT_WIN10)))
-  std::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
+  irs::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
 
   std::thread thread([expected_name, &actual_name]() mutable {
     EXPECT_TRUE(irs::set_thread_name(expected_name));

@@ -115,7 +115,7 @@ struct TermCollector {
 struct WandSource : attribute_provider {
   using ptr = std::unique_ptr<WandSource>;
 
-  virtual void Read(data_input& in) = 0;
+  virtual void Read(data_input& in, size_t size) = 0;
 };
 
 struct WandWriter {
@@ -135,10 +135,10 @@ struct WandWriter {
   virtual void Update() = 0;
 
   virtual void Write(size_t level, memory_index_output& out) = 0;
-  virtual void WriteRoot(index_output& out) = 0;
+  virtual void WriteRoot(size_t level, index_output& out) = 0;
 
   virtual byte_type Size(size_t level) const = 0;
-  virtual byte_type SizeRoot() = 0;
+  virtual byte_type SizeRoot(size_t level) = 0;
 };
 
 // Base class for all scorers.
@@ -195,6 +195,20 @@ struct Scorer {
   virtual WandWriter::ptr prepare_wand_writer(size_t max_levels) const = 0;
 
   virtual WandSource::ptr prepare_wand_source() const = 0;
+
+  enum class WandType : uint8_t {
+    kNone = 0,
+    kDivNorm = 1,
+    kMaxFreq = 2,
+    kMinNorm = 3,
+  };
+
+  virtual WandType wand_type() const noexcept { return WandType::kNone; }
+
+  // 0 -- not compatible
+  // x -- degree of compatibility
+  // 255 -- compatible, same types
+  static uint8_t compatible(WandType lhs, WandType rhs) noexcept;
 
   // Number of bytes (first) and alignment (first) required to store stats
   // Alignment must satisfy the following requirements:

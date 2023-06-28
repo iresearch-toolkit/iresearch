@@ -24,6 +24,8 @@
 #include "search/prefix_filter.hpp"
 
 #include "filter_test_case_base.hpp"
+#include "index/norm.hpp"
+#include "search/bm25.hpp"
 #include "search/filter_visitor.hpp"
 #include "tests_shared.hpp"
 
@@ -83,12 +85,12 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
                         const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::field_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::field_collector>(
+          scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::term_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::term_collector>(
+          scorer);
       };
       CheckQuery(make_filter("prefix", ""), order, docs, rdr);
       ASSERT_EQ(9, collect_field_count);  // 9 fields (1 per term since treated
@@ -102,24 +104,23 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
       Docs docs{31, 32, 1, 4, 9, 16, 21, 24, 26, 29};
       Costs costs{docs.size()};
 
-      irs::Scorer::ptr scorer{
-        std::make_unique<tests::sort::frequency_sort>()};
+      irs::Scorer::ptr scorer{std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(make_filter("prefix", ""), std::span{&scorer, 1}, docs, rdr);
     }
 
-    // FIXME
-    //  empty prefix + scored_terms_limit
-    //    {
-    //      docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
-    //      costs_t costs{ docs.size() };
-    //      irs::order order;
-    //
-    //      order.add<sort::frequency_sort>(false);
-    //      CheckQuery(irs::by_prefix().field("prefix").scored_terms_limit(1),
-    //      order, docs, rdr);
-    //    }
-    //
+    // empty prefix + scored_terms_limit
+    {
+      // They are all in the lazy bitset iterator
+      Docs docs{1, 4, 9, 16, 21, 24, 26, 29, 31, 32};
+      Costs costs{docs.size()};
+
+      irs::Scorer::ptr scorer{std::make_unique<tests::sort::frequency_sort>()};
+
+      CheckQuery(make_filter("prefix", "", 1), std::span{&scorer, 1}, docs,
+                 rdr);
+    }
+
     // prefix
     {
       Docs docs{31, 32, 1, 4, 16, 21, 26, 29};
@@ -145,14 +146,30 @@ class prefix_filter_test_case : public tests::FilterTestCaseBase {
   }
 
   void by_prefix_sequential() {
-    /* add segment */
+    irs::BM25 bm25;
+    irs::Scorer* score = &bm25;
+    irs::IndexWriterOptions opts;
+    opts.features = [](irs::type_info::type_id id) {
+      if (irs::type<irs::Norm2>::id() == id) {
+        return std::pair{
+          irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+          &irs::Norm2::MakeWriter};
+      }
+      return std::pair{
+        irs::ColumnInfo{irs::type<irs::compression::none>::get(), {}, false},
+        irs::FeatureWriterFactory{}};
+    };
+    if (codec()->type()().name().starts_with("1_5")) {
+      opts.reader_options.scorers = {&score, 1};
+    }
+    // add segment
     {
       tests::json_doc_generator gen(resource("simple_sequential.json"),
-                                    &tests::generic_json_field_factory);
-      add_segment(gen);
+                                    &tests::norm2_string_json_field_factory);
+      add_segment(gen, irs::OM_CREATE, opts);
     }
 
-    auto rdr = open_reader();
+    auto rdr = open_reader(opts.reader_options);
 
     // empty query
     CheckQuery(irs::by_prefix(), Docs{}, Costs{0}, rdr);
@@ -351,7 +368,8 @@ INSTANTIATE_TEST_SUITE_P(
                      ::testing::Values(tests::format_info{"1_0"},
                                        tests::format_info{"1_1", "1_0"},
                                        tests::format_info{"1_2", "1_0"},
-                                       tests::format_info{"1_3", "1_0"})),
+                                       tests::format_info{"1_3", "1_0"},
+                                       tests::format_info{"1_5", "1_0"})),
   prefix_filter_test_case::to_string);
 
 }  // namespace

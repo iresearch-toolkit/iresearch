@@ -55,7 +55,7 @@ struct StringRefWeightTraits {
 template<typename Label>
 class StringRefWeight : public StringRefWeightTraits<Label> {
  public:
-  using str_t = std::basic_string_view<Label>;
+  using str_t = irs::basic_string_view<Label>;
 
   static const std::string& Type() {
     static const std::string type = "left_string";
@@ -74,13 +74,13 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
   StringRefWeight(const StringRefWeight&) = default;
   StringRefWeight(StringRefWeight&&) = default;
 
-  explicit StringRefWeight(std::basic_string_view<Label> rhs) noexcept
+  explicit StringRefWeight(irs::basic_string_view<Label> rhs) noexcept
     : str_{rhs} {}
 
   StringRefWeight& operator=(StringRefWeight&&) = default;
   StringRefWeight& operator=(const StringRefWeight&) = default;
 
-  StringRefWeight& operator=(std::basic_string_view<Label> rhs) noexcept {
+  StringRefWeight& operator=(irs::basic_string_view<Label> rhs) noexcept {
     str_ = rhs;
     return *this;
   }
@@ -116,7 +116,7 @@ class StringRefWeight : public StringRefWeightTraits<Label> {
   const Label* end() const noexcept { return str_.data() + str_.size(); }
 
   // intentionally implicit
-  operator std::basic_string_view<Label>() const noexcept { return str_; }
+  operator irs::basic_string_view<Label>() const noexcept { return str_; }
 
  private:
   str_t str_;

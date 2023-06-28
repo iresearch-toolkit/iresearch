@@ -189,14 +189,14 @@ void test_env::make_directories() {
 
   exec_path_ = exec_path;
   exec_file_ = std::filesystem::path{
-    std::basic_string_view<std::filesystem::path::value_type>(
+    irs::basic_string_view<std::filesystem::path::value_type>(
       path_parts.basename)};
   exec_dir_ = std::filesystem::path{
-    std::basic_string_view<std::filesystem::path::value_type>(
+    irs::basic_string_view<std::filesystem::path::value_type>(
       path_parts.dirname)};
   test_name_ =
     std::filesystem::path{
-      std::basic_string_view<std::filesystem::path::value_type>(
+      irs::basic_string_view<std::filesystem::path::value_type>(
         path_parts.stem)}
       .string();
 

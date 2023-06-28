@@ -310,9 +310,7 @@ memory_index_output::memory_index_output(memory_file& file) noexcept
 }
 
 void memory_index_output::reset() noexcept {
-  buf_.data = nullptr;
-  buf_.offset = 0;
-  buf_.size = 0;
+  buf_ = {};
   pos_ = nullptr;
   end_ = nullptr;
 }
@@ -438,12 +436,11 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
     auto& file = res.first->second;
 
     if (res.second) {
-      file = std::make_unique<memory_file>(attrs_.allocator(),
-                                           IResourceManager::kNoopManager,
+      file = std::make_unique<memory_file>(IResourceManager::kNoopManager,
                                            IResourceManager::kNoop);
     }
 
-    file->reset(attrs_.allocator());
+    file->reset();
 
     return index_output::make<checksum_memory_index_output>(*file);
   } catch (...) {

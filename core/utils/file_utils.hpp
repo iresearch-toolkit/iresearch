@@ -169,7 +169,7 @@ int ferror(void*);
 long ftell(void* fd);
 
 struct path_parts_t {
-  using ref_t = std::basic_string_view<path_char_t>;
+  using ref_t = irs::basic_string_view<path_char_t>;
   ref_t basename;   // path component after the last path delimiter (ref_t{}
                     // if not present)
   ref_t dirname;    // path component before the last path delimiter (ref_t{}
@@ -180,7 +180,7 @@ struct path_parts_t {
 
 path_parts_t path_parts(const path_char_t* path) noexcept;
 
-bool read_cwd(std::basic_string<path_char_t>& result) noexcept;
+bool read_cwd(irs::basic_string<path_char_t>& result) noexcept;
 
 void ensure_absolute(std::filesystem::path& path);
 

@@ -82,7 +82,7 @@ class fst_builder : util::noncopyable {
  public:
   typedef Fst fst_t;
   typedef Char char_t;
-  typedef std::basic_string_view<char_t> key_t;
+  typedef irs::basic_string_view<char_t> key_t;
   typedef Stats stats_t;
   typedef typename fst_t::Weight weight_t;
   typedef typename fst_t::Arc arc_t;
@@ -136,6 +136,7 @@ class fst_builder : util::noncopyable {
       if (last_out != weight_t::One()) {
         auto prefix = fst::Plus(last_out, output);
         const auto suffix = fst::DivideLeft(last_out, prefix);
+        output = fst::DivideLeft(output, prefix);
 
         for (arc& a : s.arcs) {
           a.out = fst::Times(suffix, a.out);
@@ -145,8 +146,11 @@ class fst_builder : util::noncopyable {
           s.out = fst::Times(suffix, s.out);
         }
 
-        last_out = std::move(prefix);
-        output = fst::DivideLeft(output, last_out);
+        if constexpr (std::is_same_v<decltype(prefix), irs::bytes_view>) {
+          last_out.Resize(prefix.size());
+        } else {
+          last_out = std::move(prefix);
+        }
       }
     }
 

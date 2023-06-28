@@ -579,8 +579,7 @@ void postings_writer_base::prepare(index_output& out,
     }
   }
 
-  skip_.Prepare(kMaxSkipLevels, state.doc_count,
-                state.dir->attributes().allocator());
+  skip_.Prepare(kMaxSkipLevels, state.doc_count);
 
   format_utils::write_header(out, kTermsFormatName,
                              static_cast<int32_t>(terms_format_version_));
@@ -687,12 +686,12 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
   }
 
   const bool has_skip_list = skip_.Skip0() < meta.docs_count;
-  auto write_max_score = [&] {
+  auto write_max_score = [&](size_t level) {
     ApplyWriters([&](auto& writer) {
-      const byte_type size = writer.SizeRoot();
+      const byte_type size = writer.SizeRoot(level);
       doc_out_->write_byte(size);
     });
-    ApplyWriters([&](auto& writer) { writer.WriteRoot(*doc_out_); });
+    ApplyWriters([&](auto& writer) { writer.WriteRoot(level, *doc_out_); });
   };
 
   if (1 == meta.docs_count) {
@@ -705,8 +704,9 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
     auto prev = doc_.block_last;
 
     if (!has_skip_list) {
-      write_max_score();
+      write_max_score(0);
     }
+    // TODO(MBkkt) using bits not full block encoding
     if (features_.HasFrequency()) {
       auto doc_freq = doc_.freqs.begin();
       for (; doc < doc_.doc; ++doc) {
@@ -796,8 +796,9 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
   // skip data, so we need to flush it
   if (has_skip_list) {
     meta.e_skip_start = doc_out_->file_pointer() - doc_.start;
-    write_max_score();
-    skip_.Flush(*doc_out_);
+    const auto num_levels = skip_.CountLevels();
+    write_max_score(num_levels);
+    skip_.FlushLevels(num_levels, *doc_out_);
   }
 
   doc_.doc = doc_.docs.begin();
@@ -1966,6 +1967,28 @@ auto ResolveExtent(byte_type extent, Func&& func) {
   }
 }
 
+// TODO(MBkkt) Make it overloads
+// Remove to many Readers implementations
+
+template<typename WandExtent>
+void CommonSkipWandData(WandExtent extent, index_input& in) {
+  switch (auto count = extent.GetExtent(); count) {
+    case 0:
+      return;
+    case 1:
+      in.skip(in.read_byte());
+      return;
+    default: {
+      uint64_t skip{};
+      for (; count; --count) {
+        skip += in.read_byte();
+      }
+      in.skip(skip);
+      return;
+    }
+  }
+}
+
 template<typename WandExtent, typename WandIndex>
 void CommonReadWandData(WandExtent wextent, WandIndex windex,
                         const ScoreFunction& func, WandSource& ctx,
@@ -1973,11 +1996,11 @@ void CommonReadWandData(WandExtent wextent, WandIndex windex,
   const auto extent = wextent.GetExtent();
   IRS_ASSERT(extent);
   if (IRS_LIKELY(extent == 1)) {
-    in.read_byte();
-    ctx.Read(in);
+    auto size = in.read_byte();
+    ctx.Read(in, size);
     func(&score);
   } else {
-    const auto [scorer_offset, block_offset] = [&]() {
+    const auto [scorer_offset, size, block_offset] = [&]() {
       const auto index = windex.GetExtent();
       IRS_ASSERT(index < extent);
 
@@ -1988,7 +2011,7 @@ void CommonReadWandData(WandExtent wextent, WandIndex windex,
         offset_before += in.read_byte();
       }
 
-      std::ignore = in.read_byte();
+      const auto size = in.read_byte();
       ++i;
 
       uint64_t offset_after = 0;
@@ -1996,13 +2019,13 @@ void CommonReadWandData(WandExtent wextent, WandIndex windex,
         offset_after += in.read_byte();
       }
 
-      return std::pair{offset_before, offset_after};
+      return std::tuple{offset_before, size, offset_after};
     }();
 
     if (scorer_offset) {
       in.skip(scorer_offset);
     }
-    ctx.Read(in);
+    ctx.Read(in, size);
     func(&score);
     if (block_offset) {
       in.skip(block_offset);
@@ -2177,7 +2200,11 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       return skip_levels_.back().doc;
     }
 
-    void SkipWandData(index_input& in);
+    void SkipWandData(index_input& in) {
+      if constexpr (FieldTraits::wand()) {
+        CommonSkipWandData(static_cast<WandExtent>(*this), in);
+      }
+    }
 
    private:
     void Enable() noexcept {
@@ -2197,28 +2224,6 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   attributes attrs_;
   doc_id_t docs_count_{};
 };
-
-template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
-void doc_iterator<IteratorTraits, FieldTraits,
-                  WandExtent>::ReadSkip::SkipWandData(index_input& in) {
-  if constexpr (FieldTraits::wand()) {
-    switch (auto count = WandExtent::GetExtent(); count) {
-      case 0:
-        return;
-      case 1:
-        in.skip(in.read_byte());
-        return;
-      default: {
-        uint64_t skip{};
-        for (; count; --count) {
-          skip += in.read_byte();
-        }
-        in.skip(skip);
-        return;
-      }
-    }
-  }
-}
 
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
 void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::ReadSkip::Read(
@@ -3558,7 +3563,7 @@ class postings_reader final : public postings_reader_base {
   }
 
   size_t bit_union(IndexFeatures field, const term_provider_f& provider,
-                   size_t* set) final;
+                   size_t* set, byte_type wand_count) final;
 
  private:
   irs::doc_iterator::ptr MakeWanderator(IndexFeatures field_features,
@@ -3782,7 +3787,7 @@ void bit_union(index_input& doc_in, doc_id_t docs_count, uint32_t (&docs)[N],
 template<typename FormatTraits>
 size_t postings_reader<FormatTraits>::bit_union(
   const IndexFeatures field_features, const term_provider_f& provider,
-  size_t* set) {
+  size_t* set, byte_type wand_count) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[FormatTraits::block_size()];
   uint32_t docs[FormatTraits::block_size()];
@@ -3805,6 +3810,11 @@ size_t postings_reader<FormatTraits>::bit_union(
 
     if (term_state.docs_count > 1) {
       doc_in->seek(term_state.doc_start);
+      IRS_ASSERT(!doc_in->eof());
+      if (FormatTraits::wand() &&
+          term_state.docs_count < FormatTraits::block_size()) {
+        CommonSkipWandData(Extent<kDynamicValue>{wand_count}, *doc_in);
+      }
       IRS_ASSERT(!doc_in->eof());
 
       if (has_freq) {

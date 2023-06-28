@@ -42,9 +42,9 @@ hash_combine(size_t seed, const T& v) noexcept(noexcept(std::hash<T>()(v))) {
 }
 
 template<typename Elem>
-class hashed_basic_string_view : public std::basic_string_view<Elem> {
+class hashed_basic_string_view : public basic_string_view<Elem> {
  public:
-  using base_t = std::basic_string_view<Elem>;
+  using base_t = basic_string_view<Elem>;
 
   template<typename Hasher = hash_utils::Hasher<base_t>>
   explicit hashed_basic_string_view(base_t ref, const Hasher& hasher = Hasher{})

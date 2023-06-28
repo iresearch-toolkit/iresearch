@@ -42,7 +42,6 @@ class column final : public irs::column_output {
   static_assert(math::is_power2(kBlockSize));
 
   struct context {
-    memory_allocator* alloc;
     index_output* data_out;
     encryption::stream* cipher;
     union {
@@ -199,7 +198,6 @@ class writer final : public columnstore_writer {
   IResourceManager& resource_manager_;
   directory* dir_;
   std::string data_filename_;
-  memory_allocator* alloc_;
   std::deque<column> columns_;  // pointers remain valid
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;

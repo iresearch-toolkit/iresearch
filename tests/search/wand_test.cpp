@@ -108,6 +108,7 @@ class WandTestCase : public tests::index_test_base {
 
   void GenerateSegment(irs::ScorersView scorers, bool write_norms,
                        bool append_data = false);
+  void GenerateSegmentMinNorm(irs::ScorersView scorers);
   void ConsolidateAll(irs::ScorersView scorers, bool write_norms);
   void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
                         irs::byte_type wand_index);
@@ -252,6 +253,28 @@ void WandTestCase::GenerateSegment(irs::ScorersView scorers, bool write_norms,
   add_segment(gen, open_mode, GetWriterOptions(scorers, write_norms));
 }
 
+void WandTestCase::GenerateSegmentMinNorm(irs::ScorersView scorers) {
+  tests::json_doc_generator gen(
+    resource("simple_single_column_multi_term_norm.json"),
+    [](tests::document& doc, std::string_view name,
+       const tests::json_doc_generator::json_value& data) {
+      using TextField = tests::text_field<std::string>;
+
+      if (tests::json_doc_generator::ValueType::STRING == data.vt) {
+        doc.indexed.push_back(std::make_shared<TextField>(
+          std::string{name}, data.str, false,
+          std::vector{irs::type<irs::Norm2>::id()}));
+      }
+    });
+
+  auto open_mode = irs::OM_CREATE;
+  // if (append_data) {
+  //   open_mode |= irs::OM_APPEND;
+  // }
+
+  add_segment(gen, open_mode, GetWriterOptions(scorers, true));
+}
+
 void WandTestCase::AssertTermFilter(irs::ScorersView scorers) {
   ASSERT_FALSE(scorers.empty());
   for (size_t idx = 0; auto* scorer : scorers) {
@@ -314,8 +337,12 @@ TEST_P(WandTestCase, TermFilterMultipleScorersDense) {
   Scorers scorers;
   scorers.PushBack<irs::TFIDF>(false);
   scorers.PushBack<irs::TFIDF>(true);
-  scorers.PushBack<irs::BM25>();
-  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+  const auto& bm25 = scorers.PushBack<irs::BM25>();
+  ASSERT_FALSE(bm25.IsBM15() || bm25.IsBM11());
+  const auto& bm15 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.f);
+  ASSERT_TRUE(bm15.IsBM15());
+  const auto& bm11 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 1.f);
+  ASSERT_TRUE(bm11.IsBM11());
 
   GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
@@ -339,8 +366,12 @@ TEST_P(WandTestCase, TermFilterMultipleScorersSparse) {
   Scorers scorers;
   scorers.PushBack<irs::TFIDF>(false);
   scorers.PushBack<irs::TFIDF>(true);
-  scorers.PushBack<irs::BM25>();
-  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+  const auto& bm25 = scorers.PushBack<irs::BM25>();
+  ASSERT_FALSE(bm25.IsBM15() || bm25.IsBM11());
+  const auto& bm15 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.f);
+  ASSERT_TRUE(bm15.IsBM15());
+  const auto& bm11 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 1.f);
+  ASSERT_TRUE(bm11.IsBM11());
 
   GenerateSegment(scorers, false);
   AssertTermFilter(scorers);
@@ -376,12 +407,23 @@ TEST_P(WandTestCase, TermFilterBM25) {
 
   GenerateSegment(scorers, true);
   AssertTermFilter(scorers);
+  GenerateSegmentMinNorm(scorers);
+  AssertTermFilter(scorers);
 }
 
 TEST_P(WandTestCase, TermFilterBM15) {
   Scorers scorers;
-  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0);
+  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.f);
   ASSERT_TRUE(scorer.IsBM15());
+
+  GenerateSegment(scorers, true);
+  AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, TermFilterBM11) {
+  Scorers scorers;
+  auto& scorer = scorers.PushBack<irs::BM25>(irs::BM25::K(), 1.f);
+  ASSERT_TRUE(scorer.IsBM11());
 
   GenerateSegment(scorers, true);
   AssertTermFilter(scorers);

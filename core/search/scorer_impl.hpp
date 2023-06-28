@@ -86,8 +86,6 @@ struct TermCollectorImpl final : TermCollector {
   void write(data_output& out) const final { out.write_vlong(docs_with_term); }
 };
 
-struct Empty final {};
-
 inline constexpr frequency kEmptyFreq;
 
 template<typename Ctx>

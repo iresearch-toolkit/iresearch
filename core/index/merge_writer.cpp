@@ -117,7 +117,7 @@ class NoopDirectory : public directory {
  private:
   NoopDirectory() = default;
 
-  directory_attributes attrs_{0, nullptr};
+  directory_attributes attrs_;
 };
 
 class ProgressTracker {

@@ -106,6 +106,9 @@ int main(int argc, char* argv[]) {
   irs::Finally output_stats = []() noexcept {
     irs::timer_utils::visit(
       [](const std::string& key, size_t count, size_t time_us) -> bool {
+        if (count == 0) {
+          return true;
+        }
         std::cout << key << " calls:" << count << ", time: " << time_us
                   << " us, avg call: " << time_us / double(count) << " us"
                   << std::endl;

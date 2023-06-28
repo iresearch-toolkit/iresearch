@@ -58,11 +58,12 @@ class SkipWriter : util::noncopyable {
 
   // Prepares skip_writer capable of writing up to `max_levels` skip levels and
   // `count` elements.
-  void Prepare(size_t max_levels, size_t count,
-               const memory_allocator& alloc = memory_allocator::global());
+  void Prepare(size_t max_levels, size_t count);
 
   // Flushes all internal data into the specified output stream
-  void Flush(index_output& out);
+  uint32_t CountLevels() const;
+  void FlushLevels(uint32_t num_levels, index_output& out);
+  void Flush(index_output& out) { FlushLevels(CountLevels(), out); }
 
   // Resets skip writer internal state
   void Reset() noexcept {

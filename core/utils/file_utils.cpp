@@ -559,7 +559,7 @@ bool absolute(bool& result, const path_char_t* path) noexcept {
   } else {
     // ensure that PathIsRelativeW(...) is given a value shorter than MAX_PATH
     // still ok since to determine if absolute only need the start of the path
-    std::basic_string<wchar_t> buf(path, MAX_PATH - 1);  // -1 for '\0'
+    irs::basic_string<wchar_t> buf(path, MAX_PATH - 1);  // -1 for '\0'
 
     result = !PathIsRelativeW(buf.c_str());
   }
@@ -1048,7 +1048,7 @@ path_parts_t path_parts(const path_char_t* path) noexcept {
 }
 
 bool read_cwd(
-  std::basic_string<std::filesystem::path::value_type>& result) noexcept {
+  irs::basic_string<std::filesystem::path::value_type>& result) noexcept {
   try {
 #ifdef _WIN32
     auto size = GetCurrentDirectory(0, nullptr);
@@ -1149,7 +1149,7 @@ void ensure_absolute(std::filesystem::path& path) {
 bool remove(const path_char_t* path) noexcept {
   try {
     // a reusable buffer for a full path used during recursive removal
-    std::basic_string<std::filesystem::path::value_type> buf;
+    irs::basic_string<std::filesystem::path::value_type> buf;
 
     // must remove each directory entry recursively (ignore result, check final
     // ::remove() instead)

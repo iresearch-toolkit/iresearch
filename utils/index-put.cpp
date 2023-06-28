@@ -27,6 +27,7 @@
 #endif
 
 #include <cmdline.h>
+#include <frozen/unordered_map.h>
 #include <frozen/unordered_set.h>
 
 #if defined(_MSC_VER)
@@ -54,6 +55,7 @@
 #include "index-put.hpp"
 #include "index/index_writer.hpp"
 #include "index/norm.hpp"
+#include "search/scorers.hpp"
 #include "store/store_utils.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/index_utils.hpp"
@@ -77,9 +79,11 @@ const std::string ANALYZER_TYPE = "analyzer-type";
 const std::string ANALYZER_OPTIONS = "analyzer-options";
 const std::string SEGMENT_MEM_MAX = "segment-memory-max";
 const std::string CONSOLIDATION_INTERVAL = "consolidation-interval";
+const std::string WAND_TYPE = "wand-type";
 
 const std::string DEFAULT_ANALYZER_TYPE = "segmentation";
 const std::string DEFAULT_ANALYZER_OPTIONS = R"({})";
+const std::string DEFAULT_WAND_TYPE = "none";
 
 constexpr size_t DEFAULT_SEGMENT_MEM_MAX = 1 << 28;  // 256M
 constexpr size_t DEFAULT_CONSOLIDATION_INTERVAL_MSEC = 500;
@@ -99,6 +103,17 @@ constexpr std::array<irs::type_info::type_id, 1> TEXT_FEATURES{
   irs::type<irs::Norm2>::id()};
 constexpr std::array<irs::type_info::type_id, 1> NUMERIC_FEATURES{
   irs::type<irs::granularity_prefix>::id()};
+
+struct Scorer {
+  std::string_view name;
+  std::string_view arg;
+};
+
+constexpr frozen::unordered_map<std::string_view, Scorer, 3> WAND_TYPES{
+  {"maxfreq", Scorer{.name = "tfidf", .arg = {}}},
+  {"divnorm", Scorer{.name = "tfidf", .arg = "true"}},
+  {"minnorm", Scorer{.name = "bm25", .arg = {}}},
+};
 
 }  // namespace
 
@@ -317,7 +332,8 @@ int put(const std::string& path, const std::string& dir_type,
         const std::string& analyzer_options, std::istream& stream,
         size_t lines_max, size_t indexer_threads, size_t consolidation_threads,
         size_t commit_interval_ms, size_t consolidation_interval_ms,
-        size_t batch_size, size_t segment_mem_max, bool consolidate_all) {
+        size_t batch_size, size_t segment_mem_max, bool consolidate_all,
+        std::string_view wand_type) {
   auto dir = create_directory(dir_type, path);
 
   if (!dir) {
@@ -325,6 +341,23 @@ int put(const std::string& path, const std::string& dir_type,
               << std::endl;
     return 1;
   }
+  irs::Scorer::ptr scr;
+  if (wand_type != "none") {
+    Scorer scorer;
+    auto it = WAND_TYPES.find(wand_type);
+    if (it != WAND_TYPES.end()) {
+      scorer = it->second;
+    }
+    scr = irs::scorers::get(
+      scorer.name, irs::type<irs::text_format::json>::get(), scorer.arg);
+
+    if (!scr) {
+      std::cerr << "Unable to instatiate wand from wand type: " << wand_type
+                << std::endl;
+      return 1;
+    }
+  }
+  const irs::Scorer* score = scr.get();
 
   auto codec = irs::formats::get(format);
 
@@ -360,6 +393,9 @@ int put(const std::string& path, const std::string& dir_type,
   indexer_threads = (std::max)(size_t(1), indexer_threads);
 
   irs::IndexWriterOptions opts;
+  if (score) {
+    opts.reader_options.scorers = {&score, 1};
+  }
   opts.segment_pool_size = indexer_threads;
   opts.segment_memory_max = segment_mem_max;
   opts.features = [](irs::type_info::type_id id) {
@@ -397,7 +433,8 @@ int put(const std::string& path, const std::string& dir_type,
             << CONSOLIDATE_ALL << "=" << consolidate_all << '\n'
             << ANALYZER_TYPE << "=" << analyzer_type << '\n'
             << ANALYZER_OPTIONS << "=" << analyzer_options << '\n'
-            << SEGMENT_MEM_MAX << "=" << segment_mem_max << '\n';
+            << SEGMENT_MEM_MAX << "=" << segment_mem_max << '\n'
+            << WAND_TYPE << "=" << wand_type << '\n';
 
   struct {
     std::condition_variable cond_;
@@ -627,6 +664,8 @@ int put(const cmdline::parser& args) {
     args.exist(CONSOLIDATION_INTERVAL)
       ? args.get<size_t>(CONSOLIDATION_INTERVAL)
       : DEFAULT_CONSOLIDATION_INTERVAL_MSEC;
+  auto wand_type = args.exist(WAND_TYPE) ? args.get<std::string>(WAND_TYPE)
+                                         : DEFAULT_WAND_TYPE;
 
   std::fstream fin;
   std::istream* in;
@@ -642,11 +681,13 @@ int put(const cmdline::parser& args) {
   } else {
     in = &std::cin;
   }
+  std::transform(wand_type.begin(), wand_type.end(), wand_type.begin(),
+                 ::tolower);
 
   return put(path, dir_type, format, analyzer_type, analyzer_options, *in,
              lines_max, indexer_threads, consolidation_threads,
              commit_interval_ms, consolidation_internval_ms, batch_size,
-             segment_mem_max, consolidate);
+             segment_mem_max, consolidate, wand_type);
 }
 
 int put(int argc, char* argv[]) {
@@ -674,6 +715,9 @@ int put(int argc, char* argv[]) {
              DEFAULT_ANALYZER_OPTIONS);
   cmdput.add(SEGMENT_MEM_MAX, 0, "Max size of per-segment in-memory buffer",
              false, DEFAULT_SEGMENT_MEM_MAX);
+  cmdput.add(WAND_TYPE, 0,
+             "Type of WAND data producer (supported since 1_5 format)", false,
+             DEFAULT_WAND_TYPE);
 
   cmdput.parse(argc, argv);
 

@@ -443,9 +443,9 @@ class empty_filter_visitor : public irs::filter_visitor {
   }
 
   template<typename Char>
-  std::vector<std::pair<std::basic_string_view<Char>, irs::score_t>> term_refs()
+  std::vector<std::pair<irs::basic_string_view<Char>, irs::score_t>> term_refs()
     const {
-    std::vector<std::pair<std::basic_string_view<Char>, irs::score_t>> refs(
+    std::vector<std::pair<irs::basic_string_view<Char>, irs::score_t>> refs(
       terms_.size());
     auto begin = refs.begin();
     for (auto& term : terms_) {

@@ -135,8 +135,7 @@ void assert_fst_read_write(const std::string& resource) {
   }
   ASSERT_EQ(expected_stats, stats);
 
-  irs::memory_output out(irs::memory_allocator::global(),
-                         irs::IResourceManager::kNoopManager,
+  irs::memory_output out(irs::IResourceManager::kNoopManager,
                          irs::IResourceManager::kTransactions);
   irs::immutable_byte_fst::Write(fst, out.stream, stats);
   out.stream.flush();

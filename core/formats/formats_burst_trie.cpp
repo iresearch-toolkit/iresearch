@@ -115,8 +115,8 @@ using namespace irs;
 template<typename Char>
 class volatile_ref : util::noncopyable {
  public:
-  typedef std::basic_string_view<Char> ref_t;
-  typedef std::basic_string<Char> str_t;
+  using ref_t = basic_string_view<Char>;
+  using str_t = basic_string<Char>;
 
   volatile_ref() = default;
 
@@ -1096,9 +1096,9 @@ field_writer::field_writer(
 #ifdef __cpp_lib_memory_resource
     block_index_buf_{sizeof(block_t::prefixed_output) * 32},
 #endif
-    suffix_(memory_allocator::global(), IResourceManager::kNoopManager,
+    suffix_(IResourceManager::kNoopManager,
             IResourceManager::kConsolidations),
-    stats_(memory_allocator::global(), IResourceManager::kNoopManager,
+    stats_(IResourceManager::kNoopManager,
            IResourceManager::kConsolidations),
     pw_(std::move(pw)),
     fst_buf_(new fst_buffer()),
@@ -1172,10 +1172,8 @@ void field_writer::prepare(const flush_state& state) {
   // prepare postings writer
   pw_->prepare(*terms_out_, state);
 
-  // reset allocator from a directory
-  auto& allocator = state.dir->attributes().allocator();
-  suffix_.reset(allocator);
-  stats_.reset(allocator);
+  suffix_.reset();
+  stats_.reset();
 }
 
 void field_writer::write(const basic_term_reader& reader,
@@ -2306,7 +2304,7 @@ ptrdiff_t term_iterator<FST>::seek_cached(size_t& prefix, stateid_t& state,
 
   // inspect suffix and determine our current position
   // with respect to target term (before, after, equal)
-  ptrdiff_t cmp = std::char_traits<byte_type>::compare(
+  ptrdiff_t cmp = char_traits<byte_type>::compare(
     pterm, ptarget, std::min(target.size(), term.size()) - prefix);
 
   if (!cmp) {
@@ -3125,7 +3123,10 @@ class field_reader final : public irs::field_reader {
         return nullptr;
       };
 
-      return owner_->pr_->bit_union(meta().index_features, term_provider, set);
+      IRS_ASSERT(owner_ != nullptr);
+      IRS_ASSERT(owner_->pr_ != nullptr);
+      return owner_->pr_->bit_union(meta().index_features, term_provider, set,
+                                    WandCount());
     }
 
     seek_term_iterator::ptr iterator(
