@@ -53,7 +53,7 @@ class BufferedColumnIterator : public doc_iterator {
     // flushing. We intentionally allow iterator to seek backwards.
     // We expect a lot of dense ranges.
     const auto* curr = next_ == end_ ? begin_ : next_;
-    curr = curr + target - curr->key;
+    curr = (curr + target) - curr->key;
 
     if (IRS_UNLIKELY(curr < begin_ || end_ <= curr || curr->key != target)) {
       curr = std::lower_bound(
