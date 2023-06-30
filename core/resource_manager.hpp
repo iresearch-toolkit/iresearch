@@ -40,84 +40,27 @@
 
 namespace irs {
 struct IResourceManager {
-  static IResourceManager kNoopManager;
-
-  enum Call {
-    kNoop,
-    kFileDescriptors,
-    kCachedColumns,
-    kTransactions,
-    kConsolidations,
-    kReaders,
-  };
+  static IResourceManager kNoop;
+#ifdef IRESEARCH_DEBUG
+  static IResourceManager kForbidden;
+#endif
 
   static_assert(sizeof(size_t) <= sizeof(uint64_t));
 
   IRS_FORCE_INLINE bool Increase(Call call, size_t v) noexcept {
     IRS_ASSERT(v <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
-    switch (call) {
-      case kFileDescriptors:
-        return ChangeFileDescritors(static_cast<int64_t>(v));
-      case kCachedColumns:
-        return ChangeCachedColumnsMemory(static_cast<int64_t>(v));
-      case kReaders:
-        return ChangeIndexPinnedMemory(static_cast<int64_t>(v));
-      case kTransactions:
-        return ChangeTransactionPinnedMemory(static_cast<int64_t>(v));
-      case kConsolidations:
-        return ChangeConsolidationPinnedMemory(static_cast<int64_t>(v));
-      case kNoop:
-        IRS_ASSERT(false);
-        return true;
-    }
-    IRS_ASSERT(false);
-    // MSVC issues warning here
-    return false;
+    IRS_ASSERT(this != IResourceManager::kForbidden);
+    return Change(static_cast<int64_t>(v));
   }
 
   IRS_FORCE_INLINE void Decrease(Call call, size_t v) noexcept {
     IRS_ASSERT(v <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
-    [[maybe_unused]] bool res;
-    switch (call) {
-      case kFileDescriptors:
-        res = ChangeFileDescritors(-static_cast<int64_t>(v));
-        break;
-      case kCachedColumns:
-        res = ChangeCachedColumnsMemory(-static_cast<int64_t>(v));
-        break;
-      case kReaders:
-        res = ChangeIndexPinnedMemory(-static_cast<int64_t>(v));
-        break;
-      case kTransactions:
-        res = ChangeTransactionPinnedMemory(-static_cast<int64_t>(v));
-        break;
-      case kConsolidations:
-        res = ChangeConsolidationPinnedMemory(-static_cast<int64_t>(v));
-        break;
-      case kNoop:
-        res = true;
-        break;
-    }
+    [[maybe_unused]] bool res = Change(-static_cast<int64_t>(v));
     IRS_ASSERT(res);
   }
 
  protected:
-  virtual bool ChangeFileDescritors(int64_t) noexcept { return true; }
-
-  virtual bool ChangeCachedColumnsMemory(int64_t) noexcept { return true; }
-
-  // memory allocated by Inserts/Removes/Replaces:
-  // Buffered column values, docs contexts, pending removals
-  // fst buffer for inserted data, commits
-  virtual bool ChangeTransactionPinnedMemory(int64_t) noexcept { return true; }
-
-  // memory allocated by index readers,
-  virtual bool ChangeIndexPinnedMemory(int64_t) noexcept { return true; }
-
-  // consolidation (including fst buffer for consolidated segments)
-  virtual bool ChangeConsolidationPinnedMemory(int64_t) noexcept {
-    return true;
-  }
+  virtual bool Change(int64_t) noexcept { return true; }
 };
 
 template<typename Allocator>
@@ -130,49 +73,54 @@ class ManagedAllocator : private Allocator {
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 
   explicit ManagedAllocator()
-    : rm_{IResourceManager::kNoopManager}, call_{IResourceManager::kNoop} {}
+    : rm_{
+#ifdef IRESEARCH_DEBUG
+        IResourceManager::kForbiddenManager
+#else
+        IResourceManager::kNoopManager
+#endif
+      } {
+  }
 
   template<typename... Args>
   ManagedAllocator(IResourceManager& rm,
-                   IResourceManager::Call call,
                    Args&&... args)
-    : Allocator(std::forward<Args>(args)...), rm_{rm}, call_{call} {}
+    : Allocator(std::forward<Args>(args)...), rm_{rm} {}
 
   ManagedAllocator(ManagedAllocator&& other) noexcept
     : Allocator(other.RawAllocator()),
-    rm_{other.ResourceManager()}, call_{other.ResourceCall()} {}
+    rm_{other.ResourceManager()} {}
 
    ManagedAllocator(const ManagedAllocator& other) noexcept
     : Allocator(other.RawAllocator()),
-      rm_{other.ResourceManager()},
-      call_{other.ResourceCall()} {}
+      rm_{other.ResourceManager()} {}
 
   ManagedAllocator& operator=(ManagedAllocator&& other) noexcept {
     static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
     rm_ = other.ResourceManager();
-    call_ = other.ResourceCall();
     return *this;
   }
 
   template<typename A>
   ManagedAllocator(const ManagedAllocator<A>& other) noexcept
     : Allocator(other.RawAllocator()),
-      rm_{other.ResourceManager()},
-      call_{other.ResourceCall()} {}
+      rm_{other.ResourceManager()} {}
 
   value_type* allocate(std::size_t n) {
-    rm_.Increase(call_, sizeof(value_type) * n);
-    auto call = call_;
+    IRS_ASSERT(n != 0);
+    rm_.Increase(sizeof(value_type) * n);
     Finally cleanup = [&]() noexcept {
-      rm_.Decrease(call, sizeof(value_type) * n);
+      if (n) {
+        rm_.Decrease(sizeof(value_type) * n);
+      }
     };
     auto res = Allocator::allocate(n);
-    call = IResourceManager::kNoop;
+    n = 0;
     return res;
   }
 
   void deallocate(value_type* p, std::size_t n) {
-    rm_.Decrease(call_, sizeof(value_type) * n);
+    rm_.Decrease(sizeof(value_type) * n);
     Allocator::deallocate(p, n);
   }
 
@@ -183,22 +131,12 @@ class ManagedAllocator : private Allocator {
   template<typename A>
   bool operator==(const ManagedAllocator<A>& other) const noexcept {
     return RawAllocator() == other.RawAllocator() &&
-           call_ == other.call_ &&
            &rm_ == &other.rm_;
   }
 
-  template<typename A>
-  bool operator!=(const ManagedAllocator<A>& other) const noexcept {
-    return !(*this == other);
-  }
-
   IResourceManager& ResourceManager() const noexcept { return rm_; }
-
-  IResourceManager::Call ResourceCall() const noexcept { return call_; }
-
  private:
   IResourceManager& rm_;
-  IResourceManager::Call call_;
 };
 
 template<typename T>

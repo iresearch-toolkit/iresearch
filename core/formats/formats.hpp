@@ -75,7 +75,13 @@ struct SegmentWriterOptions {
   const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
-  IResourceManager& resource_manager{IResourceManager::kNoopManager};
+  struct {
+    IResourceManager& transactions{IResourceManager::kNoop};
+    IResourceManager& readers{IResourceManager::kNoop};
+    IResourceManager& comsolidations{IResourceManager::kNoop};
+    IResourceManager& file_descriptors{IResourceManager::kNoop};
+    IResourceManager& cached_columns{IResourceManager::kNoop};
+  } resource_manager;
 };
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
