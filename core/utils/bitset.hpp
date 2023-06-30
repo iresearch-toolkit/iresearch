@@ -249,5 +249,6 @@ class dynamic_bitset {
 };
 
 using bitset = dynamic_bitset<std::allocator<size_t>>;
+using ManagedBitset = dynamic_bitset<ManagedTypedAllocator<size_t>>;
 
 }  // namespace irs

@@ -3856,8 +3856,9 @@ class format10 : public irs::version10::format {
   document_mask_writer::ptr get_document_mask_writer() const final;
   document_mask_reader::ptr get_document_mask_reader() const final;
 
-  field_writer::ptr get_field_writer(bool consolidation) const override;
-  field_reader::ptr get_field_reader() const final;
+  field_writer::ptr get_field_writer(bool consolidation,
+                                     IResourceManager&) const override;
+  field_reader::ptr get_field_reader(IResourceManager&) const final;
 
   columnstore_writer::ptr get_columnstore_writer(
     bool consolidation, IResourceManager&) const override;
@@ -3908,14 +3909,15 @@ document_mask_reader::ptr format10::get_document_mask_reader() const {
   return memory::to_managed<document_mask_reader>(kInstance);
 }
 
-field_writer::ptr format10::get_field_writer(bool consolidation) const {
+field_writer::ptr format10::get_field_writer(bool consolidation,
+                                             IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::MIN,
                                  get_postings_writer(consolidation),
-                                 consolidation);
+                                 rm, consolidation);
 }
 
-field_reader::ptr format10::get_field_reader() const {
-  return burst_trie::make_reader(get_postings_reader());
+field_reader::ptr format10::get_field_reader(IResourceManager& rm) const {
+  return burst_trie::make_reader(get_postings_reader(), rm);
 }
 
 columnstore_writer::ptr format10::get_columnstore_writer(
@@ -3952,7 +3954,8 @@ class format11 : public format10 {
 
   index_meta_writer::ptr get_index_meta_writer() const final;
 
-  field_writer::ptr get_field_writer(bool consolidation) const override;
+  field_writer::ptr get_field_writer(bool consolidation,
+                                     IResourceManager&) const override;
 
   segment_meta_writer::ptr get_segment_meta_writer() const final;
 
@@ -3970,10 +3973,11 @@ IndexMetaWriter::ptr format11::get_index_meta_writer() const {
   return std::make_unique<IndexMetaWriter>(IndexMetaWriter::kFormatMax);
 }
 
-field_writer::ptr format11::get_field_writer(bool consolidation) const {
+field_writer::ptr format11::get_field_writer(bool consolidation,
+                                             IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::ENCRYPTION_MIN,
                                  get_postings_writer(consolidation),
-                                 consolidation);
+                                 rm, consolidation);
 }
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
@@ -4065,7 +4069,8 @@ class format14 : public format13 {
 
   static ptr make();
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const override;
+  irs::field_writer::ptr get_field_writer(bool consolidation,
+                                          IResourceManager& rm) const override;
 
   irs::columnstore_writer::ptr get_columnstore_writer(
     bool consolidation, IResourceManager& rm) const final;
@@ -4078,10 +4083,11 @@ class format14 : public format13 {
 
 static const ::format14 FORMAT14_INSTANCE;
 
-irs::field_writer::ptr format14::get_field_writer(bool consolidation) const {
+irs::field_writer::ptr format14::get_field_writer(bool consolidation,
+                                                  IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
                                  get_postings_writer(consolidation),
-                                 consolidation);
+                                 rm, consolidation);
 }
 
 columnstore_writer::ptr format14::get_columnstore_writer(
@@ -4107,7 +4113,8 @@ class format15 : public format14 {
 
   static ptr make();
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
+  irs::field_writer::ptr get_field_writer(bool consolidation,
+                                          IResourceManager& rm) const final;
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
@@ -4119,10 +4126,11 @@ class format15 : public format14 {
 
 static const ::format15 FORMAT15_INSTANCE;
 
-irs::field_writer::ptr format15::get_field_writer(bool consolidation) const {
+irs::field_writer::ptr format15::get_field_writer(bool consolidation,
+                                                  IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::WAND,
                                  get_postings_writer(consolidation),
-                                 consolidation);
+                                 rm, consolidation);
 }
 
 irs::postings_writer::ptr format15::get_postings_writer(
@@ -4261,7 +4269,8 @@ class format14simd : public format13simd {
     bool consolidation, IResourceManager&) const final;
   columnstore_reader::ptr get_columnstore_reader() const final;
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const override;
+  irs::field_writer::ptr get_field_writer(bool consolidation,
+                                          IResourceManager&) const override;
 
   irs::type_info::type_id type() const noexcept override {
     return irs::type<format14simd>::id();
@@ -4271,10 +4280,10 @@ class format14simd : public format13simd {
 static const ::format14simd FORMAT14SIMD_INSTANCE;
 
 irs::field_writer::ptr format14simd::get_field_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
                                  get_postings_writer(consolidation),
-                                 consolidation);
+                                 rm, consolidation);
 }
 
 columnstore_writer::ptr format14simd::get_columnstore_writer(
@@ -4301,7 +4310,8 @@ class format15simd : public format14simd {
 
   static ptr make();
 
-  irs::field_writer::ptr get_field_writer(bool consolidation) const final;
+  irs::field_writer::ptr get_field_writer(bool consolidation,
+                                          IResourceManager&) const final;
 
   irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
@@ -4314,10 +4324,10 @@ class format15simd : public format14simd {
 static const ::format15simd FORMAT15SIMD_INSTANCE;
 
 irs::field_writer::ptr format15simd::get_field_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::WAND,
                                  get_postings_writer(consolidation),
-                                 consolidation);
+                                 rm, consolidation);
 }
 
 irs::postings_writer::ptr format15simd::get_postings_writer(

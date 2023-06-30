@@ -31,6 +31,7 @@
 #include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utils/misc.hpp"
+#include "resource_manager.hpp"
 
 namespace fst {
 namespace fstext {
@@ -66,6 +67,17 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
     SetProperties(kNullProperties | kStaticProperties);
   }
 
+  ~ImmutableFstImpl() {
+    states_.reset();
+    arcs_.reset();
+    weights_.reset();
+    if (resource_manager_) {
+      resource_manager_->Decrease(
+        resource_call_, sizeof(State) * nstates_ + sizeof(Arc) * narcs_ +
+                          sizeof(irs::byte_type) * weights_size_);
+    }
+  }
+
   StateId Start() const noexcept { return start_; }
 
   Weight Final(StateId s) const noexcept { return states_[s].weight; }
@@ -80,7 +92,8 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 
   size_t NumOutputEpsilons(StateId) const noexcept { return 0; }
 
-  static std::shared_ptr<ImmutableFstImpl<Arc>> Read(irs::data_input& strm);
+  static std::shared_ptr<ImmutableFstImpl<Arc>> Read(
+    irs::data_input& strm, irs::IResourceManager& rm, irs::IResourceManager::Call call);
 
   const Arc* Arcs(StateId s) const noexcept { return states_[s].arcs; }
 
@@ -116,8 +129,11 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   std::unique_ptr<Arc[]> arcs_;
   std::unique_ptr<irs::byte_type[]> weights_;
   size_t narcs_;     // Number of arcs.
+  size_t weights_size_;
   StateId nstates_;  // Number of states.
   StateId start_;    // Initial state.
+  irs::IResourceManager* resource_manager_{nullptr};
+  irs::IResourceManager::Call resource_call_{IResourceManager::kNoop};
 
   ImmutableFstImpl(const ImmutableFstImpl&) = delete;
   ImmutableFstImpl& operator=(const ImmutableFstImpl&) = delete;
@@ -125,7 +141,9 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 
 template<typename Arc>
 std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
-  irs::data_input& stream) {
+  irs::data_input& stream,
+  irs::IResourceManager& rm,
+  irs::IResourceManager::Call call) {
   auto impl = std::make_shared<ImmutableFstImpl<Arc>>();
 
   // read header
@@ -139,6 +157,15 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
   const StateId start = nstates - stream.read_vint();
   const size_t narcs = irs::read_zvlong(stream) + nstates;
 
+  size_t allocated{nstates * sizeof(State) + narcs * sizeof(Arc) +
+                   total_weight_size * sizeof(irs::byte_type)};
+  irs::Finally cleanup = [&]() noexcept {
+    if (allocated) {
+      rm.Decrease(call, allocated);
+    }
+  };
+
+  rm.Increase(call, allocated);
   auto states = std::make_unique<State[]>(nstates);
   auto arcs = std::make_unique<Arc[]>(narcs);
   auto weights = std::make_unique<irs::byte_type[]>(total_weight_size);
@@ -174,6 +201,7 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
   stream.read_bytes(weights.get(), total_weight_size);
 
   // noexcept block
+  allocated = 0;
   impl->properties_ = props;
   impl->start_ = start;
   impl->nstates_ = nstates;
@@ -181,7 +209,9 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
   impl->states_ = std::move(states);
   impl->arcs_ = std::move(arcs);
   impl->weights_ = std::move(weights);
-
+  impl->weights_size_ = total_weight_size;
+  impl->resource_call_ = call;
+  impl->resource_manager_ = &rm;
   return impl;
 }
 
@@ -210,18 +240,21 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
     return new ImmutableFst<A>(*this, safe);
   }
 
-  static ImmutableFst<A>* Read(irs::data_input& strm) {
-    auto impl = Impl::Read(strm);
+  static ImmutableFst<A>* Read(irs::data_input& strm, irs::IResourceManager& rm,
+                               irs::IResourceManager::Call call) {
+    auto impl = Impl::Read(strm, rm, call);
     return impl ? new ImmutableFst<A>(std::move(impl)) : nullptr;
   }
 
-  // for OpenFST API compliance
+  // OpenFST API compliance broken. But as only we use it here it is ok.
   static ImmutableFst<A>* Read(std::istream& strm,
-                               const FstReadOptions& /*opts*/) {
+                               const FstReadOptions&,
+                               irs::IResourceManager& rm,
+                               irs::IResourceManager::Call call) {
     auto* rdbuf = down_cast<irs::input_buf*>(strm.rdbuf());
     IRS_ASSERT(rdbuf && rdbuf->internal());
 
-    return Read(*rdbuf->internal());
+    return Read(*rdbuf->internal(), rm, call);
   }
 
   template<typename FST, typename Stats>

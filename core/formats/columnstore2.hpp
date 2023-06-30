@@ -68,7 +68,6 @@ class column final : public irs::column_output {
                   columnstore_writer::column_finalizer_f&& finalizer,
                   compression::compressor::ptr deflater,
                   IResourceManager& resource_manager);
-  ~column();
 
   void write_byte(byte_type b) final {
     data_.stream.write_byte(b);
@@ -158,7 +157,7 @@ class column final : public irs::column_output {
   compression::compressor::ptr deflater_;
   columnstore_writer::column_finalizer_f finalizer_;
   IResourceManager& resource_manager_;
-  std::vector<column_block> blocks_;  // at most 65536 blocks
+  std::vector<column_block, ManagedTypedAllocator<column_block>> blocks_;  // at most 65536 blocks
   memory_output data_;
   memory_output docs_;
   sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};
@@ -198,7 +197,7 @@ class writer final : public columnstore_writer {
   IResourceManager& resource_manager_;
   directory* dir_;
   std::string data_filename_;
-  std::deque<column> columns_;  // pointers remain valid
+  std::deque<column, ManagedTypedAllocator<column>> columns_;  // pointers remain valid
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;

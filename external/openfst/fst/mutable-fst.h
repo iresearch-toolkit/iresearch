@@ -38,6 +38,23 @@
 #include <string_view>
 
 
+namespace {
+
+template<typename T>
+std::enable_if_t<!std::is_void_v<decltype(std::declval<T>().GetAlloc())>,
+                 std::true_type>
+has_alloc_helper(int);
+
+template<typename>
+std::false_type has_alloc_helper(...);
+
+template<typename T>
+struct has_alloc : decltype(has_alloc_helper<T>(0)) {
+};
+}  // namespace
+
+
+
 namespace fst {
 
 template <class Arc>
@@ -284,6 +301,7 @@ inline ssize_t NumOutputEpsilons(const MutableFst<Arc> &fst,
 // A useful alias when using StdArc.
 using StdMutableFst = MutableFst<StdArc>;
 
+
 // This is a helper class template useful for attaching a MutableFst interface
 // to its implementation, handling reference counting and COW semantics.
 template <class Impl, class FST = MutableFst<typename Impl::Arc>>
@@ -342,7 +360,11 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
     if (!Unique()) {
       const auto *isymbols = GetImpl()->InputSymbols();
       const auto *osymbols = GetImpl()->OutputSymbols();
-      SetImpl(std::make_shared<Impl>());
+      if constexpr (has_alloc<Impl>::value) {
+        SetImpl(std::make_shared<Impl>(GetImpl()->GetAlloc()));
+      } else {
+        SetImpl(std::make_shared<Impl>());
+      }
       GetMutableImpl()->SetInputSymbols(isymbols);
       GetMutableImpl()->SetOutputSymbols(osymbols);
     } else {
@@ -412,7 +434,13 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
       : ImplToExpandedFst<Impl, FST>(fst, safe) {}
 
   void MutateCheck() {
-    if (!Unique()) SetImpl(std::make_shared<Impl>(*this));
+    if (!Unique()) {
+      if constexpr (has_alloc<Impl>::value) {
+        SetImpl(std::make_shared<Impl>(*this, this->GetImpl()->GetAlloc()));
+      } else {
+        SetImpl(std::make_shared<Impl>(*this));
+      }
+    }
   }
 };
 

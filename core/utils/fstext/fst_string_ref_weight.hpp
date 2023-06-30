@@ -174,7 +174,7 @@ struct StringRefWeightTraits<irs::byte_type> {
   }
 
   static constexpr bool Member(
-    StringRefWeight<irs::byte_type> weight) noexcept {
+    StringRefWeight<irs::byte_type>) noexcept {
     // always a member
     return true;
   }

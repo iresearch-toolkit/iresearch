@@ -34,6 +34,7 @@
 #include "memory.hpp"
 #include "misc.hpp"
 #include "utils/assert.hpp"
+#include "resource_manager.hpp"
 
 namespace irs {
 
@@ -994,6 +995,7 @@ struct proxy_block_t {
   size_t start;           // where block starts
 };
 
+// TODO: Replace with memory_file with fixed size of blocks
 template<typename T, size_t BlockSize, typename AllocType = std::allocator<T>>
 class block_pool {
  public:
@@ -1015,13 +1017,9 @@ class block_pool {
   using sliced_greedy_inserter = block_pool_sliced_greedy_inserter<my_type>;
   using sliced_greedy_reader = block_pool_sliced_greedy_reader<my_type>;
 
-  explicit block_pool(const allocator& alloc = allocator(),
-                      IResourceManager& rm = IResourceManager::kNoopManager,
-                      IResourceManager::Call call = IResourceManager::kNoop)
+  explicit block_pool(const allocator& alloc = allocator())
     : alloc_{alloc},
-      blocks_{block_ptr_allocator{alloc_}},
-      resource_manager_{rm},
-      resource_call_{call} {
+      blocks_{block_ptr_allocator{alloc_}}{
     static_assert(block_type::SIZE > 0, "block_type::SIZE == 0");
   }
 
@@ -1031,7 +1029,6 @@ class block_pool {
     proxy_allocator proxy_alloc{alloc_};
     
     while (count--) {
-      resource_manager_.Increase(resource_call_, block_type::SIZE);
       auto* p = proxy_alloc.allocate(1);
       IRS_ASSERT(p);
 
@@ -1041,7 +1038,6 @@ class block_pool {
         blocks_.emplace_back(p);
       } catch (...) {
         proxy_alloc.deallocate(p, 1);
-        resource_manager_.Decrease(resource_call_, block_type::SIZE);
         throw;
       }
     }
@@ -1183,8 +1179,6 @@ class block_pool {
     for (auto* p : blocks_) {
       proxy_alloc.deallocate(p, 1);
     }
-    resource_manager_.Decrease(resource_call_,
-                               block_type::SIZE * blocks_.size());
   }
 
   using proxy_allocator = typename std::allocator_traits<
@@ -1197,8 +1191,6 @@ class block_pool {
 
   IRS_NO_UNIQUE_ADDRESS allocator alloc_;
   blocks_t blocks_;
-  IResourceManager& resource_manager_;
-  IResourceManager::Call resource_call_;
 };
 
 }  // namespace irs

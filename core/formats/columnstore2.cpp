@@ -1343,15 +1343,7 @@ void column::flush_block() {
   data_.stream.flush();
 
   auto& data_out = *ctx_.data_out;
-  const auto before_capacity = blocks_.capacity();
   auto& block = blocks_.emplace_back();
-  const auto after_capacity = blocks_.capacity();
-  if (after_capacity != before_capacity) {
-    IRS_ASSERT(after_capacity > before_capacity);
-    resource_manager_.Increase(CallType(ctx_.consolidation),
-      (after_capacity - before_capacity) * sizeof(decltype(blocks_)::value_type));
-  }
-
   block.addr = data_out.file_pointer();
   block.last_size = data_.file.length() - addr_table_.back();
 
@@ -1441,19 +1433,13 @@ column::column(const context& ctx, field_id id,
     deflater_{std::move(deflater)},
     finalizer_{std::move(finalizer)},
     resource_manager_{resource_manager},
-    data_{*ctx_.alloc, resource_manager_,
+    blocks_({resource_manager, CallType(ctx_.consolidation)}),
+    data_{resource_manager_,
           CallType(ctx_.consolidation)},
-    docs_{*ctx_.alloc, resource_manager_,
+    docs_{resource_manager_,
           CallType(ctx_.consolidation)},
     id_{id} {
   IRS_ASSERT(field_limits::valid(id_));
-}
-
-column::~column() {
-  resource_manager_.Decrease(
-    CallType(ctx_.consolidation),
-    sizeof(column) +
-      blocks_.capacity() * sizeof(decltype(blocks_)::value_type));
 }
 
 void column::finish(index_output& index_out) {
@@ -1560,7 +1546,7 @@ void column::finish(index_output& index_out) {
 writer::writer(Version version, IResourceManager& resource_manager, bool consolidation)
   : resource_manager_ {resource_manager},
     dir_{nullptr},
-    buf_{std::make_unique<byte_type[]>(column::kBlockSize * sizeof(uint64_t))},
+    columns_({resource_manager, CallType(consolidation)}),
     ver_{version},
     consolidation_{consolidation} {
   resource_manager_.Increase(CallType(consolidation_), kWriterBufSize);
@@ -1631,7 +1617,6 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
     columns_.back().flush();
   }
 
-  resource_manager_.Increase(CallType(consolidation_), sizeof(column));
   auto& column = columns_.emplace_back(
     column::context{.data_out = data_out_.get(),
                     .cipher = cipher,

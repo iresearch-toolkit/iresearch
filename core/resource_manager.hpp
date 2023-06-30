@@ -24,6 +24,19 @@
 
 #include "shared.hpp"
 #include "utils/assert.hpp"
+#include "utils/misc.hpp"
+#include <memory>
+
+
+#if (defined(__clang__) || defined(_MSC_VER) || \
+     defined(__GNUC__) &&                       \
+       (__GNUC__ > 8))  // GCCs <=  don't have "<version>" header
+#include <version>
+#endif
+
+#ifdef __cpp_lib_memory_resource
+#include <memory_resource>
+#endif
 
 namespace irs {
 struct IResourceManager {
@@ -54,6 +67,7 @@ struct IResourceManager {
       case kConsolidations:
         return ChangeConsolidationPinnedMemory(static_cast<int64_t>(v));
       case kNoop:
+        IRS_ASSERT(false);
         return true;
     }
     IRS_ASSERT(false);
@@ -97,10 +111,107 @@ struct IResourceManager {
   // fst buffer for inserted data, commits
   virtual bool ChangeTransactionPinnedMemory(int64_t) noexcept { return true; }
 
-  // memory allocated by index readers, 
+  // memory allocated by index readers,
   virtual bool ChangeIndexPinnedMemory(int64_t) noexcept { return true; }
 
   // consolidation (including fst buffer for consolidated segments)
-  virtual bool ChangeConsolidationPinnedMemory(int64_t) noexcept { return true; }
+  virtual bool ChangeConsolidationPinnedMemory(int64_t) noexcept {
+    return true;
+  }
 };
+
+template<typename Allocator>
+class ManagedAllocator : private Allocator {
+ public:
+  using difference_type = typename std::allocator_traits<Allocator>::difference_type;
+  using propagate_on_container_move_assignment = typename std::allocator_traits<
+    Allocator>::propagate_on_container_move_assignment;
+  using size_type = typename std::allocator_traits<Allocator>::size_type;
+  using value_type = typename std::allocator_traits<Allocator>::value_type;
+
+  explicit ManagedAllocator()
+    : rm_{IResourceManager::kNoopManager}, call_{IResourceManager::kNoop} {}
+
+  template<typename... Args>
+  ManagedAllocator(IResourceManager& rm,
+                   IResourceManager::Call call,
+                   Args&&... args)
+    : Allocator(std::forward<Args>(args)...), rm_{rm}, call_{call} {}
+
+  ManagedAllocator(ManagedAllocator&& other) noexcept
+    : Allocator(other.RawAllocator()),
+    rm_{other.ResourceManager()}, call_{other.ResourceCall()} {}
+
+   ManagedAllocator(const ManagedAllocator& other) noexcept
+    : Allocator(other.RawAllocator()),
+      rm_{other.ResourceManager()},
+      call_{other.ResourceCall()} {}
+
+  ManagedAllocator& operator=(ManagedAllocator&& other) noexcept {
+    static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
+    rm_ = other.ResourceManager();
+    call_ = other.ResourceCall();
+    return *this;
+  }
+
+  template<typename A>
+  ManagedAllocator(const ManagedAllocator<A>& other) noexcept
+    : Allocator(other.RawAllocator()),
+      rm_{other.ResourceManager()},
+      call_{other.ResourceCall()} {}
+
+  value_type* allocate(std::size_t n) {
+    rm_.Increase(call_, sizeof(value_type) * n);
+    auto call = call_;
+    Finally cleanup = [&]() noexcept {
+      rm_.Decrease(call, sizeof(value_type) * n);
+    };
+    auto res = Allocator::allocate(n);
+    call = IResourceManager::kNoop;
+    return res;
+  }
+
+  void deallocate(value_type* p, std::size_t n) {
+    rm_.Decrease(call_, sizeof(value_type) * n);
+    Allocator::deallocate(p, n);
+  }
+
+  const Allocator& RawAllocator() const noexcept {
+    return static_cast<const Allocator&>(*this);
+  }
+
+  template<typename A>
+  bool operator==(const ManagedAllocator<A>& other) const noexcept {
+    return RawAllocator() == other.RawAllocator() &&
+           call_ == other.call_ &&
+           &rm_ == &other.rm_;
+  }
+
+  template<typename A>
+  bool operator!=(const ManagedAllocator<A>& other) const noexcept {
+    return !(*this == other);
+  }
+
+  IResourceManager& ResourceManager() const noexcept { return rm_; }
+
+  IResourceManager::Call ResourceCall() const noexcept { return call_; }
+
+ private:
+  IResourceManager& rm_;
+  IResourceManager::Call call_;
+};
+
+template<typename T>
+struct ManagedTypedAllocator : ManagedAllocator<std::allocator<T>> {
+  using ManagedAllocator<std::allocator<T>>::ManagedAllocator;
+};
+
+#ifdef __cpp_lib_polymorphic_allocator
+template<typename T>
+struct ManagedTypedPmrAllocator
+  : ManagedAllocator<std::pmr::polymorphic_allocator<T>> {
+  using ManagedAllocator<std::pmr::polymorphic_allocator<T>>::ManagedAllocator;
+};
+#endif
+
 }  // namespace irs

@@ -1319,7 +1319,8 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
                  const FeatureInfoProvider& column_info,
                  CompoundFiledIterator& field_itr,
                  const feature_set_t& scorers_features,
-                 const MergeWriter::FlushProgress& progress) {
+                 const MergeWriter::FlushProgress& progress,
+                 IResourceManager& rm) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(cs.valid());
 
@@ -1371,7 +1372,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
     return field_itr.visit(add_iterators);
   };
 
-  auto field_writer = meta.codec->get_field_writer(true);
+  auto field_writer = meta.codec->get_field_writer(true, rm);
   field_writer->prepare(flush_state);
 
   // Ensured by the caller
@@ -1643,7 +1644,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, remapping_itrs, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress)) {
+                   fields_itr, *scorers_features_, progress, resource_manager_)) {
     return false;  // Flush failure
   }
 
@@ -1884,7 +1885,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, sorting_doc_it, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress)) {
+                   fields_itr, *scorers_features_, progress, resource_manager_)) {
     return false;  // flush failure
   }
 

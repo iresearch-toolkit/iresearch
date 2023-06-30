@@ -138,6 +138,8 @@ class raw_block_vector_base : private util::noncopyable {
  protected:
   IRS_NO_UNIQUE_ADDRESS std::allocator<byte_type> alloc_;
   std::vector<buffer_t> buffers_;
+  IResourceManager resource_manager_;
+  IResourceManager::Call resource_call_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -152,7 +154,7 @@ class raw_block_vector : public raw_block_vector_base {
 
  explicit raw_block_vector( IResourceManager& rm = IResourceManager::kNoopManager,
                             IResourceManager::Call call = IResourceManager::kNoop) noexcept
-    : base_t{rm, call} {}
+    : raw_block_vector_base{rm, call} {}
 
   IRS_FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
     return position < kLast.offset

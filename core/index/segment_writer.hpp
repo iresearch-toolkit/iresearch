@@ -61,7 +61,7 @@ enum class Action {
 ENABLE_BITMASK_ENUM(Action);
 
 struct DocsMask final {
-  bitset set;
+  ManagedBitset set;
   uint32_t count{0};
 };
 
@@ -219,7 +219,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
                   columnstore_writer& columnstore,
                   IResourceManager& rm,
                   const ColumnInfoProvider& column_info,
-                  std::deque<cached_column>& cached_columns, bool cache);
+                  std::deque<cached_column, ManagedTypedAllocator<cached_column>>& cached_columns, bool cache);
 
     std::string name;
     size_t name_hash;
@@ -232,7 +232,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   // we can't use flat_hash_set as stored_column stores 'this' in non-cached
   // case
   using stored_columns =
-    absl::node_hash_set<stored_column, stored_column::hash, stored_column::eq>;
+    absl::node_hash_set<stored_column, stored_column::hash, stored_column::eq, ManagedTypedAllocator<stored_column>>;
 
   struct sorted_column : util::noncopyable {
     explicit sorted_column(
@@ -381,10 +381,10 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   void FlushFields(flush_state& state);
 
   ScorersView scorers_;
-  std::deque<cached_column> cached_columns_;  // pointers remain valid
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>> cached_columns_;  // pointers remain valid
   absl::flat_hash_map<field_id, cached_column*> column_ids_;
   sorted_column sort_;
-  std::vector<DocContext> docs_context_;
+  std::vector<DocContext, ManagedTypedAllocator<DocContext>> docs_context_;
   // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   DocsMask docs_mask_;
   fields_data fields_;

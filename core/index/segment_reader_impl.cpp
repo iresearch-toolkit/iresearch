@@ -181,7 +181,7 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   // open index data
   IRS_ASSERT(meta.codec != nullptr);
   // always instantiate to avoid unnecessary checks
-  reader->field_reader_ = meta.codec->get_field_reader();
+  reader->field_reader_ = meta.codec->get_field_reader(options.resource_manager);
   if (options.index) {
     reader->field_reader_->prepare(
       ReaderState{.dir = &dir, .meta = &meta, .scorers = options.scorers});

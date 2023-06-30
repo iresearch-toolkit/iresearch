@@ -52,7 +52,7 @@ namespace analysis {
 class analyzer;
 }
 
-typedef block_pool<size_t, 8192> int_block_pool;
+typedef block_pool<size_t, 8192, ManagedTypedAllocator<size_t>> int_block_pool;
 
 namespace detail {
 class term_iterator;
@@ -107,11 +107,12 @@ class field_data : util::noncopyable {
  public:
   field_data(std::string_view name, const features_t& features,
              const FeatureInfoProvider& feature_columns,
-             std::deque<cached_column>& cached_columns,
+             std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+               cached_columns,
              const feature_set_t& cached_features, columnstore_writer& columns,
              byte_block_pool::inserter& byte_writer,
              int_block_pool::inserter& int_writer, IndexFeatures index_features,
-             bool random_access);
+             bool random_access, IResourceManager& rm);
 
   doc_id_t doc() const noexcept { return last_doc_; }
 
@@ -193,6 +194,7 @@ class field_data : util::noncopyable {
   uint32_t last_pos_;
   uint32_t offs_;
   uint32_t last_start_offs_;
+  IResourceManager& resource_manager_;
   bool seen_{false};
 };
 
@@ -217,10 +219,12 @@ class fields_data : util::noncopyable {
  public:
   using postings_ref_t = std::vector<const posting*>;
 
-  explicit fields_data(const FeatureInfoProvider& feature_info,
-                       std::deque<cached_column>& cached_columns,
-                       const feature_set_t& cached_features,
-                       const Comparer* comparator);
+  explicit fields_data(
+    const FeatureInfoProvider& feature_info,
+    std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+      cached_columns,
+    const feature_set_t& cached_features, IResourceManager& rm,
+    const Comparer* comparator);
 
   const Comparer* comparator() const noexcept { return comparator_; }
 
@@ -245,8 +249,8 @@ class fields_data : util::noncopyable {
  private:
   const Comparer* comparator_;
   const FeatureInfoProvider* feature_info_;
-  std::deque<field_data> fields_;              // pointers remain valid
-  std::deque<cached_column>* cached_columns_;  // pointers remain valid
+  std::deque<field_data, ManagedTypedAllocator<field_data>> fields_;              // pointers remain valid
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>* cached_columns_;  // pointers remain valid
   const feature_set_t* cached_features_;
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
@@ -255,6 +259,7 @@ class fields_data : util::noncopyable {
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_;  // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
+  IResourceManager resource_manager_;
 };
 
 }  // namespace irs

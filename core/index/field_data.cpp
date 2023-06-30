@@ -52,7 +52,8 @@ namespace {
 
 using namespace irs;
 
-const byte_block_pool EMPTY_POOL;
+const byte_block_pool EMPTY_POOL{
+  {IResourceManager::kNoopManager, IResourceManager::kNoop}};
 
 void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
   for (auto& entry : features) {
@@ -681,14 +682,14 @@ doc_iterator::ptr cached_column::iterator(ColumnHint hint) const {
                                                       stream_.Data());
 }
 
-field_data::field_data(std::string_view name, const features_t& features,
-                       const FeatureInfoProvider& feature_columns,
-                       std::deque<cached_column>& cached_columns,
-                       const feature_set_t& cached_features,
-                       columnstore_writer& columns,
-                       byte_block_pool::inserter& byte_writer,
-                       int_block_pool::inserter& int_writer,
-                       IndexFeatures index_features, bool random_access)
+field_data::field_data(
+  std::string_view name, const features_t& features,
+  const FeatureInfoProvider& feature_columns,
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+    cached_columns,
+  const feature_set_t& cached_features, columnstore_writer& columns,
+  byte_block_pool::inserter& byte_writer, int_block_pool::inserter& int_writer,
+  IndexFeatures index_features, bool random_access, IResourceManager& rm)
   // Unset optional features
   : meta_{name, index_features & (~(IndexFeatures::OFFS | IndexFeatures::PAY))},
     terms_{*byte_writer},
@@ -696,7 +697,8 @@ field_data::field_data(std::string_view name, const features_t& features,
     int_writer_{&int_writer},
     proc_table_{kTermProcessingTables[size_t(random_access)]},
     requested_features_{index_features},
-    last_doc_{doc_limits::invalid()} {
+    last_doc_{doc_limits::invalid()},
+    resource_manager_{rm} {
   for (const type_info::type_id feature : features) {
     IRS_ASSERT(feature_columns);
     auto [feature_column_info, feature_writer_factory] =
@@ -717,7 +719,7 @@ field_data::field_data(std::string_view name, const features_t& features,
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
         auto& stream = cached_columns.emplace_back(id, feature_column_info,
-                                                   std::move(finalizer));
+                                                   std::move(finalizer), resource_manager_);
         features_.emplace_back(
           std::move(feature_writer),
           [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
@@ -1091,15 +1093,21 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
 }
 
 fields_data::fields_data(const FeatureInfoProvider& feature_info,
-                         std::deque<cached_column>& cached_columns,
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+    cached_columns,
                          const feature_set_t& cached_features,
+                         IResourceManager& rm,
                          const Comparer* comparator /*= nullptr*/)
   : comparator_{comparator},
     feature_info_{&feature_info},
+    fields_({rm, IResourceManager::kTransactions}),
     cached_columns_{&cached_columns},
     cached_features_{&cached_features},
+    byte_pool_({rm, IResourceManager::kTransactions}),
     byte_writer_{byte_pool_.begin()},
-    int_writer_{int_pool_.begin()} {}
+    int_pool_({rm, IResourceManager::kTransactions}),
+    int_writer_{int_pool_.begin()},
+    resource_manager_{rm} {}
 
 field_data* fields_data::emplace(const hashed_string_view& name,
                                  IndexFeatures index_features,
@@ -1117,7 +1125,7 @@ field_data* fields_data::emplace(const hashed_string_view& name,
       const_cast<field_data*&>(it->second) = &fields_.emplace_back(
         name, features, *feature_info_, *cached_columns_, *cached_features_,
         columns, byte_writer_, int_writer_, index_features,
-        (nullptr != comparator_));
+        (nullptr != comparator_), resource_manager_);
     } catch (...) {
       fields_map_.erase(it);
       throw;
