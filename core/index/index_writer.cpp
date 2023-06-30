@@ -956,6 +956,9 @@ IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const SegmentWriterOptions& options)
   : dir_{dir},
+    queries_{{options.resource_manager, IResourceManager::kTransactions}},
+    flushed_{{options.resource_manager, IResourceManager::kTransactions}},
+    flushed_docs_{{options.resource_manager, IResourceManager::kTransactions}},
     meta_generator_{std::move(meta_generator)},
     writer_{segment_writer::make(dir_, options)} {
   IRS_ASSERT(meta_generator_);
