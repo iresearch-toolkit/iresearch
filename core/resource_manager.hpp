@@ -47,13 +47,13 @@ struct IResourceManager {
 
   static_assert(sizeof(size_t) <= sizeof(uint64_t));
 
-  IRS_FORCE_INLINE bool Increase(Call call, size_t v) noexcept {
+  IRS_FORCE_INLINE bool Increase(size_t v) noexcept {
     IRS_ASSERT(v <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
     IRS_ASSERT(this != IResourceManager::kForbidden);
     return Change(static_cast<int64_t>(v));
   }
 
-  IRS_FORCE_INLINE void Decrease(Call call, size_t v) noexcept {
+  IRS_FORCE_INLINE void Decrease(size_t v) noexcept {
     IRS_ASSERT(v <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
     [[maybe_unused]] bool res = Change(-static_cast<int64_t>(v));
     IRS_ASSERT(res);
