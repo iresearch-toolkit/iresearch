@@ -308,8 +308,9 @@ struct OnHeapTracked final : Base {
  private:
   IResourceManager& rm_;
   void Destroy() const noexcept final {
+    auto rm = rm_;
     delete this;
-    rm_.Decrease(sizeof(*this));
+    rm.Decrease(sizeof(*this));
   }
 };
 
@@ -395,6 +396,7 @@ managed_ptr<Base> make_managed(Args&&... args) {
 
 template<typename Base, typename Derived = Base, typename... Args>
 managed_ptr<Base> make_tracked_managed(IResourceManager& rm, Args&&... args) {
+  rm.Increase(sizeof(OnHeapTracked<Derived>));
   return managed_ptr<Base>{
     new OnHeapTracked<Derived>{rm, std::forward<Args>(args)...}};
 }

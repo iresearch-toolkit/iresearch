@@ -50,18 +50,19 @@ class MergeWriter : public util::noncopyable {
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 
-  MergeWriter(IResourceManager& rm) noexcept;
+  MergeWriter(ResourceManagmentOptions& rm) noexcept;
 
   explicit MergeWriter(directory& dir,
                        const SegmentWriterOptions& options) noexcept
     : dir_{dir},
-      readers_{{options.resource_manager.comsolidations}},
+      readers_{{options.resource_manager.consolidations}},
       column_info_{&options.column_info},
       feature_info_{&options.feature_info},
       scorers_{options.scorers},
       scorers_features_{&options.scorers_features},
       comparator_{options.comparator},
-      resource_manager_{options.resource_manager.comsolidations} {
+      resource_manager_{
+        const_cast<ResourceManagmentOptions&>(options.resource_manager)} {
     IRS_ASSERT(column_info_);
   }
   MergeWriter(MergeWriter&&) = default;
@@ -99,7 +100,7 @@ class MergeWriter : public util::noncopyable {
   ScorersView scorers_;
   const std::set<irs::type_info::type_id>* scorers_features_{};
   const Comparer* const comparator_{};
-  IResourceManager& resource_manager_;
+  ResourceManagmentOptions& resource_manager_;
 };
 
 static_assert(std::is_nothrow_move_constructible_v<MergeWriter>);

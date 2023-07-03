@@ -644,7 +644,6 @@ struct mask_column : public column_base {
                          index_input& /*index_in*/, const index_input& data_in,
                          compression::decompressor::ptr&& /*inflater*/,
                          encryption::stream* cipher) {
-    rm_r.Increase(sizeof(irs::memory::OnHeapTracked<mask_column>));
     return irs::memory::make_tracked_managed<column_reader, mask_column>(rm_r, std::move(name), rm_c, std::move(payload),
                                          std::move(hdr), std::move(index),
                                          data_in, cipher);
@@ -771,7 +770,6 @@ column_ptr dense_fixed_length_column::read(
   compression::decompressor::ptr&& inflater, encryption::stream* cipher) {
   const uint64_t len = index_in.read_long();
   const uint64_t data = index_in.read_long();
-  rm_r.Increase(sizeof(irs::memory::OnHeapTracked<dense_fixed_length_column>));
   return irs::memory::make_tracked_managed<column_reader, dense_fixed_length_column>(
     rm_r, std::move(name), rm_c,
     std::move(payload), std::move(hdr), std::move(index),
@@ -814,10 +812,8 @@ class fixed_length_column : public column_base {
                          index_input& index_in, const index_input& data_in,
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
-    rm_c.Increase(sizeof(irs::memory::OnHeapTracked<fixed_length_column>));
     const uint64_t len = index_in.read_long();
     auto blocks = read_blocks_dense(hdr, index_in, rm_r);
-
     return irs::memory::make_tracked_managed<column_reader, fixed_length_column>(
       rm_r, std::move(name), rm_c,
       std::move(payload), std::move(hdr), std::move(index),
@@ -1000,7 +996,6 @@ class sparse_column : public column_base {
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
     auto blocks = read_blocks_sparse(hdr, index_in, rm_r);
-    rm_r.Increase(sizeof(irs::memory::OnHeapTracked<sparse_column>));
     return irs::memory::make_tracked_managed<column_reader, sparse_column>(
       rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr), std::move(index),
       data_in, std::move(inflater), cipher, std::move(blocks));

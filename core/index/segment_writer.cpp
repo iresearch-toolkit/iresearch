@@ -169,8 +169,8 @@ segment_writer::segment_writer(ConstructToken, directory& dir,
             options.comparator},
     column_info_{&options.column_info},
     dir_{dir},
-    resource_manager_{
-      const_cast<IResourceManager&>(options.resource_manager.transactions)} {
+    resource_manager_{const_cast<ResourceManagmentOptions&>(
+      options.resource_manager)} {
   docs_mask_.set = decltype(docs_mask_.set){
     {options.resource_manager.transactions}};
 }

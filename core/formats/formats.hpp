@@ -73,14 +73,6 @@ struct WanderatorOptions {
   ScoreFunctionFactory factory;
 };
 
-struct ResourceManagmentOptions {
-  IResourceManager& transactions{IResourceManager::kNoop};
-  IResourceManager& readers{IResourceManager::kNoop};
-  IResourceManager& consolidations{IResourceManager::kNoop};
-  IResourceManager& file_descriptors{IResourceManager::kNoop};
-  IResourceManager& cached_columns{IResourceManager::kNoop};
-};
-
 struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
   const FeatureInfoProvider& feature_info;
@@ -476,7 +468,7 @@ class format {
   virtual field_reader::ptr get_field_reader(IResourceManager& rm) const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, IResourceManager& rm) const = 0;
+    bool consolidation, ResourceManagmentOptions& rm) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   virtual irs::type_info::type_id type() const noexcept = 0;

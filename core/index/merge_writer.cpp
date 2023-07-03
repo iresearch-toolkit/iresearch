@@ -907,7 +907,7 @@ class Columnstore {
 
   Columnstore(directory& dir, const SegmentMeta& meta,
               const MergeWriter::FlushProgress& progress,
-              IResourceManager& rm)
+              ResourceManagmentOptions& rm)
     : progress_{progress, kProgressStepColumn} {
     auto writer = meta.codec->get_columnstore_writer(true, rm);
     writer->prepare(dir, meta);
@@ -1528,8 +1528,8 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter(IResourceManager& rm) noexcept
-  : dir_(NoopDirectory::instance()), readers_{{rm}}, resource_manager_(rm) {}
+MergeWriter::MergeWriter(ResourceManagmentOptions& rm) noexcept
+  : dir_(NoopDirectory::instance()), readers_{{rm.consolidations}}, resource_manager_{rm} {}
 
 
 MergeWriter::operator bool() const noexcept {
@@ -1637,7 +1637,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, remapping_itrs, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress, resource_manager_)) {
+                   fields_itr, *scorers_features_, progress, resource_manager_.consolidations)) {
     return false;  // Flush failure
   }
 
@@ -1868,7 +1868,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, sorting_doc_it, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress, resource_manager_)) {
+                   fields_itr, *scorers_features_, progress, resource_manager_.consolidations)) {
     return false;  // flush failure
   }
 

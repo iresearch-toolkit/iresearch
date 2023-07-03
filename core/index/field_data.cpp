@@ -1100,14 +1100,13 @@ fields_data::fields_data(const FeatureInfoProvider& feature_info,
                          const Comparer* comparator /*= nullptr*/)
   : comparator_{comparator},
     feature_info_{&feature_info},
-    fields_({rm}),
+    fields_{{rm}},
     cached_columns_{&cached_columns},
     cached_features_{&cached_features},
-    byte_pool_({rm}),
+    byte_pool_{{rm}},
     byte_writer_{byte_pool_.begin()},
-    int_pool_({rm}),
-    int_writer_{int_pool_.begin()},
-    resource_manager_{rm} {}
+    int_pool_{{rm}},
+    int_writer_{int_pool_.begin()} {}
 
 field_data* fields_data::emplace(const hashed_string_view& name,
                                  IndexFeatures index_features,
@@ -1125,7 +1124,7 @@ field_data* fields_data::emplace(const hashed_string_view& name,
       const_cast<field_data*&>(it->second) = &fields_.emplace_back(
         name, features, *feature_info_, *cached_columns_, *cached_features_,
         columns, byte_writer_, int_writer_, index_features,
-        (nullptr != comparator_), resource_manager_);
+        (nullptr != comparator_), fields_.get_allocator().ResourceManager());
     } catch (...) {
       fields_map_.erase(it);
       throw;

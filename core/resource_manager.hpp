@@ -63,6 +63,19 @@ struct IResourceManager {
   virtual bool Change(int64_t) noexcept { return true; }
 };
 
+
+struct ResourceManagmentOptions {
+
+  static ResourceManagmentOptions kDefault;
+
+  IResourceManager& transactions{IResourceManager::kNoop};
+  IResourceManager& readers{IResourceManager::kNoop};
+  IResourceManager& consolidations{IResourceManager::kNoop};
+  IResourceManager& file_descriptors{IResourceManager::kNoop};
+  IResourceManager& cached_columns{IResourceManager::kNoop};
+};
+
+
 template<typename Allocator>
 class ManagedAllocator : private Allocator {
  public:
