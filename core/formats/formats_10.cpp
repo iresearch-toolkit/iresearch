@@ -352,8 +352,9 @@ class postings_writer_base : public irs::postings_writer {
                        uint32_t* offs_start_buf, uint32_t* offs_len_buf,
                        uint64_t* pay_skip_ptr, uint32_t* enc_buf,
                        PostingsFormat postings_format_version,
-                       TermsFormat terms_format_version)
-    : skip_{block_size, kSkipN},
+                       TermsFormat terms_format_version,
+                       IResourceManager& rm)
+    : skip_{block_size, kSkipN, rm},
       doc_{docs, freqs, skip_doc, doc_skip_ptr},
       pos_{prox_buf, prox_skip_ptr},
       pay_{pay_sizes, offs_start_buf, offs_len_buf, pay_skip_ptr},
@@ -821,7 +822,7 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
 template<typename FormatTraits>
 class postings_writer final : public postings_writer_base {
  public:
-  explicit postings_writer(PostingsFormat version, bool volatile_attributes)
+  explicit postings_writer(PostingsFormat version, bool volatile_attributes, IResourceManager& rm)
     : postings_writer_base{FormatTraits::block_size(),
                            std::span{doc_buf_.docs},
                            std::span{doc_buf_.freqs},
@@ -835,7 +836,7 @@ class postings_writer final : public postings_writer_base {
                            pay_buf_.skip_ptr,
                            encbuf_.buf,
                            version,
-                           TermsFormat::MAX},
+                           TermsFormat::MAX, rm},
       volatile_attributes_{volatile_attributes} {
     IRS_ASSERT((postings_format_version_ >= PostingsFormat::POSITIONS_ZEROBASED
                   ? pos_limits::invalid()
@@ -3861,7 +3862,7 @@ class format10 : public irs::version10::format {
   columnstore_reader::ptr get_columnstore_reader() const override;
 
   irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
+    bool consolidation, IResourceManager&) const override;
   irs::postings_reader::ptr get_postings_reader() const override;
 
   irs::type_info::type_id type() const noexcept override {
@@ -3908,7 +3909,7 @@ document_mask_reader::ptr format10::get_document_mask_reader() const {
 field_writer::ptr format10::get_field_writer(bool consolidation,
                                              IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::MIN,
-                                 get_postings_writer(consolidation),
+                                 get_postings_writer(consolidation, rm),
                                  rm, consolidation);
 }
 
@@ -3927,9 +3928,9 @@ columnstore_reader::ptr format10::get_columnstore_reader() const {
 }
 
 irs::postings_writer::ptr format10::get_postings_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::POSITIONS_ONEBASED, consolidation);
+    PostingsFormat::POSITIONS_ONEBASED, consolidation, rm);
 }
 
 irs::postings_reader::ptr format10::get_postings_reader() const {
@@ -3972,7 +3973,7 @@ IndexMetaWriter::ptr format11::get_index_meta_writer() const {
 field_writer::ptr format11::get_field_writer(bool consolidation,
                                              IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::ENCRYPTION_MIN,
-                                 get_postings_writer(consolidation),
+                                 get_postings_writer(consolidation, rm),
                                  rm, consolidation);
 }
 
@@ -4031,7 +4032,7 @@ class format13 : public format12 {
   static ptr make();
 
   irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
+    bool consolidation, IResourceManager&) const override;
   irs::postings_reader::ptr get_postings_reader() const override;
 
   irs::type_info::type_id type() const noexcept override {
@@ -4042,9 +4043,10 @@ class format13 : public format12 {
 static const ::format13 FORMAT13_INSTANCE;
 
 irs::postings_writer::ptr format13::get_postings_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::POSITIONS_ZEROBASED, consolidation);
+    PostingsFormat::POSITIONS_ZEROBASED, consolidation,
+    rm);
 }
 
 irs::postings_reader::ptr format13::get_postings_reader() const {
@@ -4082,7 +4084,7 @@ static const ::format14 FORMAT14_INSTANCE;
 irs::field_writer::ptr format14::get_field_writer(bool consolidation,
                                                   IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
-                                 get_postings_writer(consolidation),
+                                 get_postings_writer(consolidation, rm),
                                  rm, consolidation);
 }
 
@@ -4112,7 +4114,8 @@ class format15 : public format14 {
   irs::field_writer::ptr get_field_writer(bool consolidation,
                                           IResourceManager& rm) const final;
 
-  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation,
+                                                IResourceManager&) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
   irs::type_info::type_id type() const noexcept final {
@@ -4125,14 +4128,14 @@ static const ::format15 FORMAT15_INSTANCE;
 irs::field_writer::ptr format15::get_field_writer(bool consolidation,
                                                   IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::WAND,
-                                 get_postings_writer(consolidation),
+                                 get_postings_writer(consolidation, rm),
                                  rm, consolidation);
 }
 
 irs::postings_writer::ptr format15::get_postings_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::WAND, consolidation);
+    PostingsFormat::WAND, consolidation, rm);
 }
 
 irs::postings_reader::ptr format15::get_postings_reader() const {
@@ -4192,7 +4195,8 @@ class format12simd final : public format12 {
 
   static ptr make();
 
-  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation,
+                                                IResourceManager&) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
   irs::type_info::type_id type() const noexcept override {
@@ -4203,9 +4207,10 @@ class format12simd final : public format12 {
 static const ::format12simd FORMAT12SIMD_INSTANCE;
 
 irs::postings_writer::ptr format12simd::get_postings_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::POSITIONS_ONEBASED_SSE, consolidation);
+    PostingsFormat::POSITIONS_ONEBASED_SSE, consolidation,
+    rm);
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
@@ -4227,7 +4232,7 @@ class format13simd : public format13 {
   static ptr make();
 
   irs::postings_writer::ptr get_postings_writer(
-    bool consolidation) const override;
+    bool consolidation, IResourceManager&) const override;
   irs::postings_reader::ptr get_postings_reader() const override;
 
   irs::type_info::type_id type() const noexcept override {
@@ -4238,9 +4243,10 @@ class format13simd : public format13 {
 static const ::format13simd FORMAT13SIMD_INSTANCE;
 
 irs::postings_writer::ptr format13simd::get_postings_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::POSITIONS_ZEROBASED_SSE, consolidation);
+    PostingsFormat::POSITIONS_ZEROBASED_SSE, consolidation,
+    rm);
 }
 
 irs::postings_reader::ptr format13simd::get_postings_reader() const {
@@ -4278,7 +4284,7 @@ static const ::format14simd FORMAT14SIMD_INSTANCE;
 irs::field_writer::ptr format14simd::get_field_writer(
   bool consolidation, IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
-                                 get_postings_writer(consolidation),
+                                 get_postings_writer(consolidation, rm),
                                  rm, consolidation);
 }
 
@@ -4309,7 +4315,8 @@ class format15simd : public format14simd {
   irs::field_writer::ptr get_field_writer(bool consolidation,
                                           IResourceManager&) const final;
 
-  irs::postings_writer::ptr get_postings_writer(bool consolidation) const final;
+  irs::postings_writer::ptr get_postings_writer(bool consolidation,
+                                                IResourceManager&) const final;
   irs::postings_reader::ptr get_postings_reader() const final;
 
   irs::type_info::type_id type() const noexcept final {
@@ -4322,14 +4329,15 @@ static const ::format15simd FORMAT15SIMD_INSTANCE;
 irs::field_writer::ptr format15simd::get_field_writer(
   bool consolidation, IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::WAND,
-                                 get_postings_writer(consolidation),
+                                 get_postings_writer(consolidation, rm),
                                  rm, consolidation);
 }
 
 irs::postings_writer::ptr format15simd::get_postings_writer(
-  bool consolidation) const {
+  bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::WAND_SSE, consolidation);
+    PostingsFormat::WAND_SSE, consolidation,
+    rm);
 }
 
 irs::postings_reader::ptr format15simd::get_postings_reader() const {
