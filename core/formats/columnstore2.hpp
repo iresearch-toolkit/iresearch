@@ -279,7 +279,7 @@ class reader final : public columnstore_reader {
   size_t size() const final { return columns_.size(); }
 
  private:
-  using column_ptr = std::unique_ptr<column_reader>;
+  using column_ptr = memory::managed_ptr<column_reader>;
 
   void prepare_data(const directory& dir, std::string_view filename);
 
@@ -293,7 +293,9 @@ class reader final : public columnstore_reader {
   index_input::ptr data_in_;
 };
 
-irs::columnstore_writer::ptr make_writer(Version version, IResourceManager& resource_manager, bool consolidation);
+irs::columnstore_writer::ptr make_writer(
+  Version version, ResourceManagmentOptions& resource_manager,
+  bool consolidation);
 irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore2

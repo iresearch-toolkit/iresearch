@@ -160,13 +160,8 @@ FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
 }  // namespace
 
 SegmentReaderImpl::SegmentReaderImpl(PrivateTag, IResourceManager& rm) noexcept
-  : resource_manager_{rm} {}
+  : docs_mask_{{rm}}, resource_manager_{rm} {}
 
-SegmentReaderImpl::~SegmentReaderImpl() {
-  if (!docs_mask_.empty()) {
-    resource_manager_.Decrease(IResourceManager::kReaders, docs_mask_.size() * sizeof(DocumentMask::value_type));
-  }
-}
 
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   const directory& dir, const SegmentMeta& meta,

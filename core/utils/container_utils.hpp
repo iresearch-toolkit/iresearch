@@ -94,9 +94,8 @@ class raw_block_vector_base : private util::noncopyable {
   };
 
   explicit raw_block_vector_base(
-    IResourceManager& rm = IResourceManager::kNoopManager,
-    IResourceManager::Call call = IResourceManager::kNoop) noexcept
-    : resource_manager_{rm}, resource_call_{call} {}
+    IResourceManager& rm = IResourceManager::kNoop) noexcept
+    : resource_manager_{rm} {}
 
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept = default;
   raw_block_vector_base& operator=(raw_block_vector_base&& rhs) = delete;
@@ -119,7 +118,7 @@ class raw_block_vector_base : private util::noncopyable {
       alloc_.deallocate(buffer.data, buffer.size);
     }
     buffers_.clear();
-    resource_manager_.Decrease(resource_call_, size);
+    resource_manager_.Decrease(size);
   }
 
   IRS_FORCE_INLINE const buffer_t& get_buffer(size_t i) const noexcept {
@@ -130,7 +129,7 @@ class raw_block_vector_base : private util::noncopyable {
   void pop_buffer() noexcept {
     const auto& bucket = buffers_.back();
     alloc_.deallocate(bucket.data, bucket.size);
-    resource_manager_.Decrease(resource_call_, bucket.size);
+    resource_manager_.Decrease(bucket.size);
     buffers_.pop_back();
   }
 #endif
@@ -139,7 +138,6 @@ class raw_block_vector_base : private util::noncopyable {
   IRS_NO_UNIQUE_ADDRESS std::allocator<byte_type> alloc_;
   std::vector<buffer_t> buffers_;
   IResourceManager resource_manager_;
-  IResourceManager::Call resource_call_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -152,9 +150,8 @@ class raw_block_vector : public raw_block_vector_base {
   static constexpr BucketMeta<NumBuckets, SkipBits> kMeta{};
   static constexpr BucketInfo kLast = kMeta[NumBuckets - 1];
 
- explicit raw_block_vector( IResourceManager& rm = IResourceManager::kNoopManager,
-                            IResourceManager::Call call = IResourceManager::kNoop) noexcept
-    : raw_block_vector_base{rm, call} {}
+ explicit raw_block_vector( IResourceManager& rm = IResourceManager::kNoop) noexcept
+    : raw_block_vector_base{rm} {}
 
   IRS_FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
     return position < kLast.offset

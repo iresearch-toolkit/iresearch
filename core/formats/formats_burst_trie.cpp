@@ -196,18 +196,18 @@ struct block_t : private util::noncopyable {
 #ifdef __cpp_lib_memory_resource
   using block_index_t = std::list<prefixed_output, ManagedTypedPmrAllocator<prefixed_output>>;
 
-  block_t(IResourceManager& rm, IResourceManager::Call call, std::pmr::memory_resource& mrc, uint64_t block_start, byte_type meta,
+  block_t(IResourceManager& rm, std::pmr::memory_resource& mrc, uint64_t block_start, byte_type meta,
           uint16_t label) noexcept
-    : index({rm, call, &mrc}),
+    : index({rm, &mrc}),
       start(block_start),
       label(label),
       meta(meta) {}
 #else
   using block_index_t = std::list<prefixed_output, ManagedTypedAllocator<prefixed_output>>;
 
-  block_t(IResourceManager& rm, IResourceManager::Call call,
+  block_t(IResourceManager& rm,
           uint64_t block_start, byte_type meta, uint16_t label) noexcept
-    : index({rm, call}), start(block_start), label(label), meta(meta) {}
+    : index({rm}), start(block_start), label(label), meta(meta) {}
 #endif
 
   block_t(block_t&& rhs) noexcept
@@ -246,7 +246,6 @@ class entry : private util::noncopyable {
         bool volatile_term);
 
   entry(irs::bytes_view prefix, IResourceManager& rm,
-        IResourceManager::Call call,
 #ifdef __cpp_lib_memory_resource
         std::pmr::memory_resource& mrc,
 #endif
@@ -290,7 +289,7 @@ entry::entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
 }
 
 entry::entry(irs::bytes_view prefix,
-             IResourceManager& rm, IResourceManager::Call call,
+             IResourceManager& rm,
 #ifdef __cpp_lib_memory_resource
              std::pmr::memory_resource& mrc,
 #endif
@@ -304,9 +303,9 @@ entry::entry(irs::bytes_view prefix,
   }
 
 #ifdef __cpp_lib_memory_resource
-  mem_.construct<block_t>(rm, call, mrc, block_start, meta, label);
+  mem_.construct<block_t>(rm, mrc, block_start, meta, label);
 #else
-  mem_.construct<block_t>(rm, call, block_start, meta, label);
+  mem_.construct<block_t>(rm, block_start, meta, label);
 #endif
 }
 
@@ -809,8 +808,8 @@ class fst_buffer : public vector_byte_fst {
     }
   };
 
-  fst_buffer(IResourceManager& rm, IResourceManager::Call call)
-    : vector_byte_fst(ManagedTypedAllocator<byte_arc>(rm, call)){};
+  fst_buffer(IResourceManager& rm)
+    : vector_byte_fst(ManagedTypedAllocator<byte_arc>(rm)){};
 
   using fst_byte_builder = fst_builder<byte_type, vector_byte_fst, fst_stats>;
 
@@ -828,12 +827,6 @@ class fst_buffer : public vector_byte_fst {
  private:
   fst_byte_builder builder{*this};
 };
-
-IResourceManager::Call CallType(bool consolidation) noexcept {
-  return consolidation ? IResourceManager::kConsolidations
-                       : IResourceManager::kTransactions;
-}
-
 
 class field_writer final : public irs::field_writer {
  public:
@@ -925,9 +918,9 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
 
 #ifdef __cpp_lib_memory_resource
   block_t::block_index_t index(
-    {resource_manager_, CallType(consolidation_), &block_index_buf_});
+    {resource_manager_, &block_index_buf_});
 #else
-  block_t::block_index_t index({resource_manager_, CallType(consolidation_)});
+  block_t::block_index_t index({resource_manager_});
 #endif
 
   pw_->begin_block();
@@ -1002,7 +995,6 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   // add new block to the list of created blocks
   blocks_.emplace_back(bytes_view{last_term_.view().data(), prefix},
                        resource_manager_,
-                       CallType(consolidation_),
 #ifdef __cpp_lib_memory_resource
                        block_index_buf_,
 #endif
@@ -1116,12 +1108,12 @@ field_writer::field_writer(
 #ifdef __cpp_lib_memory_resource
     block_index_buf_{sizeof(block_t::prefixed_output) * 32},
 #endif
-    blocks_(ManagedTypedAllocator<entry>(rm, CallType(consolidation))),
-    suffix_(rm, CallType(consolidation)),
-    stats_(rm, CallType(consolidation)),
+    blocks_(ManagedTypedAllocator<entry>(rm)),
+    suffix_(rm),
+    stats_(rm),
     pw_(std::move(pw)),
-    stack_(ManagedTypedAllocator<entry>(rm, CallType(consolidation))),
-    fst_buf_(new fst_buffer(rm, CallType(consolidation))),
+    stack_(ManagedTypedAllocator<entry>(rm)),
+    fst_buf_(new fst_buffer(rm)),
     prefixes_(DEFAULT_SIZE, 0),
     resource_manager_(rm),
     version_(version),
@@ -3226,7 +3218,6 @@ class field_reader final : public irs::field_reader {
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;
   IResourceManager& resource_manager_;
-  IResourceManager::Call resource_call_;
 };
 
 field_reader::field_reader(irs::postings_reader::ptr&& pr, IResourceManager& rm)

@@ -3296,12 +3296,10 @@ size_t DocumentMaskWriter::write(directory& dir, const SegmentMeta& meta,
 class DocumentMaskReader : public document_mask_reader {
  public:
   bool read(const directory& dir, const SegmentMeta& meta,
-            IResourceManager& rm,
             DocumentMask& docs_mask) final;
 };
 
 bool DocumentMaskReader::read(const directory& dir, const SegmentMeta& meta,
-                              IResourceManager& rm,
                               DocumentMask& docs_mask) {
   const auto in_name = file_name<document_mask_writer>(meta);
 
@@ -3331,8 +3329,6 @@ bool DocumentMaskReader::read(const directory& dir, const SegmentMeta& meta,
                              DocumentMaskWriter::FORMAT_MAX);
 
   size_t count = in->read_vint();
-  rm.Increase(IResourceManager::kReaders,
-              sizeof(DocumentMask::value_type) * count);
   docs_mask.reserve(count);
 
   while (count--) {

@@ -41,9 +41,8 @@ class memory_file : public container_utils::raw_block_vector<16, 8> {
   using raw_block_vector_t = container_utils::raw_block_vector<16, 8>;
 
  public:
-  explicit memory_file(IResourceManager& rm,
-                       IResourceManager::Call call) noexcept
-    : raw_block_vector_t{rm, call} {
+  explicit memory_file(IResourceManager& rm) noexcept
+    : raw_block_vector_t{rm} {
     touch(meta_.mtime);
   }
 
@@ -292,8 +291,8 @@ class memory_directory final : public directory {
 /// @brief memory_file + memory_stream
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
-  explicit memory_output(IResourceManager& rm, IResourceManager::Call call) noexcept
-    : file(rm, call), stream(file) {}
+  explicit memory_output(IResourceManager& rm) noexcept
+    : file(rm), stream(file) {}
 
   memory_output(memory_output&& rhs) noexcept
     : file(std::move(rhs.file)),

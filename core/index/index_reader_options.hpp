@@ -62,7 +62,7 @@ struct WandContext {
 struct IndexReaderOptions {
   ColumnWarmupCallback warmup_columns;
 
-  IResourceManager& resource_manager{IResourceManager::kNoopManager};
+  IResourceManager& resource_manager{IResourceManager::kNoop};
 
   // A list of wand scorers.
   ScorersView scorers;

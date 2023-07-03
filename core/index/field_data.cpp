@@ -53,7 +53,7 @@ namespace {
 using namespace irs;
 
 const byte_block_pool EMPTY_POOL{
-  {IResourceManager::kNoopManager, IResourceManager::kNoop}};
+  {IResourceManager::kNoop}};
 
 void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
   for (auto& entry : features) {
@@ -1100,12 +1100,12 @@ fields_data::fields_data(const FeatureInfoProvider& feature_info,
                          const Comparer* comparator /*= nullptr*/)
   : comparator_{comparator},
     feature_info_{&feature_info},
-    fields_({rm, IResourceManager::kTransactions}),
+    fields_({rm}),
     cached_columns_{&cached_columns},
     cached_features_{&cached_features},
-    byte_pool_({rm, IResourceManager::kTransactions}),
+    byte_pool_({rm}),
     byte_writer_{byte_pool_.begin()},
-    int_pool_({rm, IResourceManager::kTransactions}),
+    int_pool_({rm}),
     int_writer_{int_pool_.begin()},
     resource_manager_{rm} {}
 

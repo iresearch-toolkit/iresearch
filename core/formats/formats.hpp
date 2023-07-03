@@ -57,8 +57,12 @@ struct postings_writer;
 struct Scorer;
 struct WandWriter;
 
-using DocumentMask = absl::flat_hash_set<doc_id_t>;
-using DocMap = std::vector<doc_id_t>;
+using DocumentMask =
+  absl::flat_hash_set<doc_id_t,
+                      absl::container_internal::hash_default_hash<doc_id_t>,
+                      absl::container_internal::hash_default_eq<doc_id_t>,
+                      ManagedTypedAllocator<doc_id_t>>;
+using DocMap = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
 using DocMapView = std::span<const doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
@@ -69,19 +73,21 @@ struct WanderatorOptions {
   ScoreFunctionFactory factory;
 };
 
+struct ResourceManagmentOptions {
+  IResourceManager& transactions{IResourceManager::kNoop};
+  IResourceManager& readers{IResourceManager::kNoop};
+  IResourceManager& consolidations{IResourceManager::kNoop};
+  IResourceManager& file_descriptors{IResourceManager::kNoop};
+  IResourceManager& cached_columns{IResourceManager::kNoop};
+};
+
 struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
   const FeatureInfoProvider& feature_info;
   const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
-  struct {
-    IResourceManager& transactions{IResourceManager::kNoop};
-    IResourceManager& readers{IResourceManager::kNoop};
-    IResourceManager& comsolidations{IResourceManager::kNoop};
-    IResourceManager& file_descriptors{IResourceManager::kNoop};
-    IResourceManager& cached_columns{IResourceManager::kNoop};
-  } resource_manager;
+  ResourceManagmentOptions resource_manager;
 };
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
@@ -341,7 +347,7 @@ enum class ColumnHint : uint32_t {
 
 ENABLE_BITMASK_ENUM(ColumnHint);
 
-struct column_reader {
+struct column_reader : public memory::Managed {
   virtual ~column_reader() = default;
 
   // Returns column id.
@@ -372,7 +378,7 @@ struct columnstore_reader {
     // allows to select "hot" columns
     column_visitor_f warmup_column;
     // memory usage accounting
-    IResourceManager& resource_manager{IResourceManager::kNoopManager};
+    ResourceManagmentOptions resource_manager;
   };
 
   virtual ~columnstore_reader() = default;

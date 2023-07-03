@@ -72,8 +72,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
     arcs_.reset();
     weights_.reset();
     if (resource_manager_) {
-      resource_manager_->Decrease(
-        resource_call_, sizeof(State) * nstates_ + sizeof(Arc) * narcs_ +
+      resource_manager_->Decrease(sizeof(State) * nstates_ + sizeof(Arc) * narcs_ +
                           sizeof(irs::byte_type) * weights_size_);
     }
   }
@@ -93,7 +92,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   size_t NumOutputEpsilons(StateId) const noexcept { return 0; }
 
   static std::shared_ptr<ImmutableFstImpl<Arc>> Read(
-    irs::data_input& strm, irs::IResourceManager& rm, irs::IResourceManager::Call call);
+    irs::data_input& strm, irs::IResourceManager& rm);
 
   const Arc* Arcs(StateId s) const noexcept { return states_[s].arcs; }
 
@@ -133,7 +132,6 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   StateId nstates_;  // Number of states.
   StateId start_;    // Initial state.
   irs::IResourceManager* resource_manager_{nullptr};
-  irs::IResourceManager::Call resource_call_{IResourceManager::kNoop};
 
   ImmutableFstImpl(const ImmutableFstImpl&) = delete;
   ImmutableFstImpl& operator=(const ImmutableFstImpl&) = delete;
@@ -142,8 +140,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
 template<typename Arc>
 std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
   irs::data_input& stream,
-  irs::IResourceManager& rm,
-  irs::IResourceManager::Call call) {
+  irs::IResourceManager& rm) {
   auto impl = std::make_shared<ImmutableFstImpl<Arc>>();
 
   // read header
@@ -161,11 +158,11 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
                    total_weight_size * sizeof(irs::byte_type)};
   irs::Finally cleanup = [&]() noexcept {
     if (allocated) {
-      rm.Decrease(call, allocated);
+      rm.Decrease(allocated);
     }
   };
 
-  rm.Increase(call, allocated);
+  rm.Increase(allocated);
   auto states = std::make_unique<State[]>(nstates);
   auto arcs = std::make_unique<Arc[]>(narcs);
   auto weights = std::make_unique<irs::byte_type[]>(total_weight_size);
@@ -210,7 +207,6 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
   impl->arcs_ = std::move(arcs);
   impl->weights_ = std::move(weights);
   impl->weights_size_ = total_weight_size;
-  impl->resource_call_ = call;
   impl->resource_manager_ = &rm;
   return impl;
 }
@@ -240,21 +236,19 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
     return new ImmutableFst<A>(*this, safe);
   }
 
-  static ImmutableFst<A>* Read(irs::data_input& strm, irs::IResourceManager& rm,
-                               irs::IResourceManager::Call call) {
-    auto impl = Impl::Read(strm, rm, call);
+  static ImmutableFst<A>* Read(irs::data_input& strm, irs::IResourceManager& rm) {
+    auto impl = Impl::Read(strm, rm);
     return impl ? new ImmutableFst<A>(std::move(impl)) : nullptr;
   }
 
   // OpenFST API compliance broken. But as only we use it here it is ok.
   static ImmutableFst<A>* Read(std::istream& strm,
                                const FstReadOptions&,
-                               irs::IResourceManager& rm,
-                               irs::IResourceManager::Call call) {
+                               irs::IResourceManager& rm) {
     auto* rdbuf = down_cast<irs::input_buf*>(strm.rdbuf());
     IRS_ASSERT(rdbuf && rdbuf->internal());
 
-    return Read(*rdbuf->internal(), rm, call);
+    return Read(*rdbuf->internal(), rm);
   }
 
   template<typename FST, typename Stats>

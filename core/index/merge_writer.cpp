@@ -69,7 +69,7 @@ void AccumulateFeatures(feature_set_t& accum, const feature_map_t& features) {
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
-using doc_id_map_t = std::vector<doc_id_t>;
+using doc_id_map_t = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
 
 // document mapping function
 using doc_map_f = std::function<doc_id_t(doc_id_t)>;
@@ -1528,16 +1528,9 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter() noexcept
-  : dir_(NoopDirectory::instance()), resource_manager_(IResourceManager::kNoopManager) {}
+MergeWriter::MergeWriter(IResourceManager& rm) noexcept
+  : dir_(NoopDirectory::instance()), readers_{{rm}}, resource_manager_(rm) {}
 
-MergeWriter::~MergeWriter() {
-  size_t doc_maps{0};
-  for (const auto& reader : readers_) {
-    doc_maps += reader.doc_id_map.size();
-  }
-  resource_manager_.Decrease(IResourceManager::kConsolidations, doc_maps);
-}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1740,18 +1733,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     auto& doc_id_map = reader_ctx.doc_id_map;
 
     try {
-      const auto oldSize = doc_id_map.size();
-      const auto newSize = reader.docs_count() + doc_limits::min();
-      if (oldSize < newSize) {
-        resource_manager_.Increase(IResourceManager::kConsolidations,
-                                   newSize - oldSize);
-      }
       doc_id_map.resize(reader.docs_count() + doc_limits::min(),
                         doc_limits::eof());
-      if (oldSize > newSize) {
-        resource_manager_.Decrease(IResourceManager::kConsolidations,
-                                   oldSize - newSize);
-      }
     } catch (...) {
       IRS_LOG_ERROR(absl::StrCat(
         "Failed to resize merge_writer::doc_id_map to accommodate element: ",

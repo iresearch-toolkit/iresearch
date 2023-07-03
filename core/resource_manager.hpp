@@ -75,9 +75,9 @@ class ManagedAllocator : private Allocator {
   explicit ManagedAllocator()
     : rm_{
 #ifdef IRESEARCH_DEBUG
-        IResourceManager::kForbiddenManager
+        IResourceManager::kForbidden
 #else
-        IResourceManager::kNoopManager
+        IResourceManager::kNoop
 #endif
       } {
   }

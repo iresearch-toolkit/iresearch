@@ -46,22 +46,22 @@ class MergeWriter : public util::noncopyable {
     ReaderCtx(const SubReader& reader) noexcept : ReaderCtx{&reader} {}
 
     const SubReader* reader;                    // segment reader
-    std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
+    std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>> doc_id_map;           // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 
-  MergeWriter() noexcept;
-  virtual ~MergeWriter();
+  MergeWriter(IResourceManager& rm) noexcept;
 
   explicit MergeWriter(directory& dir,
                        const SegmentWriterOptions& options) noexcept
     : dir_{dir},
+      readers_{{options.resource_manager.comsolidations}},
       column_info_{&options.column_info},
       feature_info_{&options.feature_info},
       scorers_{options.scorers},
       scorers_features_{&options.scorers_features},
       comparator_{options.comparator},
-      resource_manager_{options.resource_manager} {
+      resource_manager_{options.resource_manager.comsolidations} {
     IRS_ASSERT(column_info_);
   }
   MergeWriter(MergeWriter&&) = default;
@@ -93,7 +93,7 @@ class MergeWriter : public util::noncopyable {
                      const FlushProgress& progress);
 
   directory& dir_;
-  std::vector<ReaderCtx> readers_;
+  std::vector<ReaderCtx, ManagedTypedAllocator<ReaderCtx>> readers_;
   const ColumnInfoProvider* column_info_{};
   const FeatureInfoProvider* feature_info_{};
   ScorersView scorers_;
