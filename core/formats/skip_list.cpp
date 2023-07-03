@@ -55,7 +55,7 @@ void SkipWriter::Prepare(size_t max_levels, size_t count) {
 
   // add new skip levels if needed
   for (auto size = std::size(levels_); size < max_levels_; ++size) {
-    levels_.emplace_back(IResourceManager::kNoopManager, IResourceManager::kTransactions);
+    levels_.emplace_back(IResourceManager::kNoopManager);
   }
 }
 

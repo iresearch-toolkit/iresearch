@@ -956,9 +956,9 @@ IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const SegmentWriterOptions& options)
   : dir_{dir},
-    queries_{{options.resource_manager}},
-    flushed_{{options.resource_manager}},
-    flushed_docs_{{options.resource_manager}},
+    queries_{{options.resource_manager.transactions}},
+    flushed_{{options.resource_manager.transactions}},
+    flushed_docs_{{options.resource_manager.transactions}},
     meta_generator_{std::move(meta_generator)},
     writer_{segment_writer::make(dir_, options)} {
   IRS_ASSERT(meta_generator_);
@@ -1139,7 +1139,7 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader, IResourceManager& rm)
+  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader, ResourceManagementOptions& rm)
   : feature_info_{feature_info},
     column_info_{column_info},
     meta_payload_provider_{meta_payload_provider},
@@ -1530,7 +1530,7 @@ ConsolidationResult IndexWriter::Consolidate(
         dir.GetRefs(),                 // do not forget to track refs
         std::move(candidates),         // consolidation context candidates
         std::move(pending_reader),     // consolidated reader
-        std::move(committed_reader));  // consolidation context meta
+        std::move(committed_reader), resource_manager_);  // consolidation context meta
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1611,7 +1611,7 @@ ConsolidationResult IndexWriter::Consolidate(
         dir.GetRefs(),                 // do not forget to track refs
         std::move(candidates),         // consolidation context candidates
         std::move(pending_reader),     // consolidated reader
-        std::move(committed_reader));  // consolidation context meta
+        std::move(committed_reader), resource_manager_);  // consolidation context meta
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1697,7 +1697,7 @@ bool IndexWriter::Import(const IndexReader& reader,
   // moving not suited import segments to the next FlushContext in PrepareFlush
   flush->imports_.emplace_back(
     std::move(segment), tick_.load(std::memory_order_relaxed), std::move(refs),
-    std::move(imported_reader));  // do not forget to track refs
+    std::move(imported_reader), resource_manager_);  // do not forget to track refs
 
   return true;
 }

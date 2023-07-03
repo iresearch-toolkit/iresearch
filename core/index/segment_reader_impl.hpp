@@ -39,7 +39,7 @@ class SegmentReaderImpl final : public SubReader {
   };
 
  public:
-  SegmentReaderImpl(PrivateTag, IResourceManager& rm) noexcept;
+  SegmentReaderImpl(PrivateTag, ResourceManagementOptions& rm) noexcept;
 
   static std::shared_ptr<const SegmentReaderImpl> Open(
     const directory& dir, const SegmentMeta& meta,
@@ -103,7 +103,7 @@ class SegmentReaderImpl final : public SubReader {
   std::shared_ptr<ColumnData> data_;
   // logically part of data_, stored separate to avoid unnecessary indirection
   const irs::column_reader* sort_{};
-  IResourceManager resource_manager_;
+  ResourceManagementOptions resource_manager_;
 };
 
 }  // namespace irs

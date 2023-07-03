@@ -488,7 +488,7 @@ void ReadDocumentMask(irs::DocumentMask& docs_mask, const irs::directory& dir,
   }
 
   auto reader = meta.codec->get_document_mask_reader();
-  reader->read(dir, meta, rm, docs_mask);
+  reader->read(dir, meta, docs_mask);
 }
 
 void FlushIndexSegment(directory& dir, IndexSegment& segment) {

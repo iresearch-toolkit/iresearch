@@ -58,7 +58,7 @@ const SubReader& SubReader::empty() noexcept { return kEmpty; }
 
 
 IResourceManager IResourceManager::kNoop;
-ResourceManagmentOptions ResourceManagmentOptions::kDefault;
+ResourceManagementOptions ResourceManagementOptions::kDefault;
 #ifdef IRESEARCH_DEBUG
 IResourceManager IResourceManager kForbidden;
 #endif

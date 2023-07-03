@@ -142,7 +142,7 @@ struct IndexWriterOptions : public SegmentOptions {
 
   IndexWriterOptions() = default;
 
-  explicit IndexWriterOptions(IResourceManager& manager)
+  explicit IndexWriterOptions(ResourceManagementOptions& manager)
     : reader_options{.resource_manager = manager} {};
   // Options for snapshot management
   IndexReaderOptions reader_options;
@@ -580,7 +580,7 @@ class IndexWriter : private util::noncopyable {
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
               std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
-              IResourceManager& rm);
+              ResourceManagementOptions& rm);
 
  private:
   struct ConsolidationContext : util::noncopyable {
@@ -611,34 +611,42 @@ class IndexWriter : private util::noncopyable {
                   Consolidation&& consolidation_candidates,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
                   std::shared_ptr<const DirectoryReaderImpl>&&
-                    consolidation_reader) noexcept
+                    consolidation_reader,
+                  ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)},
         consolidation_ctx{
           .consolidation_reader = std::move(consolidation_reader),
-          .candidates = std::move(consolidation_candidates)} {}
+          .candidates = std::move(consolidation_candidates),
+          .merger{rm}} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   Consolidation&& consolidation_candidates,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
+                  std::shared_ptr<const SegmentReaderImpl>&& reader,
+                  ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)},
-        consolidation_ctx{.candidates = std::move(consolidation_candidates)} {}
+        consolidation_ctx{.candidates = std::move(consolidation_candidates),
+                          .merger{rm}} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
+                  std::shared_ptr<const SegmentReaderImpl>&& reader,
+                  ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
-        reader{std::move(reader)} {}
+        reader{std::move(reader)},
+        consolidation_ctx{.merger{rm}} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
-      : tick{tick}, segment{std::move(segment)}, reader{std::move(reader)} {}
+                  std::shared_ptr<const SegmentReaderImpl>&& reader,
+                  ResourceManagementOptions& rm) noexcept
+      : tick{tick}, segment{std::move(segment)}, reader{std::move(reader)},
+        consolidation_ctx{.merger{rm}} {}
 
     ImportContext(ImportContext&&) = default;
 
@@ -1002,7 +1010,7 @@ class IndexWriter : private util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_;  // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
-  IResourceManager& resource_manager_;
+  ResourceManagementOptions& resource_manager_;
 };
 
 }  // namespace irs

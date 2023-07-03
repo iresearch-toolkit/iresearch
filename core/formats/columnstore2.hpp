@@ -294,7 +294,7 @@ class reader final : public columnstore_reader {
 };
 
 irs::columnstore_writer::ptr make_writer(
-  Version version, ResourceManagmentOptions& resource_manager,
+  Version version, ResourceManagementOptions& resource_manager,
   bool consolidation);
 irs::columnstore_reader::ptr make_reader();
 

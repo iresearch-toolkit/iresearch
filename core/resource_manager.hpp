@@ -64,9 +64,9 @@ struct IResourceManager {
 };
 
 
-struct ResourceManagmentOptions {
+struct ResourceManagementOptions {
 
-  static ResourceManagmentOptions kDefault;
+  static ResourceManagementOptions kDefault;
 
   IResourceManager& transactions{IResourceManager::kNoop};
   IResourceManager& readers{IResourceManager::kNoop};

@@ -1926,7 +1926,7 @@ bool reader::visit(const column_visitor_f& visitor) const {
 }
 
 irs::columnstore_writer::ptr make_writer(
-  Version version, ResourceManagmentOptions& resource_manager,
+  Version version, ResourceManagementOptions& resource_manager,
   bool consolidation) {
   return std::make_unique<writer>(version,
                                   consolidation

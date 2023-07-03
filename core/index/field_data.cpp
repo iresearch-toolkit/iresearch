@@ -375,7 +375,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
   // reset iterator,
   // docmap == null -> segment is already sorted
-  void reset(detail::doc_iterator& it, const std::vector<doc_id_t>* docmap) {
+  void reset(detail::doc_iterator& it, const DocMap* docmap) {
     const frequency no_frequency;
     const frequency* freq = &no_frequency;
 

@@ -79,7 +79,7 @@ struct SegmentWriterOptions {
   const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
-  ResourceManagmentOptions resource_manager;
+  ResourceManagementOptions resource_manager;
 };
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
@@ -370,7 +370,7 @@ struct columnstore_reader {
     // allows to select "hot" columns
     column_visitor_f warmup_column;
     // memory usage accounting
-    ResourceManagmentOptions resource_manager;
+    ResourceManagementOptions resource_manager;
   };
 
   virtual ~columnstore_reader() = default;
@@ -407,7 +407,6 @@ struct document_mask_reader : memory::Managed {
   // false - otherwise.
   // May throw io_error or index_error
   virtual bool read(const directory& dir, const SegmentMeta& meta,
-                    IResourceManager& rm,
                     DocumentMask& docs_mask) = 0;
 };
 
@@ -468,7 +467,7 @@ class format {
   virtual field_reader::ptr get_field_reader(IResourceManager& rm) const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, ResourceManagmentOptions& rm) const = 0;
+    bool consolidation, ResourceManagementOptions& rm) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   virtual irs::type_info::type_id type() const noexcept = 0;

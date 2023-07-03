@@ -3049,12 +3049,11 @@ class field_reader final : public irs::field_reader {
       std::istream input(&isb);  // wrap stream to be OpenFST compliant
       if constexpr (std::is_same_v<FST, immutable_byte_fst>) {
         fst_.reset(FST::Read(input, fst_read_options(),
-                             owner_->resource_manager_,
-                             owner_->resource_call_));
+                             owner_->resource_manager_));
       }
       else {
         fst_.reset(FST::Read(input, fst_read_options(),
-                             {owner_->resource_manager_, owner_->resource_call_}));
+                             {owner_->resource_manager_}));
       }
 
       if (!fst_) {
