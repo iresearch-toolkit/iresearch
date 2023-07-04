@@ -24,6 +24,7 @@
 
 #include "file_utils.hpp"
 #include "noncopyable.hpp"
+#include "resource_manager.hpp"
 
 #if defined(_MSC_VER)
 
@@ -85,7 +86,7 @@ namespace irs::mmap_utils {
 //////////////////////////////////////////////////////////////////////////////
 class mmap_handle : private util::noncopyable {
  public:
-  mmap_handle() noexcept { init(); }
+  mmap_handle(ResourceManagementOptions& rm) noexcept : rm_{rm} { init(); }
 
   ~mmap_handle() noexcept { close(); }
 
@@ -111,6 +112,7 @@ class mmap_handle : private util::noncopyable {
   size_t size_;    // file size
   ptrdiff_t fd_;   // file descriptor
   bool dontneed_;  // request to free pages on close
+  ResourceManagementOptions& rm_;
 };
 
 }  // namespace irs::mmap_utils

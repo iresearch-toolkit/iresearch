@@ -33,7 +33,8 @@ class mmap_handle;
 class MMapDirectory : public FSDirectory {
  public:
   explicit MMapDirectory(std::filesystem::path dir,
-                         directory_attributes attrs = directory_attributes{});
+                         directory_attributes attrs = directory_attributes{},
+                         ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
   index_input::ptr open(std::string_view name,
                         IOAdvice advice) const noexcept override;

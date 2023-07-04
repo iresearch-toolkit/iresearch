@@ -36,7 +36,8 @@ class FSDirectory : public directory {
 
   explicit FSDirectory(std::filesystem::path dir,
                        directory_attributes attrs = directory_attributes{},
-                       size_t fd_pool_size = kDefaultPoolSize);
+                       size_t fd_pool_size = kDefaultPoolSize,
+                       ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
   const std::filesystem::path& directory() const noexcept;
 
@@ -63,6 +64,9 @@ class FSDirectory : public directory {
   bool sync(std::span<const std::string_view> files) noexcept override;
 
   bool visit(const visitor_f& visitor) const final;
+
+ protected:
+  ResourceManagementOptions& resource_manager_;
 
  private:
   bool sync(std::string_view name) noexcept;

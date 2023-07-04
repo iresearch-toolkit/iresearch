@@ -58,13 +58,14 @@ inline int GetPosixMadvice(IOAdvice advice) {
 }
 
 std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
-                                        IOAdvice advice) noexcept {
+                                        IOAdvice advice,
+                                        ResourceManagementOptions& rm) noexcept {
   IRS_ASSERT(file);
 
   std::shared_ptr<mmap_handle> handle;
 
   try {
-    handle = std::make_shared<mmap_handle>();
+    handle = std::make_shared<mmap_handle>(rm);
   } catch (...) {
     return nullptr;
   }
@@ -93,11 +94,12 @@ std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
 
 std::shared_ptr<mmap_handle> OpenHandle(const std::filesystem::path& dir,
                                         std::string_view name,
-                                        IOAdvice advice) noexcept {
+                                        IOAdvice advice,
+                                        ResourceManagementOptions& rm) noexcept {
   try {
     const auto path = dir / name;
 
-    return OpenHandle(path.c_str(), advice);
+    return OpenHandle(path.c_str(), advice, rm);
   } catch (...) {
   }
 
@@ -177,8 +179,9 @@ class MMapIndexInput final : public bytes_view_input {
 }  // namespace
 
 MMapDirectory::MMapDirectory(std::filesystem::path path,
-                             directory_attributes attrs)
-  : FSDirectory{std::move(path), std::move(attrs)} {}
+                             directory_attributes attrs,
+                             ResourceManagementOptions& rm)
+  : FSDirectory{std::move(path), std::move(attrs), kDefaultPoolSize, rm} {}
 
 index_input::ptr MMapDirectory::open(std::string_view name,
                                      IOAdvice advice) const noexcept {
@@ -186,7 +189,7 @@ index_input::ptr MMapDirectory::open(std::string_view name,
     return FSDirectory::open(name, advice);
   }
 
-  auto handle = OpenHandle(directory(), name, advice);
+  auto handle = OpenHandle(directory(), name, advice, resource_manager_);
 
   if (!handle) {
     return nullptr;
@@ -238,7 +241,8 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
     return make_stream(std::move(handle));
   }
 
-  if (handle = OpenHandle(directory(), name, advice); handle) {
+  if (handle = OpenHandle(directory(), name, advice, resource_manager_);
+      handle) {
     cache_.Put(name, [&]() noexcept { return handle; });
 
     return make_stream(std::move(handle));

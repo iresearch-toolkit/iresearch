@@ -246,7 +246,8 @@ class memory_index_output : public index_output {
 class memory_directory final : public directory {
  public:
   explicit memory_directory(
-    directory_attributes attributes = directory_attributes{});
+    directory_attributes attributes = directory_attributes{},
+    ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
   ~memory_directory() noexcept final;
 
@@ -276,7 +277,13 @@ class memory_directory final : public directory {
  private:
   friend class single_instance_lock;
   using file_map = absl::flat_hash_map<
-    std::string, std::unique_ptr<memory_file>>;  // unique_ptr because of rename
+    std::string, std::unique_ptr<memory_file>,
+    absl::container_internal::hash_default_hash<std::string>,
+    absl::container_internal::hash_default_eq<std::string>,
+    ManagedTypedAllocator<std::pair<
+      const std::string, std::unique_ptr<memory_file>>>>;  // unique_ptr because
+                                                           // of
+                                                           // rename
   using lock_map = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
