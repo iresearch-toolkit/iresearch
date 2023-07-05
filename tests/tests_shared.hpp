@@ -30,6 +30,7 @@
 #include <memory>
 
 #include "shared.hpp"
+#include "resource_manager.hpp"
 
 #define SOURCE_LOCATION (__FILE__ ":" IRS_TO_STRING(__LINE__))
 
@@ -92,6 +93,34 @@ class test_base : public test_env, public ::testing::Test {
   bool artifacts_;
 };
 
+struct SimpleMemoryAccounter : public irs::IResourceManager {
+  bool Increase(size_t value) noexcept override {
+    counter_ += value;
+    return result_;
+  }
+  void  Decrease(size_t value) noexcept override {
+    counter_ -= value;
+  }
+  size_t counter_{0};
+  bool result_{true};
+};
+
+struct TestResourceManager {
+  SimpleMemoryAccounter cached_columns;
+  SimpleMemoryAccounter consolidations;
+  SimpleMemoryAccounter file_descriptors;
+  SimpleMemoryAccounter readers;
+  SimpleMemoryAccounter transactions;
+
+  irs::ResourceManagementOptions options{.transactions = &transactions,
+                                         .readers = &readers,
+                                         .consolidations = &consolidations,
+                                         .file_descriptors = &file_descriptors,
+                                         .cached_columns = &cached_columns};
+};
+
 template<typename T>
 class test_param_base : public test_base,
                         public ::testing::WithParamInterface<T> {};
+
+
