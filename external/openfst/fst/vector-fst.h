@@ -174,7 +174,7 @@ class VectorFstBaseImpl : public FstImpl<typename S::Arc> {
   using Weight = typename Arc::Weight;
 
   VectorFstBaseImpl(
-    const typename State::ArcAllocator &alloc = State::ArcAllocator())
+    const typename State::ArcAllocator &alloc = {})
     : start_(kNoStateId), state_alloc_(alloc), arc_alloc_(alloc) {}
 
   ~VectorFstBaseImpl() override {
