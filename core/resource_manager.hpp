@@ -48,6 +48,7 @@ struct IResourceManager {
 #endif
 
   IResourceManager() = default;
+  virtual ~IResourceManager() = default;
 
   IResourceManager(const IResourceManager&) = delete;
 
