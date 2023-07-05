@@ -165,10 +165,10 @@ class fs_index_output : public buffered_index_output {
   static index_output::ptr open(const path_char_t* name, ResourceManagementOptions& rm) noexcept {
     IRS_ASSERT(name);
     size_t descriptors{1};
-    rm.file_descriptors.Increase(descriptors);
+    rm.file_descriptors->Increase(descriptors);
     irs::Finally cleanup = [&]() noexcept {
       if (descriptors) {
-        rm.file_descriptors.Decrease(descriptors);
+        rm.file_descriptors->Decrease(descriptors);
       }
     };
     file_utils::handle_t handle(
@@ -201,7 +201,7 @@ class fs_index_output : public buffered_index_output {
   size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
     handle.reset(nullptr);
-    rm_.file_descriptors.Decrease(1);
+    rm_.file_descriptors->Decrease(1);
     return size;
   }
 
@@ -221,12 +221,12 @@ class fs_index_output : public buffered_index_output {
  private:
   fs_index_output(file_utils::handle_t&& handle, ResourceManagementOptions& rm) noexcept
     : handle(std::move(handle)), rm_{rm} {
-    rm_.transactions.Increase(sizeof(fs_index_output));
+    rm_.transactions->Increase(sizeof(fs_index_output));
     buffered_index_output::reset(buf_, sizeof buf_);
   }
 
   ~fs_index_output() {
-      rm_.transactions.Decrease(sizeof(fs_index_output));
+      rm_.transactions->Decrease(sizeof(fs_index_output));
   }
 
   byte_type buf_[1024];
@@ -274,10 +274,10 @@ class fs_index_input : public buffered_index_input {
     IRS_ASSERT(name);
 
     size_t descriptors{1};
-    rm.file_descriptors.Increase(descriptors); 
+    rm.file_descriptors->Increase(descriptors); 
     irs::Finally cleanup = [&]() noexcept {
       if (descriptors) {
-        rm.file_descriptors.Decrease(descriptors);
+        rm.file_descriptors->Decrease(descriptors);
       }
     };
 
@@ -369,7 +369,7 @@ class fs_index_input : public buffered_index_input {
       const bool release = handle.get() != nullptr;
       handle.reset();
       if (release) {
-        resource_manager.file_descriptors.Decrease(1);
+        resource_manager.file_descriptors->Decrease(1);
       }
     }
     operator void*() const { return handle.get(); }
@@ -384,7 +384,7 @@ class fs_index_input : public buffered_index_input {
   fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
     : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
     IRS_ASSERT(handle_);
-    handle_->resource_manager.readers.Increase(sizeof(fs_index_input));
+    handle_->resource_manager.readers->Increase(sizeof(fs_index_input));
     buffered_index_input::reset(buf_, sizeof buf_, 0);
   }
 
@@ -393,13 +393,13 @@ class fs_index_input : public buffered_index_input {
       pool_size_(rhs.pool_size_),
       pos_(rhs.file_pointer()) {
     IRS_ASSERT(handle_);
-    handle_->resource_manager.readers.Increase(sizeof(fs_index_input));
+    handle_->resource_manager.readers->Increase(sizeof(fs_index_input));
     buffered_index_input::reset(buf_, sizeof buf_, pos_);
   }
 
   ~fs_index_input() {
     IRS_ASSERT(handle_);
-    handle_->resource_manager.readers.Decrease(sizeof(fs_index_input));
+    handle_->resource_manager.readers->Decrease(sizeof(fs_index_input));
   }
 
   fs_index_input& operator=(const fs_index_input&) = delete;
@@ -467,11 +467,11 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   size_t descriptors{0};
   irs::Finally cleanup = [&]() noexcept {
     if (descriptors) {
-      src.resource_manager.file_descriptors.Decrease(descriptors);
+      src.resource_manager.file_descriptors->Decrease(descriptors);
     }
   };
   if (!handle->handle) {
-    src.resource_manager.file_descriptors.Increase(descriptors);
+    src.resource_manager.file_descriptors->Increase(descriptors);
     descriptors = 1;
     handle->handle = irs::file_utils::open(
       src, get_read_mode(src.io_advice),

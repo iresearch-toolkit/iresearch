@@ -37,8 +37,9 @@
 #include <fst/expanded-fst.h>
 #include <string_view>
 
+namespace fst {
 
-namespace {
+namespace detail {
 
 template<typename T>
 std::enable_if_t<!std::is_void_v<decltype(std::declval<T>().GetAlloc())>,
@@ -49,13 +50,8 @@ template<typename>
 std::false_type has_alloc_helper(...);
 
 template<typename T>
-struct has_alloc : decltype(has_alloc_helper<T>(0)) {
-};
+struct has_alloc : decltype(has_alloc_helper<T>(0)) {};
 }  // namespace
-
-
-
-namespace fst {
 
 template <class Arc>
 struct MutableArcIteratorData;
@@ -360,7 +356,7 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
     if (!Unique()) {
       const auto *isymbols = GetImpl()->InputSymbols();
       const auto *osymbols = GetImpl()->OutputSymbols();
-      if constexpr (has_alloc<Impl>::value) {
+      if constexpr (detail::has_alloc<Impl>::value) {
         SetImpl(std::make_shared<Impl>(GetImpl()->GetAlloc()));
       } else {
         SetImpl(std::make_shared<Impl>());
@@ -435,7 +431,7 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
 
   void MutateCheck() {
     if (!Unique()) {
-      if constexpr (has_alloc<Impl>::value) {
+      if constexpr (detail::has_alloc<Impl>::value) {
         SetImpl(std::make_shared<Impl>(*this, this->GetImpl()->GetAlloc()));
       } else {
         SetImpl(std::make_shared<Impl>(*this));

@@ -79,7 +79,7 @@ struct SegmentWriterOptions {
   const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
-  ResourceManagementOptions resource_manager;
+  const ResourceManagementOptions& resource_manager{ResourceManagementOptions::kDefault};
 };
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }

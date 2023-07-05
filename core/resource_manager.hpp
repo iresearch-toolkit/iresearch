@@ -40,39 +40,37 @@
 
 namespace irs {
 struct IResourceManager {
+  static_assert(sizeof(size_t) <= sizeof(uint64_t));
+
   static IResourceManager kNoop;
 #ifdef IRESEARCH_DEBUG
   static IResourceManager kForbidden;
 #endif
 
-  static_assert(sizeof(size_t) <= sizeof(uint64_t));
+  IResourceManager() = default;
 
-  IRS_FORCE_INLINE bool Increase(size_t v) noexcept {
-    IRS_ASSERT(v <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
-    IRS_ASSERT(this != IResourceManager::kForbidden);
-    return Change(static_cast<int64_t>(v));
+  IResourceManager(const IResourceManager&) = delete;
+
+  virtual bool Increase(size_t) noexcept { return true; }
+
+  virtual void Decrease(size_t) noexcept {}
+
+  IRS_FORCE_INLINE void DecreaseChecked(size_t v) noexcept {
+    if (v != 0) {
+      Decrease(v);
+    }
   }
-
-  IRS_FORCE_INLINE void Decrease(size_t v) noexcept {
-    IRS_ASSERT(v <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()));
-    [[maybe_unused]] bool res = Change(-static_cast<int64_t>(v));
-    IRS_ASSERT(res);
-  }
-
- protected:
-  virtual bool Change(int64_t) noexcept { return true; }
 };
-
 
 struct ResourceManagementOptions {
 
   static ResourceManagementOptions kDefault;
 
-  IResourceManager& transactions{IResourceManager::kNoop};
-  IResourceManager& readers{IResourceManager::kNoop};
-  IResourceManager& consolidations{IResourceManager::kNoop};
-  IResourceManager& file_descriptors{IResourceManager::kNoop};
-  IResourceManager& cached_columns{IResourceManager::kNoop};
+  IResourceManager* transactions{&IResourceManager::kNoop};
+  IResourceManager* readers{&IResourceManager::kNoop};
+  IResourceManager* consolidations{&IResourceManager::kNoop};
+  IResourceManager* file_descriptors{&IResourceManager::kNoop};
+  IResourceManager* cached_columns{&IResourceManager::kNoop};
 };
 
 
@@ -88,9 +86,9 @@ class ManagedAllocator : private Allocator {
   explicit ManagedAllocator()
     : rm_{
 #ifdef IRESEARCH_DEBUG
-        IResourceManager::kForbidden
+        &IResourceManager::kForbidden
 #else
-        IResourceManager::kNoop
+        &IResourceManager::kNoop
 #endif
       } {
   }
@@ -98,33 +96,32 @@ class ManagedAllocator : private Allocator {
   template<typename... Args>
   ManagedAllocator(IResourceManager& rm,
                    Args&&... args)
-    : Allocator(std::forward<Args>(args)...), rm_{rm} {}
+    : Allocator(std::forward<Args>(args)...), rm_{&rm} {}
 
   ManagedAllocator(ManagedAllocator&& other) noexcept
-    : Allocator(other.RawAllocator()),
-    rm_{other.ResourceManager()} {}
+    : Allocator(std::move(other.RawAllocator())),
+    rm_{&other.ResourceManager()} {}
 
    ManagedAllocator(const ManagedAllocator& other) noexcept
     : Allocator(other.RawAllocator()),
-      rm_{other.ResourceManager()} {}
+      rm_{&other.ResourceManager()} {}
 
   ManagedAllocator& operator=(ManagedAllocator&& other) noexcept {
     static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
-    rm_ = other.ResourceManager();
+    rm_ = &other.ResourceManager();
     return *this;
   }
 
   template<typename A>
   ManagedAllocator(const ManagedAllocator<A>& other) noexcept
     : Allocator(other.RawAllocator()),
-      rm_{other.ResourceManager()} {}
+      rm_{&other.ResourceManager()} {}
 
   value_type* allocate(std::size_t n) {
-    IRS_ASSERT(n != 0);
-    rm_.Increase(sizeof(value_type) * n);
+    rm_->Increase(sizeof(value_type) * n);
     Finally cleanup = [&]() noexcept {
       if (n) {
-        rm_.Decrease(sizeof(value_type) * n);
+        rm_->Decrease(sizeof(value_type) * n);
       }
     };
     auto res = Allocator::allocate(n);
@@ -133,7 +130,7 @@ class ManagedAllocator : private Allocator {
   }
 
   void deallocate(value_type* p, std::size_t n) {
-    rm_.Decrease(sizeof(value_type) * n);
+    rm_->Decrease(sizeof(value_type) * n);
     Allocator::deallocate(p, n);
   }
 
@@ -147,9 +144,9 @@ class ManagedAllocator : private Allocator {
            &rm_ == &other.rm_;
   }
 
-  IResourceManager& ResourceManager() const noexcept { return rm_; }
+  IResourceManager& ResourceManager() const noexcept { return *rm_; }
  private:
-  IResourceManager& rm_;
+  IResourceManager* rm_;
 };
 
 template<typename T>

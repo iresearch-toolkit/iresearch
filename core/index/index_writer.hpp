@@ -142,8 +142,6 @@ struct IndexWriterOptions : public SegmentOptions {
 
   IndexWriterOptions() = default;
 
-  explicit IndexWriterOptions(ResourceManagementOptions& manager)
-    : reader_options{.resource_manager = manager} {};
   // Options for snapshot management
   IndexReaderOptions reader_options;
 
@@ -580,7 +578,7 @@ class IndexWriter : private util::noncopyable {
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
               std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
-              ResourceManagementOptions& rm);
+              const ResourceManagementOptions& rm);
 
  private:
   struct ConsolidationContext : util::noncopyable {
@@ -1010,7 +1008,7 @@ class IndexWriter : private util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_;  // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
-  ResourceManagementOptions& resource_manager_;
+  ResourceManagementOptions resource_manager_;
 };
 
 }  // namespace irs

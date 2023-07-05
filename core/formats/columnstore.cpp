@@ -2307,7 +2307,7 @@ class reader final : public columnstore_reader, public context_provider {
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
   uint64_t CountMappedMemory() const final {
-      // We don;t support it for old columnstore
+      // We don't support it for old columnstore
       return 0;
   }
 

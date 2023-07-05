@@ -308,7 +308,7 @@ struct OnHeapTracked final : Base {
  private:
   IResourceManager& rm_;
   void Destroy() const noexcept final {
-    auto rm = rm_;
+    auto& rm = rm_;
     delete this;
     rm.Decrease(sizeof(*this));
   }

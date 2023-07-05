@@ -956,9 +956,9 @@ IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const SegmentWriterOptions& options)
   : dir_{dir},
-    queries_{{options.resource_manager.transactions}},
-    flushed_{{options.resource_manager.transactions}},
-    flushed_docs_{{options.resource_manager.transactions}},
+    queries_{{*options.resource_manager.transactions}},
+    flushed_{{*options.resource_manager.transactions}},
+    flushed_docs_{{*options.resource_manager.transactions}},
     meta_generator_{std::move(meta_generator)},
     writer_{segment_writer::make(dir_, options)} {
   IRS_ASSERT(meta_generator_);
@@ -1003,6 +1003,7 @@ void IndexWriter::SegmentContext::Flush() {
 IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const SegmentWriterOptions& segment_writer_options) {
+  IRS_ASSERT(segment_writer_options.resource_manager);
   return std::make_unique<SegmentContext>(dir, std::move(meta_generator),
                                           segment_writer_options);
 }
@@ -1139,7 +1140,7 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader, ResourceManagementOptions& rm)
+  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader, const ResourceManagementOptions& rm)
   : feature_info_{feature_info},
     column_info_{column_info},
     meta_payload_provider_{meta_payload_provider},
@@ -1221,7 +1222,11 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
   IRS_ASSERT(std::all_of(options.reader_options.scorers.begin(),
                          options.reader_options.scorers.end(),
                          [](const auto* v) { return v != nullptr; }));
-
+  IRS_ASSERT(options.reader_options.resource_manager.cached_columns);
+  IRS_ASSERT(options.reader_options.resource_manager.consolidations);
+  IRS_ASSERT(options.reader_options.resource_manager.file_descriptors);
+  IRS_ASSERT(options.reader_options.resource_manager.readers);
+  IRS_ASSERT(options.reader_options.resource_manager.transactions);
   index_lock::ptr lock;
   index_file_refs::ref_t lock_ref;
 

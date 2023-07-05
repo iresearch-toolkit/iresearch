@@ -410,7 +410,7 @@ void memory_index_output::operator>>(data_output& out) { file_ >> out; }
 memory_directory::memory_directory(directory_attributes attrs,
                                    ResourceManagementOptions& rm)
   : attrs_{std::move(attrs)},
-    files_{ManagedTypedAllocator<std::pair<const std::string, std::unique_ptr<memory_file>>>{rm.readers}} {}
+    files_{ManagedTypedAllocator<std::pair<const std::string, std::unique_ptr<memory_file>>>{*rm.readers}} {}
 
 memory_directory::~memory_directory() noexcept {
   std::lock_guard lock{flock_};

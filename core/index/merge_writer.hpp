@@ -55,14 +55,13 @@ class MergeWriter : public util::noncopyable {
   explicit MergeWriter(directory& dir,
                        const SegmentWriterOptions& options) noexcept
     : dir_{dir},
-      readers_{{options.resource_manager.consolidations}},
+      readers_{{*options.resource_manager.consolidations}},
       column_info_{&options.column_info},
       feature_info_{&options.feature_info},
       scorers_{options.scorers},
       scorers_features_{&options.scorers_features},
       comparator_{options.comparator},
-      resource_manager_{
-        const_cast<ResourceManagementOptions&>(options.resource_manager)} {
+      resource_manager_{const_cast<ResourceManagementOptions&>(options.resource_manager)} {
     IRS_ASSERT(column_info_);
   }
   MergeWriter(MergeWriter&&) = default;
