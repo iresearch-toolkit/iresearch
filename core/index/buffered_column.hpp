@@ -51,7 +51,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
   explicit BufferedColumn(const ColumnInfo& info, IResourceManager& rm)
     : data_buf_{{rm}}, index_{{rm}}, info_{info} {}
 
-  void Prepare(doc_id_t key) {
+  void Prepare(doc_id_t key) final {
     IRS_ASSERT(key >= pending_key_);
 
     if (IRS_LIKELY(pending_key_ != key)) {
@@ -133,17 +133,15 @@ class BufferedColumn final : public column_output, private util::noncopyable {
     out.write_bytes(payload.data(), payload.size());
   }
 
-  bool FlushSparsePrimary(DocMap& docmap,
-                          const columnstore_writer::values_writer_f& writer,
+  bool FlushSparsePrimary(DocMap& docmap, column_output& writer,
                           doc_id_t docs_count, const Comparer& compare);
 
-  void FlushAlreadySorted(const columnstore_writer::values_writer_f& writer);
+  void FlushAlreadySorted(column_output& writer);
 
-  bool FlushDense(const columnstore_writer::values_writer_f& writer,
-                  DocMapView docmap, BufferedValues& buffer);
+  bool FlushDense(column_output& writer, DocMapView docmap,
+                  BufferedValues& buffer);
 
-  void FlushSparse(const columnstore_writer::values_writer_f& writer,
-                   DocMapView docmap);
+  void FlushSparse(column_output& writer, DocMapView docmap);
 
   Buffer data_buf_;  // FIXME use memory_file or block_pool instead
   BufferedValues index_;

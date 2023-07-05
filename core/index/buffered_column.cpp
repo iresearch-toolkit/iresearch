@@ -28,9 +28,9 @@
 
 namespace irs {
 
-bool BufferedColumn::FlushSparsePrimary(
-  DocMap& docmap, const columnstore_writer::values_writer_f& writer,
-  doc_id_t docs_count, const Comparer& compare) {
+bool BufferedColumn::FlushSparsePrimary(DocMap& docmap, column_output& writer,
+                                        doc_id_t docs_count,
+                                        const Comparer& compare) {
   auto comparer = [&](const auto& lhs, const auto& rhs) {
     return compare.Compare(GetPayload(lhs), GetPayload(rhs));
   };
@@ -71,7 +71,8 @@ bool BufferedColumn::FlushSparsePrimary(
     }
 
     docmap[min] = new_doc;
-    WriteValue(writer(new_doc), *value);
+    writer.Prepare(new_doc);
+    WriteValue(writer, *value);
     ++new_doc;
   }
 
@@ -113,16 +114,15 @@ std::pair<DocMap, field_id> BufferedColumn::Flush(
   return {std::move(docmap), column_id};
 }
 
-void BufferedColumn::FlushAlreadySorted(
-  const columnstore_writer::values_writer_f& writer) {
+void BufferedColumn::FlushAlreadySorted(column_output& writer) {
   for (const auto& value : index_) {
-    WriteValue(writer(value.key), value);
+    writer.Prepare(value.key);
+    WriteValue(writer, value);
   }
 }
 
-bool BufferedColumn::FlushDense(
-  const columnstore_writer::values_writer_f& writer, DocMapView docmap,
-  BufferedValues& buffer) {
+bool BufferedColumn::FlushDense(column_output& writer, DocMapView docmap,
+                                BufferedValues& buffer) {
   IRS_ASSERT(!docmap.empty());
 
   const size_t total = docmap.size() - 1;  // -1 for the first element
@@ -146,7 +146,8 @@ bool BufferedColumn::FlushDense(
 
   for (const auto& new_value : buffer) {
     if (doc_limits::valid(new_value.key)) {
-      WriteValue(writer(new_value.key), new_value);
+      writer.Prepare(new_value.key);
+      WriteValue(writer, new_value);
       index_.emplace_back(new_value);
     }
   };
@@ -154,8 +155,7 @@ bool BufferedColumn::FlushDense(
   return true;
 }
 
-void BufferedColumn::FlushSparse(
-  const columnstore_writer::values_writer_f& writer, DocMapView docmap) {
+void BufferedColumn::FlushSparse(column_output& writer, DocMapView docmap) {
   IRS_ASSERT(!docmap.empty());
 
   for (auto& value : index_) {

@@ -222,7 +222,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
 
     std::string name;
     size_t name_hash;
-    columnstore_writer::values_writer_f writer;
+    column_output* writer{};
     cached_column* cached{};
     mutable field_id id{field_limits::invalid()};
   };

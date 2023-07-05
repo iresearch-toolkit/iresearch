@@ -123,7 +123,7 @@ class column final : public irs::column_output {
     uint64_t* offset_{offsets_};
   };
 
-  void prepare(doc_id_t key);
+  void Prepare(doc_id_t key) final;
 
   bool empty() const noexcept { return addr_table_.empty() && !docs_count_; }
 

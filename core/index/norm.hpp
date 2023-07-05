@@ -134,11 +134,11 @@ class Norm2Writer : public FeatureWriter {
 
   void write(const field_stats& stats, doc_id_t doc,
              // cppcheck-suppress constParameter
-             columnstore_writer::values_writer_f& writer) final {
+             column_output& writer) final {
     hdr_.Reset(stats.len);
 
-    auto& stream = writer(doc);
-    WriteValue(stream, stats.len);
+    writer.Prepare(doc);
+    WriteValue(writer, stats.len);
   }
 
   void write(data_output& out, bytes_view payload) final {
