@@ -371,7 +371,7 @@ class VectorFstImpl : public VectorFstBaseImpl<S> {
   using BaseImpl = VectorFstBaseImpl<S>;
 
   
-  VectorFstImpl(const typename State::ArcAllocator &alloc = State::ArcAllocator())
+  VectorFstImpl(const typename State::ArcAllocator &alloc = {})
     : BaseImpl(alloc) {
     SetType("vector");
     SetProperties(kNullProperties | kStaticProperties);

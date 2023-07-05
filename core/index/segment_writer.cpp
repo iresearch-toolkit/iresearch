@@ -98,7 +98,6 @@ doc_id_t segment_writer::begin(DocContext ctx) {
 
 std::unique_ptr<segment_writer> segment_writer::make(
   directory& dir, const SegmentWriterOptions& options) {
-  IRS_ASSERT(options.resource_manager);
   return std::make_unique<segment_writer>(ConstructToken{}, dir, options);
 }
 

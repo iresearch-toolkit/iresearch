@@ -1003,7 +1003,6 @@ void IndexWriter::SegmentContext::Flush() {
 IndexWriter::SegmentContext::ptr IndexWriter::SegmentContext::make(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const SegmentWriterOptions& segment_writer_options) {
-  IRS_ASSERT(segment_writer_options.resource_manager);
   return std::make_unique<SegmentContext>(dir, std::move(meta_generator),
                                           segment_writer_options);
 }
