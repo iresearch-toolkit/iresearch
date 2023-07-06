@@ -194,19 +194,18 @@ struct block_t : private util::noncopyable {
   static constexpr uint16_t INVALID_LABEL{std::numeric_limits<uint16_t>::max()};
 
 #ifdef __cpp_lib_memory_resource
-  using block_index_t = std::list<prefixed_output, ManagedTypedPmrAllocator<prefixed_output>>;
+  using block_index_t =
+    std::list<prefixed_output, ManagedTypedPmrAllocator<prefixed_output>>;
 
-  block_t(IResourceManager& rm, std::pmr::memory_resource& mrc, uint64_t block_start, byte_type meta,
-          uint16_t label) noexcept
-    : index({rm, &mrc}),
-      start(block_start),
-      label(label),
-      meta(meta) {}
-#else
-  using block_index_t = std::list<prefixed_output, ManagedTypedAllocator<prefixed_output>>;
-
-  block_t(IResourceManager& rm,
+  block_t(IResourceManager& rm, std::pmr::memory_resource& mrc,
           uint64_t block_start, byte_type meta, uint16_t label) noexcept
+    : index({rm, &mrc}), start(block_start), label(label), meta(meta) {}
+#else
+  using block_index_t =
+    std::list<prefixed_output, ManagedTypedAllocator<prefixed_output>>;
+
+  block_t(IResourceManager& rm, uint64_t block_start, byte_type meta,
+          uint16_t label) noexcept
     : index({rm}), start(block_start), label(label), meta(meta) {}
 #endif
 
@@ -288,8 +287,7 @@ entry::entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
   mem_.construct<irs::postings_writer::state>(std::move(attrs));
 }
 
-entry::entry(irs::bytes_view prefix,
-             IResourceManager& rm,
+entry::entry(irs::bytes_view prefix, IResourceManager& rm,
 #ifdef __cpp_lib_memory_resource
              std::pmr::memory_resource& mrc,
 #endif
@@ -839,7 +837,8 @@ class field_writer final : public irs::field_writer {
     "block_tree_terms_index";
   static constexpr std::string_view TERMS_INDEX_EXT = "ti";
 
-  field_writer(irs::postings_writer::ptr&& pw, bool consolidation, IResourceManager& rm,
+  field_writer(irs::postings_writer::ptr&& pw, bool consolidation,
+               IResourceManager& rm,
                burst_trie::Version version = burst_trie::Version::MAX,
                uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
                uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
@@ -917,8 +916,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   const bool leaf = !block_meta::blocks(meta);
 
 #ifdef __cpp_lib_memory_resource
-  block_t::block_index_t index(
-    {resource_manager_, &block_index_buf_});
+  block_t::block_index_t index({resource_manager_, &block_index_buf_});
 #else
   block_t::block_index_t index({resource_manager_});
 #endif
@@ -3035,8 +3033,7 @@ class field_reader final : public irs::field_reader {
   template<typename FST>
   class term_reader final : public term_reader_base {
    public:
-    explicit term_reader(field_reader& owner) noexcept
-      : owner_(&owner) {}
+    explicit term_reader(field_reader& owner) noexcept : owner_(&owner) {}
     term_reader(term_reader&& rhs) = default;
     term_reader& operator=(term_reader&& rhs) = delete;
 
@@ -3048,12 +3045,11 @@ class field_reader final : public irs::field_reader {
       input_buf isb(&in);
       std::istream input(&isb);  // wrap stream to be OpenFST compliant
       if constexpr (std::is_same_v<FST, immutable_byte_fst>) {
-        fst_.reset(FST::Read(input, fst_read_options(),
-                             owner_->resource_manager_));
-      }
-      else {
-        fst_.reset(FST::Read(input, fst_read_options(),
-                             {owner_->resource_manager_}));
+        fst_.reset(
+          FST::Read(input, fst_read_options(), owner_->resource_manager_));
+      } else {
+        fst_.reset(
+          FST::Read(input, fst_read_options(), {owner_->resource_manager_}));
       }
 
       if (!fst_) {
@@ -3516,8 +3512,7 @@ namespace burst_trie {
 
 irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,
-                                   IResourceManager& rm,
-                                   bool consolidation) {
+                                   IResourceManager& rm, bool consolidation) {
   return std::make_unique<::field_writer>(std::move(writer), consolidation, rm,
                                           version);
 }

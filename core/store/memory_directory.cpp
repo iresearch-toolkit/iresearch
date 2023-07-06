@@ -409,8 +409,7 @@ void memory_index_output::operator>>(data_output& out) { file_ >> out; }
 
 memory_directory::memory_directory(directory_attributes attrs,
                                    const ResourceManagementOptions& rm)
-  : attrs_{std::move(attrs)},
-    files_{files_allocator{*rm.readers}} {}
+  : attrs_{std::move(attrs)}, files_{files_allocator{*rm.readers}} {}
 
 memory_directory::~memory_directory() noexcept {
   std::lock_guard lock{flock_};
@@ -438,7 +437,8 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
     auto& file = res.first->second;
 
     if (res.second) {
-      file = std::make_unique<memory_file>(files_.get_allocator().ResourceManager());
+      file =
+        std::make_unique<memory_file>(files_.get_allocator().ResourceManager());
     }
 
     file->reset();

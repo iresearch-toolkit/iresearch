@@ -172,7 +172,8 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   // open index data
   IRS_ASSERT(meta.codec != nullptr);
   // always instantiate to avoid unnecessary checks
-  reader->field_reader_ = meta.codec->get_field_reader(*options.resource_manager.readers);
+  reader->field_reader_ =
+    meta.codec->get_field_reader(*options.resource_manager.readers);
   if (options.index) {
     reader->field_reader_->prepare(
       ReaderState{.dir = &dir, .meta = &meta, .scorers = options.scorers});
@@ -300,7 +301,8 @@ const irs::column_reader* SegmentReaderImpl::ColumnData::Open(
   }
 
   // initialize optional columnstore
-  columnstore_reader::options columnstore_opts{.resource_manager = options.resource_manager};
+  columnstore_reader::options columnstore_opts{.resource_manager =
+                                                 options.resource_manager};
   if (options.warmup_columns) {
     columnstore_opts.warmup_column = [warmup = options.warmup_columns,
                                       &field_reader,

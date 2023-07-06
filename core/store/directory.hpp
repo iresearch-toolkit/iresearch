@@ -165,7 +165,6 @@ struct directory : private util::noncopyable {
   const directory_attributes& attributes() const noexcept {
     return const_cast<directory*>(this)->attributes();
   }
-
 };
 
 }  // namespace irs

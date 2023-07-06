@@ -86,7 +86,9 @@ namespace irs::mmap_utils {
 //////////////////////////////////////////////////////////////////////////////
 class mmap_handle : private util::noncopyable {
  public:
-  mmap_handle(const ResourceManagementOptions& rm) noexcept : rm_{rm} { init(); }
+  mmap_handle(const ResourceManagementOptions& rm) noexcept : rm_{rm} {
+    init();
+  }
 
   ~mmap_handle() noexcept { close(); }
 

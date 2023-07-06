@@ -36,11 +36,11 @@ struct SimpleMemoryAccounter : public irs::IResourceManager {
   }
   std::atomic<int64_t> memory_{0};
 };
-}
+}  // namespace
 
 TEST(memory_index_output_tests, reset) {
   SimpleMemoryAccounter memory;
-  
+
   {
     memory_file file{irs::memory_allocator::global(), memory,
                      irs::IResourceManager::kTransactions};

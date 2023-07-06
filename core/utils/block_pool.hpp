@@ -33,8 +33,8 @@
 #include "bytes_utils.hpp"
 #include "memory.hpp"
 #include "misc.hpp"
-#include "utils/assert.hpp"
 #include "resource_manager.hpp"
+#include "utils/assert.hpp"
 
 namespace irs {
 
@@ -1018,8 +1018,7 @@ class block_pool {
   using sliced_greedy_reader = block_pool_sliced_greedy_reader<my_type>;
 
   explicit block_pool(const allocator& alloc = allocator())
-    : alloc_{alloc},
-      blocks_{block_ptr_allocator{alloc_}}{
+    : alloc_{alloc}, blocks_{block_ptr_allocator{alloc_}} {
     static_assert(block_type::SIZE > 0, "block_type::SIZE == 0");
   }
 
@@ -1027,7 +1026,7 @@ class block_pool {
 
   void alloc_buffer(size_t count = 1) {
     proxy_allocator proxy_alloc{alloc_};
-    
+
     while (count--) {
       auto* p = proxy_alloc.allocate(1);
       IRS_ASSERT(p);

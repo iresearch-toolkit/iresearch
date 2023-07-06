@@ -1920,9 +1920,9 @@ bool reader::visit(const column_visitor_f& visitor) const {
   return true;
 }
 
-columnstore_writer::ptr make_writer(Version version,
-                                    const ResourceManagementOptions& resource_manager,
-                                    bool consolidation) {
+columnstore_writer::ptr make_writer(
+  Version version, const ResourceManagementOptions& resource_manager,
+  bool consolidation) {
   return std::make_unique<writer>(version,
                                   consolidation
                                     ? *resource_manager.consolidations

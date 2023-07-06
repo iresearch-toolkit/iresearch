@@ -43,7 +43,10 @@ class SkipWriter : util::noncopyable {
   // skip_0: skip interval for level 0
   // skip_n: skip interval for levels 1..n
   SkipWriter(doc_id_t skip_0, doc_id_t skip_n, IResourceManager& rm) noexcept
-    : levels_ {ManagedTypedAllocator<memory_output>{rm}}, max_levels_{0}, skip_0_{skip_0}, skip_n_{skip_n} {
+    : levels_{ManagedTypedAllocator<memory_output>{rm}},
+      max_levels_{0},
+      skip_0_{skip_0},
+      skip_n_{skip_n} {
     IRS_ASSERT(skip_0_);
   }
 

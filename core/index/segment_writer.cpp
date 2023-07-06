@@ -51,9 +51,10 @@ namespace {
 
 segment_writer::stored_column::stored_column(
   const hashed_string_view& name, columnstore_writer& columnstore,
-  IResourceManager& rm,
-  const ColumnInfoProvider& column_info,
-  std::deque<cached_column, ManagedTypedAllocator<cached_column>>& cached_columns, bool cache)
+  IResourceManager& rm, const ColumnInfoProvider& column_info,
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+    cached_columns,
+  bool cache)
   : name{name}, name_hash{name.hash()} {
   const auto info = column_info(std::string_view(name));
 
@@ -204,7 +205,8 @@ column_output& segment_writer::stream(const hashed_string_view& name,
   return columns_
     .lazy_emplace(name,
                   [this, &name](const auto& ctor) {
-                    ctor(name, *col_writer_, *resource_manager_.transactions, *column_info_, cached_columns_,
+                    ctor(name, *col_writer_, *resource_manager_.transactions,
+                         *column_info_, cached_columns_,
                          nullptr != fields_.comparator());
                   })
     ->writer(doc_id);
@@ -307,7 +309,8 @@ void segment_writer::reset(const SegmentMeta& meta) {
   seg_name_ = meta.name;
 
   if (!field_writer_) {
-    field_writer_ = meta.codec->get_field_writer(false, *resource_manager_.transactions);
+    field_writer_ =
+      meta.codec->get_field_writer(false, *resource_manager_.transactions);
     IRS_ASSERT(field_writer_);
   }
 

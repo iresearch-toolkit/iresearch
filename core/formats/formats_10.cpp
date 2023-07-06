@@ -352,8 +352,7 @@ class postings_writer_base : public irs::postings_writer {
                        uint32_t* offs_start_buf, uint32_t* offs_len_buf,
                        uint64_t* pay_skip_ptr, uint32_t* enc_buf,
                        PostingsFormat postings_format_version,
-                       TermsFormat terms_format_version,
-                       IResourceManager& rm)
+                       TermsFormat terms_format_version, IResourceManager& rm)
     : skip_{block_size, kSkipN, rm},
       doc_{docs, freqs, skip_doc, doc_skip_ptr},
       pos_{prox_buf, prox_skip_ptr},
@@ -822,7 +821,8 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
 template<typename FormatTraits>
 class postings_writer final : public postings_writer_base {
  public:
-  explicit postings_writer(PostingsFormat version, bool volatile_attributes, IResourceManager& rm)
+  explicit postings_writer(PostingsFormat version, bool volatile_attributes,
+                           IResourceManager& rm)
     : postings_writer_base{FormatTraits::block_size(),
                            std::span{doc_buf_.docs},
                            std::span{doc_buf_.freqs},
@@ -836,7 +836,8 @@ class postings_writer final : public postings_writer_base {
                            pay_buf_.skip_ptr,
                            encbuf_.buf,
                            version,
-                           TermsFormat::MAX, rm},
+                           TermsFormat::MAX,
+                           rm},
       volatile_attributes_{volatile_attributes} {
     IRS_ASSERT((postings_format_version_ >= PostingsFormat::POSITIONS_ZEROBASED
                   ? pos_limits::invalid()
@@ -3909,8 +3910,8 @@ document_mask_reader::ptr format10::get_document_mask_reader() const {
 field_writer::ptr format10::get_field_writer(bool consolidation,
                                              IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::MIN,
-                                 get_postings_writer(consolidation, rm),
-                                 rm, consolidation);
+                                 get_postings_writer(consolidation, rm), rm,
+                                 consolidation);
 }
 
 field_reader::ptr format10::get_field_reader(IResourceManager& rm) const {
@@ -3973,8 +3974,8 @@ IndexMetaWriter::ptr format11::get_index_meta_writer() const {
 field_writer::ptr format11::get_field_writer(bool consolidation,
                                              IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::ENCRYPTION_MIN,
-                                 get_postings_writer(consolidation, rm),
-                                 rm, consolidation);
+                                 get_postings_writer(consolidation, rm), rm,
+                                 consolidation);
 }
 
 segment_meta_writer::ptr format11::get_segment_meta_writer() const {
@@ -4045,8 +4046,7 @@ static const ::format13 FORMAT13_INSTANCE;
 irs::postings_writer::ptr format13::get_postings_writer(
   bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::POSITIONS_ZEROBASED, consolidation,
-    rm);
+    PostingsFormat::POSITIONS_ZEROBASED, consolidation, rm);
 }
 
 irs::postings_reader::ptr format13::get_postings_reader() const {
@@ -4084,13 +4084,14 @@ static const ::format14 FORMAT14_INSTANCE;
 irs::field_writer::ptr format14::get_field_writer(bool consolidation,
                                                   IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
-                                 get_postings_writer(consolidation, rm),
-                                 rm, consolidation);
+                                 get_postings_writer(consolidation, rm), rm,
+                                 consolidation);
 }
 
 columnstore_writer::ptr format14::get_columnstore_writer(
   bool consolidation, const ResourceManagementOptions& rm) const {
-  return columnstore2::make_writer(columnstore2::Version::kMin, rm, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::kMin, rm,
+                                   consolidation);
 }
 
 columnstore_reader::ptr format14::get_columnstore_reader() const {
@@ -4128,8 +4129,8 @@ static const ::format15 FORMAT15_INSTANCE;
 irs::field_writer::ptr format15::get_field_writer(bool consolidation,
                                                   IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::WAND,
-                                 get_postings_writer(consolidation, rm),
-                                 rm, consolidation);
+                                 get_postings_writer(consolidation, rm), rm,
+                                 consolidation);
 }
 
 irs::postings_writer::ptr format15::get_postings_writer(
@@ -4209,8 +4210,7 @@ static const ::format12simd FORMAT12SIMD_INSTANCE;
 irs::postings_writer::ptr format12simd::get_postings_writer(
   bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::POSITIONS_ONEBASED_SSE, consolidation,
-    rm);
+    PostingsFormat::POSITIONS_ONEBASED_SSE, consolidation, rm);
 }
 
 irs::postings_reader::ptr format12simd::get_postings_reader() const {
@@ -4245,8 +4245,7 @@ static const ::format13simd FORMAT13SIMD_INSTANCE;
 irs::postings_writer::ptr format13simd::get_postings_writer(
   bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::POSITIONS_ZEROBASED_SSE, consolidation,
-    rm);
+    PostingsFormat::POSITIONS_ZEROBASED_SSE, consolidation, rm);
 }
 
 irs::postings_reader::ptr format13simd::get_postings_reader() const {
@@ -4284,14 +4283,14 @@ static const ::format14simd FORMAT14SIMD_INSTANCE;
 irs::field_writer::ptr format14simd::get_field_writer(
   bool consolidation, IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::IMMUTABLE_FST,
-                                 get_postings_writer(consolidation, rm),
-                                 rm, consolidation);
+                                 get_postings_writer(consolidation, rm), rm,
+                                 consolidation);
 }
 
 columnstore_writer::ptr format14simd::get_columnstore_writer(
   bool consolidation, const ResourceManagementOptions& rm) const {
-  return columnstore2::make_writer(columnstore2::Version::kMin,
-                                   rm, consolidation);
+  return columnstore2::make_writer(columnstore2::Version::kMin, rm,
+                                   consolidation);
 }
 
 columnstore_reader::ptr format14simd::get_columnstore_reader() const {
@@ -4329,15 +4328,14 @@ static const ::format15simd FORMAT15SIMD_INSTANCE;
 irs::field_writer::ptr format15simd::get_field_writer(
   bool consolidation, IResourceManager& rm) const {
   return burst_trie::make_writer(burst_trie::Version::WAND,
-                                 get_postings_writer(consolidation, rm),
-                                 rm, consolidation);
+                                 get_postings_writer(consolidation, rm), rm,
+                                 consolidation);
 }
 
 irs::postings_writer::ptr format15simd::get_postings_writer(
   bool consolidation, IResourceManager& rm) const {
   return std::make_unique<::postings_writer<format_traits>>(
-    PostingsFormat::WAND_SSE, consolidation,
-    rm);
+    PostingsFormat::WAND_SSE, consolidation, rm);
 }
 
 irs::postings_reader::ptr format15simd::get_postings_reader() const {

@@ -34,10 +34,11 @@ class FSDirectory : public directory {
  public:
   static constexpr size_t kDefaultPoolSize = 8;
 
-  explicit FSDirectory(std::filesystem::path dir,
-                       directory_attributes attrs = directory_attributes{},
-                       size_t fd_pool_size = kDefaultPoolSize,
-                       const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
+  explicit FSDirectory(
+    std::filesystem::path dir,
+    directory_attributes attrs = directory_attributes{},
+    size_t fd_pool_size = kDefaultPoolSize,
+    const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
   const std::filesystem::path& directory() const noexcept;
 

@@ -25,9 +25,9 @@
 #include <function2/function2.hpp>
 #include <functional>
 
+#include "resource_manager.hpp"
 #include "search/scorer.hpp"
 #include "utils/bit_utils.hpp"
-#include "resource_manager.hpp"
 
 namespace irs {
 
@@ -58,11 +58,11 @@ struct WandContext {
   bool maxscore{false};
 };
 
-
 struct IndexReaderOptions {
   ColumnWarmupCallback warmup_columns;
 
-  ResourceManagementOptions resource_manager{ResourceManagementOptions::kDefault};
+  ResourceManagementOptions resource_manager{
+    ResourceManagementOptions::kDefault};
 
   // A list of wand scorers.
   ScorersView scorers;

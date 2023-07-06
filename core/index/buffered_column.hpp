@@ -44,7 +44,8 @@ struct BufferedValue {
 
 class BufferedColumn final : public column_output, private util::noncopyable {
  public:
-  using BufferedValues = std::vector<BufferedValue, ManagedTypedAllocator<BufferedValue>>;
+  using BufferedValues =
+    std::vector<BufferedValue, ManagedTypedAllocator<BufferedValue>>;
 
   explicit BufferedColumn(const ColumnInfo& info, IResourceManager& rm)
     : data_buf_{{rm}}, index_{{rm}}, info_{info}, resource_manager_{rm} {}
@@ -66,9 +67,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
     }
   }
 
-  void write_byte(byte_type b) final {
-    data_buf_ += b;
-  }
+  void write_byte(byte_type b) final { data_buf_ += b; }
 
   void write_bytes(const byte_type* b, size_t size) final {
     data_buf_.append(b, size);
@@ -146,7 +145,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
                    DocMapView docmap);
 
   irs::basic_string<irs::byte_type,
-                            irs::ManagedTypedAllocator<irs::byte_type>>
+                    irs::ManagedTypedAllocator<irs::byte_type>>
     data_buf_;  // FIXME use memory_file or block_pool instead
   BufferedValues index_;
   size_t pending_offset_{};

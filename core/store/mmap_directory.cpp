@@ -57,9 +57,9 @@ inline int GetPosixMadvice(IOAdvice advice) {
   return IR_MADVICE_NORMAL;
 }
 
-std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
-                                        IOAdvice advice,
-                                        const ResourceManagementOptions& rm) noexcept {
+std::shared_ptr<mmap_handle> OpenHandle(
+  const path_char_t* file, IOAdvice advice,
+  const ResourceManagementOptions& rm) noexcept {
   IRS_ASSERT(file);
 
   std::shared_ptr<mmap_handle> handle;
@@ -92,10 +92,9 @@ std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
   return handle;
 }
 
-std::shared_ptr<mmap_handle> OpenHandle(const std::filesystem::path& dir,
-                                        std::string_view name,
-                                        IOAdvice advice,
-                                        const ResourceManagementOptions& rm) noexcept {
+std::shared_ptr<mmap_handle> OpenHandle(
+  const std::filesystem::path& dir, std::string_view name, IOAdvice advice,
+  const ResourceManagementOptions& rm) noexcept {
   try {
     const auto path = dir / name;
 
@@ -159,8 +158,8 @@ class MMapIndexInput final : public bytes_view_input {
       return 0;
     }
 #ifdef __linux__
-    return
-        BytesInCache(static_cast<uint8_t*>(handle_->addr()), handle_->size());
+    return BytesInCache(static_cast<uint8_t*>(handle_->addr()),
+                        handle_->size());
 #else
     return 0;
 #endif

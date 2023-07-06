@@ -2307,8 +2307,8 @@ class reader final : public columnstore_reader, public context_provider {
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
   uint64_t CountMappedMemory() const final {
-      // We don't support it for old columnstore
-      return 0;
+    // We don't support it for old columnstore
+    return 0;
   }
 
   bool prepare(const directory& dir, const SegmentMeta& meta,

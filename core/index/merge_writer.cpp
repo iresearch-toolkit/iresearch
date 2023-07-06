@@ -1529,8 +1529,9 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
 }
 
 MergeWriter::MergeWriter(const ResourceManagementOptions& rm) noexcept
-  : dir_(NoopDirectory::instance()), readers_{{*rm.consolidations}}, resource_manager_{rm} {}
-
+  : dir_(NoopDirectory::instance()),
+    readers_{{*rm.consolidations}},
+    resource_manager_{rm} {}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1637,7 +1638,8 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, remapping_itrs, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress, *resource_manager_.consolidations)) {
+                   fields_itr, *scorers_features_, progress,
+                   *resource_manager_.consolidations)) {
     return false;  // Flush failure
   }
 
@@ -1770,7 +1772,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   doc_id_t next_id = doc_limits::min();
 
   auto fill_doc_map = [&, this](doc_id_map_t& doc_id_map,
-                          PrimarySortIteratorAdapter& it, doc_id_t max) {
+                                PrimarySortIteratorAdapter& it, doc_id_t max) {
     if (auto min = it.min; min < max) {
       if (it.live_docs) {
         auto& live_docs = *it.live_docs;
@@ -1868,7 +1870,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, sorting_doc_it, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress, *resource_manager_.consolidations)) {
+                   fields_itr, *scorers_features_, progress,
+                   *resource_manager_.consolidations)) {
     return false;  // flush failure
   }
 

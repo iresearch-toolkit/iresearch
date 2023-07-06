@@ -249,8 +249,10 @@ class fields_data : util::noncopyable {
  private:
   const Comparer* comparator_;
   const FeatureInfoProvider* feature_info_;
-  std::deque<field_data, ManagedTypedAllocator<field_data>> fields_;              // pointers remain valid
-  std::deque<cached_column, ManagedTypedAllocator<cached_column>>* cached_columns_;  // pointers remain valid
+  std::deque<field_data, ManagedTypedAllocator<field_data>>
+    fields_;  // pointers remain valid
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>*
+    cached_columns_;  // pointers remain valid
   const feature_set_t* cached_features_;
   fields_map fields_map_;
   postings_ref_t sorted_postings_;

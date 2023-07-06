@@ -23,6 +23,7 @@
 #pragma once
 
 #include <fst/fst-decl.h>
+
 #include "resource_manager.hpp"
 
 namespace fst {
@@ -47,7 +48,9 @@ class ImmutableFst;
 namespace irs {
 using byte_weight = fst::StringLeftWeight<byte_type>;
 using byte_arc = fst::ArcTpl<byte_weight>;
-using vector_byte_fst = fst::VectorFst<byte_arc, fst::VectorState<byte_arc, ManagedTypedAllocator<byte_arc>>>;
+using vector_byte_fst =
+  fst::VectorFst<byte_arc,
+                 fst::VectorState<byte_arc, ManagedTypedAllocator<byte_arc>>>;
 
 using byte_ref_weight = fst::fstext::StringRefWeight<byte_type>;
 using byte_ref_arc = fst::fstext::ILabelArc<byte_ref_weight, int32_t>;

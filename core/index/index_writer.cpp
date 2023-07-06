@@ -1139,7 +1139,8 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader, const ResourceManagementOptions& rm)
+  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
+  const ResourceManagementOptions& rm)
   : feature_info_{feature_info},
     column_info_{column_info},
     meta_payload_provider_{meta_payload_provider},
@@ -1529,12 +1530,13 @@ ConsolidationResult IndexWriter::Consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       const auto& pending_segment = ctx->imports_.emplace_back(
         std::move(consolidation_segment),
-        writer_limits::kMinTick,       // removals must be applied to the
-                                       // consolidated segment
-        dir.GetRefs(),                 // do not forget to track refs
-        std::move(candidates),         // consolidation context candidates
-        std::move(pending_reader),     // consolidated reader
-        std::move(committed_reader), resource_manager_);  // consolidation context meta
+        writer_limits::kMinTick,    // removals must be applied to the
+                                    // consolidated segment
+        dir.GetRefs(),              // do not forget to track refs
+        std::move(candidates),      // consolidation context candidates
+        std::move(pending_reader),  // consolidated reader
+        std::move(committed_reader),
+        resource_manager_);  // consolidation context meta
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1610,12 +1612,13 @@ ConsolidationResult IndexWriter::Consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       const auto& pending_segment = ctx->imports_.emplace_back(
         std::move(consolidation_segment),
-        writer_limits::kMinTick,       // removals must be applied to the
-                                       // consolidated segment
-        dir.GetRefs(),                 // do not forget to track refs
-        std::move(candidates),         // consolidation context candidates
-        std::move(pending_reader),     // consolidated reader
-        std::move(committed_reader), resource_manager_);  // consolidation context meta
+        writer_limits::kMinTick,    // removals must be applied to the
+                                    // consolidated segment
+        dir.GetRefs(),              // do not forget to track refs
+        std::move(candidates),      // consolidation context candidates
+        std::move(pending_reader),  // consolidated reader
+        std::move(committed_reader),
+        resource_manager_);  // consolidation context meta
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1701,7 +1704,8 @@ bool IndexWriter::Import(const IndexReader& reader,
   // moving not suited import segments to the next FlushContext in PrepareFlush
   flush->imports_.emplace_back(
     std::move(segment), tick_.load(std::memory_order_relaxed), std::move(refs),
-    std::move(imported_reader), resource_manager_);  // do not forget to track refs
+    std::move(imported_reader),
+    resource_manager_);  // do not forget to track refs
 
   return true;
 }
@@ -1799,14 +1803,12 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
 }
 
 SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
-  return {
-    .column_info = column_info_,
-    .feature_info = feature_info_,
-    .scorers_features = wand_features_,
-    .scorers = wand_scorers_,
-    .comparator = comparator_,
-    .resource_manager = resource_manager_
-  };
+  return {.column_info = column_info_,
+          .feature_info = feature_info_,
+          .scorers_features = wand_features_,
+          .scorers = wand_scorers_,
+          .comparator = comparator_,
+          .resource_manager = resource_manager_};
 }
 
 IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {

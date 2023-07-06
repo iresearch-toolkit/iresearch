@@ -139,7 +139,6 @@ using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
 // Options the the writer should use after creation
 struct IndexWriterOptions : public SegmentOptions {
-
   IndexWriterOptions() = default;
 
   // Options for snapshot management
@@ -605,12 +604,12 @@ class IndexWriter : private util::noncopyable {
           .candidates = std::move(consolidation_candidates),
           .merger = std::move(merger)} {}
 
-    ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  std::shared_ptr<const DirectoryReaderImpl>&&
-                    consolidation_reader,
-                  const ResourceManagementOptions& rm) noexcept
+    ImportContext(
+      IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
+      Consolidation&& consolidation_candidates,
+      std::shared_ptr<const SegmentReaderImpl>&& reader,
+      std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
+      const ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
@@ -643,7 +642,9 @@ class IndexWriter : private util::noncopyable {
     ImportContext(IndexSegment&& segment, uint64_t tick,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
                   const ResourceManagementOptions& rm) noexcept
-      : tick{tick}, segment{std::move(segment)}, reader{std::move(reader)},
+      : tick{tick},
+        segment{std::move(segment)},
+        reader{std::move(reader)},
         consolidation_ctx{.merger{rm}} {}
 
     ImportContext(ImportContext&&) = default;

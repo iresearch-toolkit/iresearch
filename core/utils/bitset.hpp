@@ -248,7 +248,7 @@ class dynamic_bitset {
   size_t bits_{0};   // size of bitset in bits
 };
 
-//TODO: move to tests?
+// TODO: move to tests?
 using bitset = dynamic_bitset<std::allocator<size_t>>;
 using ManagedBitset = dynamic_bitset<ManagedTypedAllocator<size_t>>;
 

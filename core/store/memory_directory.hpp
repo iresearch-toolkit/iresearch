@@ -27,11 +27,12 @@
 #include <shared_mutex>
 
 #include "directory.hpp"
+#include "resource_manager.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/attributes.hpp"
 #include "utils/string.hpp"
-#include "resource_manager.hpp"
+
 #include <absl/container/flat_hash_map.h>
 
 namespace irs {
@@ -41,8 +42,7 @@ class memory_file : public container_utils::raw_block_vector<16, 8> {
   using raw_block_vector_t = container_utils::raw_block_vector<16, 8>;
 
  public:
-  explicit memory_file(IResourceManager& rm) noexcept
-    : raw_block_vector_t{rm} {
+  explicit memory_file(IResourceManager& rm) noexcept : raw_block_vector_t{rm} {
     touch(meta_.mtime);
   }
 
@@ -283,8 +283,8 @@ class memory_directory final : public directory {
     absl::container_internal::hash_default_hash<std::string>,
     absl::container_internal::hash_default_eq<std::string>,
     files_allocator>;  // unique_ptr because
-                                                           // of
-                                                           // rename
+                       // of
+                       // rename
   using lock_map = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
@@ -299,11 +299,9 @@ class memory_directory final : public directory {
 /// @brief memory_file + memory_stream
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
-  explicit memory_output(IResourceManager& rm) noexcept
-    : file(rm) {}
+  explicit memory_output(IResourceManager& rm) noexcept : file(rm) {}
 
-  memory_output(memory_output&& rhs) noexcept
-    : file(std::move(rhs.file)) {}
+  memory_output(memory_output&& rhs) noexcept : file(std::move(rhs.file)) {}
 
   void reset() noexcept {
     file.reset();

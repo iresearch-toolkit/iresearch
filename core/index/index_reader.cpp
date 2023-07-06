@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index_reader.hpp"
+
 #include "resource_manager.hpp"
 
 namespace irs {
@@ -55,7 +56,6 @@ const EmptySubReader kEmpty;
 }  // namespace
 
 const SubReader& SubReader::empty() noexcept { return kEmpty; }
-
 
 IResourceManager IResourceManager::kNoop;
 ResourceManagementOptions ResourceManagementOptions::kDefault;

@@ -79,7 +79,8 @@ struct SegmentWriterOptions {
   const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
-  const ResourceManagementOptions& resource_manager{ResourceManagementOptions::kDefault};
+  const ResourceManagementOptions& resource_manager{
+    ResourceManagementOptions::kDefault};
 };
 
 constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
@@ -462,8 +463,8 @@ class format {
   virtual document_mask_writer::ptr get_document_mask_writer() const = 0;
   virtual document_mask_reader::ptr get_document_mask_reader() const = 0;
 
-  virtual field_writer::ptr get_field_writer(
-    bool consolidation, IResourceManager& rm) const = 0;
+  virtual field_writer::ptr get_field_writer(bool consolidation,
+                                             IResourceManager& rm) const = 0;
   virtual field_reader::ptr get_field_reader(IResourceManager& rm) const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(

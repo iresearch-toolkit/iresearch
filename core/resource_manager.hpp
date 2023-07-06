@@ -22,11 +22,11 @@
 
 #pragma once
 
+#include <memory>
+
 #include "shared.hpp"
 #include "utils/assert.hpp"
 #include "utils/misc.hpp"
-#include <memory>
-
 
 #if (defined(__clang__) || defined(_MSC_VER) || \
      defined(__GNUC__) &&                       \
@@ -64,7 +64,6 @@ struct IResourceManager {
 };
 
 struct ResourceManagementOptions {
-
   static ResourceManagementOptions kDefault;
 
   IResourceManager* transactions{&IResourceManager::kNoop};
@@ -74,11 +73,11 @@ struct ResourceManagementOptions {
   IResourceManager* cached_columns{&IResourceManager::kNoop};
 };
 
-
 template<typename Allocator>
 class ManagedAllocator : private Allocator {
  public:
-  using difference_type = typename std::allocator_traits<Allocator>::difference_type;
+  using difference_type =
+    typename std::allocator_traits<Allocator>::difference_type;
   using propagate_on_container_move_assignment = typename std::allocator_traits<
     Allocator>::propagate_on_container_move_assignment;
   using size_type = typename std::allocator_traits<Allocator>::size_type;
@@ -95,17 +94,15 @@ class ManagedAllocator : private Allocator {
   }
 
   template<typename... Args>
-  ManagedAllocator(IResourceManager& rm,
-                   Args&&... args)
+  ManagedAllocator(IResourceManager& rm, Args&&... args)
     : Allocator(std::forward<Args>(args)...), rm_{&rm} {}
 
   ManagedAllocator(ManagedAllocator&& other) noexcept
     : Allocator(std::move(other.RawAllocator())),
-    rm_{&other.ResourceManager()} {}
-
-   ManagedAllocator(const ManagedAllocator& other) noexcept
-    : Allocator(other.RawAllocator()),
       rm_{&other.ResourceManager()} {}
+
+  ManagedAllocator(const ManagedAllocator& other) noexcept
+    : Allocator(other.RawAllocator()), rm_{&other.ResourceManager()} {}
 
   ManagedAllocator& operator=(ManagedAllocator&& other) noexcept {
     static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
@@ -115,8 +112,7 @@ class ManagedAllocator : private Allocator {
 
   template<typename A>
   ManagedAllocator(const ManagedAllocator<A>& other) noexcept
-    : Allocator(other.RawAllocator()),
-      rm_{&other.ResourceManager()} {}
+    : Allocator(other.RawAllocator()), rm_{&other.ResourceManager()} {}
 
   value_type* allocate(std::size_t n) {
     rm_->Increase(sizeof(value_type) * n);
@@ -139,11 +135,11 @@ class ManagedAllocator : private Allocator {
 
   template<typename A>
   bool operator==(const ManagedAllocator<A>& other) const noexcept {
-    return RawAllocator() == other.RawAllocator() &&
-           &rm_ == &other.rm_;
+    return RawAllocator() == other.RawAllocator() && &rm_ == &other.rm_;
   }
 
   IResourceManager& ResourceManager() const noexcept { return *rm_; }
+
  private:
   IResourceManager* rm_;
 };

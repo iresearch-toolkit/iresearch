@@ -52,8 +52,7 @@ namespace {
 
 using namespace irs;
 
-const byte_block_pool EMPTY_POOL{
-  {IResourceManager::kNoop}};
+const byte_block_pool EMPTY_POOL{{IResourceManager::kNoop}};
 
 void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
   for (auto& entry : features) {
@@ -718,8 +717,8 @@ field_data::field_data(
       if (random_access || cached_features.contains(feature)) {
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
-        auto& stream = cached_columns.emplace_back(id, feature_column_info,
-                                                   std::move(finalizer), resource_manager_);
+        auto& stream = cached_columns.emplace_back(
+          id, feature_column_info, std::move(finalizer), resource_manager_);
         features_.emplace_back(
           std::move(feature_writer),
           [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
@@ -1092,12 +1091,12 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
   return true;
 }
 
-fields_data::fields_data(const FeatureInfoProvider& feature_info,
+fields_data::fields_data(
+  const FeatureInfoProvider& feature_info,
   std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
     cached_columns,
-                         const feature_set_t& cached_features,
-                         IResourceManager& rm,
-                         const Comparer* comparator /*= nullptr*/)
+  const feature_set_t& cached_features, IResourceManager& rm,
+  const Comparer* comparator /*= nullptr*/)
   : comparator_{comparator},
     feature_info_{&feature_info},
     fields_{{rm}},
