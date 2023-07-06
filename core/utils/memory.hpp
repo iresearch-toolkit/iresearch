@@ -25,7 +25,7 @@
 
 #include <memory>
 
-#include "resource_manager.hpp"
+#include "utils/managed_allocator.hpp"
 #include "shared.hpp"
 #include "utils/assert.hpp"
 #include "utils/log.hpp"

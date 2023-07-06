@@ -894,7 +894,6 @@ class field_writer final : public irs::field_writer {
   volatile_byte_ref last_term_;  // last pushed term
   std::vector<size_t> prefixes_;
   size_t fields_count_{};
-  IResourceManager& resource_manager_;
   const burst_trie::Version version_;
   const uint32_t min_block_size_;
   const uint32_t max_block_size_;
@@ -916,9 +915,10 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   const bool leaf = !block_meta::blocks(meta);
 
 #ifdef __cpp_lib_memory_resource
-  block_t::block_index_t index({resource_manager_, &block_index_buf_});
+  block_t::block_index_t index(
+    {blocks_.get_allocator().ResourceManager(), &block_index_buf_});
 #else
-  block_t::block_index_t index({resource_manager_});
+  block_t::block_index_t index({blocks_.get_allocator().ResourceManager()});
 #endif
 
   pw_->begin_block();
@@ -992,7 +992,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
 
   // add new block to the list of created blocks
   blocks_.emplace_back(bytes_view{last_term_.view().data(), prefix},
-                       resource_manager_,
+                       blocks_.get_allocator().ResourceManager(),
 #ifdef __cpp_lib_memory_resource
                        block_index_buf_,
 #endif
@@ -1113,7 +1113,6 @@ field_writer::field_writer(
     stack_(ManagedTypedAllocator<entry>(rm)),
     fst_buf_(new fst_buffer(rm)),
     prefixes_(DEFAULT_SIZE, 0),
-    resource_manager_(rm),
     version_(version),
     min_block_size_(min_block_size),
     max_block_size_(max_block_size),
@@ -3044,14 +3043,8 @@ class field_reader final : public irs::field_reader {
       // read FST
       input_buf isb(&in);
       std::istream input(&isb);  // wrap stream to be OpenFST compliant
-      if constexpr (std::is_same_v<FST, immutable_byte_fst>) {
-        fst_.reset(
-          FST::Read(input, fst_read_options(), owner_->resource_manager_));
-      } else {
-        fst_.reset(
-          FST::Read(input, fst_read_options(), {owner_->resource_manager_}));
-      }
-
+      fst_.reset(
+        FST::Read(input, fst_read_options(), {owner_->resource_manager_}));
       if (!fst_) {
         throw index_error{absl::StrCat("Failed to read term index for field '",
                                        meta().name, "'")};

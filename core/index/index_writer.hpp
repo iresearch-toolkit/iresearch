@@ -139,7 +139,7 @@ using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
 // Options the the writer should use after creation
 struct IndexWriterOptions : public SegmentOptions {
-  IndexWriterOptions() = default;
+  IndexWriterOptions() {}  // compiler requires non-default definition
 
   // Options for snapshot management
   IndexReaderOptions reader_options;

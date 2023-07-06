@@ -24,8 +24,7 @@
 
 #include "file_utils.hpp"
 #include "noncopyable.hpp"
-#include "resource_manager.hpp"
-
+#include "utils/managed_allocator.hpp"
 #if defined(_MSC_VER)
 
 #include "mman_win32.hpp"
@@ -86,7 +85,7 @@ namespace irs::mmap_utils {
 //////////////////////////////////////////////////////////////////////////////
 class mmap_handle : private util::noncopyable {
  public:
-  mmap_handle(const ResourceManagementOptions& rm) noexcept : rm_{rm} {
+  mmap_handle(IResourceManager& rm) noexcept : rm_{rm} {
     init();
   }
 
@@ -114,7 +113,7 @@ class mmap_handle : private util::noncopyable {
   size_t size_;    // file size
   ptrdiff_t fd_;   // file descriptor
   bool dontneed_;  // request to free pages on close
-  const ResourceManagementOptions& rm_;
+  IResourceManager& rm_;
 };
 
 }  // namespace irs::mmap_utils

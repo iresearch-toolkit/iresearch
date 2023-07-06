@@ -93,7 +93,7 @@ class raw_block_vector_base : private util::noncopyable {
   };
 
   explicit raw_block_vector_base(IResourceManager& rm) noexcept
-    : resource_manager_{rm} {}
+    : alloc_{rm}, buffers_{{rm}} {}
 
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept = default;
   raw_block_vector_base& operator=(raw_block_vector_base&& rhs) = delete;
@@ -107,13 +107,10 @@ class raw_block_vector_base : private util::noncopyable {
   IRS_FORCE_INLINE bool empty() const noexcept { return buffers_.empty(); }
 
   IRS_FORCE_INLINE void clear() noexcept {
-    size_t size{0};
     for (auto& buffer : buffers_) {
-      size += buffer.size;
       alloc_.deallocate(buffer.data, buffer.size);
     }
     buffers_.clear();
-    resource_manager_.Decrease(size);
   }
 
   IRS_FORCE_INLINE const buffer_t& get_buffer(size_t i) const noexcept {
@@ -124,15 +121,13 @@ class raw_block_vector_base : private util::noncopyable {
   void pop_buffer() noexcept {
     const auto& bucket = buffers_.back();
     alloc_.deallocate(bucket.data, bucket.size);
-    resource_manager_.Decrease(bucket.size);
     buffers_.pop_back();
   }
 #endif
 
  protected:
-  IRS_NO_UNIQUE_ADDRESS std::allocator<byte_type> alloc_;
-  std::vector<buffer_t> buffers_;
-  IResourceManager& resource_manager_;
+  IRS_NO_UNIQUE_ADDRESS ManagedTypedAllocator<byte_type> alloc_;
+  std::vector <buffer_t, ManagedTypedAllocator<buffer_t>> buffers_;
 };
 
 //////////////////////////////////////////////////////////////////////////////

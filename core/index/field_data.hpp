@@ -52,7 +52,7 @@ namespace analysis {
 class analyzer;
 }
 
-typedef block_pool<size_t, 8192, ManagedTypedAllocator<size_t>> int_block_pool;
+using int_block_pool = block_pool<size_t, 8192, ManagedTypedAllocator<size_t>>;
 
 namespace detail {
 class term_iterator;

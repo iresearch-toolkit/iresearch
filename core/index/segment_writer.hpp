@@ -164,8 +164,6 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   segment_writer(ConstructToken, directory& dir,
                  const SegmentWriterOptions& options) noexcept;
 
-  ~segment_writer();
-
   const column_reader* column(field_id id) const final {
     const auto it = column_ids_.find(id);
     if (it != column_ids_.end()) {

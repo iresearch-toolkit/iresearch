@@ -48,7 +48,7 @@ class BufferedColumn final : public column_output, private util::noncopyable {
     std::vector<BufferedValue, ManagedTypedAllocator<BufferedValue>>;
 
   explicit BufferedColumn(const ColumnInfo& info, IResourceManager& rm)
-    : data_buf_{{rm}}, index_{{rm}}, info_{info}, resource_manager_{rm} {}
+    : data_buf_{{rm}}, index_{{rm}}, info_{info} {}
 
   void Prepare(doc_id_t key) {
     IRS_ASSERT(key >= pending_key_);
@@ -151,7 +151,6 @@ class BufferedColumn final : public column_output, private util::noncopyable {
   size_t pending_offset_{};
   doc_id_t pending_key_{doc_limits::invalid()};
   ColumnInfo info_;
-  IResourceManager& resource_manager_;
 };
 
 }  // namespace irs

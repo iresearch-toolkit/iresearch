@@ -1535,8 +1535,8 @@ ConsolidationResult IndexWriter::Consolidate(
         dir.GetRefs(),              // do not forget to track refs
         std::move(candidates),      // consolidation context candidates
         std::move(pending_reader),  // consolidated reader
-        std::move(committed_reader),
-        resource_manager_);  // consolidation context meta
+        std::move(committed_reader),// consolidation context meta
+        resource_manager_);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1617,8 +1617,8 @@ ConsolidationResult IndexWriter::Consolidate(
         dir.GetRefs(),              // do not forget to track refs
         std::move(candidates),      // consolidation context candidates
         std::move(pending_reader),  // consolidated reader
-        std::move(committed_reader),
-        resource_manager_);  // consolidation context meta
+        std::move(committed_reader),// consolidation context meta
+        resource_manager_);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;

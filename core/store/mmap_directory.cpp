@@ -59,7 +59,7 @@ inline int GetPosixMadvice(IOAdvice advice) {
 
 std::shared_ptr<mmap_handle> OpenHandle(
   const path_char_t* file, IOAdvice advice,
-  const ResourceManagementOptions& rm) noexcept {
+  IResourceManager& rm) noexcept {
   IRS_ASSERT(file);
 
   std::shared_ptr<mmap_handle> handle;
@@ -94,7 +94,7 @@ std::shared_ptr<mmap_handle> OpenHandle(
 
 std::shared_ptr<mmap_handle> OpenHandle(
   const std::filesystem::path& dir, std::string_view name, IOAdvice advice,
-  const ResourceManagementOptions& rm) noexcept {
+  IResourceManager& rm) noexcept {
   try {
     const auto path = dir / name;
 
@@ -191,7 +191,7 @@ index_input::ptr MMapDirectory::open(std::string_view name,
     return FSDirectory::open(name, advice);
   }
 
-  auto handle = OpenHandle(directory(), name, advice, resource_manager_);
+  auto handle = OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
 
   if (!handle) {
     return nullptr;
@@ -243,7 +243,7 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
     return make_stream(std::move(handle));
   }
 
-  if (handle = OpenHandle(directory(), name, advice, resource_manager_);
+  if (handle = OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
       handle) {
     cache_.Put(name, [&]() noexcept { return handle; });
 

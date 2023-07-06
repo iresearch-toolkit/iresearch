@@ -52,7 +52,13 @@ namespace {
 
 using namespace irs;
 
-const byte_block_pool EMPTY_POOL{{IResourceManager::kNoop}};
+const byte_block_pool EMPTY_POOL{{
+#ifdef IRESEARCH_DEBUG
+        IResourceManager::kForbidden
+#else
+        IResourceManager::kNoop
+#endif
+    }};
 
 void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
   for (auto& entry : features) {

@@ -199,6 +199,7 @@ class fs_index_output : public buffered_index_output {
  protected:
   size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
+    IRS_ASSERT(handle);
     handle.reset(nullptr);
     rm_.file_descriptors->Decrease(1);
     return size;
@@ -231,7 +232,7 @@ class fs_index_output : public buffered_index_output {
   byte_type buf_[1024];
   file_utils::handle_t handle;
   crc32c crc;
-  ResourceManagementOptions rm_;
+  const ResourceManagementOptions& rm_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -431,9 +432,11 @@ fs_index_input::fs_index_input(const fs_index_input& rhs) noexcept
   buffered_index_input::reset(buf_, sizeof buf_, pos_);
 }
 
-fs_index_input ::~fs_index_input() {
+fs_index_input::~fs_index_input() {
   if (handle_) {
-    handle_->resource_manager.readers->Decrease(sizeof(pooled_fs_index_input));
+    auto* r = handle_->resource_manager.readers;
+    handle_.reset();
+    r->Decrease(sizeof(pooled_fs_index_input));
   }
 }
 
@@ -448,8 +451,9 @@ pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
 
 pooled_fs_index_input::~pooled_fs_index_input() noexcept {
   IRS_ASSERT(handle_);
-  handle_->resource_manager.readers->Decrease(sizeof(pooled_fs_index_input));
+  auto* r = handle_->resource_manager.readers;
   handle_.reset();  // release handle before the fs_pool_ is deallocated
+  r->Decrease(sizeof(pooled_fs_index_input));
 }
 
 index_input::ptr pooled_fs_index_input::reopen() const {
@@ -474,7 +478,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
     src.resource_manager.file_descriptors->DecreaseChecked(descriptors);
   };
   if (!handle->handle) {
-    src.resource_manager.file_descriptors->Increase(descriptors);
+    src.resource_manager.file_descriptors->Increase(1);
     descriptors = 1;
     handle->handle = irs::file_utils::open(
       src, get_read_mode(src.io_advice),
@@ -486,6 +490,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
       throw io_error{
         absl::StrCat("Failed to reopen input file, error: ", GET_ERROR())};
     }
+    descriptors = 0;
     handle->io_advice = src.io_advice;
   }
 
@@ -499,7 +504,6 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   handle->pos = pos;
   handle->size = src.size;
-  descriptors = 0;
   return handle;
 }
 

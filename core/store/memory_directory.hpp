@@ -282,9 +282,7 @@ class memory_directory final : public directory {
     std::string, std::unique_ptr<memory_file>,
     absl::container_internal::hash_default_hash<std::string>,
     absl::container_internal::hash_default_eq<std::string>,
-    files_allocator>;  // unique_ptr because
-                       // of
-                       // rename
+    files_allocator>;  // unique_ptr because of rename
   using lock_map = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
