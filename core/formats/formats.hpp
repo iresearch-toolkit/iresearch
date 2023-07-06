@@ -467,7 +467,7 @@ class format {
   virtual field_reader::ptr get_field_reader(IResourceManager& rm) const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, ResourceManagementOptions& rm) const = 0;
+    bool consolidation, const ResourceManagementOptions& rm) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   virtual irs::type_info::type_id type() const noexcept = 0;

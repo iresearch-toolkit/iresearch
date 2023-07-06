@@ -71,10 +71,10 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
     states_.reset();
     arcs_.reset();
     weights_.reset();
-    if (resource_manager_) {
-      resource_manager_->Decrease(sizeof(State) * nstates_ + sizeof(Arc) * narcs_ +
-                          sizeof(irs::byte_type) * weights_size_);
-    }
+    IRS_ASSERT(resource_manager_);
+    resource_manager_->Decrease(sizeof(State) * nstates_ +
+                                sizeof(Arc) * narcs_ +
+                                sizeof(irs::byte_type) * weights_size_);
   }
 
   StateId Start() const noexcept { return start_; }
@@ -131,7 +131,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   size_t weights_size_;
   StateId nstates_;  // Number of states.
   StateId start_;    // Initial state.
-  irs::IResourceManager* resource_manager_{nullptr};
+  irs::IResourceManager* resource_manager_{&IResourceManager::kNoop};
 
   ImmutableFstImpl(const ImmutableFstImpl&) = delete;
   ImmutableFstImpl& operator=(const ImmutableFstImpl&) = delete;
@@ -157,9 +157,7 @@ std::shared_ptr<ImmutableFstImpl<Arc>> ImmutableFstImpl<Arc>::Read(
   size_t allocated{nstates * sizeof(State) + narcs * sizeof(Arc) +
                    total_weight_size * sizeof(irs::byte_type)};
   irs::Finally cleanup = [&]() noexcept {
-    if (allocated) {
-      rm.Decrease(allocated);
-    }
+      rm.DecreaseChecked(allocated);
   };
 
   rm.Increase(allocated);

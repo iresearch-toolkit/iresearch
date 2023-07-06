@@ -30,7 +30,6 @@
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
 #include "utils/noncopyable.hpp"
-#include "utils/object_pool.hpp"
 #include "resource_manager.hpp"
 
 namespace irs::container_utils {
@@ -94,13 +93,13 @@ class raw_block_vector_base : private util::noncopyable {
   };
 
   explicit raw_block_vector_base(
-    IResourceManager& rm = IResourceManager::kNoop) noexcept
+    IResourceManager& rm) noexcept
     : resource_manager_{rm} {}
 
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept = default;
   raw_block_vector_base& operator=(raw_block_vector_base&& rhs) = delete;
 
-  virtual ~raw_block_vector_base() {
+  ~raw_block_vector_base() {
       clear();
   }
 
@@ -111,10 +110,9 @@ class raw_block_vector_base : private util::noncopyable {
   IRS_FORCE_INLINE bool empty() const noexcept { return buffers_.empty(); }
 
   IRS_FORCE_INLINE void clear() noexcept {
-    const auto size =
-      std::accumulate(buffers_.begin(), buffers_.end(), size_t(0),
-                      [](size_t v, const auto& buf) { return v + buf.size; });
+    size_t size{0}; 
     for (auto& buffer : buffers_) {
+      size += buffer.size;
       alloc_.deallocate(buffer.data, buffer.size);
     }
     buffers_.clear();
@@ -150,7 +148,7 @@ class raw_block_vector : public raw_block_vector_base {
   static constexpr BucketMeta<NumBuckets, SkipBits> kMeta{};
   static constexpr BucketInfo kLast = kMeta[NumBuckets - 1];
 
- explicit raw_block_vector( IResourceManager& rm = IResourceManager::kNoop) noexcept
+ explicit raw_block_vector( IResourceManager& rm) noexcept
     : raw_block_vector_base{rm} {}
 
   IRS_FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {

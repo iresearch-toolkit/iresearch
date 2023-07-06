@@ -59,7 +59,7 @@ inline int GetPosixMadvice(IOAdvice advice) {
 
 std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
                                         IOAdvice advice,
-                                        ResourceManagementOptions& rm) noexcept {
+                                        const ResourceManagementOptions& rm) noexcept {
   IRS_ASSERT(file);
 
   std::shared_ptr<mmap_handle> handle;
@@ -95,7 +95,7 @@ std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
 std::shared_ptr<mmap_handle> OpenHandle(const std::filesystem::path& dir,
                                         std::string_view name,
                                         IOAdvice advice,
-                                        ResourceManagementOptions& rm) noexcept {
+                                        const ResourceManagementOptions& rm) noexcept {
   try {
     const auto path = dir / name;
 
@@ -155,6 +155,9 @@ class MMapIndexInput final : public bytes_view_input {
   }
 
   uint64_t CountMappedMemory() const final {
+    if (handle_ == nullptr) {
+      return 0;
+    }
 #ifdef __linux__
     return
         BytesInCache(static_cast<uint8_t*>(handle_->addr()), handle_->size());
@@ -180,7 +183,7 @@ class MMapIndexInput final : public bytes_view_input {
 
 MMapDirectory::MMapDirectory(std::filesystem::path path,
                              directory_attributes attrs,
-                             ResourceManagementOptions& rm)
+                             const ResourceManagementOptions& rm)
   : FSDirectory{std::move(path), std::move(attrs), kDefaultPoolSize, rm} {}
 
 index_input::ptr MMapDirectory::open(std::string_view name,

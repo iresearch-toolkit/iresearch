@@ -907,7 +907,7 @@ class Columnstore {
 
   Columnstore(directory& dir, const SegmentMeta& meta,
               const MergeWriter::FlushProgress& progress,
-              ResourceManagementOptions& rm)
+              const ResourceManagementOptions& rm)
     : progress_{progress, kProgressStepColumn} {
     auto writer = meta.codec->get_columnstore_writer(true, rm);
     writer->prepare(dir, meta);
@@ -1528,7 +1528,7 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter(ResourceManagementOptions& rm) noexcept
+MergeWriter::MergeWriter(const ResourceManagementOptions& rm) noexcept
   : dir_(NoopDirectory::instance()), readers_{{*rm.consolidations}}, resource_manager_{rm} {}
 
 

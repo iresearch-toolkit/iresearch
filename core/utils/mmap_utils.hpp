@@ -86,7 +86,7 @@ namespace irs::mmap_utils {
 //////////////////////////////////////////////////////////////////////////////
 class mmap_handle : private util::noncopyable {
  public:
-  mmap_handle(ResourceManagementOptions& rm) noexcept : rm_{rm} { init(); }
+  mmap_handle(const ResourceManagementOptions& rm) noexcept : rm_{rm} { init(); }
 
   ~mmap_handle() noexcept { close(); }
 
@@ -112,7 +112,7 @@ class mmap_handle : private util::noncopyable {
   size_t size_;    // file size
   ptrdiff_t fd_;   // file descriptor
   bool dontneed_;  // request to free pages on close
-  ResourceManagementOptions& rm_;
+  const ResourceManagementOptions& rm_;
 };
 
 }  // namespace irs::mmap_utils

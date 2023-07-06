@@ -121,9 +121,7 @@ class ManagedAllocator : private Allocator {
   value_type* allocate(std::size_t n) {
     rm_->Increase(sizeof(value_type) * n);
     Finally cleanup = [&]() noexcept {
-      if (n) {
-        rm_->Decrease(sizeof(value_type) * n);
-      }
+      rm_->DecreaseChecked(sizeof(value_type) * n);
     };
     auto res = Allocator::allocate(n);
     n = 0;
@@ -131,8 +129,8 @@ class ManagedAllocator : private Allocator {
   }
 
   void deallocate(value_type* p, std::size_t n) {
-    rm_->Decrease(sizeof(value_type) * n);
     Allocator::deallocate(p, n);
+    rm_->Decrease(sizeof(value_type) * n);
   }
 
   const Allocator& RawAllocator() const noexcept {

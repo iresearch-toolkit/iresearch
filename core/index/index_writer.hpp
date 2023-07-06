@@ -610,7 +610,7 @@ class IndexWriter : private util::noncopyable {
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
                   std::shared_ptr<const DirectoryReaderImpl>&&
                     consolidation_reader,
-                  ResourceManagementOptions& rm) noexcept
+                  const ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
@@ -623,7 +623,7 @@ class IndexWriter : private util::noncopyable {
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   Consolidation&& consolidation_candidates,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  ResourceManagementOptions& rm) noexcept
+                  const ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
@@ -633,7 +633,7 @@ class IndexWriter : private util::noncopyable {
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  ResourceManagementOptions& rm) noexcept
+                  const ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
@@ -642,7 +642,7 @@ class IndexWriter : private util::noncopyable {
 
     ImportContext(IndexSegment&& segment, uint64_t tick,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  ResourceManagementOptions& rm) noexcept
+                  const ResourceManagementOptions& rm) noexcept
       : tick{tick}, segment{std::move(segment)}, reader{std::move(reader)},
         consolidation_ctx{.merger{rm}} {}
 

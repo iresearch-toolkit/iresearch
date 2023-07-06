@@ -162,14 +162,12 @@ class fs_index_output : public buffered_index_output {
  public:
   DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
 
-  static index_output::ptr open(const path_char_t* name, ResourceManagementOptions& rm) noexcept {
+  static index_output::ptr open(const path_char_t* name, const ResourceManagementOptions& rm) noexcept {
     IRS_ASSERT(name);
     size_t descriptors{1};
     rm.file_descriptors->Increase(descriptors);
     irs::Finally cleanup = [&]() noexcept {
-      if (descriptors) {
-        rm.file_descriptors->Decrease(descriptors);
-      }
+      rm.file_descriptors->DecreaseChecked(descriptors);
     };
     file_utils::handle_t handle(
       file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
@@ -219,8 +217,9 @@ class fs_index_output : public buffered_index_output {
   }
 
  private:
-  fs_index_output(file_utils::handle_t&& handle, ResourceManagementOptions& rm) noexcept
+  fs_index_output(file_utils::handle_t&& handle, const ResourceManagementOptions& rm) noexcept
     : handle(std::move(handle)), rm_{rm} {
+    IRS_ASSERT(this->handle);
     rm_.transactions->Increase(sizeof(fs_index_output));
     buffered_index_output::reset(buf_, sizeof buf_);
   }
@@ -270,15 +269,13 @@ class fs_index_input : public buffered_index_input {
   ptr dup() const override { return ptr(new fs_index_input(*this)); }
 
   static index_input::ptr open(const path_char_t* name, size_t pool_size,
-                               IOAdvice advice, ResourceManagementOptions& rm) noexcept {
+                               IOAdvice advice, const ResourceManagementOptions& rm) noexcept {
     IRS_ASSERT(name);
 
     size_t descriptors{1};
     rm.file_descriptors->Increase(descriptors); 
     irs::Finally cleanup = [&]() noexcept {
-      if (descriptors) {
-        rm.file_descriptors->Decrease(descriptors);
-      }
+      rm.file_descriptors->DecreaseChecked(descriptors);
     };
 
     auto handle = file_handle::make(rm);
@@ -359,18 +356,16 @@ class fs_index_input : public buffered_index_input {
   struct file_handle {
     using ptr = std::shared_ptr<file_handle>;
 
-    static ptr make(ResourceManagementOptions& rm) {
+    static ptr make(const ResourceManagementOptions& rm) {
       return std::make_shared<file_handle>(rm);
     }
 
-    file_handle(ResourceManagementOptions& rm) : resource_manager{rm} {}
+    file_handle(const ResourceManagementOptions& rm) : resource_manager{rm} {}
     
     ~file_handle() {
       const bool release = handle.get() != nullptr;
       handle.reset();
-      if (release) {
-        resource_manager.file_descriptors->Decrease(1);
-      }
+      resource_manager.file_descriptors->DecreaseChecked(release);
     }
     operator void*() const { return handle.get(); }
 
@@ -378,29 +373,14 @@ class fs_index_input : public buffered_index_input {
     size_t size{};               /* file size */
     size_t pos{};                /* current file position*/
     IOAdvice io_advice{IOAdvice::NORMAL};
-    ResourceManagementOptions& resource_manager;
+    const ResourceManagementOptions& resource_manager;
   };
 
-  fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
-    : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
-    IRS_ASSERT(handle_);
-    handle_->resource_manager.readers->Increase(sizeof(fs_index_input));
-    buffered_index_input::reset(buf_, sizeof buf_, 0);
-  }
+  fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept;
 
-  fs_index_input(const fs_index_input& rhs) noexcept
-    : handle_(rhs.handle_),
-      pool_size_(rhs.pool_size_),
-      pos_(rhs.file_pointer()) {
-    IRS_ASSERT(handle_);
-    handle_->resource_manager.readers->Increase(sizeof(fs_index_input));
-    buffered_index_input::reset(buf_, sizeof buf_, pos_);
-  }
+  fs_index_input(const fs_index_input& rhs) noexcept;
 
-  ~fs_index_input() {
-    IRS_ASSERT(handle_);
-    handle_->resource_manager.readers->Decrease(sizeof(fs_index_input));
-  }
+  ~fs_index_input();
 
   fs_index_input& operator=(const fs_index_input&) = delete;
 
@@ -423,7 +403,7 @@ class pooled_fs_index_input final : public fs_index_input {
   struct builder {
     using ptr = std::unique_ptr<file_handle>;
 
-    static std::unique_ptr<file_handle> make(ResourceManagementOptions& rm) {
+    static std::unique_ptr<file_handle> make(const ResourceManagementOptions& rm) {
       return std::make_unique<file_handle>(rm);
     }
   };
@@ -435,6 +415,27 @@ class pooled_fs_index_input final : public fs_index_input {
   file_handle::ptr reopen(const file_handle& src) const;
 };
 
+fs_index_input::fs_index_input(file_handle::ptr&& handle,
+                             size_t pool_size) noexcept
+  : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
+  IRS_ASSERT(handle_);
+  handle_->resource_manager.readers->Increase(sizeof(pooled_fs_index_input));
+  buffered_index_input::reset(buf_, sizeof buf_, 0);
+}
+
+fs_index_input::fs_index_input(const fs_index_input& rhs) noexcept
+  : handle_(rhs.handle_), pool_size_(rhs.pool_size_), pos_(rhs.file_pointer()) {
+  IRS_ASSERT(handle_);
+  handle_->resource_manager.readers->Increase(sizeof(pooled_fs_index_input));
+  buffered_index_input::reset(buf_, sizeof buf_, pos_);
+}
+
+fs_index_input ::~fs_index_input() {
+  if (handle_) {
+    handle_->resource_manager.readers->Decrease(sizeof(pooled_fs_index_input));
+  }
+}
+
 index_input::ptr fs_index_input::reopen() const {
   return std::make_unique<pooled_fs_index_input>(*this);
 }
@@ -445,6 +446,8 @@ pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
 }
 
 pooled_fs_index_input::~pooled_fs_index_input() noexcept {
+  IRS_ASSERT(handle_);
+  handle_->resource_manager.readers->Decrease(sizeof(pooled_fs_index_input));
   handle_.reset();  // release handle before the fs_pool_ is deallocated
 }
 
@@ -466,9 +469,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
     const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace(src.resource_manager)};
   size_t descriptors{0};
   irs::Finally cleanup = [&]() noexcept {
-    if (descriptors) {
-      src.resource_manager.file_descriptors->Decrease(descriptors);
-    }
+    src.resource_manager.file_descriptors->DecreaseChecked(descriptors);
   };
   if (!handle->handle) {
     src.resource_manager.file_descriptors->Increase(descriptors);
@@ -501,7 +502,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 }
 
 FSDirectory::FSDirectory(std::filesystem::path dir, directory_attributes attrs,
-                         size_t fd_pool_size, ResourceManagementOptions& rm)
+                         size_t fd_pool_size, const ResourceManagementOptions& rm)
   : resource_manager_{rm},
     attrs_{std::move(attrs)},
     dir_{std::move(dir)},

@@ -30,7 +30,6 @@
 #include "store/data_output.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
-#include "resource_manager.hpp"
 
 namespace irs {
 

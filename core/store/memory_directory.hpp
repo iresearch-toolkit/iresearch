@@ -247,7 +247,7 @@ class memory_directory final : public directory {
  public:
   explicit memory_directory(
     directory_attributes attributes = directory_attributes{},
-    ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
+    const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
   ~memory_directory() noexcept final;
 
@@ -276,12 +276,13 @@ class memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
+  using files_allocator = ManagedTypedAllocator<
+    std::pair<const std::string, std::unique_ptr<memory_file>>>;
   using file_map = absl::flat_hash_map<
     std::string, std::unique_ptr<memory_file>,
     absl::container_internal::hash_default_hash<std::string>,
     absl::container_internal::hash_default_eq<std::string>,
-    ManagedTypedAllocator<std::pair<
-      const std::string, std::unique_ptr<memory_file>>>>;  // unique_ptr because
+    files_allocator>;  // unique_ptr because
                                                            // of
                                                            // rename
   using lock_map = absl::flat_hash_set<std::string>;
@@ -299,11 +300,10 @@ class memory_directory final : public directory {
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
   explicit memory_output(IResourceManager& rm) noexcept
-    : file(rm), stream(file) {}
+    : file(rm) {}
 
   memory_output(memory_output&& rhs) noexcept
-    : file(std::move(rhs.file)),
-      stream(file) {}
+    : file(std::move(rhs.file)) {}
 
   void reset() noexcept {
     file.reset();
@@ -311,7 +311,7 @@ struct memory_output {
   }
 
   memory_file file;
-  memory_index_output stream;
+  memory_index_output stream{file};
 };
 
 }  // namespace irs

@@ -257,7 +257,7 @@ ConsolidationPolicy MakePolicy(const ConsolidateBytesAccum& options) {
 
 ConsolidationPolicy MakePolicy(const ConsolidateCount& options) {
   return [options](Consolidation& candidates, const IndexReader& reader,
-                   const ConsolidatingSegments& consolidating_segments) {
+                   const ConsolidatingSegments&) {
     // merge first 'threshold' segments
     for (size_t i = 0, count = std::min(options.threshold, reader.size());
          i < count; ++i) {

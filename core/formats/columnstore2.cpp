@@ -339,9 +339,7 @@ class column_base : public column_reader, private util::noncopyable {
       auto released = static_cast<int64_t>(column_data_.size());
       // force memory release
       column_data_ = {};
-      if (released) {
-        resource_manager_cached_.Decrease(released);
-      }
+      resource_manager_cached_.DecreaseChecked(released);
     }
   }
 
@@ -1923,7 +1921,7 @@ bool reader::visit(const column_visitor_f& visitor) const {
 }
 
 columnstore_writer::ptr make_writer(Version version,
-                                    ResourceManagementOptions& resource_manager,
+                                    const ResourceManagementOptions& resource_manager,
                                     bool consolidation) {
   return std::make_unique<writer>(version,
                                   consolidation
