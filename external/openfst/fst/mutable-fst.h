@@ -21,19 +21,21 @@
 #ifndef FST_MUTABLE_FST_H_
 #define FST_MUTABLE_FST_H_
 
-#include <fst/expanded-fst.h>
-#include <fst/log.h>
 #include <sys/types.h>
 
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
 #include <istream>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <utility>
 #include <vector>
+
+#include <fst/log.h>
+#include <fstream>
+
+#include <fst/expanded-fst.h>
+#include <string_view>
 
 namespace fst {
 
@@ -49,14 +51,14 @@ std::false_type has_alloc_helper(...);
 
 template<typename T>
 struct has_alloc : decltype(has_alloc_helper<T>(0)) {};
-}  // namespace detail
+}  // namespace
 
-template<class Arc>
+template <class Arc>
 struct MutableArcIteratorData;
 
 // Abstract interface for an expanded FST which also supports mutation
 // operations. To modify arcs, use MutableArcIterator.
-template<class A>
+template <class A>
 class MutableFst : public ExpandedFst<A> {
  public:
   using Arc = A;
@@ -164,7 +166,8 @@ class MutableFst : public ExpandedFst<A> {
                           std::string_view convert_type = "vector") {
     if (convert == false) {
       if (!source.empty()) {
-        std::ifstream strm(source, std::ios_base::in | std::ios_base::binary);
+        std::ifstream strm(source,
+                                std::ios_base::in | std::ios_base::binary);
         if (!strm) {
           LOG(ERROR) << "MutableFst::Read: Can't open file: " << source;
           return nullptr;
@@ -199,14 +202,14 @@ class MutableFst : public ExpandedFst<A> {
 // Mutable arc iterator interface, templated on the Arc definition. This is
 // used by mutable arc iterator specializations that are returned by the
 // InitMutableArcIterator MutableFst method.
-template<class Arc>
+template <class Arc>
 class MutableArcIteratorBase : public ArcIteratorBase<Arc> {
  public:
   // Sets current arc.
   virtual void SetValue(const Arc &) = 0;
 };
 
-template<class Arc>
+template <class Arc>
 struct MutableArcIteratorData {
   std::unique_ptr<MutableArcIteratorBase<Arc>> base;  // Specific iterator.
 };
@@ -226,7 +229,7 @@ struct MutableArcIteratorData {
 //   }
 //
 // This version requires function calls.
-template<class FST>
+template <class FST>
 class MutableArcIterator {
  public:
   using Arc = typename FST::Arc;
@@ -266,24 +269,24 @@ class MutableArcIterator {
 namespace internal {
 
 // MutableFst<A> case: abstract methods.
-template<class Arc>
+template <class Arc>
 inline typename Arc::Weight Final(const MutableFst<Arc> &fst,
                                   typename Arc::StateId s) {
   return fst.Final(s);
 }
 
-template<class Arc>
+template <class Arc>
 inline ssize_t NumArcs(const MutableFst<Arc> &fst, typename Arc::StateId s) {
   return fst.NumArcs(s);
 }
 
-template<class Arc>
+template <class Arc>
 inline ssize_t NumInputEpsilons(const MutableFst<Arc> &fst,
                                 typename Arc::StateId s) {
   return fst.NumInputEpsilons(s);
 }
 
-template<class Arc>
+template <class Arc>
 inline ssize_t NumOutputEpsilons(const MutableFst<Arc> &fst,
                                  typename Arc::StateId s) {
   return fst.NumOutputEpsilons(s);
@@ -294,9 +297,10 @@ inline ssize_t NumOutputEpsilons(const MutableFst<Arc> &fst,
 // A useful alias when using StdArc.
 using StdMutableFst = MutableFst<StdArc>;
 
+
 // This is a helper class template useful for attaching a MutableFst interface
 // to its implementation, handling reference counting and COW semantics.
-template<class Impl, class FST = MutableFst<typename Impl::Arc>>
+template <class Impl, class FST = MutableFst<typename Impl::Arc>>
 class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
  public:
   using Arc = typename Impl::Arc;
@@ -420,10 +424,10 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
   using ImplToExpandedFst<Impl, FST>::InputSymbols;
 
   explicit ImplToMutableFst(std::shared_ptr<Impl> impl)
-    : ImplToExpandedFst<Impl, FST>(impl) {}
+      : ImplToExpandedFst<Impl, FST>(impl) {}
 
   ImplToMutableFst(const ImplToMutableFst &fst, bool safe)
-    : ImplToExpandedFst<Impl, FST>(fst, safe) {}
+      : ImplToExpandedFst<Impl, FST>(fst, safe) {}
 
   void MutateCheck() {
     if (!Unique()) {
