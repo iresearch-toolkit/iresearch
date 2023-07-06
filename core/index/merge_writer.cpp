@@ -1772,7 +1772,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   doc_id_t next_id = doc_limits::min();
 
   auto fill_doc_map = [&](doc_id_map_t& doc_id_map,
-                                PrimarySortIteratorAdapter& it, doc_id_t max) {
+                          PrimarySortIteratorAdapter& it, doc_id_t max) {
     if (auto min = it.min; min < max) {
       if (it.live_docs) {
         auto& live_docs = *it.live_docs;

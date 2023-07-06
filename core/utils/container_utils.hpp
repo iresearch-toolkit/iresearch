@@ -127,7 +127,7 @@ class raw_block_vector_base : private util::noncopyable {
 
  protected:
   IRS_NO_UNIQUE_ADDRESS ManagedTypedAllocator<byte_type> alloc_;
-  std::vector <buffer_t, ManagedTypedAllocator<buffer_t>> buffers_;
+  std::vector<buffer_t, ManagedTypedAllocator<buffer_t>> buffers_;
 };
 
 //////////////////////////////////////////////////////////////////////////////

@@ -26,7 +26,6 @@
 
 namespace irs {
 struct IResourceManager {
-
   static IResourceManager kNoop;
 #ifdef IRESEARCH_DEBUG
   static IResourceManager kForbidden;

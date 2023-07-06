@@ -32,8 +32,8 @@
 #include <memory_resource>
 #endif
 
-#include "resource_manager.hpp"
 #include "misc.hpp"
+#include "resource_manager.hpp"
 
 namespace irs {
 template<typename Allocator, typename Manager = IResourceManager>
@@ -128,4 +128,4 @@ struct ManagedTypedPmrAllocator
   using ManagedAllocator<std::pmr::polymorphic_allocator<T>>::ManagedAllocator;
 };
 #endif
-} // namespace irs
+}  // namespace irs

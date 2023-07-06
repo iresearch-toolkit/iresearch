@@ -1530,12 +1530,12 @@ ConsolidationResult IndexWriter::Consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       const auto& pending_segment = ctx->imports_.emplace_back(
         std::move(consolidation_segment),
-        writer_limits::kMinTick,    // removals must be applied to the
-                                    // consolidated segment
-        dir.GetRefs(),              // do not forget to track refs
-        std::move(candidates),      // consolidation context candidates
-        std::move(pending_reader),  // consolidated reader
-        std::move(committed_reader),// consolidation context meta
+        writer_limits::kMinTick,      // removals must be applied to the
+                                      // consolidated segment
+        dir.GetRefs(),                // do not forget to track refs
+        std::move(candidates),        // consolidation context candidates
+        std::move(pending_reader),    // consolidated reader
+        std::move(committed_reader),  // consolidation context meta
         resource_manager_);
 
       // filter out merged segments for the next commit
@@ -1612,12 +1612,12 @@ ConsolidationResult IndexWriter::Consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       const auto& pending_segment = ctx->imports_.emplace_back(
         std::move(consolidation_segment),
-        writer_limits::kMinTick,    // removals must be applied to the
-                                    // consolidated segment
-        dir.GetRefs(),              // do not forget to track refs
-        std::move(candidates),      // consolidation context candidates
-        std::move(pending_reader),  // consolidated reader
-        std::move(committed_reader),// consolidation context meta
+        writer_limits::kMinTick,      // removals must be applied to the
+                                      // consolidated segment
+        dir.GetRefs(),                // do not forget to track refs
+        std::move(candidates),        // consolidation context candidates
+        std::move(pending_reader),    // consolidated reader
+        std::move(committed_reader),  // consolidation context meta
         resource_manager_);
 
       // filter out merged segments for the next commit
