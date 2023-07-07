@@ -22,21 +22,10 @@
 
 #pragma once
 
-#if (defined(__clang__) || defined(_MSC_VER) || \
-     defined(__GNUC__) &&                       \
-       (__GNUC__ > 8))  // GCCs <=  don't have "<version>" header
-#include <version>
-#endif
-
-#ifdef __cpp_lib_memory_resource
-#include <memory_resource>
-#endif
-
 #include "misc.hpp"
-#include "resource_manager.hpp"
 
 namespace irs {
-template<typename Allocator, typename Manager = IResourceManager>
+template<typename Allocator, typename Manager>
 class ManagedAllocator : private Allocator {
  public:
   using difference_type =
@@ -45,20 +34,13 @@ class ManagedAllocator : private Allocator {
     Allocator>::propagate_on_container_move_assignment;
   using propagate_on_container_copy_assignment = typename std::allocator_traits<
     Allocator>::propagate_on_container_copy_assignment;
-  using propagate_on_container_swap =
-    typename std::allocator_traits<Allocator>::propagate_on_container_swap;
+  using propagate_on_container_swap = std::true_type;
+   // Note: If swap would be needed this code should do the trick.
+   // But beware of UB in case of non equal allocators.
+   // std::conditional_t<std::is_empty_v<Allocator>, std::true_type,
+   // typename std::allocator_traits<Allocator>::propagate_on_container_swap>;
   using size_type = typename std::allocator_traits<Allocator>::size_type;
   using value_type = typename std::allocator_traits<Allocator>::value_type;
-
-  explicit ManagedAllocator()
-    : rm_{
-#ifdef IRESEARCH_DEBUG
-        &Manager::kForbidden
-#else
-        &Manager::kNoop
-#endif
-      } {
-  }
 
   template<typename... Args>
   ManagedAllocator(Manager& rm, Args&&... args)
@@ -77,16 +59,16 @@ class ManagedAllocator : private Allocator {
   }
 
   ManagedAllocator& operator=(const ManagedAllocator& other) noexcept {
-    static_cast<Allocator&>(*this) = static_cast<Allocator&>(other);
+    static_cast<Allocator&>(*this) = other;
     rm_ = &other.ResourceManager();
     return *this;
   }
 
   template<typename A>
-  ManagedAllocator(const ManagedAllocator<A>& other) noexcept
-    : Allocator(other.RawAllocator()), rm_{&other.ResourceManager()} {}
+  ManagedAllocator(const ManagedAllocator<A, Manager>& other) noexcept
+    : Allocator(other.RawAllocator()), rm_(&other.ResourceManager()) {}
 
-  value_type* allocate(std::size_t n) {
+  value_type* allocate(size_type n) {
     rm_->Increase(sizeof(value_type) * n);
     Finally cleanup = [&]() noexcept {
       rm_->DecreaseChecked(sizeof(value_type) * n);
@@ -96,7 +78,7 @@ class ManagedAllocator : private Allocator {
     return res;
   }
 
-  void deallocate(value_type* p, std::size_t n) noexcept {
+  void deallocate(value_type* p, size_type n) noexcept {
     Allocator::deallocate(p, n);
     rm_->Decrease(sizeof(value_type) * n);
   }
@@ -106,7 +88,7 @@ class ManagedAllocator : private Allocator {
   }
 
   template<typename A>
-  bool operator==(const ManagedAllocator<A>& other) const noexcept {
+  bool operator==(const ManagedAllocator<A, Manager>& other) const noexcept {
     return RawAllocator() == other.RawAllocator() && &rm_ == &other.rm_;
   }
 
@@ -115,17 +97,4 @@ class ManagedAllocator : private Allocator {
  private:
   Manager* rm_;
 };
-
-template<typename T>
-struct ManagedTypedAllocator : ManagedAllocator<std::allocator<T>> {
-  using ManagedAllocator<std::allocator<T>>::ManagedAllocator;
-};
-
-#ifdef __cpp_lib_polymorphic_allocator
-template<typename T>
-struct ManagedTypedPmrAllocator
-  : ManagedAllocator<std::pmr::polymorphic_allocator<T>> {
-  using ManagedAllocator<std::pmr::polymorphic_allocator<T>>::ManagedAllocator;
-};
-#endif
 }  // namespace irs

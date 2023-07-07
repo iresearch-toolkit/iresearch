@@ -24,7 +24,7 @@
 
 #include <fst/fst-decl.h>
 
-#include "utils/managed_allocator.hpp"
+#include "resource_manager.hpp"
 
 namespace fst {
 

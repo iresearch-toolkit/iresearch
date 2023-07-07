@@ -22,7 +22,7 @@
 
 #include "index_reader.hpp"
 
-#include "utils/managed_allocator.hpp"
+#include "resource_manager.hpp"
 
 namespace irs {
 namespace {
