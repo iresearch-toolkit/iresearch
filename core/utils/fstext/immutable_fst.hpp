@@ -131,7 +131,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   size_t weights_size_;
   StateId nstates_;  // Number of states.
   StateId start_;    // Initial state.
-  irs::IResourceManager* resource_manager_{&IResourceManager::kNoop};
+  irs::IResourceManager* resource_manager_{&irs::IResourceManager::kNoop};
 
   ImmutableFstImpl(const ImmutableFstImpl&) = delete;
   ImmutableFstImpl& operator=(const ImmutableFstImpl&) = delete;

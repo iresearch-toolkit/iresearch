@@ -90,7 +90,7 @@ void LogCallback(irs::SourceLocation&& source, std::string_view message) {
 }
 
 // Custom ICU data
-irs::mmap_utils::mmap_handle icu_data;
+irs::mmap_utils::mmap_handle icu_data{irs::IResourceManager::kNoop};
 
 struct IterationTracker final : ::testing::Environment {
   static uint32_t sIteration;

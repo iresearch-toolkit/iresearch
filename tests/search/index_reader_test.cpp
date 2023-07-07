@@ -111,11 +111,16 @@ TEST(directory_reader_test, open_newest_index) {
     irs::document_mask_reader::ptr get_document_mask_reader() const final {
       return nullptr;
     }
-    irs::field_writer::ptr get_field_writer(bool) const final {
+    irs::field_writer::ptr get_field_writer(bool,
+                                            irs::IResourceManager&) const final {
       return nullptr;
     }
-    irs::field_reader::ptr get_field_reader() const final { return nullptr; }
-    irs::columnstore_writer::ptr get_columnstore_writer(bool) const final {
+    irs::field_reader::ptr get_field_reader(
+      irs::IResourceManager&) const final {
+      return nullptr;
+    }
+    irs::columnstore_writer::ptr get_columnstore_writer(
+      bool, const irs::ResourceManagementOptions& rm) const final {
       return nullptr;
     }
     irs::columnstore_reader::ptr get_columnstore_reader() const final {

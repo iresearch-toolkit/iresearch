@@ -516,8 +516,7 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
   };
 
   tests::rot13_encryption enc(16);
-  irs::memory_output out(irs::IResourceManager::kNoopManager,
-                         irs::IResourceManager::kTransactions);
+  irs::memory_output out(irs::IResourceManager::kNoop);
 
   bstring encrypted_header;
   encrypted_header.resize(enc.header_length());

@@ -104,8 +104,7 @@ void assert_fst_read_write(const std::string& resource) {
   SCOPED_TRACE(resource);
   auto expected_data = read_fst_input(test_base::resource(resource));
   ASSERT_FALSE(expected_data.empty());
-
-  irs::vector_byte_fst fst;
+  irs::vector_byte_fst fst{{irs::IResourceManager::kNoop}};
   fst_stats stats;
 
   // build fst
@@ -135,16 +134,17 @@ void assert_fst_read_write(const std::string& resource) {
   }
   ASSERT_EQ(expected_stats, stats);
 
-  irs::memory_output out(irs::IResourceManager::kNoopManager,
-                         irs::IResourceManager::kTransactions);
+  SimpleMemoryAccounter writer_memory;
+  irs::memory_output out(writer_memory);
   irs::immutable_byte_fst::Write(fst, out.stream, stats);
   out.stream.flush();
-
+  ASSERT_GT(writer_memory.counter_, 0);
+  SimpleMemoryAccounter immutable_fst_memory;
   irs::memory_index_input in(out.file);
   std::unique_ptr<irs::immutable_byte_fst> read_fst(
-    irs::immutable_byte_fst::Read(in));
+    irs::immutable_byte_fst::Read(in, immutable_fst_memory));
   ASSERT_EQ(out.file.length(), in.file_pointer());
-
+  ASSERT_GT(immutable_fst_memory.counter_, 0);
   ASSERT_NE(nullptr, read_fst);
   ASSERT_EQ(fst::kExpanded, read_fst->Properties(fst::kExpanded, false));
   ASSERT_EQ(fst.NumStates(), read_fst->NumStates());
@@ -199,6 +199,8 @@ void assert_fst_read_write(const std::string& resource) {
       ASSERT_EQ(irs::bytes_view(actual_weight), irs::bytes_view(data.second));
     }
   }
+  read_fst.reset();
+  ASSERT_EQ(0, immutable_fst_memory.counter_);
 }
 
 TEST(fst_builder_test, static_const) {
@@ -216,66 +218,70 @@ TEST(fst_builder_test, build_fst) {
                      return lhs.first < rhs.first;
                    }));
 
-  irs::vector_byte_fst fst;
-  fst_stats stats;
-
-  // build fst
+  SimpleMemoryAccounter memory;
   {
-    fst_byte_builder builder(fst);
-    builder.reset();
+    irs::vector_byte_fst fst{{memory}};
+    fst_stats stats;
 
-    for (auto& data : expected_data) {
-      builder.add(data.first,
-                  irs::byte_weight(data.second.begin(), data.second.end()));
-    }
+    // build fst
+    {
+      fst_byte_builder builder(fst);
+      builder.reset();
 
-    stats = builder.finish();
-  }
-
-  fst_stats expected_stats;
-  for (fst::StateIterator<irs::vector_byte_fst> states(fst); !states.Done();
-       states.Next()) {
-    const auto stateid = states.Value();
-    ++expected_stats.num_states;
-    expected_stats.num_arcs += fst.NumArcs(stateid);
-    expected_stats(fst.Final(stateid));
-    for (fst::ArcIterator<irs::vector_byte_fst> arcs(fst, stateid);
-         !arcs.Done(); arcs.Next()) {
-      expected_stats(arcs.Value().weight);
-    }
-  }
-  ASSERT_EQ(expected_stats, stats);
-
-  // check fst
-  {
-    typedef fst::SortedMatcher<irs::vector_byte_fst> sorted_matcher_t;
-    typedef fst::explicit_matcher<sorted_matcher_t>
-      matcher_t;  // avoid implicit loops
-
-    ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
-    ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
-
-    for (auto& data : expected_data) {
-      irs::byte_weight actual_weight;
-
-      auto state = fst.Start();  // root node
-
-      matcher_t matcher(fst, fst::MATCH_INPUT);
-      for (irs::byte_type c : data.first) {
-        matcher.SetState(state);
-        ASSERT_TRUE(matcher.Find(c));
-
-        const auto& arc = matcher.Value();
-        ASSERT_EQ(c, arc.ilabel);
-        actual_weight.PushBack(arc.weight);
-        state = arc.nextstate;
+      for (auto& data : expected_data) {
+        builder.add(data.first,
+                    irs::byte_weight(data.second.begin(), data.second.end()));
       }
 
-      actual_weight = fst::Times(actual_weight, fst.Final(state));
+      stats = builder.finish();
+    }
+    ASSERT_GT(memory.counter_, 0);
+    fst_stats expected_stats;
+    for (fst::StateIterator<irs::vector_byte_fst> states(fst); !states.Done();
+         states.Next()) {
+      const auto stateid = states.Value();
+      ++expected_stats.num_states;
+      expected_stats.num_arcs += fst.NumArcs(stateid);
+      expected_stats(fst.Final(stateid));
+      for (fst::ArcIterator<irs::vector_byte_fst> arcs(fst, stateid);
+           !arcs.Done(); arcs.Next()) {
+        expected_stats(arcs.Value().weight);
+      }
+    }
+    ASSERT_EQ(expected_stats, stats);
 
-      ASSERT_EQ(irs::bytes_view(actual_weight), irs::bytes_view(data.second));
+    // check fst
+    {
+      typedef fst::SortedMatcher<irs::vector_byte_fst> sorted_matcher_t;
+      typedef fst::explicit_matcher<sorted_matcher_t>
+        matcher_t;  // avoid implicit loops
+
+      ASSERT_EQ(fst::kILabelSorted, fst.Properties(fst::kILabelSorted, true));
+      ASSERT_TRUE(fst.Final(fst_byte_builder::final).Empty());
+
+      for (auto& data : expected_data) {
+        irs::byte_weight actual_weight;
+
+        auto state = fst.Start();  // root node
+
+        matcher_t matcher(fst, fst::MATCH_INPUT);
+        for (irs::byte_type c : data.first) {
+          matcher.SetState(state);
+          ASSERT_TRUE(matcher.Find(c));
+
+          const auto& arc = matcher.Value();
+          ASSERT_EQ(c, arc.ilabel);
+          actual_weight.PushBack(arc.weight);
+          state = arc.nextstate;
+        }
+
+        actual_weight = fst::Times(actual_weight, fst.Final(state));
+
+        ASSERT_EQ(irs::bytes_view(actual_weight), irs::bytes_view(data.second));
+      }
     }
   }
+  ASSERT_EQ(memory.counter_, 0);
 }
 
 TEST(fst_builder_test, build_fst_bug) {
@@ -293,7 +299,7 @@ TEST(fst_builder_test, build_fst_bug) {
     expected_data.begin(), expected_data.end(),
     [](const auto& lhs, const auto& rhs) { return lhs.first < rhs.first; }));
 
-  irs::vector_byte_fst fst;
+  irs::vector_byte_fst fst{{irs::IResourceManager::kNoop}};
   fst_stats stats;
 
   // build fst

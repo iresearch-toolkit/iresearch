@@ -32,19 +32,23 @@
 
 using namespace irs;
 
+namespace {
+constexpr size_t block_size = 32768;
+}
+
 namespace tests {
 namespace detail {
 
 bytes_view to_bytes_view(const std::string& s) {
   return bytes_view(reinterpret_cast<const byte_type*>(s.c_str()), s.size());
 }
-
 }  // namespace detail
 
 void insert_find_core(const std::vector<std::string>& src) {
-  const size_t block_size = 32768;
-  block_pool<byte_type, block_size> pool;
-  block_pool<byte_type, block_size>::inserter writer(pool.begin());
+  SimpleMemoryAccounter memory;
+  auto pool =
+    std::make_unique<byte_block_pool>(ManagedTypedAllocator<byte_type>{memory});
+  byte_block_pool::inserter writer(pool->begin());
   postings bh(writer);
 
   for (size_t i = 0; i < src.size(); ++i) {
@@ -58,6 +62,8 @@ void insert_find_core(const std::vector<std::string>& src) {
     ASSERT_NE(nullptr, res.first);
     ASSERT_FALSE(res.second);
   }
+  ASSERT_GT(memory.counter_, 0);
+  ASSERT_EQ(memory.counter_ % block_size, 0);
 
   ASSERT_EQ(src.size(), bh.size());
   ASSERT_FALSE(bh.empty());
@@ -83,17 +89,23 @@ void insert_find_core(const std::vector<std::string>& src) {
     auto res = bh.emplace(detail::to_bytes_view(too_long_str));
     ASSERT_FALSE(res.second);
   }
+  ASSERT_GT(memory.counter_, 0);
+  ASSERT_EQ(memory.counter_ % block_size, 0);
+  pool.reset();
+  ASSERT_EQ(memory.counter_, 0);
 }
 
 }  // namespace tests
 
 TEST(postings_tests, ctor) {
-  const uint32_t block_size = 32768;
-  block_pool<byte_type, block_size> pool;
-  block_pool<byte_type, block_size>::inserter writer(pool.begin());
+  SimpleMemoryAccounter memory;
+  auto pool =
+    std::make_unique<byte_block_pool>(ManagedTypedAllocator<byte_type>{memory});
+  byte_block_pool::inserter writer(pool->begin());
   postings bh(writer);
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
+  ASSERT_EQ(0, memory.counter_);
 }
 
 TEST(postings_tests, insert_find) {
@@ -352,36 +364,43 @@ TEST(postings_tests, insert_find) {
 }
 
 TEST(postings_tests, clear) {
-  const uint32_t block_size = 32768;
-  block_pool<byte_type, block_size> pool;
-  block_pool<byte_type, block_size>::inserter writer(pool.begin());
+  SimpleMemoryAccounter memory;
+  auto pool =
+    std::make_unique<byte_block_pool>(ManagedTypedAllocator<byte_type>{memory});
+  byte_block_pool::inserter writer(pool->begin());
   postings bh(writer);
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
-
+  ASSERT_EQ(0, memory.counter_);
   [[maybe_unused]] auto res =
     bh.emplace(tests::detail::to_bytes_view("string"));
   ASSERT_FALSE(bh.empty());
   ASSERT_EQ(1, bh.size());
-
+  ASSERT_GT(memory.counter_, block_size);
   bh.clear();
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
+  pool->clear();
+  ASSERT_EQ(0, memory.counter_);
+  pool.reset();
+  ASSERT_EQ(0, memory.counter_);
 }
 
 TEST(postings_tests, slice_alignment) {
-  const uint32_t block_size = 32768;
-  block_pool<byte_type, block_size> pool;
+  SimpleMemoryAccounter memory;
+  auto pool =
+    std::make_unique<byte_block_pool>(ManagedTypedAllocator<byte_type>{memory});
   std::vector<const posting*> sorted_postings;
 
   // add initial block
-  pool.alloc_buffer();
-
+  pool->alloc_buffer();
+  const auto mem = memory.counter_;
+  ASSERT_GT(mem, 0);
   // read_write on new block pool
   {
     // seek to the 1 item before the end of the first block
-    auto begin = pool.seek(block_size - 1);  // begin of the slice chain
-    block_pool<byte_type, block_size>::inserter writer(begin);
+    auto begin = pool->seek(block_size - 1);  // begin of the slice chain
+    byte_block_pool::inserter writer(begin);
     postings bh(writer);
 
     ASSERT_TRUE(bh.empty());
@@ -395,13 +414,15 @@ TEST(postings_tests, slice_alignment) {
     ASSERT_EQ(1, sorted_postings.size());
     ASSERT_EQ(tests::detail::to_bytes_view("string0"),
               (*sorted_postings.begin())->term);
+    ASSERT_EQ(mem, memory.counter_);
   }
+  
 
   // read_write on reused pool
   {
     // seek to the 1 item before the end of the first block
-    auto begin = pool.seek(block_size - 1);  // begin of the slice chain
-    block_pool<byte_type, block_size>::inserter writer(begin);
+    auto begin = pool->seek(block_size - 1);  // begin of the slice chain
+    byte_block_pool::inserter writer(begin);
     postings bh(writer);
 
     ASSERT_TRUE(bh.empty());
@@ -415,5 +436,6 @@ TEST(postings_tests, slice_alignment) {
     ASSERT_EQ(1, sorted_postings.size());
     ASSERT_EQ(tests::detail::to_bytes_view("string1"),
               (*sorted_postings.begin())->term);
+    ASSERT_EQ(mem, memory.counter_);
   }
 }

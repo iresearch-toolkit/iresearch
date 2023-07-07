@@ -47,14 +47,6 @@ using namespace std::literals;
 
 namespace {
 
-struct SimpleMemoryAccounter : public irs::IResourceManager {
-  bool ChangeCachedColumnsMemory(int64_t value) noexcept override {
-    cached_columns_.fetch_add(value);
-    return true;
-  }
-  std::atomic<int64_t> cached_columns_{0};
-};
-
 bool visit(const irs::column_reader& reader,
            const std::function<bool(irs::doc_id_t, irs::bytes_view)>& visitor) {
   auto it = reader.iterator(irs::ColumnHint::kConsolidation);
@@ -7732,7 +7724,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
 TEST_P(index_test_case, segment_consolidate_long_running) {
   const auto blocker = [this](std::string_view segment) {
     irs::memory_directory dir;
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer = codec()->get_columnstore_writer(
+      false, irs::ResourceManagementOptions::kDefault);
 
     irs::SegmentMeta meta;
     meta.name = segment;
@@ -17027,8 +17020,9 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
   auto doc4 = gen.next();
 
   bool cache = false;
-  SimpleMemoryAccounter memory;
-  irs::IndexWriterOptions opts{memory};
+  TestResourceManager memory;
+  irs::IndexWriterOptions opts;
+  opts.reader_options.resource_manager = memory.options;
   opts.reader_options.warmup_columns =
     [&](const irs::SegmentMeta& /*meta*/, const irs::field_reader& /*fields*/,
         const irs::column_reader& /*column*/) { return cache; };
@@ -17036,25 +17030,31 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
 
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end()));
+  const auto tr1 = memory.transactions.counter_;
+  ASSERT_GT(tr1, 0);
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end()));
+  const auto tr2 = memory.transactions.counter_;
+  ASSERT_GT(tr2, tr1);
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
+  const auto tr3 = memory.transactions.counter_;
+  ASSERT_GT(tr3, tr3);
   writer->Commit();
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory.cached_columns_);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
 
   // empty commit: enable cache
   cache = true;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory.cached_columns_);
+  EXPECT_LT(0, memory.cached_columns.counter_);
 
   // empty commit: disable cache
   cache = false;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory.cached_columns_);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
 
   // not empty commit: enable cache
   cache = true;
@@ -17062,7 +17062,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory.cached_columns_);
+  EXPECT_LT(0, memory.cached_columns.counter_);
 
   // not empty commit: disable cache
   cache = false;
@@ -17070,5 +17070,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc4->stored.begin(), doc4->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory.cached_columns_);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
+  writer.reset();
+  ASSERT_EQ(0, memory.transactions.counter_);
 }

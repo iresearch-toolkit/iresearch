@@ -28,22 +28,12 @@
 
 using namespace irs;
 
-namespace {
-struct SimpleMemoryAccounter : public irs::IResourceManager {
-  bool ChangeTransactionPinnedMemory(int64_t value) noexcept override {
-    memory_.fetch_add(value);
-    return true;
-  }
-  std::atomic<int64_t> memory_{0};
-};
-}  // namespace
 
 TEST(memory_index_output_tests, reset) {
   SimpleMemoryAccounter memory;
 
   {
-    memory_file file{irs::memory_allocator::global(), memory,
-                     irs::IResourceManager::kTransactions};
+    memory_file file{memory};
     memory_index_output out(file);
 
     std::vector<std::string> data0{
@@ -68,14 +58,14 @@ TEST(memory_index_output_tests, reset) {
     std::for_each(data0.begin(), data0.end(), [&out](const std::string& s) {
       write_string(out, s.c_str(), s.size());
     });
-    ASSERT_GT(memory.memory_, 0);
+    ASSERT_GT(memory.counter_, 0);
     out.flush();
     out.reset();
     // file memory is not released
-    ASSERT_GT(memory.memory_, 0);
+    ASSERT_GT(memory.counter_, 0);
     file.reset();
     // file memory is not released
-    ASSERT_GT(memory.memory_, 0);
+    ASSERT_GT(memory.counter_, 0);
 
     std::vector<std::string> data1{
       "OqywZv86RA4t0tz", "jxk02FZHJDLcYtf", "y7Q9yvg7mcI2Lfs",
@@ -101,7 +91,7 @@ TEST(memory_index_output_tests, reset) {
     });
 
     out.flush();
-    ASSERT_GT(memory.memory_, 0);
+    ASSERT_GT(memory.counter_, 0);
     memory_index_input in{file};
     std::for_each(data1.begin(), data1.end(), [&in](const std::string& s) {
       const std::string cs = read_string<std::string>(in);
@@ -109,11 +99,11 @@ TEST(memory_index_output_tests, reset) {
     });
     out.reset();
     file.clear();
-    ASSERT_EQ(memory.memory_, 0);
+    ASSERT_EQ(memory.counter_, 0);
     std::for_each(data1.begin(), data1.end(), [&out](const std::string& s) {
       write_string(out, s.c_str(), s.size());
     });
-    ASSERT_GT(memory.memory_, 0);
+    ASSERT_GT(memory.counter_, 0);
   }
-  ASSERT_EQ(memory.memory_, 0);
+  ASSERT_EQ(memory.counter_, 0);
 }
