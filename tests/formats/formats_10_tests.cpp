@@ -107,7 +107,8 @@ class format_10_test_case : public tests::format_test_case {
     auto codec =
       std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
     ASSERT_NE(nullptr, codec);
-    auto writer = codec->get_postings_writer(false, irs::IResourceManager::kNoop);
+    auto writer =
+      codec->get_postings_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     irs::postings_writer::state
       term_meta;  // must be destroyed before the writer

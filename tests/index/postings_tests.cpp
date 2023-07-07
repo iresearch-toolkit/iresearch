@@ -416,7 +416,6 @@ TEST(postings_tests, slice_alignment) {
               (*sorted_postings.begin())->term);
     ASSERT_EQ(mem, memory.counter_);
   }
-  
 
   // read_write on reused pool
   {

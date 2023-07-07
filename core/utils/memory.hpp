@@ -25,10 +25,10 @@
 
 #include <memory>
 
+#include "resource_manager.hpp"
 #include "shared.hpp"
 #include "utils/assert.hpp"
 #include "utils/log.hpp"
-#include "resource_manager.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/type_utils.hpp"

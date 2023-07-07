@@ -35,10 +35,10 @@ class ManagedAllocator : private Allocator {
   using propagate_on_container_copy_assignment = typename std::allocator_traits<
     Allocator>::propagate_on_container_copy_assignment;
   using propagate_on_container_swap = std::true_type;
-   // Note: If swap would be needed this code should do the trick.
-   // But beware of UB in case of non equal allocators.
-   // std::conditional_t<std::is_empty_v<Allocator>, std::true_type,
-   // typename std::allocator_traits<Allocator>::propagate_on_container_swap>;
+  // Note: If swap would be needed this code should do the trick.
+  // But beware of UB in case of non equal allocators.
+  // std::conditional_t<std::is_empty_v<Allocator>, std::true_type,
+  // typename std::allocator_traits<Allocator>::propagate_on_container_swap>;
   using size_type = typename std::allocator_traits<Allocator>::size_type;
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 

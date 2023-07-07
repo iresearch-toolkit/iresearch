@@ -28,7 +28,6 @@
 
 using namespace irs;
 
-
 TEST(memory_index_output_tests, reset) {
   SimpleMemoryAccounter memory;
 

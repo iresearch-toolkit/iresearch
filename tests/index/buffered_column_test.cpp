@@ -286,7 +286,8 @@ struct BufferedColumnTestCase
 
 TEST_P(BufferedColumnTestCase, Ctor) {
   SimpleMemoryAccounter memory;
-  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false}, memory);
+  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false},
+                          memory);
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
   ASSERT_EQ(0, col.MemoryActive());
@@ -296,7 +297,8 @@ TEST_P(BufferedColumnTestCase, Ctor) {
 
 TEST_P(BufferedColumnTestCase, FlushEmpty) {
   TestResourceManager memory;
-  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false}, memory.cached_columns);
+  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false},
+                          memory.cached_columns);
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
   ASSERT_EQ(0, col.MemoryActive());
@@ -376,7 +378,8 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
     writer->prepare(dir, segment);
 
     irs::BufferedColumn col(
-      {irs::type<irs::compression::none>::get(), {}, true}, memory.cached_columns);
+      {irs::type<irs::compression::none>::get(), {}, true},
+      memory.cached_columns);
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());
@@ -453,13 +456,14 @@ TEST_P(BufferedColumnTestCase, Sort) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer(false, irs::ResourceManagementOptions::kDefault);
+    auto writer = codec->get_columnstore_writer(
+      false, irs::ResourceManagementOptions::kDefault);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
 
-    irs::BufferedColumn col(
-      {irs::type<irs::compression::lz4>::get(), {}, true}, irs::IResourceManager::kNoop);
+    irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, true},
+                            irs::IResourceManager::kNoop);
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());

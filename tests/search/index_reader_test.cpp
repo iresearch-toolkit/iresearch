@@ -111,8 +111,8 @@ TEST(directory_reader_test, open_newest_index) {
     irs::document_mask_reader::ptr get_document_mask_reader() const final {
       return nullptr;
     }
-    irs::field_writer::ptr get_field_writer(bool,
-                                            irs::IResourceManager&) const final {
+    irs::field_writer::ptr get_field_writer(
+      bool, irs::IResourceManager&) const final {
       return nullptr;
     }
     irs::field_reader::ptr get_field_reader(

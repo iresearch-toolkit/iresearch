@@ -36,7 +36,6 @@
 
 #include "utils/managed_allocator.hpp"
 
-
 namespace irs {
 struct IResourceManager {
   static IResourceManager kNoop;
@@ -91,7 +90,8 @@ struct ManagedTypedAllocator
 template<typename T>
 struct ManagedTypedPmrAllocator
   : ManagedAllocator<std::pmr::polymorphic_allocator<T>, IResourceManager> {
-  using ManagedAllocator<std::pmr::polymorphic_allocator<T>, IResourceManager>::ManagedAllocator;
+  using ManagedAllocator<std::pmr::polymorphic_allocator<T>,
+                         IResourceManager>::ManagedAllocator;
 };
 #endif
 
