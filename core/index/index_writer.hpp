@@ -919,7 +919,8 @@ class IndexWriter : private util::noncopyable {
   ActiveSegmentContext GetSegmentContext();
 
   // Return options for segment_writer
-  SegmentWriterOptions GetSegmentWriterOptions(bool consolidation) const noexcept;
+  SegmentWriterOptions GetSegmentWriterOptions(
+    bool consolidation) const noexcept;
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;
