@@ -91,7 +91,8 @@ std::shared_ptr<irs::directory> MakePhysicalDirectory(
     std::filesystem::create_directories(dir_path);
 
     auto dir = std::make_unique<Impl>(std::forward<Args>(args)..., dir_path,
-                                      std::move(attrs));
+                                      std::move(attrs),
+                                      test->GetResourceManager().options);
 
     return {dir.release(), [dir_path = std::move(dir_path)](irs::directory* p) {
               std::filesystem::remove_all(dir_path);

@@ -183,7 +183,7 @@ class MMapIndexInput final : public bytes_view_input {
 MMapDirectory::MMapDirectory(std::filesystem::path path,
                              directory_attributes attrs,
                              const ResourceManagementOptions& rm)
-  : FSDirectory{std::move(path), std::move(attrs), kDefaultPoolSize, rm} {}
+  : FSDirectory{std::move(path), std::move(attrs), rm} {}
 
 index_input::ptr MMapDirectory::open(std::string_view name,
                                      IOAdvice advice) const noexcept {

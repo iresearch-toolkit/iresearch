@@ -508,8 +508,8 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 }
 
 FSDirectory::FSDirectory(std::filesystem::path dir, directory_attributes attrs,
-                         size_t fd_pool_size,
-                         const ResourceManagementOptions& rm)
+                         const ResourceManagementOptions& rm,
+                         size_t fd_pool_size)
   : resource_manager_{rm},
     attrs_{std::move(attrs)},
     dir_{std::move(dir)},
