@@ -16886,16 +16886,13 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  uint64_t fd_count = 0;
-  uint64_t pinned_memory = 0;
-
   irs::IndexWriterOptions writer_options;
+  writer_options.reader_options.resource_manager = GetResourceManager().options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto reader = writer->GetSnapshot();
     EXPECT_EQ(reader->CountMappedMemory(), 0);
-    EXPECT_EQ(fd_count, 0);
-    EXPECT_EQ(pinned_memory, 0);
+    EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 0);
   }
 
   {
@@ -16932,15 +16929,13 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   AssertSnapshotEquality(*writer);
   auto reader = irs::DirectoryReader(directory);
   if (dynamic_cast<irs::memory_directory*>(&directory) == nullptr) {
-    EXPECT_EQ(fd_count, 3);
+    EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 3);
   }
 #ifdef __linux__
   if (dynamic_cast<irs::MMapDirectory*>(&directory) != nullptr) {
-    EXPECT_GT(reader.CountMMappedMemory(), 0);
-    mmaped_memory = 0;
+    EXPECT_GT(reader.CountMappedMemory(), 0);
   }
 #endif
-  EXPECT_EQ(pinned_memory, 0);
 
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
