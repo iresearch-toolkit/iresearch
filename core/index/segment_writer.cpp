@@ -163,10 +163,12 @@ bool segment_writer::remove(doc_id_t doc_id) noexcept {
 segment_writer::segment_writer(ConstructToken, directory& dir,
                                const SegmentWriterOptions& options) noexcept
   : scorers_{options.scorers},
+    cached_columns_{{options.resource_manager}},
     sort_{options.column_info, {}, options.resource_manager},
     docs_context_{{options.resource_manager}},
     fields_{options.feature_info, cached_columns_, options.scorers_features,
             options.resource_manager, options.comparator},
+    columns_{{options.resource_manager}},
     column_info_{&options.column_info},
     dir_{dir} {
   docs_mask_.set = decltype(docs_mask_.set){{options.resource_manager}};
