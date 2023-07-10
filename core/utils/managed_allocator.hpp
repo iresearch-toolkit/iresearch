@@ -57,7 +57,7 @@ class ManagedAllocator : private Allocator {
 
   ManagedAllocator& operator=(ManagedAllocator&& other) noexcept(
     std::is_nothrow_move_assignable_v<Allocator>) {
-    static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
+    static_cast<Allocator&>(*this) = std::move(other);
     rm_ = &other.ResourceManager();
     return *this;
   }
