@@ -396,21 +396,17 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
   {
     auto reader = irs::DirectoryReader(dir(), codec());
 
-    uint64_t fd_count = 0;
-    uint64_t pinned_memory;
-
     if (dynamic_cast<irs::memory_directory*>(&dir()) == nullptr) {
       auto name = codec()->type()().name();
       if (name.starts_with("1_4") || name.starts_with("1_5")) {
-        EXPECT_EQ(fd_count, 5) << name;
+        EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 5) << name;
       } else {
-        EXPECT_EQ(fd_count, 4) << name;
+        EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 4) << name;
       }
     }
 #ifdef __linux__
     if (dynamic_cast<irs::MMapDirectory*>(&dir()) != nullptr) {
       EXPECT_GT(reader->CountMappedMemory(), 0);
-      mmaped_memory = 0;
     }
 #endif
 

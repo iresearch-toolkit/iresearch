@@ -77,22 +77,6 @@ class test_env {
   static std::filesystem::path res_path_;  // res_dir_/test_detail.xml
 };
 
-class test_base : public test_env, public ::testing::Test {
- public:
-  const std::filesystem::path& test_dir() const { return test_dir_; }
-  const std::filesystem::path& test_case_dir() const { return test_case_dir_; }
-
- protected:
-  test_base() = default;
-  void SetUp() override;
-  void TearDown() override;
-
- private:
-  std::filesystem::path test_dir_;       // res_dir_/<test-name>
-  std::filesystem::path test_case_dir_;  // test_dir/<test-case-name>
-  bool artifacts_;
-};
-
 struct SimpleMemoryAccounter : public irs::IResourceManager {
   bool Increase(size_t value) noexcept override {
     counter_ += value;
@@ -115,6 +99,26 @@ struct TestResourceManager {
                                          .consolidations = &consolidations,
                                          .file_descriptors = &file_descriptors,
                                          .cached_columns = &cached_columns};
+};
+
+class test_base : public test_env, public ::testing::Test {
+ public:
+  const std::filesystem::path& test_dir() const { return test_dir_; }
+  const std::filesystem::path& test_case_dir() const { return test_case_dir_; }
+  TestResourceManager& GetResourceManager() const noexcept {
+    return resource_manager_;
+  }
+
+ protected:
+  test_base() = default;
+  void SetUp() override;
+  void TearDown() override;
+
+ private:
+  std::filesystem::path test_dir_;       // res_dir_/<test-name>
+  std::filesystem::path test_case_dir_;  // test_dir/<test-case-name>
+  bool artifacts_;
+  mutable TestResourceManager resource_manager_;
 };
 
 template<typename T>

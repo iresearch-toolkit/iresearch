@@ -63,12 +63,14 @@ std::shared_ptr<irs::directory> memory_directory(
 
 std::shared_ptr<irs::directory> fs_directory(const test_base* test,
                                              irs::directory_attributes attrs) {
-  return MakePhysicalDirectory<irs::FSDirectory>(test, std::move(attrs));
+  return MakePhysicalDirectory<irs::FSDirectory>(
+    test, std::move(attrs), test->GetResourceManager().options);
 }
 
 std::shared_ptr<irs::directory> mmap_directory(
   const test_base* test, irs::directory_attributes attrs) {
-  return MakePhysicalDirectory<irs::MMapDirectory>(test, std::move(attrs));
+  return MakePhysicalDirectory<irs::MMapDirectory>(
+    test, std::move(attrs), test->GetResourceManager().options);
 }
 
 #ifdef IRESEARCH_URING
