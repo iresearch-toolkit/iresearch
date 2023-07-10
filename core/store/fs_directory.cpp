@@ -199,14 +199,14 @@ class fs_index_output : public buffered_index_output {
  protected:
   size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
-    IRS_ASSERT(handle);
+    IRS_ASSERT(handle_);
     handle_.reset(nullptr);
     rm_.file_descriptors->Decrease(1);
     return size;
   }
 
   void flush_buffer(const byte_type* b, size_t len) final {
-    IRS_ASSERT(handle);
+    IRS_ASSERT(handle_);
 
     const auto len_written =
       irs::file_utils::fwrite(handle_.get(), b, sizeof(byte_type) * len);

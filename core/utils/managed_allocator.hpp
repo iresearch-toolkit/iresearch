@@ -47,26 +47,31 @@ class ManagedAllocator : private Allocator {
     std::is_nothrow_constructible_v<Allocator, Args&&...>)
     : Allocator(std::forward<Args>(args)...), rm_(&rm) {}
 
-  ManagedAllocator(ManagedAllocator&& other) noexcept
+  ManagedAllocator(ManagedAllocator&& other) noexcept(
+    std::is_nothrow_move_constructible_v<Allocator>)
+    : Allocator(std::move(other)), rm_(&other.ResourceManager()) {}
+
+  ManagedAllocator(const ManagedAllocator& other) noexcept(
+    std::is_nothrow_copy_constructible_v<Allocator>)
     : Allocator(other), rm_(&other.ResourceManager()) {}
 
-  ManagedAllocator(const ManagedAllocator& other) noexcept
-    : Allocator(other), rm_(&other.ResourceManager()) {}
-
-  ManagedAllocator& operator=(ManagedAllocator&& other) noexcept {
+  ManagedAllocator& operator=(ManagedAllocator&& other) noexcept(
+    std::is_nothrow_move_assignable_v<Allocator>) {
     static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
     rm_ = &other.ResourceManager();
     return *this;
   }
 
-  ManagedAllocator& operator=(const ManagedAllocator& other) noexcept {
+  ManagedAllocator& operator=(const ManagedAllocator& other) noexcept(
+    std::is_nothrow_copy_assignable_v<Allocator>) {
     static_cast<Allocator&>(*this) = other;
     rm_ = &other.ResourceManager();
     return *this;
   }
 
   template<typename A>
-  ManagedAllocator(const ManagedAllocator<A, Manager>& other) noexcept
+  ManagedAllocator(const ManagedAllocator<A, Manager>& other) noexcept(
+    std::is_nothrow_copy_constructible_v<Allocator>)
     : Allocator(other.RawAllocator()), rm_(&other.ResourceManager()) {}
 
   value_type* allocate(size_type n) {
