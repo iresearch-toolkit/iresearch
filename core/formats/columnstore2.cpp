@@ -1428,10 +1428,9 @@ column::column(const context& ctx, field_id id, const type_info& compression,
     compression_{compression},
     deflater_{std::move(deflater)},
     finalizer_{std::move(finalizer)},
-    resource_manager_{resource_manager},
     blocks_{{resource_manager}},
-    data_{resource_manager_},
-    docs_{resource_manager_},
+    data_{resource_manager},
+    docs_{resource_manager},
     id_{id} {
   IRS_ASSERT(field_limits::valid(id_));
 }
