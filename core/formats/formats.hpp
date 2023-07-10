@@ -79,8 +79,7 @@ struct SegmentWriterOptions {
   const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
-  const ResourceManagementOptions& resource_manager{
-    ResourceManagementOptions::kDefault};
+  IResourceManager& resource_manager{IResourceManager::kNoop};
 };
 
 // Represents metadata associated with the term

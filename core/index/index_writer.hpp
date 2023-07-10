@@ -611,7 +611,7 @@ class IndexWriter : private util::noncopyable {
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)},
-        consolidation_ctx{.merger{rm}} {}
+        consolidation_ctx{.merger{*rm.consolidations}} {}
 
     ImportContext(ImportContext&&) = default;
 
@@ -919,7 +919,7 @@ class IndexWriter : private util::noncopyable {
   ActiveSegmentContext GetSegmentContext();
 
   // Return options for segment_writer
-  SegmentWriterOptions GetSegmentWriterOptions() const noexcept;
+  SegmentWriterOptions GetSegmentWriterOptions(bool consolidation) const noexcept;
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;

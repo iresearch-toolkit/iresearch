@@ -51,12 +51,12 @@ class MergeWriter : public util::noncopyable {
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 
-  MergeWriter(const ResourceManagementOptions& rm) noexcept;
+  MergeWriter(IResourceManager& rm) noexcept;
 
   explicit MergeWriter(directory& dir,
                        const SegmentWriterOptions& options) noexcept
     : dir_{dir},
-      readers_{{*options.resource_manager.consolidations}},
+      readers_{{options.resource_manager}},
       column_info_{&options.column_info},
       feature_info_{&options.feature_info},
       scorers_{options.scorers},

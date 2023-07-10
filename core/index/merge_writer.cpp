@@ -1527,8 +1527,8 @@ MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter(const ResourceManagementOptions& rm) noexcept
-  : dir_(NoopDirectory::instance()), readers_{{*rm.consolidations}} {}
+MergeWriter::MergeWriter(IResourceManager& rm) noexcept
+  : dir_(NoopDirectory::instance()), readers_{{rm}} {}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();

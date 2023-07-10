@@ -956,9 +956,9 @@ IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const SegmentWriterOptions& options)
   : dir_{dir},
-    queries_{{*options.resource_manager.transactions}},
-    flushed_{{*options.resource_manager.transactions}},
-    flushed_docs_{{*options.resource_manager.transactions}},
+    queries_{{options.resource_manager}},
+    flushed_{{options.resource_manager}},
+    flushed_docs_{{options.resource_manager}},
     meta_generator_{std::move(meta_generator)},
     writer_{segment_writer::make(dir_, options)} {
   IRS_ASSERT(meta_generator_);
@@ -1439,7 +1439,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
   RefTrackingDirectory dir{dir_};  // Track references for new segment
 
-  MergeWriter merger{dir, GetSegmentWriterOptions()};
+  MergeWriter merger{dir, GetSegmentWriterOptions(true)};
   merger.Reset(candidates.begin(), candidates.end());
 
   // We do not persist segment meta since some removals may come later
@@ -1536,7 +1536,7 @@ ConsolidationResult IndexWriter::Consolidate(
         std::move(candidates),        // consolidation context candidates
         std::move(pending_reader),    // consolidated reader
         std::move(committed_reader),  // consolidation context meta
-        resource_manager_);
+        *resource_manager_.consolidations);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1618,7 +1618,7 @@ ConsolidationResult IndexWriter::Consolidate(
         std::move(candidates),        // consolidation context candidates
         std::move(pending_reader),    // consolidated reader
         std::move(committed_reader),  // consolidation context meta
-        resource_manager_);
+        *resource_manager_.consolidations);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1675,7 +1675,7 @@ bool IndexWriter::Import(const IndexReader& reader,
   segment.meta.name = file_name(NextSegmentId());
   segment.meta.codec = codec;
 
-  MergeWriter merger{dir, GetSegmentWriterOptions()};
+  MergeWriter merger{dir, GetSegmentWriterOptions(true)};
   merger.Reset(reader.begin(), reader.end());
 
   if (!merger.Flush(segment.meta, progress)) {
@@ -1776,7 +1776,7 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
     }
   }
 
-  const auto options = GetSegmentWriterOptions();
+  const auto options = GetSegmentWriterOptions(false);
 
   // should allocate a new segment_context from the pool
   std::shared_ptr<SegmentContext> segment_ctx = segment_writer_pool_.emplace(
@@ -1802,14 +1802,16 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
   throw;
 }
 
-SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
+SegmentWriterOptions IndexWriter::GetSegmentWriterOptions(
+  bool consolidation) const noexcept {
   return {
     .column_info = column_info_,
     .feature_info = feature_info_,
     .scorers_features = wand_features_,
     .scorers = wand_scorers_,
     .comparator = comparator_,
-    .resource_manager = resource_manager_,
+    .resource_manager = consolidation ? *resource_manager_.consolidations
+                                      : *resource_manager_.transactions,
   };
 }
 
