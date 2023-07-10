@@ -205,7 +205,7 @@ struct sub_reader final : irs::SubReader {
     info.live_docs_count = num_docs;
   }
 
-  virtual uint64_t CountMappedMemory() const { return 0; }
+  uint64_t CountMappedMemory() const final { return 0; }
 
   const irs::SegmentInfo& Meta() const final { return info; }
 

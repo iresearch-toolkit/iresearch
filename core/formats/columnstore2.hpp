@@ -194,7 +194,6 @@ class writer final : public columnstore_writer {
   void rollback() noexcept final;
 
  private:
-  IResourceManager& resource_manager_;
   directory* dir_;
   std::string data_filename_;
   std::deque<column, ManagedTypedAllocator<column>>
@@ -202,7 +201,7 @@ class writer final : public columnstore_writer {
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
-  std::unique_ptr<byte_type[]> buf_;
+  byte_type* buf_;
   Version ver_;
   bool consolidation_;
 };
@@ -294,9 +293,8 @@ class reader final : public columnstore_reader {
   index_input::ptr data_in_;
 };
 
-irs::columnstore_writer::ptr make_writer(
-  Version version, const ResourceManagementOptions& resource_manager,
-  bool consolidation);
+irs::columnstore_writer::ptr make_writer(Version version, bool consolidation,
+                                         IResourceManager& rm);
 irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore2

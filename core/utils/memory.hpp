@@ -306,12 +306,13 @@ struct OnHeapTracked final : Base {
     : Base{std::forward<Args>(args)...}, rm_{rm} {}
 
  private:
-  IResourceManager& rm_;
   void Destroy() const noexcept final {
     auto& rm = rm_;
     delete this;
     rm.Decrease(sizeof(*this));
   }
+
+  IResourceManager& rm_;
 };
 
 struct ManagedDeleter {

@@ -1803,12 +1803,14 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
 }
 
 SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
-  return {.column_info = column_info_,
-          .feature_info = feature_info_,
-          .scorers_features = wand_features_,
-          .scorers = wand_scorers_,
-          .comparator = comparator_,
-          .resource_manager = resource_manager_};
+  return {
+    .column_info = column_info_,
+    .feature_info = feature_info_,
+    .scorers_features = wand_features_,
+    .scorers = wand_scorers_,
+    .comparator = comparator_,
+    .resource_manager = resource_manager_,
+  };
 }
 
 IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {

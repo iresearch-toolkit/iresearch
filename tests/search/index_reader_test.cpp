@@ -120,7 +120,7 @@ TEST(directory_reader_test, open_newest_index) {
       return nullptr;
     }
     irs::columnstore_writer::ptr get_columnstore_writer(
-      bool, const irs::ResourceManagementOptions& rm) const final {
+      bool, irs::IResourceManager&) const final {
       return nullptr;
     }
     irs::columnstore_reader::ptr get_columnstore_reader() const final {

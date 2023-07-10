@@ -112,7 +112,7 @@ class field_data : util::noncopyable {
              const feature_set_t& cached_features, columnstore_writer& columns,
              byte_block_pool::inserter& byte_writer,
              int_block_pool::inserter& int_writer, IndexFeatures index_features,
-             bool random_access, IResourceManager& rm);
+             bool random_access);
 
   doc_id_t doc() const noexcept { return last_doc_; }
 
@@ -194,7 +194,6 @@ class field_data : util::noncopyable {
   uint32_t last_pos_;
   uint32_t offs_;
   uint32_t last_start_offs_;
-  IResourceManager& resource_manager_;
   bool seen_{false};
 };
 

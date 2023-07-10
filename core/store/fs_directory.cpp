@@ -193,14 +193,14 @@ class fs_index_output : public buffered_index_output {
 
   int64_t checksum() const final {
     const_cast<fs_index_output*>(this)->flush();
-    return crc.checksum();
+    return crc_.checksum();
   }
 
  protected:
   size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
     IRS_ASSERT(handle);
-    handle.reset(nullptr);
+    handle_.reset(nullptr);
     rm_.file_descriptors->Decrease(1);
     return size;
   }
@@ -209,8 +209,8 @@ class fs_index_output : public buffered_index_output {
     IRS_ASSERT(handle);
 
     const auto len_written =
-      irs::file_utils::fwrite(handle.get(), b, sizeof(byte_type) * len);
-    crc.process_bytes(b, len_written);
+      irs::file_utils::fwrite(handle_.get(), b, sizeof(byte_type) * len);
+    crc_.process_bytes(b, len_written);
 
     if (len && len_written != len) {
       throw io_error{absl::StrCat("Failed to write buffer, written '",
@@ -221,8 +221,8 @@ class fs_index_output : public buffered_index_output {
  private:
   fs_index_output(file_utils::handle_t&& handle,
                   const ResourceManagementOptions& rm) noexcept
-    : handle(std::move(handle)), rm_{rm} {
-    IRS_ASSERT(this->handle);
+    : handle_(std::move(handle)), rm_{rm} {
+    IRS_ASSERT(handle_);
     rm_.transactions->Increase(sizeof(fs_index_output));
     buffered_index_output::reset(buf_, sizeof buf_);
   }
@@ -230,9 +230,9 @@ class fs_index_output : public buffered_index_output {
   ~fs_index_output() { rm_.transactions->Decrease(sizeof(fs_index_output)); }
 
   byte_type buf_[1024];
-  file_utils::handle_t handle;
-  crc32c crc;
+  file_utils::handle_t handle_;
   const ResourceManagementOptions& rm_;
+  crc32c crc_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -271,39 +271,39 @@ class fs_index_input : public buffered_index_input {
   static index_input::ptr open(const path_char_t* name, size_t pool_size,
                                IOAdvice advice,
                                const ResourceManagementOptions& rm) noexcept {
-    IRS_ASSERT(name);
-
-    size_t descriptors{1};
-    rm.file_descriptors->Increase(descriptors);
-    irs::Finally cleanup = [&]() noexcept {
-      rm.file_descriptors->DecreaseChecked(descriptors);
-    };
-
-    auto handle = file_handle::make(rm);
-    handle->io_advice = advice;
-    handle->handle =
-      irs::file_utils::open(name, get_read_mode(handle->io_advice),
-                            get_posix_fadvice(handle->io_advice));
-
-    if (nullptr == handle->handle) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Failed to open input file, error: ", GET_ERROR(),
-                     ", path: ", file_utils::ToStr(name)));
-
-      return nullptr;
-    }
-    uint64_t size;
-    if (!file_utils::byte_size(size, *handle)) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Failed to get stat for input file, error: ", GET_ERROR(),
-                     ", path: ", file_utils::ToStr(name)));
-
-      return nullptr;
-    }
-
-    handle->size = size;
-
     try {
+      IRS_ASSERT(name);
+
+      size_t descriptors{1};
+      rm.file_descriptors->Increase(descriptors);
+      irs::Finally cleanup = [&]() noexcept {
+        rm.file_descriptors->DecreaseChecked(descriptors);
+      };
+
+      auto handle = file_handle::make(rm);
+      handle->io_advice = advice;
+      handle->handle =
+        irs::file_utils::open(name, get_read_mode(handle->io_advice),
+                              get_posix_fadvice(handle->io_advice));
+
+      if (nullptr == handle->handle) {
+        IRS_LOG_ERROR(
+          absl::StrCat("Failed to open input file, error: ", GET_ERROR(),
+                       ", path: ", file_utils::ToStr(name)));
+
+        return nullptr;
+      }
+      uint64_t size;
+      if (!file_utils::byte_size(size, *handle)) {
+        IRS_LOG_ERROR(absl::StrCat(
+          "Failed to get stat for input file, error: ", GET_ERROR(),
+          ", path: ", file_utils::ToStr(name)));
+
+        return nullptr;
+      }
+
+      handle->size = size;
+
       auto res = ptr(new fs_index_input(std::move(handle), pool_size));
       descriptors = 0;
       return res;

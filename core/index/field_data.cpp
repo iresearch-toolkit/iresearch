@@ -52,13 +52,7 @@ namespace {
 
 using namespace irs;
 
-const byte_block_pool EMPTY_POOL{{
-#ifdef IRESEARCH_DEBUG
-  IResourceManager::kForbidden
-#else
-  IResourceManager::kNoop
-#endif
-}};
+const byte_block_pool EMPTY_POOL;
 
 void accumulate_features(feature_set_t& accum, const feature_map_t& features) {
   for (auto& entry : features) {
@@ -694,7 +688,7 @@ field_data::field_data(
     cached_columns,
   const feature_set_t& cached_features, columnstore_writer& columns,
   byte_block_pool::inserter& byte_writer, int_block_pool::inserter& int_writer,
-  IndexFeatures index_features, bool random_access, IResourceManager& rm)
+  IndexFeatures index_features, bool random_access)
   // Unset optional features
   : meta_{name, index_features & (~(IndexFeatures::OFFS | IndexFeatures::PAY))},
     terms_{*byte_writer},
@@ -702,8 +696,7 @@ field_data::field_data(
     int_writer_{&int_writer},
     proc_table_{kTermProcessingTables[size_t(random_access)]},
     requested_features_{index_features},
-    last_doc_{doc_limits::invalid()},
-    resource_manager_{rm} {
+    last_doc_{doc_limits::invalid()} {
   for (const type_info::type_id feature : features) {
     IRS_ASSERT(feature_columns);
     auto [feature_column_info, feature_writer_factory] =
@@ -724,7 +717,8 @@ field_data::field_data(
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
         auto& stream = cached_columns.emplace_back(
-          id, feature_column_info, std::move(finalizer), resource_manager_);
+          id, feature_column_info, std::move(finalizer),
+          cached_columns.get_allocator().ResourceManager());
         features_.emplace_back(
           std::move(feature_writer),
           [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
@@ -1129,7 +1123,7 @@ field_data* fields_data::emplace(const hashed_string_view& name,
       const_cast<field_data*&>(it->second) = &fields_.emplace_back(
         name, features, *feature_info_, *cached_columns_, *cached_features_,
         columns, byte_writer_, int_writer_, index_features,
-        (nullptr != comparator_), fields_.get_allocator().ResourceManager());
+        (nullptr != comparator_));
     } catch (...) {
       fields_map_.erase(it);
       throw;

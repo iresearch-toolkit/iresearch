@@ -679,6 +679,7 @@ class dense_fixed_length_column : public column_base {
     if (is_encrypted(header()) && !column_data_.empty()) {
       // account approximated number of mappings
       // We don not want to store actual number to not increase column size
+      buffered_input_.reset();
       resource_manager_cached_.Decrease(
         sizeof(remapped_bytes_view_input::mapping_value) * 2);
     }
@@ -1019,6 +1020,7 @@ class sparse_column : public column_base {
 
   ~sparse_column() override {
     if (is_encrypted(header()) && !column_data_.empty()) {
+      buffered_input_.reset();
       resource_manager_cached_.Decrease(
         sizeof(remapped_bytes_view_input::mapping_value) * blocks_.size() * 2);
     }
@@ -1537,18 +1539,17 @@ void column::finish(index_output& index_out) {
 
 writer::writer(Version version, IResourceManager& resource_manager,
                bool consolidation)
-  : resource_manager_{resource_manager},
-    dir_{nullptr},
+  : dir_{nullptr},
     columns_{{resource_manager}},
     ver_{version},
     consolidation_{consolidation} {
-  resource_manager_.Increase(kWriterBufSize);
-  buf_ = std::make_unique<byte_type[]>(kWriterBufSize);
+  ManagedTypedAllocator<byte_type> alloc{columns_.get_allocator()};
+  buf_ = alloc.allocate(kWriterBufSize);
 }
 
 writer::~writer() {
-  buf_.reset();
-  resource_manager_.Decrease(kWriterBufSize);
+  ManagedTypedAllocator<byte_type> alloc{columns_.get_allocator()};
+  alloc.deallocate(buf_, kWriterBufSize);
 }
 
 void writer::prepare(directory& dir, const SegmentMeta& meta) {
@@ -1613,11 +1614,11 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
   auto& column = columns_.emplace_back(
     column::context{.data_out = data_out_.get(),
                     .cipher = cipher,
-                    .u8buf = buf_.get(),
+                    .u8buf = buf_,
                     .consolidation = consolidation_,
                     .version = ToSparseBitmapVersion(info)},
     static_cast<field_id>(id), compression, std::move(finalizer),
-    std::move(compressor), resource_manager_);
+    std::move(compressor), columns_.get_allocator().ResourceManager());
 
   return {id, [&column](doc_id_t doc) -> column_output& {
             // to avoid extra (and useless in our case) check for block index
@@ -1920,14 +1921,9 @@ bool reader::visit(const column_visitor_f& visitor) const {
   return true;
 }
 
-columnstore_writer::ptr make_writer(
-  Version version, const ResourceManagementOptions& resource_manager,
-  bool consolidation) {
-  return std::make_unique<writer>(version,
-                                  consolidation
-                                    ? *resource_manager.consolidations
-                                    : *resource_manager.transactions,
-                                  consolidation);
+columnstore_writer::ptr make_writer(Version version, bool consolidation,
+                                    IResourceManager& rm) {
+  return std::make_unique<writer>(version, rm, consolidation);
 }
 
 columnstore_reader::ptr make_reader() { return std::make_unique<reader>(); }

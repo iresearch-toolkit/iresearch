@@ -3347,17 +3347,17 @@ bool DocumentMaskReader::read(const directory& dir, const SegmentMeta& meta,
 class postings_reader_base : public irs::postings_reader {
  public:
   uint64_t CountMappedMemory() const final {
-    uint64_t mapped{0};
+    uint64_t bytes{0};
     if (doc_in_ != nullptr) {
-      mapped += doc_in_->CountMappedMemory();
+      bytes += doc_in_->CountMappedMemory();
     }
     if (pos_in_ != nullptr) {
-      mapped += pos_in_->CountMappedMemory();
+      bytes += pos_in_->CountMappedMemory();
     }
     if (pay_in_ != nullptr) {
-      mapped += pay_in_->CountMappedMemory();
+      bytes += pay_in_->CountMappedMemory();
     }
-    return mapped;
+    return bytes;
   }
 
   void prepare(index_input& in, const ReaderState& state,
@@ -3859,7 +3859,7 @@ class format10 : public irs::version10::format {
   field_reader::ptr get_field_reader(IResourceManager&) const final;
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, const ResourceManagementOptions&) const override;
+    bool consolidation, IResourceManager&) const override;
   columnstore_reader::ptr get_columnstore_reader() const override;
 
   irs::postings_writer::ptr get_postings_writer(
@@ -3919,7 +3919,7 @@ field_reader::ptr format10::get_field_reader(IResourceManager& rm) const {
 }
 
 columnstore_writer::ptr format10::get_columnstore_writer(
-  bool /*consolidation*/, const ResourceManagementOptions&) const {
+  bool /*consolidation*/, IResourceManager&) const {
   return columnstore::make_writer(columnstore::Version::MIN,
                                   columnstore::ColumnMetaVersion::MIN);
 }
@@ -3958,7 +3958,7 @@ class format11 : public format10 {
   segment_meta_writer::ptr get_segment_meta_writer() const final;
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/, const ResourceManagementOptions&) const override;
+    bool /*consolidation*/, IResourceManager&) const override;
 
   irs::type_info::type_id type() const noexcept override {
     return irs::type<format11>::id();
@@ -3985,7 +3985,7 @@ segment_meta_writer::ptr format11::get_segment_meta_writer() const {
 }
 
 columnstore_writer::ptr format11::get_columnstore_writer(
-  bool /*consolidation*/, const ResourceManagementOptions&) const {
+  bool /*consolidation*/, IResourceManager&) const {
   return columnstore::make_writer(columnstore::Version::MIN,
                                   columnstore::ColumnMetaVersion::MAX);
 }
@@ -4003,7 +4003,7 @@ class format12 : public format11 {
   static ptr make();
 
   columnstore_writer::ptr get_columnstore_writer(
-    bool /*consolidation*/, const ResourceManagementOptions&) const override;
+    bool /*consolidation*/, IResourceManager&) const override;
 
   irs::type_info::type_id type() const noexcept override {
     return irs::type<format12>::id();
@@ -4013,7 +4013,7 @@ class format12 : public format11 {
 static const ::format12 FORMAT12_INSTANCE;
 
 columnstore_writer::ptr format12::get_columnstore_writer(
-  bool /*consolidation*/, const ResourceManagementOptions&) const {
+  bool /*consolidation*/, IResourceManager&) const {
   return columnstore::make_writer(columnstore::Version::MAX,
                                   columnstore::ColumnMetaVersion::MAX);
 }
@@ -4071,7 +4071,7 @@ class format14 : public format13 {
                                           IResourceManager& rm) const override;
 
   irs::columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, const ResourceManagementOptions& rm) const final;
+    bool consolidation, IResourceManager& rm) const final;
   irs::columnstore_reader::ptr get_columnstore_reader() const final;
 
   irs::type_info::type_id type() const noexcept override {
@@ -4089,9 +4089,9 @@ irs::field_writer::ptr format14::get_field_writer(bool consolidation,
 }
 
 columnstore_writer::ptr format14::get_columnstore_writer(
-  bool consolidation, const ResourceManagementOptions& rm) const {
-  return columnstore2::make_writer(columnstore2::Version::kMin, rm,
-                                   consolidation);
+  bool consolidation, IResourceManager& rm) const {
+  return columnstore2::make_writer(columnstore2::Version::kMin, consolidation,
+                                   rm);
 }
 
 columnstore_reader::ptr format14::get_columnstore_reader() const {
@@ -4266,8 +4266,8 @@ class format14simd : public format13simd {
 
   static ptr make();
 
-  columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, const ResourceManagementOptions&) const final;
+  columnstore_writer::ptr get_columnstore_writer(bool consolidation,
+                                                 IResourceManager&) const final;
   columnstore_reader::ptr get_columnstore_reader() const final;
 
   irs::field_writer::ptr get_field_writer(bool consolidation,
@@ -4288,9 +4288,9 @@ irs::field_writer::ptr format14simd::get_field_writer(
 }
 
 columnstore_writer::ptr format14simd::get_columnstore_writer(
-  bool consolidation, const ResourceManagementOptions& rm) const {
-  return columnstore2::make_writer(columnstore2::Version::kMin, rm,
-                                   consolidation);
+  bool consolidation, IResourceManager& rm) const {
+  return columnstore2::make_writer(columnstore2::Version::kMin, consolidation,
+                                   rm);
 }
 
 columnstore_reader::ptr format14simd::get_columnstore_reader() const {

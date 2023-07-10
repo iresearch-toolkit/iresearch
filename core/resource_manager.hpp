@@ -24,9 +24,7 @@
 
 #include "shared.hpp"
 
-#if (defined(__clang__) || defined(_MSC_VER) || \
-     defined(__GNUC__) &&                       \
-       (__GNUC__ > 8))  // GCCs <=  don't have "<version>" header
+#if (defined(__clang__) || defined(_MSC_VER) || defined(__GNUC__))
 #include <version>
 #endif
 
@@ -49,9 +47,16 @@ struct IResourceManager {
   IResourceManager(const IResourceManager&) = delete;
   IResourceManager operator=(const IResourceManager&) = delete;
 
-  virtual bool Increase(size_t) noexcept { return true; }
+  virtual bool Increase(size_t) noexcept {
+    IRS_ASSERT(this != &kForbidden);
+    IRS_ASSERT(v != 0);
+    return true;
+  }
 
-  virtual void Decrease(size_t) noexcept {}
+  virtual void Decrease(size_t) noexcept {
+    IRS_ASSERT(this != &kForbidden);
+    IRS_ASSERT(v != 0);
+  }
 
   IRS_FORCE_INLINE void DecreaseChecked(size_t v) noexcept {
     if (v != 0) {

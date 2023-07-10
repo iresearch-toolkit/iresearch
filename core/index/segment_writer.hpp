@@ -395,7 +395,6 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   const ColumnInfoProvider* column_info_;
   columnstore_writer::ptr col_writer_;
   TrackingDirectory dir_;
-  const ResourceManagementOptions& resource_manager_;
   bool initialized_{false};
   bool valid_{true};  // current state
 };

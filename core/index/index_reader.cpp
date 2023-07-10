@@ -57,10 +57,10 @@ const EmptySubReader kEmpty;
 
 const SubReader& SubReader::empty() noexcept { return kEmpty; }
 
-IResourceManager IResourceManager::kNoop;
 #ifdef IRESEARCH_DEBUG
 IResourceManager IResourceManager::kForbidden;
 #endif
+IResourceManager IResourceManager::kNoop;
 ResourceManagementOptions ResourceManagementOptions::kDefault;
 
 }  // namespace irs

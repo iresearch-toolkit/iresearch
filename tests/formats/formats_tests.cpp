@@ -28,7 +28,7 @@ TEST(formats_tests, duplicate_register) {
   struct dummy_format : public irs::format {
     static ptr make() { return ptr(new dummy_format()); }
     irs::columnstore_writer::ptr get_columnstore_writer(
-      bool, const irs::ResourceManagementOptions&) const final {
+      bool, irs::IResourceManager&) const final {
       return nullptr;
     }
     irs::columnstore_reader::ptr get_columnstore_reader() const final {

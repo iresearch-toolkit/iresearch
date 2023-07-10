@@ -139,8 +139,6 @@ using PayloadProvider = std::function<bool(uint64_t, bstring&)>;
 
 // Options the the writer should use after creation
 struct IndexWriterOptions : public SegmentOptions {
-  IndexWriterOptions() {}  // compiler requires non-default definition
-
   // Options for snapshot management
   IndexReaderOptions reader_options;
 
@@ -166,6 +164,8 @@ struct IndexWriterOptions : public SegmentOptions {
   // Acquire an exclusive lock on the repository to guard against index
   // corruption from multiple index_writers
   bool lock_repository{true};
+
+  IndexWriterOptions() {}  // compiler requires non-default definition
 };
 
 struct CommitInfo {
@@ -604,46 +604,12 @@ class IndexWriter : private util::noncopyable {
           .candidates = std::move(consolidation_candidates),
           .merger = std::move(merger)} {}
 
-    ImportContext(
-      IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-      Consolidation&& consolidation_candidates,
-      std::shared_ptr<const SegmentReaderImpl>&& reader,
-      std::shared_ptr<const DirectoryReaderImpl>&& consolidation_reader,
-      const ResourceManagementOptions& rm) noexcept
-      : tick{tick},
-        segment{std::move(segment)},
-        refs{std::move(refs)},
-        reader{std::move(reader)},
-        consolidation_ctx{
-          .consolidation_reader = std::move(consolidation_reader),
-          .candidates = std::move(consolidation_candidates),
-          .merger{rm}} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  const ResourceManagementOptions& rm) noexcept
-      : tick{tick},
-        segment{std::move(segment)},
-        refs{std::move(refs)},
-        reader{std::move(reader)},
-        consolidation_ctx{.candidates = std::move(consolidation_candidates),
-                          .merger{rm}} {}
-
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
                   const ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
-        reader{std::move(reader)},
-        consolidation_ctx{.merger{rm}} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  const ResourceManagementOptions& rm) noexcept
-      : tick{tick},
-        segment{std::move(segment)},
         reader{std::move(reader)},
         consolidation_ctx{.merger{rm}} {}
 

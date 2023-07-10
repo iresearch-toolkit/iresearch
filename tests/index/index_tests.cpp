@@ -7724,8 +7724,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
 TEST_P(index_test_case, segment_consolidate_long_running) {
   const auto blocker = [this](std::string_view segment) {
     irs::memory_directory dir;
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
     irs::SegmentMeta meta;
     meta.name = segment;

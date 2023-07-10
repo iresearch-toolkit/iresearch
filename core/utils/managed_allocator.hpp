@@ -43,7 +43,8 @@ class ManagedAllocator : private Allocator {
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 
   template<typename... Args>
-  ManagedAllocator(Manager& rm, Args&&... args)
+  ManagedAllocator(Manager& rm, Args&&... args) noexcept(
+    std::is_nothrow_constructible_v<Allocator, Args&&...>)
     : Allocator(std::forward<Args>(args)...), rm_(&rm) {}
 
   ManagedAllocator(ManagedAllocator&& other) noexcept
@@ -89,7 +90,8 @@ class ManagedAllocator : private Allocator {
 
   template<typename A>
   bool operator==(const ManagedAllocator<A, Manager>& other) const noexcept {
-    return RawAllocator() == other.RawAllocator() && &rm_ == &other.rm_;
+    return rm_ == &other.ResourceManager() &&
+           RawAllocator() == other.RawAllocator();
   }
 
   Manager& ResourceManager() const noexcept { return *rm_; }

@@ -315,7 +315,8 @@ TEST_P(BufferedColumnTestCase, FlushEmpty) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer(false, memory.options);
+    auto writer =
+      codec->get_columnstore_writer(false, *memory.options.transactions);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -372,7 +373,8 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
   TestResourceManager memory;
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer(false, memory.options);
+    auto writer =
+      codec->get_columnstore_writer(false, *memory.options.transactions);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -456,8 +458,8 @@ TEST_P(BufferedColumnTestCase, Sort) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);

@@ -168,8 +168,7 @@ segment_writer::segment_writer(ConstructToken, directory& dir,
     fields_{options.feature_info, cached_columns_, options.scorers_features,
             *options.resource_manager.transactions, options.comparator},
     column_info_{&options.column_info},
-    dir_{dir},
-    resource_manager_{options.resource_manager} {
+    dir_{dir} {
   docs_mask_.set =
     decltype(docs_mask_.set){{*options.resource_manager.transactions}};
 }
@@ -205,7 +204,8 @@ column_output& segment_writer::stream(const hashed_string_view& name,
   return columns_
     .lazy_emplace(name,
                   [this, &name](const auto& ctor) {
-                    ctor(name, *col_writer_, *resource_manager_.transactions,
+                    ctor(name, *col_writer_,
+                         docs_context_.get_allocator().ResourceManager(),
                          *column_info_, cached_columns_,
                          nullptr != fields_.comparator());
                   })
@@ -309,13 +309,14 @@ void segment_writer::reset(const SegmentMeta& meta) {
   seg_name_ = meta.name;
 
   if (!field_writer_) {
-    field_writer_ =
-      meta.codec->get_field_writer(false, *resource_manager_.transactions);
+    field_writer_ = meta.codec->get_field_writer(
+      false, docs_context_.get_allocator().ResourceManager());
     IRS_ASSERT(field_writer_);
   }
 
   if (!col_writer_) {
-    col_writer_ = meta.codec->get_columnstore_writer(false, resource_manager_);
+    col_writer_ = meta.codec->get_columnstore_writer(
+      false, docs_context_.get_allocator().ResourceManager());
     IRS_ASSERT(col_writer_);
   }
 

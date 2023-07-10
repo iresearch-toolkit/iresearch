@@ -1196,8 +1196,8 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
     column_id = column.first;
@@ -1262,8 +1262,8 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
     column_id = column.first;
@@ -1311,8 +1311,8 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
   // write bit mask into the column without actual data
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
@@ -1586,8 +1586,8 @@ TEST_P(format_test_case, columns_rw_empty) {
 
   // add columns
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta0);
 
     column0_id =
@@ -1650,8 +1650,8 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     irs::doc_id_t id = 0;
     writer->prepare(dir(), seg);
 
@@ -1751,8 +1751,8 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
   // write big document
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
@@ -1919,8 +1919,8 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
     // write 1st segment
     irs::doc_id_t id = 0;
@@ -2210,8 +2210,8 @@ TEST_P(format_test_case, columns_rw_typed) {
 
   // write stored documents
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta);
 
     irs::doc_id_t id = 0;
@@ -2468,8 +2468,8 @@ TEST_P(format_test_case, columns_issue700) {
   meta.codec = codec();
 
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     writer->prepare(dir(), meta);
 
@@ -2532,8 +2532,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
   {
     // write columns values
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta0);
 
     dense_fixed_offset_column = writer->push_column(lz4_column_info(), {});
@@ -2714,8 +2714,8 @@ TEST_P(format_test_case, columns_rw) {
   }
 
   // write columns values
-  auto writer = codec()->get_columnstore_writer(
-    false, irs::ResourceManagementOptions::kDefault);
+  auto writer =
+    codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
   // write _1 segment
   {
@@ -3600,8 +3600,8 @@ TEST_P(format_test_case_with_encryption,
 
   // write meta
   {
-    auto writer = codec()->get_columnstore_writer(
-      false, irs::ResourceManagementOptions::kDefault);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     irs::SegmentMeta meta1;
 
     const irs::ColumnInfo info{

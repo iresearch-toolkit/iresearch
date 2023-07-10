@@ -61,8 +61,7 @@ class MergeWriter : public util::noncopyable {
       feature_info_{&options.feature_info},
       scorers_{options.scorers},
       scorers_features_{&options.scorers_features},
-      comparator_{options.comparator},
-      resource_manager_{options.resource_manager} {
+      comparator_{options.comparator} {
     IRS_ASSERT(column_info_);
   }
   MergeWriter(MergeWriter&&) = default;
@@ -100,7 +99,6 @@ class MergeWriter : public util::noncopyable {
   ScorersView scorers_;
   const std::set<irs::type_info::type_id>* scorers_features_{};
   const Comparer* const comparator_{};
-  const ResourceManagementOptions& resource_manager_;
 };
 
 static_assert(std::is_nothrow_move_constructible_v<MergeWriter>);

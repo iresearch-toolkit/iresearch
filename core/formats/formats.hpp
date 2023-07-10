@@ -83,8 +83,6 @@ struct SegmentWriterOptions {
     ResourceManagementOptions::kDefault};
 };
 
-constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
-
 // Represents metadata associated with the term
 struct term_meta : attribute {
   static constexpr std::string_view type_name() noexcept {
@@ -468,7 +466,7 @@ class format {
   virtual field_reader::ptr get_field_reader(IResourceManager& rm) const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation, const ResourceManagementOptions& rm) const = 0;
+    bool consolidation, IResourceManager& rm) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   virtual irs::type_info::type_id type() const noexcept = 0;
