@@ -285,19 +285,25 @@ struct BufferedColumnTestCase
 };
 
 TEST_P(BufferedColumnTestCase, Ctor) {
-  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
+  SimpleMemoryAccounter memory;
+  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false},
+                          memory);
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
   ASSERT_EQ(0, col.MemoryActive());
   ASSERT_GE(col.MemoryReserved(), 0);
+  ASSERT_EQ(0, memory.counter_);
 }
 
 TEST_P(BufferedColumnTestCase, FlushEmpty) {
-  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false});
+  TestResourceManager memory;
+  irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, false},
+                          memory.cached_columns);
   ASSERT_TRUE(col.Empty());
   ASSERT_EQ(0, col.Size());
   ASSERT_EQ(0, col.MemoryActive());
   ASSERT_GE(col.MemoryReserved(), 0);
+  ASSERT_EQ(0, memory.cached_columns.counter_);
 
   irs::field_id column_id;
   irs::DocMap order;
@@ -309,7 +315,8 @@ TEST_P(BufferedColumnTestCase, FlushEmpty) {
 
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer(false);
+    auto writer =
+      codec->get_columnstore_writer(false, *memory.options.transactions);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
@@ -335,7 +342,7 @@ TEST_P(BufferedColumnTestCase, FlushEmpty) {
 
     ASSERT_FALSE(writer->commit(state));  // nothing to commit
   }
-
+  ASSERT_EQ(0, memory.transactions.counter_);
   // read sorted column
   {
     auto reader = codec->get_columnstore_reader();
@@ -362,16 +369,18 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
 
   auto codec = irs::formats::get(GetParam());
   ASSERT_NE(nullptr, codec);
-
+  TestResourceManager memory;
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer(false);
+    auto writer =
+      codec->get_columnstore_writer(false, *memory.options.transactions);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
 
     irs::BufferedColumn col(
-      {irs::type<irs::compression::none>::get(), {}, true});
+      {irs::type<irs::compression::none>::get(), {}, true},
+      memory.cached_columns);
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());
@@ -395,6 +404,8 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
 
     ASSERT_GE(col.MemoryActive(), 0);
     ASSERT_GE(col.MemoryReserved(), 0);
+    // SSO should do the trick without allocations
+    ASSERT_EQ(memory.cached_columns.counter_, 0);
 
     std::tie(order, column_id) = col.Flush(
       *writer,
@@ -444,16 +455,16 @@ TEST_P(BufferedColumnTestCase, Sort) {
 
   auto codec = irs::formats::get(GetParam());
   ASSERT_NE(nullptr, codec);
-
+  TestResourceManager memory;
   // write sorted column
   {
-    auto writer = codec->get_columnstore_writer(false);
+    auto writer = codec->get_columnstore_writer(false, memory.transactions);
     ASSERT_NE(nullptr, writer);
 
     writer->prepare(dir, segment);
 
-    irs::BufferedColumn col(
-      {irs::type<irs::compression::lz4>::get(), {}, true});
+    irs::BufferedColumn col({irs::type<irs::compression::lz4>::get(), {}, true},
+                            memory.cached_columns);
     ASSERT_TRUE(col.Empty());
     ASSERT_EQ(0, col.Size());
     ASSERT_EQ(0, col.MemoryActive());
@@ -476,7 +487,7 @@ TEST_P(BufferedColumnTestCase, Sort) {
 
     ASSERT_GE(col.MemoryActive(), 0);
     ASSERT_GE(col.MemoryReserved(), 0);
-
+    ASSERT_GE(memory.cached_columns.counter_, col.MemoryReserved());
     std::tie(order, column_id) = col.Flush(
       *writer,
       [](irs::bstring& out) {

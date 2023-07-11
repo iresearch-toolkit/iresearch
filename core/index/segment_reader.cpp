@@ -31,8 +31,8 @@ SegmentReader::SegmentReader(const directory& dir, const SegmentMeta& meta,
                              const IndexReaderOptions& opts)
   : impl_{SegmentReaderImpl::Open(dir, meta, opts)} {}
 
-void SegmentReader::CountMemory(const MemoryStats& stats) const {
-  impl_->CountMemory(stats);
+uint64_t SegmentReader::CountMappedMemory() const {
+  return impl_->CountMappedMemory();
 }
 
 field_iterator::ptr SegmentReader::fields() const { return impl_->fields(); }

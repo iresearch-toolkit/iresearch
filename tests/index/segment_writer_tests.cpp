@@ -640,7 +640,7 @@ TEST_F(segment_writer_tests, reorder) {
     // we don't count stored field without comparator
     ASSERT_GT(writer->memory_active(), 0);
     irs::IndexSegment index_segment;
-    irs::DocsMask docs_mask;
+    irs::DocsMask docs_mask{.set{irs::IResourceManager::kNoop}};
     index_segment.meta.codec = default_codec();
     auto old2new = writer->flush(index_segment, docs_mask);
     ASSERT_TRUE(docs_mask.count == 0);

@@ -61,7 +61,7 @@ enum class Action {
 ENABLE_BITMASK_ENUM(Action);
 
 struct DocsMask final {
-  bitset set;
+  ManagedBitset set;
   uint32_t count{0};
 };
 
@@ -158,7 +158,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
 
   doc_id_t LastDocId() const noexcept {
     IRS_ASSERT(buffered_docs() <= doc_limits::eof());
-    return doc_limits::min() + buffered_docs() - 1;
+    return doc_limits::min() + static_cast<doc_id_t>(buffered_docs()) - 1;
   }
 
   segment_writer(ConstructToken, directory& dir,
@@ -213,10 +213,12 @@ class segment_writer : public ColumnProvider, util::noncopyable {
       }
     };
 
-    stored_column(const hashed_string_view& name,
-                  columnstore_writer& columnstore,
-                  const ColumnInfoProvider& column_info,
-                  std::deque<cached_column>& cached_columns, bool cache);
+    stored_column(
+      const hashed_string_view& name, columnstore_writer& columnstore,
+      IResourceManager& rm, const ColumnInfoProvider& column_info,
+      std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+        cached_columns,
+      bool cache);
 
     std::string name;
     size_t name_hash;
@@ -229,13 +231,14 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   // we can't use flat_hash_set as stored_column stores 'this' in non-cached
   // case
   using stored_columns =
-    absl::node_hash_set<stored_column, stored_column::hash, stored_column::eq>;
+    absl::node_hash_set<stored_column, stored_column::hash, stored_column::eq,
+                        ManagedTypedAllocator<stored_column>>;
 
   struct sorted_column : util::noncopyable {
-    explicit sorted_column(
-      const ColumnInfoProvider& column_info,
-      columnstore_writer::column_finalizer_f finalizer) noexcept
-      : stream{column_info({})},  // compression for sorted column
+    explicit sorted_column(const ColumnInfoProvider& column_info,
+                           columnstore_writer::column_finalizer_f finalizer,
+                           IResourceManager& rm) noexcept
+      : stream{column_info({}), rm},  // compression for sorted column
         finalizer{std::move(finalizer)} {}
 
     field_id id{field_limits::invalid()};
@@ -377,10 +380,11 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   void FlushFields(flush_state& state);
 
   ScorersView scorers_;
-  std::deque<cached_column> cached_columns_;  // pointers remain valid
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>
+    cached_columns_;  // pointers remain valid
   absl::flat_hash_map<field_id, cached_column*> column_ids_;
   sorted_column sort_;
-  std::vector<DocContext> docs_context_;
+  std::vector<DocContext, ManagedTypedAllocator<DocContext>> docs_context_;
   // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   DocsMask docs_mask_;
   fields_data fields_;

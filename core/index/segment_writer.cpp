@@ -51,8 +51,10 @@ namespace {
 
 segment_writer::stored_column::stored_column(
   const hashed_string_view& name, columnstore_writer& columnstore,
-  const ColumnInfoProvider& column_info,
-  std::deque<cached_column>& cached_columns, bool cache)
+  IResourceManager& rm, const ColumnInfoProvider& column_info,
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+    cached_columns,
+  bool cache)
   : name{name}, name_hash{name.hash()} {
   const auto info = column_info(std::string_view(name));
 
@@ -63,8 +65,7 @@ segment_writer::stored_column::stored_column(
   if (!cache) {
     std::tie(id, writer) = columnstore.push_column(info, std::move(finalizer));
   } else {
-    cached = &cached_columns.emplace_back(&id, info, std::move(finalizer));
-
+    cached = &cached_columns.emplace_back(&id, info, std::move(finalizer), rm);
     writer = [stream = &cached->Stream()](irs::doc_id_t doc) -> column_output& {
       stream->Prepare(doc);
       return *stream;
@@ -81,12 +82,14 @@ doc_id_t segment_writer::begin(DocContext ctx) {
 
   if (needed_docs >= docs_mask_.set.capacity()) {
     // reserve in blocks of power-of-2
-    docs_mask_.set.reserve(math::roundup_power2(needed_docs));
+    const auto count = math::roundup_power2(needed_docs);
+    docs_mask_.set.reserve(count);
   }
 
   if (needed_docs >= docs_context_.capacity()) {
     // reserve in blocks of power-of-2
-    docs_context_.reserve(math::roundup_power2(needed_docs));
+    const auto count = math::roundup_power2(needed_docs);
+    docs_context_.reserve(count);
   }
 
   docs_context_.emplace_back(ctx);
@@ -160,11 +163,16 @@ bool segment_writer::remove(doc_id_t doc_id) noexcept {
 segment_writer::segment_writer(ConstructToken, directory& dir,
                                const SegmentWriterOptions& options) noexcept
   : scorers_{options.scorers},
-    sort_{options.column_info, {}},
+    cached_columns_{{options.resource_manager}},
+    sort_{options.column_info, {}, options.resource_manager},
+    docs_context_{{options.resource_manager}},
     fields_{options.feature_info, cached_columns_, options.scorers_features,
-            options.comparator},
+            options.resource_manager, options.comparator},
+    columns_{{options.resource_manager}},
     column_info_{&options.column_info},
-    dir_{dir} {}
+    dir_{dir} {
+  docs_mask_.set = decltype(docs_mask_.set){{options.resource_manager}};
+}
 
 bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
                            IndexFeatures index_features,
@@ -194,11 +202,12 @@ column_output& segment_writer::stream(const hashed_string_view& name,
                                       const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(column_info_);
-
   return columns_
     .lazy_emplace(name,
                   [this, &name](const auto& ctor) {
-                    ctor(name, *col_writer_, *column_info_, cached_columns_,
+                    ctor(name, *col_writer_,
+                         docs_context_.get_allocator().ResourceManager(),
+                         *column_info_, cached_columns_,
                          nullptr != fields_.comparator());
                   })
     ->writer(doc_id);
@@ -246,7 +255,8 @@ void segment_writer::FlushFields(flush_state& state) {
   // Flush all cached columns
   IRS_ASSERT(column_ids_.empty());
   column_ids_.reserve(cached_columns_.size());
-  for (BufferedColumn::BufferedValues buffer; auto& column : cached_columns_) {
+  for (BufferedColumn::BufferedValues buffer{cached_columns_.get_allocator()};
+       auto& column : cached_columns_) {
     if (IRS_LIKELY(!field_limits::valid(column.id()))) {
       column.Flush(*col_writer_, docmap, buffer);
     }
@@ -290,7 +300,6 @@ void segment_writer::reset() noexcept {
   column_ids_.clear();
   cached_columns_.clear();  // FIXME(@gnusi): we loose all per-column buffers
   sort_.stream.Clear();
-
   if (col_writer_) {
     col_writer_->rollback();
   }
@@ -302,12 +311,14 @@ void segment_writer::reset(const SegmentMeta& meta) {
   seg_name_ = meta.name;
 
   if (!field_writer_) {
-    field_writer_ = meta.codec->get_field_writer(false);
+    field_writer_ = meta.codec->get_field_writer(
+      false, docs_context_.get_allocator().ResourceManager());
     IRS_ASSERT(field_writer_);
   }
 
   if (!col_writer_) {
-    col_writer_ = meta.codec->get_columnstore_writer(false);
+    col_writer_ = meta.codec->get_columnstore_writer(
+      false, docs_context_.get_allocator().ResourceManager());
     IRS_ASSERT(col_writer_);
   }
 

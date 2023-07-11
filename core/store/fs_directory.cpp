@@ -162,9 +162,14 @@ class fs_index_output : public buffered_index_output {
  public:
   DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
 
-  static index_output::ptr open(const path_char_t* name) noexcept {
+  static index_output::ptr open(const path_char_t* name,
+                                const ResourceManagementOptions& rm) noexcept {
     IRS_ASSERT(name);
-
+    size_t descriptors{1};
+    rm.file_descriptors->Increase(descriptors);
+    irs::Finally cleanup = [&]() noexcept {
+      rm.file_descriptors->DecreaseChecked(descriptors);
+    };
     file_utils::handle_t handle(
       file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
 
@@ -177,7 +182,9 @@ class fs_index_output : public buffered_index_output {
     }
 
     try {
-      return fs_index_output::make<fs_index_output>(std::move(handle));
+      auto res = fs_index_output::make<fs_index_output>(std::move(handle), rm);
+      descriptors = 0;
+      return res;
     } catch (...) {
     }
 
@@ -186,22 +193,24 @@ class fs_index_output : public buffered_index_output {
 
   int64_t checksum() const final {
     const_cast<fs_index_output*>(this)->flush();
-    return crc.checksum();
+    return crc_.checksum();
   }
 
  protected:
   size_t CloseImpl() final {
     const auto size = buffered_index_output::CloseImpl();
-    handle.reset(nullptr);
+    IRS_ASSERT(handle_);
+    handle_.reset(nullptr);
+    rm_.file_descriptors->Decrease(1);
     return size;
   }
 
   void flush_buffer(const byte_type* b, size_t len) final {
-    IRS_ASSERT(handle);
+    IRS_ASSERT(handle_);
 
     const auto len_written =
-      irs::file_utils::fwrite(handle.get(), b, sizeof(byte_type) * len);
-    crc.process_bytes(b, len_written);
+      irs::file_utils::fwrite(handle_.get(), b, sizeof(byte_type) * len);
+    crc_.process_bytes(b, len_written);
 
     if (len && len_written != len) {
       throw io_error{absl::StrCat("Failed to write buffer, written '",
@@ -210,14 +219,20 @@ class fs_index_output : public buffered_index_output {
   }
 
  private:
-  fs_index_output(file_utils::handle_t&& handle) noexcept
-    : handle(std::move(handle)) {
+  fs_index_output(file_utils::handle_t&& handle,
+                  const ResourceManagementOptions& rm) noexcept
+    : handle_(std::move(handle)), rm_{rm} {
+    IRS_ASSERT(handle_);
+    rm_.transactions->Increase(sizeof(fs_index_output));
     buffered_index_output::reset(buf_, sizeof buf_);
   }
 
+  ~fs_index_output() { rm_.transactions->Decrease(sizeof(fs_index_output)); }
+
   byte_type buf_[1024];
-  file_utils::handle_t handle;
-  crc32c crc;
+  file_utils::handle_t handle_;
+  const ResourceManagementOptions& rm_;
+  crc32c crc_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -226,16 +241,7 @@ class fs_index_output : public buffered_index_output {
 class pooled_fs_index_input;  // predeclaration used by fs_index_input
 class fs_index_input : public buffered_index_input {
  public:
-  void CountMemory(const MemoryStats& stats) const final {
-    // TODO(Dronplane) compute stats.pinned_memory
-    //  Also don't forget about pooled_fs_index_input
-    if (handle_ == nullptr) {
-      return;
-    }
-    if (stats.fd_count != nullptr) {
-      ++*stats.fd_count;
-    }
-  }
+  uint64_t CountMappedMemory() const final { return 0; }
 
   using buffered_index_input::read_internal;
 
@@ -263,36 +269,44 @@ class fs_index_input : public buffered_index_input {
   ptr dup() const override { return ptr(new fs_index_input(*this)); }
 
   static index_input::ptr open(const path_char_t* name, size_t pool_size,
-                               IOAdvice advice) noexcept {
-    IRS_ASSERT(name);
-
-    auto handle = file_handle::make();
-    handle->io_advice = advice;
-    handle->handle =
-      irs::file_utils::open(name, get_read_mode(handle->io_advice),
-                            get_posix_fadvice(handle->io_advice));
-
-    if (nullptr == handle->handle) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Failed to open input file, error: ", GET_ERROR(),
-                     ", path: ", file_utils::ToStr(name)));
-
-      return nullptr;
-    }
-
-    uint64_t size;
-    if (!file_utils::byte_size(size, *handle)) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Failed to get stat for input file, error: ", GET_ERROR(),
-                     ", path: ", file_utils::ToStr(name)));
-
-      return nullptr;
-    }
-
-    handle->size = size;
-
+                               IOAdvice advice,
+                               const ResourceManagementOptions& rm) noexcept {
     try {
-      return ptr(new fs_index_input(std::move(handle), pool_size));
+      IRS_ASSERT(name);
+
+      size_t descriptors{1};
+      rm.file_descriptors->Increase(descriptors);
+      irs::Finally cleanup = [&]() noexcept {
+        rm.file_descriptors->DecreaseChecked(descriptors);
+      };
+
+      auto handle = file_handle::make(rm);
+      handle->io_advice = advice;
+      handle->handle =
+        irs::file_utils::open(name, get_read_mode(handle->io_advice),
+                              get_posix_fadvice(handle->io_advice));
+
+      if (nullptr == handle->handle) {
+        IRS_LOG_ERROR(
+          absl::StrCat("Failed to open input file, error: ", GET_ERROR(),
+                       ", path: ", file_utils::ToStr(name)));
+
+        return nullptr;
+      }
+      uint64_t size;
+      if (!file_utils::byte_size(size, *handle)) {
+        IRS_LOG_ERROR(absl::StrCat(
+          "Failed to get stat for input file, error: ", GET_ERROR(),
+          ", path: ", file_utils::ToStr(name)));
+
+        return nullptr;
+      }
+
+      handle->size = size;
+
+      auto res = ptr(new fs_index_input(std::move(handle), pool_size));
+      descriptors = 0;
+      return res;
     } catch (...) {
       return nullptr;
     }
@@ -343,28 +357,31 @@ class fs_index_input : public buffered_index_input {
   struct file_handle {
     using ptr = std::shared_ptr<file_handle>;
 
-    static ptr make() { return std::make_shared<file_handle>(); }
+    static ptr make(const ResourceManagementOptions& rm) {
+      return std::make_shared<file_handle>(rm);
+    }
 
+    file_handle(const ResourceManagementOptions& rm) : resource_manager{rm} {}
+
+    ~file_handle() {
+      const bool release = handle.get() != nullptr;
+      handle.reset();
+      resource_manager.file_descriptors->DecreaseChecked(release);
+    }
     operator void*() const { return handle.get(); }
 
     file_utils::handle_t handle; /* native file handle */
     size_t size{};               /* file size */
     size_t pos{};                /* current file position*/
     IOAdvice io_advice{IOAdvice::NORMAL};
+    const ResourceManagementOptions& resource_manager;
   };
 
-  fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept
-    : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
-    IRS_ASSERT(handle_);
-    buffered_index_input::reset(buf_, sizeof buf_, 0);
-  }
+  fs_index_input(file_handle::ptr&& handle, size_t pool_size) noexcept;
 
-  fs_index_input(const fs_index_input& rhs) noexcept
-    : handle_(rhs.handle_),
-      pool_size_(rhs.pool_size_),
-      pos_(rhs.file_pointer()) {
-    buffered_index_input::reset(buf_, sizeof buf_, pos_);
-  }
+  fs_index_input(const fs_index_input& rhs) noexcept;
+
+  ~fs_index_input();
 
   fs_index_input& operator=(const fs_index_input&) = delete;
 
@@ -387,8 +404,9 @@ class pooled_fs_index_input final : public fs_index_input {
   struct builder {
     using ptr = std::unique_ptr<file_handle>;
 
-    static std::unique_ptr<file_handle> make() {
-      return std::make_unique<file_handle>();
+    static std::unique_ptr<file_handle> make(
+      const ResourceManagementOptions& rm) {
+      return std::make_unique<file_handle>(rm);
     }
   };
 
@@ -398,6 +416,29 @@ class pooled_fs_index_input final : public fs_index_input {
   pooled_fs_index_input(const pooled_fs_index_input& in) = default;
   file_handle::ptr reopen(const file_handle& src) const;
 };
+
+fs_index_input::fs_index_input(file_handle::ptr&& handle,
+                               size_t pool_size) noexcept
+  : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
+  IRS_ASSERT(handle_);
+  handle_->resource_manager.readers->Increase(sizeof(pooled_fs_index_input));
+  buffered_index_input::reset(buf_, sizeof buf_, 0);
+}
+
+fs_index_input::fs_index_input(const fs_index_input& rhs) noexcept
+  : handle_(rhs.handle_), pool_size_(rhs.pool_size_), pos_(rhs.file_pointer()) {
+  IRS_ASSERT(handle_);
+  handle_->resource_manager.readers->Increase(sizeof(pooled_fs_index_input));
+  buffered_index_input::reset(buf_, sizeof buf_, pos_);
+}
+
+fs_index_input::~fs_index_input() {
+  if (handle_) {
+    auto* r = handle_->resource_manager.readers;
+    handle_.reset();
+    r->Decrease(sizeof(pooled_fs_index_input));
+  }
+}
 
 index_input::ptr fs_index_input::reopen() const {
   return std::make_unique<pooled_fs_index_input>(*this);
@@ -409,7 +450,10 @@ pooled_fs_index_input::pooled_fs_index_input(const fs_index_input& in)
 }
 
 pooled_fs_index_input::~pooled_fs_index_input() noexcept {
+  IRS_ASSERT(handle_);
+  auto* r = handle_->resource_manager.readers;
   handle_.reset();  // release handle before the fs_pool_ is deallocated
+  r->Decrease(sizeof(pooled_fs_index_input));
 }
 
 index_input::ptr pooled_fs_index_input::reopen() const {
@@ -427,9 +471,15 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   const file_handle& src) const {
   // reserve a new handle from the pool
   std::shared_ptr<fs_index_input::file_handle> handle{
-    const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace()};
-
+    const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace(
+      src.resource_manager)};
+  size_t descriptors{0};
+  irs::Finally cleanup = [&]() noexcept {
+    src.resource_manager.file_descriptors->DecreaseChecked(descriptors);
+  };
   if (!handle->handle) {
+    src.resource_manager.file_descriptors->Increase(1);
+    descriptors = 1;
     handle->handle = irs::file_utils::open(
       src, get_read_mode(src.io_advice),
       get_posix_fadvice(
@@ -440,6 +490,7 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
       throw io_error{
         absl::StrCat("Failed to reopen input file, error: ", GET_ERROR())};
     }
+    descriptors = 0;
     handle->io_advice = src.io_advice;
   }
 
@@ -453,13 +504,14 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
 
   handle->pos = pos;
   handle->size = src.size;
-
   return handle;
 }
 
 FSDirectory::FSDirectory(std::filesystem::path dir, directory_attributes attrs,
+                         const ResourceManagementOptions& rm,
                          size_t fd_pool_size)
-  : attrs_{std::move(attrs)},
+  : resource_manager_{rm},
+    attrs_{std::move(attrs)},
     dir_{std::move(dir)},
     fd_pool_size_{fd_pool_size} {}
 
@@ -467,7 +519,7 @@ index_output::ptr FSDirectory::create(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
-    auto out = fs_index_output::open(path.c_str());
+    auto out = fs_index_output::open(path.c_str(), resource_manager_);
 
     if (!out) {
       IRS_LOG_ERROR(absl::StrCat("Failed to open output file, path: ", name));
@@ -524,7 +576,8 @@ index_input::ptr FSDirectory::open(std::string_view name,
   try {
     const auto path = dir_ / name;
 
-    return fs_index_input::open(path.c_str(), fd_pool_size_, advice);
+    return fs_index_input::open(path.c_str(), fd_pool_size_, advice,
+                                resource_manager_);
   } catch (...) {
   }
 

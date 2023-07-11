@@ -205,6 +205,8 @@ class dynamic_bitset {
   // counts bits set
   size_t count() const noexcept { return math::popcount(begin(), end()); }
 
+  Alloc& get_allocator() { return data_.get_deleter().alloc(); }
+
  private:
   size_t capacity_words() const noexcept { return data_.get_deleter().size(); }
 
@@ -248,6 +250,8 @@ class dynamic_bitset {
   size_t bits_{0};   // size of bitset in bits
 };
 
+// TODO: move to tests?
 using bitset = dynamic_bitset<std::allocator<size_t>>;
+using ManagedBitset = dynamic_bitset<ManagedTypedAllocator<size_t>>;
 
 }  // namespace irs

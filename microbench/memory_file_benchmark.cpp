@@ -9,7 +9,7 @@ static constexpr size_t kFiles = 1000;
 std::uniform_int_distribution<size_t> kFileSizePower{8, 24};
 
 static void WriteFile(std::mt19937_64& rng) {
-  irs::memory_file file;
+  irs::memory_file file{irs::IResourceManager::kNoop};
   irs::memory_index_output output{file};
   const auto size = size_t{1} << kFileSizePower(rng);
   for (size_t i = 0; i != size; ++i) {

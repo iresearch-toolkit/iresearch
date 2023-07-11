@@ -69,7 +69,7 @@ void AccumulateFeatures(feature_set_t& accum, const feature_map_t& features) {
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
-using doc_id_map_t = std::vector<doc_id_t>;
+using doc_id_map_t = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
 
 // document mapping function
 using doc_map_f = std::function<doc_id_t(doc_id_t)>;
@@ -906,9 +906,9 @@ class Columnstore {
     : progress_{progress, kProgressStepColumn}, writer_{std::move(writer)} {}
 
   Columnstore(directory& dir, const SegmentMeta& meta,
-              const MergeWriter::FlushProgress& progress)
+              const MergeWriter::FlushProgress& progress, IResourceManager& rm)
     : progress_{progress, kProgressStepColumn} {
-    auto writer = meta.codec->get_columnstore_writer(true);
+    auto writer = meta.codec->get_columnstore_writer(true, rm);
     writer->prepare(dir, meta);
 
     writer_ = std::move(writer);
@@ -1153,6 +1153,7 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
 
 class BufferedValues final : public column_reader, data_output {
  public:
+  BufferedValues(IResourceManager& rm) : index_{{rm}}, data_{{rm}} {}
   void Clear() noexcept {
     index_.clear();
     data_.clear();
@@ -1261,8 +1262,8 @@ class BufferedValues final : public column_reader, data_output {
     return data_.data() + offset;
   }
 
-  std::vector<BufferedValue> index_;
-  bstring data_;
+  BufferedColumn::BufferedValues index_;
+  BufferedColumn::Buffer data_;
   field_id id_{field_limits::invalid()};
   std::optional<bstring> header_;
   data_output* out_{};
@@ -1271,6 +1272,7 @@ class BufferedValues final : public column_reader, data_output {
 
 class BufferedColumns final : public irs::ColumnProvider {
  public:
+  BufferedColumns(IResourceManager& rm) : rm_(rm) {}
   const irs::column_reader* column(field_id field) const noexcept final {
     if (IRS_UNLIKELY(!field_limits::valid(field))) {
       return nullptr;
@@ -1289,7 +1291,7 @@ class BufferedColumns final : public irs::ColumnProvider {
       return *column;
     }
 
-    return columns_.emplace_back();
+    return columns_.emplace_back(rm_);
   }
 
   void Clear() noexcept {
@@ -1308,7 +1310,10 @@ class BufferedColumns final : public irs::ColumnProvider {
     return nullptr;
   }
 
+  // SmallVector seems to be incompatible with
+  // our ManagedTypedAllocator
   SmallVector<BufferedValues, 1> columns_;
+  IResourceManager& rm_;
 };
 
 // Write field term data
@@ -1318,7 +1323,8 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
                  const FeatureInfoProvider& column_info,
                  CompoundFiledIterator& field_itr,
                  const feature_set_t& scorers_features,
-                 const MergeWriter::FlushProgress& progress) {
+                 const MergeWriter::FlushProgress& progress,
+                 IResourceManager& rm) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(cs.valid());
 
@@ -1370,7 +1376,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
     return field_itr.visit(add_iterators);
   };
 
-  auto field_writer = meta.codec->get_field_writer(true);
+  auto field_writer = meta.codec->get_field_writer(true, rm);
   field_writer->prepare(flush_state);
 
   // Ensured by the caller
@@ -1519,14 +1525,16 @@ const MergeWriter::FlushProgress kProgressNoop = []() { return true; };
 
 }  // namespace
 
-MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
-  : reader{reader}, doc_map{[](doc_id_t) noexcept {
+MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader,
+                                  IResourceManager& rm) noexcept
+  : reader{reader}, doc_id_map{{rm}}, doc_map{[](doc_id_t) noexcept {
       return doc_limits::eof();
     }} {
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter() noexcept : dir_(NoopDirectory::instance()) {}
+MergeWriter::MergeWriter(IResourceManager& rm) noexcept
+  : dir_(NoopDirectory::instance()), readers_{{rm}} {}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1562,7 +1570,9 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
 
     if (reader.live_docs_count() == docs_count) {  // segment has no deletes
       const auto reader_base = base_id - doc_limits::min();
-      base_id += docs_count;
+      IRS_ASSERT(static_cast<uint64_t>(base_id) + docs_count <
+                 std::numeric_limits<doc_id_t>::max());
+      base_id += static_cast<doc_id_t>(docs_count);
 
       reader_ctx.doc_map = [reader_base](doc_id_t doc) noexcept {
         return reader_base + doc;
@@ -1600,7 +1610,8 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   // write merged segment data
   REGISTER_TIMER_DETAILED();
-  Columnstore cs(dir, segment, progress);
+  Columnstore cs(dir, segment, progress,
+                 readers_.get_allocator().ResourceManager());
 
   if (!cs.valid()) {
     return false;  // flush failure
@@ -1618,7 +1629,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  BufferedColumns buffered_columns;
+  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,
@@ -1631,7 +1642,8 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, remapping_itrs, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress)) {
+                   fields_itr, *scorers_features_, progress,
+                   readers_.get_allocator().ResourceManager())) {
     return false;  // Flush failure
   }
 
@@ -1754,7 +1766,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   }
 
   // Write new sorted column and fill doc maps for each reader
-  auto writer = segment.codec->get_columnstore_writer(true);
+  auto writer = segment.codec->get_columnstore_writer(
+    true, readers_.get_allocator().ResourceManager());
   writer->prepare(dir, segment);
 
   // Get column info for sorted column
@@ -1849,7 +1862,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // Progress callback requested termination
   }
 
-  BufferedColumns buffered_columns;
+  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,
@@ -1862,7 +1875,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, sorting_doc_it, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress)) {
+                   fields_itr, *scorers_features_, progress,
+                   readers_.get_allocator().ResourceManager())) {
     return false;  // flush failure
   }
 

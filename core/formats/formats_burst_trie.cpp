@@ -194,16 +194,19 @@ struct block_t : private util::noncopyable {
   static constexpr uint16_t INVALID_LABEL{std::numeric_limits<uint16_t>::max()};
 
 #ifdef __cpp_lib_memory_resource
-  using block_index_t = std::pmr::list<prefixed_output>;
+  using block_index_t =
+    std::list<prefixed_output, ManagedTypedPmrAllocator<prefixed_output>>;
 
-  block_t(std::pmr::memory_resource& mrc, uint64_t block_start, byte_type meta,
-          uint16_t label) noexcept
-    : index(&mrc), start(block_start), label(label), meta(meta) {}
+  block_t(IResourceManager& rm, std::pmr::memory_resource& mrc,
+          uint64_t block_start, byte_type meta, uint16_t label) noexcept
+    : index({rm, &mrc}), start(block_start), label(label), meta(meta) {}
 #else
-  using block_index_t = std::list<prefixed_output>;
+  using block_index_t =
+    std::list<prefixed_output, ManagedTypedAllocator<prefixed_output>>;
 
-  block_t(uint64_t block_start, byte_type meta, uint16_t label) noexcept
-    : start(block_start), label(label), meta(meta) {}
+  block_t(IResourceManager& rm, uint64_t block_start, byte_type meta,
+          uint16_t label) noexcept
+    : index({rm}), start(block_start), label(label), meta(meta) {}
 #endif
 
   block_t(block_t&& rhs) noexcept
@@ -241,7 +244,7 @@ class entry : private util::noncopyable {
   entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
         bool volatile_term);
 
-  entry(irs::bytes_view prefix,
+  entry(irs::bytes_view prefix, IResourceManager& rm,
 #ifdef __cpp_lib_memory_resource
         std::pmr::memory_resource& mrc,
 #endif
@@ -284,7 +287,7 @@ entry::entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
   mem_.construct<irs::postings_writer::state>(std::move(attrs));
 }
 
-entry::entry(irs::bytes_view prefix,
+entry::entry(irs::bytes_view prefix, IResourceManager& rm,
 #ifdef __cpp_lib_memory_resource
              std::pmr::memory_resource& mrc,
 #endif
@@ -298,9 +301,9 @@ entry::entry(irs::bytes_view prefix,
   }
 
 #ifdef __cpp_lib_memory_resource
-  mem_.construct<block_t>(mrc, block_start, meta, label);
+  mem_.construct<block_t>(rm, mrc, block_start, meta, label);
 #else
-  mem_.construct<block_t>(block_start, meta, label);
+  mem_.construct<block_t>(rm, block_start, meta, label);
 #endif
 }
 
@@ -727,7 +730,8 @@ const fst::FstReadOptions& fst_read_options() {
 // mininum size of string weight we store in FST
 [[maybe_unused]] constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
-void merge_blocks(std::vector<entry>& blocks) {
+template<typename Blocks>
+void merge_blocks(Blocks& blocks) {
   IRS_ASSERT(!blocks.empty());
 
   auto it = blocks.begin();
@@ -802,6 +806,9 @@ class fst_buffer : public vector_byte_fst {
     }
   };
 
+  fst_buffer(IResourceManager& rm)
+    : vector_byte_fst(ManagedTypedAllocator<byte_arc>(rm)){};
+
   using fst_byte_builder = fst_builder<byte_type, vector_byte_fst, fst_stats>;
 
   template<typename Data>
@@ -831,6 +838,7 @@ class field_writer final : public irs::field_writer {
   static constexpr std::string_view TERMS_INDEX_EXT = "ti";
 
   field_writer(irs::postings_writer::ptr&& pw, bool consolidation,
+               IResourceManager& rm,
                burst_trie::Version version = burst_trie::Version::MAX,
                uint32_t min_block_size = DEFAULT_MIN_BLOCK_SIZE,
                uint32_t max_block_size = DEFAULT_MAX_BLOCK_SIZE);
@@ -873,7 +881,7 @@ class field_writer final : public irs::field_writer {
 #ifdef __cpp_lib_memory_resource
   std::pmr::monotonic_buffer_resource block_index_buf_;
 #endif
-  std::vector<entry> blocks_;
+  std::vector<entry, ManagedTypedAllocator<entry>> blocks_;
   memory_output suffix_;  // term suffix column
   memory_output stats_;   // term stats column
   encryption::stream::ptr terms_out_cipher_;
@@ -881,7 +889,7 @@ class field_writer final : public irs::field_writer {
   encryption::stream::ptr index_out_cipher_;
   index_output::ptr index_out_;  // output stream for indexes
   postings_writer::ptr pw_;      // postings writer
-  std::vector<entry> stack_;
+  std::vector<entry, ManagedTypedAllocator<entry>> stack_;
   fst_buffer* fst_buf_;  // pimpl buffer used for building FST for fields
   volatile_byte_ref last_term_;  // last pushed term
   std::vector<size_t> prefixes_;
@@ -907,9 +915,10 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   const bool leaf = !block_meta::blocks(meta);
 
 #ifdef __cpp_lib_memory_resource
-  block_t::block_index_t index(&block_index_buf_);
+  block_t::block_index_t index(
+    {blocks_.get_allocator().ResourceManager(), &block_index_buf_});
 #else
-  block_t::block_index_t index;
+  block_t::block_index_t index({blocks_.get_allocator().ResourceManager()});
 #endif
 
   pw_->begin_block();
@@ -983,6 +992,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
 
   // add new block to the list of created blocks
   blocks_.emplace_back(bytes_view{last_term_.view().data(), prefix},
+                       blocks_.get_allocator().ResourceManager(),
 #ifdef __cpp_lib_memory_resource
                        block_index_buf_,
 #endif
@@ -1088,7 +1098,7 @@ void field_writer::Push(bytes_view term) {
 }
 
 field_writer::field_writer(
-  irs::postings_writer::ptr&& pw, bool consolidation,
+  irs::postings_writer::ptr&& pw, bool consolidation, IResourceManager& rm,
   burst_trie::Version version /* = Format::MAX */,
   uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
   uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
@@ -1096,8 +1106,12 @@ field_writer::field_writer(
 #ifdef __cpp_lib_memory_resource
     block_index_buf_{sizeof(block_t::prefixed_output) * 32},
 #endif
+    blocks_(ManagedTypedAllocator<entry>(rm)),
+    suffix_(rm),
+    stats_(rm),
     pw_(std::move(pw)),
-    fst_buf_(new fst_buffer()),
+    stack_(ManagedTypedAllocator<entry>(rm)),
+    fst_buf_(new fst_buffer(rm)),
     prefixes_(DEFAULT_SIZE, 0),
     version_(version),
     min_block_size_(min_block_size),
@@ -2995,16 +3009,17 @@ bool automaton_term_iterator<FST>::next() {
 
 class field_reader final : public irs::field_reader {
  public:
-  explicit field_reader(irs::postings_reader::ptr&& pr);
+  explicit field_reader(irs::postings_reader::ptr&& pr, IResourceManager& rm);
 
-  void CountMemory(const MemoryStats& stats) const final {
-    // TODO(Dronplane) compute stats.pinned_memory
+  uint64_t CountMappedMemory() const final {
+    uint64_t mapped{0};
     if (pr_ != nullptr) {
-      pr_->CountMemory(stats);
+      mapped += pr_->CountMappedMemory();
     }
     if (terms_in_ != nullptr) {
-      terms_in_->CountMemory(stats);
+      mapped += terms_in_->CountMappedMemory();
     }
+    return mapped;
   }
 
   void prepare(const ReaderState& state) final;
@@ -3028,8 +3043,8 @@ class field_reader final : public irs::field_reader {
       // read FST
       input_buf isb(&in);
       std::istream input(&isb);  // wrap stream to be OpenFST compliant
-      fst_.reset(FST::Read(input, fst_read_options()));
-
+      fst_.reset(
+        FST::Read(input, fst_read_options(), {owner_->resource_manager_}));
       if (!fst_) {
         throw index_error{absl::StrCat("Failed to read term index for field '",
                                        meta().name, "'")};
@@ -3190,10 +3205,11 @@ class field_reader final : public irs::field_reader {
   irs::postings_reader::ptr pr_;
   encryption::stream::ptr terms_in_cipher_;
   index_input::ptr terms_in_;
+  IResourceManager& resource_manager_;
 };
 
-field_reader::field_reader(irs::postings_reader::ptr&& pr)
-  : pr_(std::move(pr)) {
+field_reader::field_reader(irs::postings_reader::ptr&& pr, IResourceManager& rm)
+  : pr_(std::move(pr)), resource_manager_(rm) {
   IRS_ASSERT(pr_);
 }
 
@@ -3482,7 +3498,6 @@ class dumper : util::noncopyable {
   size_t indent_ = 0;
   size_t prefix_ = 0;
 };
-
 }  // namespace
 
 namespace irs {
@@ -3490,13 +3505,14 @@ namespace burst_trie {
 
 irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,
-                                   bool consolidation) {
-  return std::make_unique<::field_writer>(std::move(writer), consolidation,
+                                   IResourceManager& rm, bool consolidation) {
+  return std::make_unique<::field_writer>(std::move(writer), consolidation, rm,
                                           version);
 }
 
-irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader) {
-  return std::make_shared<::field_reader>(std::move(reader));
+irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader,
+                                   IResourceManager& rm) {
+  return std::make_shared<::field_reader>(std::move(reader), rm);
 }
 
 }  // namespace burst_trie

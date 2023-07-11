@@ -576,7 +576,8 @@ class IndexWriter : private util::noncopyable {
               const ColumnInfoProvider& column_info,
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
-              std::shared_ptr<const DirectoryReaderImpl>&& committed_reader);
+              std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
+              const ResourceManagementOptions& rm);
 
  private:
   struct ConsolidationContext : util::noncopyable {
@@ -604,37 +605,13 @@ class IndexWriter : private util::noncopyable {
           .merger = std::move(merger)} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  std::shared_ptr<const DirectoryReaderImpl>&&
-                    consolidation_reader) noexcept
+                  const ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)},
-        consolidation_ctx{
-          .consolidation_reader = std::move(consolidation_reader),
-          .candidates = std::move(consolidation_candidates)} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
-      : tick{tick},
-        segment{std::move(segment)},
-        refs{std::move(refs)},
-        reader{std::move(reader)},
-        consolidation_ctx{.candidates = std::move(consolidation_candidates)} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
-      : tick{tick},
-        segment{std::move(segment)},
-        refs{std::move(refs)},
-        reader{std::move(reader)} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
-      : tick{tick}, segment{std::move(segment)}, reader{std::move(reader)} {}
+        consolidation_ctx{.merger{*rm.consolidations}} {}
 
     ImportContext(ImportContext&&) = default;
 
@@ -658,6 +635,7 @@ class IndexWriter : private util::noncopyable {
       : IndexSegment{std::move(segment)},
         old2new{std::move(old2new)},
         docs_mask{std::move(docs_mask)},
+        document_mask{{this->docs_mask.set.get_allocator()}},
         docs_begin_{docs_begin},
         docs_end_{docs_begin_ + meta.docs_count} {}
 
@@ -700,14 +678,16 @@ class IndexWriter : private util::noncopyable {
     RefTrackingDirectory dir_;
 
     // sequential list of pending modification
-    std::vector<QueryContext> queries_;
+    std::vector<QueryContext, ManagedTypedAllocator<QueryContext>> queries_;
     // all of the previously flushed versions of this segment
-    std::vector<FlushedSegment> flushed_;
+    std::vector<FlushedSegment, ManagedTypedAllocator<FlushedSegment>> flushed_;
     // update_contexts to use with 'flushed_'
     // sequentially increasing through all offsets
     // (sequential doc_id in 'flushed_' == offset + doc_limits::min(), size()
     // == sum of all 'flushed_'.'docs_count')
-    std::vector<segment_writer::DocContext> flushed_docs_;
+    std::vector<segment_writer::DocContext,
+                ManagedTypedAllocator<segment_writer::DocContext>>
+      flushed_docs_;
 
     // function to get new SegmentMeta from
     segment_meta_generator_t meta_generator_;
@@ -940,7 +920,8 @@ class IndexWriter : private util::noncopyable {
   ActiveSegmentContext GetSegmentContext();
 
   // Return options for segment_writer
-  SegmentWriterOptions GetSegmentWriterOptions() const noexcept;
+  SegmentWriterOptions GetSegmentWriterOptions(
+    bool consolidation) const noexcept;
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;
@@ -996,6 +977,7 @@ class IndexWriter : private util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_;  // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
+  ResourceManagementOptions resource_manager_;
 };
 
 }  // namespace irs

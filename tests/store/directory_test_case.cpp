@@ -4624,10 +4624,10 @@ TEST(memory_directory_test, rewrite) {
   const bytes_view payload0{ViewCast<byte_type>(str0)};
   const bytes_view payload1{ViewCast<byte_type>(str1)};
 
-  memory_output out;
+  memory_output out{IResourceManager::kNoop};
   out.stream.write_bytes(payload0.data(), payload0.size());
   ASSERT_EQ(payload0.size(), out.stream.file_pointer());
-  out.stream.seek(out.stream.file_pointer() - 3);
+  out.stream.truncate(out.stream.file_pointer() - 3);
   ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
   out.stream.write_bytes(payload1.data(), payload1.size());
   ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());

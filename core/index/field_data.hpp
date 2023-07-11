@@ -52,7 +52,7 @@ namespace analysis {
 class analyzer;
 }
 
-typedef block_pool<size_t, 8192> int_block_pool;
+using int_block_pool = block_pool<size_t, 8192, ManagedTypedAllocator<size_t>>;
 
 namespace detail {
 class term_iterator;
@@ -65,8 +65,9 @@ class sorting_doc_iterator;
 class cached_column final : public column_reader {
  public:
   cached_column(field_id* id, ColumnInfo info,
-                columnstore_writer::column_finalizer_f finalizer) noexcept
-    : id_{id}, stream_{info}, finalizer_{std::move(finalizer)} {}
+                columnstore_writer::column_finalizer_f finalizer,
+                IResourceManager& rm) noexcept
+    : id_{id}, stream_{info, rm}, finalizer_{std::move(finalizer)} {}
 
   BufferedColumn& Stream() noexcept { return stream_; }
   const BufferedColumn& Stream() const noexcept { return stream_; }
@@ -106,7 +107,8 @@ class field_data : util::noncopyable {
  public:
   field_data(std::string_view name, const features_t& features,
              const FeatureInfoProvider& feature_columns,
-             std::deque<cached_column>& cached_columns,
+             std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+               cached_columns,
              const feature_set_t& cached_features, columnstore_writer& columns,
              byte_block_pool::inserter& byte_writer,
              int_block_pool::inserter& int_writer, IndexFeatures index_features,
@@ -216,10 +218,12 @@ class fields_data : util::noncopyable {
  public:
   using postings_ref_t = std::vector<const posting*>;
 
-  explicit fields_data(const FeatureInfoProvider& feature_info,
-                       std::deque<cached_column>& cached_columns,
-                       const feature_set_t& cached_features,
-                       const Comparer* comparator);
+  explicit fields_data(
+    const FeatureInfoProvider& feature_info,
+    std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+      cached_columns,
+    const feature_set_t& cached_features, IResourceManager& rm,
+    const Comparer* comparator);
 
   const Comparer* comparator() const noexcept { return comparator_; }
 
@@ -244,8 +248,10 @@ class fields_data : util::noncopyable {
  private:
   const Comparer* comparator_;
   const FeatureInfoProvider* feature_info_;
-  std::deque<field_data> fields_;              // pointers remain valid
-  std::deque<cached_column>* cached_columns_;  // pointers remain valid
+  std::deque<field_data, ManagedTypedAllocator<field_data>>
+    fields_;  // pointers remain valid
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>*
+    cached_columns_;  // pointers remain valid
   const feature_set_t* cached_features_;
   fields_map fields_map_;
   postings_ref_t sorted_postings_;
