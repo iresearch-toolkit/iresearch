@@ -1272,7 +1272,7 @@ class BufferedValues final : public column_reader, data_output {
 
 class BufferedColumns final : public irs::ColumnProvider {
  public:
-  BufferedColumns(IResourceManager& rm) : columns_{{rm}} {}
+  BufferedColumns(IResourceManager& rm) : rm_(rm) {}
   const irs::column_reader* column(field_id field) const noexcept final {
     if (IRS_UNLIKELY(!field_limits::valid(field))) {
       return nullptr;
@@ -1291,7 +1291,7 @@ class BufferedColumns final : public irs::ColumnProvider {
       return *column;
     }
 
-    return columns_.emplace_back(columns_.get_allocator().ResourceManager());
+    return columns_.emplace_back(rm_);
   }
 
   void Clear() noexcept {
@@ -1310,8 +1310,10 @@ class BufferedColumns final : public irs::ColumnProvider {
     return nullptr;
   }
 
-  SmallVector<BufferedValues, 1, ManagedTypedAllocator<BufferedValues>>
-    columns_;
+  // SmallVector seems to be incompatible with
+  // our ManagedTypedAllocator
+  SmallVector<BufferedValues, 1> columns_;
+  IResourceManager& rm_;
 };
 
 // Write field term data
