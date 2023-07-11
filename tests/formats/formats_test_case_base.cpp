@@ -809,7 +809,7 @@ TEST_P(format_test_case, fields_read_write) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::DocumentMask docs_mask;
+    irs::DocumentMask docs_mask{{irs::IResourceManager::kNoop}};
     auto reader = codec()->get_field_reader(irs::IResourceManager::kNoop);
     reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta});
     ASSERT_EQ(1, reader->size());
@@ -3471,7 +3471,9 @@ TEST_P(format_test_case, columns_rw) {
 }
 
 TEST_P(format_test_case, document_mask_rw) {
-  const irs::DocumentMask mask_set = {1, 4, 5, 7, 10, 12};
+  irs::DocumentMask mask_set{{irs::IResourceManager::kNoop}};
+  irs::doc_id_t array[] = {1, 4, 5, 7, 10, 12};
+  mask_set.insert(std::begin(array), std::end(array));
   irs::SegmentMeta meta;
   meta.name = "_1";
   meta.version = 42;
@@ -3486,7 +3488,7 @@ TEST_P(format_test_case, document_mask_rw) {
   // read document_mask
   {
     auto reader = codec()->get_document_mask_reader();
-    irs::DocumentMask expected;
+    irs::DocumentMask expected{{irs::IResourceManager::kNoop}};
     EXPECT_TRUE(reader->read(dir(), meta, expected));
     for (auto id : mask_set) {
       EXPECT_EQ(1, expected.erase(id));
@@ -3739,7 +3741,7 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
 
   irs::SegmentMeta meta;
   meta.name = "segment_name";
-  irs::DocumentMask docs_mask;
+  irs::DocumentMask docs_mask{{irs::IResourceManager::kNoop}};
 
   auto reader = codec()->get_field_reader(irs::IResourceManager::kNoop);
   ASSERT_NE(nullptr, reader);
