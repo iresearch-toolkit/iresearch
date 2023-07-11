@@ -42,8 +42,9 @@ class MergeWriter : public util::noncopyable {
   using FlushProgress = std::function<bool()>;
 
   struct ReaderCtx {
-    ReaderCtx(const SubReader* reader) noexcept;
-    ReaderCtx(const SubReader& reader) noexcept : ReaderCtx{&reader} {}
+    ReaderCtx(const SubReader* reader, IResourceManager& rm) noexcept;
+    ReaderCtx(const SubReader& reader, IResourceManager& rm) noexcept
+      : ReaderCtx{&reader, rm} {}
 
     const SubReader* reader;  // segment reader
     std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>
@@ -71,7 +72,11 @@ class MergeWriter : public util::noncopyable {
 
   template<typename Iterator>
   void Reset(Iterator begin, Iterator end) {
-    readers_.insert(readers_.end(), begin, end);
+    readers_.reserve(readers_.size() + std::distance(begin, end));
+    while (begin != end) {
+      readers_.emplace_back(*begin++,
+                            readers_.get_allocator().ResourceManager());
+    }
   }
 
   // Flush all of the added readers into a single segment.
