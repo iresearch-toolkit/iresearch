@@ -408,7 +408,9 @@ TEST(segment_reader_test, segment_reader_has) {
     expected.docs_count = 43;
     expected.live_docs_count = 42;
     expected.version = 0;
-    docs_mask_writer->write(dir, expected, {0});
+    irs::DocumentMask mask{{irs::IResourceManager::kNoop}};
+    mask.insert(0);
+    docs_mask_writer->write(dir, expected, mask);
     writer->write(dir, filename, expected);
 
     irs::SegmentMeta meta;
@@ -432,7 +434,9 @@ TEST(segment_reader_test, segment_reader_has) {
     expected.live_docs_count = 42;
     expected.column_store = true;
     expected.version = 1;
-    docs_mask_writer->write(dir, expected, {0});
+    irs::DocumentMask mask{{irs::IResourceManager::kNoop}};
+    mask.insert(0);
+    docs_mask_writer->write(dir, expected, mask);
     writer->write(dir, filename, expected);
 
     irs::SegmentMeta meta;
