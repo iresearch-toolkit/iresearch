@@ -66,12 +66,13 @@ const FeatureInfoProvider kDefaultFeatureInfo = [](irs::type_info::type_id) {
 struct FlushedSegmentContext {
   FlushedSegmentContext(std::shared_ptr<const SegmentReaderImpl>&& reader,
                         IndexWriter::SegmentContext& segment,
-                        IndexWriter::FlushedSegment& flushed)
+                        IndexWriter::FlushedSegment& flushed,
+                        IResourceManager& rm)
     : reader{std::move(reader)}, segment{segment}, flushed{flushed} {
     IRS_ASSERT(this->reader != nullptr);
     if (flushed.docs_mask.count != doc_limits::eof()) {
       IRS_ASSERT(flushed.document_mask.empty());
-      Init();
+      Init(rm);
     }
   }
 
@@ -114,15 +115,15 @@ struct FlushedSegmentContext {
   void MaskUnusedReplace(uint64_t first_tick, uint64_t last_tick);
 
  private:
-  void Init() {
+  void Init(IResourceManager& rm) {
     if (!flushed.old2new.empty() && flushed.new2old.empty()) {
-      flushed.new2old.resize(flushed.old2new.size());
+      flushed.new2old = decltype(flushed.new2old){flushed.old2new.size(), {rm}};
       for (doc_id_t old_id = 0; const auto new_id : flushed.old2new) {
         flushed.new2old[new_id] = old_id++;
       }
     }
 
-    DocumentMask document_mask{flushed.docs_mask.set.get_allocator()};
+    DocumentMask document_mask{{rm}};
 
     IRS_ASSERT(flushed.GetDocsBegin() < flushed.GetDocsEnd());
     const auto end = flushed.GetDocsEnd() - flushed.GetDocsBegin();
@@ -2201,7 +2202,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
         }
 
         auto& segment_ctx =
-          segment_ctxs.emplace_back(std::move(reader), *segment, flushed);
+          segment_ctxs.emplace_back(std::move(reader), *segment, flushed,
+                                    *resource_manager_.transactions);
 
         // mask documents matching filters from all flushed segment_contexts
         // (i.e. from new operations)
@@ -2227,7 +2229,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       if (segment_ctx.segment.has_replace_) {
         segment_ctx.MaskUnusedReplace(committed_tick_, tick);
       }
-      DocumentMask document_mask;
+      DocumentMask document_mask{{*resource_manager_.transactions}};
       IndexSegment new_segment;
       if (segment_ctx.MakeDocumentMask(tick, document_mask, new_segment)) {
         modified |= segment_ctx.flushed.was_flush;
