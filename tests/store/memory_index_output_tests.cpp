@@ -61,10 +61,11 @@ TEST(memory_index_output_tests, reset) {
     out.flush();
     out.reset();
     // file memory is not released
+    const auto mem = memory.counter_;
     ASSERT_GT(memory.counter_, 0);
     file.reset();
     // file memory is not released
-    ASSERT_GT(memory.counter_, 0);
+    ASSERT_EQ(memory.counter_, mem);
 
     std::vector<std::string> data1{
       "OqywZv86RA4t0tz", "jxk02FZHJDLcYtf", "y7Q9yvg7mcI2Lfs",
@@ -98,11 +99,12 @@ TEST(memory_index_output_tests, reset) {
     });
     out.reset();
     file.clear();
-    ASSERT_EQ(memory.counter_, 0);
+    // some memory would be left as buffers tracking vector is not deallocated
+    ASSERT_LT(memory.counter_, mem);
     std::for_each(data1.begin(), data1.end(), [&out](const std::string& s) {
       write_string(out, s.c_str(), s.size());
     });
-    ASSERT_GT(memory.counter_, 0);
+    ASSERT_EQ(memory.counter_, mem);
   }
   ASSERT_EQ(memory.counter_, 0);
 }

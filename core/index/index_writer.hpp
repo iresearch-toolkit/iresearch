@@ -635,6 +635,7 @@ class IndexWriter : private util::noncopyable {
       : IndexSegment{std::move(segment)},
         old2new{std::move(old2new)},
         docs_mask{std::move(docs_mask)},
+        document_mask{{this->docs_mask.set.get_allocator()}},
         docs_begin_{docs_begin},
         docs_end_{docs_begin_ + meta.docs_count} {}
 

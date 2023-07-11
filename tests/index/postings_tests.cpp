@@ -63,7 +63,6 @@ void insert_find_core(const std::vector<std::string>& src) {
     ASSERT_FALSE(res.second);
   }
   ASSERT_GT(memory.counter_, 0);
-  ASSERT_EQ(memory.counter_ % block_size, 0);
 
   ASSERT_EQ(src.size(), bh.size());
   ASSERT_FALSE(bh.empty());
@@ -90,7 +89,6 @@ void insert_find_core(const std::vector<std::string>& src) {
     ASSERT_FALSE(res.second);
   }
   ASSERT_GT(memory.counter_, 0);
-  ASSERT_EQ(memory.counter_ % block_size, 0);
   pool.reset();
   ASSERT_EQ(memory.counter_, 0);
 }
@@ -381,7 +379,7 @@ TEST(postings_tests, clear) {
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
   pool->clear();
-  ASSERT_EQ(0, memory.counter_);
+  ASSERT_LT(memory.counter_, block_size);
   pool.reset();
   ASSERT_EQ(0, memory.counter_);
 }

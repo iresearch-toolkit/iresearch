@@ -1153,6 +1153,7 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
 
 class BufferedValues final : public column_reader, data_output {
  public:
+  BufferedValues(IResourceManager& rm) : index_{{rm}}, data_{{rm}} {}
   void Clear() noexcept {
     index_.clear();
     data_.clear();
@@ -1261,8 +1262,8 @@ class BufferedValues final : public column_reader, data_output {
     return data_.data() + offset;
   }
 
-  std::vector<BufferedValue> index_;
-  bstring data_;
+  BufferedColumn::BufferedValues index_;
+  BufferedColumn::Buffer data_;
   field_id id_{field_limits::invalid()};
   std::optional<bstring> header_;
   data_output* out_{};
@@ -1271,6 +1272,7 @@ class BufferedValues final : public column_reader, data_output {
 
 class BufferedColumns final : public irs::ColumnProvider {
  public:
+  BufferedColumns(IResourceManager& rm) : columns_{{rm}} {}
   const irs::column_reader* column(field_id field) const noexcept final {
     if (IRS_UNLIKELY(!field_limits::valid(field))) {
       return nullptr;
@@ -1289,7 +1291,7 @@ class BufferedColumns final : public irs::ColumnProvider {
       return *column;
     }
 
-    return columns_.emplace_back();
+    return columns_.emplace_back(columns_.get_allocator().ResourceManager());
   }
 
   void Clear() noexcept {
@@ -1308,7 +1310,8 @@ class BufferedColumns final : public irs::ColumnProvider {
     return nullptr;
   }
 
-  SmallVector<BufferedValues, 1> columns_;
+  SmallVector<BufferedValues, 1, ManagedTypedAllocator<BufferedValues>>
+    columns_;
 };
 
 // Write field term data
@@ -1623,7 +1626,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  BufferedColumns buffered_columns;
+  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,
@@ -1856,7 +1859,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // Progress callback requested termination
   }
 
-  BufferedColumns buffered_columns;
+  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,

@@ -205,6 +205,8 @@ class dynamic_bitset {
   // counts bits set
   size_t count() const noexcept { return math::popcount(begin(), end()); }
 
+  Alloc& get_allocator() { return data_.get_deleter().alloc(); }
+
  private:
   size_t capacity_words() const noexcept { return data_.get_deleter().size(); }
 

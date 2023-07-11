@@ -122,7 +122,7 @@ struct FlushedSegmentContext {
       }
     }
 
-    DocumentMask document_mask;
+    DocumentMask document_mask{flushed.docs_mask.set.get_allocator()};
 
     IRS_ASSERT(flushed.GetDocsBegin() < flushed.GetDocsEnd());
     const auto end = flushed.GetDocsEnd() - flushed.GetDocsBegin();
@@ -977,7 +977,7 @@ void IndexWriter::SegmentContext::Flush() {
     committed_buffered_docs_ = 0;
   };
 
-  DocsMask docs_mask;
+  DocsMask docs_mask{.set{flushed_docs_.get_allocator()}};
   auto old2new = writer_->flush(writer_meta_, docs_mask);
 
   if (writer_meta_.meta.live_docs_count == 0) {
@@ -1896,7 +1896,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
   readers.reserve(committed_reader_size);
   pending_meta.segments.reserve(committed_reader_size);
 
-  for (DocumentMask deleted_docs;
+  for (DocumentMask deleted_docs{{*resource_manager_.transactions}};
        const auto& existing_segment : committed_reader.GetReaders()) {
     auto& index_segment =
       committed_meta.index_meta.segments[current_segment_index];

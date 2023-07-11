@@ -255,7 +255,8 @@ void segment_writer::FlushFields(flush_state& state) {
   // Flush all cached columns
   IRS_ASSERT(column_ids_.empty());
   column_ids_.reserve(cached_columns_.size());
-  for (BufferedColumn::BufferedValues buffer; auto& column : cached_columns_) {
+  for (BufferedColumn::BufferedValues buffer{cached_columns_.get_allocator()};
+       auto& column : cached_columns_) {
     if (IRS_LIKELY(!field_limits::valid(column.id()))) {
       column.Flush(*col_writer_, docmap, buffer);
     }
