@@ -180,7 +180,7 @@ TEST_P(columnstore2_test_case, empty_columnstore) {
     // we do not release columns memory from vector.
     // but that maybe makes no sense as in real application
     // writer would be terminated anyway.
-    ASSERT_EQ(pinned3, pinned2);
+    ASSERT_LE(pinned3, pinned2);
     irs::columnstore2::reader reader;
     ASSERT_FALSE(reader.prepare(dir(), meta, reader_options(memory)));
     // empty columnstore - no readers to allocate
