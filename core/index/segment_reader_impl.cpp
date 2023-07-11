@@ -162,7 +162,8 @@ FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) {
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(
+    PrivateTag{}, *options.resource_manager.readers);
   // read optional docs_mask
   DocumentMask docs_mask{{*options.resource_manager.readers}};
   if (options.doc_mask) {
@@ -189,7 +190,8 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) const {
   IRS_ASSERT(meta == info_);
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(
+    PrivateTag{}, docs_mask_.get_allocator().ResourceManager());
   // clone removals
   reader->refs_ = refs_;
   reader->info_ = info_;
@@ -205,7 +207,8 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenDocsMask(
   const directory& dir, const SegmentMeta& meta,
   DocumentMask&& docs_mask) const {
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(
+    PrivateTag{}, docs_mask_.get_allocator().ResourceManager());
   // clone field reader
   reader->field_reader_ = field_reader_;
   // clone column store
