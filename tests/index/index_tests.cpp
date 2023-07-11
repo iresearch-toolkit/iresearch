@@ -16927,6 +16927,7 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
   AssertSnapshotEquality(*writer);
+  writer.reset();
   auto reader = irs::DirectoryReader(directory);
   if (dynamic_cast<irs::memory_directory*>(&directory) == nullptr) {
     EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 3);
@@ -17034,7 +17035,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
   const auto tr3 = memory.transactions.counter_;
-  ASSERT_GT(tr3, tr3);
+  ASSERT_GT(tr3, tr2);
   writer->Commit();
   AssertSnapshotEquality(*writer);
   EXPECT_EQ(0, memory.cached_columns.counter_);
