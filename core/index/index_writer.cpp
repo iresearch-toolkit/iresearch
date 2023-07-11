@@ -1585,7 +1585,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
       // handle removals if something changed
       if (has_removals) {
-        DocumentMask docs_mask;
+        DocumentMask docs_mask{{*resource_manager_.consolidations}};
 
         if (!MapRemovals(mappings, merger, docs_mask)) {
           // consolidated segment has docs missing from
