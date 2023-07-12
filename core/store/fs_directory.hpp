@@ -67,7 +67,9 @@ class FSDirectory : public directory {
   bool visit(const visitor_f& visitor) const final;
 
  protected:
-  const ResourceManagementOptions& resource_manager_;
+  // TODO(MBkkt) store ResourceManagementOptions only in directory
+  // Don't pass them to IndexWriter
+  ResourceManagementOptions resource_manager_;
 
  private:
   bool sync(std::string_view name) noexcept;

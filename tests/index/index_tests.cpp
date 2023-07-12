@@ -17068,9 +17068,5 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
   AssertSnapshotEquality(*writer);
   EXPECT_EQ(0, memory.cached_columns.counter_);
   writer.reset();
-#ifndef _MSC_VER
-  // For MSVC there is the problem with proper
-  // deallocator call fro custom allocator on list
   ASSERT_EQ(0, memory.transactions.counter_);
-#endif
 }
