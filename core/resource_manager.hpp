@@ -81,7 +81,7 @@ struct ManagedTypedAllocator
   using Base = ManagedAllocator<std::allocator<T>, IResourceManager>;
   explicit ManagedTypedAllocator()
     : Base(
-#ifdef IRESEARCH_DEBUG
+#if !defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
         IResourceManager::kForbidden
 #else
         IResourceManager::kNoop

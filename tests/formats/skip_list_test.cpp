@@ -134,7 +134,12 @@ TEST_F(SkipWriterTest, Prepare) {
     ASSERT_EQ(skip_0, writer.Skip0());
     ASSERT_EQ(skip_n, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC allocates some blocks even for empty containers
+    ASSERT_GT(memory.counter_, 0);
+#else
     ASSERT_EQ(0, memory.counter_);
+#endif
   }
   ASSERT_EQ(0, memory.counter_);
   {
@@ -148,7 +153,12 @@ TEST_F(SkipWriterTest, Prepare) {
     ASSERT_EQ(skip_0, writer.Skip0());
     ASSERT_EQ(skip_n, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
-    ASSERT_EQ(memory.counter_, 0);
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC allocates some blocks even for empty containers
+    ASSERT_GT(memory.counter_, 0);
+#else
+    ASSERT_EQ(0, memory.counter_);
+#endif
   }
   ASSERT_EQ(0, memory.counter_);
   int64_t memoryAlmostFull{0};
