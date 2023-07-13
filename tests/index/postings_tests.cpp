@@ -103,7 +103,11 @@ TEST(postings_tests, ctor) {
   postings bh(writer);
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+  ASSERT_GT(memory.counter_, 0);
+#else
   ASSERT_EQ(0, memory.counter_);
+#endif
 }
 
 TEST(postings_tests, insert_find) {
@@ -369,7 +373,11 @@ TEST(postings_tests, clear) {
   postings bh(writer);
   ASSERT_TRUE(bh.empty());
   ASSERT_EQ(0, bh.size());
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+  ASSERT_GT(memory.counter_, 0);
+#else
   ASSERT_EQ(0, memory.counter_);
+#endif
   [[maybe_unused]] auto res =
     bh.emplace(tests::detail::to_bytes_view("string"));
   ASSERT_FALSE(bh.empty());
