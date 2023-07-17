@@ -39,6 +39,8 @@ class ExternalMergeIterator {
   explicit ExternalMergeIterator(Args&&... args)
     : ctx_{std::forward<Args>(args)...} {}
 
+  bool Initilized() const noexcept { return !tree_.empty(); }
+
   void Reset(std::span<Value> values) noexcept {
     size_ = 0;
     tree_.clear();
@@ -70,7 +72,7 @@ class ExternalMergeIterator {
     return *tree_[1];
   }
 
-  IRS_FORCE_INLINE size_t Size() const noexcept { return size_; }
+  size_t Size() const noexcept { return size_; }
 
  private:
   IRS_FORCE_INLINE Value* Compute(size_t position) {
