@@ -44,7 +44,7 @@ class SkipWriterTest : public test_base {
       out.write_vlong(irs::doc_id_t(cur_doc));
     };
 
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
     irs::memory_directory dir;
 
@@ -120,6 +120,7 @@ class SkipReaderTest : public test_base {};
 }  // namespace
 
 TEST_F(SkipWriterTest, Prepare) {
+  SimpleMemoryAccounter memory;
   // empty doc count
   {
     const size_t max_levels = 10;
@@ -127,46 +128,61 @@ TEST_F(SkipWriterTest, Prepare) {
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
 
-    irs::SkipWriter writer(skip_0, skip_n);
+    irs::SkipWriter writer(skip_0, skip_n, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip_0, writer.Skip0());
     ASSERT_EQ(skip_n, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC allocates some blocks even for empty containers
+    ASSERT_GT(memory.counter_, 0);
+#else
+    ASSERT_EQ(0, memory.counter_);
+#endif
   }
-
+  ASSERT_EQ(0, memory.counter_);
   {
     const size_t max_levels = 0;
     const size_t doc_count = 17;
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
-    irs::SkipWriter writer(skip_0, skip_n);
+    irs::SkipWriter writer(skip_0, skip_n, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip_0, writer.Skip0());
     ASSERT_EQ(skip_n, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC allocates some blocks even for empty containers
+    ASSERT_GT(memory.counter_, 0);
+#else
+    ASSERT_EQ(0, memory.counter_);
+#endif
   }
-
+  ASSERT_EQ(0, memory.counter_);
+  int64_t memoryAlmostFull{0};
   // less than max levels
   {
     const size_t doc_count = 1923;
     const size_t skip = 8;
     const size_t max_levels = 10;
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip, writer.Skip0());
     ASSERT_EQ(skip, writer.SkipN());
     ASSERT_EQ(3, writer.MaxLevels());
+    ASSERT_GT(memory.counter_, 0);
+    memoryAlmostFull = memory.counter_;
   }
-
+  ASSERT_EQ(0, memory.counter_);
   // more than max levels
   {
     const size_t doc_count = 1923000;
     const size_t skip = 8;
     const size_t max_levels = 5;
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip, writer.Skip0());
@@ -182,7 +198,9 @@ TEST_F(SkipWriterTest, Prepare) {
     ASSERT_EQ(skip, writer.Skip0());
     ASSERT_EQ(skip, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
+    ASSERT_GT(memory.counter_, memoryAlmostFull);
   }
+  ASSERT_EQ(0, memory.counter_);
 }
 
 TEST_F(SkipWriterTest, WriteFlush) { SkipWriterTest::write_flush(1923, 5, 8); }
@@ -201,7 +219,7 @@ TEST_F(SkipWriterTest, Reset) {
   };
 
   // Prepare writer
-  irs::SkipWriter writer(skip, skip);
+  irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
   ASSERT_EQ(0, writer.MaxLevels());
   writer.Prepare(max_levels, count);
   ASSERT_NE(max_levels, writer.MaxLevels());
@@ -369,7 +387,7 @@ TEST_F(SkipReaderTest, Prepare) {
     size_t max_levels = 5;
     size_t skip = 8;
 
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, count);
     ASSERT_EQ(3, writer.MaxLevels());
@@ -402,7 +420,7 @@ TEST_F(SkipReaderTest, Prepare) {
       void operator()(size_t, irs::index_output& out) { out.write_vint(0); }
     };
 
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
     irs::memory_directory dir;
 
@@ -506,7 +524,7 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
   // write data
   {
     WriteSkip scoreWriter;
-    irs::SkipWriter writer(kSkip0, kSkipN);
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
@@ -660,7 +678,7 @@ TEST_F(SkipReaderTest, Seek) {
       size_t low = irs::doc_limits::invalid();
       size_t high = irs::doc_limits::invalid();
 
-      irs::SkipWriter writer(kSkip0, kSkipN);
+      irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
       ASSERT_EQ(0, writer.MaxLevels());
 
       // write data
@@ -952,7 +970,7 @@ TEST_F(SkipReaderTest, Seek) {
     size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::SkipWriter writer(kSkip0, kSkipN);
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
@@ -1124,7 +1142,7 @@ TEST_F(SkipReaderTest, Seek) {
     size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::SkipWriter writer(kSkip0, kSkipN);
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
@@ -1266,7 +1284,7 @@ TEST_F(SkipReaderTest, Seek) {
     size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::SkipWriter writer(kSkip0, kSkipN);
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
 
     // write data

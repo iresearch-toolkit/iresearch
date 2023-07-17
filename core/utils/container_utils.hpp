@@ -26,6 +26,7 @@
 #include <array>
 #include <memory>
 
+#include "resource_manager.hpp"
 #include "shared.hpp"
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
@@ -91,7 +92,8 @@ class raw_block_vector_base : private util::noncopyable {
     size_t size{};      // total buffer size
   };
 
-  raw_block_vector_base() noexcept = default;
+  explicit raw_block_vector_base(IResourceManager& rm) noexcept
+    : alloc_{rm}, buffers_{{rm}} {}
 
   raw_block_vector_base(raw_block_vector_base&& rhs) noexcept = default;
   raw_block_vector_base& operator=(raw_block_vector_base&& rhs) = delete;
@@ -124,8 +126,8 @@ class raw_block_vector_base : private util::noncopyable {
 #endif
 
  protected:
-  IRS_NO_UNIQUE_ADDRESS std::allocator<byte_type> alloc_;
-  std::vector<buffer_t> buffers_;
+  IRS_NO_UNIQUE_ADDRESS ManagedTypedAllocator<byte_type> alloc_;
+  std::vector<buffer_t, ManagedTypedAllocator<buffer_t>> buffers_;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -137,6 +139,9 @@ class raw_block_vector : public raw_block_vector_base {
  public:
   static constexpr BucketMeta<NumBuckets, SkipBits> kMeta{};
   static constexpr BucketInfo kLast = kMeta[NumBuckets - 1];
+
+  explicit raw_block_vector(IResourceManager& rm) noexcept
+    : raw_block_vector_base{rm} {}
 
   IRS_FORCE_INLINE size_t buffer_offset(size_t position) const noexcept {
     return position < kLast.offset

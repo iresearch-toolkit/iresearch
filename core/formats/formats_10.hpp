@@ -31,8 +31,8 @@ void init();
 
 class format : public irs::format {
  public:
-  virtual postings_writer::ptr get_postings_writer(
-    bool consolidation) const = 0;
+  virtual postings_writer::ptr get_postings_writer(bool consolidation,
+                                                   IResourceManager&) const = 0;
   virtual postings_reader::ptr get_postings_reader() const = 0;
 };
 

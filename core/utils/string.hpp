@@ -130,8 +130,8 @@ using std::char_traits;
 
 #endif
 
-template<typename Char>
-using basic_string = std::basic_string<Char, char_traits<Char>>;
+template<typename Char, typename Allocator = std::allocator<Char>>
+using basic_string = std::basic_string<Char, char_traits<Char>, Allocator>;
 template<typename Char>
 using basic_string_view = std::basic_string_view<Char, char_traits<Char>>;
 

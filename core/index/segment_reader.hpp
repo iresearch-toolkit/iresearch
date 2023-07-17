@@ -54,7 +54,7 @@ class SegmentReader final : public SubReader {
   SegmentReader* operator->() noexcept { return this; }
   const SegmentReader* operator->() const noexcept { return this; }
 
-  void CountMemory(const MemoryStats& stats) const final;
+  uint64_t CountMappedMemory() const final;
 
   const SegmentInfo& Meta() const final;
 

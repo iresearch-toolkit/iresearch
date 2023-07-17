@@ -58,13 +58,14 @@ inline int GetPosixMadvice(IOAdvice advice) {
 }
 
 std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
-                                        IOAdvice advice) noexcept {
+                                        IOAdvice advice,
+                                        IResourceManager& rm) noexcept {
   IRS_ASSERT(file);
 
   std::shared_ptr<mmap_handle> handle;
 
   try {
-    handle = std::make_shared<mmap_handle>();
+    handle = std::make_shared<mmap_handle>(rm);
   } catch (...) {
     return nullptr;
   }
@@ -92,12 +93,12 @@ std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
 }
 
 std::shared_ptr<mmap_handle> OpenHandle(const std::filesystem::path& dir,
-                                        std::string_view name,
-                                        IOAdvice advice) noexcept {
+                                        std::string_view name, IOAdvice advice,
+                                        IResourceManager& rm) noexcept {
   try {
     const auto path = dir / name;
 
-    return OpenHandle(path.c_str(), advice);
+    return OpenHandle(path.c_str(), advice, rm);
   } catch (...) {
   }
 
@@ -152,18 +153,15 @@ class MMapIndexInput final : public bytes_view_input {
     }
   }
 
-  void CountMemory(const MemoryStats& stats) const final {
-    if (handle_ == nullptr) {
-      return;
-    }
-    if (stats.fd_count != nullptr) {
-      ++*stats.fd_count;
-    }
+  uint64_t CountMappedMemory() const final {
 #ifdef __linux__
-    if (stats.mmaped_memory != nullptr) {
-      *stats.mmaped_memory +=
-        BytesInCache(static_cast<uint8_t*>(handle_->addr()), handle_->size());
+    if (handle_ == nullptr) {
+      return 0;
     }
+    return BytesInCache(static_cast<uint8_t*>(handle_->addr()),
+                        handle_->size());
+#else
+    return 0;
 #endif
   }
 
@@ -183,8 +181,9 @@ class MMapIndexInput final : public bytes_view_input {
 }  // namespace
 
 MMapDirectory::MMapDirectory(std::filesystem::path path,
-                             directory_attributes attrs)
-  : FSDirectory{std::move(path), std::move(attrs)} {}
+                             directory_attributes attrs,
+                             const ResourceManagementOptions& rm)
+  : FSDirectory{std::move(path), std::move(attrs), rm} {}
 
 index_input::ptr MMapDirectory::open(std::string_view name,
                                      IOAdvice advice) const noexcept {
@@ -192,7 +191,8 @@ index_input::ptr MMapDirectory::open(std::string_view name,
     return FSDirectory::open(name, advice);
   }
 
-  auto handle = OpenHandle(directory(), name, advice);
+  auto handle =
+    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
 
   if (!handle) {
     return nullptr;
@@ -244,7 +244,9 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
     return make_stream(std::move(handle));
   }
 
-  if (handle = OpenHandle(directory(), name, advice); handle) {
+  handle =
+    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
+  if (handle) {
     cache_.Put(name, [&]() noexcept { return handle; });
 
     return make_stream(std::move(handle));
