@@ -70,6 +70,8 @@ class ExternalMergeIterator {
     return *tree_[1];
   }
 
+  IRS_FORCE_INLINE size_t Size() const noexcept { return size_; }
+
  private:
   IRS_FORCE_INLINE Value* Compute(size_t position) {
     auto* lhs = tree_[2 * position];
