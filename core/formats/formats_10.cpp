@@ -2553,10 +2553,6 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
       CopyState<IteratorTraits>(next, prev_skip_);
     }
     void Read(size_t level, index_input& in);
-    void ReadWandData(size_t level, index_input& in) {
-      CommonReadWandData(extent_, index_, func_, *ctx_, in,
-                         skip_scores_[level]);
-    }
     void Seal(size_t level);
     size_t AdjustLevel(size_t level) const noexcept;
     SkipState& State() noexcept { return prev_skip_; }
@@ -2628,12 +2624,23 @@ void wanderator<IteratorTraits, FieldTraits, WandExtent, Root>::ReadSkip::Read(
   size_t level, index_input& in) {
   auto& last = prev_skip_;
   auto& next = skip_levels_[level];
+  auto& score = skip_scores_[level];
 
   // Store previous step on the same level
   CopyState<IteratorTraits>(last, next);
 
   ReadState<FieldTraits>(next, in);
-  ReadWandData(level, in);
+  // if constexpr (Root) {
+  CommonReadWandData(extent_, index_, func_, *ctx_, in, score);
+  // } else {
+  //   auto& back = skip_scores_.back();
+  //   if (&score == &back || threshold_ > back) {
+  //     CommonReadWandData(extent_, index_, func_, *ctx_, in, score);
+  //   } else {
+  //     CommonSkipWandData(extent_, in);
+  //     score = std::numeric_limits<score_t>::max();
+  //   }
+  // }
 }
 
 template<typename IteratorTraits, typename FieldTraits, typename WandExtent,

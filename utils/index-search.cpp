@@ -547,7 +547,7 @@ int search(std::string_view path, std::string_view dir_type,
             << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << '\n'
             << SCORER << "=" << scorer << '\n'
             << SCORER_ARG_FMT << "=" << scorer_arg_format << '\n'
-            << SCORER_ARG << "=" << scorer_arg << '\n';
+            << SCORER_ARG << "=" << scorer_arg << std::endl;
 
   SCOPED_TIMER("Total Time");
 
@@ -564,9 +564,10 @@ int search(std::string_view path, std::string_view dir_type,
     reader = irs::DirectoryReader(*dir, codec, options);
   }
 
-  std::cout << "Index stats:\n"
-            << "docs=" << reader->docs_count()
-            << "\nlive-docs=" << reader->live_docs_count() << '\n';
+  std::cout << "Index stats:"
+            << "\nsegments=" << reader->size()
+            << "\ndocs=" << reader->docs_count()
+            << "\nlive-docs=" << reader->live_docs_count() << std::endl;
 
   {
     SCOPED_TIMER("Order build time");
