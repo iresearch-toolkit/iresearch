@@ -69,7 +69,7 @@ void AccumulateFeatures(feature_set_t& accum, const feature_map_t& features) {
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
-using doc_id_map_t = std::vector<doc_id_t>;
+using doc_id_map_t = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
 
 // document mapping function
 using doc_map_f = std::function<doc_id_t(doc_id_t)>;
@@ -196,11 +196,11 @@ bool RemappingDocIterator::next() {
 // Iterator over doc_ids for a term over all readers
 class CompoundDocIterator : public doc_iterator {
  public:
-  typedef std::pair<doc_iterator::ptr, std::reference_wrapper<const doc_map_f>>
-    doc_iterator_t;
-  typedef std::vector<doc_iterator_t> iterators_t;
+  using doc_iterator_t =
+    std::pair<doc_iterator::ptr, std::reference_wrapper<const doc_map_f>>;
+  using iterators_t = std::vector<doc_iterator_t>;
 
-  static constexpr const size_t kProgressStepDocs = size_t(1) << 14;
+  static constexpr auto kProgressStepDocs = size_t{1} << size_t{14};
 
   explicit CompoundDocIterator(
     const MergeWriter::FlushProgress& progress) noexcept
@@ -296,7 +296,7 @@ bool CompoundDocIterator::next() {
 class SortingCompoundDocIterator : public doc_iterator {
  public:
   explicit SortingCompoundDocIterator(CompoundDocIterator& doc_it) noexcept
-    : doc_it_{&doc_it}, heap_it_{min_heap_context{doc_it.iterators_}} {}
+    : doc_it_{&doc_it} {}
 
   template<typename Func>
   bool reset(Func&& func) {
@@ -304,7 +304,7 @@ class SortingCompoundDocIterator : public doc_iterator {
       return false;
     }
 
-    heap_it_.reset(doc_it_->iterators_.size());
+    merge_it_.Reset(doc_it_->iterators_);
     lead_ = nullptr;
 
     return true;
@@ -324,18 +324,15 @@ class SortingCompoundDocIterator : public doc_iterator {
   doc_id_t value() const noexcept final { return doc_it_->value(); }
 
  private:
-  class min_heap_context {
+  class Context {
    public:
-    explicit min_heap_context(CompoundDocIterator::iterators_t& itrs) noexcept
-      : itrs_{&itrs} {}
+    using Value = CompoundDocIterator::doc_iterator_t;
 
     // advance
-    bool operator()(const size_t i) const {
-      IRS_ASSERT(i < itrs_->size());
-      auto& doc_it = (*itrs_)[i];
-      const auto& map = doc_it.second.get();
-      while (doc_it.first->next()) {
-        if (!doc_limits::eof(map(doc_it.first->value()))) {
+    bool operator()(const Value& value) const {
+      const auto& map = value.second.get();
+      while (value.first->next()) {
+        if (!doc_limits::eof(map(value.first->value()))) {
           return true;
         }
       }
@@ -343,39 +340,29 @@ class SortingCompoundDocIterator : public doc_iterator {
     }
 
     // compare
-    bool operator()(const size_t lhs, const size_t rhs) const {
-      return remap(lhs) > remap(rhs);
+    bool operator()(const Value& lhs, const Value& rhs) const {
+      return lhs.second.get()(lhs.first->value()) <
+             rhs.second.get()(rhs.first->value());
     }
-
-   private:
-    doc_id_t remap(const size_t i) const {
-      IRS_ASSERT(i < itrs_->size());
-      auto& doc_it = (*itrs_)[i];
-      return doc_it.second.get()(doc_it.first->value());
-    }
-
-    CompoundDocIterator::iterators_t* itrs_;
   };
 
   CompoundDocIterator* doc_it_;
-  ExternalHeapIterator<min_heap_context> heap_it_;
+  ExternalMergeIterator<Context> merge_it_;
   CompoundDocIterator::doc_iterator_t* lead_{};
 };
 
 bool SortingCompoundDocIterator::next() {
-  auto& iterators = doc_it_->iterators_;
-  auto& current_id = doc_it_->doc_;
-
   doc_it_->progress_();
 
+  auto& current_id = doc_it_->doc_.value;
   if (doc_it_->aborted()) {
-    current_id.value = doc_limits::eof();
-    iterators.clear();
+    current_id = doc_limits::eof();
+    doc_it_->iterators_.clear();
     return false;
   }
 
-  while (heap_it_.next()) {
-    auto& new_lead = iterators[heap_it_.value()];
+  while (merge_it_.Next()) {
+    auto& new_lead = merge_it_.Lead();
     auto& it = new_lead.first;
     auto& doc_map = new_lead.second.get();
 
@@ -385,17 +372,13 @@ bool SortingCompoundDocIterator::next() {
       lead_ = &new_lead;
     }
 
-    current_id.value = doc_map(it->value());
-
-    if (doc_limits::eof(current_id.value)) {
-      continue;
+    current_id = doc_map(it->value());
+    if (!doc_limits::eof(current_id)) {
+      return true;
     }
-
-    return true;
   }
 
-  current_id.value = doc_limits::eof();
-
+  current_id = doc_limits::eof();
   return false;
 }
 
@@ -906,9 +889,9 @@ class Columnstore {
     : progress_{progress, kProgressStepColumn}, writer_{std::move(writer)} {}
 
   Columnstore(directory& dir, const SegmentMeta& meta,
-              const MergeWriter::FlushProgress& progress)
+              const MergeWriter::FlushProgress& progress, IResourceManager& rm)
     : progress_{progress, kProgressStepColumn} {
-    auto writer = meta.codec->get_columnstore_writer(true);
+    auto writer = meta.codec->get_columnstore_writer(true, rm);
     writer->prepare(dir, meta);
 
     writer_ = std::move(writer);
@@ -1055,43 +1038,28 @@ struct PrimarySortIteratorAdapter {
   doc_id_t min{};
 };
 
-class MinHeapContext {
+class MergeContext {
  public:
-  MinHeapContext(std::span<PrimarySortIteratorAdapter> itrs,
-                 const Comparer& compare) noexcept
-    : itrs_{itrs}, compare_{&compare} {}
+  using Value = PrimarySortIteratorAdapter;
+
+  MergeContext(const Comparer& compare) noexcept : compare_{&compare} {}
 
   // advance
-  bool operator()(const size_t i) const {
-    IRS_ASSERT(i < itrs_.size());
-    auto& it = itrs_[i];
-    it.min = it.doc->value + 1;
-    return it.it->next();
+  bool operator()(Value& value) const {
+    value.min = value.doc->value + 1;
+    return value.it->next();
   }
 
   // compare
-  bool operator()(const size_t lhs_idx, const size_t rhs_idx) const {
-    IRS_ASSERT(lhs_idx != rhs_idx);
-    IRS_ASSERT(lhs_idx < itrs_.size());
-    IRS_ASSERT(rhs_idx < itrs_.size());
-
-    const auto& lhs = itrs_[lhs_idx];
-    const auto& rhs = itrs_[rhs_idx];
-
+  bool operator()(const Value& lhs, const Value& rhs) const {
+    IRS_ASSERT(&lhs != &rhs);
     const bytes_view lhs_value = lhs.payload->value;
     const bytes_view rhs_value = rhs.payload->value;
-
-    if (const auto r = compare_->Compare(lhs_value, rhs_value); r) {
-      return r > 0;
-    }
-
-    // tie breaker to avoid splitting document blocks, can use index as we
-    // always merge different segments
-    return rhs_idx > lhs_idx;
+    const auto r = compare_->Compare(lhs_value, rhs_value);
+    return r < 0;
   }
 
  private:
-  std::span<PrimarySortIteratorAdapter> itrs_;
   const Comparer* compare_;
 };
 
@@ -1153,6 +1121,7 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
 
 class BufferedValues final : public column_reader, data_output {
  public:
+  BufferedValues(IResourceManager& rm) : index_{{rm}}, data_{{rm}} {}
   void Clear() noexcept {
     index_.clear();
     data_.clear();
@@ -1261,8 +1230,8 @@ class BufferedValues final : public column_reader, data_output {
     return data_.data() + offset;
   }
 
-  std::vector<BufferedValue> index_;
-  bstring data_;
+  BufferedColumn::BufferedValues index_;
+  BufferedColumn::Buffer data_;
   field_id id_{field_limits::invalid()};
   std::optional<bstring> header_;
   data_output* out_{};
@@ -1271,6 +1240,7 @@ class BufferedValues final : public column_reader, data_output {
 
 class BufferedColumns final : public irs::ColumnProvider {
  public:
+  BufferedColumns(IResourceManager& rm) : rm_(rm) {}
   const irs::column_reader* column(field_id field) const noexcept final {
     if (IRS_UNLIKELY(!field_limits::valid(field))) {
       return nullptr;
@@ -1289,7 +1259,7 @@ class BufferedColumns final : public irs::ColumnProvider {
       return *column;
     }
 
-    return columns_.emplace_back();
+    return columns_.emplace_back(rm_);
   }
 
   void Clear() noexcept {
@@ -1308,7 +1278,10 @@ class BufferedColumns final : public irs::ColumnProvider {
     return nullptr;
   }
 
+  // SmallVector seems to be incompatible with
+  // our ManagedTypedAllocator
   SmallVector<BufferedValues, 1> columns_;
+  IResourceManager& rm_;
 };
 
 // Write field term data
@@ -1318,7 +1291,8 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
                  const FeatureInfoProvider& column_info,
                  CompoundFiledIterator& field_itr,
                  const feature_set_t& scorers_features,
-                 const MergeWriter::FlushProgress& progress) {
+                 const MergeWriter::FlushProgress& progress,
+                 IResourceManager& rm) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(cs.valid());
 
@@ -1370,7 +1344,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
     return field_itr.visit(add_iterators);
   };
 
-  auto field_writer = meta.codec->get_field_writer(true);
+  auto field_writer = meta.codec->get_field_writer(true, rm);
   field_writer->prepare(flush_state);
 
   // Ensured by the caller
@@ -1519,14 +1493,16 @@ const MergeWriter::FlushProgress kProgressNoop = []() { return true; };
 
 }  // namespace
 
-MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader) noexcept
-  : reader{reader}, doc_map{[](doc_id_t) noexcept {
+MergeWriter::ReaderCtx::ReaderCtx(const SubReader* reader,
+                                  IResourceManager& rm) noexcept
+  : reader{reader}, doc_id_map{{rm}}, doc_map{[](doc_id_t) noexcept {
       return doc_limits::eof();
     }} {
   IRS_ASSERT(this->reader);
 }
 
-MergeWriter::MergeWriter() noexcept : dir_(NoopDirectory::instance()) {}
+MergeWriter::MergeWriter(IResourceManager& rm) noexcept
+  : dir_(NoopDirectory::instance()), readers_{{rm}} {}
 
 MergeWriter::operator bool() const noexcept {
   return &dir_ != &NoopDirectory::instance();
@@ -1562,7 +1538,9 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
 
     if (reader.live_docs_count() == docs_count) {  // segment has no deletes
       const auto reader_base = base_id - doc_limits::min();
-      base_id += docs_count;
+      IRS_ASSERT(static_cast<uint64_t>(base_id) + docs_count <
+                 std::numeric_limits<doc_id_t>::max());
+      base_id += static_cast<doc_id_t>(docs_count);
 
       reader_ctx.doc_map = [reader_base](doc_id_t doc) noexcept {
         return reader_base + doc;
@@ -1600,7 +1578,8 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   // write merged segment data
   REGISTER_TIMER_DETAILED();
-  Columnstore cs(dir, segment, progress);
+  Columnstore cs(dir, segment, progress,
+                 readers_.get_allocator().ResourceManager());
 
   if (!cs.valid()) {
     return false;  // flush failure
@@ -1618,7 +1597,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // progress callback requested termination
   }
 
-  BufferedColumns buffered_columns;
+  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,
@@ -1631,7 +1610,8 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, remapping_itrs, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress)) {
+                   fields_itr, *scorers_features_, progress,
+                   readers_.get_allocator().ResourceManager())) {
     return false;  // Flush failure
   }
 
@@ -1754,7 +1734,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   }
 
   // Write new sorted column and fill doc maps for each reader
-  auto writer = segment.codec->get_columnstore_writer(true);
+  auto writer = segment.codec->get_columnstore_writer(
+    true, readers_.get_allocator().ResourceManager());
   writer->prepare(dir, segment);
 
   // Get column info for sorted column
@@ -1788,14 +1769,14 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     return true;
   };
 
-  ExternalHeapIterator columns_it{MinHeapContext{itrs, *comparator_}};
+  ExternalMergeIterator<MergeContext> columns_it{*comparator_};
 
-  for (columns_it.reset(itrs.size()); columns_it.next();) {
-    const auto index = columns_it.value();
-    auto& it = itrs[index];
+  for (columns_it.Reset(itrs); columns_it.Next();) {
+    auto& it = columns_it.Lead();
     IRS_ASSERT(it.valid());
 
     const auto max = it.doc->value;
+    const auto index = &it - itrs.data();
     auto& doc_id_map = readers_[index].doc_id_map;
 
     // Fill doc id map
@@ -1849,7 +1830,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     return false;  // Progress callback requested termination
   }
 
-  BufferedColumns buffered_columns;
+  BufferedColumns buffered_columns{readers_.get_allocator().ResourceManager()};
 
   const flush_state state{.dir = &dir,
                           .columns = &buffered_columns,
@@ -1862,7 +1843,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Write field meta and field term data
   IRS_ASSERT(scorers_features_);
   if (!WriteFields(cs, sorting_doc_it, state, segment, *feature_info_,
-                   fields_itr, *scorers_features_, progress)) {
+                   fields_itr, *scorers_features_, progress,
+                   readers_.get_allocator().ResourceManager())) {
     return false;  // flush failure
   }
 

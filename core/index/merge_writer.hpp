@@ -42,19 +42,22 @@ class MergeWriter : public util::noncopyable {
   using FlushProgress = std::function<bool()>;
 
   struct ReaderCtx {
-    ReaderCtx(const SubReader* reader) noexcept;
-    ReaderCtx(const SubReader& reader) noexcept : ReaderCtx{&reader} {}
+    ReaderCtx(const SubReader* reader, IResourceManager& rm) noexcept;
+    ReaderCtx(const SubReader& reader, IResourceManager& rm) noexcept
+      : ReaderCtx{&reader, rm} {}
 
-    const SubReader* reader;                    // segment reader
-    std::vector<doc_id_t> doc_id_map;           // FIXME use bitpacking vector
+    const SubReader* reader;  // segment reader
+    std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>
+      doc_id_map;                               // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 
-  MergeWriter() noexcept;
+  MergeWriter(IResourceManager& rm) noexcept;
 
   explicit MergeWriter(directory& dir,
                        const SegmentWriterOptions& options) noexcept
     : dir_{dir},
+      readers_{{options.resource_manager}},
       column_info_{&options.column_info},
       feature_info_{&options.feature_info},
       scorers_{options.scorers},
@@ -69,7 +72,11 @@ class MergeWriter : public util::noncopyable {
 
   template<typename Iterator>
   void Reset(Iterator begin, Iterator end) {
-    readers_.insert(readers_.end(), begin, end);
+    readers_.reserve(readers_.size() + std::distance(begin, end));
+    while (begin != end) {
+      readers_.emplace_back(*begin++,
+                            readers_.get_allocator().ResourceManager());
+    }
   }
 
   // Flush all of the added readers into a single segment.
@@ -91,7 +98,7 @@ class MergeWriter : public util::noncopyable {
                      const FlushProgress& progress);
 
   directory& dir_;
-  std::vector<ReaderCtx> readers_;
+  std::vector<ReaderCtx, ManagedTypedAllocator<ReaderCtx>> readers_;
   const ColumnInfoProvider* column_info_{};
   const FeatureInfoProvider* feature_info_{};
   ScorersView scorers_;

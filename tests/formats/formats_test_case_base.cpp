@@ -797,7 +797,8 @@ TEST_P(format_test_case, fields_read_write) {
       (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
       (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
 
-    auto writer = codec()->get_field_writer(false);
+    auto writer =
+      codec()->get_field_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(state);
     writer->write(term_reader, field.features);
     writer->end();
@@ -808,8 +809,8 @@ TEST_P(format_test_case, fields_read_write) {
     irs::SegmentMeta meta;
     meta.name = "segment_name";
 
-    irs::DocumentMask docs_mask;
-    auto reader = codec()->get_field_reader();
+    irs::DocumentMask docs_mask{{irs::IResourceManager::kNoop}};
+    auto reader = codec()->get_field_reader(irs::IResourceManager::kNoop);
     reader->prepare(irs::ReaderState{.dir = &dir(), .meta = &meta});
     ASSERT_EQ(1, reader->size());
 
@@ -1195,7 +1196,8 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
     column_id = column.first;
@@ -1260,7 +1262,8 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
 
   // write docs
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
     column_id = column.first;
@@ -1308,7 +1311,8 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
   // write bit mask into the column without actual data
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
@@ -1582,7 +1586,8 @@ TEST_P(format_test_case, columns_rw_empty) {
 
   // add columns
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta0);
 
     column0_id =
@@ -1645,7 +1650,8 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     irs::doc_id_t id = 0;
     writer->prepare(dir(), seg);
 
@@ -1745,7 +1751,8 @@ TEST_P(format_test_case, columns_rw_big_document) {
 
   // write big document
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
@@ -1912,7 +1919,8 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
 
   // write documents
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
     // write 1st segment
     irs::doc_id_t id = 0;
@@ -2202,7 +2210,8 @@ TEST_P(format_test_case, columns_rw_typed) {
 
   // write stored documents
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta);
 
     irs::doc_id_t id = 0;
@@ -2459,7 +2468,8 @@ TEST_P(format_test_case, columns_issue700) {
   meta.codec = codec();
 
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     writer->prepare(dir(), meta);
 
@@ -2522,7 +2532,8 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
 
   {
     // write columns values
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), meta0);
 
     dense_fixed_offset_column = writer->push_column(lz4_column_info(), {});
@@ -2703,7 +2714,8 @@ TEST_P(format_test_case, columns_rw) {
   }
 
   // write columns values
-  auto writer = codec()->get_columnstore_writer(false);
+  auto writer =
+    codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
   // write _1 segment
   {
@@ -3459,7 +3471,9 @@ TEST_P(format_test_case, columns_rw) {
 }
 
 TEST_P(format_test_case, document_mask_rw) {
-  const irs::DocumentMask mask_set = {1, 4, 5, 7, 10, 12};
+  irs::DocumentMask mask_set{{irs::IResourceManager::kNoop}};
+  irs::doc_id_t array[] = {1, 4, 5, 7, 10, 12};
+  mask_set.insert(std::begin(array), std::end(array));
   irs::SegmentMeta meta;
   meta.name = "_1";
   meta.version = 42;
@@ -3474,7 +3488,7 @@ TEST_P(format_test_case, document_mask_rw) {
   // read document_mask
   {
     auto reader = codec()->get_document_mask_reader();
-    irs::DocumentMask expected;
+    irs::DocumentMask expected{{irs::IResourceManager::kNoop}};
     EXPECT_TRUE(reader->read(dir(), meta, expected));
     for (auto id : mask_set) {
       EXPECT_EQ(1, expected.erase(id));
@@ -3588,7 +3602,8 @@ TEST_P(format_test_case_with_encryption,
 
   // write meta
   {
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     irs::SegmentMeta meta1;
 
     const irs::ColumnInfo info{
@@ -3716,7 +3731,8 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
       (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.begin()),
       (sorted_terms.empty() ? irs::bytes_view{} : *sorted_terms.rbegin())};
 
-    auto writer = codec()->get_field_writer(false);
+    auto writer =
+      codec()->get_field_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     writer->prepare(state);
     writer->write(term_reader, field.features);
@@ -3725,9 +3741,9 @@ TEST_P(format_test_case_with_encryption, fields_read_write_wrong_encryption) {
 
   irs::SegmentMeta meta;
   meta.name = "segment_name";
-  irs::DocumentMask docs_mask;
+  irs::DocumentMask docs_mask{{irs::IResourceManager::kNoop}};
 
-  auto reader = codec()->get_field_reader();
+  auto reader = codec()->get_field_reader(irs::IResourceManager::kNoop);
   ASSERT_NE(nullptr, reader);
 
   // can't open encrypted index without encryption

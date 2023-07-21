@@ -41,6 +41,7 @@ void mmap_handle::close() noexcept {
 
   if (fd_ >= 0) {
     ::posix_close(static_cast<int>(fd_));
+    rm_.Decrease(1);
   }
 }
 
@@ -57,12 +58,12 @@ bool mmap_handle::open(const path_char_t* path) noexcept {
   close();
   init();
 
+  rm_.Increase(1);
   const int fd = ::posix_open(path, O_RDONLY);
-
   if (fd < 0) {
     IRS_LOG_ERROR(absl::StrCat("Failed to open input file, error: ", errno,
                                ", path: ", file_utils::ToStr(path)));
-    close();
+    rm_.Decrease(1);
     return false;
   }
 

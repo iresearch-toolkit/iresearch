@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -103,7 +103,7 @@ class SubReaderMock final : public irs::SubReader {
  public:
   explicit SubReaderMock(const irs::SegmentInfo meta) : meta_{meta} {}
 
-  void CountMemory(const irs::MemoryStats& stats) const final {}
+  virtual uint64_t CountMappedMemory() const { return 0; }
 
   const irs::SegmentInfo& Meta() const final { return meta_; }
 
@@ -7724,7 +7724,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
 TEST_P(index_test_case, segment_consolidate_long_running) {
   const auto blocker = [this](std::string_view segment) {
     irs::memory_directory dir;
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
     irs::SegmentMeta meta;
     meta.name = segment;
@@ -16885,18 +16886,13 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc0 = gen.next();
   auto* doc1 = gen.next();
 
-  uint64_t fd_count = 0;
-  uint64_t mmaped_memory = 0;
-  uint64_t pinned_memory = 0;
-
   irs::IndexWriterOptions writer_options;
+  writer_options.reader_options.resource_manager = GetResourceManager().options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
     auto reader = writer->GetSnapshot();
-    reader->CountMemory({&fd_count, &mmaped_memory, &pinned_memory});
-    EXPECT_EQ(fd_count, 0);
-    EXPECT_EQ(mmaped_memory, 0);
-    EXPECT_EQ(pinned_memory, 0);
+    EXPECT_EQ(reader->CountMappedMemory(), 0);
+    EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 0);
   }
 
   {
@@ -16931,19 +16927,16 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
   AssertSnapshotEquality(*writer);
+  writer.reset();
   auto reader = irs::DirectoryReader(directory);
-  reader.CountMemory({&fd_count, &mmaped_memory, &pinned_memory});
   if (dynamic_cast<irs::memory_directory*>(&directory) == nullptr) {
-    EXPECT_EQ(fd_count, 3);
+    EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 4);
   }
 #ifdef __linux__
   if (dynamic_cast<irs::MMapDirectory*>(&directory) != nullptr) {
-    EXPECT_GT(mmaped_memory, 0);
-    mmaped_memory = 0;
+    EXPECT_GT(reader.CountMappedMemory(), 0);
   }
 #endif
-  EXPECT_EQ(mmaped_memory, 0);
-  EXPECT_EQ(pinned_memory, 0);
 
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
@@ -17023,12 +17016,9 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
   auto doc4 = gen.next();
 
   bool cache = false;
-  int64_t memory = 0;
+  TestResourceManager memory;
   irs::IndexWriterOptions opts;
-  opts.reader_options.pinned_memory_accounting = [&](int64_t diff) noexcept {
-    memory += diff;
-    return true;
-  };
+  opts.reader_options.resource_manager = memory.options;
   opts.reader_options.warmup_columns =
     [&](const irs::SegmentMeta& /*meta*/, const irs::field_reader& /*fields*/,
         const irs::column_reader& /*column*/) { return cache; };
@@ -17036,25 +17026,31 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
 
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end()));
+  const auto tr1 = memory.transactions.counter_;
+  ASSERT_GT(tr1, 0);
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end()));
+  const auto tr2 = memory.transactions.counter_;
+  ASSERT_GT(tr2, tr1);
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
+  const auto tr3 = memory.transactions.counter_;
+  ASSERT_GT(tr3, tr2);
   writer->Commit();
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
 
   // empty commit: enable cache
   cache = true;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory);
+  EXPECT_LT(0, memory.cached_columns.counter_);
 
   // empty commit: disable cache
   cache = false;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
 
   // not empty commit: enable cache
   cache = true;
@@ -17062,7 +17058,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory);
+  EXPECT_LT(0, memory.cached_columns.counter_);
 
   // not empty commit: disable cache
   cache = false;
@@ -17070,5 +17066,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc4->stored.begin(), doc4->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
+  writer.reset();
+  ASSERT_EQ(0, memory.transactions.counter_);
 }

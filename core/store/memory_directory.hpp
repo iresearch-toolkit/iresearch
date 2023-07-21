@@ -27,6 +27,7 @@
 #include <shared_mutex>
 
 #include "directory.hpp"
+#include "resource_manager.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/attributes.hpp"
@@ -41,7 +42,9 @@ class memory_file : public container_utils::raw_block_vector<16, 8> {
   using raw_block_vector_t = container_utils::raw_block_vector<16, 8>;
 
  public:
-  memory_file() noexcept { touch(meta_.mtime); }
+  explicit memory_file(IResourceManager& rm) noexcept : raw_block_vector_t{rm} {
+    touch(meta_.mtime);
+  }
 
   memory_file(memory_file&& rhs) noexcept
     : raw_block_vector_t(std::move(rhs)), meta_(rhs.meta_), len_(rhs.len_) {
@@ -208,7 +211,7 @@ class memory_index_output : public index_output {
 
   void write_vlong(uint64_t v) final;
 
-  void seek(size_t pos);
+  void truncate(size_t pos);
 
   memory_index_output& operator=(byte_type b) {
     write_byte(b);
@@ -243,7 +246,8 @@ class memory_index_output : public index_output {
 class memory_directory final : public directory {
  public:
   explicit memory_directory(
-    directory_attributes attributes = directory_attributes{});
+    directory_attributes attributes = directory_attributes{},
+    const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
   ~memory_directory() noexcept final;
 
@@ -272,8 +276,13 @@ class memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
+  using files_allocator = ManagedTypedAllocator<
+    std::pair<const std::string, std::unique_ptr<memory_file>>>;
   using file_map = absl::flat_hash_map<
-    std::string, std::unique_ptr<memory_file>>;  // unique_ptr because of rename
+    std::string, std::unique_ptr<memory_file>,
+    absl::container_internal::hash_default_hash<std::string>,
+    absl::container_internal::hash_default_eq<std::string>,
+    files_allocator>;  // unique_ptr because of rename
   using lock_map = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
@@ -288,7 +297,8 @@ class memory_directory final : public directory {
 /// @brief memory_file + memory_stream
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
-  memory_output() noexcept = default;
+  explicit memory_output(IResourceManager& rm) noexcept : file(rm) {}
+
   memory_output(memory_output&& rhs) noexcept : file(std::move(rhs.file)) {}
 
   void reset() noexcept {

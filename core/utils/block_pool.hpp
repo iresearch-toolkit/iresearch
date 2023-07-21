@@ -33,6 +33,7 @@
 #include "bytes_utils.hpp"
 #include "memory.hpp"
 #include "misc.hpp"
+#include "resource_manager.hpp"
 #include "utils/assert.hpp"
 
 namespace irs {
@@ -994,6 +995,7 @@ struct proxy_block_t {
   size_t start;           // where block starts
 };
 
+// TODO: Replace with memory_file with fixed size of blocks
 template<typename T, size_t BlockSize, typename AllocType = std::allocator<T>>
 class block_pool {
  public:

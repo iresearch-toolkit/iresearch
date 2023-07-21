@@ -107,7 +107,8 @@ class format_10_test_case : public tests::format_test_case {
     auto codec =
       std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
     ASSERT_NE(nullptr, codec);
-    auto writer = codec->get_postings_writer(false);
+    auto writer =
+      codec->get_postings_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     irs::postings_writer::state
       term_meta;  // must be destroyed before the writer
@@ -304,7 +305,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   ASSERT_NE(nullptr, codec);
-  auto writer = codec->get_postings_writer(false);
+  auto writer = codec->get_postings_writer(false, irs::IResourceManager::kNoop);
   irs::postings_writer::state meta0, meta1;
 
   // write postings
@@ -467,7 +468,7 @@ TEST_P(format_10_test_case, postings_read_write) {
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   ASSERT_NE(nullptr, codec);
-  auto writer = codec->get_postings_writer(false);
+  auto writer = codec->get_postings_writer(false, irs::IResourceManager::kNoop);
   ASSERT_NE(nullptr, writer);
   irs::postings_writer::state meta0, meta1;  // must be destroyed before writer
 
@@ -597,7 +598,7 @@ TEST_P(format_10_test_case, postings_writer_reuse) {
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   ASSERT_NE(nullptr, codec);
-  auto writer = codec->get_postings_writer(false);
+  auto writer = codec->get_postings_writer(false, irs::IResourceManager::kNoop);
   ASSERT_NE(nullptr, writer);
 
   std::vector<std::pair<irs::doc_id_t, uint32_t>> docs0;
@@ -813,8 +814,7 @@ TEST_P(format_10_test_case, ires336) {
     tests::MockTermReader term_reader{
       trms, field_meta, (terms.empty() ? irs::bytes_view{} : *terms.begin()),
       (terms.empty() ? irs::bytes_view{} : *terms.rbegin())};
-
-    auto fw = get_codec()->get_field_writer(true);
+    auto fw = get_codec()->get_field_writer(true, irs::IResourceManager::kNoop);
     fw->prepare(flush_state);
     fw->write(term_reader, field_meta.features);
     fw->end();
@@ -824,7 +824,7 @@ TEST_P(format_10_test_case, ires336) {
   meta.name = segment_name;
 
   irs::DocumentMask docs_mask;
-  auto fr = get_codec()->get_field_reader();
+  auto fr = get_codec()->get_field_reader(irs::IResourceManager::kNoop);
   fr->prepare(irs::ReaderState{.dir = dir.get(), .meta = &meta});
 
   auto it = fr->field(field_meta.name)->iterator(irs::SeekMode::NORMAL);

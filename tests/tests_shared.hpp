@@ -29,6 +29,7 @@
 #include <filesystem>
 #include <memory>
 
+#include "resource_manager.hpp"
 #include "shared.hpp"
 
 #define SOURCE_LOCATION (__FILE__ ":" IRS_TO_STRING(__LINE__))
@@ -76,10 +77,37 @@ class test_env {
   static std::filesystem::path res_path_;  // res_dir_/test_detail.xml
 };
 
+struct SimpleMemoryAccounter : public irs::IResourceManager {
+  bool Increase(size_t value) noexcept override {
+    counter_ += value;
+    return result_;
+  }
+  void Decrease(size_t value) noexcept override { counter_ -= value; }
+  size_t counter_{0};
+  bool result_{true};
+};
+
+struct TestResourceManager {
+  SimpleMemoryAccounter cached_columns;
+  SimpleMemoryAccounter consolidations;
+  SimpleMemoryAccounter file_descriptors;
+  SimpleMemoryAccounter readers;
+  SimpleMemoryAccounter transactions;
+
+  irs::ResourceManagementOptions options{.transactions = &transactions,
+                                         .readers = &readers,
+                                         .consolidations = &consolidations,
+                                         .file_descriptors = &file_descriptors,
+                                         .cached_columns = &cached_columns};
+};
+
 class test_base : public test_env, public ::testing::Test {
  public:
   const std::filesystem::path& test_dir() const { return test_dir_; }
   const std::filesystem::path& test_case_dir() const { return test_case_dir_; }
+  TestResourceManager& GetResourceManager() const noexcept {
+    return resource_manager_;
+  }
 
  protected:
   test_base() = default;
@@ -90,6 +118,7 @@ class test_base : public test_env, public ::testing::Test {
   std::filesystem::path test_dir_;       // res_dir_/<test-name>
   std::filesystem::path test_case_dir_;  // test_dir/<test-case-name>
   bool artifacts_;
+  mutable TestResourceManager resource_manager_;
 };
 
 template<typename T>

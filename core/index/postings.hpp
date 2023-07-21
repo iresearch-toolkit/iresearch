@@ -50,7 +50,8 @@ inline bool memcmp_less(bytes_view lhs, bytes_view rhs) noexcept {
   return memcmp_less(lhs.data(), lhs.size(), rhs.data(), rhs.size());
 }
 
-using byte_block_pool = block_pool<byte_type, 32768>;
+using byte_block_pool =
+  block_pool<byte_type, 32768, ManagedTypedAllocator<byte_type>>;
 
 struct posting {
   bytes_view term;

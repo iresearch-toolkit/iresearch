@@ -118,7 +118,7 @@ struct SubReader final : irs::SubReader {
   explicit SubReader(size_t num_docs)
     : info{.docs_count = num_docs, .live_docs_count = num_docs} {}
 
-  void CountMemory(const irs::MemoryStats& stats) const final {}
+  uint64_t CountMappedMemory() const final { return 0; }
 
   const irs::SegmentInfo& Meta() const noexcept final { return info; }
   const irs::column_reader* column(std::string_view) const override {

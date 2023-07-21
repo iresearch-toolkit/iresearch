@@ -621,6 +621,7 @@ class writer final : public irs::columnstore_writer {
         finalizer_{std::move(finalizer)},
         cipher_(cipher),
         id_(id),
+        blocks_index_(IResourceManager::kNoop),
         block_buf_(2 * MAX_DATA_BLOCK_SIZE, 0) {
       IRS_ASSERT(comp_);   // ensured by `push_column'
       block_buf_.clear();  // reset size to '0'
@@ -2305,8 +2306,9 @@ class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
 
-  void CountMemory(const MemoryStats& stats) const final {
-    // TODO(MBkkt) should we implement it for old columnstore?
+  uint64_t CountMappedMemory() const final {
+    // We don't support it for old columnstore
+    return 0;
   }
 
   bool prepare(const directory& dir, const SegmentMeta& meta,

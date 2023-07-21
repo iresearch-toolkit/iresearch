@@ -315,18 +315,16 @@ void memory_index_output::reset() noexcept {
   end_ = nullptr;
 }
 
-void memory_index_output::seek(size_t pos) {
+void memory_index_output::truncate(size_t pos) {
   auto idx = file_.buffer_offset(pos);
-
-  buf_ =
-    idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
+  IRS_ASSERT(idx < file_.buffer_count());
+  buf_ = file_.get_buffer(idx);
   pos_ = buf_.data + pos - buf_.offset;
   end_ = buf_.data + buf_.size;
 }
 
 void memory_index_output::switch_buffer() {
   auto idx = file_.buffer_offset(file_pointer());
-
   buf_ =
     idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
   pos_ = buf_.data;
@@ -409,8 +407,9 @@ void memory_index_output::operator>>(data_output& out) { file_ >> out; }
 // --SECTION--                                   memory_directory implementation
 // -----------------------------------------------------------------------------
 
-memory_directory::memory_directory(directory_attributes attrs)
-  : attrs_{std::move(attrs)} {}
+memory_directory::memory_directory(directory_attributes attrs,
+                                   const ResourceManagementOptions& rm)
+  : attrs_{std::move(attrs)}, files_{files_allocator{*rm.readers}} {}
 
 memory_directory::~memory_directory() noexcept {
   std::lock_guard lock{flock_};
@@ -438,7 +437,8 @@ index_output::ptr memory_directory::create(std::string_view name) noexcept {
     auto& file = res.first->second;
 
     if (res.second) {
-      file = std::make_unique<memory_file>();
+      file =
+        std::make_unique<memory_file>(files_.get_allocator().ResourceManager());
     }
 
     file->reset();
