@@ -82,34 +82,46 @@ class column final : public irs::column_output {
 
   class address_table {
    public:
-    uint64_t back() const noexcept {
-      IRS_ASSERT(!empty());
-      return offsets_.back();
+    address_table(ManagedTypedAllocator<uint64_t> alloc) : alloc_{alloc} {
+      offsets_ = alloc_.allocate(kBlockSize);
+      offset_ = offsets_;
     }
 
-    void push_back(uint64_t offset) { offsets_.push_back(offset); }
+    ~address_table() { alloc_.deallocate(offsets_, kBlockSize); }
+
+    uint64_t back() const noexcept {
+      IRS_ASSERT(offsets_ < offset_);
+      return offset_[-1];
+    }
+
+    void push_back(uint64_t offset) noexcept {
+      IRS_ASSERT(offset_ < offsets_ + kBlockSize);
+      *offset_++ = offset;
+    }
 
     void pop_back() noexcept {
-      IRS_ASSERT(!empty());
-      offsets_.pop_back();
+      IRS_ASSERT(offsets_ < offset_);
+      --offset_;
     }
 
-    uint32_t size() const noexcept { return offsets_.size(); }
-
-    bool empty() const noexcept { return offsets_.empty(); }
-
-    bool full() const noexcept { return offsets_.size() == kBlockSize; }
-
-    void reset() noexcept { offsets_.clear(); }
-
-    uint64_t* begin() noexcept { return offsets_.data(); }
-    uint64_t* current() noexcept {
-      IRS_ASSERT(!empty());
-      return begin() + offsets_.size() - 1;
+    uint32_t size() const noexcept {
+      return static_cast<uint32_t>(offset_ - offsets_);
     }
+
+    bool empty() const noexcept { return offset_ == offsets_; }
+
+    bool full() const noexcept { return offset_ == offsets_ + kBlockSize; }
+
+    void reset() noexcept { offset_ = offsets_; }
+
+    uint64_t* begin() noexcept { return offsets_; }
+    uint64_t* current() noexcept { return offset_; }
+    uint64_t* end() noexcept { return offsets_ + kBlockSize; }
 
    private:
-    std::vector<uint64_t> offsets_;
+    ManagedTypedAllocator<uint64_t> alloc_;
+    uint64_t* offsets_{nullptr};
+    uint64_t* offset_{nullptr};
   };
 
   void prepare(doc_id_t key);

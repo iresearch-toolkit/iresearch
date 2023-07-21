@@ -1431,6 +1431,7 @@ column::column(const context& ctx, field_id id, const type_info& compression,
     blocks_{{resource_manager}},
     data_{resource_manager},
     docs_{resource_manager},
+    addr_table_{{resource_manager}},
     id_{id} {
   IRS_ASSERT(field_limits::valid(id_));
 }
