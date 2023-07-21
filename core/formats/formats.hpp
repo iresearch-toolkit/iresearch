@@ -57,8 +57,12 @@ struct postings_writer;
 struct Scorer;
 struct WandWriter;
 
-using DocumentMask = absl::flat_hash_set<doc_id_t>;
-using DocMap = std::vector<doc_id_t>;
+using DocumentMask =
+  absl::flat_hash_set<doc_id_t,
+                      absl::container_internal::hash_default_hash<doc_id_t>,
+                      absl::container_internal::hash_default_eq<doc_id_t>,
+                      ManagedTypedAllocator<doc_id_t>>;
+using DocMap = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
 using DocMapView = std::span<const doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
@@ -75,9 +79,8 @@ struct SegmentWriterOptions {
   const std::set<irs::type_info::type_id>& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
+  IResourceManager& resource_manager{IResourceManager::kNoop};
 };
-
-constexpr bool NoopMemoryAccounter(int64_t) noexcept { return true; }
 
 // Represents metadata associated with the term
 struct term_meta : attribute {
@@ -177,6 +180,8 @@ struct postings_reader {
 
   virtual ~postings_reader() = default;
 
+  virtual uint64_t CountMappedMemory() const = 0;
+
   // in - corresponding stream
   // features - the set of features available for segment
   virtual void prepare(index_input& in, const ReaderState& state,
@@ -207,7 +212,8 @@ struct postings_reader {
   // It's up to the caller to allocate enough space for a bitset.
   // This API is experimental.
   virtual size_t bit_union(IndexFeatures field_features,
-                           const term_provider_f& provider, size_t* set) = 0;
+                           const term_provider_f& provider, size_t* set,
+                           byte_type wand_count) = 0;
 };
 
 // Expected usage pattern of seek_term_iterator
@@ -280,6 +286,8 @@ struct field_reader {
 
   virtual ~field_reader() = default;
 
+  virtual uint64_t CountMappedMemory() const = 0;
+
   virtual void prepare(const ReaderState& stat) = 0;
 
   virtual const term_reader* field(std::string_view field) const = 0;
@@ -329,7 +337,7 @@ enum class ColumnHint : uint32_t {
 
 ENABLE_BITMASK_ENUM(ColumnHint);
 
-struct column_reader {
+struct column_reader : public memory::Managed {
   virtual ~column_reader() = default;
 
   // Returns column id.
@@ -359,11 +367,13 @@ struct columnstore_reader {
   struct options {
     // allows to select "hot" columns
     column_visitor_f warmup_column;
-    // allows to restrict "hot" columns memory usage
-    MemoryAccountingFunc pinned_memory;
+    // memory usage accounting
+    ResourceManagementOptions resource_manager;
   };
 
   virtual ~columnstore_reader() = default;
+
+  virtual uint64_t CountMappedMemory() const = 0;
 
   // Returns true if conlumnstore is present in a segment, false - otherwise.
   // May throw `io_error` or `index_error`.
@@ -450,11 +460,12 @@ class format {
   virtual document_mask_writer::ptr get_document_mask_writer() const = 0;
   virtual document_mask_reader::ptr get_document_mask_reader() const = 0;
 
-  virtual field_writer::ptr get_field_writer(bool consolidation) const = 0;
-  virtual field_reader::ptr get_field_reader() const = 0;
+  virtual field_writer::ptr get_field_writer(bool consolidation,
+                                             IResourceManager& rm) const = 0;
+  virtual field_reader::ptr get_field_reader(IResourceManager& rm) const = 0;
 
   virtual columnstore_writer::ptr get_columnstore_writer(
-    bool consolidation) const = 0;
+    bool consolidation, IResourceManager& rm) const = 0;
   virtual columnstore_reader::ptr get_columnstore_reader() const = 0;
 
   virtual irs::type_info::type_id type() const noexcept = 0;

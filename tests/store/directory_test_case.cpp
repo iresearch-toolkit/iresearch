@@ -28,6 +28,8 @@
 #include <string>
 #include <vector>
 
+#include "utils/misc.hpp"
+
 #ifdef IRESEARCH_URING
 #include "store/async_directory.hpp"
 #endif
@@ -4615,56 +4617,6 @@ TEST_F(fs_directory_test, orphaned_lock) {
   }
 }
 
-TEST(memory_directory_test, construct_check_allocator) {
-  // default ctor
-  {
-    irs::memory_directory dir;
-    ASSERT_EQ(&irs::memory_allocator::global(), &dir.attributes().allocator());
-  }
-
-  // specify pool size
-  {
-    irs::memory_directory dir{irs::directory_attributes{42}};
-    ASSERT_NE(&irs::memory_allocator::global(), &dir.attributes().allocator());
-  }
-}
-
-TEST(memory_directory_test, file_reset_allocator) {
-  memory_allocator alloc0(1U);
-  memory_allocator alloc1(1U);
-  memory_file file(alloc0);
-
-  // get buffer from 'alloc0'
-  auto buf0 = file.push_buffer();
-  ASSERT_NE(nullptr, buf0.data);
-  ASSERT_EQ(0, buf0.offset);
-  ASSERT_EQ(256, buf0.size);
-
-  // set length
-  {
-    auto mtime = file.mtime();
-    ASSERT_EQ(0, file.length());
-    file.length(1);
-    ASSERT_EQ(1, file.length());
-    ASSERT_LE(mtime, file.mtime());
-  }
-
-  // switch allocator
-  file.reset(alloc1);
-  ASSERT_EQ(0, file.length());
-
-  // return back buffer to 'alloc0'
-  file.pop_buffer();
-
-  // get buffer from 'alloc1'
-  auto buf1 = file.push_buffer();
-  ASSERT_NE(nullptr, buf1.data);
-  ASSERT_EQ(0, buf1.offset);
-  ASSERT_EQ(256, buf1.size);
-
-  ASSERT_NE(buf0.data, buf1.data);
-}
-
 TEST(memory_directory_test, rewrite) {
   const std::string_view str0{"quick brown fowx jumps over the lazy dog"};
   const std::string_view str1{"hund"};
@@ -4672,10 +4624,10 @@ TEST(memory_directory_test, rewrite) {
   const bytes_view payload0{ViewCast<byte_type>(str0)};
   const bytes_view payload1{ViewCast<byte_type>(str1)};
 
-  memory_output out{irs::memory_allocator::global()};
+  memory_output out{IResourceManager::kNoop};
   out.stream.write_bytes(payload0.data(), payload0.size());
   ASSERT_EQ(payload0.size(), out.stream.file_pointer());
-  out.stream.seek(out.stream.file_pointer() - 3);
+  out.stream.truncate(out.stream.file_pointer() - 3);
   ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
   out.stream.write_bytes(payload1.data(), payload1.size());
   ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());

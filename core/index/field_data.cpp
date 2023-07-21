@@ -374,7 +374,7 @@ class sorting_doc_iterator : public irs::doc_iterator {
 
   // reset iterator,
   // docmap == null -> segment is already sorted
-  void reset(detail::doc_iterator& it, const std::vector<doc_id_t>* docmap) {
+  void reset(detail::doc_iterator& it, const DocMap* docmap) {
     const frequency no_frequency;
     const frequency* freq = &no_frequency;
 
@@ -681,14 +681,14 @@ doc_iterator::ptr cached_column::iterator(ColumnHint hint) const {
                                                       stream_.Data());
 }
 
-field_data::field_data(std::string_view name, const features_t& features,
-                       const FeatureInfoProvider& feature_columns,
-                       std::deque<cached_column>& cached_columns,
-                       const feature_set_t& cached_features,
-                       columnstore_writer& columns,
-                       byte_block_pool::inserter& byte_writer,
-                       int_block_pool::inserter& int_writer,
-                       IndexFeatures index_features, bool random_access)
+field_data::field_data(
+  std::string_view name, const features_t& features,
+  const FeatureInfoProvider& feature_columns,
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+    cached_columns,
+  const feature_set_t& cached_features, columnstore_writer& columns,
+  byte_block_pool::inserter& byte_writer, int_block_pool::inserter& int_writer,
+  IndexFeatures index_features, bool random_access)
   // Unset optional features
   : meta_{name, index_features & (~(IndexFeatures::OFFS | IndexFeatures::PAY))},
     terms_{*byte_writer},
@@ -716,8 +716,9 @@ field_data::field_data(std::string_view name, const features_t& features,
       if (random_access || cached_features.contains(feature)) {
         auto* id = &meta_.features[feature];
         *id = field_limits::invalid();
-        auto& stream = cached_columns.emplace_back(id, feature_column_info,
-                                                   std::move(finalizer));
+        auto& stream = cached_columns.emplace_back(
+          id, feature_column_info, std::move(finalizer),
+          cached_columns.get_allocator().ResourceManager());
         features_.emplace_back(
           std::move(feature_writer),
           [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
@@ -1090,15 +1091,20 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
   return true;
 }
 
-fields_data::fields_data(const FeatureInfoProvider& feature_info,
-                         std::deque<cached_column>& cached_columns,
-                         const feature_set_t& cached_features,
-                         const Comparer* comparator /*= nullptr*/)
+fields_data::fields_data(
+  const FeatureInfoProvider& feature_info,
+  std::deque<cached_column, ManagedTypedAllocator<cached_column>>&
+    cached_columns,
+  const feature_set_t& cached_features, IResourceManager& rm,
+  const Comparer* comparator /*= nullptr*/)
   : comparator_{comparator},
     feature_info_{&feature_info},
+    fields_{{rm}},
     cached_columns_{&cached_columns},
     cached_features_{&cached_features},
+    byte_pool_{{rm}},
     byte_writer_{byte_pool_.begin()},
+    int_pool_{{rm}},
     int_writer_{int_pool_.begin()} {}
 
 field_data* fields_data::emplace(const hashed_string_view& name,

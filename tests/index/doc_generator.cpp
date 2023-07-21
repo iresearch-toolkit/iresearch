@@ -758,7 +758,18 @@ void normalized_string_json_field_factory(
     doc.insert(std::make_shared<string_field>(
       name, data.str, irs::IndexFeatures::NONE,
       std::vector<irs::type_info::type_id>{irs::type<irs::Norm>::id()}));
-    ;
+  } else {
+    generic_json_field_factory(doc, name, data);
+  }
+}
+
+void norm2_string_json_field_factory(
+  tests::document& doc, const std::string& name,
+  const json_doc_generator::json_value& data) {
+  if (json_doc_generator::ValueType::STRING == data.vt) {
+    doc.insert(std::make_shared<string_field>(
+      name, data.str, irs::IndexFeatures::NONE,
+      std::vector<irs::type_info::type_id>{irs::type<irs::Norm2>::id()}));
   } else {
     generic_json_field_factory(doc, name, data);
   }

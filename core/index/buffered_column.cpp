@@ -99,10 +99,10 @@ std::pair<DocMap, field_id> BufferedColumn::Flush(
   Prepare(doc_limits::eof());  // Insert last pending value
 
   if (IRS_UNLIKELY(index_.empty())) {
-    return {{}, field_limits::invalid()};
+    return {DocMap{index_.get_allocator()}, field_limits::invalid()};
   }
 
-  DocMap docmap;
+  DocMap docmap{index_.get_allocator()};
   auto [column_id, column_writer] =
     writer.push_column(info_, std::move(finalizer));
 

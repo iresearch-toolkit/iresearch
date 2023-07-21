@@ -58,13 +58,14 @@ inline int GetPosixMadvice(IOAdvice advice) {
 }
 
 std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
-                                        IOAdvice advice) noexcept {
+                                        IOAdvice advice,
+                                        IResourceManager& rm) noexcept {
   IRS_ASSERT(file);
 
   std::shared_ptr<mmap_handle> handle;
 
   try {
-    handle = std::make_shared<mmap_handle>();
+    handle = std::make_shared<mmap_handle>(rm);
   } catch (...) {
     return nullptr;
   }
@@ -92,17 +93,51 @@ std::shared_ptr<mmap_handle> OpenHandle(const path_char_t* file,
 }
 
 std::shared_ptr<mmap_handle> OpenHandle(const std::filesystem::path& dir,
-                                        std::string_view name,
-                                        IOAdvice advice) noexcept {
+                                        std::string_view name, IOAdvice advice,
+                                        IResourceManager& rm) noexcept {
   try {
     const auto path = dir / name;
 
-    return OpenHandle(path.c_str(), advice);
+    return OpenHandle(path.c_str(), advice, rm);
   } catch (...) {
   }
 
   return nullptr;
 }
+
+#ifdef __linux__
+size_t BytesInCache(uint8_t* addr, size_t length) {
+  static const size_t kPageSize = sysconf(_SC_PAGESIZE);
+  IRS_ASSERT(reinterpret_cast<uintptr_t>(addr) % kPageSize == 0);
+  std::vector<uint8_t> pages(
+    std::min(8 * kPageSize, (length + kPageSize - 1) / kPageSize), 0);
+  size_t bytes = 0;
+  auto count = [&](uint8_t* data, size_t bytes_size, size_t pages_size) {
+    mincore(static_cast<void*>(data), bytes_size, pages.data());
+    auto it = pages.begin();
+    auto end = it + pages_size;
+    for (; it != end; ++it) {
+      if (*it != 0) {
+        bytes += kPageSize;
+      }
+    }
+  };
+
+  const auto available_pages = pages.size();
+  const auto available_space = available_pages * kPageSize;
+
+  const auto* end = addr + length;
+  while (addr + available_space < end) {
+    count(addr, available_space, available_pages);
+    addr += available_space;
+  }
+  if (addr != end) {
+    const size_t bytes_size = end - addr;
+    count(addr, bytes_size, (bytes_size + kPageSize - 1) / kPageSize);
+  }
+  return bytes;
+}
+#endif
 
 // Input stream for memory mapped directory
 class MMapIndexInput final : public bytes_view_input {
@@ -116,6 +151,18 @@ class MMapIndexInput final : public bytes_view_input {
     } else {
       handle_.reset();
     }
+  }
+
+  uint64_t CountMappedMemory() const final {
+#ifdef __linux__
+    if (handle_ == nullptr) {
+      return 0;
+    }
+    return BytesInCache(static_cast<uint8_t*>(handle_->addr()),
+                        handle_->size());
+#else
+    return 0;
+#endif
   }
 
   MMapIndexInput(const MMapIndexInput& rhs) noexcept
@@ -134,8 +181,9 @@ class MMapIndexInput final : public bytes_view_input {
 }  // namespace
 
 MMapDirectory::MMapDirectory(std::filesystem::path path,
-                             directory_attributes attrs)
-  : FSDirectory{std::move(path), std::move(attrs)} {}
+                             directory_attributes attrs,
+                             const ResourceManagementOptions& rm)
+  : FSDirectory{std::move(path), std::move(attrs), rm} {}
 
 index_input::ptr MMapDirectory::open(std::string_view name,
                                      IOAdvice advice) const noexcept {
@@ -143,7 +191,8 @@ index_input::ptr MMapDirectory::open(std::string_view name,
     return FSDirectory::open(name, advice);
   }
 
-  auto handle = OpenHandle(directory(), name, advice);
+  auto handle =
+    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
 
   if (!handle) {
     return nullptr;
@@ -195,7 +244,9 @@ index_input::ptr CachingMMapDirectory::open(std::string_view name,
     return make_stream(std::move(handle));
   }
 
-  if (handle = OpenHandle(directory(), name, advice); handle) {
+  handle =
+    OpenHandle(directory(), name, advice, *resource_manager_.file_descriptors);
+  if (handle) {
     cache_.Put(name, [&]() noexcept { return handle; });
 
     return make_stream(std::move(handle));

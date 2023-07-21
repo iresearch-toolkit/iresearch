@@ -34,7 +34,7 @@ TEST_P(format_13_test_case, open_10_with_13) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   // write segment with format10
   {
@@ -95,8 +95,8 @@ TEST_P(format_13_test_case, formats_10_13) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
-  tests::document const* doc2 = gen.next();
+  const tests::document* doc1 = gen.next();
+  const tests::document* doc2 = gen.next();
 
   // write segment with format10
   {
@@ -200,12 +200,12 @@ TEST_P(format_13_test_case, write_zero_block_encryption) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   // replace encryption
   ASSERT_NE(nullptr, dir().attributes().encryption());
   dir().attributes() =
-    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(0)};
+    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(0)};
 
   // write segment with format13
   auto codec = irs::formats::get("1_3", "1_0");

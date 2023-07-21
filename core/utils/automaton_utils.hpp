@@ -51,7 +51,7 @@ inline automaton_table_matcher make_automaton_matcher(
 
 template<typename Char, typename Matcher>
 inline automaton::Weight match(Matcher& matcher,
-                               std::basic_string_view<Char> target) {
+                               basic_string_view<Char> target) {
   auto state = matcher.GetFst().Start();
   matcher.SetState(state);
 
@@ -68,7 +68,7 @@ inline automaton::Weight match(Matcher& matcher,
 
 template<typename Char>
 inline automaton::Weight accept(const automaton& a,
-                                std::basic_string_view<Char> target) {
+                                basic_string_view<Char> target) {
   using matcher_t =
     fst::SortedRangeExplicitMatcher<automaton, fst::MatchType::MATCH_INPUT>;
 

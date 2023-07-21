@@ -142,6 +142,8 @@ struct index_input : public data_input {
   //////////////////////////////////////////////////////////////////////////////
   virtual int64_t checksum(size_t offset) const = 0;
 
+  virtual uint64_t CountMappedMemory() const { return 0; }
+
  protected:
   index_input() = default;
   index_input(const index_input&) = default;

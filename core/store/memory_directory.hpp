@@ -27,6 +27,7 @@
 #include <shared_mutex>
 
 #include "directory.hpp"
+#include "resource_manager.hpp"
 #include "store/directory_attributes.hpp"
 #include "utils/async_utils.hpp"
 #include "utils/attributes.hpp"
@@ -36,19 +37,12 @@
 
 namespace irs {
 
-class memory_file
-  : public container_utils::raw_block_vector<16, 8,
-                                             memory_allocator::allocator_type> {
- private:
-  typedef container_utils::raw_block_vector<
-    memory_allocator::allocator_type::SIZE,  // total number of levels
-    8,                                       // size of the first level 2^8
-    memory_allocator::allocator_type>
-    raw_block_vector_t;
+class memory_file : public container_utils::raw_block_vector<16, 8> {
+  // total number of levels and size of the first level 2^8
+  using raw_block_vector_t = container_utils::raw_block_vector<16, 8>;
 
  public:
-  explicit memory_file(const memory_allocator& alloc) noexcept
-    : raw_block_vector_t{alloc} {
+  explicit memory_file(IResourceManager& rm) noexcept : raw_block_vector_t{rm} {
     touch(meta_.mtime);
   }
 
@@ -99,12 +93,6 @@ class memory_file
 
   void reset() noexcept { len_ = 0; }
 
-  void reset(const memory_allocator& alloc) noexcept {
-    reset();
-    // change internal allocator
-    alloc_ = static_cast<allocator_type&>(alloc);
-  }
-
   void clear() noexcept {
     raw_block_vector_t::clear();
     reset();
@@ -121,10 +109,6 @@ class memory_file
   }
 
  private:
-  static_assert(raw_block_vector_t::NUM_BUCKETS ==
-                  memory_allocator::allocator_type::SIZE,
-                "memory allocator is not compatible with a file");
-
   // metadata for a memory_file
   struct meta {
     std::time_t mtime;
@@ -227,7 +211,7 @@ class memory_index_output : public index_output {
 
   void write_vlong(uint64_t v) final;
 
-  void seek(size_t pos);
+  void truncate(size_t pos);
 
   memory_index_output& operator=(byte_type b) {
     write_byte(b);
@@ -262,7 +246,8 @@ class memory_index_output : public index_output {
 class memory_directory final : public directory {
  public:
   explicit memory_directory(
-    directory_attributes attributes = directory_attributes{});
+    directory_attributes attributes = directory_attributes{},
+    const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
   ~memory_directory() noexcept final;
 
@@ -291,8 +276,13 @@ class memory_directory final : public directory {
 
  private:
   friend class single_instance_lock;
+  using files_allocator = ManagedTypedAllocator<
+    std::pair<const std::string, std::unique_ptr<memory_file>>>;
   using file_map = absl::flat_hash_map<
-    std::string, std::unique_ptr<memory_file>>;  // unique_ptr because of rename
+    std::string, std::unique_ptr<memory_file>,
+    absl::container_internal::hash_default_hash<std::string>,
+    absl::container_internal::hash_default_eq<std::string>,
+    files_allocator>;  // unique_ptr because of rename
   using lock_map = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
@@ -307,18 +297,12 @@ class memory_directory final : public directory {
 /// @brief memory_file + memory_stream
 ////////////////////////////////////////////////////////////////////////////////
 struct memory_output {
-  explicit memory_output(const memory_allocator& alloc) noexcept
-    : file(alloc) {}
+  explicit memory_output(IResourceManager& rm) noexcept : file(rm) {}
 
   memory_output(memory_output&& rhs) noexcept : file(std::move(rhs.file)) {}
 
   void reset() noexcept {
     file.reset();
-    stream.reset();
-  }
-
-  void reset(const memory_allocator& alloc) noexcept {
-    file.reset(alloc);
     stream.reset();
   }
 

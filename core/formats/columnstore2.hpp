@@ -24,6 +24,7 @@
 
 #include "formats/formats.hpp"
 #include "formats/sparse_bitmap.hpp"
+#include "resource_manager.hpp"
 #include "shared.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
@@ -41,7 +42,6 @@ class column final : public irs::column_output {
   static_assert(math::is_power2(kBlockSize));
 
   struct context {
-    memory_allocator* alloc;
     index_output* data_out;
     encryption::stream* cipher;
     union {
@@ -66,14 +66,8 @@ class column final : public irs::column_output {
   explicit column(const context& ctx, field_id id,
                   const irs::type_info& compression,
                   columnstore_writer::column_finalizer_f&& finalizer,
-                  compression::compressor::ptr deflater)
-    : ctx_{ctx},
-      compression_{compression},
-      deflater_{std::move(deflater)},
-      finalizer_{std::move(finalizer)},
-      id_{id} {
-    IRS_ASSERT(field_limits::valid(id_));
-  }
+                  compression::compressor::ptr deflater,
+                  IResourceManager& resource_manager);
 
   void write_byte(byte_type b) final { data_.stream.write_byte(b); }
 
@@ -149,9 +143,10 @@ class column final : public irs::column_output {
   irs::type_info compression_;
   compression::compressor::ptr deflater_;
   columnstore_writer::column_finalizer_f finalizer_;
-  std::vector<column_block> blocks_;  // at most 65536 blocks
-  memory_output data_{*ctx_.alloc};
-  memory_output docs_{*ctx_.alloc};
+  std::vector<column_block, ManagedTypedAllocator<column_block>>
+    blocks_;  // at most 65536 blocks
+  memory_output data_;
+  memory_output docs_;
   sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};
   address_table addr_table_;
   bstring payload_;
@@ -176,7 +171,9 @@ class writer final : public columnstore_writer {
   static constexpr std::string_view kDataFormatExt = "csd";
   static constexpr std::string_view kIndexFormatExt = "csi";
 
-  writer(Version version, bool consolidation);
+  writer(Version version, IResourceManager& resource_manager,
+         bool consolidation);
+  ~writer() override;
 
   void prepare(directory& dir, const SegmentMeta& meta) final;
   column_t push_column(const ColumnInfo& info,
@@ -187,12 +184,12 @@ class writer final : public columnstore_writer {
  private:
   directory* dir_;
   std::string data_filename_;
-  memory_allocator* alloc_;
-  std::deque<column> columns_;  // pointers remain valid
+  std::deque<column, ManagedTypedAllocator<column>>
+    columns_;  // pointers remain valid
   std::vector<column*> sorted_columns_;
   index_output::ptr data_out_;
   encryption::stream::ptr data_cipher_;
-  std::unique_ptr<byte_type[]> buf_;
+  byte_type* buf_;
   Version ver_;
   bool consolidation_;
 };
@@ -250,6 +247,10 @@ struct column_header {
 
 class reader final : public columnstore_reader {
  public:
+  uint64_t CountMappedMemory() const final {
+    return data_in_ != nullptr ? data_in_->CountMappedMemory() : 0;
+  }
+
   bool prepare(const directory& dir, const SegmentMeta& meta,
                const options& opts = options{}) final;
 
@@ -266,7 +267,7 @@ class reader final : public columnstore_reader {
   size_t size() const final { return columns_.size(); }
 
  private:
-  using column_ptr = std::unique_ptr<column_reader>;
+  using column_ptr = memory::managed_ptr<column_reader>;
 
   void prepare_data(const directory& dir, std::string_view filename);
 
@@ -280,7 +281,8 @@ class reader final : public columnstore_reader {
   index_input::ptr data_in_;
 };
 
-irs::columnstore_writer::ptr make_writer(Version version, bool consolidation);
+irs::columnstore_writer::ptr make_writer(Version version, bool consolidation,
+                                         IResourceManager& rm);
 irs::columnstore_reader::ptr make_reader();
 
 }  // namespace columnstore2

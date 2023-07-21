@@ -90,7 +90,7 @@ void LogCallback(irs::SourceLocation&& source, std::string_view message) {
 }
 
 // Custom ICU data
-irs::mmap_utils::mmap_handle icu_data;
+irs::mmap_utils::mmap_handle icu_data{irs::IResourceManager::kNoop};
 
 struct IterationTracker final : ::testing::Environment {
   static uint32_t sIteration;
@@ -189,14 +189,14 @@ void test_env::make_directories() {
 
   exec_path_ = exec_path;
   exec_file_ = std::filesystem::path{
-    std::basic_string_view<std::filesystem::path::value_type>(
+    irs::basic_string_view<std::filesystem::path::value_type>(
       path_parts.basename)};
   exec_dir_ = std::filesystem::path{
-    std::basic_string_view<std::filesystem::path::value_type>(
+    irs::basic_string_view<std::filesystem::path::value_type>(
       path_parts.dirname)};
   test_name_ =
     std::filesystem::path{
-      std::basic_string_view<std::filesystem::path::value_type>(
+      irs::basic_string_view<std::filesystem::path::value_type>(
         path_parts.stem)}
       .string();
 

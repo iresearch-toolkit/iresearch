@@ -44,7 +44,7 @@ class SkipWriterTest : public test_base {
       out.write_vlong(irs::doc_id_t(cur_doc));
     };
 
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
     irs::memory_directory dir;
 
@@ -120,6 +120,7 @@ class SkipReaderTest : public test_base {};
 }  // namespace
 
 TEST_F(SkipWriterTest, Prepare) {
+  SimpleMemoryAccounter memory;
   // empty doc count
   {
     const size_t max_levels = 10;
@@ -127,46 +128,61 @@ TEST_F(SkipWriterTest, Prepare) {
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
 
-    irs::SkipWriter writer(skip_0, skip_n);
+    irs::SkipWriter writer(skip_0, skip_n, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip_0, writer.Skip0());
     ASSERT_EQ(skip_n, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC allocates some blocks even for empty containers
+    ASSERT_GT(memory.counter_, 0);
+#else
+    ASSERT_EQ(0, memory.counter_);
+#endif
   }
-
+  ASSERT_EQ(0, memory.counter_);
   {
     const size_t max_levels = 0;
     const size_t doc_count = 17;
     const size_t skip_n = 8;
     const size_t skip_0 = 16;
-    irs::SkipWriter writer(skip_0, skip_n);
+    irs::SkipWriter writer(skip_0, skip_n, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip_0, writer.Skip0());
     ASSERT_EQ(skip_n, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+    // MSVC allocates some blocks even for empty containers
+    ASSERT_GT(memory.counter_, 0);
+#else
+    ASSERT_EQ(0, memory.counter_);
+#endif
   }
-
+  ASSERT_EQ(0, memory.counter_);
+  int64_t memoryAlmostFull{0};
   // less than max levels
   {
     const size_t doc_count = 1923;
     const size_t skip = 8;
     const size_t max_levels = 10;
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip, writer.Skip0());
     ASSERT_EQ(skip, writer.SkipN());
     ASSERT_EQ(3, writer.MaxLevels());
+    ASSERT_GT(memory.counter_, 0);
+    memoryAlmostFull = memory.counter_;
   }
-
+  ASSERT_EQ(0, memory.counter_);
   // more than max levels
   {
     const size_t doc_count = 1923000;
     const size_t skip = 8;
     const size_t max_levels = 5;
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, memory);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, doc_count);
     ASSERT_EQ(skip, writer.Skip0());
@@ -182,7 +198,9 @@ TEST_F(SkipWriterTest, Prepare) {
     ASSERT_EQ(skip, writer.Skip0());
     ASSERT_EQ(skip, writer.SkipN());
     ASSERT_EQ(0, writer.MaxLevels());
+    ASSERT_GT(memory.counter_, memoryAlmostFull);
   }
+  ASSERT_EQ(0, memory.counter_);
 }
 
 TEST_F(SkipWriterTest, WriteFlush) { SkipWriterTest::write_flush(1923, 5, 8); }
@@ -201,7 +219,7 @@ TEST_F(SkipWriterTest, Reset) {
   };
 
   // Prepare writer
-  irs::SkipWriter writer(skip, skip);
+  irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
   ASSERT_EQ(0, writer.MaxLevels());
   writer.Prepare(max_levels, count);
   ASSERT_NE(max_levels, writer.MaxLevels());
@@ -369,7 +387,7 @@ TEST_F(SkipReaderTest, Prepare) {
     size_t max_levels = 5;
     size_t skip = 8;
 
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
     writer.Prepare(max_levels, count);
     ASSERT_EQ(3, writer.MaxLevels());
@@ -402,7 +420,7 @@ TEST_F(SkipReaderTest, Prepare) {
       void operator()(size_t, irs::index_output& out) { out.write_vint(0); }
     };
 
-    irs::SkipWriter writer(skip, skip);
+    irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
     irs::memory_directory dir;
 
@@ -430,6 +448,142 @@ TEST_F(SkipReaderTest, Prepare) {
     ASSERT_EQ(writer.MaxLevels(), reader.NumLevels());
     ASSERT_EQ(skip, reader.Skip0());
     ASSERT_EQ(skip, reader.SkipN());
+  }
+}
+
+TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
+  struct WriteSkip {
+    void Write(size_t level, irs::index_output& out) {
+      auto idx = scores_.size() - 1 - level;
+      out.write_vlong(scores_[idx]);
+      out.write_vlong(docs_[idx]);
+      if (idx && scores_[idx - 1] < scores_[idx]) {
+        scores_[idx - 1] = scores_[idx];
+      }
+      if (idx && docs_[idx - 1] < docs_[idx]) {
+        docs_[idx - 1] = docs_[idx];
+      }
+      scores_[idx] = 0;
+      docs_[idx] = 0;
+    }
+
+    void Update(irs::doc_id_t doc, size_t value) {
+      if (scores_.back() < value) {
+        scores_.back() = value;
+      }
+      if (docs_.back() < doc) {
+        docs_.back() = doc;
+      }
+    }
+
+    std::vector<size_t> scores_;
+    std::vector<irs::doc_id_t> docs_;
+  };
+
+  struct ReadSkip {
+    size_t count_;
+    size_t* threshold_{};
+    std::vector<size_t> scores_;
+    std::vector<irs::doc_id_t> docs_;
+
+    explicit ReadSkip(size_t count, size_t skip_levels) noexcept
+      : count_{count}, scores_(skip_levels), docs_(skip_levels) {}
+
+    bool IsLess(size_t level, irs::doc_id_t target) const {
+      EXPECT_LT(level, scores_.size());
+      return docs_[level] < target ||
+             (threshold_ && scores_[level] < *threshold_);
+    }
+
+    size_t AdjustLevel(size_t id) const noexcept {
+      while (id && docs_[id] >= docs_[id - 1]) {
+        --id;
+      }
+      return id;
+    }
+
+    void MoveDown(size_t level) {}
+
+    void Read(size_t level, irs::data_input& in) {
+      scores_[level] = in.read_vlong();
+      docs_[level] = in.read_vlong();
+    }
+
+    void Seal(size_t level) { docs_[level] = irs::doc_limits::eof(); }
+
+    void Reset() noexcept {}
+  };
+
+  irs::memory_directory dir;
+  static constexpr size_t kCount = 81;
+  static constexpr size_t kMaxLevels = 5;
+  static constexpr size_t kSkipLevels = 2;
+  static constexpr size_t kSkip0 = 8;
+  static constexpr size_t kSkipN = 8;
+  static constexpr std::string_view kFile = "docs";
+  // write data
+  {
+    WriteSkip scoreWriter;
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
+    ASSERT_EQ(0, writer.MaxLevels());
+
+    // write data
+    writer.Prepare(kMaxLevels, kCount);
+    ASSERT_EQ(kSkipLevels, writer.MaxLevels());
+    scoreWriter.scores_.resize(writer.MaxLevels());
+    scoreWriter.docs_.resize(writer.MaxLevels());
+    size_t size = 0;
+    for (size_t doc = 0; doc <= kCount; ++doc, ++size) {
+      // skip every "skip" document
+      auto score = [](size_t doc) {
+        doc = doc % 64;
+        if (doc > 0 && doc < 8) {
+          return 100;
+        }
+        return 1;
+      };
+      scoreWriter.Update(doc, score(doc));
+      if (size == kSkip0) {
+        writer.Skip(doc, [&](size_t level, irs::index_output& out) {
+          scoreWriter.Write(level, out);
+        });
+        size = 0;
+      }
+    }
+
+    auto out = dir.create(kFile);
+    ASSERT_FALSE(!out);
+    writer.Flush(*out);
+  }
+  // check written data
+  {
+    irs::SkipReader<ReadSkip> reader(kSkip0, kSkipN,
+                                     ReadSkip{kCount, kSkipLevels});
+    auto& ctx = reader.Reader();
+    size_t threshold{0};
+    ctx.threshold_ = &threshold;
+
+    auto docs_left = [&](irs::doc_id_t target) -> irs::doc_id_t {
+      return kCount - kSkip0 * (target / kSkip0);
+    };
+
+    ASSERT_EQ(0, reader.NumLevels());
+    auto in = dir.open(kFile, irs::IOAdvice::NORMAL);
+    ASSERT_FALSE(!in);
+    reader.Prepare(std::move(in), kCount);
+    ASSERT_EQ(kSkipLevels, reader.NumLevels());
+    ASSERT_EQ(kSkip0, reader.Skip0());
+    ASSERT_EQ(kSkipN, reader.SkipN());
+
+    threshold = 0;
+    ASSERT_EQ(docs_left(62), reader.Seek(62));
+    threshold = 79;
+    // that must not only move level 1 BUT! level 0 also should be moved
+    // to maintain sorted order of levels in the skiplist reader!
+    ASSERT_EQ(docs_left(64), reader.Seek(63));
+    threshold = 0;
+    // This should actually do not move skiplist at all.
+    ASSERT_EQ(docs_left(65), reader.Seek(65));
   }
 }
 
@@ -524,7 +678,7 @@ TEST_F(SkipReaderTest, Seek) {
       size_t low = irs::doc_limits::invalid();
       size_t high = irs::doc_limits::invalid();
 
-      irs::SkipWriter writer(kSkip0, kSkipN);
+      irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
       ASSERT_EQ(0, writer.MaxLevels());
 
       // write data
@@ -816,7 +970,7 @@ TEST_F(SkipReaderTest, Seek) {
     size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::SkipWriter writer(kSkip0, kSkipN);
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
@@ -988,7 +1142,7 @@ TEST_F(SkipReaderTest, Seek) {
     size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::SkipWriter writer(kSkip0, kSkipN);
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
 
     // write data
@@ -1130,7 +1284,7 @@ TEST_F(SkipReaderTest, Seek) {
     size_t high = irs::doc_limits::invalid();
 
     irs::memory_directory dir;
-    irs::SkipWriter writer(kSkip0, kSkipN);
+    irs::SkipWriter writer(kSkip0, kSkipN, irs::IResourceManager::kNoop);
     ASSERT_EQ(0, writer.MaxLevels());
 
     // write data

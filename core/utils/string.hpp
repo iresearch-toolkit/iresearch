@@ -31,16 +31,15 @@
 
 #include <absl/hash/hash.h>
 
+namespace irs {
+
 // MSVC++ > v14.0 (Visual Studio >2015) already implements this in <xstring>
 // MacOS requires this definition to be before first usage (i.e. in bytes_view)
 #if !defined(_MSC_VER) || (_MSC_VER <= 1900)
-namespace std {
-
 // We define this specialization because default implementation
 // for unsigned char doesn't implement it effective
-template<>
-struct char_traits<::irs::byte_type> {
-  using char_type = ::irs::byte_type;
+struct char_traits_byte {
+  using char_type = byte_type;
   using int_type = int;
   using pos_type = std::streampos;
   using off_type = std::streamoff;
@@ -120,13 +119,24 @@ struct char_traits<::irs::byte_type> {
   }
 };
 
-}  // namespace std
+template<typename Char>
+using char_traits =
+  std::conditional_t<std::is_same_v<Char, byte_type>, char_traits_byte,
+                     std::char_traits<Char>>;
+
+#else
+
+using std::char_traits;
+
 #endif
 
-namespace irs {
+template<typename Char, typename Allocator = std::allocator<Char>>
+using basic_string = std::basic_string<Char, char_traits<Char>, Allocator>;
+template<typename Char>
+using basic_string_view = std::basic_string_view<Char, char_traits<Char>>;
 
-using bstring = std::basic_string<byte_type>;
-using bytes_view = std::basic_string_view<byte_type>;
+using bstring = basic_string<byte_type>;
+using bytes_view = basic_string_view<byte_type>;
 
 template<typename Char>
 inline size_t CommonPrefixLength(const Char* lhs, size_t lhs_size,
@@ -156,10 +166,9 @@ inline size_t CommonPrefixLength(const Char* lhs, size_t lhs_size,
   return lhs_block_start - lhs;
 }
 
-template<typename Char, typename Traits>
-inline size_t CommonPrefixLength(
-  std::basic_string_view<Char, Traits> lhs,
-  std::basic_string_view<Char, Traits> rhs) noexcept {
+template<typename Char>
+inline size_t CommonPrefixLength(basic_string_view<Char> lhs,
+                                 basic_string_view<Char> rhs) noexcept {
   return CommonPrefixLength(lhs.data(), lhs.size(), rhs.data(), rhs.size());
 }
 
@@ -167,16 +176,16 @@ template<typename Char>
 inline constexpr Char kEmptyChar{};
 
 template<typename Char>
-constexpr std::basic_string_view<Char> kEmptyStringView{&kEmptyChar<Char>, 0};
+constexpr basic_string_view<Char> kEmptyStringView{&kEmptyChar<Char>, 0};
 
 template<typename Char>
-constexpr bool IsNull(std::basic_string_view<Char> str) noexcept {
+constexpr bool IsNull(basic_string_view<Char> str) noexcept {
   return str.data() == nullptr;
 }
 
 template<typename ElemDst, typename ElemSrc>
-constexpr inline std::basic_string_view<ElemDst> ViewCast(
-  std::basic_string_view<ElemSrc> src) noexcept {
+constexpr inline basic_string_view<ElemDst> ViewCast(
+  basic_string_view<ElemSrc> src) noexcept {
   static_assert(!std::is_same_v<ElemDst, ElemSrc>);
   static_assert(sizeof(ElemDst) == sizeof(ElemSrc));
 

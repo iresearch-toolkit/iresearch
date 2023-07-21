@@ -25,6 +25,7 @@
 
 #include <memory>
 
+#include "resource_manager.hpp"
 #include "shared.hpp"
 #include "utils/assert.hpp"
 #include "utils/log.hpp"
@@ -296,6 +297,24 @@ struct OnHeap final : Base {
   void Destroy() const noexcept final { delete this; }
 };
 
+template<typename Base>
+struct OnHeapTracked final : Base {
+  static_assert(std::is_base_of_v<Managed, Base>);
+
+  template<typename... Args>
+  OnHeapTracked(IResourceManager& rm, Args&&... args)
+    : Base{std::forward<Args>(args)...}, rm_{rm} {}
+
+ private:
+  void Destroy() const noexcept final {
+    auto& rm = rm_;
+    delete this;
+    rm.Decrease(sizeof(*this));
+  }
+
+  IResourceManager& rm_;
+};
+
 struct ManagedDeleter {
   void operator()(const Managed* p) noexcept {
     IRS_ASSERT(p != nullptr);  // std::unique_ptr doesn't call dtor on nullptr
@@ -316,6 +335,9 @@ class managed_ptr final : std::unique_ptr<T, ManagedDeleter> {
 
   template<typename Base, typename Derived, typename... Args>
   friend managed_ptr<Base> make_managed(Args&&... args);
+  template<typename Base, typename Derived, typename... Args>
+  friend managed_ptr<Base> make_tracked_managed(IResourceManager&,
+                                                Args&&... args);
 
   constexpr explicit managed_ptr(T* p) noexcept : Ptr{p} {}
 
@@ -371,6 +393,13 @@ constexpr managed_ptr<Base> to_managed(Derived& p) noexcept {
 template<typename Base, typename Derived = Base, typename... Args>
 managed_ptr<Base> make_managed(Args&&... args) {
   return managed_ptr<Base>{new OnHeap<Derived>{std::forward<Args>(args)...}};
+}
+
+template<typename Base, typename Derived = Base, typename... Args>
+managed_ptr<Base> make_tracked_managed(IResourceManager& rm, Args&&... args) {
+  rm.Increase(sizeof(OnHeapTracked<Derived>));
+  return managed_ptr<Base>{
+    new OnHeapTracked<Derived>{rm, std::forward<Args>(args)...}};
 }
 
 template<typename T, typename Alloc, typename... Types>

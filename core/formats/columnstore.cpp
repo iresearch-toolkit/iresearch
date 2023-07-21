@@ -43,6 +43,7 @@
 #include "utils/iterator.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
+#include "utils/object_pool.hpp"
 #include "utils/type_limits.hpp"
 
 // ----------------------------------------------------------------------------
@@ -620,7 +621,7 @@ class writer final : public irs::columnstore_writer {
         finalizer_{std::move(finalizer)},
         cipher_(cipher),
         id_(id),
-        blocks_index_(*ctx.alloc_),
+        blocks_index_(IResourceManager::kNoop),
         block_buf_(2 * MAX_DATA_BLOCK_SIZE, 0) {
       IRS_ASSERT(comp_);   // ensured by `push_column'
       block_buf_.clear();  // reset size to '0'
@@ -806,7 +807,6 @@ class writer final : public irs::columnstore_writer {
   void flush_meta(const flush_state& meta);
 
   meta_writer meta_writer_;
-  memory_allocator* alloc_{&memory_allocator::global()};
   std::deque<column> columns_;  // pointers remain valid
   std::vector<std::reference_wrapper<const column>> sorted_columns_;
   bstring buf_;  // reusable temporary buffer for packing/compression
@@ -844,7 +844,6 @@ void writer::prepare(directory& dir, const SegmentMeta& meta) {
 
   // noexcept block
   dir_ = &dir;
-  alloc_ = &dir.attributes().allocator();
   data_out_ = std::move(data_out);
   data_out_cipher_ = std::move(data_out_cipher);
   filename_ = std::move(filename);
@@ -2306,6 +2305,11 @@ const column_factory_f COLUMN_FACTORIES[]{
 class reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16) : context_provider(pool_size) {}
+
+  uint64_t CountMappedMemory() const final {
+    // We don't support it for old columnstore
+    return 0;
+  }
 
   bool prepare(const directory& dir, const SegmentMeta& meta,
                const options& opts = options{}) final;

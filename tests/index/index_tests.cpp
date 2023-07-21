@@ -1,4 +1,4 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -34,6 +34,7 @@
 #include "search/term_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "store/memory_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/delta_compression.hpp"
 #include "utils/file_utils.hpp"
@@ -101,6 +102,8 @@ irs::filter::ptr MakeOr(
 class SubReaderMock final : public irs::SubReader {
  public:
   explicit SubReaderMock(const irs::SegmentInfo meta) : meta_{meta} {}
+
+  virtual uint64_t CountMappedMemory() const { return 0; }
 
   const irs::SegmentInfo& Meta() const final { return meta_; }
 
@@ -664,49 +667,6 @@ class index_test_case : public tests::index_test_base {
       for (size_t i = 0; i < thread_count; ++i) {
         ASSERT_FALSE(expected_term_itrs[i]->next());
       }
-    }
-  }
-
-  void open_writer_check_directory_allocator() {
-    // use global allocator everywhere
-    {
-      irs::memory_directory dir;
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-
-      // open writer
-      auto writer = irs::IndexWriter::Make(dir, codec(), irs::OM_CREATE);
-      ASSERT_NE(nullptr, writer);
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-    }
-
-    // use global allocator in directory
-    {
-      irs::memory_directory dir;
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-
-      // open writer
-      irs::IndexWriterOptions options;
-      auto writer =
-        irs::IndexWriter::Make(dir, codec(), irs::OM_CREATE, options);
-      ASSERT_NE(nullptr, writer);
-      ASSERT_EQ(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-    }
-
-    // use memory directory allocator everywhere
-    {
-      irs::memory_directory dir{irs::directory_attributes{42}};
-      ASSERT_NE(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
-
-      // open writer
-      auto writer = irs::IndexWriter::Make(dir, codec(), irs::OM_CREATE);
-      ASSERT_NE(nullptr, writer);
-      ASSERT_NE(&irs::memory_allocator::global(),
-                &dir.attributes().allocator());
     }
   }
 
@@ -2533,10 +2493,7 @@ TEST_P(index_test_case, check_attributes_order) { iterate_attributes(); }
 
 TEST_P(index_test_case, clear_writer) { clear_writer(); }
 
-TEST_P(index_test_case, open_writer) {
-  open_writer_check_lock();
-  open_writer_check_directory_allocator();
-}
+TEST_P(index_test_case, open_writer) { open_writer_check_lock(); }
 
 TEST_P(index_test_case, check_writer_open_modes) { writer_check_open_modes(); }
 
@@ -7767,7 +7724,8 @@ TEST_P(index_test_case, consolidate_single_segment) {
 TEST_P(index_test_case, segment_consolidate_long_running) {
   const auto blocker = [this](std::string_view segment) {
     irs::memory_directory dir;
-    auto writer = codec()->get_columnstore_writer(false);
+    auto writer =
+      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
 
     irs::SegmentMeta meta;
     meta.name = segment;
@@ -16929,21 +16887,33 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   auto* doc1 = gen.next();
 
   irs::IndexWriterOptions writer_options;
+  writer_options.reader_options.resource_manager = GetResourceManager().options;
   auto writer = open_writer(irs::OM_CREATE, writer_options);
   {
-    auto trx = writer->GetBatch();
+    auto reader = writer->GetSnapshot();
+    EXPECT_EQ(reader->CountMappedMemory(), 0);
+    EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 0);
+  }
+
+  {
+    irs::IndexWriter::Transaction trx;
+    ASSERT_FALSE(trx.Valid());
+    trx = writer->GetBatch();
+    ASSERT_TRUE(trx.Valid());
     {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc0->indexed.begin(),
                                      doc0->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc0->stored.begin(), doc0->stored.end());
+      doc.Insert<irs::Action::INDEX | irs::Action::STORE>(doc0->stored.begin(),
+                                                          doc0->stored.end());
       ASSERT_TRUE(doc);
     }
     {
       auto doc = trx.Insert();
       doc.Insert<irs::Action::INDEX>(doc1->indexed.begin(),
                                      doc1->indexed.end());
-      doc.Insert<irs::Action::INDEX>(doc1->stored.begin(), doc1->stored.end());
+      doc.Insert<irs::Action::INDEX | irs::Action::STORE>(doc1->stored.begin(),
+                                                          doc1->stored.end());
       ASSERT_TRUE(doc);
     }
     // subcontext with remove
@@ -16957,7 +16927,17 @@ TEST_P(index_test_case_11, testExternalGenerationDifferentStart) {
   ASSERT_TRUE(writer->Begin());
   writer->Commit();
   AssertSnapshotEquality(*writer);
+  writer.reset();
   auto reader = irs::DirectoryReader(directory);
+  if (dynamic_cast<irs::memory_directory*>(&directory) == nullptr) {
+    EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 4);
+  }
+#ifdef __linux__
+  if (dynamic_cast<irs::MMapDirectory*>(&directory) != nullptr) {
+    EXPECT_GT(reader.CountMappedMemory(), 0);
+  }
+#endif
+
   ASSERT_EQ(1, reader.size());
   auto& segment = (*reader)[0];
   ASSERT_EQ(2, segment.docs_count());
@@ -17036,12 +17016,9 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
   auto doc4 = gen.next();
 
   bool cache = false;
-  int64_t memory = 0;
+  TestResourceManager memory;
   irs::IndexWriterOptions opts;
-  opts.reader_options.pinned_memory_accounting = [&](int64_t diff) noexcept {
-    memory += diff;
-    return true;
-  };
+  opts.reader_options.resource_manager = memory.options;
   opts.reader_options.warmup_columns =
     [&](const irs::SegmentMeta& /*meta*/, const irs::field_reader& /*fields*/,
         const irs::column_reader& /*column*/) { return cache; };
@@ -17049,25 +17026,31 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
 
   ASSERT_TRUE(insert(*writer, doc0->indexed.begin(), doc0->indexed.end(),
                      doc0->stored.begin(), doc0->stored.end()));
+  const auto tr1 = memory.transactions.counter_;
+  ASSERT_GT(tr1, 0);
   ASSERT_TRUE(insert(*writer, doc1->indexed.begin(), doc1->indexed.end(),
                      doc1->stored.begin(), doc1->stored.end()));
+  const auto tr2 = memory.transactions.counter_;
+  ASSERT_GT(tr2, tr1);
   ASSERT_TRUE(insert(*writer, doc2->indexed.begin(), doc2->indexed.end(),
                      doc2->stored.begin(), doc2->stored.end()));
+  const auto tr3 = memory.transactions.counter_;
+  ASSERT_GT(tr3, tr2);
   writer->Commit();
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
 
   // empty commit: enable cache
   cache = true;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory);
+  EXPECT_LT(0, memory.cached_columns.counter_);
 
   // empty commit: disable cache
   cache = false;
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
 
   // not empty commit: enable cache
   cache = true;
@@ -17075,7 +17058,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc3->stored.begin(), doc3->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_LT(0, memory);
+  EXPECT_LT(0, memory.cached_columns.counter_);
 
   // not empty commit: disable cache
   cache = false;
@@ -17083,5 +17066,7 @@ TEST_P(index_test_case_14, buffered_column_reopen) {
                      doc4->stored.begin(), doc4->stored.end()));
   writer->Commit({.reopen_columnstore = true});
   AssertSnapshotEquality(*writer);
-  EXPECT_EQ(0, memory);
+  EXPECT_EQ(0, memory.cached_columns.counter_);
+  writer.reset();
+  ASSERT_EQ(0, memory.transactions.counter_);
 }

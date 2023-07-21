@@ -59,12 +59,12 @@ struct FreqScorer : irs::ScorerBase<void> {
   }
 
   irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const {
-    return std::make_unique<irs::WandWriterImpl<irs::FreqProducer>>(*this,
-                                                                    max_levels);
+    return std::make_unique<irs::FreqNormWriter<irs::kWandTagMaxScore>>(
+      *this, max_levels);
   }
 
   irs::WandSource::ptr prepare_wand_source() const {
-    return std::make_unique<irs::FreqSource>();
+    return std::make_unique<irs::FreqNormSource<irs::kWandTagFreq>>();
   }
 };
 
@@ -310,7 +310,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   auto codec =
     std::dynamic_pointer_cast<const irs::version10::format>(get_codec());
   EXPECT_NE(nullptr, codec);
-  auto writer = codec->get_postings_writer(false);
+  auto writer = codec->get_postings_writer(false, irs::IResourceManager::kNoop);
   EXPECT_NE(nullptr, writer);
   irs::postings_writer::state term_meta;  // must be destroyed before the writer
 

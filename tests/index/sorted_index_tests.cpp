@@ -25,6 +25,8 @@
 #include "index/norm.hpp"
 #include "index_tests.hpp"
 #include "search/term_filter.hpp"
+#include "store/memory_directory.hpp"
+#include "store/mmap_directory.hpp"
 #include "tests_shared.hpp"
 #include "utils/index_utils.hpp"
 
@@ -393,6 +395,17 @@ TEST_P(SortedIndexTestCase, simple_sequential) {
   // Check columns
   {
     auto reader = irs::DirectoryReader(dir(), codec());
+
+    if (dynamic_cast<irs::memory_directory*>(&dir()) == nullptr) {
+      auto name = codec()->type()().name();
+      EXPECT_EQ(GetResourceManager().file_descriptors.counter_, 5) << name;
+    }
+#ifdef __linux__
+    if (dynamic_cast<irs::MMapDirectory*>(&dir()) != nullptr) {
+      EXPECT_GT(reader->CountMappedMemory(), 0);
+    }
+#endif
+
     ASSERT_TRUE(reader);
     ASSERT_EQ(1, reader.size());
 

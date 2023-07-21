@@ -31,6 +31,10 @@ SegmentReader::SegmentReader(const directory& dir, const SegmentMeta& meta,
                              const IndexReaderOptions& opts)
   : impl_{SegmentReaderImpl::Open(dir, meta, opts)} {}
 
+uint64_t SegmentReader::CountMappedMemory() const {
+  return impl_->CountMappedMemory();
+}
+
 field_iterator::ptr SegmentReader::fields() const { return impl_->fields(); }
 
 const irs::column_reader* SegmentReader::sort() const { return impl_->sort(); }

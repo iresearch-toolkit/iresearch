@@ -33,12 +33,12 @@ TEST_P(format_14_test_case, write_zero_block_encryption) {
   tests::json_doc_generator gen(resource("simple_sequential.json"),
                                 &tests::generic_json_field_factory);
 
-  tests::document const* doc1 = gen.next();
+  const tests::document* doc1 = gen.next();
 
   // replace encryption
   ASSERT_NE(nullptr, dir().attributes().encryption());
   dir().attributes() =
-    irs::directory_attributes{0, std::make_unique<tests::rot13_encryption>(0)};
+    irs::directory_attributes{std::make_unique<tests::rot13_encryption>(0)};
 
   auto writer = irs::IndexWriter::Make(dir(), codec(), irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);

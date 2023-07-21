@@ -159,16 +159,13 @@ FileRefs GetRefs(const directory& dir, const SegmentMeta& meta) {
 
 }  // namespace
 
-SegmentReaderImpl::SegmentReaderImpl(PrivateTag) noexcept {}
-
-SegmentReaderImpl::~SegmentReaderImpl() = default;
-
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) {
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(
+    PrivateTag{}, *options.resource_manager.readers);
   // read optional docs_mask
-  DocumentMask docs_mask;
+  DocumentMask docs_mask{{*options.resource_manager.readers}};
   if (options.doc_mask) {
     index_utils::ReadDocumentMask(docs_mask, dir, meta);
   }
@@ -176,7 +173,8 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::Open(
   // open index data
   IRS_ASSERT(meta.codec != nullptr);
   // always instantiate to avoid unnecessary checks
-  reader->field_reader_ = meta.codec->get_field_reader();
+  reader->field_reader_ =
+    meta.codec->get_field_reader(*options.resource_manager.readers);
   if (options.index) {
     reader->field_reader_->prepare(
       ReaderState{.dir = &dir, .meta = &meta, .scorers = options.scorers});
@@ -192,7 +190,8 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
   const directory& dir, const SegmentMeta& meta,
   const IndexReaderOptions& options) const {
   IRS_ASSERT(meta == info_);
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(
+    PrivateTag{}, docs_mask_.get_allocator().ResourceManager());
   // clone removals
   reader->refs_ = refs_;
   reader->info_ = info_;
@@ -208,7 +207,8 @@ std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenColumnStore(
 std::shared_ptr<const SegmentReaderImpl> SegmentReaderImpl::ReopenDocsMask(
   const directory& dir, const SegmentMeta& meta,
   DocumentMask&& docs_mask) const {
-  auto reader = std::make_shared<SegmentReaderImpl>(PrivateTag{});
+  auto reader = std::make_shared<SegmentReaderImpl>(
+    PrivateTag{}, docs_mask_.get_allocator().ResourceManager());
   // clone field reader
   reader->field_reader_ = field_reader_;
   // clone column store
@@ -228,6 +228,17 @@ void SegmentReaderImpl::Update(const directory& dir, const SegmentMeta& meta,
   info_ = meta;
   docs_mask_ = std::move(docs_mask);
   info_.live_docs_count = info_.docs_count - docs_mask_.size();
+}
+
+uint64_t SegmentReaderImpl::CountMappedMemory() const {
+  uint64_t mapped{0};
+  if (field_reader_ != nullptr) {
+    mapped += field_reader_->CountMappedMemory();
+  }
+  if (data_ != nullptr && data_->columnstore_reader_ != nullptr) {
+    mapped += data_->columnstore_reader_->CountMappedMemory();
+  }
+  return mapped;
 }
 
 const irs::column_reader* SegmentReaderImpl::column(
@@ -293,14 +304,14 @@ const irs::column_reader* SegmentReaderImpl::ColumnData::Open(
   }
 
   // initialize optional columnstore
-  columnstore_reader::options columnstore_opts;
+  columnstore_reader::options columnstore_opts{.resource_manager =
+                                                 options.resource_manager};
   if (options.warmup_columns) {
     columnstore_opts.warmup_column = [warmup = options.warmup_columns,
                                       &field_reader,
                                       &meta](const column_reader& column) {
       return warmup(meta, field_reader, column);
     };
-    columnstore_opts.pinned_memory = options.pinned_memory_accounting;
   }
 
   if (!columnstore_reader_->prepare(dir, meta, columnstore_opts)) {

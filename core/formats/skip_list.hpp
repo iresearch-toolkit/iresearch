@@ -42,8 +42,11 @@ class SkipWriter : util::noncopyable {
  public:
   // skip_0: skip interval for level 0
   // skip_n: skip interval for levels 1..n
-  SkipWriter(doc_id_t skip_0, doc_id_t skip_n) noexcept
-    : max_levels_{0}, skip_0_{skip_0}, skip_n_{skip_n} {
+  SkipWriter(doc_id_t skip_0, doc_id_t skip_n, IResourceManager& rm) noexcept
+    : levels_{ManagedTypedAllocator<memory_output>{rm}},
+      max_levels_{0},
+      skip_0_{skip_0},
+      skip_n_{skip_n} {
     IRS_ASSERT(skip_0_);
   }
 
@@ -58,11 +61,12 @@ class SkipWriter : util::noncopyable {
 
   // Prepares skip_writer capable of writing up to `max_levels` skip levels and
   // `count` elements.
-  void Prepare(size_t max_levels, size_t count,
-               const memory_allocator& alloc = memory_allocator::global());
+  void Prepare(size_t max_levels, size_t count);
 
   // Flushes all internal data into the specified output stream
-  void Flush(index_output& out);
+  uint32_t CountLevels() const;
+  void FlushLevels(uint32_t num_levels, index_output& out);
+  void Flush(index_output& out) { FlushLevels(CountLevels(), out); }
 
   // Resets skip writer internal state
   void Reset() noexcept {
@@ -78,7 +82,7 @@ class SkipWriter : util::noncopyable {
   void Skip(doc_id_t count, Writer&& write);
 
  protected:
-  std::vector<memory_output> levels_;
+  std::vector<memory_output, ManagedTypedAllocator<memory_output>> levels_;
   size_t max_levels_;
   doc_id_t skip_0_;  // skip interval for 0 level
   doc_id_t skip_n_;  // skip interval for 1..n levels
@@ -215,6 +219,7 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
   }
 
   while (id != size) {
+    id = reader_.AdjustLevel(id);
     auto& level = levels_[id];
     auto& stream = *level.stream;
     uint64_t child_ptr = level.child;
@@ -226,7 +231,6 @@ doc_id_t SkipReader<Read>::Seek(doc_id_t target) {
         level.child = stream.read_vlong();
       }
       if (reader_.IsLess(id, target)) {
-        id = reader_.AdjustLevel(id);
         continue;
       }
     } else {

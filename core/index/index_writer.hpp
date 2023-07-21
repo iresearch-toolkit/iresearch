@@ -207,6 +207,7 @@ class IndexWriter : private util::noncopyable {
 
     ~ActiveSegmentContext();
 
+    auto* Segment() const noexcept { return segment_.get(); }
     auto* Segment() noexcept { return segment_.get(); }
     auto* Flush() noexcept { return flush_; }
 
@@ -223,6 +224,7 @@ class IndexWriter : private util::noncopyable {
   };
 
   static_assert(std::is_nothrow_move_constructible_v<ActiveSegmentContext>);
+  static_assert(std::is_nothrow_move_assignable_v<ActiveSegmentContext>);
 
  public:
   // Additional information required for remove/replace requests
@@ -342,10 +344,11 @@ class IndexWriter : private util::noncopyable {
 
   class Transaction : private util::noncopyable {
    public:
-    explicit Transaction(IndexWriter& writer) noexcept : writer_{writer} {}
+    Transaction() = default;
+    explicit Transaction(IndexWriter& writer) noexcept : writer_{&writer} {}
 
     Transaction(Transaction&& other) = default;
-    Transaction& operator=(Transaction&& other) = delete;
+    Transaction& operator=(Transaction&& other) = default;
 
     ~Transaction() {
       // FIXME(gnusi): consider calling Abort in future
@@ -359,6 +362,7 @@ class IndexWriter : private util::noncopyable {
     // `disable_flush` don't trigger segment flush
     //
     // The changes are not visible until commit()
+    // Transaction should be valid
     Document Insert(bool disable_flush = false) {
       UpdateSegment(disable_flush);
       return {*active_.Segment(), segment_writer::DocContext{queries_}};
@@ -371,6 +375,7 @@ class IndexWriter : private util::noncopyable {
     // Note that filter must be valid until commit().
     // Remove</*TickBound=*/false> is applied even for documents created after
     // the Remove call and until next TickBound Remove or Replace.
+    // Transaction should be valid
     template<bool TickBound = true, typename Filter>
     void Remove(Filter&& filter) {
       UpdateSegment(/*disable_flush=*/true);
@@ -388,6 +393,7 @@ class IndexWriter : private util::noncopyable {
     // filter the filter selecting which documents should be replaced
     // Note the changes are not visible until commit()
     // Note that filter must be valid until commit()
+    // Transaction should be valid
     template<typename Filter>
     Document Replace(Filter&& filter, bool disable_flush = false) {
       UpdateSegment(disable_flush);
@@ -411,28 +417,51 @@ class IndexWriter : private util::noncopyable {
     // Commit all accumulated modifications and release resources
     // return successful or not, if not call Abort
     bool Commit() noexcept {
+      auto* segment = active_.Segment();
+      if (segment == nullptr) {
+        return true;
+      }
       const auto first_tick =
-        writer_.tick_.fetch_add(queries_, std::memory_order_relaxed);
-      return Commit(first_tick + queries_);
+        writer_->tick_.fetch_add(queries_, std::memory_order_relaxed);
+      return CommitImpl(first_tick + queries_);
     }
-    bool Commit(uint64_t last_tick) noexcept;
+
+    bool Commit(uint64_t last_tick) noexcept {
+      auto* segment = active_.Segment();
+      if (segment == nullptr) {
+        return true;
+      }
+      return CommitImpl(last_tick);
+    }
 
     // Reset all accumulated modifications and release resources
     void Abort() noexcept;
 
+    bool FlushRequired() const noexcept {
+      auto* segment = active_.Segment();
+      if (segment == nullptr) {
+        return false;
+      }
+      return writer_->FlushRequired(*segment->writer_);
+    }
+
+    bool Valid() const noexcept { return writer_ != nullptr; }
+
    private:
+    bool CommitImpl(uint64_t last_tick) noexcept;
     // refresh segment if required (guarded by FlushContext::context_mutex_)
     // is is thread-safe to use ctx_/segment_ while holding 'flush_context_ptr'
     // since active 'flush_context' will not change and hence no reload required
     void UpdateSegment(bool disable_flush);
 
-    IndexWriter& writer_;
+    IndexWriter* writer_{nullptr};
     // the segment_context used for storing changes (lazy-initialized)
     ActiveSegmentContext active_;
     // We can use active_.Segment()->queries_.size() for same purpose
     uint64_t queries_{0};
   };
   static_assert(std::is_nothrow_move_constructible_v<Transaction>);
+  static_assert(std::is_nothrow_move_assignable_v<Transaction>);
 
   // Returns a context allowing index modification operations
   // All document insertions will be applied to the same segment on a
@@ -547,7 +576,8 @@ class IndexWriter : private util::noncopyable {
               const ColumnInfoProvider& column_info,
               const FeatureInfoProvider& feature_info,
               const PayloadProvider& meta_payload_provider,
-              std::shared_ptr<const DirectoryReaderImpl>&& committed_reader);
+              std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
+              const ResourceManagementOptions& rm);
 
  private:
   struct ConsolidationContext : util::noncopyable {
@@ -575,37 +605,13 @@ class IndexWriter : private util::noncopyable {
           .merger = std::move(merger)} {}
 
     ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates,
                   std::shared_ptr<const SegmentReaderImpl>&& reader,
-                  std::shared_ptr<const DirectoryReaderImpl>&&
-                    consolidation_reader) noexcept
+                  const ResourceManagementOptions& rm) noexcept
       : tick{tick},
         segment{std::move(segment)},
         refs{std::move(refs)},
         reader{std::move(reader)},
-        consolidation_ctx{
-          .consolidation_reader = std::move(consolidation_reader),
-          .candidates = std::move(consolidation_candidates)} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  Consolidation&& consolidation_candidates,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
-      : tick{tick},
-        segment{std::move(segment)},
-        refs{std::move(refs)},
-        reader{std::move(reader)},
-        consolidation_ctx{.candidates = std::move(consolidation_candidates)} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick, FileRefs&& refs,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
-      : tick{tick},
-        segment{std::move(segment)},
-        refs{std::move(refs)},
-        reader{std::move(reader)} {}
-
-    ImportContext(IndexSegment&& segment, uint64_t tick,
-                  std::shared_ptr<const SegmentReaderImpl>&& reader) noexcept
-      : tick{tick}, segment{std::move(segment)}, reader{std::move(reader)} {}
+        consolidation_ctx{.merger{*rm.consolidations}} {}
 
     ImportContext(ImportContext&&) = default;
 
@@ -629,6 +635,7 @@ class IndexWriter : private util::noncopyable {
       : IndexSegment{std::move(segment)},
         old2new{std::move(old2new)},
         docs_mask{std::move(docs_mask)},
+        document_mask{{this->docs_mask.set.get_allocator()}},
         docs_begin_{docs_begin},
         docs_end_{docs_begin_ + meta.docs_count} {}
 
@@ -671,14 +678,16 @@ class IndexWriter : private util::noncopyable {
     RefTrackingDirectory dir_;
 
     // sequential list of pending modification
-    std::vector<QueryContext> queries_;
+    std::vector<QueryContext, ManagedTypedAllocator<QueryContext>> queries_;
     // all of the previously flushed versions of this segment
-    std::vector<FlushedSegment> flushed_;
+    std::vector<FlushedSegment, ManagedTypedAllocator<FlushedSegment>> flushed_;
     // update_contexts to use with 'flushed_'
     // sequentially increasing through all offsets
     // (sequential doc_id in 'flushed_' == offset + doc_limits::min(), size()
     // == sum of all 'flushed_'.'docs_count')
-    std::vector<segment_writer::DocContext> flushed_docs_;
+    std::vector<segment_writer::DocContext,
+                ManagedTypedAllocator<segment_writer::DocContext>>
+      flushed_docs_;
 
     // function to get new SegmentMeta from
     segment_meta_generator_t meta_generator_;
@@ -911,7 +920,8 @@ class IndexWriter : private util::noncopyable {
   ActiveSegmentContext GetSegmentContext();
 
   // Return options for segment_writer
-  SegmentWriterOptions GetSegmentWriterOptions() const noexcept;
+  SegmentWriterOptions GetSegmentWriterOptions(
+    bool consolidation) const noexcept;
 
   // Return next segment identifier
   uint64_t NextSegmentId() noexcept;
@@ -967,6 +977,7 @@ class IndexWriter : private util::noncopyable {
   index_meta_writer::ptr writer_;
   index_lock::ptr write_lock_;  // exclusive write lock for directory
   index_file_refs::ref_t write_lock_file_ref_;  // file ref for lock file
+  ResourceManagementOptions resource_manager_;
 };
 
 }  // namespace irs

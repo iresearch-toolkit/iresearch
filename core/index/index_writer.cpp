@@ -66,12 +66,13 @@ const FeatureInfoProvider kDefaultFeatureInfo = [](irs::type_info::type_id) {
 struct FlushedSegmentContext {
   FlushedSegmentContext(std::shared_ptr<const SegmentReaderImpl>&& reader,
                         IndexWriter::SegmentContext& segment,
-                        IndexWriter::FlushedSegment& flushed)
+                        IndexWriter::FlushedSegment& flushed,
+                        const ResourceManagementOptions& rm)
     : reader{std::move(reader)}, segment{segment}, flushed{flushed} {
     IRS_ASSERT(this->reader != nullptr);
     if (flushed.docs_mask.count != doc_limits::eof()) {
       IRS_ASSERT(flushed.document_mask.empty());
-      Init();
+      Init(rm);
     }
   }
 
@@ -114,15 +115,16 @@ struct FlushedSegmentContext {
   void MaskUnusedReplace(uint64_t first_tick, uint64_t last_tick);
 
  private:
-  void Init() {
+  void Init(const ResourceManagementOptions& rm) {
     if (!flushed.old2new.empty() && flushed.new2old.empty()) {
-      flushed.new2old.resize(flushed.old2new.size());
+      flushed.new2old =
+        decltype(flushed.new2old){flushed.old2new.size(), {*rm.transactions}};
       for (doc_id_t old_id = 0; const auto new_id : flushed.old2new) {
         flushed.new2old[new_id] = old_id++;
       }
     }
 
-    DocumentMask document_mask;
+    DocumentMask document_mask{{*rm.readers}};
 
     IRS_ASSERT(flushed.GetDocsBegin() < flushed.GetDocsEnd());
     const auto end = flushed.GetDocsEnd() - flushed.GetDocsBegin();
@@ -723,26 +725,22 @@ void IndexWriter::Transaction::Reset() noexcept {
 
 void IndexWriter::Transaction::RegisterFlush() {
   if (active_.Segment() != nullptr && active_.Flush() == nullptr) {
-    writer_.GetFlushContext()->AddToPending(active_);
+    writer_->GetFlushContext()->AddToPending(active_);
   }
 }
 
-bool IndexWriter::Transaction::Commit(uint64_t last_tick) noexcept {
+bool IndexWriter::Transaction::CommitImpl(uint64_t last_tick) noexcept try {
   auto* segment = active_.Segment();
-  if (segment == nullptr) {
-    return true;  // nothing to do
-  }
-  try {
-    segment->Commit(queries_, last_tick);
-    writer_.GetFlushContext()->Emplace(std::move(active_));
-    IRS_ASSERT(active_.Segment() == nullptr);
-    return true;
-  } catch (...) {
-    IRS_ASSERT(active_.Segment() != nullptr);
-    // Can be implemented better but I more want to allow Commit throw
-    Abort();
-    return false;
-  }
+  IRS_ASSERT(segment != nullptr);
+  segment->Commit(queries_, last_tick);
+  writer_->GetFlushContext()->Emplace(std::move(active_));
+  IRS_ASSERT(active_.Segment() == nullptr);
+  return true;
+} catch (...) {
+  IRS_ASSERT(active_.Segment() != nullptr);
+  // TODO(MBkkt) Use intrusive list to avoid possibility bad_alloc here
+  Abort();
+  return false;
 }
 
 void IndexWriter::Transaction::Abort() noexcept {
@@ -757,28 +755,29 @@ void IndexWriter::Transaction::Abort() noexcept {
   }
   segment->Rollback();
   // cannot throw because active_.Flush() not null
-  writer_.GetFlushContext()->Emplace(std::move(active_));
+  writer_->GetFlushContext()->Emplace(std::move(active_));
   IRS_ASSERT(active_.Segment() == nullptr);
 }
 
 void IndexWriter::Transaction::UpdateSegment(bool disable_flush) {
+  IRS_ASSERT(Valid());
   while (active_.Segment() == nullptr) {  // lazy init
-    active_ = writer_.GetSegmentContext();
+    active_ = writer_->GetSegmentContext();
   }
 
   auto& segment = *active_.Segment();
   auto& writer = *segment.writer_;
 
   if (IRS_LIKELY(writer.initialized())) {
-    if (disable_flush || !writer_.FlushRequired(writer)) {
+    if (disable_flush || !writer_->FlushRequired(writer)) {
       return;
     }
     // Force flush of a full segment
     IRS_LOG_TRACE(absl::StrCat(
       "Flushing segment '", writer.name(), "', docs=", writer.buffered_docs(),
       ", memory=", writer.memory_active(),
-      ", docs limit=", writer_.segment_limits_.segment_docs_max.load(),
-      ", memory limit=", writer_.segment_limits_.segment_memory_max.load()));
+      ", docs limit=", writer_->segment_limits_.segment_docs_max.load(),
+      ", memory limit=", writer_->segment_limits_.segment_memory_max.load()));
 
     try {
       segment.Flush();
@@ -959,6 +958,9 @@ IndexWriter::SegmentContext::SegmentContext(
   directory& dir, segment_meta_generator_t&& meta_generator,
   const SegmentWriterOptions& options)
   : dir_{dir},
+    queries_{{options.resource_manager}},
+    flushed_{{options.resource_manager}},
+    flushed_docs_{{options.resource_manager}},
     meta_generator_{std::move(meta_generator)},
     writer_{segment_writer::make(dir_, options)} {
   IRS_ASSERT(meta_generator_);
@@ -977,7 +979,7 @@ void IndexWriter::SegmentContext::Flush() {
     committed_buffered_docs_ = 0;
   };
 
-  DocsMask docs_mask;
+  DocsMask docs_mask{.set{flushed_docs_.get_allocator()}};
   auto old2new = writer_->flush(writer_meta_, docs_mask);
 
   if (writer_meta_.meta.live_docs_count == 0) {
@@ -1139,7 +1141,8 @@ IndexWriter::IndexWriter(
   const Comparer* comparator, const ColumnInfoProvider& column_info,
   const FeatureInfoProvider& feature_info,
   const PayloadProvider& meta_payload_provider,
-  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader)
+  std::shared_ptr<const DirectoryReaderImpl>&& committed_reader,
+  const ResourceManagementOptions& rm)
   : feature_info_{feature_info},
     column_info_{column_info},
     meta_payload_provider_{meta_payload_provider},
@@ -1153,7 +1156,8 @@ IndexWriter::IndexWriter(
     last_gen_{committed_reader_->Meta().index_meta.gen},
     writer_{codec_->get_index_meta_writer()},
     write_lock_{std::move(lock)},
-    write_lock_file_ref_{std::move(lock_file_ref)} {
+    write_lock_file_ref_{std::move(lock_file_ref)},
+    resource_manager_{rm} {
   IRS_ASSERT(column_info);   // ensured by 'make'
   IRS_ASSERT(feature_info);  // ensured by 'make'
   IRS_ASSERT(codec_);
@@ -1220,7 +1224,11 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
   IRS_ASSERT(std::all_of(options.reader_options.scorers.begin(),
                          options.reader_options.scorers.end(),
                          [](const auto* v) { return v != nullptr; }));
-
+  IRS_ASSERT(options.reader_options.resource_manager.cached_columns);
+  IRS_ASSERT(options.reader_options.resource_manager.consolidations);
+  IRS_ASSERT(options.reader_options.resource_manager.file_descriptors);
+  IRS_ASSERT(options.reader_options.resource_manager.readers);
+  IRS_ASSERT(options.reader_options.resource_manager.transactions);
   index_lock::ptr lock;
   index_file_refs::ref_t lock_ref;
 
@@ -1286,7 +1294,8 @@ IndexWriter::ptr IndexWriter::Make(directory& dir, format::ptr codec,
     options.comparator,
     options.column_info ? options.column_info : kDefaultColumnInfo,
     options.features ? options.features : kDefaultFeatureInfo,
-    options.meta_payload_provider, std::move(reader));
+    options.meta_payload_provider, std::move(reader),
+    options.reader_options.resource_manager);
 
   // Remove non-index files from directory
   directory_utils::RemoveAllUnreferenced(dir);
@@ -1432,7 +1441,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
   RefTrackingDirectory dir{dir_};  // Track references for new segment
 
-  MergeWriter merger{dir, GetSegmentWriterOptions()};
+  MergeWriter merger{dir, GetSegmentWriterOptions(true)};
   merger.Reset(candidates.begin(), candidates.end());
 
   // We do not persist segment meta since some removals may come later
@@ -1523,12 +1532,13 @@ ConsolidationResult IndexWriter::Consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       const auto& pending_segment = ctx->imports_.emplace_back(
         std::move(consolidation_segment),
-        writer_limits::kMinTick,       // removals must be applied to the
-                                       // consolidated segment
-        dir.GetRefs(),                 // do not forget to track refs
-        std::move(candidates),         // consolidation context candidates
-        std::move(pending_reader),     // consolidated reader
-        std::move(committed_reader));  // consolidation context meta
+        writer_limits::kMinTick,      // removals must be applied to the
+                                      // consolidated segment
+        dir.GetRefs(),                // do not forget to track refs
+        std::move(candidates),        // consolidation context candidates
+        std::move(pending_reader),    // consolidated reader
+        std::move(committed_reader),  // consolidation context meta
+        *resource_manager_.consolidations);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1576,7 +1586,7 @@ ConsolidationResult IndexWriter::Consolidate(
 
       // handle removals if something changed
       if (has_removals) {
-        DocumentMask docs_mask;
+        DocumentMask docs_mask{{*resource_manager_.readers}};
 
         if (!MapRemovals(mappings, merger, docs_mask)) {
           // consolidated segment has docs missing from
@@ -1604,12 +1614,13 @@ ConsolidationResult IndexWriter::Consolidate(
       segment_mask.reserve(segment_mask.size() + candidates.size());
       const auto& pending_segment = ctx->imports_.emplace_back(
         std::move(consolidation_segment),
-        writer_limits::kMinTick,       // removals must be applied to the
-                                       // consolidated segment
-        dir.GetRefs(),                 // do not forget to track refs
-        std::move(candidates),         // consolidation context candidates
-        std::move(pending_reader),     // consolidated reader
-        std::move(committed_reader));  // consolidation context meta
+        writer_limits::kMinTick,      // removals must be applied to the
+                                      // consolidated segment
+        dir.GetRefs(),                // do not forget to track refs
+        std::move(candidates),        // consolidation context candidates
+        std::move(pending_reader),    // consolidated reader
+        std::move(committed_reader),  // consolidation context meta
+        *resource_manager_.consolidations);
 
       // filter out merged segments for the next commit
       const auto& consolidation_ctx = pending_segment.consolidation_ctx;
@@ -1666,7 +1677,7 @@ bool IndexWriter::Import(const IndexReader& reader,
   segment.meta.name = file_name(NextSegmentId());
   segment.meta.codec = codec;
 
-  MergeWriter merger{dir, GetSegmentWriterOptions()};
+  MergeWriter merger{dir, GetSegmentWriterOptions(true)};
   merger.Reset(reader.begin(), reader.end());
 
   if (!merger.Flush(segment.meta, progress)) {
@@ -1695,7 +1706,8 @@ bool IndexWriter::Import(const IndexReader& reader,
   // moving not suited import segments to the next FlushContext in PrepareFlush
   flush->imports_.emplace_back(
     std::move(segment), tick_.load(std::memory_order_relaxed), std::move(refs),
-    std::move(imported_reader));  // do not forget to track refs
+    std::move(imported_reader),
+    resource_manager_);  // do not forget to track refs
 
   return true;
 }
@@ -1766,7 +1778,7 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
     }
   }
 
-  const auto options = GetSegmentWriterOptions();
+  const auto options = GetSegmentWriterOptions(false);
 
   // should allocate a new segment_context from the pool
   std::shared_ptr<SegmentContext> segment_ctx = segment_writer_pool_.emplace(
@@ -1792,13 +1804,16 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
   throw;
 }
 
-SegmentWriterOptions IndexWriter::GetSegmentWriterOptions() const noexcept {
+SegmentWriterOptions IndexWriter::GetSegmentWriterOptions(
+  bool consolidation) const noexcept {
   return {
     .column_info = column_info_,
     .feature_info = feature_info_,
     .scorers_features = wand_features_,
     .scorers = wand_scorers_,
     .comparator = comparator_,
+    .resource_manager = consolidation ? *resource_manager_.consolidations
+                                      : *resource_manager_.transactions,
   };
 }
 
@@ -1883,7 +1898,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
   readers.reserve(committed_reader_size);
   pending_meta.segments.reserve(committed_reader_size);
 
-  for (DocumentMask deleted_docs;
+  for (DocumentMask deleted_docs{{*resource_manager_.transactions}};
        const auto& existing_segment : committed_reader.GetReaders()) {
     auto& index_segment =
       committed_meta.index_meta.segments[current_segment_index];
@@ -2170,8 +2185,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
           // one time. Because it's useless and ineffective.
           IRS_ASSERT(flushed_last_tick <= tick);
           // reuse existing reader with initial meta and docs_mask
-          reader =
-            it->second->ReopenDocsMask(dir, flushed.meta, DocumentMask{});
+          reader = it->second->ReopenDocsMask(
+            dir, flushed.meta, DocumentMask{*resource_manager_.readers});
         } else {
           reader = SegmentReaderImpl::Open(dir, flushed.meta, reader_options);
         }
@@ -2187,8 +2202,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
           next_cached[&flushed] = reader;
         }
 
-        auto& segment_ctx =
-          segment_ctxs.emplace_back(std::move(reader), *segment, flushed);
+        auto& segment_ctx = segment_ctxs.emplace_back(
+          std::move(reader), *segment, flushed, resource_manager_);
 
         // mask documents matching filters from all flushed segment_contexts
         // (i.e. from new operations)
@@ -2214,7 +2229,7 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
       if (segment_ctx.segment.has_replace_) {
         segment_ctx.MaskUnusedReplace(committed_tick_, tick);
       }
-      DocumentMask document_mask;
+      DocumentMask document_mask{{*resource_manager_.readers}};
       IndexSegment new_segment;
       if (segment_ctx.MakeDocumentMask(tick, document_mask, new_segment)) {
         modified |= segment_ctx.flushed.was_flush;

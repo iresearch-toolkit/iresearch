@@ -50,9 +50,10 @@ enum class Version : int32_t {
 
 irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,
-                                   bool consolidation);
+                                   IResourceManager& rm, bool consolidation);
 
-irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader);
+irs::field_reader::ptr make_reader(irs::postings_reader::ptr&& reader,
+                                   IResourceManager& rm);
 
 }  // namespace burst_trie
 }  // namespace irs

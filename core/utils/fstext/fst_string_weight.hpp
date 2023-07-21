@@ -62,9 +62,9 @@ struct StringLeftWeightTraits {
 template<typename Label>
 class StringLeftWeight : public StringLeftWeightTraits<Label> {
  public:
-  typedef StringLeftWeight<Label> ReverseWeight;
-  typedef std::basic_string<Label> str_t;
-  typedef typename str_t::const_iterator iterator;
+  using ReverseWeight = StringLeftWeight<Label>;
+  using str_t = irs::basic_string<Label>;
+  using iterator = typename str_t::const_iterator;
 
   static const std::string& Type() {
     static const std::string type = "left_string";
@@ -86,13 +86,13 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   StringLeftWeight(const StringLeftWeight&) = default;
   StringLeftWeight(StringLeftWeight&&) = default;
 
-  explicit StringLeftWeight(std::basic_string_view<Label> rhs)
+  explicit StringLeftWeight(irs::basic_string_view<Label> rhs)
     : str_(rhs.data(), rhs.size()) {}
 
   StringLeftWeight& operator=(StringLeftWeight&&) = default;
   StringLeftWeight& operator=(const StringLeftWeight&) = default;
 
-  StringLeftWeight& operator=(std::basic_string_view<Label> rhs) {
+  StringLeftWeight& operator=(irs::basic_string_view<Label> rhs) {
     str_.assign(rhs.data(), rhs.size());
     return *this;
   }
@@ -177,10 +177,10 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
   iterator end() const noexcept { return str_.end(); }
 
   // intentionally implicit
-  operator std::basic_string_view<Label>() const noexcept { return str_; }
+  operator irs::basic_string_view<Label>() const noexcept { return str_; }
 
   // intentionally implicit
-  operator std::basic_string<Label>() && noexcept { return std::move(str_); }
+  operator irs::basic_string<Label>() && noexcept { return std::move(str_); }
 
  private:
   str_t str_;
@@ -345,7 +345,7 @@ inline StringLeftWeight<Label> DivideLeft(const StringLeftWeight<Label>& lhs,
     return Weight();
   }
 
-  IRS_ASSERT(std::basic_string_view<Label>(lhs).starts_with(rhs));
+  IRS_ASSERT(irs::basic_string_view<Label>(lhs).starts_with(rhs));
 
   return Weight(lhs.begin() + rhs.Size(), lhs.end());
 }
@@ -428,71 +428,65 @@ inline std::istream& operator>>(std::istream& strm,
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
-inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
-                            const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef irs::bytes_view Weight;
-
+inline irs::bytes_view PlusImpl(irs::bytes_view lhs, irs::bytes_view rhs) {
   const auto* plhs = &lhs;
   const auto* prhs = &rhs;
 
-  if (rhs.Size() > lhs.Size()) {
+  if (rhs.size() > lhs.size()) {
     // enusre that 'prhs' is shorter than 'plhs'
     // The behavior is undefined if the second range is shorter than the first
     // range. (http://en.cppreference.com/w/cpp/algorithm/mismatch)
     std::swap(plhs, prhs);
   }
 
-  IRS_ASSERT(prhs->Size() <= plhs->Size());
+  auto pair =
+    std::mismatch(prhs->data(), prhs->data() + prhs->size(), plhs->data());
+  return {prhs->data(), static_cast<size_t>(pair.first - prhs->data())};
+}
 
-  return Weight(
-    prhs->c_str(),
-    std::distance(prhs->c_str(),
-                  std::mismatch(prhs->c_str(), (prhs->c_str() + prhs->Size()),
-                                plhs->c_str())
-                    .first));
+inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
+                            const StringLeftWeight<irs::byte_type>& rhs) {
+  return PlusImpl(lhs, rhs);
+}
+
+inline irs::bytes_view Plus(irs::bytes_view lhs,
+                            const StringLeftWeight<irs::byte_type>& rhs) {
+  return PlusImpl(lhs, rhs);
+}
+
+inline irs::bytes_view Plus(const StringLeftWeight<irs::byte_type>& lhs,
+                            irs::bytes_view rhs) {
+  return PlusImpl(lhs, rhs);
 }
 
 // For binary strings that's impossible to use
 // Zero() or NoWeight() as they may interfere
 // with real values
+inline StringLeftWeight<irs::byte_type> TimesImpl(irs::bytes_view lhs,
+                                                  irs::bytes_view rhs) {
+  using Weight = StringLeftWeight<irs::byte_type>;
+
+  Weight product;
+  product.Reserve(lhs.size() + rhs.size());
+  product.PushBack(lhs.begin(), lhs.end());
+  product.PushBack(rhs.begin(), rhs.end());
+  return product;
+}
+
 inline StringLeftWeight<irs::byte_type> Times(
   const StringLeftWeight<irs::byte_type>& lhs,
   const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef StringLeftWeight<irs::byte_type> Weight;
-
-  Weight product;
-  product.Reserve(lhs.Size() + rhs.Size());
-  product.PushBack(lhs.begin(), lhs.end());
-  product.PushBack(rhs.begin(), rhs.end());
-  return product;
+  return TimesImpl(lhs, rhs);
 }
 
-// For binary strings that's impossible to use
-// Zero() or NoWeight() as they may interfere
-// with real values
 inline StringLeftWeight<irs::byte_type> Times(
   irs::bytes_view lhs, const StringLeftWeight<irs::byte_type>& rhs) {
-  typedef StringLeftWeight<irs::byte_type> Weight;
-
-  Weight product;
-  product.Reserve(lhs.size() + rhs.Size());
-  product.PushBack(lhs.begin(), lhs.end());
-  product.PushBack(rhs.begin(), rhs.end());
-  return product;
+  return TimesImpl(lhs, rhs);
 }
 
-// For binary strings that's impossible to use
-// Zero() or NoWeight() as they may interfere
-// with real values
 inline StringLeftWeight<irs::byte_type> Times(
   const StringLeftWeight<irs::byte_type>& lhs, irs::bytes_view rhs) {
-  typedef StringLeftWeight<irs::byte_type> Weight;
-
-  Weight product;
-  product.Reserve(lhs.Size() + rhs.size());
-  product.PushBack(lhs.begin(), lhs.end());
-  product.PushBack(rhs.begin(), rhs.end());
-  return product;
+  return TimesImpl(lhs, rhs);
 }
 
 // Left division in a left string semiring.
@@ -522,6 +516,10 @@ inline irs::bytes_view DivideLeft(irs::bytes_view lhs,
 
 inline irs::bytes_view DivideLeft(const StringLeftWeight<irs::byte_type>& lhs,
                                   irs::bytes_view rhs) {
+  return DivideLeftImpl(lhs, rhs);
+}
+
+inline irs::bytes_view DivideLeft(irs::bytes_view lhs, irs::bytes_view rhs) {
   return DivideLeftImpl(lhs, rhs);
 }
 

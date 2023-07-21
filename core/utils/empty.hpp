@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,27 +15,25 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "directory_attributes.hpp"
+#pragma once
 
-#include "error/error.hpp"
+#include <type_traits>
 
-namespace irs {
+#include "shared.hpp"
 
-void index_file_refs::clear() {
-  refs_.visit([](const auto&, size_t) { return true; }, true);
+namespace irs::utils {
 
-  if (!refs_.empty()) {
-    throw illegal_state{"Cannot clear ref_counter due to live refs."};
-  }
-}
+struct Empty final {
+  template<typename... Args>
+  Empty(Args&&... /*args*/) {}
+};
 
-directory_attributes::directory_attributes(std::unique_ptr<irs::encryption> enc)
-  : enc_{std::move(enc)}, refs_{std::make_unique<index_file_refs>()} {}
+template<bool Condition, typename T>
+using Need = std::conditional_t<Condition, T, Empty>;
 
-}  // namespace irs
+}  // namespace irs::utils

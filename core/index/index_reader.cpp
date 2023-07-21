@@ -22,12 +22,16 @@
 
 #include "index_reader.hpp"
 
+#include "resource_manager.hpp"
+
 namespace irs {
 namespace {
 
 const SegmentInfo kEmptyInfo;
 
 struct EmptySubReader final : SubReader {
+  uint64_t CountMappedMemory() const final { return 0; }
+
   column_iterator::ptr columns() const final {
     return irs::column_iterator::empty();
   }
@@ -52,5 +56,11 @@ const EmptySubReader kEmpty;
 }  // namespace
 
 const SubReader& SubReader::empty() noexcept { return kEmpty; }
+
+#ifdef IRESEARCH_DEBUG
+IResourceManager IResourceManager::kForbidden;
+#endif
+IResourceManager IResourceManager::kNoop;
+ResourceManagementOptions ResourceManagementOptions::kDefault;
 
 }  // namespace irs
