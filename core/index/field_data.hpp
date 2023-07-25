@@ -135,7 +135,7 @@ class field_data : util::noncopyable {
   void compute_features() const {
     for (auto& entry : features_) {
       IRS_ASSERT(entry.handler);
-      entry.handler->write(stats_, doc(), entry.writer);
+      entry.handler->write(stats_, doc(), *entry.writer);
     }
   }
 
@@ -148,12 +148,11 @@ class field_data : util::noncopyable {
   friend class fields_data;
 
   struct feature_info {
-    feature_info(FeatureWriter::ptr handler,
-                 columnstore_writer::values_writer_f writer)
-      : handler{std::move(handler)}, writer{std::move(writer)} {}
+    feature_info(FeatureWriter::ptr handler, column_output& writer)
+      : handler{std::move(handler)}, writer{&writer} {}
 
     FeatureWriter::ptr handler;
-    columnstore_writer::values_writer_f writer;
+    column_output* writer;
   };
 
   using process_term_f = void (field_data::*)(posting&, doc_id_t,

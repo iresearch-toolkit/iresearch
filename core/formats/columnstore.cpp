@@ -627,7 +627,9 @@ class writer final : public irs::columnstore_writer {
       block_buf_.clear();  // reset size to '0'
     }
 
-    void prepare(doc_id_t key) {
+    void Prepare(doc_id_t key) final {
+      IRS_ASSERT(doc_limits::invalid() < key);
+      IRS_ASSERT(key < doc_limits::eof());
       IRS_ASSERT(key >= block_index_.max_key());
 
       if (key <= block_index_.max_key()) {
@@ -871,19 +873,11 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
   }
 
   const auto id = columns_.size();
-  columns_.emplace_back(*this, id, info.compression, std::move(finalizer),
-                        std::move(compressor), cipher);
-  auto& column = columns_.back();
+  auto& column =
+    columns_.emplace_back(*this, id, info.compression, std::move(finalizer),
+                          std::move(compressor), cipher);
 
-  return std::make_pair(id, [&column](doc_id_t doc) -> column_output& {
-    // to avoid extra (and useless in our case) check for block index
-    // emptiness in 'writer::column::prepare', we disallow passing
-    // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
-    IRS_ASSERT(doc > doc_limits::invalid() && doc < doc_limits::eof());
-
-    column.prepare(doc);
-    return column;
-  });
+  return {id, column};
 }
 
 bool writer::commit(const flush_state& state) {

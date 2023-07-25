@@ -688,11 +688,11 @@ doc_iterator::ptr CompoundTermIterator::postings(
 }
 
 // Iterator over field_ids over all readers
-class CompoundFiledIterator final : public basic_term_reader {
+class CompoundFieldIterator final : public basic_term_reader {
  public:
   static constexpr const size_t kProgressStepFields = size_t(1);
 
-  explicit CompoundFiledIterator(size_t size,
+  explicit CompoundFieldIterator(size_t size,
                                  const MergeWriter::FlushProgress& progress,
                                  const Comparer* comparator = nullptr)
     : term_itr_(progress, comparator),
@@ -767,7 +767,7 @@ class CompoundFiledIterator final : public basic_term_reader {
   ProgressTracker progress_;
 };
 
-void CompoundFiledIterator::add(const SubReader& reader,
+void CompoundFieldIterator::add(const SubReader& reader,
                                 const doc_map_f& doc_id_map) {
   auto it = reader.fields();
   IRS_ASSERT(it);
@@ -780,28 +780,31 @@ void CompoundFiledIterator::add(const SubReader& reader,
   }
 }
 
-bool CompoundFiledIterator::next() {
+bool CompoundFieldIterator::next() {
+  current_field_ = {};
+
   progress_();
 
   if (aborted()) {
-    field_iterators_.clear();
     field_iterator_mask_.clear();
-    current_field_ = {};
+    field_iterators_.clear();
     return false;
   }
 
   // advance all used iterators
   for (auto& entry : field_iterator_mask_) {
-    auto& it = field_iterators_[entry.itr_id];
-    if (it.itr && !it.itr->next()) {
-      it.itr = nullptr;
+    auto& it = field_iterators_[entry.itr_id].itr;
+    IRS_ASSERT(it);
+    if (!it->next()) {
+      it.reset();
     }
   }
 
   // reset for next pass
   field_iterator_mask_.clear();
 
-  for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
+  // TODO(MBkkt) use k way merge
+  for (size_t i = 0, count = field_iterators_.size(); i != count; ++i) {
     auto& field_itr = field_iterators_[i];
 
     if (!field_itr.itr) {
@@ -810,19 +813,24 @@ bool CompoundFiledIterator::next() {
 
     const auto& field_meta = field_itr.itr->value().meta();
     const auto* field_terms = field_itr.reader->field(field_meta.name);
+    if (!field_terms) {
+      continue;
+    }
     const std::string_view field_id = field_meta.name;
 
-    if (!field_terms ||
-        (!field_iterator_mask_.empty() && field_id > current_field_)) {
-      continue;  // empty field or value too large
+    IRS_ASSERT(!IsNull(field_id));
+    IRS_ASSERT(field_iterator_mask_.empty() == IsNull(current_field_));
+    if (!IsNull(current_field_)) {
+      const auto cmp = field_id.compare(current_field_);
+      if (cmp > 0) {
+        continue;
+      }
+      if (cmp < 0) {
+        field_iterator_mask_.clear();
+      }
     }
-
-    // found a smaller field
-    if (field_iterator_mask_.empty() || field_id < current_field_) {
-      field_iterator_mask_.clear();
-      current_field_ = field_id;
-      current_meta_ = &field_meta;
-    }
+    current_field_ = field_id;
+    current_meta_ = &field_meta;
 
     // validated by caller
     IRS_ASSERT(IsSubsetOf(field_meta.features, meta().features));
@@ -832,16 +840,10 @@ bool CompoundFiledIterator::next() {
       TermIterator{i, &field_meta, field_terms});
   }
 
-  if (!field_iterator_mask_.empty()) {
-    return true;
-  }
-
-  current_field_ = {};
-
-  return false;
+  return !IsNull(current_field_);
 }
 
-term_iterator::ptr CompoundFiledIterator::iterator() const {
+term_iterator::ptr CompoundFieldIterator::iterator() const {
   term_itr_.reset(meta());
 
   for (const auto& segment : field_iterator_mask_) {
@@ -942,7 +944,7 @@ std::optional<field_id> Columnstore::insert(
 
   auto column = writer_->push_column(info, std::move(finalizer));
 
-  auto write_column = [&column, &writer, this](auto& it) -> bool {
+  auto write_column = [&column, &writer, this](auto& it) {
     auto* payload = irs::get<irs::payload>(it);
 
     do {
@@ -952,10 +954,10 @@ std::optional<field_id> Columnstore::insert(
       }
 
       const auto doc = it.value();
-      auto& out = column.second(doc);
-
       if (payload) {
-        writer(out, doc, payload->value);
+        writer(column.out, doc, payload->value);
+      } else {
+        column.out.Prepare(doc);
       }
     } while (it.next());
 
@@ -971,7 +973,7 @@ std::optional<field_id> Columnstore::insert(
     begin = next_iterator(++begin);
   } while (begin != std::end(itrs));
 
-  return std::make_optional(column.first);
+  return std::make_optional(column.id);
 }
 
 template<typename Writer>
@@ -1000,14 +1002,15 @@ std::optional<field_id> Columnstore::insert(
       }
 
       const auto doc = it.value();
-      auto& out = column.second(doc);
 
       if (payload) {
-        writer(out, doc, payload->value);
+        writer(column.out, doc, payload->value);
+      } else {
+        column.out.Prepare(doc);
       }
     } while (it.next());
 
-    return std::make_optional(column.first);
+    return std::make_optional(column.id);
   } else {
     // Empty column
     return std::make_optional(field_limits::invalid());
@@ -1105,7 +1108,8 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
     const auto res = cs.insert(
       columns, column_info(column_name),
       [column_name](bstring&) { return column_name; },
-      [](data_output& out, doc_id_t /*doc*/, bytes_view payload) {
+      [](column_output& out, doc_id_t doc, bytes_view payload) {
+        out.Prepare(doc);
         if (!payload.empty()) {
           out.write_bytes(payload.data(), payload.size());
         }
@@ -1146,57 +1150,58 @@ class BufferedValues final : public column_reader, data_output {
     if (feature_writer_) {
       feature_writer_->finish(header_.emplace());
     }
+    if (!out_) {
+      return;
+    }
+    auto* data = data_.data();
+    for (auto v : index_) {
+      out_->Prepare(v.key);
+      out_->write_bytes(data + v.begin, v.size);
+    }
   }
 
   void SetFeatureWriter(FeatureWriter& writer) noexcept {
     IRS_ASSERT(!feature_writer_);
     feature_writer_ = &writer;
+    IRS_ASSERT(out_ == nullptr);
   }
 
-  void operator()(data_output& out, doc_id_t doc, bytes_view payload) {
-    const auto begin = data_.size();
+  void operator()(column_output& out, doc_id_t doc, bytes_view payload) {
+    IRS_ASSERT(out_ == nullptr || out_ == &out);
     out_ = &out;
+    const auto begin = data_.size();
     feature_writer_->write(*this, payload);
     index_.emplace_back(doc, begin, data_.size() - begin);
   }
 
   // data_output
-  void write_byte(byte_type b) final {
-    out_->write_byte(b);
-    data_ += b;
-  }
+  void write_byte(byte_type b) final { data_ += b; }
 
   void write_bytes(const byte_type* b, size_t len) final {
-    out_->write_bytes(b, len);
     data_.append(b, len);
   }
 
   void write_short(int16_t value) final {
-    out_->write_short(value);
     auto* begin = EnsureSize(sizeof(uint16_t));
     irs::write<uint16_t>(begin, value);
   }
 
   void write_int(int32_t value) final {
-    out_->write_int(value);
     auto* begin = EnsureSize(sizeof(uint32_t));
     irs::write<uint32_t>(begin, value);
   }
 
   void write_long(int64_t value) final {
-    out_->write_long(value);
     auto* begin = EnsureSize(sizeof(uint64_t));
     irs::write<uint64_t>(begin, value);
   }
 
   void write_vint(uint32_t value) final {
-    out_->write_vint(value);
     auto* begin = EnsureSize(bytes_io<uint32_t>::const_max_vsize);
     irs::vwrite<uint32_t>(begin, value);
   }
 
   void write_vlong(uint64_t value) final {
-    out_->write_vlong(value);
     auto* begin = EnsureSize(bytes_io<uint64_t>::const_max_vsize);
     irs::vwrite<uint64_t>(begin, value);
   }
@@ -1234,7 +1239,7 @@ class BufferedValues final : public column_reader, data_output {
   BufferedColumn::Buffer data_;
   field_id id_{field_limits::invalid()};
   std::optional<bstring> header_;
-  data_output* out_{};
+  column_output* out_{};
   FeatureWriter* feature_writer_{};
 };
 
@@ -1289,7 +1294,7 @@ template<typename Iterator>
 bool WriteFields(Columnstore& cs, Iterator& feature_itr,
                  const irs::flush_state& flush_state, const SegmentMeta& meta,
                  const FeatureInfoProvider& column_info,
-                 CompoundFiledIterator& field_itr,
+                 CompoundFieldIterator& field_itr,
                  const feature_set_t& scorers_features,
                  const MergeWriter::FlushProgress& progress,
                  IResourceManager& rm) {
@@ -1385,9 +1390,6 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
         // FIXME(gnusi): We can get better estimation from column headers/stats.
         static constexpr size_t kValueSize = sizeof(uint32_t);
         buffered_column->Reserve(count, kValueSize);
-        if (feature_writer) {
-          buffered_column->SetFeatureWriter(*feature_writer);
-        }
       }
 
       if (feature_writer) {
@@ -1402,11 +1404,13 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
         };
 
         if (buffered_column) {
+          buffered_column->SetFeatureWriter(*feature_writer);
           res = write_values(*buffered_column);
         } else {
           res = write_values(
-            [writer = feature_writer.get()](data_output& out, doc_id_t /*doc*/,
+            [writer = feature_writer.get()](column_output& out, doc_id_t doc,
                                             bytes_view payload) {
+              out.Prepare(doc);
               writer->write(out, payload);
             });
         }
@@ -1415,8 +1419,9 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
         // Factory has failed to instantiate a writer
         res = cs.insert(
           feature_itr, info, [](bstring&) { return std::string_view{}; },
-          [buffered_column](data_output& out, doc_id_t doc,
+          [buffered_column](column_output& out, doc_id_t doc,
                             bytes_view payload) {
+            out.Prepare(doc);
             if (!payload.empty()) {
               out.write_bytes(payload.data(), payload.size());
               if (buffered_column) {
@@ -1519,7 +1524,7 @@ bool MergeWriter::FlushUnsorted(TrackingDirectory& dir, SegmentMeta& segment,
   const size_t size = readers_.size();
 
   field_meta_map_t field_meta_map;
-  CompoundFiledIterator fields_itr{size, progress};
+  CompoundFieldIterator fields_itr{size, progress};
   CompoundColumnIterator columns_itr{size};
   feature_set_t fields_features;
   IndexFeatures index_features{IndexFeatures::NONE};
@@ -1636,7 +1641,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
 
   field_meta_map_t field_meta_map;
   CompoundColumnIterator columns_itr{size};
-  CompoundFiledIterator fields_itr{size, progress, comparator_};
+  CompoundFieldIterator fields_itr{size, progress, comparator_};
   feature_set_t fields_features;
   IndexFeatures index_features{IndexFeatures::NONE};
 
@@ -1786,9 +1791,9 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     doc_id_map[max] = next_id;
 
     // write value into new column if present
-    auto& stream = column_writer(next_id);
+    column_writer.Prepare(next_id);
     const auto payload = it.payload->value;
-    stream.write_bytes(payload.data(), payload.size());
+    column_writer.write_bytes(payload.data(), payload.size());
 
     ++next_id;
 
