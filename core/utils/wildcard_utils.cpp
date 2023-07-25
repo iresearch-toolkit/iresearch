@@ -183,6 +183,11 @@ automaton from_wildcard(bytes_view expr) {
   nfa.SetStart(nfa.AddState());
   nfa.SetFinal(0, true);
 
+  auto states = nfa.NumStates();
+  for (const auto& part : parts) {
+    states += fst::CountStates(part);
+  }
+  nfa.ReserveStates(states);
   for (auto begin = parts.rbegin(), end = parts.rend(); begin != end; ++begin) {
     // prefer prepending version of fst::Concat(...) as the cost of
     // concatenation is linear in the sum of the size of the input FSAs
