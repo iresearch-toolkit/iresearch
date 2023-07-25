@@ -241,7 +241,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
 
  public:
   explicit BlockConjunction(Merger&& merger, ScoreAdapters<DocIterator>&& itrs,
-                            ConjunctionSubScores&& scores, bool weak)
+                            ConjunctionSubScores&& scores, bool strict)
     : Base{std::move(merger), std::move(itrs), std::move(scores.scores)},
       sum_scores_{scores.sum_score},
       min_scores_{scores.min_score} {
@@ -250,16 +250,15 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
       irs::get_mutable<cost>(this->itrs_.front().it.get());
     auto& score = std::get<irs::score>(attrs_);
     score.max.leaf = score.max.tail = sum_scores_;
+    auto min = strict ? MinStrictN : MinWeakN;
     if constexpr (Root) {
       auto score_root = [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = static_cast<BlockConjunction&>(*ctx);
         *res = self.score_;
       };
-      this->PrepareScore(score, score_root, score_root,
-                         weak ? MinWeakN : MinStrictN);
+      this->PrepareScore(score, score_root, score_root, min);
     } else {
-      this->PrepareScore(score, Base::Score2, Base::ScoreN,
-                         weak ? MinWeakN : MinStrictN);
+      this->PrepareScore(score, Base::Score2, Base::ScoreN, min);
     }
   }
 
@@ -476,13 +475,12 @@ doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
     use_block &= !scores.scores.empty();
     if (use_block) {
       // TODO(MBkkt) sort scores to faster min producing
-      return ResolveBool(
-        ctx.Root(), [&]<bool Root>() -> irs::doc_iterator::ptr {
-          return memory::make_managed<
-            Wrapper<BlockConjunction<Root, DocIterator, Merger>>>(
-            std::forward<Args>(args)..., std::forward<Merger>(merger),
-            std::move(itrs), std::move(scores), ctx.Weak());
-        });
+      return ResolveBool(ctx.root, [&]<bool Root>() -> irs::doc_iterator::ptr {
+        return memory::make_managed<
+          Wrapper<BlockConjunction<Root, DocIterator, Merger>>>(
+          std::forward<Args>(args)..., std::forward<Merger>(merger),
+          std::move(itrs), std::move(scores), ctx.strict);
+      });
     }
     // TODO(MBkkt) We still could set min producer for Conjuction
   }

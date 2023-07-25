@@ -52,12 +52,15 @@ irs::ScoreAdapters<irs::doc_iterator::ptr> MakeScoreAdapters(
   const size_t size = std::distance(begin, end);
   irs::ScoreAdapters<irs::doc_iterator::ptr> itrs;
   itrs.reserve(size);
-  auto sub_ctx = ctx;
   if (Conjunction || size > 1) {
-    sub_ctx.wand.type = irs::WandContext::Type::kLeaf;
+    ctx.wand.root = false;
+    // TODO(MBkkt) ctx.wand.strict = true;
+    // We couldn't do this for few reasons:
+    // 1. It's small chance that we will use just term iterator (or + eof)
+    // 2. I'm not sure about precision
   }
   do {
-    auto docs = (*begin)->execute(sub_ctx);
+    auto docs = (*begin)->execute(ctx);
     ++begin;
 
     // filter out empty iterators

@@ -740,9 +740,8 @@ void assert_docs(const irs::term_iterator& expected_term,
         return irs::ScoreFunction::Default(1);
       }};
 
-    return actual_terms.wanderator(
-      *actual_cookie, requested_features, options,
-      {.index = 0, .type = irs::WandContext::Type::kWeakRoot});
+    return actual_terms.wanderator(*actual_cookie, requested_features, options,
+                                   {.index = 0, .strict = false});
   });
 
   // FIXME(gnusi): check bit_union

@@ -485,10 +485,7 @@ int search(std::string_view path, std::string_view dir_type,
       return {};
     }
 
-    return {.index = 0,
-            .type = mode == ExecutionMode::kStrictTop
-                      ? irs::WandContext::Type::kRoot
-                      : irs::WandContext::Type::kWeakRoot};
+    return {.index = 0, .strict = mode == ExecutionMode::kStrictTop};
   }();
 
   auto arg_format_itr = kTextFormats.find(scorer_arg_format);

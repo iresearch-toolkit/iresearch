@@ -415,8 +415,7 @@ irs::doc_iterator::ptr Format15TestCase::GetWanderator(
   }
   if (iterator_has_freq) {
     ctx.index = 0;
-    ctx.type = strict ? irs::WandContext::Type::kRoot
-                      : irs::WandContext::Type::kWeakRoot;
+    ctx.strict = strict;
     info.mapped_index = 0;
   }
 

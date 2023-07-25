@@ -2466,11 +2466,10 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
   using ptr = memory::managed_ptr<wanderator>;
 
   wanderator(const ScoreFunctionFactory& factory, const Scorer& scorer,
-             WandExtent extent, byte_type index, bool weak)
+             WandExtent extent, byte_type index, bool strict)
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
             ReadSkip{factory, scorer, index, extent}},
       scorer_{factory(*this)} {
-    IRS_ASSERT(Root || !weak);
     IRS_ASSERT(
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
@@ -2484,7 +2483,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
           self.scorer_(res);
         }
       },
-      weak ? MinWeak : MinStrict);
+      strict ? MinStrict : MinWeak);
   }
 
   void WandPrepare(const term_meta& meta, const index_input* doc_in,
@@ -3589,11 +3588,11 @@ class postings_reader final : public postings_reader_base {
               // No need to use wanderator for short lists
               if (meta.docs_count > FormatTraits::block_size()) {
                 return ResolveBool(
-                  ctx.Root(), [&]<bool Root>() -> irs::doc_iterator::ptr {
+                  ctx.root, [&]<bool Root>() -> irs::doc_iterator::ptr {
                     auto it = memory::make_managed<::wanderator<
                       IteratorTraits, FieldTraits, WandExtent, Root>>(
                       options.factory, scorer, extent, info.mapped_index,
-                      ctx.Weak());
+                      ctx.strict);
 
                     it->WandPrepare(meta, doc_in_.get(), pos_in_.get(),
                                     pay_in_.get());
