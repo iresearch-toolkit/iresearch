@@ -117,9 +117,7 @@ class column_prefix_existence_query : public column_existence_query {
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t =
           irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
-        // TODO(MBkkt) wand support,
-        //  it looks like here we have just bunch of constant scored iterators
-        return irs::MakeDisjunction<disjunction_t>({}, std::move(itrs),
+        return irs::MakeDisjunction<disjunction_t>(ctx.wand, std::move(itrs),
                                                    std::move(aggregator));
       });
   }

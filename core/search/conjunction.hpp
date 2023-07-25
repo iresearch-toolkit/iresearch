@@ -80,7 +80,7 @@ struct SubScores {
 };
 
 struct ConjunctionSubScores : SubScores {
-  score_t min_score{std::numeric_limits<score_t>::max()};
+  score_t max_score{std::numeric_limits<score_t>::min()};
 };
 
 // Conjunction of N iterators
@@ -244,7 +244,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
                             ConjunctionSubScores&& scores, bool strict)
     : Base{std::move(merger), std::move(itrs), std::move(scores.scores)},
       sum_scores_{scores.sum_score},
-      min_scores_{scores.min_score} {
+      min_competitive_{scores.sum_score - scores.max_score} {
     IRS_ASSERT(this->itrs_.size() >= 2);
     std::get<attribute_ptr<cost>>(attrs_) =
       irs::get_mutable<cost>(this->itrs_.front().it.get());
@@ -345,11 +345,9 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
   }
 
  private:
-  static void MinStrictN(score_ctx* ctx, score_t arg) noexcept {
-    auto& self = static_cast<BlockConjunction&>(*ctx);
-    IRS_ASSERT(self.threshold_ <= arg);
-    self.threshold_ = arg;
-    if (arg <= self.min_scores_) {
+  // TODO(MBkkt) Maybe optimize for 2?
+  static void MinN(BlockConjunction& self, score_t arg) noexcept {
+    if (arg <= self.min_competitive_) {
       return;
     }
     for (auto* score : self.scores_) {
@@ -360,8 +358,18 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
     }
   }
 
+  static void MinStrictN(score_ctx* ctx, score_t arg) noexcept {
+    auto& self = static_cast<BlockConjunction&>(*ctx);
+    IRS_ASSERT(self.threshold_ <= arg);
+    self.threshold_ = arg;
+    MinN(self, arg);
+  }
+
   static void MinWeakN(score_ctx* ctx, score_t arg) noexcept {
-    MinStrictN(ctx, std::nextafter(arg, 0.f));
+    auto& self = static_cast<BlockConjunction&>(*ctx);
+    IRS_ASSERT(self.threshold_ <= arg);
+    self.threshold_ = std::nextafter(arg, 0.f);
+    MinN(self, arg);
   }
 
   IRS_NO_INLINE doc_id_t Seal() {
@@ -424,7 +432,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
 
   Attributes attrs_;
   score_t sum_scores_;
-  score_t min_scores_;
+  score_t min_competitive_;
   doc_id_t leafs_doc_{doc_limits::invalid()};
   score_t threshold_{};
   IRS_NO_UNIQUE_ADDRESS utils::Need<Root, score_t> score_{};
@@ -467,8 +475,8 @@ doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
       use_block &= tail != std::numeric_limits<score_t>::max();
       if (use_block) {
         scores.sum_score += tail;
-        if (scores.min_score > tail) {
-          scores.min_score = tail;
+        if (scores.max_score < tail) {
+          scores.max_score = tail;
         }
       }
     }
