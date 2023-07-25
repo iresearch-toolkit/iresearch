@@ -235,7 +235,7 @@ class min_match_disjunction : public doc_iterator,
     auto& score = std::get<irs::score>(attrs_);
 
     score.Reset(
-      *this,
+      *this, ScoreFunction::DefaultMin,
       [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = *static_cast<min_match_disjunction*>(ctx);
         IRS_ASSERT(!self.heap_.empty());
@@ -252,8 +252,7 @@ class min_match_disjunction : public doc_iterator,
             merger(res, merger.temp());
           }
         });
-      },
-      ScoreFunction::DefaultMin);
+      });
   }
 
   // Push all valid iterators to lead.

@@ -142,10 +142,10 @@ struct ConjunctionBase : public doc_iterator,
         score = std::move(*scores_.front());
         break;
       case 2:
-        score.Reset(*this, score_2, min);
+        score.Reset(*this, min, score_2);
         break;
       default:
-        score.Reset(*this, score_n, min);
+        score.Reset(*this, min, score_n);
         break;
     }
   }

@@ -2474,7 +2474,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
     std::get<irs::score>(attrs_).Reset(
-      *this,
+      *this, strict ? MinStrict : MinWeak,
       [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = static_cast<wanderator&>(*ctx);
         if constexpr (Root) {
@@ -2482,8 +2482,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
         } else {
           self.scorer_(res);
         }
-      },
-      strict ? MinStrict : MinWeak);
+      });
   }
 
   void WandPrepare(const term_meta& meta, const index_input* doc_in,
@@ -2631,6 +2630,9 @@ void wanderator<IteratorTraits, FieldTraits, WandExtent, Root>::ReadSkip::Read(
   CopyState<IteratorTraits>(last, next);
 
   ReadState<FieldTraits>(next, in);
+  // TODO(MBkkt) We could don't read actual wand data for not just term query
+  //  It looks almost no difference now, but if we will have bigger wand data
+  //  it could be useful
   // if constexpr (Root) {
   CommonReadWandData(extent_, index_, func_, *ctx_, in, score);
   // } else {
@@ -2801,6 +2803,10 @@ doc_id_t wanderator<IteratorTraits, FieldTraits, WandExtent, Root>::seek(
             auto& freq = std::get<frequency>(attrs_);
             freq.value = this->freq_[-1];
             if constexpr (Root) {
+              // We can use approximation before actual score for bm11, bm15,
+              // tfidf(true/false) but only for term query, so I don't think
+              // it's really good idea. And I don't except big difference
+              // because in such case, compution is pretty cheap
               scorer_(&score_);
               if (score_ <= threshold) {
                 continue;
