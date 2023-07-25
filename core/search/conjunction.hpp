@@ -79,10 +79,6 @@ struct SubScores {
   score_t sum_score{};
 };
 
-struct ConjunctionSubScores : SubScores {
-  score_t max_score{std::numeric_limits<score_t>::min()};
-};
-
 // Conjunction of N iterators
 // -----------------------------------------------------------------------------
 // c |  [0] <-- lead (the least cost iterator)
@@ -241,11 +237,15 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
 
  public:
   explicit BlockConjunction(Merger&& merger, ScoreAdapters<DocIterator>&& itrs,
-                            ConjunctionSubScores&& scores, bool strict)
+                            SubScores&& scores, bool strict)
     : Base{std::move(merger), std::move(itrs), std::move(scores.scores)},
-      sum_scores_{scores.sum_score},
-      min_competitive_{scores.sum_score - scores.max_score} {
+      sum_scores_{scores.sum_score} {
     IRS_ASSERT(this->itrs_.size() >= 2);
+    IRS_ASSERT(!this->scores_.empty());
+    std::sort(this->scores_.begin(), this->scores_.end(),
+              [](const auto* lhs, const auto* rhs) {
+                return lhs->max.tail > rhs->max.tail;
+              });
     std::get<attribute_ptr<cost>>(attrs_) =
       irs::get_mutable<cost>(this->itrs_.front().it.get());
     auto& score = std::get<irs::score>(attrs_);
@@ -347,14 +347,12 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
  private:
   // TODO(MBkkt) Maybe optimize for 2?
   static void MinN(BlockConjunction& self, score_t arg) noexcept {
-    if (arg <= self.min_competitive_) {
-      return;
-    }
     for (auto* score : self.scores_) {
       auto others = self.sum_scores_ - score->max.tail;
-      if (arg > others) {
-        score->Min(arg - others);
+      if (arg <= others) {
+        return;
       }
+      score->Min(arg - others);
     }
   }
 
@@ -432,7 +430,6 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
 
   Attributes attrs_;
   score_t sum_scores_;
-  score_t min_competitive_;
   doc_id_t leafs_doc_{doc_limits::invalid()};
   score_t threshold_{};
   IRS_NO_UNIQUE_ADDRESS utils::Need<Root, score_t> score_{};
@@ -456,7 +453,7 @@ doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
     itrs.begin(), itrs.end(), [](const auto& lhs, const auto& rhs) noexcept {
       return cost::extract(lhs, cost::kMax) < cost::extract(rhs, cost::kMax);
     });
-  ConjunctionSubScores scores;
+  SubScores scores;
   if constexpr (HasScore_v<Merger>) {
     scores.scores.reserve(itrs.size());
     // TODO(MBkkt) Find better one
@@ -475,14 +472,10 @@ doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
       use_block &= tail != std::numeric_limits<score_t>::max();
       if (use_block) {
         scores.sum_score += tail;
-        if (scores.max_score < tail) {
-          scores.max_score = tail;
-        }
       }
     }
     use_block &= !scores.scores.empty();
     if (use_block) {
-      // TODO(MBkkt) sort scores to faster min producing
       return ResolveBool(ctx.root, [&]<bool Root>() -> irs::doc_iterator::ptr {
         return memory::make_managed<
           Wrapper<BlockConjunction<Root, DocIterator, Merger>>>(
@@ -490,7 +483,7 @@ doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
           std::move(itrs), std::move(scores), ctx.strict);
       });
     }
-    // TODO(MBkkt) We still could set min producer for Conjuction
+    // TODO(MBkkt) We still could set min producer and root scoring
   }
 
   return memory::make_managed<Wrapper<Conjunction<DocIterator, Merger>>>(
