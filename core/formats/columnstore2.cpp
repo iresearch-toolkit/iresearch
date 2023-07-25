@@ -1306,10 +1306,10 @@ bool less(std::string_view lhs, std::string_view rhs) noexcept {
 namespace irs {
 namespace columnstore2 {
 
-void column::prepare(doc_id_t key) {
-#ifdef IRESEARCH_DEBUG
+void column::Prepare(doc_id_t key) {
+  IRS_ASSERT(doc_limits::invalid() < key);
+  IRS_ASSERT(key < doc_limits::eof());
   IRS_ASSERT(!sealed_);
-#endif
   if (IRS_LIKELY(key > pend_)) {
     if (addr_table_.full()) {
       flush_block();
@@ -1619,15 +1619,7 @@ columnstore_writer::column_t writer::push_column(const ColumnInfo& info,
     static_cast<field_id>(id), compression, std::move(finalizer),
     std::move(compressor), columns_.get_allocator().ResourceManager());
 
-  return {id, [&column](doc_id_t doc) -> column_output& {
-            // to avoid extra (and useless in our case) check for block index
-            // emptiness in 'writer::column::prepare', we disallow passing
-            // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
-            IRS_ASSERT(doc > doc_limits::invalid() && doc < doc_limits::eof());
-
-            column.prepare(doc);
-            return column;
-          }};
+  return {id, column};
 }
 
 bool writer::commit(const flush_state& /*state*/) {

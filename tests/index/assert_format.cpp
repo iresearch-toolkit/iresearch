@@ -220,11 +220,12 @@ void column_values::rewrite() {
 
 void index_segment::compute_features() {
   struct column_output final : public irs::column_output {
-   public:
     explicit column_output(irs::bstring& buf) noexcept : buf_{&buf} {}
 
     column_output(column_output&&) = default;
     column_output& operator=(column_output&&) = default;
+
+    void Prepare(irs::doc_id_t) final { written = true; }
 
     void write_byte(irs::byte_type b) final { (*buf_) += b; }
 
@@ -235,14 +236,8 @@ void index_segment::compute_features() {
     void reset() final { buf_->clear(); }
 
     irs::bstring* buf_;
+    bool written{false};
   } out{buf_};
-
-  bool written{};
-  irs::columnstore_writer::values_writer_f writer =
-    [&out, &written](irs::doc_id_t) -> column_output& {
-    written = true;
-    return out;
-  };
 
   for (auto* field : doc_fields_) {
     for (auto& entry : field->feature_infos) {
@@ -250,10 +245,10 @@ void index_segment::compute_features() {
         buf_.clear();
 
         const auto doc_id = doc();
-        written = false;
-        entry.writer->write(field->stats, doc_id, writer);
+        out.written = false;
+        entry.writer->write(field->stats, doc_id, out);
 
-        if (written) {
+        if (out.written) {
           columns_[entry.id].insert(doc_id, buf_);
         }
       }

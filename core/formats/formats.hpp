@@ -298,20 +298,29 @@ struct field_reader {
 struct column_output : data_output {
   // Resets stream to previous persisted state
   virtual void reset() = 0;
+  // NOTE: doc_limits::invalid() < doc && doc < doc_limits::eof()
+  virtual void Prepare(doc_id_t doc) = 0;
+
+#ifdef IRESEARCH_TEST
+  column_output& operator()(doc_id_t doc) {
+    Prepare(doc);
+    return *this;
+  }
+#endif
 };
 
 struct columnstore_writer {
   using ptr = std::unique_ptr<columnstore_writer>;
-
-  // NOTE: doc > doc_limits::invalid() && doc < doc_limits::eof()
-  using values_writer_f = std::function<column_output&(doc_id_t doc)>;
 
   // Finalizer can be used to assign name and payload to a column.
   // Returned `std::string_view` must be valid during `commit(...)`.
   using column_finalizer_f =
     fu2::unique_function<std::string_view(bstring& out)>;
 
-  typedef std::pair<field_id, values_writer_f> column_t;
+  struct column_t {
+    field_id id;
+    column_output& out;
+  };
 
   virtual ~columnstore_writer() = default;
 

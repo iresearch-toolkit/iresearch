@@ -1200,8 +1200,8 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
       codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
-    column_id = column.first;
-    auto& column_handler = column.second;
+    column_id = column.id;
+    auto& column_handler = column.out;
 
     auto id = irs::doc_limits::min();
 
@@ -1266,8 +1266,8 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
       codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
     writer->prepare(dir(), seg);
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
-    column_id = column.first;
-    auto& column_handler = column.second;
+    column_id = column.id;
+    auto& column_handler = column.out;
 
     for (auto id = irs::doc_limits::min(); id <= MAX_DOC;
          ++id, ++seg.docs_count) {
@@ -1317,8 +1317,8 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
 
-    id = column.first;
-    auto& handle = column.second;
+    id = column.id;
+    auto& handle = column.out;
     // we don't support irs::type_limits<<irs::type_t::doc_id_t>::invalid() key
     // value
     handle(2);
@@ -1591,10 +1591,10 @@ TEST_P(format_test_case, columns_rw_empty) {
     writer->prepare(dir(), meta0);
 
     column0_id =
-      writer->push_column(lz4_column_info(), column_finalizer(42)).first;
+      writer->push_column(lz4_column_info(), column_finalizer(42)).id;
     ASSERT_EQ(0, column0_id);
     column1_id =
-      writer->push_column(lz4_column_info(), column_finalizer(43)).first;
+      writer->push_column(lz4_column_info(), column_finalizer(43)).id;
     ASSERT_EQ(1, column1_id);
 
     irs::flush_state state{
@@ -1646,7 +1646,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
   seg.codec = codec();
 
-  std::unordered_map<std::string, irs::columnstore_writer::column_t> columns;
+  absl::node_hash_map<std::string, irs::columnstore_writer::column_t> columns;
 
   // write documents
   {
@@ -1659,17 +1659,12 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
       ++id;
 
       for (auto& field : doc->stored) {
-        const auto res =
-          columns.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(std::string(field.name())),
-                          std::forward_as_tuple());
-
-        if (res.second) {
-          res.first->second =
-            writer->push_column(lz4_column_info(), column_finalizer(42));
-        }
-
-        auto& column = res.first->second.second;
+        auto name = field.name();
+        auto it = columns.lazy_emplace(name, [&](const auto& ctor) {
+          ctor(name,
+               writer->push_column(lz4_column_info(), column_finalizer(42)));
+        });
+        auto& column = it->second.out;
         auto& stream = column(id);
 
         field.write(stream);
@@ -1699,7 +1694,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     auto reader_1 = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader_1->prepare(dir(), seg));
 
-    auto id_column = reader_1->column(columns["id"].first);
+    auto id_column = reader_1->column(columns.at("id").id);
     ASSERT_NE(nullptr, id_column);
 
     auto id_values = id_column->iterator(irs::ColumnHint::kNormal);
@@ -1707,7 +1702,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
     auto* id_payload = irs::get<irs::payload>(*id_values);
     ASSERT_NE(nullptr, id_payload);
 
-    auto name_column = reader_1->column(columns["name"].first);
+    auto name_column = reader_1->column(columns.at("name").id);
     ASSERT_NE(nullptr, name_column);
 
     auto name_values = name_column->iterator(irs::ColumnHint::kNormal);
@@ -1756,10 +1751,10 @@ TEST_P(format_test_case, columns_rw_big_document) {
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column(lz4_column_info(), column_finalizer(42));
-    id = column.first;
+    id = column.id;
 
     {
-      auto& out = column.second(1);
+      auto& out = column.out(1);
       stream.read(field.buf, sizeof field.buf);
       ASSERT_FALSE(!stream);  // ensure that all requested data has been read
       ASSERT_TRUE(field.write(out));  // must be written
@@ -1767,7 +1762,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
     }
 
     {
-      auto& out = column.second(2);
+      auto& out = column.out(2);
       stream.read(field.buf, sizeof field.buf);
       ASSERT_FALSE(!stream);  // ensure that all requested data has been read
       ASSERT_TRUE(field.write(out));  // must be written
@@ -1913,9 +1908,9 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
   seg_2.codec = codec();
   seg_3.codec = codec();
 
-  std::unordered_map<std::string, irs::columnstore_writer::column_t> columns_1;
-  std::unordered_map<std::string, irs::columnstore_writer::column_t> columns_2;
-  std::unordered_map<std::string, irs::columnstore_writer::column_t> columns_3;
+  absl::node_hash_map<std::string, irs::columnstore_writer::column_t> columns_1;
+  absl::node_hash_map<std::string, irs::columnstore_writer::column_t> columns_2;
+  absl::node_hash_map<std::string, irs::columnstore_writer::column_t> columns_3;
 
   // write documents
   {
@@ -1929,17 +1924,12 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     for (const document* doc; seg_1.docs_count < 30000 && (doc = gen.next());) {
       ++id;
       for (auto& field : doc->stored) {
-        const auto res =
-          columns_1.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(std::string(field.name())),
-                            std::forward_as_tuple());
-
-        if (res.second) {
-          res.first->second =
-            writer->push_column(lz4_column_info(), column_finalizer(42));
-        }
-
-        auto& column = res.first->second.second;
+        auto name = field.name();
+        auto it = columns_1.lazy_emplace(name, [&](const auto& ctor) {
+          ctor(name,
+               writer->push_column(lz4_column_info(), column_finalizer(42)));
+        });
+        auto& column = it->second.out;
         auto& stream = column(id);
 
         field.write(stream);
@@ -1966,17 +1956,12 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     for (const document* doc; seg_2.docs_count < 30000 && (doc = gen.next());) {
       ++id;
       for (auto& field : doc->stored) {
-        const auto res =
-          columns_2.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(std::string(field.name())),
-                            std::forward_as_tuple());
-
-        if (res.second) {
-          res.first->second =
-            writer->push_column(lz4_column_info(), column_finalizer(42));
-        }
-
-        auto& column = res.first->second.second;
+        auto name = field.name();
+        auto it = columns_2.lazy_emplace(name, [&](const auto& ctor) {
+          ctor(name,
+               writer->push_column(lz4_column_info(), column_finalizer(42)));
+        });
+        auto& column = it->second.out;
         auto& stream = column(id);
 
         field.write(stream);
@@ -2001,17 +1986,12 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
     for (const document* doc; seg_3.docs_count < 70000 && (doc = gen.next());) {
       ++id;
       for (auto& field : doc->stored) {
-        const auto res =
-          columns_3.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(std::string(field.name())),
-                            std::forward_as_tuple());
-
-        if (res.second) {
-          res.first->second =
-            writer->push_column(lz4_column_info(), column_finalizer(42));
-        }
-
-        auto& column = res.first->second.second;
+        auto name = field.name();
+        auto it = columns_3.lazy_emplace(name, [&](const auto& ctor) {
+          ctor(name,
+               writer->push_column(lz4_column_info(), column_finalizer(42)));
+        });
+        auto& column = it->second.out;
         auto& stream = column(id);
 
         field.write(stream);
@@ -2037,14 +2017,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       auto reader_1 = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader_1->prepare(dir(), seg_1));
 
-      auto id_column = reader_1->column(columns_1["id"].first);
+      auto id_column = reader_1->column(columns_1.at("id").id);
       ASSERT_NE(nullptr, id_column);
       auto id_values = id_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, id_values);
       auto* id_payload = irs::get<irs::payload>(*id_values);
       ASSERT_NE(nullptr, id_payload);
 
-      auto name_column = reader_1->column(columns_1["name"].first);
+      auto name_column = reader_1->column(columns_1.at("name").id);
       ASSERT_NE(nullptr, name_column);
       auto name_values = name_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, name_values);
@@ -2067,14 +2047,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       auto reader_2 = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader_2->prepare(dir(), seg_2));
 
-      auto id_column_2 = reader_2->column(columns_2["id"].first);
+      auto id_column_2 = reader_2->column(columns_2.at("id").id);
       ASSERT_NE(nullptr, id_column_2);
       auto id_values_2 = id_column_2->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, id_values_2);
       auto* id_payload_2 = irs::get<irs::payload>(*id_values_2);
       ASSERT_NE(nullptr, id_payload_2);
 
-      auto name_column_2 = reader_2->column(columns_2["name"].first);
+      auto name_column_2 = reader_2->column(columns_2.at("name").id);
       ASSERT_NE(nullptr, name_column_2);
       auto name_values_2 = name_column_2->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, name_values_2);
@@ -2103,14 +2083,14 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), seg_3));
 
-      auto id_column = reader->column(columns_3["id"].first);
+      auto id_column = reader->column(columns_3.at("id").id);
       ASSERT_NE(nullptr, id_column);
       auto id_values = id_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, id_values);
       auto* id_payload = irs::get<irs::payload>(*id_values);
       ASSERT_NE(nullptr, id_payload);
 
-      auto name_column = reader->column(columns_3["name"].first);
+      auto name_column = reader->column(columns_3.at("name").id);
       ASSERT_NE(nullptr, name_column);
       auto name_values = name_column->iterator(irs::ColumnHint::kNormal);
       ASSERT_NE(nullptr, name_values);
@@ -2206,7 +2186,7 @@ TEST_P(format_test_case, columns_rw_typed) {
   meta.version = 42;
   meta.codec = codec();
 
-  std::unordered_map<std::string, irs::columnstore_writer::column_t> columns;
+  absl::node_hash_map<std::string, irs::columnstore_writer::column_t> columns;
 
   // write stored documents
   {
@@ -2220,17 +2200,12 @@ TEST_P(format_test_case, columns_rw_typed) {
       ++id;
 
       for (const auto& field : doc->stored) {
-        const auto res =
-          columns.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(std::string(field.name())),
-                          std::forward_as_tuple());
-
-        if (res.second) {
-          res.first->second =
-            writer->push_column(lz4_column_info(), column_finalizer(42));
-        }
-
-        auto& column = res.first->second.second;
+        auto name = field.name();
+        auto it = columns.lazy_emplace(name, [&](const auto& ctor) {
+          ctor(name,
+               writer->push_column(lz4_column_info(), column_finalizer(42)));
+        });
+        auto& column = it->second.out;
         auto& stream = column(id);
 
         ASSERT_TRUE(field.write(stream));
@@ -2270,7 +2245,7 @@ TEST_P(format_test_case, columns_rw_typed) {
                           std::forward_as_tuple());
 
         if (res.second) {
-          auto column = reader->column(columns[name].first);
+          auto column = reader->column(columns.at(name).id);
           ASSERT_NE(nullptr, column);
           res.first->second = column->iterator(irs::ColumnHint::kNormal);
         }
@@ -2325,7 +2300,7 @@ TEST_P(format_test_case, columns_rw_typed) {
                           std::forward_as_tuple());
 
         if (res.second) {
-          auto column = reader->column(columns[name].first);
+          auto column = reader->column(columns.at(name).id);
           ASSERT_NE(nullptr, column);
 
           auto& it = res.first->second;
@@ -2399,7 +2374,7 @@ TEST_P(format_test_case, columns_rw_typed) {
                           std::forward_as_tuple());
 
         if (res.second) {
-          auto column = reader->column(columns[name].first);
+          auto column = reader->column(columns.at(name).id);
           ASSERT_NE(nullptr, column);
 
           auto& it = res.first->second;
@@ -2476,12 +2451,11 @@ TEST_P(format_test_case, columns_issue700) {
     auto dense_fixed_offset_column =
       writer->push_column(none_column_info(), column_finalizer(42));
 
-    ASSERT_EQ(0, dense_fixed_offset_column.first);
-    ASSERT_TRUE(dense_fixed_offset_column.second);
+    ASSERT_EQ(0, dense_fixed_offset_column.id);
 
     std::string str;
     for (auto& doc : docs) {
-      auto& stream = dense_fixed_offset_column.second(doc.first);
+      auto& stream = dense_fixed_offset_column.out(doc.first);
       str.resize(doc.second, 'c');
       stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.data()),
                          str.size());
@@ -2527,38 +2501,35 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
   const irs::bytes_view keys_ref(reinterpret_cast<const irs::byte_type*>(&keys),
                                  sizeof keys);
 
-  irs::columnstore_writer::column_t dense_fixed_offset_column;
-  irs::columnstore_writer::column_t sparse_fixed_offset_column;
+  // write columns values
+  auto writer =
+    codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
+  writer->prepare(dir(), meta0);
+
+  auto dense_fixed_offset_column = writer->push_column(lz4_column_info(), {});
+  auto sparse_fixed_offset_column =
+    writer->push_column(lz4_column_info(), column_finalizer(42));
 
   {
-    // write columns values
-    auto writer =
-      codec()->get_columnstore_writer(false, irs::IResourceManager::kNoop);
-    writer->prepare(dir(), meta0);
-
-    dense_fixed_offset_column = writer->push_column(lz4_column_info(), {});
-    sparse_fixed_offset_column =
-      writer->push_column(lz4_column_info(), column_finalizer(42));
-
     irs::doc_id_t doc = irs::doc_limits::min();
 
     // write first document
     {
-      dense_fixed_offset_column.second(doc);
-      sparse_fixed_offset_column.second(doc);
+      dense_fixed_offset_column.out(doc);
+      sparse_fixed_offset_column.out(doc);
     }
 
     // write second document
     {
       {
-        auto& stream = dense_fixed_offset_column.second(doc + 1);
+        auto& stream = dense_fixed_offset_column.out(doc + 1);
 
         stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&keys),
                            sizeof keys);
       }
 
       {
-        auto& stream = sparse_fixed_offset_column.second(doc + 3);
+        auto& stream = sparse_fixed_offset_column.out(doc + 3);
 
         stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&keys),
                            sizeof keys);
@@ -2572,6 +2543,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     };
 
     ASSERT_TRUE(writer->commit(state));
+    writer.reset();
   }
 
   // dense fixed offset column
@@ -2579,7 +2551,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), meta0));
 
-    auto column = reader->column(dense_fixed_offset_column.first);
+    auto column = reader->column(dense_fixed_offset_column.id);
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_view>> expected_values{
@@ -2632,7 +2604,7 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     auto reader = codec()->get_columnstore_reader();
     ASSERT_TRUE(reader->prepare(dir(), meta0));
 
-    auto column = reader->column(sparse_fixed_offset_column.first);
+    auto column = reader->column(sparse_fixed_offset_column.id);
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_view>> expected_values{
@@ -2722,28 +2694,28 @@ TEST_P(format_test_case, columns_rw) {
     writer->prepare(dir(), meta0);
 
     auto field0 = writer->push_column(lz4_column_info(), {});
-    segment0_field0_id = field0.first;
-    auto& field0_writer = field0.second;
+    segment0_field0_id = field0.id;
+    auto& field0_writer = field0.out;
     ASSERT_EQ(0, segment0_field0_id);
     auto field1 = writer->push_column(lz4_column_info(), {});
-    segment0_field1_id = field1.first;
-    auto& field1_writer = field1.second;
+    segment0_field1_id = field1.id;
+    auto& field1_writer = field1.out;
     ASSERT_EQ(1, segment0_field1_id);
     auto empty_field =
       writer->push_column(lz4_column_info(), {});  // gap between filled columns
-    segment0_empty_column_id = empty_field.first;
+    segment0_empty_column_id = empty_field.id;
     ASSERT_EQ(2, segment0_empty_column_id);
     auto field2 = writer->push_column(lz4_column_info(), {});
-    segment0_field2_id = field2.first;
-    auto& field2_writer = field2.second;
+    segment0_field2_id = field2.id;
+    auto& field2_writer = field2.out;
     ASSERT_EQ(3, segment0_field2_id);
     auto field3 = writer->push_column(lz4_column_info(), {});
-    segment0_field3_id = field3.first;
-    [[maybe_unused]] auto& field3_writer = field3.second;
+    segment0_field3_id = field3.id;
+    [[maybe_unused]] auto& field3_writer = field3.out;
     ASSERT_EQ(4, segment0_field3_id);
     auto field4 = writer->push_column(lz4_column_info(), {});
-    segment0_field4_id = field4.first;
-    auto& field4_writer = field4.second;
+    segment0_field4_id = field4.id;
+    auto& field4_writer = field4.out;
     ASSERT_EQ(5, segment0_field4_id);
 
     // column==field0
@@ -2829,16 +2801,16 @@ TEST_P(format_test_case, columns_rw) {
     writer->prepare(dir(), meta1);
 
     auto field0 = writer->push_column(lz4_column_info(), {});
-    segment1_field0_id = field0.first;
-    auto& field0_writer = field0.second;
+    segment1_field0_id = field0.id;
+    auto& field0_writer = field0.out;
     ASSERT_EQ(0, segment1_field0_id);
     auto field1 = writer->push_column(lz4_column_info(), {});
-    segment1_field1_id = field1.first;
-    auto& field1_writer = field1.second;
+    segment1_field1_id = field1.id;
+    auto& field1_writer = field1.out;
     ASSERT_EQ(1, segment1_field1_id);
     auto field2 = writer->push_column(lz4_column_info(), {});
-    segment1_field2_id = field2.first;
-    auto& field2_writer = field2.second;
+    segment1_field2_id = field2.id;
+    auto& field2_writer = field2.out;
     ASSERT_EQ(2, segment1_field2_id);
 
     // column==field3

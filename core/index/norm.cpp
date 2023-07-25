@@ -33,12 +33,12 @@ using namespace irs;
 class NormWriter : public FeatureWriter {
  public:
   void write(const field_stats& stats, doc_id_t doc,
-             columnstore_writer::values_writer_f& writer) final {
+             column_output& writer) final {
     if (stats.len > 0) {
       const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
       if (value != Norm::DEFAULT()) {
-        auto& stream = writer(doc);
-        write_zvfloat(stream, value);
+        writer.Prepare(doc);
+        write_zvfloat(writer, value);
       }
     }
   }

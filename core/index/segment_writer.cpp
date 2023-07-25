@@ -63,13 +63,13 @@ segment_writer::stored_column::stored_column(
   };
 
   if (!cache) {
-    std::tie(id, writer) = columnstore.push_column(info, std::move(finalizer));
+    auto column = columnstore.push_column(info, std::move(finalizer));
+    id = column.id;
+    writer = &column.out;
   } else {
     cached = &cached_columns.emplace_back(&id, info, std::move(finalizer), rm);
-    writer = [stream = &cached->Stream()](irs::doc_id_t doc) -> column_output& {
-      stream->Prepare(doc);
-      return *stream;
-    };
+
+    writer = &cached->Stream();
   }
 }
 
@@ -202,15 +202,18 @@ column_output& segment_writer::stream(const hashed_string_view& name,
                                       const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(column_info_);
-  return columns_
-    .lazy_emplace(name,
-                  [this, &name](const auto& ctor) {
-                    ctor(name, *col_writer_,
-                         docs_context_.get_allocator().ResourceManager(),
-                         *column_info_, cached_columns_,
-                         nullptr != fields_.comparator());
-                  })
-    ->writer(doc_id);
+  auto& out =
+    *columns_
+       .lazy_emplace(name,
+                     [this, &name](const auto& ctor) {
+                       ctor(name, *col_writer_,
+                            docs_context_.get_allocator().ResourceManager(),
+                            *column_info_, cached_columns_,
+                            nullptr != fields_.comparator());
+                     })
+       ->writer;
+  out.Prepare(doc_id);
+  return out;
 }
 
 void segment_writer::FlushFields(flush_state& state) {

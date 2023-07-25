@@ -704,35 +704,28 @@ field_data::field_data(
 
     auto feature_writer =
       feature_writer_factory ? (*feature_writer_factory)({}) : nullptr;
+    auto* id = &meta_.features[feature];
+    *id = field_limits::invalid();
+    if (!feature_writer) {
+      continue;
+    }
+    columnstore_writer::column_finalizer_f finalizer =
+      [writer = feature_writer.get()](bstring& out) {
+        writer->finish(out);
+        return std::string_view{};
+      };
 
-    if (feature_writer) {
-      columnstore_writer::column_finalizer_f finalizer =
-        [writer = feature_writer.get()](bstring& out) {
-          writer->finish(out);
-          return std::string_view{};
-        };
-
-      // sorted index case or the feature is required for wand
-      if (random_access || cached_features.contains(feature)) {
-        auto* id = &meta_.features[feature];
-        *id = field_limits::invalid();
-        auto& stream = cached_columns.emplace_back(
-          id, feature_column_info, std::move(finalizer),
-          cached_columns.get_allocator().ResourceManager());
-        features_.emplace_back(
-          std::move(feature_writer),
-          [stream = &stream.Stream()](doc_id_t doc) mutable -> column_output& {
-            stream->Prepare(doc);
-            return *stream;
-          });
-      } else {
-        auto [id, handler] =
-          columns.push_column(feature_column_info, std::move(finalizer));
-        features_.emplace_back(std::move(feature_writer), std::move(handler));
-        meta_.features[feature] = id;
-      }
+    // sorted index case or the feature is required for wand
+    if (random_access || cached_features.contains(feature)) {
+      auto& column = cached_columns.emplace_back(
+        id, feature_column_info, std::move(finalizer),
+        cached_columns.get_allocator().ResourceManager());
+      features_.emplace_back(std::move(feature_writer), column.Stream());
     } else {
-      meta_.features[feature] = field_limits::invalid();
+      auto [column, out] =
+        columns.push_column(feature_column_info, std::move(finalizer));
+      features_.emplace_back(std::move(feature_writer), out);
+      *id = column;
     }
   }
 }

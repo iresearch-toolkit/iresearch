@@ -80,7 +80,7 @@ class test_feature_writer : public irs::FeatureWriter {
   explicit test_feature_writer(uint32_t value) noexcept : value_{value} {}
 
   void write(const irs::field_stats& stats, irs::doc_id_t doc,
-             std::function<irs::column_output&(irs::doc_id_t)>& writer) final {
+             irs::column_output& writer) final {
     writer(doc).write_int(stats.len + value_);
   }
 

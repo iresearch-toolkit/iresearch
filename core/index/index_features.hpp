@@ -67,7 +67,7 @@ struct FeatureWriter : memory::Managed {
   using ptr = memory::managed_ptr<FeatureWriter>;
 
   virtual void write(const field_stats& stats, doc_id_t doc,
-                     std::function<column_output&(doc_id_t)>& writer) = 0;
+                     column_output& writer) = 0;
 
   virtual void write(data_output& out, bytes_view value) = 0;
 
