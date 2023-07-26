@@ -279,28 +279,25 @@ class basic_disjunction : public compound_doc_iterator<Adapter>,
 
     if (!lhs_score_empty && !rhs_score_empty) {
       // both sub-iterators have score
-      score.Reset(*this, ScoreFunction::DefaultMin,
-                  [](score_ctx* ctx, score_t* res) noexcept {
-                    auto& self = *static_cast<basic_disjunction*>(ctx);
-                    auto& merger = static_cast<Merger&>(self);
-                    self.score_iterator_impl(self.lhs_, res);
-                    self.score_iterator_impl(self.rhs_, merger.temp());
-                    merger(res, merger.temp());
-                  });
+      score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
+        auto& self = *static_cast<basic_disjunction*>(ctx);
+        auto& merger = static_cast<Merger&>(self);
+        self.score_iterator_impl(self.lhs_, res);
+        self.score_iterator_impl(self.rhs_, merger.temp());
+        merger(res, merger.temp());
+      });
     } else if (!lhs_score_empty) {
       // only left sub-iterator has score
-      score.Reset(*this, ScoreFunction::DefaultMin,
-                  [](score_ctx* ctx, score_t* res) noexcept {
-                    auto& self = *static_cast<basic_disjunction*>(ctx);
-                    return self.score_iterator_impl(self.lhs_, res);
-                  });
+      score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
+        auto& self = *static_cast<basic_disjunction*>(ctx);
+        return self.score_iterator_impl(self.lhs_, res);
+      });
     } else if (!rhs_score_empty) {
       // only right sub-iterator has score
-      score.Reset(*this, ScoreFunction::DefaultMin,
-                  [](score_ctx* ctx, score_t* res) noexcept {
-                    auto& self = *static_cast<basic_disjunction*>(ctx);
-                    return self.score_iterator_impl(self.rhs_, res);
-                  });
+      score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
+        auto& self = *static_cast<basic_disjunction*>(ctx);
+        return self.score_iterator_impl(self.rhs_, res);
+      });
     } else {
       IRS_ASSERT(score.IsDefault());
       score = ScoreFunction::Default(Merger::size());
@@ -519,27 +516,26 @@ class small_disjunction : public compound_doc_iterator<Adapter>,
 
     // prepare score
     if (scored_begin_ != end_) {
-      score.Reset(*this, ScoreFunction::DefaultMin,
-                  [](irs::score_ctx* ctx, score_t* res) noexcept {
-                    auto& self = *static_cast<small_disjunction*>(ctx);
-                    auto& merger = static_cast<Merger&>(self);
-                    const auto doc = std::get<document>(self.attrs_).value;
+      score.Reset(*this, [](irs::score_ctx* ctx, score_t* res) noexcept {
+        auto& self = *static_cast<small_disjunction*>(ctx);
+        auto& merger = static_cast<Merger&>(self);
+        const auto doc = std::get<document>(self.attrs_).value;
 
-                    std::memset(res, 0, merger.byte_size());
-                    for (auto begin = self.scored_begin_, end = self.end_;
-                         begin != end; ++begin) {
-                      auto value = begin->value();
+        std::memset(res, 0, merger.byte_size());
+        for (auto begin = self.scored_begin_, end = self.end_; begin != end;
+             ++begin) {
+          auto value = begin->value();
 
-                      if (value < doc) {
-                        value = (*begin)->seek(doc);
-                      }
+          if (value < doc) {
+            value = (*begin)->seek(doc);
+          }
 
-                      if (value == doc) {
-                        (*begin->score)(merger.temp());
-                        merger(res, merger.temp());
-                      }
-                    }
-                  });
+          if (value == doc) {
+            (*begin->score)(merger.temp());
+            merger(res, merger.temp());
+          }
+        }
+      });
     } else {
       IRS_ASSERT(score.IsDefault());
       score = ScoreFunction::Default(Merger::size());
@@ -733,37 +729,35 @@ class disjunction : public compound_doc_iterator<Adapter>,
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.Reset(*this, ScoreFunction::DefaultMin,
-                [](score_ctx* ctx, score_t* res) noexcept {
-                  auto& self = *static_cast<disjunction*>(ctx);
-                  IRS_ASSERT(!self.heap_.empty());
+    score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
+      auto& self = *static_cast<disjunction*>(ctx);
+      IRS_ASSERT(!self.heap_.empty());
 
-                  const auto its = self.hitch_all_iterators();
+      const auto its = self.hitch_all_iterators();
 
-                  if (auto& score = *self.lead().score; !score.IsDefault()) {
-                    score(res);
-                  } else {
-                    std::memset(res, 0, self.byte_size());
-                  }
-                  if (const auto doc = std::get<document>(self.attrs_).value;
-                      self.top().value() == doc) {
-                    irstd::heap::for_each_if(
-                      its.first, its.second,
-                      [&self, doc](const size_t it) noexcept {
-                        IRS_ASSERT(it < self.itrs_.size());
-                        return self.itrs_[it].value() == doc;
-                      },
-                      [&self, res](size_t it) {
-                        IRS_ASSERT(it < self.itrs_.size());
-                        if (auto& score = *self.itrs_[it].score;
-                            !score.IsDefault()) {
-                          auto& merger = static_cast<Merger&>(self);
-                          score(merger.temp());
-                          merger(res, merger.temp());
-                        }
-                      });
-                  }
-                });
+      if (auto& score = *self.lead().score; !score.IsDefault()) {
+        score(res);
+      } else {
+        std::memset(res, 0, self.byte_size());
+      }
+      if (const auto doc = std::get<document>(self.attrs_).value;
+          self.top().value() == doc) {
+        irstd::heap::for_each_if(
+          its.first, its.second,
+          [&self, doc](const size_t it) noexcept {
+            IRS_ASSERT(it < self.itrs_.size());
+            return self.itrs_[it].value() == doc;
+          },
+          [&self, res](size_t it) {
+            IRS_ASSERT(it < self.itrs_.size());
+            if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
+              auto& merger = static_cast<Merger&>(self);
+              score(merger.temp());
+              merger(res, merger.temp());
+            }
+          });
+      }
+    });
   }
 
   template<typename Iterator>
@@ -1152,11 +1146,14 @@ class block_disjunction : public doc_iterator,
         };
       }
 
-      score.Reset(*this, min, [](score_ctx* ctx, score_t* res) noexcept {
-        auto& self = static_cast<block_disjunction&>(*ctx);
-        std::memcpy(res, self.score_value_,
-                    static_cast<Merger&>(self).byte_size());
-      });
+      score.Reset(
+        *this,
+        [](score_ctx* ctx, score_t* res) noexcept {
+          auto& self = static_cast<block_disjunction&>(*ctx);
+          std::memcpy(res, self.score_value_,
+                      static_cast<Merger&>(self).byte_size());
+        },
+        min);
     }
 
     if (traits_type::kMinMatch && min_match_count > 1) {

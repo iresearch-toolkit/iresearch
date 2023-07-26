@@ -95,7 +95,7 @@ class ScoreFunction : util::noncopyable {
   }
   ~ScoreFunction() noexcept { deleter_(ctx_); }
 
-  void Reset(score_ctx& ctx, min_f min, score_f score) noexcept {
+  void Reset(score_ctx& ctx, score_f score, min_f min = DefaultMin) noexcept {
     IRS_ASSERT(&ctx != ctx_ || deleter_ == Noop);
     deleter_(ctx_);
     ctx_ = &ctx;
