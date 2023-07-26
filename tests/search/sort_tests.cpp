@@ -955,7 +955,7 @@ TEST(ScoreFunctionTest, reset) {
     auto score_func =
       +[](irs::score_ctx*, irs::score_t* res) noexcept { *res = 42; };
 
-    func.Reset(ctx, irs::ScoreFunction::DefaultMin, score_func);
+    func.Reset(ctx, score_func);
 
     ASSERT_EQ(score_func, func.Func());
     ASSERT_EQ(&ctx, func.Ctx());
@@ -963,7 +963,7 @@ TEST(ScoreFunctionTest, reset) {
     func(&tmp);
     ASSERT_EQ(42, tmp);
 
-    func.Reset(ctx, irs::ScoreFunction::DefaultMin, score_func);
+    func.Reset(ctx, score_func);
     ASSERT_EQ(score_func, func.Func());
     ASSERT_EQ(&ctx, func.Ctx());
     tmp = 1;

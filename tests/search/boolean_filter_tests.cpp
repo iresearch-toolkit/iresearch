@@ -126,13 +126,12 @@ class basic_doc_iterator : public irs::doc_iterator, irs::score_ctx {
         irs::PrepareScorers(ord.buckets(), irs::SubReader::empty(),
                             irs::empty_term_reader{0}, stats_, *this, boost);
 
-      score_.Reset(*this, irs::ScoreFunction::DefaultMin,
-                   [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-                     const auto& self = *static_cast<basic_doc_iterator*>(ctx);
-                     for (auto& scorer : self.scorers_) {
-                       scorer(res++);
-                     }
-                   });
+      score_.Reset(*this, [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+        const auto& self = *static_cast<basic_doc_iterator*>(ctx);
+        for (auto& scorer : self.scorers_) {
+          scorer(res++);
+        }
+      });
 
       attrs_[irs::type<irs::score>::id()] = &score_;
     }

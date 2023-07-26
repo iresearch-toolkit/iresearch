@@ -2474,7 +2474,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
       std::all_of(std::begin(this->buf_.docs), std::end(this->buf_.docs),
                   [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
     std::get<irs::score>(attrs_).Reset(
-      *this, strict ? MinStrict : MinWeak,
+      *this,
       [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = static_cast<wanderator&>(*ctx);
         if constexpr (Root) {
@@ -2482,7 +2482,8 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
         } else {
           self.scorer_(res);
         }
-      });
+      },
+      strict ? MinStrict : MinWeak);
   }
 
   void WandPrepare(const term_meta& meta, const index_input* doc_in,

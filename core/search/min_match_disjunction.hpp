@@ -234,25 +234,23 @@ class min_match_disjunction : public doc_iterator,
 
     auto& score = std::get<irs::score>(attrs_);
 
-    score.Reset(
-      *this, ScoreFunction::DefaultMin,
-      [](score_ctx* ctx, score_t* res) noexcept {
-        auto& self = *static_cast<min_match_disjunction*>(ctx);
-        IRS_ASSERT(!self.heap_.empty());
+    score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
+      auto& self = *static_cast<min_match_disjunction*>(ctx);
+      IRS_ASSERT(!self.heap_.empty());
 
-        self.push_valid_to_lead();
+      self.push_valid_to_lead();
 
-        // score lead iterators
-        std::memset(res, 0, static_cast<Merger&>(self).byte_size());
-        std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
-          IRS_ASSERT(it < self.itrs_.size());
-          if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
-            auto& merger = static_cast<Merger&>(self);
-            score(merger.temp());
-            merger(res, merger.temp());
-          }
-        });
+      // score lead iterators
+      std::memset(res, 0, static_cast<Merger&>(self).byte_size());
+      std::for_each(self.lead(), self.heap_.end(), [&self, res](size_t it) {
+        IRS_ASSERT(it < self.itrs_.size());
+        if (auto& score = *self.itrs_[it].score; !score.IsDefault()) {
+          auto& merger = static_cast<Merger&>(self);
+          score(merger.temp());
+          merger(res, merger.temp());
+        }
       });
+    });
   }
 
   // Push all valid iterators to lead.
