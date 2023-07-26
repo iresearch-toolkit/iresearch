@@ -448,6 +448,7 @@ doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
     // single sub-query
     return std::move(itrs.front());
   }
+
   // conjunction
   std::sort(
     itrs.begin(), itrs.end(), [](const auto& lhs, const auto& rhs) noexcept {
