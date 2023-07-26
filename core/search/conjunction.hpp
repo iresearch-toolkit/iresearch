@@ -76,7 +76,7 @@ using EmptyWrapper = T;
 
 struct SubScores {
   std::vector<irs::score*> scores;
-  score_t sum_score{};
+  score_t sum_score = 0.f;
 };
 
 // Conjunction of N iterators
@@ -348,7 +348,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
   // TODO(MBkkt) Maybe optimize for 2?
   static void MinN(BlockConjunction& self, score_t arg) noexcept {
     for (auto* score : self.scores_) {
-      auto others = self.sum_scores_ - score->max.tail;
+      const auto others = self.sum_scores_ - score->max.tail;
       if (arg <= others) {
         return;
       }
@@ -461,7 +461,7 @@ doc_iterator::ptr MakeConjunction(WandContext ctx, Merger&& merger,
     bool use_block = ctx.Enabled() && cost::extract(itrs.front(), cost::kMax) >
                                         kBlockConjunctionCostThreshold;
     for (auto& it : itrs) {
-      // FIXME(gnus): remove const cast
+      // FIXME(gnusi): remove const cast
       auto* score = const_cast<irs::score*>(it.score);
       IRS_ASSERT(score);  // ensured by ScoreAdapter
       if (score->IsDefault()) {
