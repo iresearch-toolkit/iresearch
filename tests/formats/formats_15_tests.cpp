@@ -56,8 +56,7 @@ struct FreqScorer : irs::ScorerBase<void> {
       reinterpret_cast<irs::score_ctx&>(const_cast<irs::frequency&>(*freq)),
       [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
         *res = reinterpret_cast<irs::frequency*>(ctx)->value;
-      },
-      irs::ScoreFunction::DefaultMin};
+      }};
   }
 
   irs::WandWriter::ptr prepare_wand_writer(size_t max_levels) const {

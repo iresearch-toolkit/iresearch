@@ -876,7 +876,7 @@ TEST(ScoreFunctionTest, construct) {
     auto score_func =
       +[](irs::score_ctx*, irs::score_t* res) noexcept { *res = 42; };
 
-    irs::ScoreFunction func(ctx, score_func, irs::ScoreFunction::DefaultMin);
+    irs::ScoreFunction func(ctx, score_func);
     ASSERT_EQ(score_func, func.Func());
     ASSERT_EQ(&ctx, func.Ctx());
     irs::score_t tmp{1};
@@ -890,7 +890,7 @@ TEST(ScoreFunctionTest, construct) {
     auto score_func =
       +[](irs::score_ctx*, irs::score_t* res) noexcept { *res = 42; };
 
-    irs::ScoreFunction func(ctx, score_func, irs::ScoreFunction::DefaultMin);
+    irs::ScoreFunction func(ctx, score_func);
     ASSERT_EQ(score_func, func.Func());
     ASSERT_EQ(&ctx, func.Ctx());
     irs::score_t tmp{1};
@@ -1019,7 +1019,7 @@ TEST(ScoreFunctionTest, move) {
       +[](irs::score_ctx*, irs::score_t* res) noexcept { *res = 42; };
 
     float_t tmp{1};
-    irs::ScoreFunction func(ctx, score_func, irs::ScoreFunction::DefaultMin);
+    irs::ScoreFunction func(ctx, score_func);
     ASSERT_EQ(&ctx, func.Ctx());
     ASSERT_EQ(score_func, func.Func());
     func(&tmp);
@@ -1050,7 +1050,7 @@ TEST(ScoreFunctionTest, move) {
     ASSERT_NE(score_func, moved.Func());
     moved(&tmp);
     ASSERT_EQ(1, tmp);
-    irs::ScoreFunction func(ctx, score_func, irs::ScoreFunction::DefaultMin);
+    irs::ScoreFunction func(ctx, score_func);
     ASSERT_EQ(&ctx, func.Ctx());
     ASSERT_EQ(score_func, func.Func());
     func(&tmp);
@@ -1079,17 +1079,15 @@ TEST(ScoreFunctionTest, equality) {
   auto score_func1 = [](irs::score_ctx*, irs::score_t*) noexcept {};
 
   irs::ScoreFunction func0;
-  irs::ScoreFunction func1(ctx0, score_func0, irs::ScoreFunction::DefaultMin);
-  irs::ScoreFunction func2(ctx1, score_func1, irs::ScoreFunction::DefaultMin);
-  irs::ScoreFunction func3(ctx0, score_func1, irs::ScoreFunction::DefaultMin);
-  irs::ScoreFunction func4(ctx1, score_func0, irs::ScoreFunction::DefaultMin);
+  irs::ScoreFunction func1(ctx0, score_func0);
+  irs::ScoreFunction func2(ctx1, score_func1);
+  irs::ScoreFunction func3(ctx0, score_func1);
+  irs::ScoreFunction func4(ctx1, score_func0);
 
   ASSERT_EQ(func0, irs::ScoreFunction());
   ASSERT_NE(func0, func1);
   ASSERT_NE(func2, func3);
   ASSERT_NE(func2, func4);
-  ASSERT_EQ(func1, irs::ScoreFunction(ctx0, score_func0,
-                                      irs::ScoreFunction::DefaultMin));
-  ASSERT_EQ(func2, irs::ScoreFunction(ctx1, score_func1,
-                                      irs::ScoreFunction::DefaultMin));
+  ASSERT_EQ(func1, irs::ScoreFunction(ctx0, score_func0));
+  ASSERT_EQ(func2, irs::ScoreFunction(ctx1, score_func1));
 }

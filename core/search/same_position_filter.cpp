@@ -177,9 +177,8 @@ class same_position_query : public filter::prepared {
       irs::ScoreMergeType::kSum, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         return MakeConjunction<same_position_iterator>(
-          // TODO(MBkkt)
-          WandContext{}, std::move(aggregator), std::move(itrs),
-          std::move(positions));
+          // TODO(MBkkt) Implement wand?
+          {}, std::move(aggregator), std::move(itrs), std::move(positions));
       });
   }
 

@@ -77,7 +77,7 @@ class ScoreFunction : util::noncopyable {
   }
 
   ScoreFunction() noexcept = default;
-  ScoreFunction(score_ctx& ctx, score_f score, min_f min) noexcept
+  ScoreFunction(score_ctx& ctx, score_f score, min_f min = DefaultMin) noexcept
     : ScoreFunction{&ctx, score, min, Noop} {}
   ScoreFunction(ScoreFunction&& rhs) noexcept
     : ScoreFunction{std::exchange(rhs.ctx_, nullptr),

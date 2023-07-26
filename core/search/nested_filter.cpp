@@ -278,8 +278,7 @@ class AnyMatcher : public Merger, private score_ctx {
   ScoreFunction PrepareScore() {
     static_assert(HasScore_v<Merger>);
 
-    return {*this,
-            [](score_ctx* ctx, score_t* res) noexcept {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
@@ -295,8 +294,7 @@ class AnyMatcher : public Merger, private score_ctx {
                 child_score(merger.temp());
                 merger(res, merger.temp());
               }
-            },
-            ScoreFunction::DefaultMin};
+            }};
   }
 };
 
@@ -361,16 +359,14 @@ class PredMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {*this,
-            [](score_ctx* ctx, score_t* res) noexcept {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<PredMatcher&>(*ctx);
               auto& merger = static_cast<Merger&>(self);
               auto& buf = static_cast<ScoreBuffer<Merger>&>(self);
               std::memcpy(res, buf.data(), merger.byte_size());
-            },
-            ScoreFunction::DefaultMin};
+            }};
   }
 
  private:
@@ -446,16 +442,14 @@ class RangeMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {*this,
-            [](score_ctx* ctx, score_t* res) noexcept {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<RangeMatcher&>(*ctx);
               auto& merger = static_cast<Merger&>(self);
               auto& buf = static_cast<ScoreBuffer<Merger>&>(self);
               std::memcpy(res, buf.data(), merger.byte_size());
-            },
-            ScoreFunction::DefaultMin};
+            }};
   }
 
   const Match& range() const noexcept { return match_; }
@@ -530,8 +524,7 @@ class MinMatcher : public Merger,
   ScoreFunction PrepareScore() noexcept {
     static_assert(HasScore_v<Merger>);
 
-    return {*this,
-            [](score_ctx* ctx, score_t* res) noexcept {
+    return {*this, [](score_ctx* ctx, score_t* res) noexcept {
               IRS_ASSERT(ctx);
               IRS_ASSERT(res);
               auto& self = static_cast<JoinType&>(*ctx);
@@ -552,8 +545,7 @@ class MinMatcher : public Merger,
               }
 
               std::memcpy(res, buf.data(), merger.byte_size());
-            },
-            ScoreFunction::DefaultMin};
+            }};
   }
 
   Match range() const noexcept { return Match{min_}; }
