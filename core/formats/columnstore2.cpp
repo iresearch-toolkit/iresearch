@@ -1286,6 +1286,9 @@ void column::flush_block() {
     math::ceil64(docs_count, packed::BLOCK_SIZE_64);
   auto* begin = addr_table_.begin();
   auto* end = begin + addr_table_size;
+  if (auto* it = addr_table_.current(); it != end) {
+    std::memset(it, 0, (end - it) * sizeof(*it));
+  }
 
   bool all_equal = !data_.file.length();
   if (!all_equal) {

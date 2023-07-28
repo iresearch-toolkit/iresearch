@@ -90,45 +90,46 @@ class column final : public irs::column_output {
 
   class address_table {
    public:
+    address_table(ManagedTypedAllocator<uint64_t> alloc) : alloc_{alloc} {
+      offsets_ = alloc_.allocate(kBlockSize);
+      offset_ = offsets_;
+    }
+
+    ~address_table() { alloc_.deallocate(offsets_, kBlockSize); }
+
     uint64_t back() const noexcept {
-      IRS_ASSERT(offset_ > offsets_);
-      return *(offset_ - 1);
+      IRS_ASSERT(offsets_ < offset_);
+      return offset_[-1];
     }
 
     void push_back(uint64_t offset) noexcept {
-      IRS_ASSERT(offset_ >= offsets_);
       IRS_ASSERT(offset_ < offsets_ + kBlockSize);
       *offset_++ = offset;
-      IRS_ASSERT(offset >= offset_[-1]);
     }
 
     void pop_back() noexcept {
-      IRS_ASSERT(offset_ > offsets_);
-      *--offset_ = 0;
+      IRS_ASSERT(offsets_ < offset_);
+      --offset_;
     }
 
-    // returns number of items to be flushed
     uint32_t size() const noexcept {
-      IRS_ASSERT(offset_ >= offsets_);
-      return uint32_t(offset_ - offsets_);
+      return static_cast<uint32_t>(offset_ - offsets_);
     }
 
     bool empty() const noexcept { return offset_ == offsets_; }
 
-    bool full() const noexcept { return offset_ == std::end(offsets_); }
+    bool full() const noexcept { return offset_ == offsets_ + kBlockSize; }
 
-    void reset() noexcept {
-      std::memset(offsets_, 0, sizeof offsets_);
-      offset_ = std::begin(offsets_);
-    }
+    void reset() noexcept { offset_ = offsets_; }
 
-    uint64_t* begin() noexcept { return std::begin(offsets_); }
+    uint64_t* begin() noexcept { return offsets_; }
     uint64_t* current() noexcept { return offset_; }
-    uint64_t* end() noexcept { return std::end(offsets_); }
+    uint64_t* end() noexcept { return offsets_ + kBlockSize; }
 
    private:
-    uint64_t offsets_[kBlockSize]{};
-    uint64_t* offset_{offsets_};
+    ManagedTypedAllocator<uint64_t> alloc_;
+    uint64_t* offsets_{nullptr};
+    uint64_t* offset_{nullptr};
   };
 
   void prepare(doc_id_t key);
