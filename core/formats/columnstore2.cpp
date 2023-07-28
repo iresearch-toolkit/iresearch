@@ -1349,6 +1349,9 @@ void column::flush_block() {
     math::ceil64(docs_count, packed::BLOCK_SIZE_64);
   auto* begin = addr_table_.begin();
   auto* end = begin + addr_table_size;
+  if (auto* it = addr_table_.current(); it != end) {
+    std::memset(it, 0, (end - it) * sizeof(*it));
+  }
 
   bool all_equal = !data_.file.length();
   if (!all_equal) {
@@ -1431,6 +1434,7 @@ column::column(const context& ctx, field_id id, const type_info& compression,
     blocks_{{resource_manager}},
     data_{resource_manager},
     docs_{resource_manager},
+    addr_table_{{resource_manager}},
     id_{id} {
   IRS_ASSERT(field_limits::valid(id_));
 }

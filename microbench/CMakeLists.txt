@@ -61,7 +61,7 @@ include_directories(iresearch-microbench
 
 add_executable(iresearch-memory-file-bench
   memory_file_benchmark.cpp
-)
+  )
 
 set_ipo(iresearch-memory-file-bench)
 
@@ -74,5 +74,23 @@ target_include_directories(iresearch-memory-file-bench
   )
 
 target_link_libraries(iresearch-memory-file-bench
+  iresearch-static
+  )
+
+add_executable(iresearch-column-writer
+  column_writer_benchmark.cpp
+  )
+
+set_ipo(iresearch-column-writer)
+
+add_dependencies(iresearch-column-writer
+  iresearch-static
+  )
+
+target_include_directories(iresearch-column-writer
+  PRIVATE ${PROJECT_BINARY_DIR}/core
+  )
+
+target_link_libraries(iresearch-column-writer
   iresearch-static
   )
