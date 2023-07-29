@@ -371,15 +371,13 @@ class postings_writer_base : public irs::postings_writer {
                    const irs::feature_map_t& features) final {
     features_.Reset(index_features);
     PrepareWriters(features);
-    docs_.clear();
+    docs_count_ = 0;
     last_state_.clear();
   }
 
   FieldStats end_field() noexcept final {
-    const auto count = docs_.count();
-    IRS_ASSERT(count < doc_limits::eof());
-    return {.wand_mask = writers_mask_,
-            .docs_count = static_cast<doc_id_t>(count)};
+    IRS_ASSERT(docs_count_ < doc_limits::eof());
+    return {.wand_mask = writers_mask_, .docs_count = docs_count_};
   }
 
   void begin_block() final {
@@ -480,7 +478,7 @@ class postings_writer_base : public irs::postings_writer {
     alloc_{meta_pool_};
   SkipWriter skip_;
   version10::term_meta last_state_;  // Last final term state
-  bitset docs_;                      // Set of all processed documents
+  uint32_t docs_count_{0};           // Count of all processed documents
   index_output::ptr doc_out_;        // Postings (doc + freq)
   index_output::ptr pos_out_;        // Positions
   index_output::ptr pay_out_;        // Payload (pay + offs)
@@ -590,8 +588,7 @@ void postings_writer_base::prepare(index_output& out,
   valid_writers_.reserve(writers_.size());
   columns_ = state.columns;
 
-  // Prepare documents bitset
-  docs_.reset(doc_limits::min() + state.doc_count);
+  docs_count_ = 0;
 }
 
 void postings_writer_base::encode(data_output& out,
@@ -898,7 +895,7 @@ void postings_writer<FormatTraits>::BeginDocument() {
       }
     }
 
-    docs_.set(id);
+    ++docs_count_;
 
     // First position offsets now is format dependent
     pos_.last = FormatTraits::pos_min();
