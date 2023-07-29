@@ -198,7 +198,19 @@ class dynamic_bitset {
 
   bool none() const noexcept { return !any(); }
 
-  bool all() const noexcept { return count() == bits_; }
+  bool all() const noexcept {
+    if (words_ == 0) {
+      return true;
+    }
+    auto* begin = data_.get();
+    for (auto* end = begin + words_ - 1; begin != end; ++begin) {
+      static_assert(std::is_unsigned_v<word_t>);
+      if (*begin != std::numeric_limits<word_t>::max()) {
+        return false;
+      }
+    }
+    return std::popcount(*begin) == bits_;
+  }
 
   void clear() noexcept { clear_offset(0); }
 
