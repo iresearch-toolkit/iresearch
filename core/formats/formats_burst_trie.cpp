@@ -278,7 +278,6 @@ struct block_t : private util::noncopyable {
     index.Visit([](prefixed_output& output) {  //
       output.~prefixed_output();
     });
-    index.tail_ = nullptr;
   }
 
   block_index_t index;  // fst index data
