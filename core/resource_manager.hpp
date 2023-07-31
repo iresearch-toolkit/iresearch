@@ -23,15 +23,6 @@
 #pragma once
 
 #include "shared.hpp"
-
-#if (defined(__clang__) || defined(_MSC_VER) || defined(__GNUC__))
-#include <version>
-#endif
-
-#ifdef __cpp_lib_memory_resource
-#include <memory_resource>
-#endif
-
 #include "utils/managed_allocator.hpp"
 
 namespace irs {

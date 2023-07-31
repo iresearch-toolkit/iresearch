@@ -378,7 +378,7 @@ class MonotonicBuffer {
 
   // TODO(MBkkt) Do we really want to measure this?
   IResourceManager& resource_manager_;
-  size_t blocks_memory_{0};
+  size_t blocks_memory_ = 0;
 
   size_t next_size_;
   Block* head_ = nullptr;
