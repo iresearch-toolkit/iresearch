@@ -91,13 +91,4 @@ struct ManagedTypedAllocator
   using Base::Base;
 };
 
-#ifdef __cpp_lib_polymorphic_allocator
-template<typename T>
-struct ManagedTypedPmrAllocator
-  : ManagedAllocator<std::pmr::polymorphic_allocator<T>, IResourceManager> {
-  using ManagedAllocator<std::pmr::polymorphic_allocator<T>,
-                         IResourceManager>::ManagedAllocator;
-};
-#endif
-
 }  // namespace irs

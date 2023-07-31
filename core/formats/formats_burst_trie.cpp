@@ -287,15 +287,14 @@ struct block_t : private util::noncopyable {
   byte_type meta;       // block metadata
 };
 
-// Debug only option
-// #define IRS_COUNTER_MONOTONIC_MEMORY
-
 template<typename T>
 class MonotonicBuffer {
-  static constexpr size_t kAlign = std::max(alignof(T), alignof(void*));
+  static constexpr size_t kAlign =
+    (alignof(T) * alignof(void*)) / std::gcd(alignof(T), alignof(void*));
 
   struct alignas(kAlign) Block {
     Block* next = nullptr;
+    size_t size = 0;
   };
 
   static_assert(std::is_trivially_destructible_v<Block>);
@@ -348,6 +347,7 @@ class MonotonicBuffer {
     resource_manager_.Decrease(std::exchange(blocks_memory_, 0));
 
     // otherwise we always increasing size!
+    // TODO(MBkkt) we could compute current size, but it's
     next_size_ = (next_size_ * 2) / 3;
 
     available_ = 0;
@@ -363,8 +363,7 @@ class MonotonicBuffer {
 
   void AllocateMemory() {
     const auto size = sizeof(Block) + next_size_ * sizeof(T);
-    // TODO(MBkkt) round up size via nallocx,
-    // in theory new could return available size, but it's only proposal :(
+    // TODO(MBkkt) use allocate_at_least but it's only C++23 :(
     resource_manager_.Increase(size);
     blocks_memory_ += size;
     auto* p =
@@ -1020,26 +1019,6 @@ class field_writer final : public irs::field_writer {
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
 
-#ifdef IRS_COUNTER_MONOTONIC_MEMORY
-  struct CounterManager : IResourceManager {
-    bool Increase(size_t size) noexcept final {
-      fprintf(stderr, "\nincrease: %p counter %lu on %lu\n", this, counter_,
-              size);
-      counter_ += size;
-      return true;
-    }
-
-    void Decrease(size_t size) noexcept final {
-      fprintf(stderr, "\ndecrease: %p counter %lu on %lu\n", this, counter_,
-              size);
-      counter_ -= size;
-    }
-
-   private:
-    size_t counter_{0};
-  } counter_manager_;
-#endif
-
   MonotonicBuffer<block_t::prefixed_output> output_buffer_;
   std::vector<entry, ManagedTypedAllocator<entry>> blocks_;
   memory_output suffix_;  // term suffix column
@@ -1250,14 +1229,7 @@ field_writer::field_writer(
   burst_trie::Version version /* = Format::MAX */,
   uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
   uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
-  : output_buffer_(
-#ifdef IRS_COUNTER_MONOTONIC_MEMORY
-      counter_manager_,
-
-#else
-      rm,
-#endif
-      32),
+  : output_buffer_(rm, 32),
     blocks_(ManagedTypedAllocator<entry>(rm)),
     suffix_(rm),
     stats_(rm),
