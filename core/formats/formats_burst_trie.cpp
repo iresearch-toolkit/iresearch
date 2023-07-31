@@ -385,6 +385,8 @@ class MonotonicBuffer {
   byte_type* current_ = nullptr;
 };
 
+using OutputBuffer = MonotonicBuffer<block_t::prefixed_output>;
+
 enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };
 
 // Block or term
@@ -868,8 +870,9 @@ const fst::FstReadOptions& fst_read_options() {
 // mininum size of string weight we store in FST
 [[maybe_unused]] constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
-template<typename Blocks, typename Buffer>
-void merge_blocks(Blocks& blocks, Buffer& buffer) {
+using Blocks = std::vector<entry, ManagedTypedAllocator<entry>>;
+
+void MergeBlocks(Blocks& blocks, OutputBuffer& buffer) {
   IRS_ASSERT(!blocks.empty());
 
   auto it = blocks.begin();
@@ -1016,8 +1019,8 @@ class field_writer final : public irs::field_writer {
   void Push(bytes_view term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
-  MonotonicBuffer<block_t::prefixed_output> output_buffer_;
-  std::vector<entry, ManagedTypedAllocator<entry>> blocks_;
+  OutputBuffer output_buffer_;
+  Blocks blocks_;
   memory_output suffix_;  // term suffix column
   memory_output stats_;   // term stats column
   encryption::stream::ptr terms_out_cipher_;
@@ -1183,7 +1186,7 @@ void field_writer::WriteBlocks(size_t prefix, size_t count) {
   }
 
   // merge blocks into 1st block
-  ::merge_blocks(blocks_, output_buffer_);
+  ::MergeBlocks(blocks_, output_buffer_);
 
   // remove processed entries from the
   // top of the stack
