@@ -209,7 +209,7 @@ class dynamic_bitset {
         return false;
       }
     }
-    return std::popcount(*begin) == bits_;
+    return std::popcount(*begin) == bits_ - (words_ - 1) * bits_required<word_t>();
   }
 
   void clear() noexcept { clear_offset(0); }
