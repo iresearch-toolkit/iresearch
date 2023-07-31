@@ -360,6 +360,8 @@ class MonotonicBuffer {
 
   void AllocateMemory() {
     const auto size = sizeof(Block) + next_size_ * sizeof(T);
+    // TODO(MBkkt) round up size via nallocx,
+    // in theory new could return available size, but it's only proposal :(
     resource_manager_.Increase(size);
     blocks_memory_ += size;
     auto* p =
