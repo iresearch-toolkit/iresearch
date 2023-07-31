@@ -1018,14 +1018,14 @@ class field_writer final : public irs::field_writer {
 #ifdef IRS_COUNTER_MONOTONIC_MEMORY
   struct CounterManager : IResourceManager {
     bool Increase(size_t size) noexcept final {
-      fprintf(stderr, "increase: %p counter %lu on %lu\n", this, counter_,
+      fprintf(stderr, "\nincrease: %p counter %lu on %lu\n", this, counter_,
               size);
       counter_ += size;
       return true;
     }
 
     void Decrease(size_t size) noexcept final {
-      fprintf(stderr, "decrease: %p counter %lu on %lu\n", this, counter_,
+      fprintf(stderr, "\ndecrease: %p counter %lu on %lu\n", this, counter_,
               size);
       counter_ -= size;
     }
