@@ -293,8 +293,7 @@ class MonotonicBuffer {
     (alignof(T) * alignof(void*)) / std::gcd(alignof(T), alignof(void*));
 
   struct alignas(kAlign) Block {
-    Block* next = nullptr;
-    size_t size = 0;
+    Block* prev = nullptr;
   };
 
   static_assert(std::is_trivially_destructible_v<Block>);
@@ -328,7 +327,7 @@ class MonotonicBuffer {
       return;
     }
 
-    Release(std::exchange(head_->next, nullptr));
+    Release(std::exchange(head_->prev, nullptr));
     // TODO(MBkkt) Don't be lazy, call Decrease eager
     // resource_manager_.Decrease(blocks_memory_ - size of head block);
 
@@ -357,7 +356,7 @@ class MonotonicBuffer {
  private:
   void Release(Block* it) noexcept {
     while (it != nullptr) {
-      operator delete(std::exchange(it, it->next), std::align_val_t{kAlign});
+      operator delete(std::exchange(it, it->prev), std::align_val_t{kAlign});
     }
   }
 
