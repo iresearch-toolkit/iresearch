@@ -347,6 +347,9 @@ class MonotonicBuffer {
     Release(std::exchange(head_, nullptr));
     resource_manager_.Decrease(std::exchange(blocks_memory_, 0));
 
+    // otherwise we always increasing size!
+    next_size_ = (next_size_ * 2) / 3;
+
     available_ = 0;
     current_ = nullptr;
   }
