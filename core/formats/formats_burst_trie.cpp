@@ -346,7 +346,7 @@ class MonotonicBuffer {
 
     // otherwise we always increasing size!
     // TODO(MBkkt) we could compute current size, but it's
-    next_size_ = (next_size_ * 2) / 3;
+    next_size_ = (next_size_ * 2 + 2) / 3;
 
     available_ = 0;
     current_ = nullptr;
