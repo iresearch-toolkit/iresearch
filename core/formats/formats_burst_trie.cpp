@@ -1018,7 +1018,6 @@ class field_writer final : public irs::field_writer {
   void Push(bytes_view term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
-
   MonotonicBuffer<block_t::prefixed_output> output_buffer_;
   std::vector<entry, ManagedTypedAllocator<entry>> blocks_;
   memory_output suffix_;  // term suffix column
