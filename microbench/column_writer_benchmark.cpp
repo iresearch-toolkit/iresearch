@@ -24,18 +24,21 @@
 #include <thread>
 #include <vector>
 
-#include "store/memory_directory.hpp"
+#include "formats/columnstore2.hpp"
 
-static constexpr size_t kThreads = 8;
-static constexpr size_t kFiles = 1000;
-std::uniform_int_distribution<size_t> kFileSizePower{8, 24};
+static constexpr size_t kThreads = 1;
+static constexpr size_t kColumns = 1000;
+static constexpr size_t kColumnsIter = kColumns * 10;
 
 static void WriteFile(std::mt19937_64& rng) {
-  irs::memory_file file{irs::IResourceManager::kNoop};
-  irs::memory_index_output output{file};
-  const auto size = size_t{1} << kFileSizePower(rng);
-  for (size_t i = 0; i != size; ++i) {
-    output.write_byte(42);
+  auto writer = irs::columnstore2::make_writer(
+    irs::columnstore2::Version::kMax, false, irs::IResourceManager::kNoop);
+  // const auto size = size_t{1} << kFileSizePower(rng);
+  for (size_t i = 0; i != kColumnsIter; ++i) {
+    if (i % kColumns == 0) {
+      writer->rollback();
+    }
+    writer->push_column({}, {});
   }
 }
 
@@ -45,9 +48,7 @@ int main() {
   for (size_t i = 0; i != kThreads; ++i) {
     threads.emplace_back([i] {
       std::mt19937_64 rng(43 * i);
-      for (size_t i = 0; i != kFiles; ++i) {
-        WriteFile(rng);
-      }
+      WriteFile(rng);
     });
   }
   for (auto& thread : threads) {
