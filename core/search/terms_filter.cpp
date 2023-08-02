@@ -31,14 +31,13 @@
 #include "search/multiterm_query.hpp"
 #include "search/term_filter.hpp"
 
+namespace irs {
 namespace {
 
-using namespace irs;
-
 template<typename Visitor>
-void visit(const SubReader& segment, const term_reader& field,
-           const by_terms_options::search_terms& search_terms,
-           Visitor& visitor) {
+void VisitImpl(const SubReader& segment, const term_reader& field,
+               const by_terms_options::search_terms& search_terms,
+               Visitor& visitor) {
   auto terms = field.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms)) {
@@ -93,26 +92,21 @@ void collect_terms(const IndexReader& index, std::string_view field,
       continue;
     }
 
-    visit(segment, *reader, terms, visitor);
+    VisitImpl(segment, *reader, terms, visitor);
   }
 }
 
 }  // namespace
 
-namespace irs {
-
 void by_terms::visit(const SubReader& segment, const term_reader& field,
                      const by_terms_options::search_terms& terms,
                      filter_visitor& visitor) {
-  ::visit(segment, field, terms, visitor);
+  VisitImpl(segment, field, terms, visitor);
 }
 
-filter::prepared::ptr by_terms::prepare(const IndexReader& index,
-                                        const Scorers& order, score_t boost,
-                                        const attribute_provider* ctx) const {
+filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
   const auto& [terms, min_match, merge_type] = options();
   const size_t size = terms.size();
-  boost *= this->boost();
 
   if (0 == size || min_match > size) {
     // Empty or unreachable search criteria
@@ -120,29 +114,38 @@ filter::prepared::ptr by_terms::prepare(const IndexReader& index,
   }
 
   if (0 == min_match) {
-    if (order.empty()) {
-      return MakeAllDocsFilter(kNoBoost)->prepare(index);
+    if (ctx.scorers.empty()) {
+      return MakeAllDocsFilter(kNoBoost)->prepare({
+        .index = ctx.index,
+      });
     } else {
       Or disj;
       // Don't contribute to the score
       disj.add(MakeAllDocsFilter(0.));
       // Reset min_match to 1
       disj.add<by_terms>(*this).mutable_options()->min_match = 1;
-      return disj.prepare(index, order, kNoBoost, ctx);
+      return disj.prepare({
+        .index = ctx.index,
+        .resource_manager = ctx.resource_manager,
+        .scorers = ctx.scorers,
+        .ctx = ctx.ctx,
+      });
     }
   }
 
+  const auto sub_boost = ctx.boost * boost();
+
   if (1 == size) {
     const auto term = std::begin(terms);
-    return by_term::prepare(index, order, boost * term->boost, field(),
-                            term->term);
+    return by_term::prepare(ctx.index, ctx.scorers, sub_boost * term->boost,
+                            field(), term->term);
   }
 
-  field_collectors field_stats{order};
-  term_collectors term_stats{order, size};
-  MultiTermQuery::States states{index.size()};
+  field_collectors field_stats{ctx.scorers};
+  term_collectors term_stats{ctx.scorers, size};
+  MultiTermQuery::States states{ctx.index.size()};
   all_terms_collector collector{states, field_stats, term_stats};
-  collect_terms(index, field(), terms, collector);
+  collect_terms(ctx.index, field(), terms, collector);
 
   // FIXME(gnusi): Filter out unmatched states during collection
   if (min_match > 1) {
@@ -157,13 +160,13 @@ filter::prepared::ptr by_terms::prepare(const IndexReader& index,
 
   MultiTermQuery::Stats stats{size};
   for (size_t term_idx = 0; auto& stat : stats) {
-    stat.resize(order.stats_size(), 0);
+    stat.resize(ctx.scorers.stats_size(), 0);
     auto* stats_buf = stat.data();
-    term_stats.finish(stats_buf, term_idx++, field_stats, index);
+    term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
   return memory::make_managed<MultiTermQuery>(
-    std::move(states), std::move(stats), boost, merge_type, min_match);
+    std::move(states), std::move(stats), sub_boost, merge_type, min_match);
 }
 
 }  // namespace irs

@@ -109,10 +109,7 @@ struct ByNestedOptions {
 // Filter is capable of finding parents by the corresponding child filter.
 class ByNestedFilter final : public filter_with_options<ByNestedOptions> {
  public:
-  using filter::prepare;
-
-  prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord, score_t boost,
-                        const attribute_provider* /*ctx*/) const final;
+  prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 }  // namespace irs

@@ -61,17 +61,14 @@ class boolean_filter : public filter, public AllDocsProvider {
   bool empty() const { return filters_.empty(); }
   size_t size() const { return filters_.size(); }
 
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const override;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const override;
 
  protected:
   bool equals(const filter& rhs) const noexcept final;
 
-  virtual filter::prepared::ptr prepare(
+  virtual filter::prepared::ptr PrepareBoolean(
     std::vector<const filter*>& incl, std::vector<const filter*>& excl,
-    const IndexReader& rdr, const Scorers& ord, score_t boost,
-    const attribute_provider* ctx) const = 0;
+    const PrepareContext& ctx) const = 0;
 
  private:
   void group_filters(filter::ptr& all_docs_no_boost,
@@ -85,18 +82,14 @@ class boolean_filter : public filter, public AllDocsProvider {
 // Represents conjunction
 class And final : public boolean_filter {
  public:
-  using filter::prepare;
-
   type_info::type_id type() const noexcept final {
     return irs::type<And>::id();
   }
 
  protected:
-  filter::prepared::ptr prepare(std::vector<const filter*>& incl,
-                                std::vector<const filter*>& excl,
-                                const IndexReader& rdr, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const final;
+  filter::prepared::ptr PrepareBoolean(std::vector<const filter*>& incl,
+                                       std::vector<const filter*>& excl,
+                                       const PrepareContext& ctx) const final;
 };
 
 // Represents disjunction
@@ -111,19 +104,14 @@ class Or final : public boolean_filter {
     return *this;
   }
 
-  using filter::prepare;
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const final;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 
   type_info::type_id type() const noexcept final { return irs::type<Or>::id(); }
 
  protected:
-  filter::prepared::ptr prepare(std::vector<const filter*>& incl,
-                                std::vector<const filter*>& excl,
-                                const IndexReader& rdr, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const final;
+  filter::prepared::ptr PrepareBoolean(std::vector<const filter*>& incl,
+                                       std::vector<const filter*>& excl,
+                                       const PrepareContext& ctx) const final;
 
  private:
   size_t min_match_count_{1};
@@ -154,11 +142,7 @@ class Not : public filter, public AllDocsProvider {
   void clear() { filter_.reset(); }
   bool empty() const { return nullptr == filter_; }
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const final;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 
   size_t hash() const noexcept final;
 

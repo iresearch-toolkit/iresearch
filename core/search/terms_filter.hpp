@@ -90,11 +90,7 @@ class by_terms final : public filter_base<by_terms_options>,
                     const by_terms_options::search_terms& terms,
                     filter_visitor& visitor);
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& order,
-                                score_t boost,
-                                const attribute_provider* /*ctx*/) const final;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 }  // namespace irs

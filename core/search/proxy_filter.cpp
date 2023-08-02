@@ -201,22 +201,19 @@ class proxy_query : public filter::prepared {
   mutable proxy_filter::cache_ptr cache_;
 };
 
-filter::prepared::ptr proxy_filter::prepare(
-  const IndexReader& rdr, const Scorers& ord, score_t boost,
-  const attribute_provider* ctx) const {
+filter::prepared::ptr proxy_filter::prepare(const PrepareContext& ctx) const {
   if (!cache_ || !cache_->real_filter_) {
     IRS_ASSERT(false);
     return filter::prepared::empty();
   }
-  if (!ord.empty()) {
+  if (!ctx.scorers.empty()) {
     // Currently we do not support caching scores.
     // Proxy filter should not be used with scorers!
     IRS_ASSERT(false);
     return filter::prepared::empty();
   }
   if (!cache_->prepared_real_filter_) {
-    cache_->prepared_real_filter_ =
-      cache_->real_filter_->prepare(rdr, ord, boost, ctx);
+    cache_->prepared_real_filter_ = cache_->real_filter_->prepare(ctx);
   }
   return memory::make_managed<proxy_query>(cache_);
 }

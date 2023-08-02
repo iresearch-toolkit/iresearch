@@ -47,8 +47,7 @@ filter::prepared::ptr filter::prepared::empty() {
   return memory::to_managed<filter::prepared>(kEmptyQuery);
 }
 
-filter::prepared::ptr empty::prepare(const IndexReader&, const Scorers&,
-                                     score_t, const attribute_provider*) const {
+filter::prepared::ptr empty::prepare(const PrepareContext& /*ctx*/) const {
   return memory::to_managed<filter::prepared>(kEmptyQuery);
 }
 

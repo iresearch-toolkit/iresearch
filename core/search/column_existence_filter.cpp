@@ -25,9 +25,8 @@
 #include "formats/empty_term_reader.hpp"
 #include "search/disjunction.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 class column_existence_query : public irs::filter::prepared {
  public:
@@ -129,20 +128,17 @@ class column_prefix_existence_query : public column_existence_query {
 
 }  // namespace
 
-namespace irs {
-
 filter::prepared::ptr by_column_existence::prepare(
-  const IndexReader& reader, const Scorers& order, score_t filter_boost,
-  const attribute_provider* /*ctx*/) const {
+  const PrepareContext& ctx) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  bstring stats(order.stats_size(), 0);
+  bstring stats(ctx.scorers.stats_size(), 0);
   auto* stats_buf = stats.data();
 
-  PrepareCollectors(order.buckets(), stats_buf);
+  PrepareCollectors(ctx.scorers.buckets(), stats_buf);
 
-  filter_boost *= boost();
+  const auto filter_boost = ctx.boost * boost();
 
   auto& acceptor = options().acceptor;
 

@@ -31,11 +31,10 @@
 #include "search/states/phrase_state.hpp"
 #include "search/states_cache.hpp"
 
+namespace irs {
 namespace {
 
-using namespace irs;
-
-struct get_visitor {
+struct GetVisitor {
   using result_type = field_visitor;
 
   result_type operator()(const by_term_options& part) const {
@@ -85,7 +84,7 @@ struct get_visitor {
   }
 };
 
-struct prepare : util::noncopyable {
+struct Prepare : util::noncopyable {
   using result_type = filter::prepared::ptr;
 
   result_type operator()(const by_term_options& opts) const {
@@ -124,8 +123,8 @@ struct prepare : util::noncopyable {
     return filter::prepared::empty();
   }
 
-  prepare(const IndexReader& index, const Scorers& order, std::string_view field,
-          const score_t boost) noexcept
+  Prepare(const IndexReader& index, const Scorers& order,
+          std::string_view field, const score_t boost) noexcept
     : index(index), order(order), field(field), boost(boost) {}
 
   const IndexReader& index;
@@ -135,8 +134,6 @@ struct prepare : util::noncopyable {
 };
 
 }  // namespace
-
-namespace irs {
 
 // Filter visitor for phrase queries
 template<typename PhraseStates>
@@ -198,13 +195,7 @@ class phrase_term_visitor final : public filter_visitor,
   bool volatile_boost_ = false;
 };
 
-}  // namespace irs
-
-namespace irs {
-
-filter::prepared::ptr by_phrase::prepare(
-  const IndexReader& index, const Scorers& ord, score_t boost,
-  const attribute_provider* /*ctx*/) const {
+filter::prepared::ptr by_phrase::prepare(const PrepareContext& ctx) const {
   if (field().empty() || options().empty()) {
     // empty field or phrase
     return filter::prepared::empty();
@@ -212,7 +203,7 @@ filter::prepared::ptr by_phrase::prepare(
 
   if (1 == options().size()) {
     auto query =
-      std::visit(::prepare{index, ord, field(), this->boost() * boost},
+      std::visit(Prepare{ctx.index, ctx.scorers, field(), ctx.boost * boost()},
                  options().begin()->second);
 
     if (query) {
@@ -222,10 +213,10 @@ filter::prepared::ptr by_phrase::prepare(
 
   // prepare phrase stats (collector for each term)
   if (options().simple()) {
-    return fixed_prepare_collect(index, ord, boost);
+    return fixed_prepare_collect(ctx.index, ctx.scorers, ctx.boost);
   }
 
-  return variadic_prepare_collect(index, ord, boost);
+  return variadic_prepare_collect(ctx.index, ctx.scorers, ctx.boost);
 }
 
 filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
@@ -331,7 +322,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   phrase_part_stats.reserve(phrase_size);
   for (const auto& word : options()) {
     phrase_part_stats.emplace_back(ord, 0);
-    phrase_part_visitors.emplace_back(std::visit(get_visitor{}, word.second));
+    phrase_part_visitors.emplace_back(std::visit(GetVisitor{}, word.second));
   }
 
   // per segment phrase states

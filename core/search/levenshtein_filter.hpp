@@ -119,13 +119,9 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
 
   static field_visitor visitor(const options_type::filter_options& options);
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& order,
-                                score_t boost,
-                                const attribute_provider* /*ctx*/) const final {
-    return prepare(index, order, this->boost() * boost, field(), options().term,
-                   options().max_terms, options().max_distance,
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+    return prepare(ctx.index, ctx.scorers, ctx.boost * boost(), field(),
+                   options().term, options().max_terms, options().max_distance,
                    options().provider, options().with_transpositions,
                    options().prefix);
   }

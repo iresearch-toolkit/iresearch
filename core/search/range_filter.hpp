@@ -86,13 +86,9 @@ class by_range : public filter_base<by_range_options> {
                     const options_type::range_type& rng,
                     filter_visitor& visitor);
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* /*ctx*/) const final {
-    return prepare(index, ord, this->boost() * boost, field(), options().range,
-                   options().scored_terms_limit);
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+    return prepare(ctx.index, ctx.scorers, ctx.boost * boost(), field(),
+                   options().range, options().scored_terms_limit);
   }
 };
 

@@ -69,13 +69,9 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
 
   static field_visitor visitor(bytes_view term);
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& order,
-                                score_t boost,
-                                const attribute_provider* /*ctx*/) const final {
-    return prepare(index, order, this->boost() * boost, field(), options().term,
-                   options().scored_terms_limit);
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+    return prepare(ctx.index, ctx.scorers, this->boost() * ctx.boost, field(),
+                   options().term, options().scored_terms_limit);
   }
 };
 

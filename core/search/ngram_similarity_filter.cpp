@@ -32,8 +32,7 @@
 namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::prepare(
-  const IndexReader& rdr, const Scorers& ord, score_t boost,
-  const attribute_provider* ctx) const {
+  const PrepareContext& ctx) const {
   const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;
 
@@ -47,18 +46,24 @@ filter::prepared::ptr by_ngram_similarity::prepare(
                std::ceil(static_cast<double>(ngrams.size()) * threshold)),
              size_t{1});
 
-  if (ord.empty() && 1 == min_match_count) {
+  const auto sub_boost = ctx.boost * boost();
+
+  if (ctx.scorers.empty() && 1 == min_match_count) {
     irs::by_terms disj;
     for (auto& terms = disj.mutable_options()->terms;
          auto& term : options().ngrams) {
       terms.emplace(term, irs::kNoBoost);
     }
     *disj.mutable_field() = this->field();
-    disj.boost(this->boost());
-    return disj.prepare(rdr, irs::Scorers::kUnordered, boost, ctx);
+    return disj.prepare({
+      .index = ctx.index,
+      .resource_manager = ctx.resource_manager,
+      .ctx = ctx.ctx,
+      .boost = sub_boost,
+    });
   }
 
-  NGramStates query_states{rdr.size()};
+  NGramStates query_states{ctx.index.size()};
 
   // per segment terms states
   const auto terms_count = ngrams.size();
@@ -66,12 +71,12 @@ filter::prepared::ptr by_ngram_similarity::prepare(
   term_states.reserve(terms_count);
 
   // prepare ngrams stats
-  field_collectors field_stats{ord};
-  term_collectors term_stats{ord, terms_count};
+  field_collectors field_stats{ctx.scorers};
+  term_collectors term_stats{ctx.scorers, terms_count};
 
   const std::string_view field_name = this->field();
 
-  for (const auto& segment : rdr) {
+  for (const auto& segment : ctx.index) {
     // get term dictionary for field
     const term_reader* field = segment.field(field_name);
 
@@ -119,16 +124,15 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_states.reserve(terms_count);
   }
 
-  bstring stats(ord.stats_size(), 0);
+  bstring stats(ctx.scorers.stats_size(), 0);
   auto* stats_buf = stats.data();
 
   for (size_t term_idx = 0; term_idx < terms_count; ++term_idx) {
-    term_stats.finish(stats_buf, term_idx, field_stats, rdr);
+    term_stats.finish(stats_buf, term_idx, field_stats, ctx.index);
   }
 
   return memory::make_managed<NGramSimilarityQuery>(
-    min_match_count, std::move(query_states), std::move(stats),
-    this->boost() * boost);
+    min_match_count, std::move(query_states), std::move(stats), sub_boost);
 }
 
 }  // namespace irs

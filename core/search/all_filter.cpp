@@ -47,19 +47,17 @@ class all_query : public filter::prepared {
   bstring stats_;
 };
 
-filter::prepared::ptr all::prepare(const IndexReader& reader,
-                                   const Scorers& order, score_t filter_boost,
-                                   const attribute_provider* /*ctx*/) const {
+filter::prepared::ptr all::prepare(const PrepareContext& ctx) const {
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  bstring stats(order.stats_size(), 0);
+  bstring stats(ctx.scorers.stats_size(), 0);
   auto* stats_buf = stats.data();
 
-  PrepareCollectors(order.buckets(), stats_buf);
+  PrepareCollectors(ctx.scorers.buckets(), stats_buf);
 
   return memory::make_managed<all_query>(std::move(stats),
-                                         this->boost() * filter_boost);
+                                         this->boost() * ctx.boost);
 }
 
 }  // namespace irs

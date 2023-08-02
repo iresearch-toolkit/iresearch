@@ -257,7 +257,10 @@ irs::filter::prepared::ptr prepareFilter(
       *query.mutable_field() = "body";
       query.mutable_options()->term = irs::ViewCast<irs::byte_type>(terms);
 
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::HighPhrase:  // fall through
     case category_t::MedPhrase:   // fall through
@@ -277,7 +280,10 @@ irs::filter::prepared::ptr prepareFilter(
         opts->push_back<irs::by_term_options>().term = term->value;
       }
 
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::HighNGram:  // fall through
     case category_t::MedNGram:   // fall through
@@ -303,7 +309,10 @@ irs::filter::prepared::ptr prepareFilter(
             tmpBuf.size());
         }
       }
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::AndHighHigh:  // fall through
     case category_t::AndHighMed:   // fall through
@@ -324,7 +333,10 @@ irs::filter::prepared::ptr prepareFilter(
           irs::ViewCast<irs::byte_type>(std::string_view(tmpBuf.c_str() + 1));
       }
 
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::Or4High:
     case category_t::Or6High4Med2Low:
@@ -345,7 +357,10 @@ irs::filter::prepared::ptr prepareFilter(
           irs::ViewCast<irs::byte_type>(std::string_view{tmpBuf});
       }
 
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::Prefix3: {
       // cut '~' at the end of the text
@@ -357,7 +372,10 @@ irs::filter::prepared::ptr prepareFilter(
       opts->scored_terms_limit = scored_terms_limit;
       opts->term = irs::ViewCast<irs::byte_type>(terms);
 
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::Wildcard: {
       terms = std::string_view(text.data(), text.size());
@@ -379,7 +397,10 @@ irs::filter::prepared::ptr prepareFilter(
         }
       }
 
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::Fuzzy1:
     case category_t::Fuzzy2: {
@@ -394,7 +415,10 @@ irs::filter::prepared::ptr prepareFilter(
       opts->max_distance = (category == category_t::Fuzzy1 ? 1 : 2);
       opts->term = irs::ViewCast<irs::byte_type>(term);
 
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     case category_t::MinMatch2High2Med: {
       if (irs::IsNull(terms = splitFreq(text))) {
@@ -415,7 +439,10 @@ irs::filter::prepared::ptr prepareFilter(
             irs::ViewCast<irs::byte_type>(std::string_view{tmpBuf});
         }
       }
-      return query.prepare(reader, order);
+      return query.prepare({
+        .index = reader,
+        .scorers = order,
+      });
     }
     default:
       return nullptr;

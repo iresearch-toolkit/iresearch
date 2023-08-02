@@ -42,11 +42,7 @@ class proxy_filter final : public filter {
  public:
   using cache_ptr = std::shared_ptr<proxy_query_cache>;
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers&,
-                                score_t boost,
-                                const attribute_provider*) const final;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 
   template<typename T, typename... Args>
   std::pair<T&, cache_ptr> set_filter(Args&&... args) {

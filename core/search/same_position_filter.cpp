@@ -193,8 +193,7 @@ class same_position_query : public filter::prepared {
 }  // namespace
 
 filter::prepared::ptr by_same_position::prepare(
-  const IndexReader& index, const Scorers& ord, score_t boost,
-  const attribute_provider* /*ctx*/) const {
+  const PrepareContext& ctx) const {
   auto& terms = options().terms;
   const auto size = terms.size();
 
@@ -204,7 +203,7 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   // per segment query state
-  same_position_query::states_t query_states{index.size()};
+  same_position_query::states_t query_states{ctx.index.size()};
 
   // per segment terms states
   same_position_query::states_t::state_type term_states;
@@ -213,12 +212,12 @@ filter::prepared::ptr by_same_position::prepare(
   // !!! FIXME !!!
   // that's completely wrong, we have to collect stats for each field
   // instead of aggregating them using a single collector
-  field_collectors field_stats(ord);
+  field_collectors field_stats(ctx.scorers);
 
   // prepare phrase stats (collector for each term)
-  term_collectors term_stats(ord, size);
+  term_collectors term_stats(ctx.scorers, size);
 
-  for (const auto& segment : index) {
+  for (const auto& segment : ctx.index) {
     size_t term_idx = 0;
 
     for (const auto& branch : terms) {
@@ -236,14 +235,14 @@ filter::prepared::ptr by_same_position::prepare(
         continue;
       }
 
-      field_stats.collect(segment,
-                          *field);  // collect field statistics once per segment
+      // collect field statistics once per segment
+      field_stats.collect(segment, *field);
 
       // find terms
       seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
 
       if (!term->seek(branch.second)) {
-        if (ord.empty()) {
+        if (ctx.scorers.empty()) {
           break;
         } else {
           // continue here because we should collect
@@ -278,13 +277,13 @@ filter::prepared::ptr by_same_position::prepare(
   size_t term_idx = 0;
   same_position_query::stats_t stats(size);
   for (auto& stat : stats) {
-    stat.resize(ord.stats_size());
+    stat.resize(ctx.scorers.stats_size());
     auto* stats_buf = stat.data();
-    term_stats.finish(stats_buf, term_idx++, field_stats, index);
+    term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
   return memory::make_managed<same_position_query>(
-    std::move(query_states), std::move(stats), this->boost() * boost);
+    std::move(query_states), std::move(stats), ctx.boost * boost());
 }
 
 }  // namespace irs
