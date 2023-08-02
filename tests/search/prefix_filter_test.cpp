@@ -304,7 +304,7 @@ TEST(by_prefix_test, boost) {
   {
     irs::by_prefix q = make_filter("field", "term");
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -314,7 +314,7 @@ TEST(by_prefix_test, boost) {
     irs::by_prefix q = make_filter("field", "term");
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(boost, prepared->boost());
   }
 }

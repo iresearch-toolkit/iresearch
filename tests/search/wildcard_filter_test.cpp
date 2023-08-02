@@ -75,7 +75,7 @@ TEST(by_wildcard_test, boost) {
   {
     irs::by_wildcard q = make_filter("field", "bar*");
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -86,7 +86,7 @@ TEST(by_wildcard_test, boost) {
     irs::by_wildcard q = make_filter("field", "bar*");
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(boost, prepared->boost());
   }
 }
@@ -101,73 +101,82 @@ TEST(by_wildcard_test, boost) {
 TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
   {
-    auto lhs =
-      make_filter<irs::by_term>("foo", "bar").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "bar").prepare(irs::SubReader::empty());
+    auto lhs = make_filter<irs::by_term>("foo", "bar")
+                 .prepare({.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "bar").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // term query
   {
-    auto lhs =
-      make_filter<irs::by_term>("foo", "").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "").prepare(irs::SubReader::empty());
+    auto lhs = make_filter<irs::by_term>("foo", "").prepare(
+      {.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // term query
   {
-    auto lhs =
-      make_filter<irs::by_term>("foo", "foo%").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "foo\\%").prepare(irs::SubReader::empty());
+    auto lhs = make_filter<irs::by_term>("foo", "foo%")
+                 .prepare({.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "foo\\%").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // prefix query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "bar")
-                 .prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "bar%").prepare(irs::SubReader::empty());
+                 .prepare({.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "bar%").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // prefix query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "bar")
-                 .prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "bar%%").prepare(irs::SubReader::empty());
+                 .prepare({.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "bar%%").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // term query
   {
-    auto lhs =
-      make_filter<irs::by_term>("foo", "bar%").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "bar\\%").prepare(irs::SubReader::empty());
+    auto lhs = make_filter<irs::by_term>("foo", "bar%")
+                 .prepare({.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "bar\\%").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // all query
   {
-    auto lhs =
-      make_filter<irs::by_prefix>("foo", "").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "%").prepare(irs::SubReader::empty());
+    auto lhs = make_filter<irs::by_prefix>("foo", "").prepare(
+      {.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "%").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // all query
   {
-    auto lhs =
-      make_filter<irs::by_prefix>("foo", "").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "%%").prepare(irs::SubReader::empty());
+    auto lhs = make_filter<irs::by_prefix>("foo", "").prepare(
+      {.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "%%").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 
   // term query
   {
-    auto lhs =
-      make_filter<irs::by_term>("foo", "%").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "\\%").prepare(irs::SubReader::empty());
+    auto lhs = make_filter<irs::by_term>("foo", "%")
+                 .prepare({.index = irs::SubReader::empty()});
+    auto rhs =
+      make_filter("foo", "\\%").prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
 }
@@ -220,8 +229,8 @@ TEST_P(wildcard_filter_test_case, simple_sequential_order) {
       [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     scorer.prepare_field_collector_ = [&scorer]() -> irs::FieldCollector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::field_collector>(scorer);
+      return std::make_unique<tests::sort::custom_sort::field_collector>(
+        scorer);
     };
     scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
       return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);

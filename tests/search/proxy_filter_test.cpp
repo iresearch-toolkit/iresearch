@@ -123,11 +123,9 @@ class doclist_test_filter : public filter {
 
   static void reset_prepares() noexcept { prepares_ = 0; }
 
-  filter::prepared::ptr prepare(const IndexReader&, const Scorers&,
-                                score_t boost,
-                                const attribute_provider*) const final {
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
     ++prepares_;
-    return memory::make_managed<doclist_test_query>(documents_, boost);
+    return memory::make_managed<doclist_test_query>(documents_, ctx.boost);
   }
 
   // intentional copy here to simplify multiple runs of same expected
@@ -182,8 +180,8 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
       } else {
         proxy.set_cache(cache);
       }
-      auto prepared_proxy = proxy.prepare(index_);
-      auto docs = prepared_proxy->execute(index_[0]);
+      auto prepared_proxy = proxy.prepare({.index = index_});
+      auto docs = prepared_proxy->execute({.segment = index_[0]});
       auto costs = irs::get<irs::cost>(*docs);
       EXPECT_TRUE(costs);
       EXPECT_EQ(costs->estimate(), expected.size());

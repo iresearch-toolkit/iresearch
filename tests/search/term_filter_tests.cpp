@@ -67,13 +67,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     {
       irs::by_term q = make_filter("name", "A");
 
-      auto prepared = q.prepare(rdr);
+      auto prepared = q.prepare({.index = rdr});
       auto sub = rdr.begin();
-      auto docs0 = prepared->execute(*sub);
+      auto docs0 = prepared->execute({.segment = *sub});
       auto* doc = irs::get<irs::document>(*docs0);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs0->value(), doc->value);
-      auto docs1 = prepared->execute(*sub);
+      auto docs1 = prepared->execute({.segment = *sub});
       ASSERT_TRUE(docs0->next());
       ASSERT_EQ(docs0->value(), docs1->seek(docs0->value()));
     }
@@ -111,8 +111,8 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
     // without boost
     {
-      auto prep = filter.prepare(rdr, pord);
-      auto docs = prep->execute(*(rdr.begin()), pord);
+      auto prep = filter.prepare({.index = rdr, .scorers = pord});
+      auto docs = prep->execute({.segment = *(rdr.begin()), .scorers = pord});
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs->value(), doc->value);
@@ -138,8 +138,8 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       const irs::score_t value = 5;
       filter.boost(value);
 
-      auto prep = filter.prepare(rdr, pord);
-      auto docs = prep->execute(*(rdr.begin()), pord);
+      auto prep = filter.prepare({.index = rdr, .scorers = pord});
+      auto docs = prep->execute({.segment = *(rdr.begin()), .scorers = pord});
 
       auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
@@ -232,13 +232,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_term query = make_filter("seq", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{21};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         for (; docs->next();) {
           actual.push_back(docs->value());
         }
@@ -255,13 +255,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_term query = make_filter("seq", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{22};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -283,13 +283,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{13};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -311,13 +311,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{13};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -339,13 +339,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -367,13 +367,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -395,13 +395,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -423,13 +423,13 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -489,8 +489,8 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       std::set<irs::doc_id_t> expected{31, 32};
       auto pord = irs::Scorers::Prepare(scorer);
-      auto prep = filter.prepare(rdr, pord);
-      auto docs = prep->execute(*(rdr.begin()), pord);
+      auto prep = filter.prepare({.index = rdr, .scorers = pord});
+      auto docs = prep->execute({.segment = *(rdr.begin()), .scorers = pord});
 
       auto* scr = irs::get<irs::score>(*docs);
       ASSERT_FALSE(!scr);
@@ -643,7 +643,7 @@ TEST(by_term_test, boost) {
   {
     irs::by_term q = make_filter("field", "term");
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -653,7 +653,7 @@ TEST(by_term_test, boost) {
     irs::by_term q = make_filter("field", "term");
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(boost, prepared->boost());
   }
 }

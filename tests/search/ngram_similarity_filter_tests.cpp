@@ -140,7 +140,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
     {
       irs::by_ngram_similarity q;
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({.index = segment});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -148,7 +148,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
     {
       irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({.index = segment});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -157,7 +157,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
       irs::by_ngram_similarity q =
         make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({.index = segment});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
   }  // namespace tests
@@ -171,7 +171,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
       irs::by_ngram_similarity q;
       q.boost(boost);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({.index = segment});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -180,7 +180,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
       irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
       q.boost(boost);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({.index = segment});
       ASSERT_EQ(boost, prepared->boost());
     }
 
@@ -190,7 +190,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
         make_filter("field", {"1", "2", "3", "4"}, 0.5f);
       q.boost(boost);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({.index = segment});
       ASSERT_EQ(boost, prepared->boost());
     }
   }
@@ -213,9 +213,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -254,9 +254,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -295,9 +295,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -335,9 +335,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -377,9 +377,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -417,9 +417,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -459,9 +459,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -500,9 +500,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -543,9 +543,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -582,9 +582,9 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({.segment = sub, .scorers = prepared_order});
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -618,9 +618,9 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"ee", "we", "qq", "rr", "ff", "never_match"}, 0.1f);
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -643,9 +643,9 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
   irs::by_ngram_similarity filter =
     make_filter("field", {"ee", "ss", "pa", "rr"}, 0.5f);
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
       bool(doc));  // ensure all iterators contain "document" attribute
@@ -669,10 +669,10 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 
   Docs expected{1, 3, 5, 6, 7, 8, 9, 10, 12};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -703,10 +703,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -737,10 +737,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -771,10 +771,10 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -806,10 +806,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -841,10 +841,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -877,10 +877,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({.index = rdr});
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -1160,9 +1160,9 @@ TEST_P(ngram_similarity_filter_test_case, seek_next) {
     make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   auto expected_it = std::begin(expected);
-  auto prepared_filter = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared_filter = filter.prepare({.index = rdr});
   for (const auto& sub : rdr) {
-    auto docs = prepared_filter->execute(sub, irs::Scorers::kUnordered);
+    auto docs = prepared_filter->execute({.segment = sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
       bool(doc));  // ensure all iterators contain "document" attribute
@@ -1202,10 +1202,12 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
   Docs seek_tagrets{2, 5, 8, 13};
   auto seek_it = std::begin(seek_tagrets);
   auto& prepared_order = irs::Scorers::kUnordered;
-  auto prepared_filter = filter.prepare(rdr, prepared_order);
+  auto prepared_filter =
+    filter.prepare({.index = rdr, .scorers = prepared_order});
   for (const auto& sub : rdr) {
     while (std::end(seek_tagrets) != seek_it) {
-      auto docs = prepared_filter->execute(sub, prepared_order);
+      auto docs =
+        prepared_filter->execute({.segment = sub, .scorers = prepared_order});
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(
         bool(doc));  // ensure all iterators contain "document" attribute

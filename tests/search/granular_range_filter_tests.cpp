@@ -146,7 +146,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -165,7 +165,7 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
       q.boost(boost);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({.index = segment});
       ASSERT_EQ(boost, prepared->boost());
     }
   }
@@ -200,13 +200,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(2, query.options().range.min.size());
       ASSERT_EQ(2, query.options().range.max.size());
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -236,13 +236,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(2, query.options().range.min.size());
       ASSERT_EQ(2, query.options().range.max.size());
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 11, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -268,13 +268,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6, 7, 10, 11, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -299,13 +299,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{3, 4, 5, 6, 7, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -326,13 +326,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       irs::set_granular_term(query.mutable_options()->range.min, min_stream);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -353,13 +353,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       irs::set_granular_term(query.mutable_options()->range.min, min_stream);
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -384,13 +384,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 9, 10, 11, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -411,13 +411,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       irs::set_granular_term(query.mutable_options()->range.max, max_stream);
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 9, 10, 11, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -433,14 +433,14 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_granular_range query;
       *query.mutable_field() = "value";
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4,  5,  6,
                                           7, 8, 9, 10, 11, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -484,13 +484,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -522,13 +522,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -555,13 +555,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -589,13 +589,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{30, 31, 32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -623,13 +623,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -657,13 +657,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -695,13 +695,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -733,13 +733,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -766,13 +766,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -800,13 +800,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{30, 31, 32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -835,13 +835,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -869,13 +869,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -907,13 +907,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{3, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -945,13 +945,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 5, 7, 9, 10, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -978,13 +978,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1012,13 +1012,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{4, 11, 13, 14, 15, 16, 17};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1046,13 +1046,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 5, 6, 7, 8, 9, 10, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1080,13 +1080,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1117,13 +1117,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{3, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1154,13 +1154,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{4, 11, 13, 14, 15, 16, 17};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1187,13 +1187,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1221,13 +1221,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{14, 15, 17};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1255,13 +1255,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 13};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1289,13 +1289,13 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       query.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       query.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         for (; docs->next();) {
@@ -1813,7 +1813,7 @@ TEST(by_granular_range_test, boost) {
     q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -1832,7 +1832,7 @@ TEST(by_granular_range_test, boost) {
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 }
@@ -2175,7 +2175,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = query.prepare(reader);
+    auto prepared = query.prepare({.index = reader});
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
@@ -2186,7 +2186,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     std::set<std::string> actual;
 
-    auto docs = prepared->execute(segment);
+    auto docs = prepared->execute({.segment = segment});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while (docs->next()) {
@@ -2227,7 +2227,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     irs::set_granular_term(query.mutable_options()->range.max, max_stream);
     query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = query.prepare(reader);
+    auto prepared = query.prepare({.index = reader});
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
@@ -2238,7 +2238,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     std::set<std::string> actual;
 
-    auto docs = prepared->execute(segment);
+    auto docs = prepared->execute({.segment = segment});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while (docs->next()) {
@@ -2282,7 +2282,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
     query.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = query.prepare(reader);
+    auto prepared = query.prepare({.index = reader});
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
@@ -2293,7 +2293,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     std::set<std::string> actual;
 
-    auto docs = prepared->execute(segment);
+    auto docs = prepared->execute({.segment = segment});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while (docs->next()) {
@@ -2334,7 +2334,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     irs::set_granular_term(query.mutable_options()->range.min, min_stream);
     query.mutable_options()->range.min_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = query.prepare(reader);
+    auto prepared = query.prepare({.index = reader});
     ASSERT_NE(nullptr, prepared);
     auto* column = segment.column("_key");
     ASSERT_NE(nullptr, column);
@@ -2345,7 +2345,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
 
     std::set<std::string> actual;
 
-    auto docs = prepared->execute(segment);
+    auto docs = prepared->execute({.segment = segment});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     while (docs->next()) {

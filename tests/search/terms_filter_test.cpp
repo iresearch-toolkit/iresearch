@@ -85,7 +85,7 @@ TEST_P(terms_filter_test_case, boost) {
   {
     irs::by_terms q = make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -96,7 +96,7 @@ TEST_P(terms_filter_test_case, boost) {
     irs::by_terms q = make_filter("field", {{"bar", 0.5f}, {"baz", 0.25f}});
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost,
               prepared->boost());  // no boost because index is empty
   }
@@ -116,7 +116,7 @@ TEST_P(terms_filter_test_case, boost) {
       make_filter("duplicated", {{"abcd", 0.5f}, {"vczc", 0.25f}});
     q.boost(boost);
 
-    auto prepared = q.prepare(*rdr);
+    auto prepared = q.prepare({.index = *rdr});
     ASSERT_EQ(boost, prepared->boost());
   }
 }

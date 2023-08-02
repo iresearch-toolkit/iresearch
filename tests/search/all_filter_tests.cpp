@@ -51,7 +51,7 @@ TEST_P(all_filter_test_case, all_sequential) {
   CheckQuery(irs::all(), docs, cost, rdr);
 
   // check iterator attributes, no order
-  auto it = irs::all().prepare(*rdr)->execute(segment);
+  auto it = irs::all().prepare({.index = *rdr})->execute({.segment = segment});
   ASSERT_TRUE(irs::get<irs::document>(*it));
   auto* it_cost = irs::get<irs::cost>(*it);
   ASSERT_TRUE(it_cost);

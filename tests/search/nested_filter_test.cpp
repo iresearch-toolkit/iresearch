@@ -553,7 +553,7 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   opts.parent = MakeParentProvider("customer");
   opts.match = [](const irs::SubReader& segment) -> irs::doc_iterator::ptr {
     return irs::memory::make_managed<ChildIterator>(
-      irs::all().prepare(segment)->execute(segment),
+      irs::all().prepare({.index = segment})->execute({.segment = segment}),
       std::set{6U, 13U, 15U, 20U});
   };
 

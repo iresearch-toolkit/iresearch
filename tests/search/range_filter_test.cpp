@@ -126,13 +126,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("seq", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -160,13 +160,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("seq", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -190,13 +190,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
                     (irs::numeric_utils::numeric_traits<int64_t>::max)(),
                     irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{30, 31, 32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -219,13 +219,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         "seq", (irs::numeric_utils::numeric_traits<int64_t>::min)(),
         irs::BoundType::INCLUSIVE, max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -253,13 +253,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("seq", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -287,13 +287,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("seq", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{2, 3, 4, 5, 6, 7, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -317,13 +317,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
                     (irs::numeric_utils::numeric_traits<int32_t>::max)(),
                     irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{30, 31, 32};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -346,13 +346,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         "seq", (irs::numeric_utils::numeric_traits<int32_t>::min)(),
         irs::BoundType::INCLUSIVE, max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 4, 5, 6};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -380,13 +380,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("value", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{3, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -414,13 +414,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("value", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::EXCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 5, 7, 9, 10, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -443,13 +443,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         "value", irs::numeric_utils::numeric_traits<float_t>::ninf(),
         irs::BoundType::INCLUSIVE, max_term->value, irs::BoundType::EXCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{4, 11, 13, 14, 15, 16, 17};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -473,13 +473,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
                     irs::numeric_utils::numeric_traits<float_t>::inf(),
                     irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 5, 6, 7, 8, 9, 10, 12};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -506,13 +506,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("value", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{3, 8};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -539,13 +539,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("value", min_term->value, irs::BoundType::EXCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{4, 11, 13, 14, 15, 16, 17};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -568,13 +568,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         "value", irs::numeric_utils::numeric_traits<double_t>::ninf(),
         irs::BoundType::EXCLUSIVE, max_term->value, irs::BoundType::EXCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{14, 15, 17};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -598,13 +598,13 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
                     irs::numeric_utils::numeric_traits<double_t>::inf(),
                     irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare(rdr);
+      auto prepared = query.prepare({.index = rdr});
 
       std::vector<irs::doc_id_t> expected{1, 2, 3, 5, 6, 7, 8, 9, 10, 12, 13};
       std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub : rdr) {
-        auto docs = prepared->execute(sub);
+        auto docs = prepared->execute({.segment = sub});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -1025,8 +1025,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       size_t collect_term_count = 0;
       size_t finish_count = 0;
 
-      irs::Scorer::ptr sort{
-        std::make_unique<tests::sort::custom_sort>()};
+      irs::Scorer::ptr sort{std::make_unique<tests::sort::custom_sort>()};
       auto& scorer = static_cast<tests::sort::custom_sort&>(*sort);
 
       scorer.collector_collect_field = [&collect_field_count](
@@ -1044,12 +1043,12 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
                         const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::field_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::field_collector>(
+          scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::term_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::term_collector>(
+          scorer);
       };
 
       irs::by_range filter;
@@ -1075,8 +1074,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_range filter;
       *filter.mutable_field() = "value";
 
-      irs::Scorer::ptr sort{
-        std::make_unique<tests::sort::frequency_sort>()};
+      irs::Scorer::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }
@@ -1096,8 +1094,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
       filter.mutable_options()->scored_terms_limit = 2;
 
-      irs::Scorer::ptr sort{
-        std::make_unique<tests::sort::frequency_sort>()};
+      irs::Scorer::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
 
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }
@@ -1120,8 +1117,7 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       filter.mutable_options()->range.max = max_term->value;
       filter.mutable_options()->range.max_type = irs::BoundType::EXCLUSIVE;
 
-      irs::Scorer::ptr sort{
-        std::make_unique<tests::sort::frequency_sort>()};
+      irs::Scorer::ptr sort{std::make_unique<tests::sort::frequency_sort>()};
       CheckQuery(filter, std::span{&sort, 1}, docs, rdr);
     }
   }
@@ -1233,7 +1229,7 @@ TEST(by_range_test, boost) {
       irs::ViewCast<irs::byte_type>(std::string_view("max_term"));
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -1251,7 +1247,7 @@ TEST(by_range_test, boost) {
     q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(boost, prepared->boost());
   }
 }
