@@ -381,21 +381,22 @@ class column_base : public column_reader, private util::noncopyable {
 
   column_header& mutable_header() { return hdr_; }
   void reset_stream(const index_input* stream) { stream_ = stream; }
-  bool allocate_buffered_memory(size_t size, size_t mappings) {
-    if (!resource_manager_cached_.Increase(size + mappings)) {
-      auto column_name = name();
-      if (irs::IsNull(column_name)) {
-        column_name = "<anonymous>";
-      }
-      IRS_LOG_WARN(
-        absl::StrCat("Failed to allocate memory for buffered column id ",
-                     header().id, " name: ", column_name, " of size ", size));
-      return false;
-    }
+
+  bool allocate_buffered_memory(size_t size, size_t mappings) noexcept try {
+    resource_manager_cached_.Increase(size + mappings);
     // should be only one alllocation
     IRS_ASSERT(column_data_.empty());
     column_data_.resize(size);
     return true;
+  } catch (...) {
+    auto column_name = name();
+    if (irs::IsNull(column_name)) {
+      column_name = "<anonymous>";
+    }
+    IRS_LOG_WARN(
+      absl::StrCat("Failed to allocate memory for buffered column id ",
+                   header().id, " name: ", column_name, " of size ", size));
+    return false;
   }
 
   size_t calculate_bitmap_size(size_t file_len,

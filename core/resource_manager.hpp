@@ -38,10 +38,9 @@ struct IResourceManager {
   IResourceManager(const IResourceManager&) = delete;
   IResourceManager operator=(const IResourceManager&) = delete;
 
-  virtual bool Increase([[maybe_unused]] size_t v) noexcept {
+  virtual void Increase([[maybe_unused]] size_t v) {
     IRS_ASSERT(this != &kForbidden);
     IRS_ASSERT(v != 0);
-    return true;
   }
 
   virtual void Decrease([[maybe_unused]] size_t v) noexcept {

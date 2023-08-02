@@ -78,11 +78,15 @@ class test_env {
 };
 
 struct SimpleMemoryAccounter : public irs::IResourceManager {
-  bool Increase(size_t value) noexcept override {
+  void Increase(size_t value) override {
     counter_ += value;
-    return result_;
+    if (!result_) {
+      throw std::runtime_error{"SimpleMemoryAccounter"};
+    }
   }
+
   void Decrease(size_t value) noexcept override { counter_ -= value; }
+
   size_t counter_{0};
   bool result_{true};
 };
