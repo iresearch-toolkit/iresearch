@@ -306,7 +306,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
 
   return memory::make_managed<FixedPhraseQuery>(
     std::move(phrase_states), std::move(positions), std::move(stats),
-    this->boost() * boost);
+    boost * this->boost());
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
@@ -424,7 +424,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   return memory::make_managed<VariadicPhraseQuery>(
     std::move(phrase_states), std::move(positions), std::move(stats),
-    this->boost() * boost);
+    boost * this->boost());
 }
 
 }  // namespace irs

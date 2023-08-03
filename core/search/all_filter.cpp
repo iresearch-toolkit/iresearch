@@ -56,8 +56,7 @@ filter::prepared::ptr all::prepare(const PrepareContext& ctx) const {
 
   PrepareCollectors(ctx.scorers.buckets(), stats_buf);
 
-  return memory::make_managed<all_query>(std::move(stats),
-                                         this->boost() * ctx.boost);
+  return memory::make_managed<all_query>(std::move(stats), ctx.boost * boost());
 }
 
 }  // namespace irs

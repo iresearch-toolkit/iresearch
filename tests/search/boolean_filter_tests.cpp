@@ -260,8 +260,8 @@ struct boosted : public irs::filter {
 
   irs::filter::prepared::ptr prepare(
     const irs::PrepareContext& ctx) const final {
-    return irs::memory::make_managed<boosted::prepared>(
-      docs, this->boost() * ctx.boost);
+    return irs::memory::make_managed<boosted::prepared>(docs,
+                                                        ctx.boost * boost());
   }
 
   irs::type_info::type_id type() const noexcept final {

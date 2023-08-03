@@ -337,21 +337,19 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
     return prepared::empty();
   }
 
-  const PrepareContext sub_ctx{
-    .index = ctx.index,
-    .memory = ctx.memory,
-    .scorers = ctx.scorers,
-    .ctx = ctx.ctx,
-    .boost = ctx.boost * boost(),
-  };
-
   if (size == 1) {
     auto* filter = filters_.front().get();
     IRS_ASSERT(filter);
 
     // FIXME(gnusi): let Not handle everything?
     if (filter->type() != irs::type<irs::Not>::id()) {
-      return filter->prepare(sub_ctx);
+      return filter->prepare({
+        .index = ctx.index,
+        .memory = ctx.memory,
+        .scorers = ctx.scorers,
+        .ctx = ctx.ctx,
+        .boost = ctx.boost * boost(),
+      });
     }
   }
 
@@ -370,7 +368,7 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
     incl.push_back(all_docs_no_boost.get());
   }
 
-  return PrepareBoolean(incl, excl, sub_ctx);
+  return PrepareBoolean(incl, excl, ctx);
 }
 
 void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
@@ -431,16 +429,11 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
     return prepared::empty();
   }
 
-  PrepareContext sub_ctx{
-    .index = ctx.index,
-    .memory = ctx.memory,
-    .scorers = ctx.scorers,
-    .ctx = ctx.ctx,
-    .boost = ctx.boost * boost(),
-  };
+  PrepareContext sub_ctx = ctx;
 
   // single node case
   if (1 == incl.size() && excl.empty()) {
+    sub_ctx.boost *= boost();
     return incl.front()->prepare(sub_ctx);
   }
 
@@ -499,20 +492,18 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
 }
 
 filter::prepared::ptr Or::prepare(const PrepareContext& ctx) const {
-  const PrepareContext sub_ctx{
-    .index = ctx.index,
-    .memory = ctx.memory,
-    .scorers = ctx.scorers,
-    .ctx = ctx.ctx,
-    .boost = ctx.boost * boost(),
-  };
-
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
     // all conditions are satisfied
-    return MakeAllDocsFilter(kNoBoost)->prepare(sub_ctx);
+    return MakeAllDocsFilter(kNoBoost)->prepare({
+      .index = ctx.index,
+      .memory = ctx.memory,
+      .scorers = ctx.scorers,
+      .ctx = ctx.ctx,
+      .boost = ctx.boost * boost(),
+    });
   }
 
-  return boolean_filter::prepare(sub_ctx);
+  return boolean_filter::prepare(ctx);
 }
 
 filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
