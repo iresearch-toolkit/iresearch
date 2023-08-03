@@ -57,7 +57,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     *disj.mutable_field() = this->field();
     return disj.prepare({
       .index = ctx.index,
-      .resource_manager = ctx.resource_manager,
+      .memory = ctx.memory,
       .ctx = ctx.ctx,
       .boost = sub_boost,
     });

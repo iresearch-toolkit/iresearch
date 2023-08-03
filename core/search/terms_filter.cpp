@@ -126,7 +126,7 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
       disj.add<by_terms>(*this).mutable_options()->min_match = 1;
       return disj.prepare({
         .index = ctx.index,
-        .resource_manager = ctx.resource_manager,
+        .memory = ctx.memory,
         .scorers = ctx.scorers,
         .ctx = ctx.ctx,
       });

@@ -698,7 +698,7 @@ filter::prepared::ptr ByNestedFilter::prepare(const PrepareContext& ctx) const {
 
   auto prepared_child = child->prepare({
     .index = ctx.index,
-    .resource_manager = ctx.resource_manager,
+    .memory = ctx.memory,
     .scorers = GetOrder(match, ctx.scorers),
     .ctx = ctx.ctx,
     .boost = sub_boost,

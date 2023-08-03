@@ -37,7 +37,7 @@ struct PreparedStateVisitor;
 
 struct PrepareContext {
   const IndexReader& index;
-  IResourceManager& resource_manager = IResourceManager::kNoop;
+  IResourceManager& memory = IResourceManager::kNoop;
   const Scorers& scorers = Scorers::kUnordered;
   const attribute_provider* ctx = nullptr;
   score_t boost = kNoBoost;
@@ -45,7 +45,7 @@ struct PrepareContext {
 
 struct ExecutionContext {
   const SubReader& segment;
-  IResourceManager& resource_manager = IResourceManager::kNoop;
+  IResourceManager& memory = IResourceManager::kNoop;
   const Scorers& scorers = Scorers::kUnordered;
   const attribute_provider* ctx = nullptr;
   WandContext wand;

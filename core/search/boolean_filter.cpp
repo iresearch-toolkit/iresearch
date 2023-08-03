@@ -199,7 +199,7 @@ class BooleanQuery : public filter::prepared {
       // exclusion part does not affect scoring at all
       queries.emplace_back(filter->prepare({
         .index = ctx.index,
-        .resource_manager = ctx.resource_manager,
+        .memory = ctx.memory,
         .ctx = ctx.ctx,
       }));
     }
@@ -339,7 +339,7 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
 
   const PrepareContext sub_ctx{
     .index = ctx.index,
-    .resource_manager = ctx.resource_manager,
+    .memory = ctx.memory,
     .scorers = ctx.scorers,
     .ctx = ctx.ctx,
     .boost = ctx.boost * boost(),
@@ -433,7 +433,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
 
   PrepareContext sub_ctx{
     .index = ctx.index,
-    .resource_manager = ctx.resource_manager,
+    .memory = ctx.memory,
     .scorers = ctx.scorers,
     .ctx = ctx.ctx,
     .boost = ctx.boost * boost(),
@@ -501,7 +501,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
 filter::prepared::ptr Or::prepare(const PrepareContext& ctx) const {
   const PrepareContext sub_ctx{
     .index = ctx.index,
-    .resource_manager = ctx.resource_manager,
+    .memory = ctx.memory,
     .scorers = ctx.scorers,
     .ctx = ctx.ctx,
     .boost = ctx.boost * boost(),
@@ -520,7 +520,7 @@ filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
                                          const PrepareContext& ctx) const {
   const PrepareContext sub_ctx{
     .index = ctx.index,
-    .resource_manager = ctx.resource_manager,
+    .memory = ctx.memory,
     .scorers = ctx.scorers,
     .ctx = ctx.ctx,
     .boost = ctx.boost * boost(),
@@ -625,7 +625,7 @@ filter::prepared::ptr Not::prepare(const PrepareContext& ctx) const {
 
   const PrepareContext sub_ctx{
     .index = ctx.index,
-    .resource_manager = ctx.resource_manager,
+    .memory = ctx.memory,
     .scorers = ctx.scorers,
     .ctx = ctx.ctx,
     .boost = ctx.boost * boost(),
