@@ -63,11 +63,11 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     });
   }
 
-  NGramStates query_states{ctx.index.size()};
+  NGramStates query_states{ctx.memory, ctx.index.size()};
 
   // per segment terms states
   const auto terms_count = ngrams.size();
-  std::vector<seek_cookie::ptr> term_states;
+  ManagedVector<seek_cookie::ptr> term_states{{ctx.memory}};
   term_states.reserve(terms_count);
 
   // prepare ngrams stats
@@ -131,8 +131,9 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_stats.finish(stats_buf, term_idx, field_stats, ctx.index);
   }
 
-  return memory::make_managed<NGramSimilarityQuery>(
-    min_match_count, std::move(query_states), std::move(stats), sub_boost);
+  return memory::make_tracked_managed<NGramSimilarityQuery>(
+    ctx.memory, min_match_count, std::move(query_states), std::move(stats),
+    sub_boost);
 }
 
 }  // namespace irs

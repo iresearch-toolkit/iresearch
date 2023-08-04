@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "resource_manager.hpp"
 #include "shared.hpp"
 #include "utils/noncopyable.hpp"
 
@@ -39,16 +40,23 @@ class StatesCache : private util::noncopyable {
  public:
   using state_type = State;
 
-  explicit StatesCache(size_t size) { states_.reserve(size); }
+  explicit StatesCache(IResourceManager& memory, size_t size)
+    : states_{Alloc{memory}} {
+    states_.reserve(size);
+  }
 
   StatesCache(StatesCache&&) = default;
   StatesCache& operator=(StatesCache&&) = default;
 
-  state_type& insert(const SubReader& rdr) { return states_[&rdr]; }
+  state_type& insert(const SubReader& segment) {
+    auto result =
+      states_.emplace(&segment, states_.get_allocator().ResourceManager());
+    return result.first->second;
+  }
 
-  const state_type* find(const SubReader& rdr) const noexcept {
-    auto it = states_.find(&rdr);
-    return states_.end() == it ? nullptr : &(it->second);
+  const state_type* find(const SubReader& segment) const noexcept {
+    const auto it = states_.find(&segment);
+    return it != states_.end() ? &it->second : nullptr;
   }
 
   template<typename Pred>
@@ -59,7 +67,13 @@ class StatesCache : private util::noncopyable {
   bool empty() const noexcept { return states_.empty(); }
 
  private:
-  using states_map = absl::flat_hash_map<const SubReader*, state_type>;
+  using Alloc =
+    ManagedTypedAllocator<std::pair<const SubReader* const, state_type>>;
+
+  using states_map = absl::flat_hash_map<
+    const SubReader*, state_type,
+    absl::container_internal::hash_default_hash<const SubReader*>,
+    absl::container_internal::hash_default_eq<const SubReader*>, Alloc>;
 
   // FIXME use vector instead?
   states_map states_;

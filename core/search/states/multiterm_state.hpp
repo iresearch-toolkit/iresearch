@@ -41,6 +41,9 @@ struct MultiTermState {
     float_t boost{kNoBoost};
   };
 
+  explicit MultiTermState(IResourceManager& memory) noexcept
+    : scored_states{{memory}}, unscored_terms{{memory}} {}
+
   using UnscoredTermState = seek_cookie::ptr;
 
   // Return true if state is empty
@@ -57,12 +60,12 @@ struct MultiTermState {
   const term_reader* reader{};
 
   // Scored term states
-  std::vector<ScoredTermState> scored_states;
+  ManagedVector<ScoredTermState> scored_states;
 
   // Matching terms that may have been skipped
   // while collecting statistics and should not be
   // scored by the disjunction.
-  std::vector<UnscoredTermState> unscored_terms;
+  ManagedVector<UnscoredTermState> unscored_terms;
 
   // Estimated cost of scored states
   cost::cost_t scored_states_estimation{};

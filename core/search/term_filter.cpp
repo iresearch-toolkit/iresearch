@@ -27,9 +27,8 @@
 #include "search/filter_visitor.hpp"
 #include "search/term_query.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 // Filter visitor for term queries
 class term_visitor : private util::noncopyable {
@@ -66,8 +65,8 @@ class term_visitor : private util::noncopyable {
 };
 
 template<typename Visitor>
-void visit(const SubReader& segment, const term_reader& field, bytes_view term,
-           Visitor& visitor) {
+void VisitImpl(const SubReader& segment, const term_reader& field,
+               bytes_view term, Visitor& visitor) {
   // find term
   auto terms = field.iterator(SeekMode::RANDOM_ONLY);
 
@@ -85,25 +84,22 @@ void visit(const SubReader& segment, const term_reader& field, bytes_view term,
 
 }  // namespace
 
-namespace irs {
-
 void by_term::visit(const SubReader& segment, const term_reader& field,
                     bytes_view term, filter_visitor& visitor) {
-  ::visit(segment, field, term, visitor);
+  VisitImpl(segment, field, term, visitor);
 }
 
-filter::prepared::ptr by_term::prepare(const IndexReader& index,
-                                       const Scorers& ord, score_t boost,
+filter::prepared::ptr by_term::prepare(const PrepareContext& ctx,
                                        std::string_view field,
                                        bytes_view term) {
-  TermQuery::States states(index.size());
-  field_collectors field_stats(ord);
-  term_collectors term_stats(ord, 1);
+  TermQuery::States states{ctx.memory, ctx.index.size()};
+  field_collectors field_stats{ctx.scorers};
+  term_collectors term_stats{ctx.scorers, 1};
 
   term_visitor visitor(term_stats, states);
 
   // iterate over the segments
-  for (const auto& segment : index) {
+  for (const auto& segment : ctx.index) {
     // get field
     const auto* reader = segment.field(field);
 
@@ -114,16 +110,16 @@ filter::prepared::ptr by_term::prepare(const IndexReader& index,
     field_stats.collect(segment,
                         *reader);  // collect field statistics once per segment
 
-    ::visit(segment, *reader, term, visitor);
+    VisitImpl(segment, *reader, term, visitor);
   }
 
-  bstring stats(ord.stats_size(), 0);
+  bstring stats(ctx.scorers.stats_size(), 0);
   auto* stats_buf = stats.data();
 
-  term_stats.finish(stats_buf, 0, field_stats, index);
+  term_stats.finish(stats_buf, 0, field_stats, ctx.index);
 
-  return memory::make_managed<TermQuery>(std::move(states), std::move(stats),
-                                         boost);
+  return memory::make_tracked_managed<TermQuery>(ctx.memory, std::move(states),
+                                                 std::move(stats), ctx.boost);
 }
 
 }  // namespace irs

@@ -870,7 +870,7 @@ const fst::FstReadOptions& fst_read_options() {
 // mininum size of string weight we store in FST
 [[maybe_unused]] constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
-using Blocks = std::vector<entry, ManagedTypedAllocator<entry>>;
+using Blocks = ManagedVector<entry>;
 
 void MergeBlocks(Blocks& blocks, OutputBuffer& buffer) {
   IRS_ASSERT(!blocks.empty());
@@ -1028,7 +1028,7 @@ class field_writer final : public irs::field_writer {
   encryption::stream::ptr index_out_cipher_;
   index_output::ptr index_out_;  // output stream for indexes
   postings_writer::ptr pw_;      // postings writer
-  std::vector<entry, ManagedTypedAllocator<entry>> stack_;
+  ManagedVector<entry> stack_;
   fst_buffer* fst_buf_;  // pimpl buffer used for building FST for fields
   volatile_byte_ref last_term_;  // last pushed term
   std::vector<size_t> prefixes_;

@@ -88,21 +88,19 @@ struct Prepare : util::noncopyable {
   using result_type = filter::prepared::ptr;
 
   result_type operator()(const by_term_options& opts) const {
-    return by_term::prepare(index, order, boost, field, opts.term);
+    return by_term::prepare(ctx, field, opts.term);
   }
 
   result_type operator()(const by_prefix_options& part) const {
-    return by_prefix::prepare(index, order, boost, field, part.term,
-                              part.scored_terms_limit);
+    return by_prefix::prepare(ctx, field, part.term, part.scored_terms_limit);
   }
 
   result_type operator()(const by_wildcard_options& part) const {
-    return by_wildcard::prepare(index, order, boost, field, part.term,
-                                part.scored_terms_limit);
+    return by_wildcard::prepare(ctx, field, part.term, part.scored_terms_limit);
   }
 
   result_type operator()(const by_edit_distance_filter_options& part) const {
-    return by_edit_distance::prepare(index, order, boost, field, part.term,
+    return by_edit_distance::prepare(ctx, field, part.term,
                                      0,  // collect all terms
                                      part.max_distance, part.provider,
                                      part.with_transpositions, part.prefix);
@@ -113,8 +111,7 @@ struct Prepare : util::noncopyable {
   }
 
   result_type operator()(const by_range_options& part) const {
-    return by_range::prepare(index, order, boost, field, part.range,
-                             part.scored_terms_limit);
+    return by_range::prepare(ctx, field, part.range, part.scored_terms_limit);
   }
 
   template<typename T>
@@ -123,14 +120,11 @@ struct Prepare : util::noncopyable {
     return filter::prepared::empty();
   }
 
-  Prepare(const IndexReader& index, const Scorers& order,
-          std::string_view field, const score_t boost) noexcept
-    : index(index), order(order), field(field), boost(boost) {}
+  Prepare(const PrepareContext& ctx, std::string_view field) noexcept
+    : ctx{ctx}, field{field} {}
 
-  const IndexReader& index;
-  const irs::Scorers& order;
+  const PrepareContext& ctx;
   const std::string_view field;
-  const score_t boost;
 };
 
 }  // namespace
@@ -202,9 +196,7 @@ filter::prepared::ptr by_phrase::prepare(const PrepareContext& ctx) const {
   }
 
   if (1 == options().size()) {
-    auto query =
-      std::visit(Prepare{ctx.index, ctx.scorers, field(), ctx.boost * boost()},
-                 options().begin()->second);
+    auto query = std::visit(Prepare{ctx, field()}, options().begin()->second);
 
     if (query) {
       return query;
@@ -213,27 +205,26 @@ filter::prepared::ptr by_phrase::prepare(const PrepareContext& ctx) const {
 
   // prepare phrase stats (collector for each term)
   if (options().simple()) {
-    return fixed_prepare_collect(ctx.index, ctx.scorers, ctx.boost);
+    return fixed_prepare_collect(ctx);
   }
 
-  return variadic_prepare_collect(ctx.index, ctx.scorers, ctx.boost);
+  return variadic_prepare_collect(ctx);
 }
 
-filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
-                                                       const Scorers& ord,
-                                                       score_t boost) const {
+filter::prepared::ptr by_phrase::fixed_prepare_collect(
+  const PrepareContext& ctx) const {
   const auto phrase_size = options().size();
-  const auto is_ord_empty = ord.empty();
+  const auto is_ord_empty = ctx.scorers.empty();
 
   // stats collectors
-  field_collectors field_stats(ord);
-  term_collectors term_stats(ord, phrase_size);
+  field_collectors field_stats(ctx.scorers);
+  term_collectors term_stats(ctx.scorers, phrase_size);
 
   // per segment phrase states
-  FixedPhraseQuery::states_t phrase_states{index.size()};
+  FixedPhraseQuery::states_t phrase_states{ctx.memory, ctx.index.size()};
 
   // per segment phrase terms
-  PhraseTerms<FixedPhraseState::TermState> phrase_terms;
+  FixedPhraseState::Terms phrase_terms;
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
@@ -241,7 +232,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
 
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
-  for (const auto& segment : index) {
+  for (const auto& segment : ctx.index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
 
@@ -290,7 +281,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
   const size_t base_offset = options().begin()->first;
 
   // finish stats
-  bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
+  bstring stats(ctx.scorers.stats_size(), 0);  // aggregated phrase stats
   auto* stats_buf = stats.data();
 
   FixedPhraseQuery::positions_t positions(phrase_size);
@@ -299,48 +290,48 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(const IndexReader& index,
   size_t term_idx = 0;
   for (const auto& term : options()) {
     *pos_itr = position::value_t(term.first - base_offset);
-    term_stats.finish(stats_buf, term_idx, field_stats, index);
+    term_stats.finish(stats_buf, term_idx, field_stats, ctx.index);
     ++pos_itr;
     ++term_idx;
   }
 
-  return memory::make_managed<FixedPhraseQuery>(
-    std::move(phrase_states), std::move(positions), std::move(stats),
-    boost * this->boost());
+  return memory::make_tracked_managed<FixedPhraseQuery>(
+    ctx.memory, std::move(phrase_states), std::move(positions),
+    std::move(stats), ctx.boost * boost());
 }
 
 filter::prepared::ptr by_phrase::variadic_prepare_collect(
-  const IndexReader& index, const Scorers& ord, score_t boost) const {
+  const PrepareContext& ctx) const {
   const auto phrase_size = options().size();
 
   // stats collectors
-  field_collectors field_stats(ord);
+  field_collectors field_stats{ctx.scorers};
 
   std::vector<field_visitor> phrase_part_visitors;
   phrase_part_visitors.reserve(phrase_size);
   std::vector<term_collectors> phrase_part_stats;
   phrase_part_stats.reserve(phrase_size);
   for (const auto& word : options()) {
-    phrase_part_stats.emplace_back(ord, 0);
+    phrase_part_stats.emplace_back(ctx.scorers, 0);
     phrase_part_visitors.emplace_back(std::visit(GetVisitor{}, word.second));
   }
 
   // per segment phrase states
-  VariadicPhraseQuery::states_t phrase_states{index.size()};
+  VariadicPhraseQuery::states_t phrase_states{ctx.memory, ctx.index.size()};
 
-  // per segment phrase terms
-  std::vector<size_t> num_terms(phrase_size);  // number of terms per part
-  PhraseTerms<VariadicPhraseState::TermState> phrase_terms;
+  // per segment phrase terms: number of terms per part
+  ManagedVector<size_t> num_terms(phrase_size, {ctx.memory});
+  VariadicPhraseState::Terms phrase_terms;
   // reserve space for at least 1 term per part
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
   const std::string_view field = this->field();
-  const auto is_ord_empty = ord.empty();
+  const auto is_ord_empty = ctx.scorers.empty();
 
   phrase_term_visitor<decltype(phrase_terms)> ptv(phrase_terms);
 
-  for (const auto& segment : index) {
+  for (const auto& segment : ctx.index) {
     // get term dictionary for field
     const auto* reader = segment.field(field);
 
@@ -405,7 +396,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // finish stats
   IRS_ASSERT(phrase_size == phrase_part_stats.size());
-  bstring stats(ord.stats_size(), 0);  // aggregated phrase stats
+  bstring stats(ctx.scorers.stats_size(), 0);  // aggregated phrase stats
   auto* stats_buf = stats.data();
   auto collector = phrase_part_stats.begin();
 
@@ -416,15 +407,15 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     *pos_itr = position::value_t(term.first - base_offset);
     for (size_t term_idx = 0, size = collector->size(); term_idx < size;
          ++term_idx) {
-      collector->finish(stats_buf, term_idx, field_stats, index);
+      collector->finish(stats_buf, term_idx, field_stats, ctx.index);
     }
     ++pos_itr;
     ++collector;
   }
 
-  return memory::make_managed<VariadicPhraseQuery>(
-    std::move(phrase_states), std::move(positions), std::move(stats),
-    boost * this->boost());
+  return memory::make_tracked_managed<VariadicPhraseQuery>(
+    ctx.memory, std::move(phrase_states), std::move(positions),
+    std::move(stats), ctx.boost * boost());
 }
 
 }  // namespace irs

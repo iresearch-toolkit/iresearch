@@ -28,11 +28,11 @@ namespace irs {
 
 struct term_reader;
 
-template<typename StateType>
-using PhraseTerms = std::vector<StateType>;
-
 // Cached per reader fixed phrase state
 struct FixedPhraseState {
+  explicit FixedPhraseState(IResourceManager& memory) noexcept
+    : terms{{memory}} {}
+
   // Mimic std::pair interface
   struct TermState {
     TermState(seek_cookie::ptr&& first, score_t /*second*/) noexcept
@@ -41,7 +41,8 @@ struct FixedPhraseState {
     seek_cookie::ptr first;
   };
 
-  PhraseTerms<TermState> terms;
+  using Terms = ManagedVector<TermState>;
+  Terms terms;
   const term_reader* reader{};
 };
 
@@ -50,10 +51,14 @@ static_assert(std::is_nothrow_move_assignable_v<FixedPhraseState>);
 
 // Cached per reader variadic phrase state
 struct VariadicPhraseState {
+  explicit VariadicPhraseState(IResourceManager& memory) noexcept
+    : num_terms{{memory}}, terms{{memory}} {}
+
   using TermState = std::pair<seek_cookie::ptr, score_t>;
 
-  std::vector<size_t> num_terms;  // number of terms per phrase part
-  PhraseTerms<TermState> terms;
+  ManagedVector<size_t> num_terms;  // number of terms per phrase part
+  using Terms = ManagedVector<TermState>;
+  Terms terms;
   const term_reader* reader{};
   bool volatile_boost{};
 };

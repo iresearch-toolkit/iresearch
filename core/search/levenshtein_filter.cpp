@@ -38,9 +38,8 @@
 #include "utils/std.hpp"
 #include "utils/utf8_utils.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @returns levenshtein similarity
@@ -48,8 +47,7 @@ using namespace irs;
 IRS_FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
   IRS_ASSERT(size);
 
-  static_assert(sizeof(score_t) == sizeof(uint32_t),
-                "sizeof(score_t) != sizeof(uint32_t)");
+  static_assert(sizeof(score_t) == sizeof(uint32_t));
 
   return 1.f - score_t(distance) / size;
 }
@@ -134,9 +132,9 @@ class top_terms_collector
 /// @param visitor visitor
 //////////////////////////////////////////////////////////////////////////////
 template<typename Visitor>
-void visit(const SubReader& segment, const term_reader& reader,
-           const byte_type no_distance, const uint32_t utf8_target_size,
-           automaton_table_matcher& matcher, Visitor&& visitor) {
+void VisitImpl(const SubReader& segment, const term_reader& reader,
+               const byte_type no_distance, const uint32_t utf8_target_size,
+               automaton_table_matcher& matcher, Visitor&& visitor) {
   IRS_ASSERT(fst::kError != matcher.Properties(0));
   auto terms = reader.iterator(matcher);
 
@@ -160,7 +158,7 @@ void visit(const SubReader& segment, const term_reader& reader,
       const auto utf8_value_size =
         static_cast<uint32_t>(utf8_utils::utf8_length(terms->value()));
       const auto boost =
-        ::similarity(*distance, std::min(utf8_value_size, utf8_target_size));
+        similarity(*distance, std::min(utf8_value_size, utf8_target_size));
 
       visitor.visit(boost);
     } while (terms->next());
@@ -184,37 +182,33 @@ bool collect_terms(const IndexReader& index, std::string_view field,
   const byte_type max_distance = d.max_distance() + 1;
 
   for (auto& segment : index) {
-    auto* reader = segment.field(field);
-
-    if (!reader) {
-      continue;
+    if (auto* reader = segment.field(field); reader) {
+      VisitImpl(segment, *reader, max_distance, utf8_term_size, matcher,
+                collector);
     }
-
-    visit(segment, *reader, max_distance, utf8_term_size, matcher, collector);
   }
 
   return true;
 }
 
 filter::prepared::ptr prepare_levenshtein_filter(
-  const IndexReader& index, const Scorers& order, score_t boost,
-  std::string_view field, bytes_view prefix, bytes_view term,
-  size_t terms_limit, const parametric_description& d) {
-  field_collectors field_stats(order);
-  term_collectors term_stats(order, 1);
-  MultiTermQuery::States states{index.size()};
+  const PrepareContext& ctx, std::string_view field, bytes_view prefix,
+  bytes_view term, size_t terms_limit, const parametric_description& d) {
+  field_collectors field_stats{ctx.scorers};
+  term_collectors term_stats{ctx.scorers, 1};
+  MultiTermQuery::States states{ctx.memory, ctx.index.size()};
 
   if (!terms_limit) {
     all_terms_collector term_collector{states, field_stats, term_stats};
     term_collector.stat_index(0);  // aggregate stats from different terms
 
-    if (!collect_terms(index, field, prefix, term, d, term_collector)) {
+    if (!collect_terms(ctx.index, field, prefix, term, d, term_collector)) {
       return filter::prepared::empty();
     }
   } else {
     top_terms_collector term_collector(terms_limit, field_stats);
 
-    if (!collect_terms(index, field, prefix, term, d, term_collector)) {
+    if (!collect_terms(ctx.index, field, prefix, term, d, term_collector)) {
       return filter::prepared::empty();
     }
 
@@ -225,19 +219,17 @@ filter::prepared::ptr prepare_levenshtein_filter(
     });
   }
 
-  std::vector<bstring> stats(1);
-  stats.back().resize(order.stats_size(), 0);
+  MultiTermQuery::Stats stats(1);
+  stats.back().resize(ctx.scorers.stats_size(), 0);
   auto* stats_buf = stats[0].data();
-  term_stats.finish(stats_buf, 0, field_stats, index);
+  term_stats.finish(stats_buf, 0, field_stats, ctx.index);
 
-  return memory::make_managed<MultiTermQuery>(std::move(states),
-                                              std::move(stats), boost,
-                                              ScoreMergeType::kMax, size_t{1});
+  return memory::make_tracked_managed<MultiTermQuery>(
+    ctx.memory, std::move(states), std::move(stats), ctx.boost,
+    ScoreMergeType::kMax, size_t{1});
 }
 
 }  // namespace
-
-namespace irs {
 
 field_visitor by_edit_distance::visitor(
   const options_type::filter_options& opts) {
@@ -281,37 +273,35 @@ field_visitor by_edit_distance::visitor(
       return [ctx = std::move(ctx), utf8_term_size, max_distance](
                const SubReader& segment, const term_reader& field,
                filter_visitor& visitor) mutable {
-        return ::visit(segment, field, max_distance, utf8_term_size,
-                       ctx->matcher, visitor);
+        return VisitImpl(segment, field, max_distance, utf8_term_size,
+                         ctx->matcher, visitor);
       };
     });
 }
 
 filter::prepared::ptr by_edit_distance::prepare(
-  const IndexReader& index, const Scorers& order, score_t boost,
-  std::string_view field, bytes_view term, size_t scored_terms_limit,
-  byte_type max_distance, options_type::pdp_f provider,
-  bool with_transpositions, bytes_view prefix) {
+  const PrepareContext& ctx, std::string_view field, bytes_view term,
+  size_t scored_terms_limit, byte_type max_distance,
+  options_type::pdp_f provider, bool with_transpositions, bytes_view prefix) {
   return executeLevenshtein(
     max_distance, provider, with_transpositions, prefix, term,
     []() -> filter::prepared::ptr { return prepared::empty(); },
-    [&index, &order, boost, &field, &prefix, &term]() -> filter::prepared::ptr {
+    [&]() -> filter::prepared::ptr {
       if (!prefix.empty() && !term.empty()) {
         bstring target;
         target.reserve(prefix.size() + term.size());
         target += prefix;
         target += term;
-        return by_term::prepare(index, order, boost, field, target);
+        return by_term::prepare(ctx, field, target);
       }
 
-      return by_term::prepare(index, order, boost, field,
-                              prefix.empty() ? term : prefix);
+      return by_term::prepare(ctx, field, prefix.empty() ? term : prefix);
     },
-    [&field, scored_terms_limit, &index, &order, boost](
-      const parametric_description& d, const bytes_view prefix,
-      const bytes_view term) -> filter::prepared::ptr {
-      return prepare_levenshtein_filter(index, order, boost, field, prefix,
-                                        term, scored_terms_limit, d);
+    [&, scored_terms_limit](const parametric_description& d,
+                            const bytes_view prefix,
+                            const bytes_view term) -> filter::prepared::ptr {
+      return prepare_levenshtein_filter(ctx, field, prefix, term,
+                                        scored_terms_limit, d);
     });
 }
 

@@ -678,16 +678,14 @@ class IndexWriter : private util::noncopyable {
     RefTrackingDirectory dir_;
 
     // sequential list of pending modification
-    std::vector<QueryContext, ManagedTypedAllocator<QueryContext>> queries_;
+    ManagedVector<QueryContext> queries_;
     // all of the previously flushed versions of this segment
-    std::vector<FlushedSegment, ManagedTypedAllocator<FlushedSegment>> flushed_;
+    ManagedVector<FlushedSegment> flushed_;
     // update_contexts to use with 'flushed_'
     // sequentially increasing through all offsets
     // (sequential doc_id in 'flushed_' == offset + doc_limits::min(), size()
     // == sum of all 'flushed_'.'docs_count')
-    std::vector<segment_writer::DocContext,
-                ManagedTypedAllocator<segment_writer::DocContext>>
-      flushed_docs_;
+    ManagedVector<segment_writer::DocContext> flushed_docs_;
 
     // function to get new SegmentMeta from
     segment_meta_generator_t meta_generator_;

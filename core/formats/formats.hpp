@@ -62,7 +62,7 @@ using DocumentMask =
                       absl::container_internal::hash_default_hash<doc_id_t>,
                       absl::container_internal::hash_default_eq<doc_id_t>,
                       ManagedTypedAllocator<doc_id_t>>;
-using DocMap = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
+using DocMap = ManagedVector<doc_id_t>;
 using DocMapView = std::span<const doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 

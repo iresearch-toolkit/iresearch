@@ -117,6 +117,7 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
     if (ctx.scorers.empty()) {
       return MakeAllDocsFilter(kNoBoost)->prepare({
         .index = ctx.index,
+        .memory = ctx.memory,
       });
     } else {
       Or disj;
@@ -137,13 +138,14 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
 
   if (1 == size) {
     const auto term = std::begin(terms);
-    return by_term::prepare(ctx.index, ctx.scorers, sub_boost * term->boost,
-                            field(), term->term);
+    auto sub_ctx = ctx;
+    sub_ctx.boost = sub_boost * term->boost;
+    return by_term::prepare(sub_ctx, field(), term->term);
   }
 
   field_collectors field_stats{ctx.scorers};
   term_collectors term_stats{ctx.scorers, size};
-  MultiTermQuery::States states{ctx.index.size()};
+  MultiTermQuery::States states{ctx.memory, ctx.index.size()};
   all_terms_collector collector{states, field_stats, term_stats};
   collect_terms(ctx.index, field(), terms, collector);
 
@@ -158,15 +160,17 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
     return prepared::empty();
   }
 
-  MultiTermQuery::Stats stats{size};
+  MultiTermQuery::Stats stats{{ctx.memory}};
+  stats.resize(size);
   for (size_t term_idx = 0; auto& stat : stats) {
     stat.resize(ctx.scorers.stats_size(), 0);
     auto* stats_buf = stat.data();
     term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
-  return memory::make_managed<MultiTermQuery>(
-    std::move(states), std::move(stats), sub_boost, merge_type, min_match);
+  return memory::make_tracked_managed<MultiTermQuery>(
+    ctx.memory, std::move(states), std::move(stats), sub_boost, merge_type,
+    min_match);
 }
 
 }  // namespace irs

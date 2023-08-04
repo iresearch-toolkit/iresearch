@@ -69,7 +69,7 @@ void AccumulateFeatures(feature_set_t& accum, const feature_map_t& features) {
 
 // mapping of old doc_id to new doc_id (reader doc_ids are sequential 0 based)
 // masked doc_ids have value of MASKED_DOC_ID
-using doc_id_map_t = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
+using doc_id_map_t = ManagedVector<doc_id_t>;
 
 // document mapping function
 using doc_map_f = std::function<doc_id_t(doc_id_t)>;

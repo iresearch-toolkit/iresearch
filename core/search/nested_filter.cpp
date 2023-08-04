@@ -597,7 +597,6 @@ class ByNestedQuery : public filter::prepared {
     IRS_ASSERT(IsValid(match_));
   }
 
-  using filter::prepared::execute;
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
@@ -708,9 +707,9 @@ filter::prepared::ptr ByNestedFilter::prepare(const PrepareContext& ctx) const {
     return prepared::empty();
   }
 
-  return memory::make_managed<ByNestedQuery>(parent, std::move(prepared_child),
-                                             merge_type, match,
-                                             /*none_boost*/ sub_boost);
+  return memory::make_tracked_managed<ByNestedQuery>(
+    ctx.memory, parent, std::move(prepared_child), merge_type, match,
+    /*none_boost*/ sub_boost);
 }
 
 }  // namespace irs

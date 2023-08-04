@@ -46,9 +46,8 @@ class MergeWriter : public util::noncopyable {
     ReaderCtx(const SubReader& reader, IResourceManager& rm) noexcept
       : ReaderCtx{&reader, rm} {}
 
-    const SubReader* reader;  // segment reader
-    std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>
-      doc_id_map;                               // FIXME use bitpacking vector
+    const SubReader* reader;                    // segment reader
+    ManagedVector<doc_id_t> doc_id_map;         // FIXME use bitpacking vector
     std::function<doc_id_t(doc_id_t)> doc_map;  // mapping function
   };
 
@@ -98,7 +97,7 @@ class MergeWriter : public util::noncopyable {
                      const FlushProgress& progress);
 
   directory& dir_;
-  std::vector<ReaderCtx, ManagedTypedAllocator<ReaderCtx>> readers_;
+  ManagedVector<ReaderCtx> readers_;
   const ColumnInfoProvider* column_info_{};
   const FeatureInfoProvider* feature_info_{};
   ScorersView scorers_;

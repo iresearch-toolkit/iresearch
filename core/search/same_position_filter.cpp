@@ -105,15 +105,13 @@ class same_position_iterator : public Conjunction {
 
 class same_position_query : public filter::prepared {
  public:
-  typedef std::vector<TermState> terms_states_t;
-  typedef StatesCache<terms_states_t> states_t;
-  typedef std::vector<bstring> stats_t;
+  using terms_states_t = ManagedVector<TermState>;
+  using states_t = StatesCache<terms_states_t>;
+  using stats_t = ManagedVector<bstring>;
 
   explicit same_position_query(states_t&& states, stats_t&& stats,
                                score_t boost)
     : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
-
-  using filter::prepared::execute;
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // FIXME(gnusi): implement
@@ -203,7 +201,7 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   // per segment query state
-  same_position_query::states_t query_states{ctx.index.size()};
+  same_position_query::states_t query_states{ctx.memory, ctx.index.size()};
 
   // per segment terms states
   same_position_query::states_t::state_type term_states;
@@ -253,7 +251,7 @@ filter::prepared::ptr by_same_position::prepare(
 
       term->read();  // read term attributes
       term_stats.collect(segment, *field, term_idx, *term);
-      term_states.emplace_back();
+      term_states.emplace_back(ctx.memory);
 
       auto& state = term_states.back();
 
@@ -282,8 +280,8 @@ filter::prepared::ptr by_same_position::prepare(
     term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
-  return memory::make_managed<same_position_query>(
-    std::move(query_states), std::move(stats), ctx.boost * boost());
+  return memory::make_tracked_managed<same_position_query>(
+    ctx.memory, std::move(query_states), std::move(stats), ctx.boost * boost());
 }
 
 }  // namespace irs

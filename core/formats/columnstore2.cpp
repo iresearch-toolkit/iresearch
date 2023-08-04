@@ -788,7 +788,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
 
 class fixed_length_column : public column_base {
  public:
-  using Blocks = std::vector<uint64_t, ManagedTypedAllocator<uint64_t>>;
+  using Blocks = ManagedVector<uint64_t>;
 
   static column_ptr read(std::optional<std::string>&& name,
                          IResourceManager& rm_r, IResourceManager& rm_c,
@@ -1004,12 +1004,13 @@ class sparse_column : public column_base {
       std::move(blocks));
   }
 
-  sparse_column(
-    std::optional<std::string>&& name, IResourceManager& resource_manager,
-    bstring&& payload, column_header&& hdr, column_index&& index,
-    const index_input& data_in, compression::decompressor::ptr&& inflater,
-    encryption::stream* cipher,
-    std::vector<column_block, ManagedTypedAllocator<column_block>>&& blocks)
+  sparse_column(std::optional<std::string>&& name,
+                IResourceManager& resource_manager, bstring&& payload,
+                column_header&& hdr, column_index&& index,
+                const index_input& data_in,
+                compression::decompressor::ptr&& inflater,
+                encryption::stream* cipher,
+                ManagedVector<column_block>&& blocks)
     : column_base{std::move(name), resource_manager, std::move(payload),
                   std::move(hdr),  std::move(index), data_in,
                   cipher},
@@ -1054,9 +1055,9 @@ class sparse_column : public column_base {
   }
 
  private:
-  static std::vector<column_block, ManagedTypedAllocator<column_block>>
-  read_blocks_sparse(const column_header& hdr, index_input& in,
-                     IResourceManager& resource_manager);
+  static ManagedVector<column_block> read_blocks_sparse(
+    const column_header& hdr, index_input& in,
+    IResourceManager& resource_manager);
 
   template<typename ValueReader>
   class payload_reader : private ValueReader {
@@ -1073,8 +1074,7 @@ class sparse_column : public column_base {
 
   template<bool encrypted>
   bool make_buffered_data(
-    column_header& hdr, index_input& in,
-    std::vector<column_block, ManagedTypedAllocator<column_block>>& blocks,
+    column_header& hdr, index_input& in, ManagedVector<column_block>& blocks,
     std::vector<byte_type>& column_data,
     std::span<memory::managed_ptr<column_reader>> next_sorted_columns,
     remapped_bytes_view_input::mapping* mapping) {
@@ -1168,7 +1168,7 @@ class sparse_column : public column_base {
     return true;
   }
 
-  std::vector<column_block, ManagedTypedAllocator<column_block>> blocks_;
+  ManagedVector<column_block> blocks_;
   compression::decompressor::ptr inflater_;
 };
 

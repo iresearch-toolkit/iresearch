@@ -46,16 +46,16 @@ struct by_term_options {
 // User-side term filter
 class by_term : public filter_base<by_term_options> {
  public:
-  static prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                               score_t boost, std::string_view field,
-                               bytes_view term);
+  static prepared::ptr prepare(const PrepareContext& ctx,
+                               std::string_view field, bytes_view term);
 
   static void visit(const SubReader& segment, const term_reader& field,
                     bytes_view term, filter_visitor& visitor);
 
   prepared::ptr prepare(const PrepareContext& ctx) const final {
-    return prepare(ctx.index, ctx.scorers, ctx.boost * boost(), field(),
-                   options().term);
+    auto sub_ctx = ctx;
+    sub_ctx.boost *= boost();
+    return prepare(sub_ctx, field(), options().term);
   }
 };
 

@@ -32,7 +32,8 @@ namespace irs {
 class MultiTermQuery : public filter::prepared {
  public:
   using States = StatesCache<MultiTermState>;
-  using Stats = std::vector<bstring>;
+  // TODO(MBkkt) block_pool<byte>
+  using Stats = ManagedVector<bstring>;
 
   explicit MultiTermQuery(States&& states, Stats&& stats, score_t boost,
                           ScoreMergeType merge_type, size_t min_match)

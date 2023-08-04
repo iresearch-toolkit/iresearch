@@ -44,8 +44,7 @@ struct BufferedValue {
 
 class BufferedColumn final : public column_output, private util::noncopyable {
  public:
-  using BufferedValues =
-    std::vector<BufferedValue, ManagedTypedAllocator<BufferedValue>>;
+  using BufferedValues = ManagedVector<BufferedValue>;
   using Buffer = irs::basic_string<irs::byte_type,
                                    irs::ManagedTypedAllocator<irs::byte_type>>;
   explicit BufferedColumn(const ColumnInfo& info, IResourceManager& rm)

@@ -388,9 +388,10 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   a.EmplaceArc(rho_states_[3], label, rho_states_[2]);
 }
 
-filter::prepared::ptr prepare_automaton_filter(
-  std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
-  const IndexReader& index, const Scorers& order, score_t boost) {
+filter::prepared::ptr prepare_automaton_filter(const PrepareContext& ctx,
+                                               std::string_view field,
+                                               const automaton& acceptor,
+                                               size_t scored_terms_limit) {
   auto matcher = make_automaton_matcher(acceptor);
 
   if (fst::kError == matcher.Properties(0)) {
@@ -405,27 +406,22 @@ filter::prepared::ptr prepare_automaton_filter(
 
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-    order.empty() ? 0 : scored_terms_limit);
-  MultiTermQuery::States states{index.size()};
+    ctx.scorers.empty() ? 0 : scored_terms_limit);
+  MultiTermQuery::States states{ctx.memory, ctx.index.size()};
   multiterm_visitor mtv{collector, states};
 
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-
-    if (!reader) {
-      continue;
+  for (const auto& segment : ctx.index) {
+    if (const auto* reader = segment.field(field); reader) {
+      visit(segment, *reader, matcher, mtv);
     }
-
-    visit(segment, *reader, matcher, mtv);
   }
 
   MultiTermQuery::Stats stats;
-  collector.score(index, order, stats);
+  collector.score(ctx.index, ctx.scorers, stats);
 
-  return memory::make_managed<MultiTermQuery>(std::move(states),
-                                              std::move(stats), boost,
-                                              ScoreMergeType::kSum, size_t{1});
+  return memory::make_tracked_managed<MultiTermQuery>(
+    ctx.memory, std::move(states), std::move(stats), ctx.boost,
+    ScoreMergeType::kSum, size_t{1});
 }
 
 }  // namespace irs

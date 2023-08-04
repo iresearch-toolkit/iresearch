@@ -475,8 +475,9 @@ inline automaton make_all() {
 /// @param bool query boost
 /// @returns compiled filter
 //////////////////////////////////////////////////////////////////////////////
-filter::prepared::ptr prepare_automaton_filter(
-  std::string_view field, const automaton& acceptor, size_t scored_terms_limit,
-  const IndexReader& index, const Scorers& order, score_t boost);
+filter::prepared::ptr prepare_automaton_filter(const PrepareContext& ctx,
+                                               std::string_view field,
+                                               const automaton& acceptor,
+                                               size_t scored_terms_limit);
 
 }  // namespace irs

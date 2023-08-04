@@ -142,26 +142,22 @@ field_visitor by_wildcard::visitor(bytes_view term) {
     });
 }
 
-filter::prepared::ptr by_wildcard::prepare(const IndexReader& index,
-                                           const Scorers& order, score_t boost,
+filter::prepared::ptr by_wildcard::prepare(const PrepareContext& ctx,
                                            std::string_view field,
                                            bytes_view term,
                                            size_t scored_terms_limit) {
   bstring buf;
   return executeWildcard(
     buf, term, []() -> filter::prepared::ptr { return prepared::empty(); },
-    [&index, &order, boost, &field](bytes_view term) -> filter::prepared::ptr {
-      return by_term::prepare(index, order, boost, field, term);
+    [&](bytes_view term) -> filter::prepared::ptr {
+      return by_term::prepare(ctx, field, term);
     },
-    [&index, &order, boost, &field,
-     scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
-      return by_prefix::prepare(index, order, boost, field, term,
-                                scored_terms_limit);
+    [&, scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
+      return by_prefix::prepare(ctx, field, term, scored_terms_limit);
     },
-    [&index, &order, boost, &field,
-     scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
-      return prepare_automaton_filter(field, from_wildcard(term),
-                                      scored_terms_limit, index, order, boost);
+    [&, scored_terms_limit](bytes_view term) -> filter::prepared::ptr {
+      return prepare_automaton_filter(ctx, field, from_wildcard(term),
+                                      scored_terms_limit);
     });
 }
 

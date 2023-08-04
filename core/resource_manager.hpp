@@ -22,10 +22,13 @@
 
 #pragma once
 
+#include <vector>
+
 #include "shared.hpp"
 #include "utils/managed_allocator.hpp"
 
 namespace irs {
+
 struct IResourceManager {
   static IResourceManager kNoop;
 #ifdef IRESEARCH_DEBUG
@@ -80,5 +83,8 @@ struct ManagedTypedAllocator
   }
   using Base::Base;
 };
+
+template<typename T>
+using ManagedVector = std::vector<T, ManagedTypedAllocator<T>>;
 
 }  // namespace irs
