@@ -54,8 +54,7 @@ IRS_FORCE_INLINE void pop_heap(Iterator first, Iterator last, Pred comp) {
 }
 
 template<size_t Size>
-class min_match_buffer {
- public:
+struct min_match_buffer {
   explicit min_match_buffer(size_t min_match_count) noexcept
     : min_match_count_(std::max(size_t(1), min_match_count)) {}
 
@@ -68,27 +67,19 @@ class min_match_buffer {
 
   void clear() noexcept { std::memset(match_count_, 0, sizeof match_count_); }
 
+  void min_match_count(size_t min_match_count) noexcept {
+    min_match_count_ = std::max(min_match_count, min_match_count_);
+  }
   size_t min_match_count() const noexcept { return min_match_count_; }
 
  private:
-  const size_t min_match_count_;
+  size_t min_match_count_;
   uint32_t match_count_[Size];
 };
 
 template<>
-class min_match_buffer<0> {
- public:
+struct min_match_buffer<0> {
   explicit min_match_buffer(size_t) noexcept {}
-  bool inc(size_t) noexcept {
-    IRS_ASSERT(false);
-    return true;
-  }
-  void clear() noexcept { IRS_ASSERT(false); }
-  uint32_t match_count(size_t) const noexcept {
-    IRS_ASSERT(false);
-    return 1;
-  }
-  uint32_t min_match_count() const noexcept { return 1; }
 };
 
 class score_buffer {
@@ -134,6 +125,26 @@ struct empty_score_buffer {
   size_t bucket_size() const noexcept { return 0; }
 };
 
+inline SubScores MakeSubScores(auto& itrs) {
+  SubScores scores;
+  scores.scores.reserve(itrs.size());
+  for (auto& it : itrs) {
+    // FIXME(gnus): remove const cast
+    auto* score = const_cast<irs::score*>(it.score);
+    IRS_ASSERT(score);  // ensured by ScoreAdapter
+    if (score->IsDefault()) {
+      continue;
+    }
+    scores.scores.emplace_back(score);
+    const auto tail = score->max.tail;
+    if (tail == std::numeric_limits<score_t>::max()) {
+      return {};
+    }
+    scores.sum_score += tail;
+  }
+  return scores;
+}
+
 }  // namespace detail
 
 template<typename Adapter>
@@ -145,8 +156,7 @@ struct compound_doc_iterator : doc_iterator {
 };
 
 // Wrapper around regular doc_iterator to conform compound_doc_iterator API
-template<typename DocIterator,
-         typename Adapter = score_iterator_adapter<DocIterator>>
+template<typename DocIterator, typename Adapter = ScoreAdapter<DocIterator>>
 class unary_disjunction : public compound_doc_iterator<Adapter> {
  public:
   using doc_iterator_t = Adapter;
@@ -175,7 +185,7 @@ class unary_disjunction : public compound_doc_iterator<Adapter> {
 
 // Disjunction optimized for two iterators.
 template<typename DocIterator, typename Merger,
-         typename Adapter = score_iterator_adapter<DocIterator>>
+         typename Adapter = ScoreAdapter<DocIterator>>
 class basic_disjunction : public compound_doc_iterator<Adapter>,
                           private Merger,
                           private score_ctx {
@@ -254,11 +264,11 @@ class basic_disjunction : public compound_doc_iterator<Adapter>,
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
     if constexpr (HasScore_v<Merger>) {
-      prepare_score();
+      prepare_score(false, false);
     }
   }
 
-  void prepare_score() {
+  void prepare_score(bool /*wand*/, bool /*strict*/) {
     IRS_ASSERT(Merger::size());
     IRS_ASSERT(lhs_.score && rhs_.score);  // must be ensure by the adapter
 
@@ -342,7 +352,7 @@ class basic_disjunction : public compound_doc_iterator<Adapter>,
 //                     |   begin
 // ----------------------------------------------------------------------------
 template<typename DocIterator, typename Merger,
-         typename Adapter = score_iterator_adapter<DocIterator>>
+         typename Adapter = ScoreAdapter<DocIterator>>
 class small_disjunction : public compound_doc_iterator<Adapter>,
                           private Merger,
                           private score_ctx {
@@ -580,8 +590,7 @@ class small_disjunction : public compound_doc_iterator<Adapter>,
 //   [n]   <-- lead (accepted iterator)
 // ----------------------------------------------------------------------------
 template<typename DocIterator, typename Merger,
-         typename Adapter = score_iterator_adapter<DocIterator>,
-         bool EnableUnary = false>
+         typename Adapter = ScoreAdapter<DocIterator>, bool EnableUnary = false>
 class disjunction : public compound_doc_iterator<Adapter>,
                     private Merger,
                     private score_ctx {
@@ -833,18 +842,23 @@ class disjunction : public compound_doc_iterator<Adapter>,
   attributes attrs_;
 };
 
-enum class MatchType { kMatch, kMinMatchFast, kMinMatch };
+enum class MatchType {
+  kMatch,
+  kMinMatchFast,
+  kMinMatch,
+};
 
 template<MatchType MinMatch, bool SeekReadahead, size_t NumBlocks = 8>
 struct block_disjunction_traits {
   // "false" - iterator is used for min match filtering,
   // "true" - otherwise
-  static constexpr bool kMinMatch = MatchType::kMatch != MinMatch;
+  static constexpr bool kMinMatchEarlyPruning =
+    MatchType::kMinMatchFast == MinMatch;
 
   // "false" - iterator is used for min match filtering,
   // "true" - otherwise
-  static constexpr bool kMinMatchEarlyPruning =
-    MatchType::kMinMatchFast == MinMatch;
+  static constexpr bool kMinMatch =
+    kMinMatchEarlyPruning || MatchType::kMatch != MinMatch;
 
   // Use readahead buffer for random access
   static constexpr bool kSeekReadahead = SeekReadahead;
@@ -858,7 +872,7 @@ struct block_disjunction_traits {
 // count equals to a number of input iterators.
 // It's better to to use a dedicated "conjunction" iterator.
 template<typename DocIterator, typename Merger, typename Traits,
-         typename Adapter = score_iterator_adapter<DocIterator>>
+         typename Adapter = ScoreAdapter<DocIterator>>
 class block_disjunction : public doc_iterator,
                           private Merger,
                           private score_ctx {
@@ -868,26 +882,24 @@ class block_disjunction : public doc_iterator,
   using merger_type = Merger;
   using doc_iterators_t = std::vector<adapter>;
 
-  // FIXME(gnusi): do we need this?
-  static constexpr bool kEnableUnary = false;
-
-  // Block disjunction is faster than small_disjunction
-  static constexpr size_t kSmallDisjunctionUpperBound = 0;
-
   block_disjunction(doc_iterators_t&& itrs, Merger&& merger, cost::cost_t est)
-    : block_disjunction{std::move(itrs), 1, std::move(merger), est} {}
+    : block_disjunction{std::move(itrs), 1, std::move(merger), SubScores{},
+                        est} {}
 
   block_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
-                    Merger&& merger, cost::cost_t est)
-    : block_disjunction{std::move(itrs), min_match_count, std::move(merger),
-                        est, resolve_overload_tag()} {}
+                    Merger&& merger, SubScores&& scores, cost::cost_t est)
+    : block_disjunction{std::move(itrs),   min_match_count,
+                        std::move(merger), est,
+                        std::move(scores), resolve_overload_tag()} {}
 
   explicit block_disjunction(doc_iterators_t&& itrs, Merger&& merger = Merger{})
     : block_disjunction{std::move(itrs), 1, std::move(merger)} {}
 
   block_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
-                    Merger&& merger = Merger{})
-    : block_disjunction{std::move(itrs), min_match_count, std::move(merger),
+                    Merger&& merger = Merger{}, SubScores&& scores = {})
+    : block_disjunction{std::move(itrs),
+                        min_match_count,
+                        std::move(merger),
                         [this]() noexcept {
                           return std::accumulate(
                             itrs_.begin(), itrs_.end(), cost::cost_t(0),
@@ -895,6 +907,7 @@ class block_disjunction : public doc_iterator,
                               return lhs + cost::extract(rhs, 0);
                             });
                         },
+                        std::move(scores),
                         resolve_overload_tag()} {}
 
   size_t match_count() const noexcept { return match_count_; }
@@ -1080,14 +1093,15 @@ class block_disjunction : public doc_iterator,
   template<typename Estimation>
   block_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
                     Merger&& merger, Estimation&& estimation,
-                    resolve_overload_tag)
+                    SubScores&& scores, resolve_overload_tag)
     : Merger{std::move(merger)},
       itrs_(std::move(itrs)),
       match_count_(itrs_.empty()
                      ? size_t(0)
                      : static_cast<size_t>(!traits_type::kMinMatch)),
       score_buf_(Merger::size(), kWindow),
-      match_buf_(min_match_count) {
+      match_buf_(min_match_count),
+      scores_(std::move(scores)) {
     std::get<cost>(attrs_).reset(std::forward<Estimation>(estimation));
 
     if (itrs_.empty()) {
@@ -1097,12 +1111,50 @@ class block_disjunction : public doc_iterator,
     if constexpr (HasScore_v<Merger>) {
       IRS_ASSERT(Merger::size());
       auto& score = std::get<irs::score>(attrs_);
+      auto min = ScoreFunction::DefaultMin;
+      if (!scores_.scores.empty()) {
+        score.max.leaf = score.max.tail = scores_.sum_score;
+        std::sort(scores_.scores.begin(), scores_.scores.end(),
+                  [](const auto* lhs, const auto* rhs) noexcept {
+                    return lhs->max.tail > rhs->max.tail;
+                  });
+        min = [](score_ctx* ctx, score_t arg) noexcept {
+          auto& self = static_cast<block_disjunction&>(*ctx);
+          auto it = self.scores_.scores.begin();
+          auto end = self.scores_.scores.end();
+          [[maybe_unused]] size_t min_match = 0;
+          [[maybe_unused]] score_t sum = 0.f;
+          while (it != end) {
+            auto next = end;
+            if constexpr (traits_type::kMinMatch) {
+              if (arg > sum) {  // TODO(MBkkt) strict wand: >=
+                ++min_match;
+                next = it + 1;
+              }
+              sum += (*it)->max.tail;
+            }
+            const auto others = self.scores_.sum_score - (*it)->max.tail;
+            if (arg > others) {
+              // For common usage `arg - others <= (*it)->max.tail` -- is true
+              (*it)->Min(arg - others);
+              next = it + 1;
+            }
+            it = next;
+          }
+          if constexpr (traits_type::kMinMatch) {
+            self.match_buf_.min_match_count(min_match);
+          }
+        };
+      }
 
-      score.Reset(*this, [](score_ctx* ctx, score_t* res) noexcept {
-        auto& self = static_cast<block_disjunction&>(*ctx);
-        std::memcpy(res, self.score_value_,
-                    static_cast<Merger&>(self).byte_size());
-      });
+      score.Reset(
+        *this,
+        [](score_ctx* ctx, score_t* res) noexcept {
+          auto& self = static_cast<block_disjunction&>(*ctx);
+          std::memcpy(res, self.score_value_,
+                      static_cast<Merger&>(self).byte_size());
+        },
+        min);
     }
 
     if (traits_type::kMinMatch && min_match_count > 1) {
@@ -1288,18 +1340,21 @@ class block_disjunction : public doc_iterator,
   size_t buf_offset_{};  // offset within a buffer
   IRS_NO_UNIQUE_ADDRESS score_buffer_type score_buf_;
   IRS_NO_UNIQUE_ADDRESS min_match_buffer_type match_buf_;
+  // TODO(MBkkt) We don't need scores_ for not wand,
+  // but we don't want to generate more functions, than necessary
+  SubScores scores_;
   const score_t* score_value_{score_buf_.data()};
 };
 
 template<typename DocIterator, typename Merger,
-         typename Adapter = score_iterator_adapter<DocIterator>>
+         typename Adapter = ScoreAdapter<DocIterator>>
 using disjunction_iterator =
   block_disjunction<DocIterator, Merger,
                     block_disjunction_traits<MatchType::kMatch, false>,
                     Adapter>;
 
 template<typename DocIterator, typename Merger,
-         typename Adapter = score_iterator_adapter<DocIterator>>
+         typename Adapter = ScoreAdapter<DocIterator>>
 using min_match_iterator =
   block_disjunction<DocIterator, Merger,
                     block_disjunction_traits<MatchType::kMinMatch, false>,
@@ -1308,30 +1363,32 @@ using min_match_iterator =
 template<typename T>
 struct RebindIterator;
 
-template<typename DocIterator, typename Merger, typename Adapter,
-         bool EnableUnary>
-struct RebindIterator<disjunction<DocIterator, Merger, Adapter, EnableUnary>> {
+template<typename DocIterator, typename Merger, typename Adapter>
+struct RebindIterator<disjunction<DocIterator, Merger, Adapter>> {
   using Unary = unary_disjunction<DocIterator, Adapter>;
   using Basic = basic_disjunction<DocIterator, Merger, Adapter>;
   using Small = small_disjunction<DocIterator, Merger, Adapter>;
+  using Wand = void;
 };
 
 template<typename DocIterator, typename Merger, typename Adapter>
 struct RebindIterator<disjunction_iterator<DocIterator, Merger, Adapter>> {
-  using Unary = unary_disjunction<DocIterator, Adapter>;
+  using Unary = void;  // block disjunction doesn't support visitor
   using Basic = basic_disjunction<DocIterator, Merger, Adapter>;
-  using Small = disjunction_iterator<DocIterator, Merger, Adapter>;
+  using Small = void;  // block disjunction always faster than small
+  using Wand = disjunction_iterator<DocIterator, Merger, Adapter>;
 };
 
 template<typename DocIterator, typename Merger, typename Adapter>
 struct RebindIterator<min_match_iterator<DocIterator, Merger, Adapter>> {
   using Disjunction = disjunction_iterator<DocIterator, Merger, Adapter>;
-  using Conjunction = conjunction<DocIterator, Merger>;
+  using Wand = min_match_iterator<DocIterator, Merger, Adapter>;
 };
 
 // Returns disjunction iterator created from the specified sub iterators
 template<typename Disjunction, typename Merger, typename... Args>
-doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
+doc_iterator::ptr MakeDisjunction(WandContext ctx,
+                                  typename Disjunction::doc_iterators_t&& itrs,
                                   Merger&& merger, Args&&... args) {
   const auto size = itrs.size();
 
@@ -1342,13 +1399,13 @@ doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
 
   if (1 == size) {
     // Single sub-query
-    if constexpr (Disjunction::kEnableUnary) {
-      using UnaryDisjunction = typename RebindIterator<Disjunction>::Unary;
-
+    using UnaryDisjunction = typename RebindIterator<Disjunction>::Unary;
+    if constexpr (std::is_void_v<UnaryDisjunction>) {
+      return std::move(itrs.front());
+    } else {
+      IRS_ASSERT(!ctx.Enabled());
       return memory::make_managed<UnaryDisjunction>(std::move(itrs.front()));
     }
-
-    return std::move(itrs.front());
   }
 
   if (2 == size) {
@@ -1360,13 +1417,26 @@ doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
       std::forward<Merger>(merger), std::forward<Args>(args)...);
   }
 
-  if constexpr (Disjunction::kSmallDisjunctionUpperBound > 0) {
+  using SmallDisjunction = typename RebindIterator<Disjunction>::Small;
+  if constexpr (!std::is_void_v<SmallDisjunction>) {
     if (size <= Disjunction::kSmallDisjunctionUpperBound) {
-      using SmallDisjunction = typename RebindIterator<Disjunction>::Small;
-
       return memory::make_managed<SmallDisjunction>(
         std::move(itrs), std::forward<Merger>(merger),
         std::forward<Args>(args)...);
+    }
+  }
+
+  using Wand = typename RebindIterator<Disjunction>::Wand;
+  if constexpr (!std::is_void_v<Wand>) {
+    if (ctx.Enabled()) {
+      // TODO(MBkkt) root optimization
+      // TODO(MBkkt) block wand/maxscore optimization
+      auto scores = detail::MakeSubScores(itrs);
+      if (!scores.scores.empty()) {
+        return memory::make_managed<Wand>(
+          std::move(itrs), size_t{1}, std::forward<Merger>(merger),
+          std::move(scores), std::forward<Args>(args)...);
+      }
     }
   }
 
@@ -1377,8 +1447,8 @@ doc_iterator::ptr MakeDisjunction(typename Disjunction::doc_iterators_t&& itrs,
 // Returns weak conjunction iterator created from the specified sub iterators
 template<typename WeakConjunction, typename Merger, typename... Args>
 doc_iterator::ptr MakeWeakDisjunction(
-  typename WeakConjunction::doc_iterators_t&& itrs, size_t min_match,
-  Merger&& merger, Args&&... args) {
+  WandContext ctx, typename WeakConjunction::doc_iterators_t&& itrs,
+  size_t min_match, Merger&& merger, Args&&... args) {
   // This case must be handled by a caller, we're unable to process it here
   IRS_ASSERT(min_match > 0);
 
@@ -1393,22 +1463,31 @@ doc_iterator::ptr MakeWeakDisjunction(
     // Pure disjunction
     using Disjunction = typename RebindIterator<WeakConjunction>::Disjunction;
 
-    return MakeDisjunction<Disjunction>(std::move(itrs),
+    return MakeDisjunction<Disjunction>(ctx, std::move(itrs),
                                         std::forward<Merger>(merger),
                                         std::forward<Args>(args)...);
   }
 
   if (min_match == size) {
     // Pure conjunction
-    using Conjunction = typename RebindIterator<WeakConjunction>::Conjunction;
-
-    return memory::make_managed<Conjunction>(std::move(itrs),
-                                             std::forward<Merger>(merger));
+    return MakeConjunction(ctx, std::forward<Merger>(merger), std::move(itrs));
   }
 
-  return memory::make_managed<WeakConjunction>(std::move(itrs), min_match,
-                                               std::forward<Merger>(merger),
-                                               std::forward<Args>(args)...);
+  if (ctx.Enabled()) {
+    auto scores = detail::MakeSubScores(itrs);
+    if (!scores.scores.empty()) {
+      // TODO(MBkkt) root optimization
+      // TODO(MBkkt) block wand/maxscore optimization
+      using Wand = typename RebindIterator<WeakConjunction>::Wand;
+      return memory::make_managed<Wand>(
+        std::move(itrs), min_match, std::forward<Merger>(merger),
+        std::move(scores), std::forward<Args>(args)...);
+    }
+  }
+
+  return memory::make_managed<WeakConjunction>(
+    std::move(itrs), min_match, std::forward<Merger>(merger), SubScores{},
+    std::forward<Args>(args)...);
 }
 
 }  // namespace irs

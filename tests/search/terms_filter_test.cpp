@@ -506,7 +506,7 @@ TEST_P(terms_filter_test_case, min_match) {
           auto* state = static_cast<ScoreCtx*>(ctx);
           *res = static_cast<irs::score_t>(state->doc->value) * state->boost;
         },
-        doc, boost);
+        irs::ScoreFunction::DefaultMin, doc, boost);
     };
 
     const auto filter =

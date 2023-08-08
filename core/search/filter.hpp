@@ -39,6 +39,7 @@ struct ExecutionContext {
   const SubReader& segment;
   const Scorers& scorers;
   const attribute_provider* ctx{};
+  // If enabled, wand would use first scorer from scorers
   WandContext wand;
 };
 

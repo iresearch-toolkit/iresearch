@@ -28,6 +28,8 @@
 namespace irs {
 
 // Represents a score related for the particular document
+// min score set by document consumers
+// max score set by document producers
 struct score : attribute, ScoreFunction {
   static const score kNoScore;
 
@@ -42,6 +44,21 @@ struct score : attribute, ScoreFunction {
   }
 
   using ScoreFunction::operator=;
+
+  // For disjunction/conjunction it's just sum of sub-iterators max score
+  // For iterator without score it depends on count of documents in iterator
+  // For wanderator it's max score for whole skip-list
+  // TODO(MBkkt) tail better here and not affect correctness
+  //  but to support it we need to know max value in the tail blocks.
+  //  Open question: how do it without read next blocks?
+  // TODO(MBkkt) At least when iterator exhausted, we could set it to zero.
+  struct UpperBounds {
+    score_t tail = std::numeric_limits<score_t>::max();
+    score_t leaf = std::numeric_limits<score_t>::max();
+#ifdef IRESEARCH_TEST
+    std::span<const score_t> levels;  // levels.back() == leaf
+#endif
+  } max;
 };
 
 using ScoreFunctions = SmallVector<ScoreFunction, 2>;
@@ -55,10 +72,10 @@ ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
 // Compiles a set of prepared scorers into a single score function.
 ScoreFunction CompileScorers(ScoreFunctions&& scorers);
 
-template<typename... Args>
-ScoreFunction CompileScore(Args&&... args) {
-  return CompileScorers(PrepareScorers(std::forward<Args>(args)...));
-}
+void CompileScore(irs::score& score, std::span<const ScorerBucket> buckets,
+                  const ColumnProvider& segment, const term_reader& field,
+                  const byte_type* stats, const attribute_provider& doc,
+                  score_t boost);
 
 // Prepare empty collectors, i.e. call collect(...) on each of the
 // buckets without explicitly collecting field or term statistics,

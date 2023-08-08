@@ -485,7 +485,7 @@ int search(std::string_view path, std::string_view dir_type,
       return {};
     }
 
-    return {.index = 0, .strict = (mode == ExecutionMode::kStrictTop)};
+    return {.index = 0, .strict = mode == ExecutionMode::kStrictTop};
   }();
 
   auto arg_format_itr = kTextFormats.find(scorer_arg_format);
@@ -544,7 +544,7 @@ int search(std::string_view path, std::string_view dir_type,
             << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << '\n'
             << SCORER << "=" << scorer << '\n'
             << SCORER_ARG_FMT << "=" << scorer_arg_format << '\n'
-            << SCORER_ARG << "=" << scorer_arg << '\n';
+            << SCORER_ARG << "=" << scorer_arg << std::endl;
 
   SCOPED_TIMER("Total Time");
 
@@ -561,9 +561,10 @@ int search(std::string_view path, std::string_view dir_type,
     reader = irs::DirectoryReader(*dir, codec, options);
   }
 
-  std::cout << "Index stats:\n"
-            << "docs=" << reader->docs_count()
-            << "\nlive-docs=" << reader->live_docs_count() << '\n';
+  std::cout << "Index stats:"
+            << "\nsegments=" << reader->size()
+            << "\ndocs=" << reader->docs_count()
+            << "\nlive-docs=" << reader->live_docs_count() << std::endl;
 
   {
     SCOPED_TIMER("Order build time");
@@ -689,7 +690,6 @@ int search(std::string_view path, std::string_view dir_type,
           irs::timer_utils::scoped_timer timer(
             *(execution_timers.stat[size_t(task->category)]));
 
-          irs::score_threshold tmp;
           for (auto left = limit; auto& segment : reader) {
             auto docs = filter->execute(irs::ExecutionContext{
               .segment = segment, .scorers = order, .wand = wand});
@@ -698,13 +698,9 @@ int search(std::string_view path, std::string_view dir_type,
             const irs::document* doc = irs::get<irs::document>(*docs);
             const irs::score* score = irs::get<irs::score>(*docs);
 
-            auto* threshold =
-              irs::get_mutable<irs::score_threshold>(docs.get());
-            if (!threshold) {
-              threshold = &tmp;
-            }
+            auto* threshold = irs::get_mutable<irs::score>(docs.get());
 
-            if (!left) {
+            if (!left && threshold) {
               IRS_ASSERT(!sorted.empty());
               IRS_ASSERT(std::is_heap(
                 std::begin(sorted), std::end(sorted),
@@ -712,7 +708,7 @@ int search(std::string_view path, std::string_view dir_type,
                    const std::pair<float_t, irs::doc_id_t>& rhs) noexcept {
                   return lhs.first > rhs.first;
                 }));
-              threshold->min = sorted.front().first;
+              threshold->Min(sorted.front().first);
             }
 
             for (float_t score_value; docs->next();) {
@@ -731,7 +727,7 @@ int search(std::string_view path, std::string_view dir_type,
                       return lhs.first > rhs.first;
                     });
 
-                  threshold->min = sorted.front().first;
+                  threshold->Min(sorted.front().first);
                 }
               } else if (sorted.front().first < score_value) {
                 std::pop_heap(
@@ -752,7 +748,7 @@ int search(std::string_view path, std::string_view dir_type,
                     return lhs.first > rhs.first;
                   });
 
-                threshold->min = sorted.front().first;
+                threshold->Min(sorted.front().first);
               }
             }
           }

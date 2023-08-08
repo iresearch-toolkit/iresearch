@@ -49,14 +49,67 @@ ScoreFunctions PrepareScorers(std::span<const ScorerBucket> buckets,
       bucket.prepare_scorer(segment, field.meta().features,
                             stats_buf + entry.stats_offset, doc, boost);
 
-    if (IRS_LIKELY(scorer)) {
-      scorers.emplace_back(std::move(scorer));
-    } else {
-      scorers.emplace_back(ScoreFunction::Default(1));
-    }
+    scorers.emplace_back(std::move(scorer));
   }
 
   return scorers;
+}
+
+// TODO(MBkkt) Do we really need to optimize >= 2 scorers case?
+
+static ScoreFunction CompileScorers(ScoreFunction&& wand,
+                                    ScoreFunctions&& tail) {
+  IRS_ASSERT(!tail.empty());
+  switch (tail.size()) {
+    case 0:
+      return std::move(wand);
+    case 1: {
+      struct Ctx final : score_ctx {
+        Ctx(ScoreFunction&& wand, ScoreFunction&& tail) noexcept
+          : wand{std::move(wand)}, tail{std::move(tail)} {}
+
+        ScoreFunction wand;
+        ScoreFunction tail;
+      };
+
+      return ScoreFunction::Make<Ctx>(
+        [](score_ctx* ctx, score_t* res) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          IRS_ASSERT(res != nullptr);
+          scorers_ctx->wand.Score(res);
+          scorers_ctx->tail.Score(res + 1);
+        },
+        [](score_ctx* ctx, score_t arg) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          scorers_ctx->wand.Min(arg);
+        },
+        std::move(wand), std::move(tail.front()));
+    }
+    default: {
+      struct Ctx final : score_ctx {
+        explicit Ctx(ScoreFunction&& wand, ScoreFunctions&& tail) noexcept
+          : wand{std::move(wand)}, tail{std::move(tail)} {}
+
+        ScoreFunction wand;
+        ScoreFunctions tail;
+      };
+
+      return ScoreFunction::Make<Ctx>(
+        [](score_ctx* ctx, score_t* res) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          IRS_ASSERT(res != nullptr);
+          scorers_ctx->wand(res);
+          for (auto& other : scorers_ctx->tail) {
+            other.Score(++res);
+          }
+        },
+        [](score_ctx* ctx, score_t arg) noexcept {
+          auto* scorers_ctx = static_cast<Ctx*>(ctx);
+          scorers_ctx->wand.Min(arg);
+        },
+        std::move(wand), std::move(tail));
+    }
+  }
 }
 
 ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
@@ -85,7 +138,8 @@ ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
           scorers_ctx->func0(res);
           scorers_ctx->func1(res + 1);
         },
-        std::move(scorers.front()), std::move(scorers.back()));
+        ScoreFunction::DefaultMin, std::move(scorers.front()),
+        std::move(scorers.back()));
     }
     default: {
       struct Ctx final : score_ctx {
@@ -102,7 +156,7 @@ ScoreFunction CompileScorers(ScoreFunctions&& scorers) {
             scorer(res++);
           }
         },
-        std::move(scorers));
+        ScoreFunction::DefaultMin, std::move(scorers));
     }
   }
 }
@@ -114,6 +168,29 @@ void PrepareCollectors(std::span<const ScorerBucket> order,
       entry.bucket->collect(stats_buf + entry.stats_offset, nullptr, nullptr);
     }
   }
+}
+
+void CompileScore(irs::score& score, std::span<const ScorerBucket> buckets,
+                  const ColumnProvider& segment, const term_reader& field,
+                  const byte_type* stats, const attribute_provider& doc,
+                  score_t boost) {
+  IRS_ASSERT(!buckets.empty());
+  // wanderator could have score for first bucket and score upper bounds.
+  if (score.IsDefault()) {
+    auto scorers = PrepareScorers(buckets, segment, field, stats, doc, boost);
+    // wanderator could have score upper bounds.
+    if (score.max.tail == std::numeric_limits<score_t>::max()) {
+      score.max.leaf = score.max.tail =
+        scorers.empty() ? 0.f : scorers.front().Max();
+    }
+    score = CompileScorers(std::move(scorers));
+  } else if (buckets.size() > 1) {
+    auto scorers =
+      PrepareScorers(buckets.subspan(1), segment, field, stats, doc, boost);
+    score = CompileScorers(std::move(score), std::move(scorers));
+    IRS_ASSERT(score.max.tail != std::numeric_limits<score_t>::max());
+  }
+  IRS_ASSERT(score.max.leaf <= score.max.tail);
 }
 
 }  // namespace irs

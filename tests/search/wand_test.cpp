@@ -127,7 +127,6 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
   const irs::WandContext mode{.index = wand_idx};
 
-  irs::score_threshold tmp;
   std::vector<ScoredDoc> sorted;
   sorted.reserve(limit);
 
@@ -138,20 +137,18 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
     const auto* doc = irs::get<irs::document>(*docs);
     EXPECT_NE(nullptr, doc);
-    const auto* score = irs::get<irs::score>(*docs);
+    auto* score = irs::get_mutable<irs::score>(docs.get());
     EXPECT_NE(nullptr, score);
-    auto* threshold = irs::get_mutable<irs::score_threshold>(docs.get());
     if (wand_idx != irs::WandContext::kDisable && can_use_wand) {
-      EXPECT_NE(nullptr, threshold->leaf_max);
+      EXPECT_NE(std::numeric_limits<irs::score_t>::max(), score->max.tail);
     } else {
-      EXPECT_EQ(nullptr, threshold->leaf_max);
-      threshold = &tmp;
+      EXPECT_EQ(std::numeric_limits<irs::score_t>::max(), score->max.tail);
     }
 
     if (!left) {
       EXPECT_TRUE(!sorted.empty());
       EXPECT_TRUE(std::is_heap(std::begin(sorted), std::end(sorted)));
-      threshold->min = sorted.front().score;
+      score->Min(sorted.front().score);
     }
 
     for (float_t score_value; docs->next();) {
@@ -162,7 +159,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
         if (0 == --left) {
           std::make_heap(std::begin(sorted), std::end(sorted));
-          threshold->min = sorted.front().score;
+          score->Min(sorted.front().score);
         }
       } else if (sorted.front().score < score_value) {
         std::pop_heap(std::begin(sorted), std::end(sorted));
@@ -174,7 +171,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
         std::push_heap(std::begin(sorted), std::end(sorted));
 
-        threshold->min = sorted.front().score;
+        score->Min(sorted.front().score);
       }
     }
 

@@ -57,7 +57,7 @@ ScoreFunction BoostScore::prepare_scorer(
       auto& state = *static_cast<volatile_boost_score_ctx*>(ctx);
       *res = state.volatile_boost->value * state.boost;
     },
-    volatile_boost, boost);
+    ScoreFunction::DefaultMin, volatile_boost, boost);
 }
 
 void BoostScore::init() { REGISTER_SCORER_JSON(BoostScore, make_json); }

@@ -120,7 +120,7 @@ struct sort : irs::Scorer {
     const irs::byte_type* /*stats*/,
     const irs::attribute_provider& /*doc_attrs*/,
     irs::score_t /*boost*/) const final {
-    return irs::ScoreFunction::Invalid();
+    return irs::ScoreFunction::Default(1);
   }
 
   std::pair<size_t, size_t> stats_size() const final { return {0, 0}; }
