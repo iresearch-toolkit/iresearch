@@ -1122,19 +1122,20 @@ class block_disjunction : public doc_iterator,
           auto& self = static_cast<block_disjunction&>(*ctx);
           auto it = self.scores_.scores.begin();
           auto end = self.scores_.scores.end();
-          [[maybe_unused]] size_t min_match = 1;
-          score_t sum = (*it)->max.tail;
-          for (++it; it != end;) {
+          [[maybe_unused]] size_t min_match = 0;
+          [[maybe_unused]] score_t sum = 0.f;
+          while (it != end) {
             auto next = end;
             if constexpr (traits_type::kMinMatch) {
-              sum += (*it)->max.tail;
               if (arg > sum) {  // TODO(MBkkt) strict wand: >=
                 ++min_match;
                 next = it + 1;
               }
+              sum += (*it)->max.tail;
             }
             const auto others = self.scores_.sum_score - (*it)->max.tail;
             if (arg > others) {
+              // For common usage `arg - others <= (*it)->max.tail` -- is true
               (*it)->Min(arg - others);
               next = it + 1;
             }

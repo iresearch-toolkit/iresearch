@@ -396,14 +396,14 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
 
     auto max_leafs = doc_limits::eof();
     auto min_leafs = doc;
-    score_t max_leafs_score = 0.f;
+    score_t sum_leafs_score = 0.f;
 
     for (auto& it : this->itrs_) {
       auto max_leaf = it->shallow_seek(target);
       auto min_leaf = it.doc->value;
       IRS_ASSERT(min_leaf <= max_leaf);
       if (target < min_leaf) {
-        target = min_leaf + doc_limits::eof(leafs_doc_);
+        target = min_leaf;
       }
       if (max_leafs < min_leaf) {
         goto eof_check;
@@ -414,15 +414,15 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
       if (max_leafs > max_leaf) {
         max_leafs = max_leaf;
       }
-      IRS_ASSERT(min_leafs < max_leafs);
+      IRS_ASSERT(min_leafs <= max_leafs);
       if constexpr (HasScore_v<Merger>) {
-        merger(&max_leafs_score, &it.score->max.leaf);
+        merger(&sum_leafs_score, &it.score->max.leaf);
       }
     }
 
     leafs_doc_ = max_leafs;
     doc = min_leafs;
-    score().leaf = max_leafs_score;
+    score().leaf = sum_leafs_score;
     IRS_ASSERT(doc <= target);
     IRS_ASSERT(target <= leafs_doc_);
     goto score_check;
