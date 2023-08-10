@@ -208,8 +208,8 @@ class proxy_query : public filter::prepared {
     }
 
     IRS_ASSERT(cached);
-    return memory::make_tracked_managed<lazy_filter_bitset_iterator>(ctx.memory,
-                                                                     *cached);
+    return memory::make_tracked<lazy_filter_bitset_iterator>(ctx.memory,
+                                                             *cached);
   }
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
@@ -230,7 +230,7 @@ filter::prepared::ptr proxy_filter::prepare(const PrepareContext& ctx) const {
   if (!cache_->prepared_real_filter_) {
     cache_->prepared_real_filter_ = cache_->real_filter_->prepare(ctx);
   }
-  return memory::make_tracked_managed<proxy_query>(ctx.memory, cache_);
+  return memory::make_tracked<proxy_query>(ctx.memory, cache_);
 }
 
 filter& proxy_filter::cache_filter(IResourceManager& memory,

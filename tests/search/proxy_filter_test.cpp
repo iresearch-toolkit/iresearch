@@ -125,8 +125,8 @@ class doclist_test_filter : public filter {
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
     ++prepares_;
-    return memory::make_tracked_managed<doclist_test_query>(
-      ctx.memory, documents_, ctx.boost);
+    return memory::make_tracked<doclist_test_query>(ctx.memory, documents_,
+                                                    ctx.boost);
   }
 
   // intentional copy here to simplify multiple runs of same expected

@@ -491,7 +491,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
     // single node case
     return incl.front()->prepare(sub_ctx);
   }
-  auto q = memory::make_tracked_managed<AndQuery>(ctx.memory);
+  auto q = memory::make_tracked<AndQuery>(ctx.memory);
   q->prepare(sub_ctx, merge_type(), incl, excl);
   return q;
 }
@@ -580,12 +580,11 @@ filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
   // check strictly less to not roll back to 0 min_match (we`ve handled this
   // case above!) single 'all' left -> it could contain boost we want to
   // preserve
-  const auto adjusted_min_match_count =
-    (optimized_match_count < min_match_count_)
-      ? min_match_count_ - optimized_match_count
-      : 1;
+  const auto adjusted_min_match = (optimized_match_count < min_match_count_)
+                                    ? min_match_count_ - optimized_match_count
+                                    : 1;
 
-  if (adjusted_min_match_count > incl.size()) {
+  if (adjusted_min_match > incl.size()) {
     // can't satisfy 'min_match_count' conditions
     // having only 'incl.size()' queries
     return prepared::empty();
@@ -596,17 +595,15 @@ filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
     return incl.front()->prepare(sub_ctx);
   }
 
-  IRS_ASSERT(adjusted_min_match_count > 0 &&
-             adjusted_min_match_count <= incl.size());
+  IRS_ASSERT(adjusted_min_match > 0 && adjusted_min_match <= incl.size());
 
   memory::managed_ptr<BooleanQuery> q;
-  if (adjusted_min_match_count == incl.size()) {
-    q = memory::make_tracked_managed<AndQuery>(ctx.memory);
-  } else if (1 == adjusted_min_match_count) {
-    q = memory::make_tracked_managed<OrQuery>(ctx.memory);
+  if (adjusted_min_match == incl.size()) {
+    q = memory::make_tracked<AndQuery>(ctx.memory);
+  } else if (1 == adjusted_min_match) {
+    q = memory::make_tracked<OrQuery>(ctx.memory);
   } else {  // min_match_count > 1 && min_match_count < incl.size()
-    q = memory::make_tracked_managed<MinMatchQuery>(ctx.memory,
-                                                    adjusted_min_match_count);
+    q = memory::make_tracked<MinMatchQuery>(ctx.memory, adjusted_min_match);
   }
 
   q->prepare(sub_ctx, merge_type(), incl, excl);
@@ -633,7 +630,7 @@ filter::prepared::ptr Not::prepare(const PrepareContext& ctx) const {
     const std::array<const irs::filter*, 1> incl{all_docs.get()};
     const std::array<const irs::filter*, 1> excl{res.first};
 
-    auto q = memory::make_tracked_managed<AndQuery>(sub_ctx.memory);
+    auto q = memory::make_tracked<AndQuery>(sub_ctx.memory);
     q->prepare(sub_ctx, ScoreMergeType::kSum, incl, excl);
     return q;
   }

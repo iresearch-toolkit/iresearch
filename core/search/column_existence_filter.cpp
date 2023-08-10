@@ -142,9 +142,9 @@ filter::prepared::ptr by_column_existence::prepare(
   auto& acceptor = options().acceptor;
 
   return acceptor
-           ? memory::make_tracked_managed<column_prefix_existence_query>(
+           ? memory::make_tracked<column_prefix_existence_query>(
                ctx.memory, field(), std::move(stats), acceptor, filter_boost)
-           : memory::make_tracked_managed<column_existence_query>(
+           : memory::make_tracked<column_existence_query>(
                ctx.memory, field(), std::move(stats), filter_boost);
 }
 

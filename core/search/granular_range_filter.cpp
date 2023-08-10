@@ -589,9 +589,9 @@ filter::prepared::ptr by_granular_range::prepare(
   MultiTermQuery::Stats stats;
   collector.score(ctx.index, ctx.scorers, stats);
 
-  return memory::make_tracked_managed<MultiTermQuery>(
-    ctx.memory, std::move(states), std::move(stats), ctx.boost,
-    ScoreMergeType::kSum, size_t{1});
+  return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
+                                              std::move(stats), ctx.boost,
+                                              ScoreMergeType::kSum, size_t{1});
 }
 
 void by_granular_range::visit(const SubReader& segment,

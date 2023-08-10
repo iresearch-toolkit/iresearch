@@ -620,9 +620,9 @@ struct mask_column : public column_base {
                          const index_input& data_in,
                          compression::decompressor::ptr&& /*inflater*/,
                          encryption::stream* cipher) {
-    return memory::make_tracked_managed<column_reader, mask_column>(
-      rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
-      std::move(index), data_in, cipher);
+    return memory::make_tracked<mask_column>(rm_r, std::move(name), rm_c,
+                                             std::move(payload), std::move(hdr),
+                                             std::move(index), data_in, cipher);
   }
 
   mask_column(std::optional<std::string>&& name, IResourceManager& rm_c,
@@ -754,7 +754,7 @@ column_ptr dense_fixed_length_column::read(
   compression::decompressor::ptr&& inflater, encryption::stream* cipher) {
   const uint64_t len = index_in.read_long();
   const uint64_t data = index_in.read_long();
-  return memory::make_tracked_managed<column_reader, dense_fixed_length_column>(
+  return memory::make_tracked<dense_fixed_length_column>(
     rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
     std::move(index), data_in, std::move(inflater), cipher, data, len);
 }
@@ -799,7 +799,7 @@ class fixed_length_column : public column_base {
                          encryption::stream* cipher) {
     const uint64_t len = index_in.read_long();
     auto blocks = read_blocks_dense(hdr, index_in, rm_r);
-    return memory::make_tracked_managed<column_reader, fixed_length_column>(
+    return memory::make_tracked<fixed_length_column>(
       rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
       std::move(index), data_in, std::move(inflater), cipher, std::move(blocks),
       len);
@@ -998,7 +998,7 @@ class sparse_column : public column_base {
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
     auto blocks = read_blocks_sparse(hdr, index_in, rm_r);
-    return memory::make_tracked_managed<column_reader, sparse_column>(
+    return memory::make_tracked<sparse_column>(
       rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
       std::move(index), data_in, std::move(inflater), cipher,
       std::move(blocks));

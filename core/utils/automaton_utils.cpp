@@ -419,9 +419,9 @@ filter::prepared::ptr prepare_automaton_filter(const PrepareContext& ctx,
   MultiTermQuery::Stats stats;
   collector.score(ctx.index, ctx.scorers, stats);
 
-  return memory::make_tracked_managed<MultiTermQuery>(
-    ctx.memory, std::move(states), std::move(stats), ctx.boost,
-    ScoreMergeType::kSum, size_t{1});
+  return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
+                                              std::move(stats), ctx.boost,
+                                              ScoreMergeType::kSum, size_t{1});
 }
 
 }  // namespace irs

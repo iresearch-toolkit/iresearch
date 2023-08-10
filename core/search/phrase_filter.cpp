@@ -298,7 +298,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
     ++term_idx;
   }
 
-  return memory::make_tracked_managed<FixedPhraseQuery>(
+  return memory::make_tracked<FixedPhraseQuery>(
     ctx.memory, std::move(phrase_states), std::move(positions),
     std::move(stats), ctx.boost * boost());
 }
@@ -416,7 +416,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
     ++collector;
   }
 
-  return memory::make_tracked_managed<VariadicPhraseQuery>(
+  return memory::make_tracked<VariadicPhraseQuery>(
     ctx.memory, std::move(phrase_states), std::move(positions),
     std::move(stats), ctx.boost * boost());
 }

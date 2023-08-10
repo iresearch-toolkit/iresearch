@@ -127,7 +127,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_stats.finish(stats_buf, term_idx, field_stats, ctx.index);
   }
 
-  return memory::make_tracked_managed<NGramSimilarityQuery>(
+  return memory::make_tracked<NGramSimilarityQuery>(
     ctx.memory, min_match_count, std::move(query_states), std::move(stats),
     sub_boost);
 }

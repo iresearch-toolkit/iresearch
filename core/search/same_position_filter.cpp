@@ -277,7 +277,7 @@ filter::prepared::ptr by_same_position::prepare(
     term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
-  return memory::make_tracked_managed<same_position_query>(
+  return memory::make_tracked<same_position_query>(
     ctx.memory, std::move(query_states), std::move(stats), ctx.boost * boost());
 }
 

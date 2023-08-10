@@ -168,9 +168,9 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
     term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
-  return memory::make_tracked_managed<MultiTermQuery>(
-    ctx.memory, std::move(states), std::move(stats), sub_boost, merge_type,
-    min_match);
+  return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
+                                              std::move(stats), sub_boost,
+                                              merge_type, min_match);
 }
 
 }  // namespace irs

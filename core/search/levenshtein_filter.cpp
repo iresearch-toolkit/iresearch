@@ -224,9 +224,9 @@ filter::prepared::ptr prepare_levenshtein_filter(
   auto* stats_buf = stats[0].data();
   term_stats.finish(stats_buf, 0, field_stats, ctx.index);
 
-  return memory::make_tracked_managed<MultiTermQuery>(
-    ctx.memory, std::move(states), std::move(stats), ctx.boost,
-    ScoreMergeType::kMax, size_t{1});
+  return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
+                                              std::move(stats), ctx.boost,
+                                              ScoreMergeType::kMax, size_t{1});
 }
 
 }  // namespace

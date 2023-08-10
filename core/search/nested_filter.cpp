@@ -708,7 +708,7 @@ filter::prepared::ptr ByNestedFilter::prepare(const PrepareContext& ctx) const {
     return prepared::empty();
   }
 
-  return memory::make_tracked_managed<ByNestedQuery>(
+  return memory::make_tracked<ByNestedQuery>(
     ctx.memory, parent, std::move(prepared_child), merge_type, match,
     /*none_boost*/ sub_boost);
 }
