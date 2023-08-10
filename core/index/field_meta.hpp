@@ -42,10 +42,6 @@ struct field_stats {
   uint32_t num_unique{};
 };
 
-using feature_map_t = std::map<type_info::type_id, field_id>;
-using feature_set_t = std::set<type_info::type_id>;
-using features_t = std::span<const type_info::type_id>;
-
 // Represents field metadata
 struct field_meta {
  public:

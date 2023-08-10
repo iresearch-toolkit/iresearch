@@ -101,7 +101,7 @@ class MergeWriter : public util::noncopyable {
   const ColumnInfoProvider* column_info_{};
   const FeatureInfoProvider* feature_info_{};
   ScorersView scorers_;
-  const std::set<irs::type_info::type_id>* scorers_features_{};
+  const feature_set_t* scorers_features_{};
   const Comparer* const comparator_{};
 };
 

@@ -277,7 +277,7 @@ void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
   // TODO(MBkkt) SEARCH-444 IRS_ASSERT(idf.value >= 0.f);
 }
 
-void TFIDF::get_features(std::set<type_info::type_id>& features) const {
+void TFIDF::get_features(feature_set_t& features) const {
   if (normalize()) {
     features.emplace(irs::type<Norm2>::id());
   }

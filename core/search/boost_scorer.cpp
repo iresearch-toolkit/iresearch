@@ -41,11 +41,11 @@ struct volatile_boost_score_ctx final : score_ctx {
 };
 }  // namespace
 
-ScoreFunction BoostScore::prepare_scorer(
-  const ColumnProvider& /*segment*/,
-  const std::map<irs::type_info::type_id, field_id>& /*features*/,
-  const byte_type* /*stats*/, const attribute_provider& attrs,
-  score_t boost) const {
+ScoreFunction BoostScore::prepare_scorer(const ColumnProvider& /*segment*/,
+                                         const feature_map_t& /*features*/,
+                                         const byte_type* /*stats*/,
+                                         const attribute_provider& attrs,
+                                         score_t boost) const {
   const auto* volatile_boost = irs::get<irs::filter_boost>(attrs);
 
   if (volatile_boost == nullptr) {
