@@ -175,7 +175,8 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
     for (size_t i = 0; i < 3; ++i) {
       proxy_filter proxy;
       if (i == 0) {
-        auto res = proxy.set_filter<doclist_test_filter>();
+        auto res =
+          proxy.set_filter<doclist_test_filter>(irs::IResourceManager::kNoop);
         cache = res.second;
         res.first.set_expected(expected);
       } else {
@@ -265,7 +266,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   init_index();
   auto rdr = open_reader();
   proxy_filter proxy;
-  auto [q, cache] = proxy.set_filter<by_term>();
+  auto [q, cache] = proxy.set_filter<by_term>(irs::IResourceManager::kNoop);
   *q.mutable_field() = "name";
   q.mutable_options()->term =
     irs::ViewCast<irs::byte_type>(std::string_view("A"));
@@ -276,7 +277,7 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   init_index();
   auto rdr = open_reader();
   proxy_filter proxy;
-  auto [root, cache] = proxy.set_filter<irs::Or>();
+  auto [root, cache] = proxy.set_filter<irs::Or>(irs::IResourceManager::kNoop);
   auto& q = root.add<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =
