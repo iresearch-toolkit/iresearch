@@ -802,9 +802,7 @@ bool IndexWriter::FlushRequired(const segment_writer& segment) const noexcept {
   const auto docs = segment.buffered_docs();
   const auto memory = segment.memory_active();
 
-  return (docs_max != 0 && docs_max <= docs) ||        // too many docs
-         (memory_max != 0 && memory_max <= memory) ||  // too much memory
-         doc_limits::eof(docs);                        // segment is full
+  return memory_max <= memory || docs_max <= docs;
 }
 
 void IndexWriter::FlushContext::Emplace(ActiveSegmentContext&& active) {
@@ -1762,7 +1760,6 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
   // FlushContext::context_mutex_ to return their segment_context
   if (const auto segment_count_max =
         segment_limits_.segment_count_max.load(std::memory_order_relaxed);
-      segment_count_max != 0 &&  // '<' to account for +1 reservation
       segment_count_max < segments_active) {
     segments_active_.fetch_sub(1, std::memory_order_relaxed);
     return {};
@@ -1792,9 +1789,7 @@ IndexWriter::ActiveSegmentContext IndexWriter::GetSegmentContext() try {
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (auto segment_memory_max = segment_limits_.segment_memory_max.load();
-      segment_memory_max != 0 &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_.reset();  // reset before create new
     segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, options);
   }
 
