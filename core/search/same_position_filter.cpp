@@ -39,10 +39,9 @@ class same_position_iterator : public Conjunction {
  public:
   typedef std::vector<position::ref> positions_t;
 
-  same_position_iterator(typename Conjunction::doc_iterators_t&& itrs,
-                         typename Conjunction::merger_type&& merger,
-                         positions_t&& pos)
-    : Conjunction(std::move(itrs), std::move(merger)), pos_(std::move(pos)) {
+  template<typename... Args>
+  same_position_iterator(positions_t&& pos, Args&&... args)
+    : Conjunction{std::forward<Args>(args)...}, pos_(std::move(pos)) {
     IRS_ASSERT(!pos_.empty());
   }
 
@@ -132,7 +131,7 @@ class same_position_query : public filter::prepared {
     const IndexFeatures features =
       ord.features() | by_same_position::kRequiredFeatures;
 
-    std::vector<score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
+    ScoreAdapters<irs::doc_iterator::ptr> itrs;
     itrs.reserve(query_state->size());
 
     std::vector<position::ref> positions;
@@ -160,11 +159,10 @@ class same_position_query : public filter::prepared {
 
       if (!no_score) {
         auto* score = irs::get_mutable<irs::score>(docs.get());
+        IRS_ASSERT(score);
 
-        if (score) {
-          *score = CompileScore(ord.buckets(), segment, *term_state.reader,
-                                term_stats->c_str(), *docs, boost());
-        }
+        CompileScore(*score, ord.buckets(), segment, *term_state.reader,
+                     term_stats->c_str(), *docs, boost());
       }
 
       // add iterator
@@ -176,10 +174,9 @@ class same_position_query : public filter::prepared {
     return irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, ord.buckets().size(),
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction_t = conjunction<doc_iterator::ptr, A>;
-
-        return MakeConjunction<same_position_iterator<conjunction_t>>(
-          std::move(itrs), std::move(aggregator), std::move(positions));
+        return MakeConjunction<same_position_iterator>(
+          // TODO(MBkkt) Implement wand?
+          {}, std::move(aggregator), std::move(itrs), std::move(positions));
       });
   }
 

@@ -66,7 +66,7 @@ struct boost : public irs::ScorerBase<boost, void> {
 
         *res = state.boost_;
       },
-      boost);
+      irs::ScoreFunction::DefaultMin, boost);
   }
 };
 
@@ -189,7 +189,8 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
             irs::get<irs::document>(state.document_attrs_)->value, res);
         }
       },
-      *this, segment_reader, term_reader, filter_node_attrs, document_attrs);
+      irs::ScoreFunction::DefaultMin, *this, segment_reader, term_reader,
+      filter_node_attrs, document_attrs);
   }
 
   irs::TermCollector::ptr prepare_term_collector() const final {
@@ -295,7 +296,7 @@ struct frequency_sort : public irs::ScorerBase<frequency_sort, stats_t> {
           *res = std::numeric_limits<irs::score_t>::infinity();
         }
       },
-      docs_count, doc);
+      irs::ScoreFunction::DefaultMin, docs_count, doc);
   }
 
   irs::TermCollector::ptr prepare_term_collector() const final {

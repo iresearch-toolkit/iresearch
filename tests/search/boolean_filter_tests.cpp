@@ -89,7 +89,7 @@ struct basic_sort : irs::ScorerBase<basic_sort, void> {
         const auto& state = *static_cast<basic_scorer*>(ctx);
         *res = static_cast<uint32_t>(state.idx);
       },
-      idx);
+      irs::ScoreFunction::DefaultMin, idx);
   }
 
   size_t idx;
@@ -224,6 +224,7 @@ std::vector<DocIterator> execute_all(
         doc.begin(), doc.end(), stats, ord, irs::kNoBoost));
     }
   }
+
   return itrs;
 }
 
@@ -14066,10 +14067,9 @@ TEST(min_match_disjunction_test, scored_seek_next) {
 // ----------------------------------------------------------------------------
 // --SECTION--                    iterator0 AND iterator1 AND iterator2 AND ...
 // ----------------------------------------------------------------------------
+using DocIterator = irs::ScoreAdapter<irs::doc_iterator::ptr>;
 
 TEST(conjunction_test, next) {
-  using conjunction =
-    irs::conjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
   auto shortest = [](const std::vector<irs::doc_id_t>& lhs,
                      const std::vector<irs::doc_id_t>& rhs) {
     return lhs.size() < rhs.size();
@@ -14086,7 +14086,9 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{1, 5};
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14112,7 +14114,9 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{1, 5, 11, 21, 27, 31};
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14138,7 +14142,9 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{1, 5, 11, 21, 27, 31};
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14164,7 +14170,9 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{1, 5};
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14189,7 +14197,9 @@ TEST(conjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14211,7 +14221,9 @@ TEST(conjunction_test, next) {
 
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14237,7 +14249,9 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14259,7 +14273,9 @@ TEST(conjunction_test, next) {
     std::vector<irs::doc_id_t> expected{};
     std::vector<irs::doc_id_t> result;
     {
-      conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+      auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                        detail::execute_all<DocIterator>(docs));
+      auto& it = *itPtr;
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14276,8 +14292,6 @@ TEST(conjunction_test, next) {
 }
 
 TEST(conjunction_test, seek) {
-  using conjunction =
-    irs::conjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
   auto shortest = [](const std::vector<irs::doc_id_t>& lhs,
                      const std::vector<irs::doc_id_t>& rhs) {
     return lhs.size() < rhs.size();
@@ -14303,7 +14317,9 @@ TEST(conjunction_test, seek) {
       {256, 256},
       {257, irs::doc_limits::eof()}};
 
-    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+    auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                      detail::execute_all<DocIterator>(docs));
+    auto& it = *itPtr;
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14334,7 +14350,9 @@ TEST(conjunction_test, seek) {
       {256, 256},
       {257, irs::doc_limits::eof()}};
 
-    conjunction it(detail::execute_all<conjunction ::doc_iterator_t>(docs));
+    auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                      detail::execute_all<DocIterator>(docs));
+    auto& it = *itPtr;
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14352,7 +14370,9 @@ TEST(conjunction_test, seek) {
       {6, irs::doc_limits::eof()},
       {irs::doc_limits::invalid(), irs::doc_limits::eof()}};
 
-    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+    auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                      detail::execute_all<DocIterator>(docs));
+    auto& it = *itPtr;
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14380,7 +14400,9 @@ TEST(conjunction_test, seek) {
       {45, irs::doc_limits::eof()},
       {57, irs::doc_limits::eof()}};
 
-    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+    auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                      detail::execute_all<DocIterator>(docs));
+    auto& it = *itPtr;
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14407,7 +14429,9 @@ TEST(conjunction_test, seek) {
       {99, 99},
       {257, irs::doc_limits::eof()}};
 
-    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+    auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                      detail::execute_all<DocIterator>(docs));
+    auto& it = *itPtr;
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(std::min_element(docs.begin(), docs.end(), shortest)->size(),
@@ -14419,8 +14443,6 @@ TEST(conjunction_test, seek) {
 }
 
 TEST(conjunction_test, seek_next) {
-  using conjunction =
-    irs::conjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
   auto shortest = [](const std::vector<irs::doc_id_t>& lhs,
                      const std::vector<irs::doc_id_t>& rhs) {
     return lhs.size() < rhs.size();
@@ -14432,7 +14454,9 @@ TEST(conjunction_test, seek_next) {
       {1, 4, 5, 6, 8, 12, 14, 29},
       {1, 4, 5, 8, 14}};
 
-    conjunction it(detail::execute_all<conjunction::doc_iterator_t>(docs));
+    auto itPtr = irs::MakeConjunction({}, irs::NoopAggregator{},
+                                      detail::execute_all<DocIterator>(docs));
+    auto& it = *itPtr;
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
 
@@ -14478,16 +14502,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::SumMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -14547,17 +14566,12 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 0,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
     using ExpectedType =
-      irs::conjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
+      irs::Conjunction<irs::doc_iterator::ptr, irs::NoopAggregator>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
 
@@ -14607,16 +14621,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::SumMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -14676,16 +14685,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::MaxMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -14745,16 +14749,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::SumMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -14814,16 +14813,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::MaxMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -14881,16 +14875,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::SumMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -14948,16 +14937,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::MaxMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -15016,16 +15000,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::SumMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -15084,16 +15063,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::MaxMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -15149,16 +15123,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kSum, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::SumMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);
@@ -15214,16 +15183,11 @@ TEST(conjunction_test, scored_seek_next) {
     auto it_ptr = irs::ResoveMergeType(
       irs::ScoreMergeType::kMax, 1,
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-        using conjunction = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-        auto res =
-          detail::execute_all<typename conjunction::doc_iterator_t>(docs);
-
-        return irs::memory::make_managed<conjunction>(std::move(res),
-                                                      std::move(aggregator));
+        auto res = detail::execute_all<DocIterator>(docs);
+        return irs::MakeConjunction({}, std::move(aggregator), std::move(res));
       });
 
-    using ExpectedType = irs::conjunction<irs::doc_iterator::ptr,
+    using ExpectedType = irs::Conjunction<irs::doc_iterator::ptr,
                                           irs::Aggregator<irs::MaxMerger, 1>>;
     ASSERT_NE(nullptr, dynamic_cast<ExpectedType*>(it_ptr.get()));
     auto& it = dynamic_cast<ExpectedType&>(*it_ptr);

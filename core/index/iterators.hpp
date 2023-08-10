@@ -29,6 +29,7 @@
 #include "utils/attributes.hpp"
 #include "utils/iterator.hpp"
 #include "utils/memory.hpp"
+#include "utils/type_limits.hpp"
 
 namespace irs {
 
@@ -53,12 +54,21 @@ struct doc_iterator : iterator<doc_id_t, attribute_provider> {
   // (for more information see class description)
   virtual doc_id_t seek(doc_id_t target) = 0;
 
-  // Position iterator at block with a specified target
-  // return last document in this block
-  // (for more information see class description)
-  virtual doc_id_t shallow_seek(doc_id_t) {
-    IRS_ASSERT(false);
-    return {};
+  // protected:
+  // For any doc_iterator we want to define block.
+  // It's two bounds: (min...max]:
+  // doc_iterator always positioned to the some block.
+  //
+  // doc_iterator before seek/next/shallow_seek(any valid target)
+  // positioned to the first block.
+  // You could know about it max, with call shallow_seek(doc_limits::invalid());
+  //
+  // shallow_seek could move iterator to the some next block.
+  // If target is not in the current block or
+  // min competitive score force moving to the next block.
+  virtual doc_id_t shallow_seek(doc_id_t target) {
+    seek(target);
+    return doc_limits::eof();
   }
 };
 

@@ -132,8 +132,8 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
 
   const bool has_unscored_terms = !state->unscored_terms.empty();
 
-  std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs(
-    state->scored_states.size() + size_t(has_unscored_terms));
+  ScoreAdapters<doc_iterator::ptr> itrs(state->scored_states.size() +
+                                        size_t(has_unscored_terms));
   auto it = std::begin(itrs);
 
   // add an iterator for each of the scored states
@@ -148,14 +148,11 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
 
     if (!no_score) {
       auto* score = irs::get_mutable<irs::score>(docs.get());
-
-      if (score) {
-        IRS_ASSERT(entry.stat_offset < stats.size());
-        auto* stat = stats[entry.stat_offset].c_str();
-
-        *score = CompileScore(ord.buckets(), segment, *state->reader, stat,
-                              *docs, entry.boost * boost());
-      }
+      IRS_ASSERT(score);
+      IRS_ASSERT(entry.stat_offset < stats.size());
+      auto* stat = stats[entry.stat_offset].c_str();
+      CompileScore(*score, ord.buckets(), segment, *state->reader, stat, *docs,
+                   entry.boost * boost());
     }
 
     IRS_ASSERT(it != std::end(itrs));
@@ -178,7 +175,7 @@ doc_iterator::ptr MultiTermQuery::execute(const ExecutionContext& ctx) const {
     [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
       using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
-      return MakeWeakDisjunction<disjunction_t>(std::move(itrs), min_match_,
+      return MakeWeakDisjunction<disjunction_t>({}, std::move(itrs), min_match_,
                                                 std::move(aggregator),
                                                 state->estimation());
     });

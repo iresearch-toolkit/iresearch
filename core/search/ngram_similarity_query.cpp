@@ -442,8 +442,7 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
       irs::get_mutable<document>(&approx_);
 
     // FIXME find a better estimation
-    std::get<cost>(attrs_).reset(
-      [this]() noexcept { return cost::extract(approx_); });
+    std::get<attribute_ptr<cost>>(attrs_) = irs::get_mutable<cost>(&approx_);
   }
 
   NGramSimilarityDocIterator(NGramApprox::doc_iterators_t&& itrs,
@@ -456,7 +455,7 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
                                  min_match_count, !ord.empty()} {
     if (!ord.empty()) {
       auto& score = std::get<irs::score>(attrs_);
-      score = CompileScore(ord.buckets(), segment, field, stats, *this, boost);
+      CompileScore(score, ord.buckets(), segment, field, stats, *this, boost);
     }
   }
 
@@ -497,7 +496,8 @@ class NGramSimilarityDocIterator : public doc_iterator, private score_ctx {
   }
 
  private:
-  using attributes = std::tuple<attribute_ptr<document>, cost, score>;
+  using attributes =
+    std::tuple<attribute_ptr<document>, attribute_ptr<cost>, score>;
 
   Checker checker_;
   NGramApprox approx_;

@@ -43,9 +43,9 @@ class min_match_disjunction : public doc_iterator,
                               private Merger,
                               private score_ctx {
  public:
-  struct cost_iterator_adapter : score_iterator_adapter<DocIterator> {
+  struct cost_iterator_adapter : ScoreAdapter<DocIterator> {
     cost_iterator_adapter(irs::doc_iterator::ptr&& it) noexcept
-      : score_iterator_adapter<DocIterator>(std::move(it)) {
+      : ScoreAdapter<DocIterator>(std::move(it)) {
       est = cost::extract(*this->it, cost::kMax);
     }
 
@@ -404,15 +404,6 @@ class min_match_disjunction : public doc_iterator,
   size_t min_match_count_;  // minimum number of hits
   size_t lead_;             // number of iterators in lead group
   attributes attrs_;
-};
-
-template<typename DocIterator, typename Merger>
-struct RebindIterator<min_match_disjunction<DocIterator, Merger>> {
-  using Adapter =
-    typename min_match_disjunction<DocIterator, Merger>::cost_iterator_adapter;
-
-  using Disjunction = disjunction<DocIterator, Merger, Adapter>;
-  using Conjunction = conjunction<DocIterator, Merger>;
 };
 
 }  // namespace irs

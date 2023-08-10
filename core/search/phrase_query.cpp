@@ -35,13 +35,13 @@ constexpr IndexFeatures kRequireOffs =
 
 template<bool OneShot, bool HasFreq>
 using FixedPhraseIterator =
-  PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
+  PhraseIterator<Conjunction<doc_iterator::ptr, NoopAggregator>,
                  FixedPhraseFrequency<OneShot, HasFreq>>;
 
 // FIXME add proper handling of overlapped case
 template<typename Adapter, bool VolatileBoost, bool OneShot, bool HasFreq>
 using VariadicPhraseIterator = PhraseIterator<
-  conjunction<doc_iterator::ptr, NoopAggregator>,
+  Conjunction<doc_iterator::ptr, NoopAggregator>,
   VariadicPhraseFrequency<Adapter, VolatileBoost, OneShot, HasFreq>>;
 
 }  // namespace
@@ -69,7 +69,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
   // get index features required for query & order
   const IndexFeatures features = ord.features() | kRequiredFeatures;
 
-  std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
+  ScoreAdapters<doc_iterator::ptr> itrs;
   itrs.reserve(phrase_state->terms.size());
 
   std::vector<FixedTermPosition> positions;
@@ -113,7 +113,7 @@ doc_iterator::ptr FixedPhraseQuery::execute(const ExecutionContext& ctx) const {
 doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
   const SubReader& rdr) const {
   using FixedPhraseIterator =
-    PhraseIterator<conjunction<doc_iterator::ptr, NoopAggregator>,
+    PhraseIterator<Conjunction<doc_iterator::ptr, NoopAggregator>,
                    PhrasePosition<FixedPhraseFrequency<true, false>>>;
 
   // get phrase state for the specified reader
@@ -124,7 +124,7 @@ doc_iterator::ptr FixedPhraseQuery::ExecuteWithOffsets(
     return doc_iterator::empty();
   }
 
-  std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs;
+  ScoreAdapters<doc_iterator::ptr> itrs;
   itrs.reserve(phrase_state->terms.size());
 
   std::vector<FixedPhraseIterator::TermPosition> positions;
@@ -198,8 +198,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
   const ExecutionContext& ctx) const {
   using Adapter = VariadicPhraseAdapter;
   using CompoundDocIterator = irs::compound_doc_iterator<Adapter>;
-  using Disjunction =
-    disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
+  using Disjunction = disjunction<doc_iterator::ptr, NoopAggregator, Adapter>;
   auto& rdr = ctx.segment;
 
   // get phrase state for the specified reader
@@ -224,7 +223,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
   // get features required for query & order
   const IndexFeatures features = ord.features() | kRequiredFeatures;
 
-  std::vector<score_iterator_adapter<doc_iterator::ptr>> conj_itrs;
+  ScoreAdapters<doc_iterator::ptr> conj_itrs;
   conj_itrs.reserve(phrase_state->terms.size());
 
   const auto phrase_size = phrase_state->num_terms.size();
@@ -266,8 +265,9 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
       return doc_iterator::empty();
     }
 
+    // TODO(MBkkt) VariadicPhrase wand support
     auto disj =
-      MakeDisjunction<Disjunction>(std::move(disj_itrs), NoopAggregator{});
+      MakeDisjunction<Disjunction>({}, std::move(disj_itrs), NoopAggregator{});
     pos.first = down_cast<CompoundDocIterator>(disj.get());
     conj_itrs.emplace_back(std::move(disj));
     ++position;
@@ -297,11 +297,10 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
   const irs::SubReader& rdr) const {
   using Adapter = VariadicPhraseOffsetAdapter;
   using FixedPhraseIterator = PhraseIterator<
-    conjunction<doc_iterator::ptr, NoopAggregator>,
+    Conjunction<doc_iterator::ptr, NoopAggregator>,
     PhrasePosition<VariadicPhraseFrequency<Adapter, false, true, false>>>;
   using CompundDocIterator = irs::compound_doc_iterator<Adapter>;
-  using Disjunction =
-    disjunction<doc_iterator::ptr, NoopAggregator, Adapter, true>;
+  using Disjunction = disjunction<doc_iterator::ptr, NoopAggregator, Adapter>;
 
   // get phrase state for the specified reader
   auto phrase_state = states_.find(rdr);
@@ -311,7 +310,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
     return doc_iterator::empty();
   }
 
-  std::vector<score_iterator_adapter<doc_iterator::ptr>> conj_itrs;
+  ScoreAdapters<doc_iterator::ptr> conj_itrs;
   conj_itrs.reserve(phrase_state->terms.size());
 
   const auto phrase_size = phrase_state->num_terms.size();
@@ -369,8 +368,9 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
       return false;
     }
 
+    // TODO(MBkkt) VariadicPhrase wand support
     auto disj =
-      MakeDisjunction<Disjunction>(std::move(disj_itrs), NoopAggregator{});
+      MakeDisjunction<Disjunction>({}, std::move(disj_itrs), NoopAggregator{});
     pos.first = down_cast<CompundDocIterator>(disj.get());
     conj_itrs.emplace_back(std::move(disj));
     ++position;

@@ -60,9 +60,9 @@ class column_existence_query : public irs::filter::prepared {
 
     if (!ord.empty()) {
       if (auto* score = irs::get_mutable<irs::score>(it.get()); score) {
-        *score =
-          CompileScore(ord.buckets(), segment, empty_term_reader(column.size()),
-                       stats_.c_str(), *it, boost());
+        CompileScore(*score, ord.buckets(), segment,
+                     empty_term_reader(column.size()), stats_.c_str(), *it,
+                     boost());
       }
     }
 
@@ -83,7 +83,7 @@ class column_prefix_existence_query : public column_existence_query {
   }
 
   irs::doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
-    using adapter_t = irs::score_iterator_adapter<irs::doc_iterator::ptr>;
+    using adapter_t = irs::ScoreAdapter<irs::doc_iterator::ptr>;
 
     IRS_ASSERT(acceptor_);
 
@@ -116,8 +116,7 @@ class column_prefix_existence_query : public column_existence_query {
       [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
         using disjunction_t =
           irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
-
-        return irs::MakeDisjunction<disjunction_t>(std::move(itrs),
+        return irs::MakeDisjunction<disjunction_t>(ctx.wand, std::move(itrs),
                                                    std::move(aggregator));
       });
   }

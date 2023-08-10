@@ -736,7 +736,7 @@ void assert_docs(const irs::term_iterator& expected_term,
   assert_docs(expected_term.postings(requested_features), [&]() {
     // FIXME(gnusi)
     const irs::WanderatorOptions options{
-      .factory = [](const irs::attribute_provider&, const irs::Scorer& score) {
+      .factory = [](const irs::attribute_provider&) {
         return irs::ScoreFunction::Default(1);
       }};
 

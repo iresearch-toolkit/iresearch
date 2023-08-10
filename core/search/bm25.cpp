@@ -265,21 +265,22 @@ struct MakeScoreFunctionImpl<BM1Context> {
 
   template<bool HasFilterBoost, typename... Args>
   static auto Make(Args&&... args) {
-    return ScoreFunction::Make<Ctx>(
-      [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
-        IRS_ASSERT(res);
-        IRS_ASSERT(ctx);
+    if constexpr (HasFilterBoost) {
+      return ScoreFunction::Make<Ctx>(
+        [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+          IRS_ASSERT(res);
+          IRS_ASSERT(ctx);
 
-        auto& state = *static_cast<Ctx*>(ctx);
+          auto& state = *static_cast<Ctx*>(ctx);
 
-        if constexpr (HasFilterBoost) {
           IRS_ASSERT(state.filter_boost);
           *res = state.filter_boost->value * state.num;
-        } else {
-          *res = state.num;
-        }
-      },
-      std::forward<Args>(args)...);
+        },
+        ScoreFunction::DefaultMin, std::forward<Args>(args)...);
+    } else {
+      Ctx ctx{std::forward<Args>(args)...};
+      return ScoreFunction::Constant(ctx.num);
+    }
   }
 };
 
@@ -311,7 +312,7 @@ struct MakeScoreFunctionImpl<BM15Context> {
 
         *res = c0 - c0 / (1.f + tf / c1);
       },
-      std::forward<Args>(args)...);
+      ScoreFunction::DefaultMin, std::forward<Args>(args)...);
   }
 };
 
@@ -357,7 +358,7 @@ struct MakeScoreFunctionImpl<BM25Context<Norm>> {
           *res = c0 - c0 * c1 / (c1 + tf);
         }
       },
-      std::forward<Args>(args)...);
+      ScoreFunction::DefaultMin, std::forward<Args>(args)...);
   }
 };
 
@@ -418,7 +419,7 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
 
   if (!freq) {
     if (!boost_as_score_ || 0.f == boost) {
-      return ScoreFunction::Invalid();
+      return ScoreFunction::Default(1);
     }
 
     // if there is no frequency then all the scores
@@ -454,7 +455,7 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
 
   if (IRS_UNLIKELY(!doc)) {
     // We need 'document' attribute to be exposed.
-    return ScoreFunction::Invalid();
+    return ScoreFunction::Default(1);
   }
 
   if (auto it = features.find(irs::type<Norm2>::id()); it != features.end()) {

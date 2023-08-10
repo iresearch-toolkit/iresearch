@@ -45,32 +45,56 @@ std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
   return std::make_pair(inner, neg);
 }
 
+template<bool Conjunction, typename It>
+irs::ScoreAdapters<irs::doc_iterator::ptr> MakeScoreAdapters(
+  const irs::ExecutionContext& ctx, It begin, It end) {
+  IRS_ASSERT(begin <= end);
+  const size_t size = std::distance(begin, end);
+  irs::ScoreAdapters<irs::doc_iterator::ptr> itrs;
+  itrs.reserve(size);
+  if (Conjunction || size > 1) {
+    ctx.wand.root = false;
+    // TODO(MBkkt) ctx.wand.strict = true;
+    // We couldn't do this for few reasons:
+    // 1. It's small chance that we will use just term iterator (or + eof)
+    // 2. I'm not sure about precision
+  }
+  do {
+    auto docs = (*begin)->execute(ctx);
+    ++begin;
+
+    // filter out empty iterators
+    if (irs::doc_limits::eof(docs->value())) {
+      if constexpr (Conjunction) {
+        return {};
+      } else {
+        continue;
+      }
+    }
+
+    itrs.emplace_back(std::move(docs));
+  } while (begin != end);
+
+  return itrs;
+}
+
 // Returns disjunction iterator created from the specified queries
 template<typename QueryIterator, typename... Args>
 irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
                                         irs::ScoreMergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
-  IRS_ASSERT(std::distance(begin, end) >= 0);
-  const size_t size = size_t(std::distance(begin, end));
-
+  IRS_ASSERT(begin <= end);
+  const size_t size = std::distance(begin, end);
   // check the size before the execution
   if (0 == size) {
     // empty or unreachable search criteria
     return irs::doc_iterator::empty();
   }
 
-  std::vector<irs::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
-  itrs.reserve(size);
-
-  for (; begin != end; ++begin) {
-    // execute query - get doc iterator
-    auto docs = (*begin)->execute(ctx);
-
-    // filter out empty iterators
-    if (!irs::doc_limits::eof(docs->value())) {
-      itrs.emplace_back(std::move(docs));
-    }
+  auto itrs = MakeScoreAdapters<false>(ctx, begin, end);
+  if (itrs.empty()) {
+    return irs::doc_iterator::empty();
   }
 
   return irs::ResoveMergeType(
@@ -79,8 +103,9 @@ irs::doc_iterator::ptr make_disjunction(const irs::ExecutionContext& ctx,
       using disjunction_t =
         irs::disjunction_iterator<irs::doc_iterator::ptr, A>;
 
-      return irs::MakeDisjunction<disjunction_t>(
-        std::move(itrs), std::move(aggregator), std::forward<Args>(args)...);
+      return irs::MakeDisjunction<disjunction_t>(ctx.wand, std::move(itrs),
+                                                 std::move(aggregator),
+                                                 std::forward<Args>(args)...);
     });
 }
 
@@ -90,9 +115,8 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
                                         irs::ScoreMergeType merge_type,
                                         QueryIterator begin, QueryIterator end,
                                         Args&&... args) {
-  IRS_ASSERT(std::distance(begin, end) >= 0);
+  IRS_ASSERT(begin <= end);
   const size_t size = std::distance(begin, end);
-
   // check size before the execution
   switch (size) {
     case 0:
@@ -101,27 +125,16 @@ irs::doc_iterator::ptr make_conjunction(const irs::ExecutionContext& ctx,
       return (*begin)->execute(ctx);
   }
 
-  std::vector<irs::score_iterator_adapter<irs::doc_iterator::ptr>> itrs;
-  itrs.reserve(size);
-
-  for (; begin != end; ++begin) {
-    auto docs = (*begin)->execute(ctx);
-
-    // filter out empty iterators
-    if (irs::doc_limits::eof(docs->value())) {
-      return irs::doc_iterator::empty();
-    }
-
-    itrs.emplace_back(std::move(docs));
+  auto itrs = MakeScoreAdapters<true>(ctx, begin, end);
+  if (itrs.empty()) {
+    return irs::doc_iterator::empty();
   }
 
   return irs::ResoveMergeType(
     merge_type, ctx.scorers.buckets().size(),
     [&]<typename A>(A&& aggregator) -> irs::doc_iterator::ptr {
-      using conjunction_t = irs::conjunction<irs::doc_iterator::ptr, A>;
-
-      return irs::MakeConjunction<conjunction_t>(
-        std::move(itrs), std::move(aggregator), std::forward<Args>(args)...);
+      return irs::MakeConjunction(ctx.wand, std::move(aggregator),
+                                  std::move(itrs), std::forward<Args>(args)...);
     });
 }
 
@@ -279,18 +292,10 @@ class MinMatchQuery : public BooleanQuery {
     // min_match_count <= size
     min_match_count = std::min(size, min_match_count);
 
-    std::vector<score_iterator_adapter<doc_iterator::ptr>> itrs(size);
-    auto it = std::begin(itrs);
-    for (; begin != end; ++begin) {
-      // execute query - get doc iterator
-      *it = (*begin)->execute(ctx);
-
-      // filter out empty iterators
-      if (IRS_LIKELY(*it && !doc_limits::eof(it->value()))) {
-        ++it;
-      }
+    auto itrs = MakeScoreAdapters<false>(ctx, begin, end);
+    if (itrs.empty()) {
+      return irs::doc_iterator::empty();
     }
-    itrs.erase(it, std::end(itrs));
 
     return ResoveMergeType(
       merge_type(), ctx.scorers.buckets().size(),
@@ -299,7 +304,7 @@ class MinMatchQuery : public BooleanQuery {
         using disjunction_t = min_match_iterator<doc_iterator::ptr, A>;
 
         return MakeWeakDisjunction<disjunction_t, A>(
-          std::move(itrs), min_match_count, std::move(aggregator));
+          ctx.wand, std::move(itrs), min_match_count, std::move(aggregator));
       });
   }
 

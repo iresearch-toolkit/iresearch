@@ -638,6 +638,7 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
   auto child = child_->execute({.segment = rdr,
                                 .scorers = GetOrder(match_, ord),
                                 .ctx = ctx.ctx,
+                                // TODO(MBkkt) wand for nested?
                                 .wand = {}});
 
   if (IRS_UNLIKELY(!child)) {

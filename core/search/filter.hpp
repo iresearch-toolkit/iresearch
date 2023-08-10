@@ -48,6 +48,7 @@ struct ExecutionContext {
   IResourceManager& memory = IResourceManager::kNoop;
   const Scorers& scorers = Scorers::kUnordered;
   const attribute_provider* ctx = nullptr;
+  // If enabled, wand would use first scorer from scorers
   WandContext wand;
 };
 

@@ -119,7 +119,7 @@ struct WandScorer<true> {
                const attribute_provider& attrs) {
     func_ =
       scorer_.prepare_scorer(reader, features, stats_.data(), attrs, kNoBoost);
-    return static_cast<bool>(func_);
+    return !func_.IsDefault();
   }
 
   score_t GetScore() const noexcept {
@@ -198,9 +198,6 @@ class FreqNormProducer {
   template<typename Output>
   static void Write(Entry entry, Output& out) {
     // TODO(MBkkt) Compute difference second time looks unnecessary.
-    // TODO(MBkkt) Saving freq == 1 and freq == norm looks unnecessary.
-    //  We can avoid it because we're storing size, but do we want it?
-    //  It could makes read slower.
     IRS_ASSERT(entry.freq >= 1);
     out.write_vint(entry.freq);
     if constexpr (kNorm) {
@@ -324,14 +321,18 @@ class FreqNormSource final : public WandSource {
 
   void Read(data_input& in, size_t size) final {
     freq_.value = in.read_vint();
+    // TODO(MBkkt) don't compute vsize here
+    const auto read = bytes_io<uint32_t>::vsize(freq_.value);
+    // We need to always try to read norm, because we have compatibility
+    // between BM25 in the index and TFIDF in the query
+    [[maybe_unused]] auto norm = freq_.value;
+    IRS_ASSERT(read <= size);
+    if (read != size) {
+      // TODO(MBkkt) if (!kNorm) in.skip(read - size);
+      norm += in.read_vint();
+    }
     if constexpr (kNorm) {
-      // TODO(MBkkt) don't compute vsize here
-      const auto read = bytes_io<uint32_t>::vsize(freq_.value);
-      norm_.value = freq_.value;
-      IRS_ASSERT(read <= size);
-      if (read != size) {
-        norm_.value += in.read_vint();
-      }
+      norm_.value = norm;
     }
   }
 

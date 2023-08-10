@@ -377,10 +377,9 @@ int put(const std::string& path, const std::string& dir_type,
     auto it = WAND_TYPES.find(wand_type);
     if (it != WAND_TYPES.end()) {
       scorer = it->second;
+      scr = irs::scorers::get(
+        scorer.name, irs::type<irs::text_format::json>::get(), scorer.arg);
     }
-    scr = irs::scorers::get(
-      scorer.name, irs::type<irs::text_format::json>::get(), scorer.arg);
-
     if (!scr) {
       std::cerr << "Unable to instatiate wand from wand type: " << wand_type
                 << std::endl;

@@ -67,7 +67,7 @@ using DocMapView = std::span<const doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
 using ScoreFunctionFactory =
-  std::function<ScoreFunction(const attribute_provider&, const Scorer&)>;
+  std::function<ScoreFunction(const attribute_provider&)>;
 
 struct WanderatorOptions {
   ScoreFunctionFactory factory;

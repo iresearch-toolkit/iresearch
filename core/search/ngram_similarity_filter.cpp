@@ -33,7 +33,6 @@ namespace irs {
 
 filter::prepared::ptr by_ngram_similarity::prepare(
   const PrepareContext& ctx) const {
-  const auto threshold = std::max(0.f, std::min(1.f, options().threshold));
   const auto& ngrams = options().ngrams;
 
   if (ngrams.empty() || field().empty()) {
@@ -41,13 +40,11 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     return filter::prepared::empty();
   }
 
-  const size_t min_match_count =
-    std::max(static_cast<size_t>(
-               std::ceil(static_cast<double>(ngrams.size()) * threshold)),
-             size_t{1});
-
+  const auto threshold = std::clamp(options().threshold, 0.f, 1.f);
+  const auto min_match_count =
+    std::clamp(static_cast<size_t>(std::ceil(ngrams.size() * threshold)),
+               size_t{1}, ngrams.size());
   const auto sub_boost = ctx.boost * boost();
-
   if (ctx.scorers.empty() && 1 == min_match_count) {
     irs::by_terms disj;
     for (auto& terms = disj.mutable_options()->terms;
@@ -62,7 +59,6 @@ filter::prepared::ptr by_ngram_similarity::prepare(
       .boost = sub_boost,
     });
   }
-
   NGramStates query_states{ctx.memory, ctx.index.size()};
 
   // per segment terms states

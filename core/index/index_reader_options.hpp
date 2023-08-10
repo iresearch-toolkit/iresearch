@@ -50,12 +50,11 @@ struct WandContext {
 
   bool Enabled() const noexcept { return index != kDisable; }
 
-  // Index of the scorer to use for optimization.
+  // Index of the wand data in the IndexWriter to use for optimization.
   // Optimization is turned off by default.
   byte_type index{kDisable};
   bool strict{false};
-  // Use maxscore instead of wand in disjunction
-  bool maxscore{false};
+  mutable bool root{true};
 };
 
 struct IndexReaderOptions {
