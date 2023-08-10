@@ -116,17 +116,17 @@ struct SegmentOptions {
   // 0 == unlimited
   size_t segment_count_max{0};
 
-  // Flush the segment to the repository after its total document
-  // count (live + masked) grows beyond this byte limit, in-flight
-  // documents will still be written to the segment before flush
-  // 0 == unlimited
-  size_t segment_docs_max{0};
-
   // Flush the segment to the repository after its in-memory size
   // grows beyond this byte limit, in-flight documents will still be
   // written to the segment before flush
   // 0 == unlimited
   size_t segment_memory_max{0};
+
+  // Flush the segment to the repository after its total document
+  // count (live + masked) grows beyond this byte limit, in-flight
+  // documents will still be written to the segment before flush
+  // 0 == unlimited
+  uint32_t segment_docs_max{0};
 };
 
 // Progress report callback types for commits.
@@ -733,22 +733,31 @@ class IndexWriter : private util::noncopyable {
 
  private:
   struct SegmentLimits {
+   private:
+    // TODO(MBkkt) Change zero meaning
+    static constexpr auto kSizeMax = std::numeric_limits<size_t>::max();
+    static constexpr auto kDocsMax = std::numeric_limits<uint32_t>::max() - 2;
+    static auto ZeroMax(auto value, auto max) noexcept {
+      return std::min(value - 1, max - 1) + 1;
+    }
+
+   public:
     // see segment_options::max_segment_count
     std::atomic_size_t segment_count_max;
-    // see segment_options::max_segment_docs
-    std::atomic_size_t segment_docs_max;
     // see segment_options::max_segment_memory
     std::atomic_size_t segment_memory_max;
+    // see segment_options::max_segment_docs
+    std::atomic_uint32_t segment_docs_max;
 
     explicit SegmentLimits(const SegmentOptions& opts) noexcept
-      : segment_count_max(opts.segment_count_max),
-        segment_docs_max(opts.segment_docs_max),
-        segment_memory_max(opts.segment_memory_max) {}
+      : segment_count_max{ZeroMax(opts.segment_count_max, kSizeMax)},
+        segment_memory_max{ZeroMax(opts.segment_memory_max, kSizeMax)},
+        segment_docs_max{ZeroMax(opts.segment_docs_max, kDocsMax)} {}
 
     SegmentLimits& operator=(const SegmentOptions& opts) noexcept {
-      segment_count_max.store(opts.segment_count_max);
-      segment_docs_max.store(opts.segment_docs_max);
-      segment_memory_max.store(opts.segment_memory_max);
+      segment_count_max.store(ZeroMax(opts.segment_count_max, kSizeMax));
+      segment_memory_max.store(ZeroMax(opts.segment_memory_max, kSizeMax));
+      segment_docs_max.store(ZeroMax(opts.segment_docs_max, kDocsMax));
       return *this;
     }
   };
