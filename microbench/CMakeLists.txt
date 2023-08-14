@@ -59,24 +59,6 @@ include_directories(iresearch-microbench
   $<TARGET_PROPERTY:iresearch-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
   )
 
-add_executable(iresearch-memory-file-bench
-  memory_file_benchmark.cpp
-  )
-
-set_ipo(iresearch-memory-file-bench)
-
-add_dependencies(iresearch-memory-file-bench
-  iresearch-static
-  )
-
-target_include_directories(iresearch-memory-file-bench
-  PRIVATE ${PROJECT_BINARY_DIR}/core
-  )
-
-target_link_libraries(iresearch-memory-file-bench
-  iresearch-static
-  )
-
 add_executable(iresearch-column-writer
   column_writer_benchmark.cpp
   )
