@@ -71,13 +71,21 @@ TEST(by_wildcard_test, equal) {
 }
 
 TEST(by_wildcard_test, boost) {
+  MaxMemoryCounter counter;
+
   // no boost
   {
     irs::by_wildcard q = make_filter("field", "bar*");
 
-    auto prepared = q.prepare({.index = irs::SubReader::empty()});
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // with boost
   {
@@ -86,9 +94,15 @@ TEST(by_wildcard_test, boost) {
     irs::by_wildcard q = make_filter("field", "bar*");
     q.boost(boost);
 
-    auto prepared = q.prepare({.index = irs::SubReader::empty()});
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(boost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 #ifndef IRESEARCH_DLL
@@ -99,86 +113,165 @@ TEST(by_wildcard_test, boost) {
 #endif  // __clang__
 
 TEST(by_wildcard_test, test_type_of_prepared_query) {
-  // term query
-  {
-    auto lhs = make_filter<irs::by_term>("foo", "bar")
-                 .prepare({.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "bar").prepare({.index = irs::SubReader::empty()});
-    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
-  }
+  MaxMemoryCounter counter;
 
   // term query
   {
-    auto lhs = make_filter<irs::by_term>("foo", "").prepare(
-      {.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "").prepare({.index = irs::SubReader::empty()});
+    auto lhs = make_filter<irs::by_term>("foo", "bar")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
+    auto rhs = make_filter("foo", "bar")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
+
+  // term query
+  {
+    auto lhs = make_filter<irs::by_term>("foo", "").prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
+    auto rhs = make_filter("foo", "").prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "foo%")
-                 .prepare({.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "foo\\%").prepare({.index = irs::SubReader::empty()});
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
+    auto rhs = make_filter("foo", "foo\\%")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // prefix query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "bar")
-                 .prepare({.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "bar%").prepare({.index = irs::SubReader::empty()});
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
+    auto rhs = make_filter("foo", "bar%")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // prefix query
   {
     auto lhs = make_filter<irs::by_prefix>("foo", "bar")
-                 .prepare({.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "bar%%").prepare({.index = irs::SubReader::empty()});
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
+    auto rhs = make_filter("foo", "bar%%")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "bar%")
-                 .prepare({.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "bar\\%").prepare({.index = irs::SubReader::empty()});
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
+    auto rhs = make_filter("foo", "bar\\%")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // all query
   {
-    auto lhs = make_filter<irs::by_prefix>("foo", "").prepare(
-      {.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "%").prepare({.index = irs::SubReader::empty()});
+    auto lhs = make_filter<irs::by_prefix>("foo", "").prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
+    auto rhs = make_filter("foo", "%")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // all query
   {
-    auto lhs = make_filter<irs::by_prefix>("foo", "").prepare(
-      {.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "%%").prepare({.index = irs::SubReader::empty()});
+    auto lhs = make_filter<irs::by_prefix>("foo", "").prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
+    auto rhs = make_filter("foo", "%%")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // term query
   {
     auto lhs = make_filter<irs::by_term>("foo", "%")
-                 .prepare({.index = irs::SubReader::empty()});
-    auto rhs =
-      make_filter("foo", "\\%").prepare({.index = irs::SubReader::empty()});
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
+    auto rhs = make_filter("foo", "\\%")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 #ifdef __clang__

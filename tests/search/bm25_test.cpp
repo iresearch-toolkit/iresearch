@@ -121,6 +121,9 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
+
+  MaxMemoryCounter counter;
+
   // by_range multiple
   {
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -141,8 +144,11 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
     constexpr std::array expected{7, 3, 0, 1, 5};
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -166,6 +172,9 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range multiple (3 values)
   {
@@ -189,8 +198,11 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
                             : std::array{7, 0, 5, 3, 2, 1};
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -213,6 +225,9 @@ void bm25_test_case::test_query_norms(irs::type_info::type_id norm,
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(bm25_test_case, consts) {
@@ -391,6 +406,8 @@ TEST_P(bm25_test_case, test_phrase) {
   ASSERT_EQ(1, index->size());
   auto& segment = *(index.begin());
 
+  MaxMemoryCounter counter;
+
   // "jumps high" with order
   {
     irs::by_phrase filter;
@@ -408,8 +425,11 @@ TEST_P(bm25_test_case, test_phrase) {
       "Q",   // jumps high jumps left jumps right jumps down walks back
       "R"};  // jumps high jumps left jumps right walks down walks back
 
-    auto prepared_filter =
-      filter.prepare({.index = *index, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -438,6 +458,9 @@ TEST_P(bm25_test_case, test_phrase) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // "cookies ca* p_e bisKuit meringue|marshmallows" with order
   {
@@ -468,8 +491,11 @@ TEST_P(bm25_test_case, test_phrase) {
       "SPWLC2",   // cookies cake pie biscwit meringue pie biscuit paste
       "SPWLC3"};  // cookies cake pie biscuet marshmallows cake meringue
 
-    auto prepared_filter =
-      filter.prepare({.index = *index, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -498,6 +524,9 @@ TEST_P(bm25_test_case, test_phrase) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(bm25_test_case, test_query) {
@@ -526,6 +555,9 @@ TEST_P(bm25_test_case, test_query) {
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
+
+  MaxMemoryCounter counter;
+
   // by_term
   {
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -542,8 +574,11 @@ TEST_P(bm25_test_case, test_query) {
     constexpr std::array expected{0, 1, 5, 7};
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -567,6 +602,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by term multi-segment, same term (same score for all docs)
   {
@@ -628,8 +666,11 @@ TEST_P(bm25_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
 
     for (auto& segment : reader) {
       const auto* column = segment.column("seq");
@@ -662,6 +703,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_term disjunction multi-segment, different terms (same score for all
   // docs)
@@ -735,8 +779,11 @@ TEST_P(bm25_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
 
     for (auto& segment : reader) {
       const auto* column = segment.column("seq");
@@ -769,6 +816,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_prefix empty multi-segment, different terms (same score for all docs)
   {
@@ -832,8 +882,11 @@ TEST_P(bm25_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
 
     for (auto& segment : reader) {
       const auto* column = segment.column("seq");
@@ -866,6 +919,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range single
   {
@@ -887,8 +943,11 @@ TEST_P(bm25_test_case, test_query) {
     constexpr std::array expected{0, 1, 5, 7};
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -911,6 +970,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range single + scored_terms_limit(1)
   {
@@ -933,8 +995,11 @@ TEST_P(bm25_test_case, test_query) {
     constexpr std::array expected{3, 7};
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -958,6 +1023,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // FIXME!!!
   //   // by_range single + scored_terms_limit(0)
@@ -1022,8 +1090,11 @@ TEST_P(bm25_test_case, test_query) {
     constexpr std::array expected{7, 3, 0, 1, 5};
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -1046,6 +1117,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range multiple (3 values)
   {
@@ -1067,8 +1141,11 @@ TEST_P(bm25_test_case, test_query) {
     constexpr std::array expected{7, 0, 5, 3, 2, 1};
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -1092,6 +1169,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by phrase
   {
@@ -1114,8 +1194,11 @@ TEST_P(bm25_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -1139,6 +1222,9 @@ TEST_P(bm25_test_case, test_query) {
       ASSERT_EQ(expected_entry.second, entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // all
   {
@@ -1150,8 +1236,11 @@ TEST_P(bm25_test_case, test_query) {
     irs::all filter;
     filter.boost(1.5f);
 
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -1168,6 +1257,9 @@ TEST_P(bm25_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // all
   {
@@ -1179,8 +1271,11 @@ TEST_P(bm25_test_case, test_query) {
     irs::all filter;
     filter.boost(0.f);
 
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -1199,6 +1294,9 @@ TEST_P(bm25_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // column existence
   {
@@ -1211,8 +1309,11 @@ TEST_P(bm25_test_case, test_query) {
     *filter.mutable_field() = "seq";
     filter.mutable_options()->acceptor = {};
 
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -1231,6 +1332,9 @@ TEST_P(bm25_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // column existence
   {
@@ -1244,8 +1348,11 @@ TEST_P(bm25_test_case, test_query) {
     filter.mutable_options()->acceptor = {};
     filter.boost(0.f);
 
-    auto prepared_filter =
-      filter.prepare({.index = reader, .scorers = prepared_order});
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     auto docs =
       prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
@@ -1265,6 +1372,9 @@ TEST_P(bm25_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(bm25_test_case, test_query_norms) {
@@ -1544,6 +1654,8 @@ TEST_P(bm25_test_case, test_order) {
   auto reader = irs::DirectoryReader(dir(), codec());
   auto& segment = *(reader.begin());
 
+  MaxMemoryCounter counter;
+
   irs::by_term query;
   *query.mutable_field() = "field";
 
@@ -1576,8 +1688,12 @@ TEST_P(bm25_test_case, test_order) {
         constexpr std::array expected{0, 1, 5, 7};
 
         irs::bytes_view_input in;
-        auto prepared = query.prepare(
-          {.index = reader, .scorers = prepared_order, .boost = boost});
+        auto prepared = query.prepare({
+          .index = reader,
+          .memory = counter,
+          .scorers = prepared_order,
+          .boost = boost,
+        });
         auto docs =
           prepared->execute({.segment = segment, .scorers = prepared_order});
         auto* score = irs::get<irs::score>(*docs);
@@ -1601,6 +1717,9 @@ TEST_P(bm25_test_case, test_order) {
           [](const auto& lhs, uint64_t rhs) { return lhs.second == rhs; });
         EXPECT_TRUE(eq);
       }
+      EXPECT_EQ(counter.current, 0);
+      EXPECT_GT(counter.max, 0);
+      counter.Reset();
     }
   }
 }

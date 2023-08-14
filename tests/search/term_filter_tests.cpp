@@ -64,10 +64,14 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     // search : single term
     CheckQuery(make_filter("name", "A"), Docs{1}, Costs{1}, rdr);
 
+    MaxMemoryCounter counter;
     {
       irs::by_term q = make_filter("name", "A");
 
-      auto prepared = q.prepare({.index = rdr});
+      auto prepared = q.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
       auto sub = rdr.begin();
       auto docs0 = prepared->execute({.segment = *sub});
       auto* doc = irs::get<irs::document>(*docs0);
@@ -77,6 +81,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_TRUE(docs0->next());
       ASSERT_EQ(docs0->value(), docs1->seek(docs0->value()));
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // search : all terms
     CheckQuery(
@@ -109,9 +116,15 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
     auto scorer = tests::sort::boost{};
     auto pord = irs::Scorers::Prepare(scorer);
 
+    MaxMemoryCounter counter;
+
     // without boost
     {
-      auto prep = filter.prepare({.index = rdr, .scorers = pord});
+      auto prep = filter.prepare({
+        .index = rdr,
+        .memory = counter,
+        .scorers = pord,
+      });
       auto docs = prep->execute({.segment = *(rdr.begin()), .scorers = pord});
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc));
@@ -132,13 +145,20 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_FALSE(docs->next());
       ASSERT_EQ(docs->value(), doc->value);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // with boost
     {
       const irs::score_t value = 5;
       filter.boost(value);
 
-      auto prep = filter.prepare({.index = rdr, .scorers = pord});
+      auto prep = filter.prepare({
+        .index = rdr,
+        .memory = counter,
+        .scorers = pord,
+      });
       auto docs = prep->execute({.segment = *(rdr.begin()), .scorers = pord});
 
       auto* scr = irs::get<irs::score>(*docs);
@@ -154,6 +174,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       ASSERT_FALSE(docs->next());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
   }
 
   void by_term_sequential_numeric() {
@@ -223,6 +246,8 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
     auto rdr = open_reader();
 
+    MaxMemoryCounter counter;
+
     // long (20)
     {
       irs::numeric_token_stream stream;
@@ -232,7 +257,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_term query = make_filter("seq", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{21};
       std::vector<irs::doc_id_t> actual;
@@ -245,6 +273,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // int (21)
     {
@@ -255,7 +286,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       irs::by_term query = make_filter("seq", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{22};
       std::vector<irs::doc_id_t> actual;
@@ -272,6 +306,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // double (90.564)
     {
@@ -283,7 +320,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{13};
       std::vector<irs::doc_id_t> actual;
@@ -300,6 +340,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // float (90.564)
     {
@@ -311,7 +354,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{13};
       std::vector<irs::doc_id_t> actual;
@@ -328,6 +374,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // double (100)
     {
@@ -339,7 +388,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
@@ -356,6 +408,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // float_t(100)
     {
@@ -367,7 +422,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
@@ -384,6 +442,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // int(100)
     {
@@ -395,7 +456,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
@@ -412,6 +476,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // long(100)
     {
@@ -423,7 +490,10 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       irs::by_term query =
         make_filter("value", irs::ViewCast<char>(term->value));
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{1, 5, 7, 9, 10};
       std::vector<irs::doc_id_t> actual;
@@ -440,6 +510,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
   }
 
   void by_term_sequential_order() {
@@ -452,6 +525,8 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
     // read segment
     auto rdr = open_reader();
+
+    MaxMemoryCounter counter;
 
     {
       // create filter
@@ -489,7 +564,11 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
 
       std::set<irs::doc_id_t> expected{31, 32};
       auto pord = irs::Scorers::Prepare(scorer);
-      auto prep = filter.prepare({.index = rdr, .scorers = pord});
+      auto prep = filter.prepare({
+        .index = rdr,
+        .memory = counter,
+        .scorers = pord,
+      });
       auto docs = prep->execute({.segment = *(rdr.begin()), .scorers = pord});
 
       auto* scr = irs::get<irs::score>(*docs);
@@ -507,6 +586,9 @@ class term_filter_test_case : public tests::FilterTestCaseBase {
       ASSERT_EQ(1, collect_term_count);   // 1 term in 1 field in 1 segment
       ASSERT_EQ(1, finish_count);         // 1 unique term
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
   }
 
   void by_term_sequential() {
@@ -639,13 +721,21 @@ TEST(by_term_test, equal) {
 }
 
 TEST(by_term_test, boost) {
+  MaxMemoryCounter counter;
+
   // no boost
   {
     irs::by_term q = make_filter("field", "term");
 
-    auto prepared = q.prepare({.index = irs::SubReader::empty()});
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // with boost
   {
@@ -653,9 +743,15 @@ TEST(by_term_test, boost) {
     irs::by_term q = make_filter("field", "term");
     q.boost(boost);
 
-    auto prepared = q.prepare({.index = irs::SubReader::empty()});
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(boost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 static constexpr auto kTestDirs = tests::getDirectories<tests::kTypesDefault>();

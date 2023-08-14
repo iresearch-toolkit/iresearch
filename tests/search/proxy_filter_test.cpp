@@ -171,6 +171,9 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
 
   void verify_filter(const std::vector<doc_id_t>& expected, size_t line) {
     SCOPED_TRACE(::testing::Message("Failed on line: ") << line);
+    MaxMemoryCounter prepare_counter;
+    MaxMemoryCounter execute_counter;
+
     irs::proxy_filter::cache_ptr cache;
     for (size_t i = 0; i < 3; ++i) {
       proxy_filter proxy;
@@ -182,8 +185,14 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
       } else {
         proxy.set_cache(cache);
       }
-      auto prepared_proxy = proxy.prepare({.index = index_});
-      auto docs = prepared_proxy->execute({.segment = index_[0]});
+      auto prepared_proxy = proxy.prepare({
+        .index = index_,
+        .memory = prepare_counter,
+      });
+      auto docs = prepared_proxy->execute({
+        .segment = index_[0],
+        .memory = execute_counter,
+      });
       auto costs = irs::get<irs::cost>(*docs);
       EXPECT_TRUE(costs);
       EXPECT_EQ(costs->estimate(), expected.size());
@@ -198,6 +207,16 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
     // Real filter should be exectued just once
     EXPECT_EQ(doclist_test_query::get_execs(), 1);
     EXPECT_EQ(doclist_test_filter::get_prepares(), 1);
+
+    cache.reset();
+
+    EXPECT_EQ(prepare_counter.current, 0);
+    EXPECT_GT(prepare_counter.max, 0);
+    prepare_counter.Reset();
+
+    EXPECT_EQ(execute_counter.current, 0);
+    EXPECT_GT(execute_counter.max, 0);
+    execute_counter.Reset();
   }
 
   irs::memory_directory dir_;
