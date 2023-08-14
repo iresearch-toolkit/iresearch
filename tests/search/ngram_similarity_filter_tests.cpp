@@ -148,7 +148,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
     EXPECT_EQ(counter.current, 0);
-    EXPECT_GT(counter.max, 0);
+    EXPECT_EQ(counter.max, 0);
     counter.Reset();
 
     // simple disjunction
@@ -199,7 +199,7 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
     EXPECT_EQ(counter.current, 0);
-    EXPECT_GT(counter.max, 0);
+    EXPECT_EQ(counter.max, 0);
     counter.Reset();
 
     // simple disjunction
