@@ -348,13 +348,7 @@ filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
 
     // FIXME(gnusi): let Not handle everything?
     if (filter->type() != irs::type<irs::Not>::id()) {
-      return filter->prepare({
-        .index = ctx.index,
-        .memory = ctx.memory,
-        .scorers = ctx.scorers,
-        .ctx = ctx.ctx,
-        .boost = ctx.boost * boost(),
-      });
+      return filter->prepare(ctx.Boost(boost()));
     }
   }
 
@@ -473,7 +467,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
       // substitute new_boost back we will get ( boost * OR_BOOST * ALL_BOOST +
       // boost * OR_BOOST * LEFT_BOOST) - original non-optimized boost value
       auto left_boost = (*incl.begin())->boost();
-      if (boost() != 0 && left_boost != 0 && !ctx.scorers.empty()) {
+      if (boost() != 0 && left_boost != 0 && !sub_ctx.scorers.empty()) {
         sub_ctx.boost = (sub_ctx.boost * boost() * all_boost +
                          sub_ctx.boost * boost() * left_boost) /
                         (left_boost * boost());
@@ -491,7 +485,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
     // single node case
     return incl.front()->prepare(sub_ctx);
   }
-  auto q = memory::make_tracked<AndQuery>(ctx.memory);
+  auto q = memory::make_tracked<AndQuery>(sub_ctx.memory);
   q->prepare(sub_ctx, merge_type(), incl, excl);
   return q;
 }
@@ -499,13 +493,7 @@ filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
 filter::prepared::ptr Or::prepare(const PrepareContext& ctx) const {
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
     // all conditions are satisfied
-    return MakeAllDocsFilter(kNoBoost)->prepare({
-      .index = ctx.index,
-      .memory = ctx.memory,
-      .scorers = ctx.scorers,
-      .ctx = ctx.ctx,
-      .boost = ctx.boost * boost(),
-    });
+    return MakeAllDocsFilter(kNoBoost)->prepare(ctx.Boost(boost()));
   }
 
   return boolean_filter::prepare(ctx);
@@ -514,13 +502,7 @@ filter::prepared::ptr Or::prepare(const PrepareContext& ctx) const {
 filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
                                          std::vector<const filter*>& excl,
                                          const PrepareContext& ctx) const {
-  const PrepareContext sub_ctx{
-    .index = ctx.index,
-    .memory = ctx.memory,
-    .scorers = ctx.scorers,
-    .ctx = ctx.ctx,
-    .boost = ctx.boost * boost(),
-  };
+  const PrepareContext sub_ctx = ctx.Boost(boost());
 
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
     // all conditions are satisfied
@@ -555,7 +537,7 @@ filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
     }
   }
   if (all_count != 0) {
-    if (ctx.scorers.empty() && incl.size() > 1 &&
+    if (sub_ctx.scorers.empty() && incl.size() > 1 &&
         min_match_count_ <= all_count) {
       // if we have at least one all in include group - all other filters are
       // not necessary in case there is no scoring and 'all' count satisfies
@@ -599,11 +581,11 @@ filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
 
   memory::managed_ptr<BooleanQuery> q;
   if (adjusted_min_match == incl.size()) {
-    q = memory::make_tracked<AndQuery>(ctx.memory);
+    q = memory::make_tracked<AndQuery>(sub_ctx.memory);
   } else if (1 == adjusted_min_match) {
-    q = memory::make_tracked<OrQuery>(ctx.memory);
+    q = memory::make_tracked<OrQuery>(sub_ctx.memory);
   } else {  // min_match_count > 1 && min_match_count < incl.size()
-    q = memory::make_tracked<MinMatchQuery>(ctx.memory, adjusted_min_match);
+    q = memory::make_tracked<MinMatchQuery>(sub_ctx.memory, adjusted_min_match);
   }
 
   q->prepare(sub_ctx, merge_type(), incl, excl);
@@ -617,13 +599,7 @@ filter::prepared::ptr Not::prepare(const PrepareContext& ctx) const {
     return prepared::empty();
   }
 
-  const PrepareContext sub_ctx{
-    .index = ctx.index,
-    .memory = ctx.memory,
-    .scorers = ctx.scorers,
-    .ctx = ctx.ctx,
-    .boost = ctx.boost * boost(),
-  };
+  const PrepareContext sub_ctx = ctx.Boost(boost());
 
   if (res.second) {
     auto all_docs = MakeAllDocsFilter(kNoBoost);

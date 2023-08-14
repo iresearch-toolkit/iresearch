@@ -107,9 +107,7 @@ class by_granular_range : public filter_base<by_granular_range_options> {
                     filter_visitor& visitor);
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
-    auto sub_ctx = ctx;
-    sub_ctx.boost *= boost();
-    return prepare(sub_ctx, field(), options().range,
+    return prepare(ctx.Boost(boost()), field(), options().range,
                    options().scored_terms_limit);
   }
 };

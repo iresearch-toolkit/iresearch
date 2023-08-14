@@ -41,6 +41,12 @@ struct PrepareContext {
   const Scorers& scorers = Scorers::kUnordered;
   const attribute_provider* ctx = nullptr;
   score_t boost = kNoBoost;
+
+  PrepareContext Boost(score_t boost) const noexcept {
+    auto ctx = *this;
+    ctx.boost *= boost;
+    return ctx;
+  }
 };
 
 struct ExecutionContext {

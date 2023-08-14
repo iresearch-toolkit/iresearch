@@ -70,9 +70,7 @@ class by_wildcard final : public filter_base<by_wildcard_options> {
   static field_visitor visitor(bytes_view term);
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
-    auto sub_ctx = ctx;
-    sub_ctx.boost *= boost();
-    return prepare(sub_ctx, field(), options().term,
+    return prepare(ctx.Boost(boost()), field(), options().term,
                    options().scored_terms_limit);
   }
 };

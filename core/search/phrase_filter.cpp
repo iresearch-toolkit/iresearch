@@ -196,8 +196,7 @@ filter::prepared::ptr by_phrase::prepare(const PrepareContext& ctx) const {
   }
 
   if (1 == options().size()) {
-    auto sub_ctx = ctx;
-    sub_ctx.boost *= boost();
+    auto sub_ctx = ctx.Boost(boost());
     auto query =
       std::visit(Prepare{sub_ctx, field()}, options().begin()->second);
 
