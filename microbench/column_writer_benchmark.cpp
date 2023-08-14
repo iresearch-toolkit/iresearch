@@ -31,8 +31,8 @@ static constexpr size_t kColumns = 1000;
 static constexpr size_t kColumnsIter = kColumns * 10;
 
 static void WriteFile(std::mt19937_64& rng) {
-  auto writer = irs::columnstore2::make_writer(
-    irs::columnstore2::Version::kMax, false, irs::IResourceManager::kNoop);
+  auto writer =
+    irs::columnstore2::make_writer(irs::columnstore2::Version::kMax, false);
   // const auto size = size_t{1} << kFileSizePower(rng);
   for (size_t i = 0; i != kColumnsIter; ++i) {
     if (i % kColumns == 0) {
