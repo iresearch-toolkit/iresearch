@@ -193,9 +193,9 @@ class BooleanQuery : public filter::prepared {
     }
   }
 
-  virtual void prepare(const PrepareContext& ctx, ScoreMergeType merge_type,
-                       std::span<const filter* const> incl,
-                       std::span<const filter* const> excl) {
+  void prepare(const PrepareContext& ctx, ScoreMergeType merge_type,
+               std::span<const filter* const> incl,
+               std::span<const filter* const> excl) {
     BooleanQuery::queries_t queries{{ctx.memory}};
     queries.reserve(incl.size() + excl.size());
 
