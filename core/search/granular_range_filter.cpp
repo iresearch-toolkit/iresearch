@@ -586,7 +586,7 @@ filter::prepared::ptr by_granular_range::prepare(
     return prepared::empty();
   }
 
-  MultiTermQuery::Stats stats;
+  MultiTermQuery::Stats stats{{ctx.memory}};
   collector.score(ctx.index, ctx.scorers, stats);
 
   return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),

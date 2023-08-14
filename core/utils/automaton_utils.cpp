@@ -416,7 +416,7 @@ filter::prepared::ptr prepare_automaton_filter(const PrepareContext& ctx,
     }
   }
 
-  MultiTermQuery::Stats stats;
+  MultiTermQuery::Stats stats{{ctx.memory}};
   collector.score(ctx.index, ctx.scorers, stats);
 
   return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),

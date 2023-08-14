@@ -219,7 +219,8 @@ filter::prepared::ptr prepare_levenshtein_filter(
     });
   }
 
-  MultiTermQuery::Stats stats(1);
+  MultiTermQuery::Stats stats(
+    1, MultiTermQuery::Stats::allocator_type{ctx.memory});
   stats.back().resize(ctx.scorers.stats_size(), 0);
   auto* stats_buf = stats[0].data();
   term_stats.finish(stats_buf, 0, field_stats, ctx.index);
