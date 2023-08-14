@@ -22,22 +22,11 @@
 
 #include "formats_burst_trie.hpp"
 
-#include <list>
 #include <variant>
 
 #include "utils/assert.hpp"
 
 // clang-format off
-
-#if (defined(__clang__) || defined(_MSC_VER) || \
-     defined(__GNUC__) &&                       \
-       (__GNUC__ > 8))  // GCCs <=  don't have "<version>" header
-#include <version>
-#endif
-
-#ifdef __cpp_lib_memory_resource
-#include <memory_resource>
-#endif
 
 #include "utils/fstext/fst_utils.hpp"
 
@@ -175,11 +164,81 @@ using volatile_byte_ref = volatile_ref<byte_type>;
 
 using feature_map_t = std::vector<irs::type_info::type_id>;
 
+template<typename T>
+struct Node {
+  T* next = nullptr;
+};
+
+template<typename T>
+struct IntrusiveList {
+ public:
+  IntrusiveList& operator=(const IntrusiveList&) = delete;
+  IntrusiveList(const IntrusiveList&) = delete;
+
+  IntrusiveList() noexcept = default;
+
+  IntrusiveList(IntrusiveList&& other) noexcept
+    : tail_{std::exchange(other.tail_, nullptr)} {}
+
+  IntrusiveList& operator=(IntrusiveList&& other) noexcept {
+    std::swap(tail_, other.tail_);
+    return *this;
+  }
+
+  void Append(IntrusiveList&& rhs) noexcept {
+    IRS_ASSERT(this != &rhs);
+    if (rhs.tail_ == nullptr) {
+      return;
+    }
+    if (tail_ == nullptr) {
+      tail_ = rhs.tail_;
+      rhs.tail_ = nullptr;
+      return;
+    }
+    // h1->t1->h1 h2->t2->h2
+    auto* head = tail_->next;
+    // h1->t1->h2->t2->h2
+    tail_->next = rhs.tail_->next;
+    // h1->t1->h2->t2->h1
+    rhs.tail_->next = head;
+    // h1->**->h2->t2/t1->h1
+    tail_ = rhs.tail_;
+    // h1->**->h2->t1->h1
+    rhs.tail_ = nullptr;
+  }
+
+  void PushFront(T& front) noexcept {
+    IRS_ASSERT(front.next == &front);
+    if (IRS_LIKELY(tail_ == nullptr)) {
+      tail_ = &front;
+      return;
+    }
+    front.next = tail_->next;
+    tail_->next = &front;
+  }
+
+  template<typename Func>
+  IRS_FORCE_INLINE void Visit(Func&& func) const {
+    if (IRS_LIKELY(tail_ == nullptr)) {
+      return;
+    }
+    auto* head = tail_->next;
+    auto* it = head;
+    do {
+      func(*std::exchange(it, it->next));
+    } while (it != head);
+  }
+
+  T* tail_ = nullptr;
+};
+
 // Block of terms
 struct block_t : private util::noncopyable {
-  struct prefixed_output final : data_output, private util::noncopyable {
+  struct prefixed_output final : data_output,
+                                 Node<prefixed_output>,
+                                 private util::noncopyable {
     explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
-      : prefix(std::move(prefix)) {}
+      : Node<prefixed_output>{this}, prefix(std::move(prefix)) {}
 
     void write_byte(byte_type b) final { weight.PushBack(b); }
 
@@ -193,18 +252,11 @@ struct block_t : private util::noncopyable {
 
   static constexpr uint16_t INVALID_LABEL{std::numeric_limits<uint16_t>::max()};
 
-#ifdef __cpp_lib_memory_resource
-  using block_index_t = std::pmr::list<prefixed_output>;
+  using block_index_t = IntrusiveList<prefixed_output>;
 
-  block_t(std::pmr::memory_resource& mrc, uint64_t block_start, byte_type meta,
+  block_t(block_index_t&& other, uint64_t block_start, byte_type meta,
           uint16_t label) noexcept
-    : index(&mrc), start(block_start), label(label), meta(meta) {}
-#else
-  using block_index_t = std::list<prefixed_output>;
-
-  block_t(uint64_t block_start, byte_type meta, uint16_t label) noexcept
-    : start(block_start), label(label), meta(meta) {}
-#endif
+    : index{std::move(other)}, start{block_start}, label{label}, meta{meta} {}
 
   block_t(block_t&& rhs) noexcept
     : index(std::move(rhs.index)),
@@ -222,16 +274,118 @@ struct block_t : private util::noncopyable {
     return *this;
   }
 
+  ~block_t() {
+    index.Visit([](prefixed_output& output) {  //
+      output.~prefixed_output();
+    });
+  }
+
   block_index_t index;  // fst index data
   uint64_t start;       // file pointer
   uint16_t label;       // block lead label
   byte_type meta;       // block metadata
-};                      // block_t
+};
 
-// FIXME std::is_nothrow_move_constructible_v<std::list<...>> == false
-static_assert(std::is_nothrow_move_constructible_v<block_t>);
-// FIXME std::is_nothrow_move_assignable_v<std::list<...>> == false
-static_assert(std::is_nothrow_move_assignable_v<block_t>);
+template<typename T>
+class MonotonicBuffer {
+  static constexpr size_t kAlign =
+    (alignof(T) * alignof(void*)) / std::gcd(alignof(T), alignof(void*));
+
+  struct alignas(kAlign) Block {
+    Block* prev = nullptr;
+  };
+
+  static_assert(std::is_trivially_destructible_v<Block>);
+
+ public:
+  MonotonicBuffer(IResourceManager& resource_manager,
+                  size_t initial_size) noexcept
+    : resource_manager_{resource_manager}, next_size_{initial_size} {
+    IRS_ASSERT(initial_size > 1);
+  }
+
+  MonotonicBuffer(const MonotonicBuffer&) = delete;
+  MonotonicBuffer& operator=(const MonotonicBuffer&) = delete;
+  ~MonotonicBuffer() { Reset(); }
+
+  template<typename... Args>
+  T* Allocate(Args&&... args) {
+    if (IRS_UNLIKELY(available_ == 0)) {
+      AllocateMemory();
+    }
+    IRS_ASSERT(reinterpret_cast<uintptr_t>(current_) % alignof(T) == 0);
+    auto* p = new (current_) T{std::forward<Args>(args)...};
+    current_ += sizeof(T);
+    --available_;
+    return p;
+  }
+
+  // Release all memory, except current_ and keep next_size_
+  void Clear() noexcept {
+    if (IRS_UNLIKELY(head_ == nullptr)) {
+      return;
+    }
+
+    Release(std::exchange(head_->prev, nullptr));
+    // TODO(MBkkt) Don't be lazy, call Decrease eager
+    // resource_manager_.Decrease(blocks_memory_ - size of head block);
+
+    auto* initial_current = reinterpret_cast<byte_type*>(head_) + sizeof(Block);
+    available_ += (current_ - initial_current) / sizeof(T);
+    current_ = initial_current;
+  }
+
+  // Release all memory, but keep next_size_
+  void Reset() noexcept {
+    if (IRS_UNLIKELY(head_ == nullptr)) {
+      return;
+    }
+
+    Release(std::exchange(head_, nullptr));
+    resource_manager_.Decrease(std::exchange(blocks_memory_, 0));
+
+    // otherwise we always increasing size!
+    // TODO(MBkkt) we could compute current size, but it's
+    next_size_ = (next_size_ * 2 + 2) / 3;
+
+    available_ = 0;
+    current_ = nullptr;
+  }
+
+ private:
+  void Release(Block* it) noexcept {
+    while (it != nullptr) {
+      operator delete(std::exchange(it, it->prev), std::align_val_t{kAlign});
+    }
+  }
+
+  void AllocateMemory() {
+    const auto size = sizeof(Block) + next_size_ * sizeof(T);
+    // TODO(MBkkt) use allocate_at_least but it's only C++23 :(
+    resource_manager_.Increase(size);
+    blocks_memory_ += size;
+    auto* p =
+      static_cast<byte_type*>(operator new(size, std::align_val_t{kAlign}));
+    head_ = new (p) Block{head_};
+    IRS_ASSERT(p == reinterpret_cast<byte_type*>(head_));
+    current_ = p + sizeof(Block);
+    available_ = next_size_;
+    next_size_ = (next_size_ * 3) / 2;
+    IRS_ASSERT(available_ < next_size_);
+  }
+
+  // TODO(MBkkt) Do we really want to measure this?
+  IResourceManager& resource_manager_;
+  size_t blocks_memory_ = 0;
+
+  size_t next_size_;
+  Block* head_ = nullptr;
+
+  size_t available_ = 0;
+  byte_type* current_ = nullptr;
+};
+
+using OutputBuffer = MonotonicBuffer<block_t::prefixed_output>;
 
 enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };
 
@@ -241,10 +395,7 @@ class entry : private util::noncopyable {
   entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
         bool volatile_term);
 
-  entry(irs::bytes_view prefix,
-#ifdef __cpp_lib_memory_resource
-        std::pmr::memory_resource& mrc,
-#endif
+  entry(irs::bytes_view prefix, block_t::block_index_t&& index,
         uint64_t block_start, byte_type meta, uint16_t label,
         bool volatile_term);
   entry(entry&& rhs) noexcept;
@@ -284,10 +435,7 @@ entry::entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
   mem_.construct<irs::postings_writer::state>(std::move(attrs));
 }
 
-entry::entry(irs::bytes_view prefix,
-#ifdef __cpp_lib_memory_resource
-             std::pmr::memory_resource& mrc,
-#endif
+entry::entry(irs::bytes_view prefix, block_t::block_index_t&& index,
              uint64_t block_start, byte_type meta, uint16_t label,
              bool volatile_term)
   : type_(ET_BLOCK) {
@@ -296,12 +444,7 @@ entry::entry(irs::bytes_view prefix,
   } else {
     data_.assign(prefix, volatile_term);
   }
-
-#ifdef __cpp_lib_memory_resource
-  mem_.construct<block_t>(mrc, block_start, meta, label);
-#else
-  mem_.construct<block_t>(block_start, meta, label);
-#endif
+  mem_.construct<block_t>(std::move(index), block_start, meta, label);
 }
 
 entry::entry(entry&& rhs) noexcept : data_{std::move(rhs.data_)} {
@@ -727,7 +870,9 @@ const fst::FstReadOptions& fst_read_options() {
 // mininum size of string weight we store in FST
 [[maybe_unused]] constexpr const size_t MIN_WEIGHT_SIZE = 2;
 
-void merge_blocks(std::vector<entry>& blocks) {
+using Blocks = std::vector<entry>;
+
+void MergeBlocks(Blocks& blocks, OutputBuffer& buffer) {
   IRS_ASSERT(!blocks.empty());
 
   auto it = blocks.begin();
@@ -736,7 +881,8 @@ void merge_blocks(std::vector<entry>& blocks) {
   auto& root_block = root.block();
   auto& root_index = root_block.index;
 
-  root_index.emplace_front(std::move(root.data()));
+  auto& out = *buffer.Allocate(std::move(root.data()));
+  root_index.PushFront(out);
 
   // First byte in block header must not be equal to fst::kStringInfinity
   // Consider the following:
@@ -749,7 +895,6 @@ void merge_blocks(std::vector<entry>& blocks) {
   IRS_ASSERT(char(root_block.meta) != fst::kStringInfinity);
 
   // will store just several bytes here
-  auto& out = *root_index.begin();
   out.write_byte(static_cast<byte_type>(root_block.meta));  // block metadata
   out.write_vlong(root_block.start);  // start pointer of the block
 
@@ -766,11 +911,11 @@ void merge_blocks(std::vector<entry>& blocks) {
       out.write_vlong(start_delta);
       out.write_byte(static_cast<byte_type>(block->meta));
 
-      root_index.splice(root_index.end(), it->block().index);
+      root_index.Append(std::move(it->block().index));
     }
   } else {
     for (++it; it != blocks.end(); ++it) {
-      root_index.splice(root_index.end(), it->block().index);
+      root_index.Append(std::move(it->block().index));
     }
   }
 
@@ -804,13 +949,13 @@ class fst_buffer : public vector_byte_fst {
 
   using fst_byte_builder = fst_builder<byte_type, vector_byte_fst, fst_stats>;
 
-  template<typename Data>
-  fst_stats reset(const Data& data) {
+  fst_stats reset(const block_t::block_index_t& index) {
     builder.reset();
 
-    for (auto& fst_data : data) {
-      builder.add(fst_data.prefix, fst_data.weight);
-    }
+    index.Visit([&](block_t::prefixed_output& output) {
+      builder.add(output.prefix, output.weight);
+      // TODO(MBkkt) Call dtor here?
+    });
 
     return builder.finish();
   }
@@ -870,10 +1015,8 @@ class field_writer final : public irs::field_writer {
   void Push(bytes_view term);
 
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
-#ifdef __cpp_lib_memory_resource
-  std::pmr::monotonic_buffer_resource block_index_buf_;
-#endif
-  std::vector<entry> blocks_;
+  OutputBuffer output_buffer_;
+  Blocks blocks_;
   memory_output suffix_;  // term suffix column
   memory_output stats_;   // term stats column
   encryption::stream::ptr terms_out_cipher_;
@@ -906,11 +1049,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   // write block entries
   const bool leaf = !block_meta::blocks(meta);
 
-#ifdef __cpp_lib_memory_resource
-  block_t::block_index_t index(&block_index_buf_);
-#else
   block_t::block_index_t index;
-#endif
 
   pw_->begin_block();
 
@@ -936,7 +1075,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
       // current block start pointer should be greater
       IRS_ASSERT(block_start > e.block().start);
       suffix_.stream.write_vlong(block_start - e.block().start);
-      index.splice(index.end(), e.block().index);
+      index.Append(std::move(e.block().index));
     }
   }
 
@@ -983,14 +1122,8 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
 
   // add new block to the list of created blocks
   blocks_.emplace_back(bytes_view{last_term_.view().data(), prefix},
-#ifdef __cpp_lib_memory_resource
-                       block_index_buf_,
-#endif
-                       block_start, meta, label, consolidation_);
-
-  if (!index.empty()) {
-    blocks_.back().block().index = std::move(index);
-  }
+                       std::move(index), block_start, meta, label,
+                       consolidation_);
 }
 
 void field_writer::WriteBlocks(size_t prefix, size_t count) {
@@ -1049,7 +1182,7 @@ void field_writer::WriteBlocks(size_t prefix, size_t count) {
   }
 
   // merge blocks into 1st block
-  ::merge_blocks(blocks_);
+  ::MergeBlocks(blocks_, output_buffer_);
 
   // remove processed entries from the
   // top of the stack
@@ -1092,10 +1225,7 @@ field_writer::field_writer(
   burst_trie::Version version /* = Format::MAX */,
   uint32_t min_block_size /* = DEFAULT_MIN_BLOCK_SIZE */,
   uint32_t max_block_size /* = DEFAULT_MAX_BLOCK_SIZE */)
-  :
-#ifdef __cpp_lib_memory_resource
-    block_index_buf_{sizeof(block_t::prefixed_output) * 32},
-#endif
+  : output_buffer_(32),
     suffix_(memory_allocator::global()),
     stats_(memory_allocator::global()),
     pw_(std::move(pw)),
@@ -1274,6 +1404,9 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
   const entry& root = *stack_.begin();
   IRS_ASSERT(fst_buf_);
   [[maybe_unused]] const auto fst_stats = fst_buf_->reset(root.block().index);
+  stack_.clear();
+  output_buffer_.Clear();
+
   const vector_byte_fst& fst = *fst_buf_;
 
 #ifdef IRESEARCH_DEBUG
@@ -1309,11 +1442,12 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
       absl::StrCat("Failed to write term index for field: ", name)};
   }
 
-  stack_.clear();
   ++fields_count_;
 }
 
 void field_writer::end() {
+  output_buffer_.Reset();
+
   IRS_ASSERT(terms_out_);
   IRS_ASSERT(index_out_);
 
@@ -3295,9 +3429,7 @@ void field_reader::prepare(const ReaderState& state) {
   if (term_index_version != term_dict_version) {
     throw index_error(absl::StrCat("Term index version '", term_index_version,
                                    "' mismatches term dictionary version '",
-                                   term_dict_version,
-                                   "' in "
-                                   "segment '",
+                                   term_dict_version, "' in segment '",
                                    meta.name, "'"));
   }
 
@@ -3428,6 +3560,7 @@ class term_reader_visitor {
   encryption::stream* terms_in_cipher_;
 };
 
+/*
 // "Dumper" visitor for term_reader_visitor. Suitable for debugging needs.
 class dumper : util::noncopyable {
  public:
@@ -3445,7 +3578,7 @@ class dumper : util::noncopyable {
     prefix_ = block.prefix();
   }
 
-  void sub_block(const block_iterator& /*block*/) {
+  void sub_block(const block_iterator&) {
     indent();
     out_ << "|\n";
     indent();
@@ -3473,6 +3606,7 @@ class dumper : util::noncopyable {
   size_t indent_ = 0;
   size_t prefix_ = 0;
 };
+*/
 
 }  // namespace
 
