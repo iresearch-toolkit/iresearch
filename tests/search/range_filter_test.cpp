@@ -110,6 +110,8 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
 
     auto rdr = open_reader();
 
+    MaxMemoryCounter counter;
+
     // long - seq = [7..7]
     {
       irs::numeric_token_stream min_stream;
@@ -126,7 +128,10 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
         make_filter("seq", min_term->value, irs::BoundType::INCLUSIVE,
                     max_term->value, irs::BoundType::INCLUSIVE);
 
-      auto prepared = query.prepare({.index = rdr});
+      auto prepared = query.prepare({
+        .index = rdr,
+        .memory = counter,
+      });
 
       std::vector<irs::doc_id_t> expected{8};
       std::vector<irs::doc_id_t> actual;
@@ -143,6 +148,9 @@ class range_filter_test_case : public tests::FilterTestCaseBase {
       }
       ASSERT_EQ(expected, actual);
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // long - seq = [1..7]
     {

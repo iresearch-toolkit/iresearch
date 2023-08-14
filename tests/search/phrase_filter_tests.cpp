@@ -8499,6 +8499,7 @@ TEST(by_phrase_test, boost) {
 
   // with boost
   {
+    MaxMemoryCounter counter;
     irs::score_t boost = 1.5f;
 
     // no terms, return empty query
@@ -8519,9 +8520,15 @@ TEST(by_phrase_test, boost) {
         irs::ViewCast<irs::byte_type>(std::string_view("quick"));
       q.boost(boost);
 
-      auto prepared = q.prepare({.index = irs::SubReader::empty()});
+      auto prepared = q.prepare({
+        .index = irs::SubReader::empty(),
+        .memory = counter,
+      });
       ASSERT_EQ(boost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // single multiple terms
     {

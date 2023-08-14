@@ -1261,6 +1261,8 @@ struct estimated : public irs::filter {
 }  // namespace detail
 
 TEST(boolean_query_estimation, or_filter) {
+  MaxMemoryCounter counter;
+
   // estimated subqueries
   {
     irs::Or root;
@@ -1270,7 +1272,10 @@ TEST(boolean_query_estimation, or_filter) {
     root.add<detail::estimated>().est = 1;
     root.add<detail::estimated>().est = 100;
 
-    auto prep = root.prepare({.index = irs::SubReader::empty()});
+    auto prep = root.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
 
     auto docs = prep->execute({.segment = irs::SubReader::empty()});
 
@@ -1290,6 +1295,9 @@ TEST(boolean_query_estimation, or_filter) {
       ASSERT_TRUE(est_query->evaluated);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // unestimated subqueries
   {

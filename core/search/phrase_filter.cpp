@@ -226,7 +226,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   FixedPhraseQuery::states_t phrase_states{ctx.memory, ctx.index.size()};
 
   // per segment phrase terms
-  FixedPhraseState::Terms phrase_terms;
+  FixedPhraseState::Terms phrase_terms{{ctx.memory}};
   phrase_terms.reserve(phrase_size);
 
   // iterate over the segments
@@ -323,7 +323,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
 
   // per segment phrase terms: number of terms per part
   ManagedVector<size_t> num_terms(phrase_size, {ctx.memory});
-  VariadicPhraseState::Terms phrase_terms;
+  VariadicPhraseState::Terms phrase_terms{{ctx.memory}};
   // reserve space for at least 1 term per part
   phrase_terms.reserve(phrase_size);
 

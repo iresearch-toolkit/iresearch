@@ -201,7 +201,7 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::states_t query_states{ctx.memory, ctx.index.size()};
 
   // per segment terms states
-  same_position_query::states_t::state_type term_states;
+  same_position_query::states_t::state_type term_states{{ctx.memory}};
   term_states.reserve(size);
 
   // !!! FIXME !!!
@@ -270,7 +270,8 @@ filter::prepared::ptr by_same_position::prepare(
 
   // finish stats
   size_t term_idx = 0;
-  same_position_query::stats_t stats(size);
+  same_position_query::stats_t stats(
+    size, same_position_query::stats_t::allocator_type{ctx.memory});
   for (auto& stat : stats) {
     stat.resize(ctx.scorers.stats_size());
     auto* stats_buf = stat.data();

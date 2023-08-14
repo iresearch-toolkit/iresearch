@@ -56,6 +56,8 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // read segment
     auto index = open_reader();
 
+    MaxMemoryCounter counter;
+
     // collector count (no branches)
     {
       irs::by_same_position filter;
@@ -132,11 +134,18 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       };
 
       auto pord = irs::Scorers::Prepare(scorer);
-      auto prepared = filter.prepare({.index = index, .scorers = pord});
+      auto prepared = filter.prepare({
+        .index = index,
+        .memory = counter,
+        .scorers = pord,
+      });
       ASSERT_EQ(2, collect_field_count);  // 1 field in 2 segments
       ASSERT_EQ(2, collect_term_count);   // 1 term in 2 segments
       ASSERT_EQ(1, finish_count);         // 1 unique term
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // collector count (multiple terms)
     {

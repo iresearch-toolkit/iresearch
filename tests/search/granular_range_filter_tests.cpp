@@ -133,6 +133,8 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
 
     auto& segment = (*rdr)[0];
 
+    MaxMemoryCounter counter;
+
     // without boost
     {
       irs::by_granular_range q;
@@ -146,9 +148,15 @@ class granular_range_filter_test_case : public tests::FilterTestCaseBase {
       q.mutable_options()->range.min_type = irs::BoundType::INCLUSIVE;
       q.mutable_options()->range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = q.prepare({.index = irs::SubReader::empty()});
+      auto prepared = q.prepare({
+        .index = irs::SubReader::empty(),
+        .memory = counter,
+      });
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // with boost
     {
