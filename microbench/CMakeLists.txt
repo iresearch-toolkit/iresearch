@@ -58,3 +58,21 @@ include_directories(iresearch-microbench
   $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   $<TARGET_PROPERTY:iresearch-utfcpp,INTERFACE_INCLUDE_DIRECTORIES>
   )
+
+add_executable(iresearch-column-writer
+  column_writer_benchmark.cpp
+  )
+
+set_ipo(iresearch-column-writer)
+
+add_dependencies(iresearch-column-writer
+  iresearch-static
+  )
+
+target_include_directories(iresearch-column-writer
+  PRIVATE ${PROJECT_BINARY_DIR}/core
+  )
+
+target_link_libraries(iresearch-column-writer
+  iresearch-static
+  )
