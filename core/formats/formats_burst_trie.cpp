@@ -298,9 +298,7 @@ class MonotonicBuffer {
   static_assert(std::is_trivially_destructible_v<Block>);
 
  public:
-  MonotonicBuffer(IResourceManager& resource_manager,
-                  size_t initial_size) noexcept
-    : resource_manager_{resource_manager}, next_size_{initial_size} {
+  MonotonicBuffer(size_t initial_size) noexcept : next_size_{initial_size} {
     IRS_ASSERT(initial_size > 1);
   }
 
@@ -327,8 +325,6 @@ class MonotonicBuffer {
     }
 
     Release(std::exchange(head_->prev, nullptr));
-    // TODO(MBkkt) Don't be lazy, call Decrease eager
-    // resource_manager_.Decrease(blocks_memory_ - size of head block);
 
     auto* initial_current = reinterpret_cast<byte_type*>(head_) + sizeof(Block);
     available_ += (current_ - initial_current) / sizeof(T);
@@ -342,7 +338,6 @@ class MonotonicBuffer {
     }
 
     Release(std::exchange(head_, nullptr));
-    resource_manager_.Decrease(std::exchange(blocks_memory_, 0));
 
     // otherwise we always increasing size!
     // TODO(MBkkt) we could compute current size, but it's
@@ -362,8 +357,6 @@ class MonotonicBuffer {
   void AllocateMemory() {
     const auto size = sizeof(Block) + next_size_ * sizeof(T);
     // TODO(MBkkt) use allocate_at_least but it's only C++23 :(
-    resource_manager_.Increase(size);
-    blocks_memory_ += size;
     auto* p =
       static_cast<byte_type*>(operator new(size, std::align_val_t{kAlign}));
     head_ = new (p) Block{head_};
@@ -373,10 +366,6 @@ class MonotonicBuffer {
     next_size_ = (next_size_ * 3) / 2;
     IRS_ASSERT(available_ < next_size_);
   }
-
-  // TODO(MBkkt) Do we really want to measure this?
-  IResourceManager& resource_manager_;
-  size_t blocks_memory_ = 0;
 
   size_t next_size_;
   Block* head_ = nullptr;

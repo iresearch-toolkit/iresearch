@@ -90,12 +90,14 @@ class column final : public irs::column_output {
 
   class address_table {
    public:
-    address_table(ManagedTypedAllocator<uint64_t> alloc) : alloc_{alloc} {
-      offsets_ = alloc_.allocate(kBlockSize);
+    address_table() {
+      offsets_ = std::allocator<uint64_t>{}.allocate(kBlockSize);
       offset_ = offsets_;
     }
 
-    ~address_table() { alloc_.deallocate(offsets_, kBlockSize); }
+    ~address_table() {
+      std::allocator<uint64_t>{}.deallocate(offsets_, kBlockSize);
+    }
 
     uint64_t back() const noexcept {
       IRS_ASSERT(offsets_ < offset_);
@@ -127,7 +129,6 @@ class column final : public irs::column_output {
     uint64_t* end() noexcept { return offsets_ + kBlockSize; }
 
    private:
-    ManagedTypedAllocator<uint64_t> alloc_;
     uint64_t* offsets_{nullptr};
     uint64_t* offset_{nullptr};
   };
