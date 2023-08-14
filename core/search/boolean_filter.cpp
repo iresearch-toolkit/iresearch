@@ -145,7 +145,7 @@ namespace irs {
 // Base class for boolean queries
 class BooleanQuery : public filter::prepared {
  public:
-  using queries_t = std::vector<filter::prepared::ptr>;
+  using queries_t = ManagedVector<filter::prepared::ptr>;
   using iterator = queries_t::const_iterator;
 
   BooleanQuery() noexcept : excl_{0} {}
@@ -196,7 +196,7 @@ class BooleanQuery : public filter::prepared {
   virtual void prepare(const PrepareContext& ctx, ScoreMergeType merge_type,
                        std::span<const filter* const> incl,
                        std::span<const filter* const> excl) {
-    BooleanQuery::queries_t queries;
+    BooleanQuery::queries_t queries{{ctx.memory}};
     queries.reserve(incl.size() + excl.size());
 
     // apply boost to the current node

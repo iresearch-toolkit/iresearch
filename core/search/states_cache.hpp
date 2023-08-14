@@ -70,13 +70,13 @@ class StatesCache : private util::noncopyable {
   using Alloc =
     ManagedTypedAllocator<std::pair<const SubReader* const, state_type>>;
 
-  using states_map = absl::flat_hash_map<
+  using StatesMap = absl::flat_hash_map<
     const SubReader*, state_type,
     absl::container_internal::hash_default_hash<const SubReader*>,
     absl::container_internal::hash_default_eq<const SubReader*>, Alloc>;
 
   // FIXME use vector instead?
-  states_map states_;
+  StatesMap states_;
 };
 
 }  // namespace irs

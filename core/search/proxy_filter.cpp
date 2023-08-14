@@ -39,9 +39,12 @@ class lazy_filter_bitset : private util::noncopyable {
 
   lazy_filter_bitset(const ExecutionContext& ctx,
                      const filter::prepared& filter)
-    : alloc_{ctx.memory} {
-    auto bytes = sizeof(*this);
-    ctx.memory.Increase(bytes);
+    : manager_{ctx.memory} {
+    const size_t bits = ctx.segment.docs_count() + doc_limits::min();
+    words_ = bitset::bits_to_words(bits);
+
+    auto bytes = sizeof(*this) + sizeof(word_t) * words_;
+    manager_.Increase(bytes);
     Finally decrease = [&]() noexcept { ctx.memory.DecreaseChecked(bytes); };
 
     // TODO(MBkkt) use mask from segment manually to avoid virtual call
@@ -50,9 +53,7 @@ class lazy_filter_bitset : private util::noncopyable {
     real_doc_ = irs::get<document>(*real_doc_itr_);
     cost_ = cost::extract(*real_doc_itr_);
 
-    const size_t bits = ctx.segment.docs_count() + doc_limits::min();
-    words_ = bitset::bits_to_words(bits);
-    set_ = alloc_.allocate(words_);
+    set_ = std::allocator<word_t>{}.allocate(words_);
     std::memset(set_, 0, sizeof(word_t) * words_);
     begin_ = set_;
     end_ = begin_;
@@ -61,8 +62,8 @@ class lazy_filter_bitset : private util::noncopyable {
   }
 
   ~lazy_filter_bitset() {
-    alloc_.deallocate(set_, words_);
-    alloc_.ResourceManager().Decrease(sizeof(*this));
+    std::allocator<word_t>{}.deallocate(set_, words_);
+    manager_.Decrease(sizeof(*this) + sizeof(word_t) * words_);
   }
 
   bool get(size_t word_idx, word_t* data) {
@@ -91,7 +92,7 @@ class lazy_filter_bitset : private util::noncopyable {
   cost::cost_t get_cost() const noexcept { return cost_; }
 
  private:
-  ManagedTypedAllocator<word_t> alloc_;
+  IResourceManager& manager_;
 
   doc_iterator::ptr real_doc_itr_;
   const document* real_doc_{nullptr};
