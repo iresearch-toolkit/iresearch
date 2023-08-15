@@ -500,7 +500,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     }
 
     // check doc positions for term0 & term1
-    ASSERT_GT(meta0.doc_start, meta1.doc_start);
+    ASSERT_LT(meta0.doc_start, meta1.doc_start);
 
     // finish writing
     writer->end();
