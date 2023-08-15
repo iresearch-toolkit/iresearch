@@ -404,7 +404,7 @@ class entry : private util::noncopyable {
     return *mem_.as<version10::term_meta>();
   }
 
-  const version10::term_meta& term() noexcept {
+  version10::term_meta& term() noexcept {
     return *mem_.as<version10::term_meta>();
   }
 
