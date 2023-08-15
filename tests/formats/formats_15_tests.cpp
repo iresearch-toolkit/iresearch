@@ -311,7 +311,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   EXPECT_NE(nullptr, codec);
   auto writer = codec->get_postings_writer(false, irs::IResourceManager::kNoop);
   EXPECT_NE(nullptr, writer);
-  irs::postings_writer::state term_meta;  // must be destroyed before the writer
+  irs::version10::term_meta term_meta;
 
   {
     const EmptyColumnProvider provider;
@@ -330,13 +330,13 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
     writer->begin_field(features, irs::feature_map_t{});
 
     postings it{docs, features};
-    term_meta = writer->write(it);
+    writer->write(it, term_meta);
     const auto stats = writer->end_field();
     EXPECT_EQ(docs.size(), stats.docs_count);
     const uint64_t expected_wand_mask{irs::IndexFeatures::NONE !=
                                       (features & irs::IndexFeatures::FREQ)};
     EXPECT_EQ(expected_wand_mask, stats.wand_mask);
-    writer->encode(*out, *term_meta);
+    writer->encode(*out, term_meta);
     writer->end();
   }
 
@@ -361,14 +361,13 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   begin += reader->decode(begin, features, read_meta);
 
   {
-    auto& typed_meta = static_cast<irs::version10::term_meta&>(*term_meta);
-    EXPECT_EQ(typed_meta.docs_count, read_meta.docs_count);
-    EXPECT_EQ(typed_meta.doc_start, read_meta.doc_start);
-    EXPECT_EQ(typed_meta.pos_start, read_meta.pos_start);
-    EXPECT_EQ(typed_meta.pos_end, read_meta.pos_end);
-    EXPECT_EQ(typed_meta.pay_start, read_meta.pay_start);
-    EXPECT_EQ(typed_meta.e_single_doc, read_meta.e_single_doc);
-    EXPECT_EQ(typed_meta.e_skip_start, read_meta.e_skip_start);
+    EXPECT_EQ(term_meta.docs_count, read_meta.docs_count);
+    EXPECT_EQ(term_meta.doc_start, read_meta.doc_start);
+    EXPECT_EQ(term_meta.pos_start, read_meta.pos_start);
+    EXPECT_EQ(term_meta.pos_end, read_meta.pos_end);
+    EXPECT_EQ(term_meta.pay_start, read_meta.pay_start);
+    EXPECT_EQ(term_meta.e_single_doc, read_meta.e_single_doc);
+    EXPECT_EQ(term_meta.e_skip_start, read_meta.e_skip_start);
   }
 
   EXPECT_EQ(begin, in_data.data() + in_data.size());
