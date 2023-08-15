@@ -201,7 +201,8 @@ filter::prepared::ptr by_same_position::prepare(
   same_position_query::states_t query_states{ctx.memory, ctx.index.size()};
 
   // per segment terms states
-  same_position_query::states_t::state_type term_states{{ctx.memory}};
+  same_position_query::states_t::state_type term_states{
+    same_position_query::states_t::state_type::allocator_type{ctx.memory}};
   term_states.reserve(size);
 
   // !!! FIXME !!!
