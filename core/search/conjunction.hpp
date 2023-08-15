@@ -240,7 +240,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
                             SubScores&& scores, bool strict)
     : Base{std::move(merger), std::move(itrs), std::move(scores.scores)},
       sum_scores_{scores.sum_score},
-      score_{merger.size()} {
+      score_{static_cast<Merger&>(*this).size()} {
     IRS_ASSERT(this->itrs_.size() >= 2);
     IRS_ASSERT(!this->scores_.empty());
     std::sort(this->scores_.begin(), this->scores_.end(),
