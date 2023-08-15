@@ -199,13 +199,13 @@ void RemoveFromExistingSegment(DocumentMask& deleted_docs,
     return;
   }
 
-  auto prepared = query.filter->prepare(reader);
+  auto prepared = query.filter->prepare({.index = reader});
 
   if (IRS_UNLIKELY(!prepared)) {
     return;  // skip invalid prepared filters
   }
 
-  auto itr = prepared->execute(reader);
+  auto itr = prepared->execute({.segment = reader});
 
   if (IRS_UNLIKELY(!itr)) {
     return;  // skip invalid iterators
@@ -232,12 +232,12 @@ bool RemoveFromImportedSegment(DocumentMask& deleted_docs,
     return false;
   }
 
-  auto prepared = query.filter->prepare(reader);
+  auto prepared = query.filter->prepare({.index = reader});
   if (IRS_UNLIKELY(!prepared)) {
     return false;  // skip invalid prepared filters
   }
 
-  auto itr = prepared->execute(reader);
+  auto itr = prepared->execute({.segment = reader});
   if (IRS_UNLIKELY(!itr)) {
     return false;  // skip invalid iterators
   }
@@ -270,13 +270,13 @@ void FlushedSegmentContext::Remove(IndexWriter::QueryContext& query) {
 
   auto& document_mask = flushed.document_mask;
 
-  auto prepared = query.filter->prepare(*reader);
+  auto prepared = query.filter->prepare({.index = *reader});
 
   if (IRS_UNLIKELY(!prepared)) {
     return;  // Skip invalid prepared filters
   }
 
-  auto itr = prepared->execute(*reader);
+  auto itr = prepared->execute({.segment = *reader});
 
   if (IRS_UNLIKELY(!itr)) {
     return;  // Skip invalid iterators

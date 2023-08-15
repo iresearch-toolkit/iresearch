@@ -56,6 +56,8 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // read segment
     auto index = open_reader();
 
+    MaxMemoryCounter counter;
+
     // collector count (no branches)
     {
       irs::by_same_position filter;
@@ -81,16 +83,16 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                         const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::field_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::field_collector>(
+          scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::term_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::term_collector>(
+          scorer);
       };
 
       auto pord = irs::Scorers::Prepare(scorer);
-      auto prepared = filter.prepare(index, pord);
+      auto prepared = filter.prepare({.index = index, .scorers = pord});
       ASSERT_EQ(0, collect_field_count);  // should not be executed
       ASSERT_EQ(0, collect_term_count);   // should not be executed
       ASSERT_EQ(0, finish_count);         // no terms optimization
@@ -123,20 +125,27 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                         const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::field_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::field_collector>(
+          scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::term_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::term_collector>(
+          scorer);
       };
 
       auto pord = irs::Scorers::Prepare(scorer);
-      auto prepared = filter.prepare(index, pord);
+      auto prepared = filter.prepare({
+        .index = index,
+        .memory = counter,
+        .scorers = pord,
+      });
       ASSERT_EQ(2, collect_field_count);  // 1 field in 2 segments
       ASSERT_EQ(2, collect_term_count);   // 1 term in 2 segments
       ASSERT_EQ(1, finish_count);         // 1 unique term
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // collector count (multiple terms)
     {
@@ -167,16 +176,16 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
                         const irs::TermCollector*) -> void { ++finish_count; };
       scorer.prepare_field_collector_ =
         [&scorer]() -> irs::FieldCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::field_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::field_collector>(
+          scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]() -> irs::TermCollector::ptr {
-        return std::make_unique<
-          tests::sort::custom_sort::term_collector>(scorer);
+        return std::make_unique<tests::sort::custom_sort::term_collector>(
+          scorer);
       };
 
       auto pord = irs::Scorers::Prepare(scorer);
-      auto prepared = filter.prepare(index, pord);
+      auto prepared = filter.prepare({.index = index, .scorers = pord});
       ASSERT_EQ(4, collect_field_count);  // 2 fields (1 per term since treated
                                           // as a disjunction) in 2 segments
       ASSERT_EQ(4, collect_term_count);   // 2 term in 2 segments
@@ -219,8 +228,8 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
     // empty query
     {
       irs::by_same_position q;
-      auto prepared = q.prepare(index);
-      auto docs = prepared->execute(segment);
+      auto prepared = q.prepare({.index = index});
+      auto docs = prepared->execute({.segment = segment});
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs->value(), doc->value);
@@ -239,14 +248,14 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       expected_query.mutable_options()->term =
         irs::ViewCast<irs::byte_type>(std::string_view("100"));
 
-      auto prepared = query.prepare(index);
-      auto expected_prepared = expected_query.prepare(index);
+      auto prepared = query.prepare({.index = index});
+      auto expected_prepared = expected_query.prepare({.index = index});
 
-      auto docs = prepared->execute(segment);
+      auto docs = prepared->execute({.segment = segment});
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(bool(doc));
       ASSERT_EQ(docs->value(), doc->value);
-      auto expected_docs = prepared->execute(segment);
+      auto expected_docs = prepared->execute({.segment = segment});
 
       ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
       while (expected_docs->next()) {
@@ -268,8 +277,8 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         "b", irs::ViewCast<irs::byte_type>(std::string_view("90")));
       q.mutable_options()->terms.emplace_back(
         "c", irs::ViewCast<irs::byte_type>(std::string_view("9")));
-      auto prepared = q.prepare(index);
-      auto docs = prepared->execute(segment);
+      auto prepared = q.prepare({.index = index});
+      auto docs = prepared->execute({.segment = segment});
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_EQ(docs->value(), doc->value);
       ASSERT_EQ(irs::doc_limits::invalid(), docs->value());
@@ -287,7 +296,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       q.mutable_options()->terms.emplace_back(
         "c", irs::ViewCast<irs::byte_type>(std::string_view("6")));
 
-      auto prepared = q.prepare(index);
+      auto prepared = q.prepare({.index = index});
 
       // next
       {
@@ -296,7 +305,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
 
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -320,7 +329,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
 
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -353,7 +362,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       q.mutable_options()->terms.emplace_back(
         "a", irs::ViewCast<irs::byte_type>(std::string_view("700")));
 
-      auto prepared = q.prepare(index);
+      auto prepared = q.prepare({.index = index});
 
       // next
       {
@@ -362,7 +371,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
 
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -386,7 +395,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
 
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -412,7 +421,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
       q.mutable_options()->terms.emplace_back(
         "c", irs::ViewCast<irs::byte_type>(std::string_view("7")));
 
-      auto prepared = q.prepare(index);
+      auto prepared = q.prepare({.index = index});
 
       // next
       {
@@ -421,7 +430,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
 
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -489,7 +498,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
         auto* actual_value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, actual_value);
 
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -529,7 +538,7 @@ class same_position_filter_test_case : public tests::FilterTestCaseBase {
 
       // seek to the end
       {
-        auto docs = prepared->execute(segment);
+        auto docs = prepared->execute({.segment = segment});
         auto* doc = irs::get<irs::document>(*docs);
         ASSERT_TRUE(bool(doc));
         ASSERT_EQ(docs->value(), doc->value);
@@ -574,7 +583,7 @@ TEST(by_same_position_test, boost) {
     {
       irs::by_same_position q;
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -584,7 +593,7 @@ TEST(by_same_position_test, boost) {
       q.mutable_options()->terms.emplace_back(
         "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -596,7 +605,7 @@ TEST(by_same_position_test, boost) {
       q.mutable_options()->terms.emplace_back(
         "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
   }
@@ -610,7 +619,7 @@ TEST(by_same_position_test, boost) {
       irs::by_same_position q;
       q.boost(boost);
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -621,7 +630,7 @@ TEST(by_same_position_test, boost) {
         "field", irs::ViewCast<irs::byte_type>(std::string_view("quick")));
       q.boost(boost);
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(boost, prepared->boost());
     }
 
@@ -634,7 +643,7 @@ TEST(by_same_position_test, boost) {
         "field", irs::ViewCast<irs::byte_type>(std::string_view("brown")));
       q.boost(boost);
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(boost, prepared->boost());
     }
   }

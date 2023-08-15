@@ -29,13 +29,12 @@
 #include "search/states_cache.hpp"
 #include "shared.hpp"
 
+namespace irs {
 namespace {
 
-using namespace irs;
-
 template<typename Visitor>
-void visit(const SubReader& segment, const term_reader& reader,
-           bytes_view prefix, Visitor& visitor) {
+void VisitImpl(const SubReader& segment, const term_reader& reader,
+               bytes_view prefix, Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
   // seek to prefix
@@ -68,42 +67,33 @@ void visit(const SubReader& segment, const term_reader& reader,
 
 }  // namespace
 
-namespace irs {
-
-filter::prepared::ptr by_prefix::prepare(const IndexReader& index,
-                                         const Scorers& ord, score_t boost,
+filter::prepared::ptr by_prefix::prepare(const PrepareContext& ctx,
                                          std::string_view field,
                                          bytes_view prefix,
                                          size_t scored_terms_limit) {
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-    ord.empty() ? 0 : scored_terms_limit);
-  MultiTermQuery::States states{index.size()};
+    ctx.scorers.empty() ? 0 : scored_terms_limit);
+  MultiTermQuery::States states{ctx.memory, ctx.index.size()};
   multiterm_visitor mtv{collector, states};
 
-  // iterate over the segments
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-
-    if (!reader) {
-      continue;
+  for (const auto& segment : ctx.index) {
+    if (const auto* reader = segment.field(field); reader) {
+      VisitImpl(segment, *reader, prefix, mtv);
     }
-
-    ::visit(segment, *reader, prefix, mtv);
   }
 
-  std::vector<bstring> stats;
-  collector.score(index, ord, stats);
+  MultiTermQuery::Stats stats{{ctx.memory}};
+  collector.score(ctx.index, ctx.scorers, stats);
 
-  return memory::make_managed<MultiTermQuery>(std::move(states),
-                                              std::move(stats), boost,
+  return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
+                                              std::move(stats), ctx.boost,
                                               ScoreMergeType::kSum, size_t{1});
 }
 
 void by_prefix::visit(const SubReader& segment, const term_reader& reader,
                       bytes_view prefix, filter_visitor& visitor) {
-  ::visit(segment, reader, prefix, visitor);
+  VisitImpl(segment, reader, prefix, visitor);
 }
 
 }  // namespace irs

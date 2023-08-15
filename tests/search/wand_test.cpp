@@ -122,7 +122,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
                                        bool can_use_wand, size_t limit) {
   auto scorers = irs::Scorers::Prepare(scorer);
   EXPECT_FALSE(scorers.empty());
-  auto query = filter.prepare(index, scorers);
+  auto query = filter.prepare({.index = index, .scorers = scorers});
   EXPECT_NE(nullptr, query);
 
   const irs::WandContext mode{.index = wand_idx};

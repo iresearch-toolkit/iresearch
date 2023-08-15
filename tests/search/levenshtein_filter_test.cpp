@@ -95,6 +95,8 @@ TEST(by_edit_distance_test, equal) {
 }
 
 TEST(by_edit_distance_test, boost) {
+  MaxMemoryCounter counter;
+
   // no boost
   {
     irs::by_edit_distance q;
@@ -102,9 +104,15 @@ TEST(by_edit_distance_test, boost) {
     q.mutable_options()->term =
       irs::ViewCast<irs::byte_type>(std::string_view("bar*"));
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // with boost
   {
@@ -116,9 +124,15 @@ TEST(by_edit_distance_test, boost) {
       irs::ViewCast<irs::byte_type>(std::string_view("bar*"));
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(boost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 #ifndef IRESEARCH_DLL
@@ -129,12 +143,24 @@ TEST(by_edit_distance_test, boost) {
 #endif  // __clang__
 
 TEST(by_edit_distance_test, test_type_of_prepared_query) {
+  MaxMemoryCounter counter;
   // term query
   {
-    auto lhs = make_term_filter("foo", "bar").prepare(irs::SubReader::empty());
-    auto rhs = make_filter("foo", "bar").prepare(irs::SubReader::empty());
+    auto lhs = make_term_filter("foo", "bar")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
+    auto rhs = make_filter("foo", "bar")
+                 .prepare({
+                   .index = irs::SubReader::empty(),
+                   .memory = counter,
+                 });
     ASSERT_EQ(typeid(*lhs), typeid(*rhs));
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 #ifdef __clang__
@@ -188,14 +214,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
-      return std::make_unique<
-        tests::sort::custom_sort::field_collector>(scorer);
+      return std::make_unique<tests::sort::custom_sort::field_collector>(
+        scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
-      return std::make_unique<
-        tests::sort::custom_sort::term_collector>(scorer);
+      return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 0, false), order, docs, rdr);
@@ -237,14 +262,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
-      return std::make_unique<
-        tests::sort::custom_sort::field_collector>(scorer);
+      return std::make_unique<tests::sort::custom_sort::field_collector>(
+        scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
-      return std::make_unique<
-        tests::sort::custom_sort::term_collector>(scorer);
+      return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 10, false), order, docs, rdr);
@@ -286,14 +310,13 @@ TEST_P(by_edit_distance_test_case, test_order) {
     scorer.prepare_field_collector_ =
       [&scorer, &field_collectors_count]() -> irs::FieldCollector::ptr {
       ++field_collectors_count;
-      return std::make_unique<
-        tests::sort::custom_sort::field_collector>(scorer);
+      return std::make_unique<tests::sort::custom_sort::field_collector>(
+        scorer);
     };
     scorer.prepare_term_collector_ =
       [&scorer, &term_collectors_count]() -> irs::TermCollector::ptr {
       ++term_collectors_count;
-      return std::make_unique<
-        tests::sort::custom_sort::term_collector>(scorer);
+      return std::make_unique<tests::sort::custom_sort::term_collector>(scorer);
     };
 
     CheckQuery(make_filter("title", "", 1, 1, false), order, docs, rdr);
@@ -565,6 +588,8 @@ TEST_P(by_edit_distance_test_case, bm25) {
   ASSERT_NE(nullptr, index);
   ASSERT_EQ(1, index->size());
 
+  MaxMemoryCounter counter;
+
   {
     irs::by_edit_distance filter;
     *filter.mutable_field() = "id";
@@ -574,10 +599,15 @@ TEST_P(by_edit_distance_test_case, bm25) {
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
 
-    auto prepared = filter.prepare(*index, prepared_order);
+    auto prepared = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     ASSERT_NE(nullptr, prepared);
 
-    auto docs = prepared->execute(index[0], prepared_order);
+    auto docs =
+      prepared->execute({.segment = index[0], .scorers = prepared_order});
     ASSERT_NE(nullptr, docs);
 
     auto* score = irs::get<irs::score>(*docs);
@@ -602,6 +632,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     ASSERT_FALSE(docs->next());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   {
     irs::by_edit_distance filter;
@@ -612,10 +645,15 @@ TEST_P(by_edit_distance_test_case, bm25) {
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
 
-    auto prepared = filter.prepare(*index, prepared_order);
+    auto prepared = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     ASSERT_NE(nullptr, prepared);
 
-    auto docs = prepared->execute(index[0], prepared_order);
+    auto docs =
+      prepared->execute({.segment = index[0], .scorers = prepared_order});
     ASSERT_NE(nullptr, docs);
 
     auto* score = irs::get<irs::score>(*docs);
@@ -636,6 +674,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
       ++expected_doc;
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // with prefix
   {
@@ -648,10 +689,15 @@ TEST_P(by_edit_distance_test_case, bm25) {
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
 
-    auto prepared = filter.prepare(*index, prepared_order);
+    auto prepared = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     ASSERT_NE(nullptr, prepared);
 
-    auto docs = prepared->execute(index[0], prepared_order);
+    auto docs =
+      prepared->execute({.segment = index[0], .scorers = prepared_order});
     ASSERT_NE(nullptr, docs);
 
     auto* score = irs::get<irs::score>(*docs);
@@ -675,6 +721,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
 
     ASSERT_FALSE(docs->next());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   {
     irs::by_edit_distance filter;
@@ -685,10 +734,15 @@ TEST_P(by_edit_distance_test_case, bm25) {
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
 
-    auto prepared = filter.prepare(*index, prepared_order);
+    auto prepared = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     ASSERT_NE(nullptr, prepared);
 
-    auto docs = prepared->execute(index[0], prepared_order);
+    auto docs =
+      prepared->execute({.segment = index[0], .scorers = prepared_order});
     ASSERT_NE(nullptr, docs);
 
     auto* score = irs::get<irs::score>(*docs);
@@ -732,6 +786,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
       ++expected_doc;
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   {
     irs::by_edit_distance filter;
@@ -742,10 +799,15 @@ TEST_P(by_edit_distance_test_case, bm25) {
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
 
-    auto prepared = filter.prepare(*index, prepared_order);
+    auto prepared = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     ASSERT_NE(nullptr, prepared);
 
-    auto docs = prepared->execute(index[0], prepared_order);
+    auto docs =
+      prepared->execute({.segment = index[0], .scorers = prepared_order});
     ASSERT_NE(nullptr, docs);
 
     auto* score = irs::get<irs::score>(*docs);
@@ -788,6 +850,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
       ++expected_doc;
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // with prefix
   {
@@ -800,10 +865,15 @@ TEST_P(by_edit_distance_test_case, bm25) {
     opts.provider = irs::default_pdp;
     opts.with_transpositions = true;
 
-    auto prepared = filter.prepare(*index, prepared_order);
+    auto prepared = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
     ASSERT_NE(nullptr, prepared);
 
-    auto docs = prepared->execute(index[0], prepared_order);
+    auto docs =
+      prepared->execute({.segment = index[0], .scorers = prepared_order});
     ASSERT_NE(nullptr, docs);
 
     auto* score = irs::get<irs::score>(*docs);
@@ -846,6 +916,9 @@ TEST_P(by_edit_distance_test_case, bm25) {
       ++expected_doc;
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(by_edit_distance_test_case, visit) {

@@ -52,7 +52,7 @@ void mmap_handle::init() noexcept {
   dontneed_ = false;
 }
 
-bool mmap_handle::open(const path_char_t* path) noexcept {
+bool mmap_handle::open(const path_char_t* path) noexcept try {
   IRS_ASSERT(path);
 
   close();
@@ -99,6 +99,8 @@ bool mmap_handle::open(const path_char_t* path) noexcept {
   }
 
   return true;
+} catch (...) {
+  return false;
 }
 
 }  // namespace irs::mmap_utils

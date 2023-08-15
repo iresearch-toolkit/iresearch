@@ -298,12 +298,14 @@ struct OnHeap final : Base {
 };
 
 template<typename Base>
-struct OnHeapTracked final : Base {
+struct Tracked final : Base {
   static_assert(std::is_base_of_v<Managed, Base>);
 
   template<typename... Args>
-  OnHeapTracked(IResourceManager& rm, Args&&... args)
-    : Base{std::forward<Args>(args)...}, rm_{rm} {}
+  Tracked(IResourceManager& rm, Args&&... args)
+    : Base{std::forward<Args>(args)...}, rm_{rm} {
+    rm.Increase(sizeof(*this));
+  }
 
  private:
   void Destroy() const noexcept final {
@@ -336,8 +338,7 @@ class managed_ptr final : std::unique_ptr<T, ManagedDeleter> {
   template<typename Base, typename Derived, typename... Args>
   friend managed_ptr<Base> make_managed(Args&&... args);
   template<typename Base, typename Derived, typename... Args>
-  friend managed_ptr<Base> make_tracked_managed(IResourceManager&,
-                                                Args&&... args);
+  friend managed_ptr<Base> make_tracked(IResourceManager&, Args&&... args);
 
   constexpr explicit managed_ptr(T* p) noexcept : Ptr{p} {}
 
@@ -396,10 +397,9 @@ managed_ptr<Base> make_managed(Args&&... args) {
 }
 
 template<typename Base, typename Derived = Base, typename... Args>
-managed_ptr<Base> make_tracked_managed(IResourceManager& rm, Args&&... args) {
-  rm.Increase(sizeof(OnHeapTracked<Derived>));
+managed_ptr<Base> make_tracked(IResourceManager& rm, Args&&... args) {
   return managed_ptr<Base>{
-    new OnHeapTracked<Derived>{rm, std::forward<Args>(args)...}};
+    new Tracked<Derived>{rm, std::forward<Args>(args)...}};
 }
 
 template<typename T, typename Alloc, typename... Types>

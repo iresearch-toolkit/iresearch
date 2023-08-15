@@ -597,7 +597,6 @@ class ByNestedQuery : public filter::prepared {
     IRS_ASSERT(IsValid(match_));
   }
 
-  using filter::prepared::execute;
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,
@@ -688,26 +687,30 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
     });
 }
 
-filter::prepared::ptr ByNestedFilter::prepare(
-  const IndexReader& rdr, const Scorers& ord, score_t boost,
-  const attribute_provider* ctx) const {
+filter::prepared::ptr ByNestedFilter::prepare(const PrepareContext& ctx) const {
   auto& [parent, child, match, merge_type] = options();
 
   if (!parent || !child || !IsValid(match)) {
     return prepared::empty();
   }
 
-  boost *= this->boost();
+  const auto sub_boost = ctx.boost * boost();
 
-  auto prepared_child = child->prepare(rdr, GetOrder(match, ord), boost, ctx);
+  auto prepared_child = child->prepare({
+    .index = ctx.index,
+    .memory = ctx.memory,
+    .scorers = GetOrder(match, ctx.scorers),
+    .ctx = ctx.ctx,
+    .boost = sub_boost,
+  });
 
   if (!prepared_child) {
     return prepared::empty();
   }
 
-  return memory::make_managed<ByNestedQuery>(parent, std::move(prepared_child),
-                                             merge_type, match,
-                                             /*none_boost*/ boost);
+  return memory::make_tracked<ByNestedQuery>(
+    ctx.memory, parent, std::move(prepared_child), merge_type, match,
+    /*none_boost*/ sub_boost);
 }
 
 }  // namespace irs

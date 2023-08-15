@@ -62,7 +62,7 @@ using DocumentMask =
                       absl::container_internal::hash_default_hash<doc_id_t>,
                       absl::container_internal::hash_default_eq<doc_id_t>,
                       ManagedTypedAllocator<doc_id_t>>;
-using DocMap = std::vector<doc_id_t, ManagedTypedAllocator<doc_id_t>>;
+using DocMap = ManagedVector<doc_id_t>;
 using DocMapView = std::span<const doc_id_t>;
 using callback_f = std::function<bool(doc_iterator&)>;
 
@@ -76,7 +76,7 @@ struct WanderatorOptions {
 struct SegmentWriterOptions {
   const ColumnInfoProvider& column_info;
   const FeatureInfoProvider& feature_info;
-  const std::set<irs::type_info::type_id>& scorers_features;
+  const feature_set_t& scorers_features;
   ScorersView scorers;
   const Comparer* const comparator{};
   IResourceManager& resource_manager{IResourceManager::kNoop};
@@ -124,9 +124,8 @@ struct postings_writer {
   virtual ~postings_writer() = default;
   // out - corresponding terms stream
   virtual void prepare(index_output& out, const flush_state& state) = 0;
-  virtual void begin_field(
-    IndexFeatures index_features,
-    const std::map<irs::type_info::type_id, field_id>& features) = 0;
+  virtual void begin_field(IndexFeatures index_features,
+                           const feature_map_t& features) = 0;
   virtual state write(doc_iterator& docs) = 0;
   virtual void begin_block() = 0;
   virtual void encode(data_output& out, const term_meta& state) = 0;
@@ -485,7 +484,7 @@ struct flush_state {
   const DocMap* docmap{};
   const ColumnProvider* columns{};
   // Accumulated segment features
-  const std::set<type_info::type_id>* features{};
+  const feature_set_t* features{};
   // Segment name
   const std::string_view name;  // segment name
   ScorersView scorers;

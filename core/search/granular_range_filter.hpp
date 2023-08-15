@@ -97,8 +97,7 @@ void set_granular_term(by_granular_range_options::terms& boundary,
 //////////////////////////////////////////////////////////////////////////////
 class by_granular_range : public filter_base<by_granular_range_options> {
  public:
-  static filter::prepared::ptr prepare(const IndexReader& index,
-                                       const Scorers& ord, score_t boost,
+  static filter::prepared::ptr prepare(const PrepareContext& ctx,
                                        std::string_view field,
                                        const options_type::range_type& rng,
                                        size_t scored_terms_limit);
@@ -107,12 +106,8 @@ class by_granular_range : public filter_base<by_granular_range_options> {
                     const options_type::range_type& rng,
                     filter_visitor& visitor);
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* /*ctx*/) const final {
-    return prepare(index, ord, this->boost() * boost, field(), options().range,
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+    return prepare(ctx.Boost(boost()), field(), options().range,
                    options().scored_terms_limit);
   }
 };

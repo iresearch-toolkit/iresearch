@@ -78,8 +78,6 @@ class FixedPhraseQuery : public PhraseQuery<FixedPhraseState> {
     : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
                   boost} {}
 
-  using filter::prepared::execute;
-
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   doc_iterator::ptr ExecuteWithOffsets(const SubReader& segment) const;
@@ -91,8 +89,6 @@ class VariadicPhraseQuery : public PhraseQuery<VariadicPhraseState> {
                       bstring&& stats, score_t boost) noexcept
     : PhraseQuery{std::move(states), std::move(positions), std::move(stats),
                   boost} {}
-
-  using filter::prepared::execute;
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 

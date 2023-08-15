@@ -135,35 +135,56 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
   auto& segment = rdr[0];
 
   {
-    (void)1;  // format work-around
+    MaxMemoryCounter counter;
+
     // no terms no field
     {
       irs::by_ngram_similarity q;
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({
+        .index = segment,
+        .memory = counter,
+      });
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_EQ(counter.max, 0);
+    counter.Reset();
 
     // simple disjunction
     {
       irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({
+        .index = segment,
+        .memory = counter,
+      });
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // multiple terms
     {
       irs::by_ngram_similarity q =
         make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({
+        .index = segment,
+        .memory = counter,
+      });
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
-  }  // namespace tests
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
+  }
 
   // with boost
   {
+    MaxMemoryCounter counter;
+
     irs::score_t boost = 1.5f;
 
     // no terms, return empty query
@@ -171,18 +192,30 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
       irs::by_ngram_similarity q;
       q.boost(boost);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({
+        .index = segment,
+        .memory = counter,
+      });
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_EQ(counter.max, 0);
+    counter.Reset();
 
     // simple disjunction
     {
       irs::by_ngram_similarity q = make_filter("field", {"1", "2"}, 0.5f);
       q.boost(boost);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({
+        .index = segment,
+        .memory = counter,
+      });
       ASSERT_EQ(boost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // multiple terms
     {
@@ -190,9 +223,15 @@ TEST_P(ngram_similarity_filter_test_case, boost) {
         make_filter("field", {"1", "2", "3", "4"}, 0.5f);
       q.boost(boost);
 
-      auto prepared = q.prepare(segment);
+      auto prepared = q.prepare({
+        .index = segment,
+        .memory = counter,
+      });
       ASSERT_EQ(boost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
   }
 }
 
@@ -208,14 +247,24 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
   }
 
   auto rdr = open_reader();
+
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -234,6 +283,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_1) {
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
@@ -249,14 +302,24 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
   }
 
   auto rdr = open_reader();
+
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -276,6 +339,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_2) {
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
@@ -290,14 +357,23 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -317,6 +393,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_3) {
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
@@ -331,13 +411,22 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -357,6 +446,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_4) {
     ASSERT_EQ(2, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
@@ -373,13 +466,22 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter = make_filter("field", {"1", "2", "1"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -399,6 +501,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_5) {
     ASSERT_EQ(4, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
@@ -413,13 +519,22 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter = make_filter("field", {"1", "1"}, 1.0f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -439,6 +554,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_6) {
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
@@ -454,14 +573,23 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -481,6 +609,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_7) {
     ASSERT_EQ(2, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
@@ -495,14 +627,23 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "5", "6", "2"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -522,6 +663,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_8) {
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
@@ -538,14 +683,23 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"1", "2", "3", "4", "5", "1"}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -565,6 +719,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_9) {
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
@@ -578,13 +736,22 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter = make_filter("field", {""}, 0.5f);
 
   tests::sort::custom_sort sort;
   auto prepared_order = irs::Scorers::Prepare(sort);
-  auto prepared = filter.prepare(rdr, prepared_order);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub, prepared_order);
+    auto docs = prepared->execute({
+      .segment = sub,
+      .scorers = prepared_order,
+    });
     auto* doc = irs::get<irs::document>(*docs);
     auto* boost = irs::get<irs::filter_boost>(*docs);
     auto* frequency = irs::get<irs::frequency>(*docs);
@@ -604,6 +771,10 @@ TEST_P(ngram_similarity_filter_test_case, check_matcher_10) {
     ASSERT_EQ(1, frequency->value);
     ASSERT_FALSE(docs->next());
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, no_match_case) {
@@ -615,12 +786,17 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"ee", "we", "qq", "rr", "ff", "never_match"}, 0.1f);
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -629,6 +805,10 @@ TEST_P(ngram_similarity_filter_test_case, no_match_case) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
@@ -640,12 +820,17 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"ee", "ss", "pa", "rr"}, 0.5f);
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
       bool(doc));  // ensure all iterators contain "document" attribute
@@ -653,6 +838,10 @@ TEST_P(ngram_similarity_filter_test_case, no_serial_match_case) {
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
   }
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, one_match_case) {
@@ -664,15 +853,20 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"ee", "ss", "qq", "rr", "ff", "never_match"}, 0.1f);
 
   Docs expected{1, 3, 5, 6, 7, 8, 9, 10, 12};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -687,6 +881,10 @@ TEST_P(ngram_similarity_filter_test_case, one_match_case) {
   }
   ASSERT_EQ(expected_size, count);
   ASSERT_EQ(0, expected.size());
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
@@ -698,15 +896,20 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.5f);
 
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -721,6 +924,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_last_test) {
   }
   ASSERT_EQ(expected_size, count);
   ASSERT_EQ(0, expected.size());
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
@@ -732,15 +939,20 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
 
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -755,6 +967,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_first_test) {
   }
   ASSERT_EQ(expected_size, count);
   ASSERT_EQ(0, expected.size());
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
@@ -766,15 +982,20 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"at", "tl", "la", "as", "ll", "never_match"}, 0.33f);
 
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -789,6 +1010,10 @@ TEST_P(ngram_similarity_filter_test_case, not_miss_match_for_tail) {
   }
   ASSERT_EQ(expected_size, count);
   ASSERT_EQ(0, expected.size());
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
@@ -800,16 +1025,21 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"at", "never_match", "la", "as", "ll"}, 0.333f);
 
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -824,6 +1054,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle_test) {
   }
   ASSERT_EQ(expected_size, count);
   ASSERT_EQ(0, expected.size());
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
@@ -835,16 +1069,21 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter = make_filter(
     "field", {"at", "never_match", "never_match2", "la", "as", "ll"}, 0.5f);
 
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -859,6 +1098,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle2_test) {
   }
   ASSERT_EQ(expected_size, count);
   ASSERT_EQ(0, expected.size());
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
@@ -870,6 +1113,8 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter = make_filter(
     "field", {"at", "never_match", "tl", "never_match2", "la", "as", "ll"},
     0.28f);
@@ -877,10 +1122,13 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   Docs expected{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14};
   const size_t expected_size = expected.size();
 
-  auto prepared = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   size_t count = 0;
   for (const auto& sub : rdr) {
-    auto docs = prepared->execute(sub);
+    auto docs = prepared->execute({.segment = sub});
 
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
@@ -895,6 +1143,10 @@ TEST_P(ngram_similarity_filter_test_case, missed_middle3_test) {
   }
   ASSERT_EQ(expected_size, count);
   ASSERT_EQ(0, expected.size());
+  prepared.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 struct test_score_ctx final : public irs::score_ctx {
@@ -1156,13 +1408,18 @@ TEST_P(ngram_similarity_filter_test_case, seek_next) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
   Docs expected{1, 2, 5, 8, 11, 12, 13};
   auto expected_it = std::begin(expected);
-  auto prepared_filter = filter.prepare(rdr, irs::Scorers::kUnordered);
+  auto prepared_filter = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+  });
   for (const auto& sub : rdr) {
-    auto docs = prepared_filter->execute(sub, irs::Scorers::kUnordered);
+    auto docs = prepared_filter->execute({.segment = sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(
       bool(doc));  // ensure all iterators contain "document" attribute
@@ -1186,6 +1443,10 @@ TEST_P(ngram_similarity_filter_test_case, seek_next) {
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
   ASSERT_EQ(expected_it, std::end(expected));
+  prepared_filter.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(ngram_similarity_filter_test_case, seek) {
@@ -1197,15 +1458,24 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
 
   auto rdr = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::by_ngram_similarity filter =
     make_filter("field", {"never_match", "at", "tl", "la", "as", "ll"}, 0.5f);
   Docs seek_tagrets{2, 5, 8, 13};
   auto seek_it = std::begin(seek_tagrets);
   auto& prepared_order = irs::Scorers::kUnordered;
-  auto prepared_filter = filter.prepare(rdr, prepared_order);
+  auto prepared_filter = filter.prepare({
+    .index = rdr,
+    .memory = counter,
+    .scorers = prepared_order,
+  });
   for (const auto& sub : rdr) {
     while (std::end(seek_tagrets) != seek_it) {
-      auto docs = prepared_filter->execute(sub, prepared_order);
+      auto docs = prepared_filter->execute({
+        .segment = sub,
+        .scorers = prepared_order,
+      });
       auto* doc = irs::get<irs::document>(*docs);
       ASSERT_TRUE(
         bool(doc));  // ensure all iterators contain "document" attribute
@@ -1226,6 +1496,10 @@ TEST_P(ngram_similarity_filter_test_case, seek) {
     }
   }
   ASSERT_EQ(std::end(seek_tagrets), seek_it);
+  prepared_filter.reset();
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 #endif

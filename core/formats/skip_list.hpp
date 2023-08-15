@@ -82,7 +82,7 @@ class SkipWriter : util::noncopyable {
   void Skip(doc_id_t count, Writer&& write);
 
  protected:
-  std::vector<memory_output, ManagedTypedAllocator<memory_output>> levels_;
+  ManagedVector<memory_output> levels_;
   size_t max_levels_;
   doc_id_t skip_0_;  // skip interval for 0 level
   doc_id_t skip_n_;  // skip interval for 1..n levels

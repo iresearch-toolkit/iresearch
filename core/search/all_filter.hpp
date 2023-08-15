@@ -29,11 +29,7 @@ namespace irs {
 // Filter returning all documents
 class all : public filter {
  public:
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& reader, const Scorers& order,
-                                score_t filter_boost,
-                                const attribute_provider* ctx) const final;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 
   irs::type_info::type_id type() const noexcept final {
     return irs::type<all>::id();

@@ -119,6 +119,8 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
 
+  MaxMemoryCounter counter;
+
   // by_range multiple
   {
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -141,8 +143,13 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -164,6 +171,9 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range multiple (3 values)
   {
@@ -187,8 +197,13 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
 
     while (docs->next()) {
@@ -209,6 +224,9 @@ void tfidf_test_case::test_query_norms(irs::type_info::type_id norm,
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(tfidf_test_case, consts) {
@@ -383,6 +401,8 @@ TEST_P(tfidf_test_case, test_phrase) {
   ASSERT_EQ(1, index->size());
   auto& segment = *(index.begin());
 
+  MaxMemoryCounter counter;
+
   // "jumps high" with order
   {
     irs::by_phrase filter;
@@ -402,8 +422,13 @@ TEST_P(tfidf_test_case, test_phrase) {
       "R"   // jumps high jumps left jumps right walks down walks back
     };
 
-    auto prepared_filter = filter.prepare(*index, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -431,6 +456,9 @@ TEST_P(tfidf_test_case, test_phrase) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // "cookies ca* p_e bisKuit meringue|marshmallows" with order
   {
@@ -462,8 +490,13 @@ TEST_P(tfidf_test_case, test_phrase) {
       "SPWLC3"   // cookies cake pie biscuet marshmallows cake meringue
     };
 
-    auto prepared_filter = filter.prepare(*index, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = *index,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -491,6 +524,9 @@ TEST_P(tfidf_test_case, test_phrase) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(tfidf_test_case, test_query) {
@@ -517,6 +553,9 @@ TEST_P(tfidf_test_case, test_query) {
   auto& segment = *(reader.begin());
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
+
+  MaxMemoryCounter counter;
+
   // by_term
   {
     auto values = column->iterator(irs::ColumnHint::kNormal);
@@ -533,8 +572,13 @@ TEST_P(tfidf_test_case, test_query) {
     std::vector<uint64_t> expected{0, 1, 5, 7};
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -557,6 +601,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by term multi-segment, same term (same score for all docs)
   {
@@ -618,7 +665,11 @@ TEST_P(tfidf_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
 
     for (auto& segment : reader) {
       const auto* column = segment.column("seq");
@@ -627,7 +678,8 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
-      auto docs = prepared_filter->execute(segment, prepared_order);
+      auto docs = prepared_filter->execute(
+        {.segment = segment, .scorers = prepared_order});
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
@@ -649,6 +701,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_term disjunction multi-segment, different terms (same score for all
   // docs)
@@ -722,7 +777,11 @@ TEST_P(tfidf_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
 
     for (auto& segment : reader) {
       const auto* column = segment.column("seq");
@@ -731,7 +790,8 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
-      auto docs = prepared_filter->execute(segment, prepared_order);
+      auto docs = prepared_filter->execute(
+        {.segment = segment, .scorers = prepared_order});
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
@@ -755,6 +815,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_prefix empty multi-segment, different terms (same score for all docs)
   {
@@ -818,7 +881,11 @@ TEST_P(tfidf_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
 
     for (auto& segment : reader) {
       const auto* column = segment.column("seq");
@@ -827,7 +894,8 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_NE(nullptr, values);
       auto* actual_value = irs::get<irs::payload>(*values);
       ASSERT_NE(nullptr, actual_value);
-      auto docs = prepared_filter->execute(segment, prepared_order);
+      auto docs = prepared_filter->execute(
+        {.segment = segment, .scorers = prepared_order});
       auto* score = irs::get<irs::score>(*docs);
       ASSERT_TRUE(bool(score));
 
@@ -851,6 +919,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range single
   {
@@ -872,8 +943,13 @@ TEST_P(tfidf_test_case, test_query) {
     std::vector<uint64_t> expected{0, 1, 5, 7};
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -894,6 +970,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range single + scored_terms_limit(1)
   {
@@ -916,8 +995,13 @@ TEST_P(tfidf_test_case, test_query) {
     std::vector<uint64_t> expected{3, 7};
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -938,6 +1022,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // FIXME!!!
   //  by_range single + scored_terms_limit(0)
@@ -957,8 +1044,9 @@ TEST_P(tfidf_test_case, test_query) {
   //    std::vector<uint64_t> expected{ 3, 7 };
   //
   //    irs::bytes_view_input in;
-  //    auto prepared_filter = filter.prepare(reader, prepared_order);
-  //    auto docs = prepared_filter->execute(segment, prepared_order);
+  //    auto prepared_filter = filter.prepare({.index=reader,
+  //    .scorers=prepared_order}); auto docs =
+  //    prepared_filter->execute({.segment=segment, .scorers=prepared_order});
   //    auto* score = irs::get<irs::score>(*docs);
   //    ASSERT_TRUE(bool(score));
   //
@@ -1001,8 +1089,13 @@ TEST_P(tfidf_test_case, test_query) {
     std::vector<uint64_t> expected{7, 0, 1, 3, 5};
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -1023,6 +1116,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_range multiple (3 values)
   {
@@ -1044,8 +1140,13 @@ TEST_P(tfidf_test_case, test_query) {
     std::vector<uint64_t> expected{0, 7, 5, 1, 3, 2};
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -1066,6 +1167,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected[i++], entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // by_phrase
   {
@@ -1089,8 +1193,13 @@ TEST_P(tfidf_test_case, test_query) {
     };
 
     irs::bytes_view_input in;
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -1112,6 +1221,9 @@ TEST_P(tfidf_test_case, test_query) {
       ASSERT_EQ(expected_entry.second, entry.second);
     }
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // all
   {
@@ -1123,8 +1235,13 @@ TEST_P(tfidf_test_case, test_query) {
     irs::all filter;
     filter.boost(1.5f);
 
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
     ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
@@ -1141,6 +1258,9 @@ TEST_P(tfidf_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // all
   {
@@ -1152,8 +1272,13 @@ TEST_P(tfidf_test_case, test_query) {
     irs::all filter;
     filter.boost(0.f);
 
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
     ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
@@ -1170,6 +1295,9 @@ TEST_P(tfidf_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // column existence
   {
@@ -1181,8 +1309,13 @@ TEST_P(tfidf_test_case, test_query) {
     irs::by_column_existence filter;
     *filter.mutable_field() = "seq";
 
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
     ASSERT_FALSE(score->Func() == &irs::ScoreFunction::DefaultScore);
@@ -1199,6 +1332,9 @@ TEST_P(tfidf_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // column existence
   {
@@ -1211,8 +1347,13 @@ TEST_P(tfidf_test_case, test_query) {
     *filter.mutable_field() = "seq";
     filter.boost(0.f);
 
-    auto prepared_filter = filter.prepare(reader, prepared_order);
-    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto prepared_filter = filter.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared_filter->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
     ASSERT_TRUE(score->Func() == &irs::ScoreFunction::DefaultScore);
@@ -1229,6 +1370,9 @@ TEST_P(tfidf_test_case, test_query) {
     }
     ASSERT_EQ(irs::doc_limits::eof(), docs->value());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(tfidf_test_case, test_query_norms) {
@@ -1458,6 +1602,8 @@ TEST_P(tfidf_test_case, test_order) {
   const auto* column = segment.column("seq");
   ASSERT_NE(nullptr, column);
 
+  MaxMemoryCounter counter;
+
   {
     auto values = column->iterator(irs::ColumnHint::kNormal);
     ASSERT_NE(nullptr, values);
@@ -1471,8 +1617,13 @@ TEST_P(tfidf_test_case, test_order) {
     std::vector<uint64_t> expected{0, 1, 5, 7};
 
     irs::bytes_view_input in;
-    auto prepared = query.prepare(reader, prepared_order);
-    auto docs = prepared->execute(segment, prepared_order);
+    auto prepared = query.prepare({
+      .index = reader,
+      .memory = counter,
+      .scorers = prepared_order,
+    });
+    auto docs =
+      prepared->execute({.segment = segment, .scorers = prepared_order});
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_TRUE(bool(score));
 
@@ -1493,6 +1644,9 @@ TEST_P(tfidf_test_case, test_order) {
                  [](const auto& lhs, auto rhs) { return lhs.second == rhs; });
     ASSERT_TRUE(eq);
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 #endif  // IRESEARCH_DLL

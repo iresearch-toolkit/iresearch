@@ -384,7 +384,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
     cached_columns_;  // pointers remain valid
   absl::flat_hash_map<field_id, cached_column*> column_ids_;
   sorted_column sort_;
-  std::vector<DocContext, ManagedTypedAllocator<DocContext>> docs_context_;
+  ManagedVector<DocContext> docs_context_;
   // invalid/removed doc_ids (e.g. partially indexed due to indexing failure)
   DocsMask docs_mask_;
   fields_data fields_;

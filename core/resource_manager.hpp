@@ -22,10 +22,13 @@
 
 #pragma once
 
+#include <vector>
+
 #include "shared.hpp"
 #include "utils/managed_allocator.hpp"
 
 namespace irs {
+
 struct IResourceManager {
   static IResourceManager kNoop;
 #ifdef IRESEARCH_DEBUG
@@ -38,10 +41,9 @@ struct IResourceManager {
   IResourceManager(const IResourceManager&) = delete;
   IResourceManager operator=(const IResourceManager&) = delete;
 
-  virtual bool Increase([[maybe_unused]] size_t v) noexcept {
+  virtual void Increase([[maybe_unused]] size_t v) {
     IRS_ASSERT(this != &kForbidden);
     IRS_ASSERT(v != 0);
-    return true;
   }
 
   virtual void Decrease([[maybe_unused]] size_t v) noexcept {
@@ -81,5 +83,8 @@ struct ManagedTypedAllocator
   }
   using Base::Base;
 };
+
+template<typename T>
+using ManagedVector = std::vector<T, ManagedTypedAllocator<T>>;
 
 }  // namespace irs

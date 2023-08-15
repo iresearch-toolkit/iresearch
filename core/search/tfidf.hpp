@@ -51,15 +51,15 @@ class TFIDF final : public irs::ScorerBase<TFIDF, TFIDFStats> {
     return IndexFeatures::FREQ;
   }
 
-  void get_features(std::set<type_info::type_id>& features) const final;
+  void get_features(feature_set_t& features) const final;
 
   FieldCollector::ptr prepare_field_collector() const final;
 
-  ScoreFunction prepare_scorer(
-    const ColumnProvider& segment,
-    const std::map<irs::type_info::type_id, field_id>& features,
-    const byte_type* stats_buf, const attribute_provider& doc_attrs,
-    score_t boost) const final;
+  ScoreFunction prepare_scorer(const ColumnProvider& segment,
+                               const feature_map_t& features,
+                               const byte_type* stats_buf,
+                               const attribute_provider& doc_attrs,
+                               score_t boost) const final;
 
   TermCollector::ptr prepare_term_collector() const final;
 

@@ -23,6 +23,8 @@
 #pragma once
 
 #include <functional>
+#include <map>
+#include <set>
 #include <span>
 
 #include "index/column_info.hpp"
@@ -80,5 +82,9 @@ using FeatureWriterFactory =
 using FeatureInfoProvider =
   std::function<std::pair<ColumnInfo, FeatureWriterFactory>(
     type_info::type_id)>;
+
+using feature_map_t = std::map<type_info::type_id, field_id>;
+using feature_set_t = std::set<type_info::type_id>;
+using features_t = std::span<const type_info::type_id>;
 
 }  // namespace irs

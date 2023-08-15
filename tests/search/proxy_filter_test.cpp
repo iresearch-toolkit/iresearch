@@ -123,11 +123,10 @@ class doclist_test_filter : public filter {
 
   static void reset_prepares() noexcept { prepares_ = 0; }
 
-  filter::prepared::ptr prepare(const IndexReader&, const Scorers&,
-                                score_t boost,
-                                const attribute_provider*) const final {
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
     ++prepares_;
-    return memory::make_managed<doclist_test_query>(documents_, boost);
+    return memory::make_tracked<doclist_test_query>(ctx.memory, documents_,
+                                                    ctx.boost);
   }
 
   // intentional copy here to simplify multiple runs of same expected
@@ -172,18 +171,28 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
 
   void verify_filter(const std::vector<doc_id_t>& expected, size_t line) {
     SCOPED_TRACE(::testing::Message("Failed on line: ") << line);
+    MaxMemoryCounter prepare_counter;
+    MaxMemoryCounter execute_counter;
+
     irs::proxy_filter::cache_ptr cache;
     for (size_t i = 0; i < 3; ++i) {
       proxy_filter proxy;
       if (i == 0) {
-        auto res = proxy.set_filter<doclist_test_filter>();
+        auto res =
+          proxy.set_filter<doclist_test_filter>(irs::IResourceManager::kNoop);
         cache = res.second;
         res.first.set_expected(expected);
       } else {
         proxy.set_cache(cache);
       }
-      auto prepared_proxy = proxy.prepare(index_);
-      auto docs = prepared_proxy->execute(index_[0]);
+      auto prepared_proxy = proxy.prepare({
+        .index = index_,
+        .memory = prepare_counter,
+      });
+      auto docs = prepared_proxy->execute({
+        .segment = index_[0],
+        .memory = execute_counter,
+      });
       auto costs = irs::get<irs::cost>(*docs);
       EXPECT_TRUE(costs);
       EXPECT_EQ(costs->estimate(), expected.size());
@@ -198,6 +207,16 @@ class proxy_filter_test_case : public ::testing::TestWithParam<size_t> {
     // Real filter should be exectued just once
     EXPECT_EQ(doclist_test_query::get_execs(), 1);
     EXPECT_EQ(doclist_test_filter::get_prepares(), 1);
+
+    cache.reset();
+
+    EXPECT_EQ(prepare_counter.current, 0);
+    EXPECT_GT(prepare_counter.max, 0);
+    prepare_counter.Reset();
+
+    EXPECT_EQ(execute_counter.current, 0);
+    EXPECT_GT(execute_counter.max, 0);
+    execute_counter.Reset();
   }
 
   irs::memory_directory dir_;
@@ -266,7 +285,7 @@ TEST_P(proxy_filter_real_filter, with_terms_filter) {
   init_index();
   auto rdr = open_reader();
   proxy_filter proxy;
-  auto [q, cache] = proxy.set_filter<by_term>();
+  auto [q, cache] = proxy.set_filter<by_term>(irs::IResourceManager::kNoop);
   *q.mutable_field() = "name";
   q.mutable_options()->term =
     irs::ViewCast<irs::byte_type>(std::string_view("A"));
@@ -277,7 +296,7 @@ TEST_P(proxy_filter_real_filter, with_disjunction_filter) {
   init_index();
   auto rdr = open_reader();
   proxy_filter proxy;
-  auto [root, cache] = proxy.set_filter<irs::Or>();
+  auto [root, cache] = proxy.set_filter<irs::Or>(irs::IResourceManager::kNoop);
   auto& q = root.add<by_term>();
   *q.mutable_field() = "name";
   q.mutable_options()->term =

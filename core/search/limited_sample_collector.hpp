@@ -120,7 +120,7 @@ class limited_sample_collector : private util::noncopyable {
 
   // Finish collecting and evaluate stats
   void score(const IndexReader& index, const Scorers& order,
-             std::vector<bstring>& stats) {
+             MultiTermQuery::Stats& stats) {
     if (!scored_terms_limit_) {
       return;  // nothing to score (optimization)
     }
