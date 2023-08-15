@@ -24,7 +24,6 @@
 
 #include "index/index_tests.hpp"
 #include "tests_shared.hpp"
-#include "utils/arena_allocator.hpp"
 #include "utils/automaton_utils.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 #include "utils/levenshtein_utils.hpp"
@@ -39,8 +38,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
       irs::make_levenshtein_automaton(description, prefix, target);
     irs::automaton_table_matcher matcher(acceptor, true);
 
-    irs::memory::arena<uint32_t, 16> arena;
-    irs::memory::arena_vector<uint32_t, decltype(arena)> target_chars(arena);
+    irs::SmallVector<uint32_t, 16> target_chars;
     irs::utf8_utils::utf8_to_utf32<false>(target.data(), target.size(),
                                           std::back_inserter(target_chars));
 
@@ -61,8 +59,7 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
         while (expected_terms->next()) {
           auto expected_term = expected_terms->value();
 
-          irs::memory::arena_vector<uint32_t, decltype(arena)> expected_chars(
-            arena);
+          irs::SmallVector<uint32_t, 16> expected_chars;
           irs::utf8_utils::utf8_to_utf32<false>(
             expected_term.data(), expected_term.size(),
             std::back_inserter(expected_chars));
