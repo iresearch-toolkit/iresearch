@@ -156,8 +156,9 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
       EXPECT_TRUE(std::is_heap(std::begin(sorted), std::end(sorted)));
       score->Min(sorted.front().score);
     }
-
-    for (float_t score_value; docs->next();) {
+    std::vector<irs::score_t> scores(scorers.size());
+    auto& score_value = *scores.data();
+    while (docs->next()) {
       (*score)(&score_value);
 
       if (left) {
