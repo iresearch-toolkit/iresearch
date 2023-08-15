@@ -338,6 +338,10 @@ class Aggregator {
     }
   }
 
+  void merge(score_t* dst, const score_t* src) const noexcept {
+    merger_(dst, src);
+  }
+ 
  private:
   IRS_NO_UNIQUE_ADDRESS Merger merger_;
   std::array<score_t, Size> buf_;
@@ -367,6 +371,10 @@ class Aggregator<Merger, std::numeric_limits<size_t>::max()> {
       ++dst;
       ++src;
     }
+  }
+
+  void merge(score_t* dst, const score_t* src) const noexcept {
+    merger_(dst, src);
   }
 
  private:

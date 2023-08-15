@@ -329,7 +329,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
       (**begin)(&score_);
       for (++begin; begin != end; ++begin) {
         (**begin)(merger.temp());
-        merger(&score_, merger.temp());
+        merger.merge(&score_, merger.temp());
       }
       if (threshold_ < score_) {
         return target;
@@ -416,7 +416,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
       }
       IRS_ASSERT(min_leafs <= max_leafs);
       if constexpr (HasScore_v<Merger>) {
-        merger(&sum_leafs_score, &it.score->max.leaf);
+        merger.merge(&sum_leafs_score, &it.score->max.leaf);
       }
     }
 

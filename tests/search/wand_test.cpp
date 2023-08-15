@@ -27,6 +27,7 @@
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
+#include "search/boolean_filter.hpp"
 #include "utils/index_utils.hpp"
 
 namespace {
@@ -98,12 +99,13 @@ class WandTestCase : public tests::index_test_base {
                                                   bool write_norms);
 
   std::vector<Doc> Collect(const irs::DirectoryReader& index,
-                           const irs::filter& filter, const irs::Scorer& scorer,
+                           const irs::filter& filter,
+                           irs::ScorersView scorers,
                            irs::byte_type wand_idx, bool can_use_wand,
                            size_t limit);
 
   void AssertResults(const irs::DirectoryReader& index,
-                     const irs::filter& filter, const irs::Scorer& scorer,
+                     const irs::filter& filter, irs::ScorersView scorers,
                      irs::byte_type wand_idx, bool can_use_wand, size_t limit);
 
   void GenerateSegment(irs::ScorersView scorers, bool write_norms,
@@ -113,16 +115,20 @@ class WandTestCase : public tests::index_test_base {
   void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
                         irs::byte_type wand_index);
   void AssertTermFilter(irs::ScorersView scorers);
+  void AssertConjunctionFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
+                        irs::byte_type wand_index);
+  void AssertConjunctionFilter(irs::ScorersView scorers);
 };
 
 std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
                                        const irs::filter& filter,
-                                       const irs::Scorer& scorer,
+                                       irs::ScorersView scorers,
                                        irs::byte_type wand_idx,
                                        bool can_use_wand, size_t limit) {
-  auto scorers = irs::Scorers::Prepare(scorer);
-  EXPECT_FALSE(scorers.empty());
-  auto query = filter.prepare(index, scorers);
+  auto prepared = irs::Scorers::Prepare(std::span(
+    const_cast<const irs::Scorer**>(&scorers.front()), scorers.size()));
+  EXPECT_FALSE(prepared.empty());
+  auto query = filter.prepare(index, prepared);
   EXPECT_NE(nullptr, query);
 
   const irs::WandContext mode{.index = wand_idx};
@@ -132,7 +138,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
   for (size_t left = limit, segment_id = 0; const auto& segment : index) {
     auto docs = query->execute(irs::ExecutionContext{
-      .segment = segment, .scorers = scorers, .wand = mode});
+      .segment = segment, .scorers = prepared, .wand = mode});
     EXPECT_NE(nullptr, docs);
 
     const auto* doc = irs::get<irs::document>(*docs);
@@ -185,12 +191,12 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
 void WandTestCase::AssertResults(const irs::DirectoryReader& index,
                                  const irs::filter& filter,
-                                 const irs::Scorer& scorer,
+                                 irs::ScorersView scorers,
                                  irs::byte_type scorer_idx, bool can_use_wand,
                                  size_t limit) {
   auto wand_result =
-    Collect(index, filter, scorer, scorer_idx, can_use_wand, limit);
-  auto result = Collect(index, filter, scorer, irs::WandContext::kDisable,
+    Collect(index, filter, scorers, scorer_idx, can_use_wand, limit);
+  auto result = Collect(index, filter, scorers, irs::WandContext::kDisable,
                         can_use_wand, limit);
   ASSERT_EQ(result, wand_result);
 }
@@ -282,6 +288,18 @@ void WandTestCase::AssertTermFilter(irs::ScorersView scorers) {
   AssertTermFilter(scorers, *scorers[0], scorers.size());
 }
 
+
+void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers) {
+  ASSERT_FALSE(scorers.empty());
+  for (size_t idx = 0; auto* scorer : scorers) {
+    AssertConjunctionFilter(scorers, *scorer, idx);
+    ++idx;
+  }
+  // Invalid scorer
+  AssertConjunctionFilter(scorers, *scorers[0], scorers.size());
+}
+
+
 void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
                                     const irs::Scorer& scorer,
                                     irs::byte_type wand_index) {
@@ -324,9 +342,60 @@ void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
     for (auto terms = field->iterator(irs::SeekMode::NORMAL); terms->next();) {
       filter.mutable_options()->term = terms->value();
 
-      AssertResults(reader, filter, scorer, wand_index, can_use_wand, 10);
-      AssertResults(reader, filter, scorer, wand_index, can_use_wand, 100);
+      AssertResults(reader, filter, scorers, wand_index, can_use_wand, 10);
+      AssertResults(reader, filter, scorers, wand_index, can_use_wand, 100);
     }
+  }
+}
+
+void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers,
+                                    const irs::Scorer& scorer,
+                                    irs::byte_type wand_index) {
+  static constexpr std::string_view kFieldName = "name";
+
+  irs::And conjunction;
+  irs::by_term& filter = conjunction.add<irs::by_term>();
+  *filter.mutable_field() = kFieldName;
+  irs::by_term& filter2 = conjunction.add<irs::by_term>();
+  *filter2.mutable_field() = kFieldName;
+
+  auto reader = irs::DirectoryReader{
+    dir(), codec(), irs::IndexReaderOptions{.scorers = scorers}};
+  ASSERT_NE(nullptr, reader);
+
+  for (const auto& segment : reader) {
+    const auto* field = segment.field(kFieldName);
+    ASSERT_NE(nullptr, field);
+
+    const auto can_use_wand = [&]() {
+      const auto& field_meta = field->meta();
+      const auto index_features = scorer.index_features();
+      if (index_features != (index_features & field_meta.index_features)) {
+        return false;
+      }
+
+      irs::feature_set_t features;
+      scorer.get_features(features);
+
+      for (const auto feature : features) {
+        const auto it = field_meta.features.find(feature);
+        if (it == field_meta.features.end() ||
+            !irs::field_limits::valid(it->second)) {
+          return false;
+        }
+      }
+
+      return wand_index < scorers.size();
+    }();
+
+    ASSERT_EQ(can_use_wand, field->has_scorer(wand_index));
+    auto terms = field->iterator(irs::SeekMode::NORMAL);
+    ASSERT_TRUE(terms->next());
+    filter.mutable_options()->term = terms->value();
+    ASSERT_TRUE(terms->next());
+    filter2.mutable_options()->term = terms->value();
+    AssertResults(reader, conjunction, scorers, wand_index, can_use_wand, 10);
+    AssertResults(reader, conjunction, scorers, wand_index, can_use_wand, 100);
   }
 }
 
@@ -357,6 +426,38 @@ TEST_P(WandTestCase, TermFilterMultipleScorersDense) {
   ConsolidateAll(scorers, true);
 
   AssertTermFilter(scorers);
+}
+
+TEST_P(WandTestCase, ConjunctionFilterMultipleScorersDense) {
+  Scorers scorers;
+  scorers.PushBack<irs::TFIDF>(false);
+  scorers.PushBack<irs::TFIDF>(true);
+  const auto& bm25 = scorers.PushBack<irs::BM25>();
+  ASSERT_FALSE(bm25.IsBM15() || bm25.IsBM11());
+  const auto& bm15 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.f);
+  ASSERT_TRUE(bm15.IsBM15());
+  const auto& bm11 = scorers.PushBack<irs::BM25>(irs::BM25::K(), 1.f);
+  ASSERT_TRUE(bm11.IsBM11());
+  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.4f);
+  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.2f);
+  scorers.PushBack<irs::BM25>(irs::BM25::K(), 0.1f);
+
+  GenerateSegment(scorers, true);
+  AssertConjunctionFilter(scorers);
+
+  GenerateSegment(scorers, true, true);  // Add another segment
+  ConsolidateAll(scorers, true);
+  AssertConjunctionFilter(scorers);
+
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertConjunctionFilter(scorers);
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertConjunctionFilter(scorers);
+  GenerateSegment(scorers, true, true);  // Add another segment
+  AssertConjunctionFilter(scorers);
+  ConsolidateAll(scorers, true);
+
+  AssertConjunctionFilter(scorers);
 }
 
 TEST_P(WandTestCase, TermFilterMultipleScorersSparse) {
