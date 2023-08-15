@@ -74,7 +74,6 @@
 #include "utils/encryption.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/memory.hpp"
-#include "utils/memory_pool.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/fstext/fst_string_weight.hpp"
@@ -392,8 +391,7 @@ enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };
 // Block or term
 class entry : private util::noncopyable {
  public:
-  entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
-        bool volatile_term);
+  entry(irs::bytes_view term, version10::term_meta&& attrs, bool volatile_term);
 
   entry(irs::bytes_view prefix, block_t::block_index_t&& index,
         uint64_t block_start, byte_type meta, uint16_t label,
@@ -402,12 +400,12 @@ class entry : private util::noncopyable {
   entry& operator=(entry&& rhs) noexcept;
   ~entry() noexcept;
 
-  const irs::postings_writer::state& term() const noexcept {
-    return *mem_.as<irs::postings_writer::state>();
+  const version10::term_meta& term() const noexcept {
+    return *mem_.as<version10::term_meta>();
   }
 
-  irs::postings_writer::state& term() noexcept {
-    return *mem_.as<irs::postings_writer::state>();
+  version10::term_meta& term() noexcept {
+    return *mem_.as<version10::term_meta>();
   }
 
   const block_t& block() const noexcept { return *mem_.as<block_t>(); }
@@ -423,16 +421,16 @@ class entry : private util::noncopyable {
   void move_union(entry&& rhs) noexcept;
 
   volatile_byte_ref data_;  // block prefix or term
-  memory::aligned_type<irs::postings_writer::state, block_t> mem_;  // storage
-  EntryType type_;  // entry type
+  memory::aligned_type<version10::term_meta, block_t> mem_;  // storage
+  EntryType type_;                                           // entry type
 };
 
-entry::entry(irs::bytes_view term, irs::postings_writer::state&& attrs,
+entry::entry(irs::bytes_view term, version10::term_meta&& attrs,
              bool volatile_term)
   : type_(ET_TERM) {
   data_.assign(term, volatile_term);
 
-  mem_.construct<irs::postings_writer::state>(std::move(attrs));
+  mem_.construct<version10::term_meta>(std::move(attrs));
 }
 
 entry::entry(irs::bytes_view prefix, block_t::block_index_t&& index,
@@ -465,8 +463,8 @@ void entry::move_union(entry&& rhs) noexcept {
   type_ = rhs.type_;
   switch (type_) {
     case ET_TERM:
-      mem_.construct<irs::postings_writer::state>(std::move(rhs.term()));
-      rhs.mem_.destroy<irs::postings_writer::state>();
+      mem_.construct<version10::term_meta>(std::move(rhs.term()));
+      rhs.mem_.destroy<version10::term_meta>();
       break;
     case ET_BLOCK:
       mem_.construct<block_t>(std::move(rhs.block()));
@@ -481,7 +479,7 @@ void entry::move_union(entry&& rhs) noexcept {
 void entry::destroy() noexcept {
   switch (type_) {
     case ET_TERM:
-      mem_.destroy<irs::postings_writer::state>();
+      mem_.destroy<version10::term_meta>();
       break;
     case ET_BLOCK:
       mem_.destroy<block_t>();
@@ -1072,7 +1070,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
     suffix_.stream.write_bytes(data.data() + prefix, suf_size);
 
     if (ET_TERM == type) {
-      pw_->encode(stats_.stream, *e.term());
+      pw_->encode(stats_.stream, e.term());
     } else {
       IRS_ASSERT(ET_BLOCK == type);
 
@@ -1328,14 +1326,15 @@ void field_writer::write(const basic_term_reader& reader,
   IRS_ASSERT(terms != nullptr);
   while (terms->next()) {
     auto postings = terms->postings(index_features);
-    auto meta = pw_->write(*postings);
+    version10::term_meta meta;
+    pw_->write(*postings, meta);
 
     if (freq_exists) {
-      sum_tfreq += meta->freq;
+      sum_tfreq += meta.freq;
     }
 
-    if (meta->docs_count != 0) {
-      sum_dfreq += meta->docs_count;
+    if (meta.docs_count != 0) {
+      sum_dfreq += meta.docs_count;
 
       const bytes_view term = terms->value();
       Push(term);
@@ -3635,6 +3634,7 @@ namespace burst_trie {
 irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,
                                    IResourceManager& rm, bool consolidation) {
+  // Here we can parametrize field_writer via version20::term_meta
   return std::make_unique<::field_writer>(std::move(writer), consolidation, rm,
                                           version);
 }
