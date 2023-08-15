@@ -3634,6 +3634,7 @@ namespace burst_trie {
 irs::field_writer::ptr make_writer(Version version,
                                    irs::postings_writer::ptr&& writer,
                                    IResourceManager& rm, bool consolidation) {
+  // Here we can parametrize field_writer via version20::term_meta
   return std::make_unique<::field_writer>(std::move(writer), consolidation, rm,
                                           version);
 }
