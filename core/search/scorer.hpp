@@ -354,7 +354,7 @@ struct ScoreBuffer<kBufferRuntimeSize> {
 
 template<typename Merger, size_t Size>
 struct Aggregator : ScoreBuffer<Size> {
-  using Buffer = Buffer<Size>;
+  using Buffer = ScoreBuffer<Size>;
 
   using Buffer::Buffer;
 
