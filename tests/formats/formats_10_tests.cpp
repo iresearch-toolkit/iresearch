@@ -111,7 +111,6 @@ class format_10_test_case : public tests::format_test_case {
       codec->get_postings_writer(false, irs::IResourceManager::kNoop);
     ASSERT_NE(nullptr, writer);
     irs::version10::term_meta term_meta;
-    // must be destroyed before the writer
 
     // write postings for field
     {
