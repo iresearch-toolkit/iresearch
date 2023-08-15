@@ -300,13 +300,21 @@ TEST(by_prefix_test, equal) {
 }
 
 TEST(by_prefix_test, boost) {
+  MaxMemoryCounter counter;
+
   // no boost
   {
     irs::by_prefix q = make_filter("field", "term");
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   // with boost
   {
@@ -314,9 +322,15 @@ TEST(by_prefix_test, boost) {
     irs::by_prefix q = make_filter("field", "term");
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({
+      .index = irs::SubReader::empty(),
+      .memory = counter,
+    });
     ASSERT_EQ(boost, prepared->boost());
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(prefix_filter_test_case, by_prefix) {

@@ -486,7 +486,7 @@ ScoreFunction BM25::prepare_scorer(const ColumnProvider& segment,
     MakeBM25NormAdapter<NormType::kNorm2Tiny>([]() { return 1U; }));
 }
 
-void BM25::get_features(std::set<type_info::type_id>& features) const {
+void BM25::get_features(feature_set_t& features) const {
   if (NeedsNorm()) {
     features.emplace(irs::type<Norm2>::id());
   }

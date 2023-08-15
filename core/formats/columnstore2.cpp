@@ -381,21 +381,22 @@ class column_base : public column_reader, private util::noncopyable {
 
   column_header& mutable_header() { return hdr_; }
   void reset_stream(const index_input* stream) { stream_ = stream; }
-  bool allocate_buffered_memory(size_t size, size_t mappings) {
-    if (!resource_manager_cached_.Increase(size + mappings)) {
-      auto column_name = name();
-      if (irs::IsNull(column_name)) {
-        column_name = "<anonymous>";
-      }
-      IRS_LOG_WARN(
-        absl::StrCat("Failed to allocate memory for buffered column id ",
-                     header().id, " name: ", column_name, " of size ", size));
-      return false;
-    }
+
+  bool allocate_buffered_memory(size_t size, size_t mappings) noexcept try {
+    resource_manager_cached_.Increase(size + mappings);
     // should be only one alllocation
     IRS_ASSERT(column_data_.empty());
     column_data_.resize(size);
     return true;
+  } catch (...) {
+    auto column_name = name();
+    if (irs::IsNull(column_name)) {
+      column_name = "<anonymous>";
+    }
+    IRS_LOG_WARN(
+      absl::StrCat("Failed to allocate memory for buffered column id ",
+                   header().id, " name: ", column_name, " of size ", size));
+    return false;
   }
 
   size_t calculate_bitmap_size(size_t file_len,
@@ -619,9 +620,9 @@ struct mask_column : public column_base {
                          const index_input& data_in,
                          compression::decompressor::ptr&& /*inflater*/,
                          encryption::stream* cipher) {
-    return memory::make_tracked_managed<column_reader, mask_column>(
-      rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
-      std::move(index), data_in, cipher);
+    return memory::make_tracked<mask_column>(rm_r, std::move(name), rm_c,
+                                             std::move(payload), std::move(hdr),
+                                             std::move(index), data_in, cipher);
   }
 
   mask_column(std::optional<std::string>&& name, IResourceManager& rm_c,
@@ -753,7 +754,7 @@ column_ptr dense_fixed_length_column::read(
   compression::decompressor::ptr&& inflater, encryption::stream* cipher) {
   const uint64_t len = index_in.read_long();
   const uint64_t data = index_in.read_long();
-  return memory::make_tracked_managed<column_reader, dense_fixed_length_column>(
+  return memory::make_tracked<dense_fixed_length_column>(
     rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
     std::move(index), data_in, std::move(inflater), cipher, data, len);
 }
@@ -787,7 +788,7 @@ doc_iterator::ptr dense_fixed_length_column::iterator(ColumnHint hint) const {
 
 class fixed_length_column : public column_base {
  public:
-  using Blocks = std::vector<uint64_t, ManagedTypedAllocator<uint64_t>>;
+  using Blocks = ManagedVector<uint64_t>;
 
   static column_ptr read(std::optional<std::string>&& name,
                          IResourceManager& rm_r, IResourceManager& rm_c,
@@ -798,7 +799,7 @@ class fixed_length_column : public column_base {
                          encryption::stream* cipher) {
     const uint64_t len = index_in.read_long();
     auto blocks = read_blocks_dense(hdr, index_in, rm_r);
-    return memory::make_tracked_managed<column_reader, fixed_length_column>(
+    return memory::make_tracked<fixed_length_column>(
       rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
       std::move(index), data_in, std::move(inflater), cipher, std::move(blocks),
       len);
@@ -997,18 +998,19 @@ class sparse_column : public column_base {
                          compression::decompressor::ptr&& inflater,
                          encryption::stream* cipher) {
     auto blocks = read_blocks_sparse(hdr, index_in, rm_r);
-    return memory::make_tracked_managed<column_reader, sparse_column>(
+    return memory::make_tracked<sparse_column>(
       rm_r, std::move(name), rm_c, std::move(payload), std::move(hdr),
       std::move(index), data_in, std::move(inflater), cipher,
       std::move(blocks));
   }
 
-  sparse_column(
-    std::optional<std::string>&& name, IResourceManager& resource_manager,
-    bstring&& payload, column_header&& hdr, column_index&& index,
-    const index_input& data_in, compression::decompressor::ptr&& inflater,
-    encryption::stream* cipher,
-    std::vector<column_block, ManagedTypedAllocator<column_block>>&& blocks)
+  sparse_column(std::optional<std::string>&& name,
+                IResourceManager& resource_manager, bstring&& payload,
+                column_header&& hdr, column_index&& index,
+                const index_input& data_in,
+                compression::decompressor::ptr&& inflater,
+                encryption::stream* cipher,
+                ManagedVector<column_block>&& blocks)
     : column_base{std::move(name), resource_manager, std::move(payload),
                   std::move(hdr),  std::move(index), data_in,
                   cipher},
@@ -1053,9 +1055,9 @@ class sparse_column : public column_base {
   }
 
  private:
-  static std::vector<column_block, ManagedTypedAllocator<column_block>>
-  read_blocks_sparse(const column_header& hdr, index_input& in,
-                     IResourceManager& resource_manager);
+  static ManagedVector<column_block> read_blocks_sparse(
+    const column_header& hdr, index_input& in,
+    IResourceManager& resource_manager);
 
   template<typename ValueReader>
   class payload_reader : private ValueReader {
@@ -1072,8 +1074,7 @@ class sparse_column : public column_base {
 
   template<bool encrypted>
   bool make_buffered_data(
-    column_header& hdr, index_input& in,
-    std::vector<column_block, ManagedTypedAllocator<column_block>>& blocks,
+    column_header& hdr, index_input& in, ManagedVector<column_block>& blocks,
     std::vector<byte_type>& column_data,
     std::span<memory::managed_ptr<column_reader>> next_sorted_columns,
     remapped_bytes_view_input::mapping* mapping) {
@@ -1167,7 +1168,7 @@ class sparse_column : public column_base {
     return true;
   }
 
-  std::vector<column_block, ManagedTypedAllocator<column_block>> blocks_;
+  ManagedVector<column_block> blocks_;
   compression::decompressor::ptr inflater_;
 };
 

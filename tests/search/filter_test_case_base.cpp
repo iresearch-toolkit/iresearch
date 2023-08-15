@@ -35,9 +35,9 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
   result_costs.reserve(rdr.size());
 
   for (const auto& sub : rdr) {
-    auto random_docs = q->execute(sub);
+    auto random_docs = q->execute({.segment = sub});
     ASSERT_NE(nullptr, random_docs);
-    auto sequential_docs = q->execute(sub);
+    auto sequential_docs = q->execute({.segment = sub});
     ASSERT_NE(nullptr, sequential_docs);
 
     auto* doc = irs::get<irs::document>(*sequential_docs);
@@ -46,7 +46,7 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
     result_costs.emplace_back(irs::cost::extract(*sequential_docs));
 
     while (sequential_docs->next()) {
-      auto stateless_random_docs = q->execute(sub);
+      auto stateless_random_docs = q->execute({.segment = sub});
       ASSERT_NE(nullptr, stateless_random_docs);
       ASSERT_EQ(sequential_docs->value(), doc->value);
       ASSERT_EQ(doc->value, random_docs->seek(doc->value));
@@ -66,8 +66,8 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
 
     // seek to eof
-    ASSERT_TRUE(
-      irs::doc_limits::eof(q->execute(sub)->seek(irs::doc_limits::eof())));
+    ASSERT_TRUE(irs::doc_limits::eof(
+      q->execute({.segment = sub})->seek(irs::doc_limits::eof())));
   }
 }
 
@@ -80,9 +80,9 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
   result_costs.reserve(rdr.size());
 
   for (const auto& sub : rdr) {
-    auto random_docs = q->execute(sub, ord);
+    auto random_docs = q->execute({.segment = sub, .scorers = ord});
     ASSERT_NE(nullptr, random_docs);
-    auto sequential_docs = q->execute(sub, ord);
+    auto sequential_docs = q->execute({.segment = sub, .scorers = ord});
     ASSERT_NE(nullptr, sequential_docs);
 
     auto* doc = irs::get<irs::document>(*sequential_docs);
@@ -103,7 +103,7 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
     };
 
     while (sequential_docs->next()) {
-      auto stateless_random_docs = q->execute(sub, ord);
+      auto stateless_random_docs = q->execute({.segment = sub, .scorers = ord});
       ASSERT_NE(nullptr, stateless_random_docs);
       ASSERT_EQ(sequential_docs->value(), doc->value);
       ASSERT_EQ(doc->value, random_docs->seek(doc->value));
@@ -129,8 +129,8 @@ void FilterTestCaseBase::GetQueryResult(const irs::filter::prepared::ptr& q,
     ASSERT_TRUE(irs::doc_limits::eof(doc->value));
 
     // seek to eof
-    ASSERT_TRUE(
-      irs::doc_limits::eof(q->execute(sub)->seek(irs::doc_limits::eof())));
+    ASSERT_TRUE(irs::doc_limits::eof(
+      q->execute({.segment = sub})->seek(irs::doc_limits::eof())));
   }
 }
 
@@ -142,8 +142,8 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   SCOPED_TRACE(source_location);
   Docs result;
   Costs result_costs;
-  GetQueryResult(filter.prepare(index, irs::Scorers::kUnordered), index, result,
-                 result_costs, source_location);
+  GetQueryResult(filter.prepare({.index = index}), index, result, result_costs,
+                 source_location);
   ASSERT_EQ(expected, result);
   ASSERT_EQ(expected_costs, result_costs);
 }
@@ -155,7 +155,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
                                     std::string_view source_location) {
   SCOPED_TRACE(source_location);
   auto ord = irs::Scorers::Prepare(order);
-  auto q = filter.prepare(rdr, ord);
+  auto q = filter.prepare({.index = rdr, .scorers = ord});
   ASSERT_NE(nullptr, q);
 
   auto assert_equal_scores = [&](const std::vector<irs::score_t>& expected,
@@ -202,7 +202,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   auto test = std::begin(tests);
   for (const auto& sub : rdr) {
     ASSERT_NE(test, std::end(tests));
-    auto random_docs = q->execute(sub, ord);
+    auto random_docs = q->execute({.segment = sub, .scorers = ord});
     ASSERT_NE(nullptr, random_docs);
 
     for (auto& test : *test) {
@@ -222,8 +222,8 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   ScoredDocs result;
   Costs result_costs;
   auto prepared = irs::Scorers::Prepare(order);
-  GetQueryResult(filter.prepare(index, prepared), index, prepared, result,
-                 result_costs, source_location);
+  GetQueryResult(filter.prepare({.index = index, .scorers = prepared}), index,
+                 prepared, result, result_costs, source_location);
   ASSERT_EQ(expected, result);
 }
 
@@ -234,8 +234,8 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
   SCOPED_TRACE(source_location);
   Docs result;
   Costs result_costs;
-  GetQueryResult(filter.prepare(index, irs::Scorers::kUnordered), index, result,
-                 result_costs, source_location);
+  GetQueryResult(filter.prepare({.index = index}), index, result, result_costs,
+                 source_location);
   ASSERT_EQ(expected, result);
 }
 
@@ -245,7 +245,8 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
                                     const irs::IndexReader& rdr,
                                     bool score_must_be_present, bool reverse) {
   auto prepared_order = irs::Scorers::Prepare(order);
-  auto prepared_filter = filter.prepare(rdr, prepared_order);
+  auto prepared_filter =
+    filter.prepare({.index = rdr, .scorers = prepared_order});
   auto score_less =
     [reverse, size = prepared_order.buckets().size()](
       const std::pair<irs::bstring, irs::doc_id_t>& lhs,
@@ -275,7 +276,8 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
     scored_result{score_less};
 
   for (const auto& sub : rdr) {
-    auto docs = prepared_filter->execute(sub, prepared_order);
+    auto docs =
+      prepared_filter->execute({.segment = sub, .scorers = prepared_order});
 
     auto* doc = irs::get<irs::document>(*docs);
     // ensure all iterators contain "document" attribute

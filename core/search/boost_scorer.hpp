@@ -33,11 +33,11 @@ struct BoostScore final : ScorerBase<BoostScore, void> {
 
   static void init();
 
-  ScoreFunction prepare_scorer(
-    const ColumnProvider& /*segment*/,
-    const std::map<irs::type_info::type_id, field_id>& /*features*/,
-    const byte_type* /*stats*/, const attribute_provider& attrs,
-    score_t boost) const final;
+  ScoreFunction prepare_scorer(const ColumnProvider& /*segment*/,
+                               const feature_map_t& /*features*/,
+                               const byte_type* /*stats*/,
+                               const attribute_provider& attrs,
+                               score_t boost) const final;
 
   IndexFeatures index_features() const noexcept final {
     return IndexFeatures::NONE;

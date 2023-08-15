@@ -38,21 +38,32 @@ class lazy_filter_bitset : private util::noncopyable {
   using word_t = size_t;
 
   lazy_filter_bitset(const ExecutionContext& ctx,
-                     const filter::prepared& filter) {
-    auto& segment = ctx.segment;
-
-    const size_t bits = segment.docs_count() + doc_limits::min();
-    real_doc_itr_ = segment.mask(filter.execute({.segment = segment,
-                                                 .scorers = ctx.scorers,
-                                                 .ctx = ctx.ctx,
-                                                 .wand = ctx.wand}));
+                     const filter::prepared& filter)
+    : manager_{ctx.memory} {
+    const size_t bits = ctx.segment.docs_count() + doc_limits::min();
     words_ = bitset::bits_to_words(bits);
-    cost_ = cost::extract(*real_doc_itr_);
-    set_ = std::make_unique<word_t[]>(words_);
-    std::memset(set_.get(), 0, sizeof(word_t) * words_);
+
+    auto bytes = sizeof(*this) + sizeof(word_t) * words_;
+    manager_.Increase(bytes);
+    Finally decrease = [&]() noexcept { ctx.memory.DecreaseChecked(bytes); };
+
+    // TODO(MBkkt) use mask from segment manually to avoid virtual call
+    real_doc_itr_ = ctx.segment.mask(filter.execute(ctx));
+
     real_doc_ = irs::get<document>(*real_doc_itr_);
-    begin_ = set_.get();
+    cost_ = cost::extract(*real_doc_itr_);
+
+    set_ = std::allocator<word_t>{}.allocate(words_);
+    std::memset(set_, 0, sizeof(word_t) * words_);
+    begin_ = set_;
     end_ = begin_;
+
+    bytes = 0;
+  }
+
+  ~lazy_filter_bitset() {
+    std::allocator<word_t>{}.deallocate(set_, words_);
+    manager_.Decrease(sizeof(*this) + sizeof(word_t) * words_);
   }
 
   bool get(size_t word_idx, word_t* data) {
@@ -62,7 +73,7 @@ class lazy_filter_bitset : private util::noncopyable {
       return false;
     }
 
-    word_t* requested = set_.get() + word_idx;
+    word_t* requested = set_ + word_idx;
     if (requested >= end_) {
       auto block_limit = ((word_idx + 1) * kBits) - 1;
       while (real_doc_itr_->next()) {
@@ -81,13 +92,16 @@ class lazy_filter_bitset : private util::noncopyable {
   cost::cost_t get_cost() const noexcept { return cost_; }
 
  private:
-  std::unique_ptr<word_t[]> set_;
-  const word_t* begin_{nullptr};
-  const word_t* end_{nullptr};
+  IResourceManager& manager_;
+
   doc_iterator::ptr real_doc_itr_;
   const document* real_doc_{nullptr};
-  size_t words_{0};
   cost::cost_t cost_;
+
+  word_t* set_{nullptr};
+  size_t words_{0};
+  const word_t* begin_{nullptr};
+  const word_t* end_{nullptr};
 };
 
 class lazy_filter_bitset_iterator : public doc_iterator,
@@ -148,9 +162,8 @@ class lazy_filter_bitset_iterator : public doc_iterator,
   void reset() noexcept {
     word_idx_ = 0;
     word_ = 0;
-    base_ = doc_limits::invalid() -
-            bits_required<lazy_filter_bitset::word_t>();  // before the
-                                                          // first word
+    // before the first word
+    base_ = doc_limits::invalid() - bits_required<lazy_filter_bitset::word_t>();
     doc_.value = doc_limits::invalid();
   }
 
@@ -164,10 +177,16 @@ class lazy_filter_bitset_iterator : public doc_iterator,
 };
 
 struct proxy_query_cache {
-  explicit proxy_query_cache(filter::ptr&& ptr)
-    : real_filter_(std::move(ptr)) {}
+  proxy_query_cache(IResourceManager& memory, filter::ptr&& ptr) noexcept
+    : readers_{Alloc{memory}}, real_filter_(std::move(ptr)) {}
 
-  absl::flat_hash_map<const SubReader*, std::unique_ptr<lazy_filter_bitset>>
+  using Alloc = ManagedTypedAllocator<
+    std::pair<const SubReader* const, std::unique_ptr<lazy_filter_bitset>>>;
+
+  absl::flat_hash_map<
+    const SubReader*, std::unique_ptr<lazy_filter_bitset>,
+    absl::container_internal::hash_default_hash<const SubReader*>,
+    absl::container_internal::hash_default_eq<const SubReader*>, Alloc>
     readers_;
   filter::prepared::ptr prepared_real_filter_;
   filter::ptr real_filter_;
@@ -190,7 +209,8 @@ class proxy_query : public filter::prepared {
     }
 
     IRS_ASSERT(cached);
-    return memory::make_managed<lazy_filter_bitset_iterator>(*cached);
+    return memory::make_tracked<lazy_filter_bitset_iterator>(ctx.memory,
+                                                             *cached);
   }
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
@@ -201,28 +221,22 @@ class proxy_query : public filter::prepared {
   mutable proxy_filter::cache_ptr cache_;
 };
 
-filter::prepared::ptr proxy_filter::prepare(
-  const IndexReader& rdr, const Scorers& ord, score_t boost,
-  const attribute_provider* ctx) const {
-  if (!cache_ || !cache_->real_filter_) {
-    IRS_ASSERT(false);
-    return filter::prepared::empty();
-  }
-  if (!ord.empty()) {
+filter::prepared::ptr proxy_filter::prepare(const PrepareContext& ctx) const {
+  if (!cache_ || !cache_->real_filter_ || !ctx.scorers.empty()) {
     // Currently we do not support caching scores.
     // Proxy filter should not be used with scorers!
     IRS_ASSERT(false);
     return filter::prepared::empty();
   }
   if (!cache_->prepared_real_filter_) {
-    cache_->prepared_real_filter_ =
-      cache_->real_filter_->prepare(rdr, ord, boost, ctx);
+    cache_->prepared_real_filter_ = cache_->real_filter_->prepare(ctx);
   }
-  return memory::make_managed<proxy_query>(cache_);
+  return memory::make_tracked<proxy_query>(ctx.memory, cache_);
 }
 
-filter& proxy_filter::cache_filter(filter::ptr&& ptr) {
-  cache_ = std::make_shared<proxy_query_cache>(std::move(ptr));
+filter& proxy_filter::cache_filter(IResourceManager& memory,
+                                   filter::ptr&& ptr) {
+  cache_ = std::make_shared<proxy_query_cache>(memory, std::move(ptr));
   IRS_ASSERT(cache_->real_filter_);
   return *cache_->real_filter_;
 }

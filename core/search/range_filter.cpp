@@ -29,9 +29,8 @@
 #include "search/term_filter.hpp"
 #include "shared.hpp"
 
+namespace irs {
 namespace {
-
-using namespace irs;
 
 template<typename Visitor, typename Comparer>
 void collect_terms(const SubReader& segment, const term_reader& field,
@@ -61,8 +60,8 @@ void collect_terms(const SubReader& segment, const term_reader& field,
 }
 
 template<typename Visitor>
-void visit(const SubReader& segment, const term_reader& reader,
-           const by_range_options::range_type& rng, Visitor& visitor) {
+void VisitImpl(const SubReader& segment, const term_reader& reader,
+               const by_range_options::range_type& rng, Visitor& visitor) {
   auto terms = reader.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms)) {
@@ -94,26 +93,23 @@ void visit(const SubReader& segment, const term_reader& reader,
 
   switch (rng.max_type) {
     case BoundType::UNBOUNDED:
-      ::collect_terms(segment, reader, *terms, visitor,
-                      [](bytes_view) { return true; });
+      collect_terms(segment, reader, *terms, visitor,
+                    [](bytes_view) { return true; });
       break;
     case BoundType::INCLUSIVE:
-      ::collect_terms(segment, reader, *terms, visitor,
-                      [max](bytes_view term) { return term <= max; });
+      collect_terms(segment, reader, *terms, visitor,
+                    [max](bytes_view term) { return term <= max; });
       break;
     case BoundType::EXCLUSIVE:
-      ::collect_terms(segment, reader, *terms, visitor,
-                      [max](bytes_view term) { return term < max; });
+      collect_terms(segment, reader, *terms, visitor,
+                    [max](bytes_view term) { return term < max; });
       break;
   }
 }
 
 }  // namespace
 
-namespace irs {
-
-filter::prepared::ptr by_range::prepare(const IndexReader& index,
-                                        const Scorers& ord, score_t boost,
+filter::prepared::ptr by_range::prepare(const PrepareContext& ctx,
                                         std::string_view field,
                                         const options_type::range_type& rng,
                                         size_t scored_terms_limit) {
@@ -127,7 +123,7 @@ filter::prepared::ptr by_range::prepare(const IndexReader& index,
       rng.max_type != BoundType::UNBOUNDED && rng.min == rng.max) {
     if (rng.min_type == rng.max_type && rng.min_type == BoundType::INCLUSIVE) {
       // degenerated case
-      return by_term::prepare(index, ord, boost, field, rng.min);
+      return by_term::prepare(ctx, field, rng.min);
     }
 
     // can't satisfy conditon
@@ -136,35 +132,28 @@ filter::prepared::ptr by_range::prepare(const IndexReader& index,
 
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector(
-    ord.empty() ? 0 : scored_terms_limit);
-  MultiTermQuery::States states{index.size()};
+    ctx.scorers.empty() ? 0 : scored_terms_limit);
+  MultiTermQuery::States states{ctx.memory, ctx.index.size()};
   multiterm_visitor mtv{collector, states};
 
-  // iterate over the segments
-  for (const auto& segment : index) {
-    // get term dictionary for field
-    const auto* reader = segment.field(field);
-
-    if (!reader) {
-      // can't find field with the specified name
-      continue;
+  for (const auto& segment : ctx.index) {
+    if (const auto* reader = segment.field(field); reader) {
+      VisitImpl(segment, *reader, rng, mtv);
     }
-
-    ::visit(segment, *reader, rng, mtv);
   }
 
-  MultiTermQuery::Stats stats;
-  collector.score(index, ord, stats);
+  MultiTermQuery::Stats stats{{ctx.memory}};
+  collector.score(ctx.index, ctx.scorers, stats);
 
-  return memory::make_managed<MultiTermQuery>(std::move(states),
-                                              std::move(stats), boost,
+  return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
+                                              std::move(stats), ctx.boost,
                                               ScoreMergeType::kSum, size_t{1});
 }
 
 void by_range::visit(const SubReader& segment, const term_reader& reader,
                      const options_type::range_type& rng,
                      filter_visitor& visitor) {
-  ::visit(segment, reader, rng, visitor);
+  VisitImpl(segment, reader, rng, visitor);
 }
 
 }  // namespace irs

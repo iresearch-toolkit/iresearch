@@ -23,11 +23,11 @@
 #include "index/index_tests.hpp"
 #include "index/norm.hpp"
 #include "search/bm25.hpp"
+#include "search/boolean_filter.hpp"
 #include "search/filter.hpp"
 #include "search/score.hpp"
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
-#include "search/boolean_filter.hpp"
 #include "utils/index_utils.hpp"
 
 namespace {
@@ -99,8 +99,7 @@ class WandTestCase : public tests::index_test_base {
                                                   bool write_norms);
 
   std::vector<Doc> Collect(const irs::DirectoryReader& index,
-                           const irs::filter& filter,
-                           irs::ScorersView scorers,
+                           const irs::filter& filter, irs::ScorersView scorers,
                            irs::byte_type wand_idx, bool can_use_wand,
                            size_t limit);
 
@@ -115,8 +114,9 @@ class WandTestCase : public tests::index_test_base {
   void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
                         irs::byte_type wand_index);
   void AssertTermFilter(irs::ScorersView scorers);
-  void AssertConjunctionFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
-                        irs::byte_type wand_index);
+  void AssertConjunctionFilter(irs::ScorersView scorers,
+                               const irs::Scorer& scorer,
+                               irs::byte_type wand_index);
   void AssertConjunctionFilter(irs::ScorersView scorers);
 };
 
@@ -128,7 +128,7 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
   auto prepared = irs::Scorers::Prepare(std::span(
     const_cast<const irs::Scorer**>(&scorers.front()), scorers.size()));
   EXPECT_FALSE(prepared.empty());
-  auto query = filter.prepare(index, prepared);
+  auto query = filter.prepare({.index = index, .scorers = prepared});
   EXPECT_NE(nullptr, query);
 
   const irs::WandContext mode{.index = wand_idx};
@@ -288,7 +288,6 @@ void WandTestCase::AssertTermFilter(irs::ScorersView scorers) {
   AssertTermFilter(scorers, *scorers[0], scorers.size());
 }
 
-
 void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers) {
   ASSERT_FALSE(scorers.empty());
   for (size_t idx = 0; auto* scorer : scorers) {
@@ -298,7 +297,6 @@ void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers) {
   // Invalid scorer
   AssertConjunctionFilter(scorers, *scorers[0], scorers.size());
 }
-
 
 void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
                                     const irs::Scorer& scorer,
@@ -349,8 +347,8 @@ void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
 }
 
 void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers,
-                                    const irs::Scorer& scorer,
-                                    irs::byte_type wand_index) {
+                                           const irs::Scorer& scorer,
+                                           irs::byte_type wand_index) {
   static constexpr std::string_view kFieldName = "name";
 
   irs::And conjunction;

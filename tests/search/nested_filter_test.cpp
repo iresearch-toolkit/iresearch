@@ -547,17 +547,27 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
   InitDataSet();
   auto reader = open_reader();
 
+  MaxMemoryCounter counter;
+
   irs::ByNestedFilter filter;
   auto& opts = *filter.mutable_options();
   opts.child = MakeByNumericTerm("count", 2);
   opts.parent = MakeParentProvider("customer");
-  opts.match = [](const irs::SubReader& segment) -> irs::doc_iterator::ptr {
+  opts.match = [&](const irs::SubReader& segment) -> irs::doc_iterator::ptr {
     return irs::memory::make_managed<ChildIterator>(
-      irs::all().prepare(segment)->execute(segment),
+      irs::all()
+        .prepare({
+          .index = segment,
+          .memory = counter,
+        })
+        ->execute({.segment = segment}),
       std::set{6U, 13U, 15U, 20U});
   };
 
   CheckQuery(filter, Docs{13, 20}, Costs{11}, reader, SOURCE_LOCATION);
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   {
     opts.merge_type = irs::ScoreMergeType::kMax;
@@ -573,6 +583,9 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   {
     opts.merge_type = irs::ScoreMergeType::kMin;
@@ -588,6 +601,9 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 
   {
     opts.merge_type = irs::ScoreMergeType::kNoop;
@@ -603,6 +619,9 @@ TEST_P(NestedFilterTestCase, JoinAll0) {
 
     CheckQuery(filter, scorers, {tests}, reader, SOURCE_LOCATION);
   }
+  EXPECT_EQ(counter.current, 0);
+  EXPECT_GT(counter.max, 0);
+  counter.Reset();
 }
 
 TEST_P(NestedFilterTestCase, JoinMin0) {

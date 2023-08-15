@@ -35,10 +35,25 @@ namespace irs {
 struct IndexReader;
 struct PreparedStateVisitor;
 
+struct PrepareContext {
+  const IndexReader& index;
+  IResourceManager& memory = IResourceManager::kNoop;
+  const Scorers& scorers = Scorers::kUnordered;
+  const attribute_provider* ctx = nullptr;
+  score_t boost = kNoBoost;
+
+  PrepareContext Boost(score_t boost) const noexcept {
+    auto ctx = *this;
+    ctx.boost *= boost;
+    return ctx;
+  }
+};
+
 struct ExecutionContext {
   const SubReader& segment;
-  const Scorers& scorers;
-  const attribute_provider* ctx{};
+  IResourceManager& memory = IResourceManager::kNoop;
+  const Scorers& scorers = Scorers::kUnordered;
+  const attribute_provider* ctx = nullptr;
   // If enabled, wand would use first scorer from scorers
   WandContext wand;
 };
@@ -54,12 +69,6 @@ class filter {
     static prepared::ptr empty();
 
     explicit prepared(score_t boost = kNoBoost) noexcept : boost_(boost) {}
-
-    doc_iterator::ptr execute(
-      const SubReader& segment,
-      const Scorers& scorers = Scorers::kUnordered) const {
-      return execute({.segment = segment, .scorers = scorers});
-    }
 
     virtual doc_iterator::ptr execute(const ExecutionContext& ctx) const = 0;
 
@@ -85,29 +94,7 @@ class filter {
 
   bool operator==(const filter& rhs) const noexcept { return equals(rhs); }
 
-  // boost - external boost
-  virtual filter::prepared::ptr prepare(
-    const IndexReader& rdr, const Scorers& ord, score_t boost,
-    const attribute_provider* ctx) const = 0;
-
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                                const attribute_provider* ctx) const {
-    return prepare(rdr, ord, irs::kNoBoost, ctx);
-  }
-
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                                score_t boost) const {
-    return prepare(rdr, ord, boost, nullptr);
-  }
-
-  filter::prepared::ptr prepare(const IndexReader& rdr,
-                                const Scorers& ord) const {
-    return prepare(rdr, ord, irs::kNoBoost);
-  }
-
-  filter::prepared::ptr prepare(const IndexReader& rdr) const {
-    return prepare(rdr, Scorers::kUnordered);
-  }
+  virtual filter::prepared::ptr prepare(const PrepareContext& ctx) const = 0;
 
   score_t boost() const noexcept { return boost_; }
 
@@ -186,9 +173,7 @@ class filter_base : public filter_with_options<Options> {
 // Filter which returns no documents
 class empty final : public filter {
  public:
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const final;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 
   type_info::type_id type() const noexcept final {
     return irs::type<empty>::id();

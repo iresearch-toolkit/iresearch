@@ -29,8 +29,10 @@ namespace irs {
 struct term_reader;
 
 struct NGramState {
+  explicit NGramState(IResourceManager& memory) noexcept : terms{{memory}} {}
+
   const term_reader* field{};
-  std::vector<seek_cookie::ptr> terms;
+  ManagedVector<seek_cookie::ptr> terms;
 };
 
 }  // namespace irs

@@ -125,10 +125,9 @@ struct WandWriter {
 
   virtual ~WandWriter() = default;
 
-  virtual bool Prepare(
-    const ColumnProvider& reader,
-    const std::map<irs::type_info::type_id, field_id>& features,
-    const attribute_provider& attrs) = 0;
+  virtual bool Prepare(const ColumnProvider& reader,
+                       const feature_map_t& features,
+                       const attribute_provider& attrs) = 0;
 
   virtual void Reset() = 0;
 
@@ -170,8 +169,7 @@ struct Scorer {
   // The index features required for proper operation of this sort::prepared
   virtual IndexFeatures index_features() const = 0;
 
-  virtual void get_features(
-    std::set<irs::type_info::type_id>& features) const = 0;
+  virtual void get_features(feature_set_t& features) const = 0;
 
   // Create an object to be used for collecting index statistics, one
   // instance per matched field.
@@ -179,11 +177,11 @@ struct Scorer {
   virtual FieldCollector::ptr prepare_field_collector() const = 0;
 
   // Create a stateful scorer used for computation of document scores
-  virtual ScoreFunction prepare_scorer(
-    const ColumnProvider& segment,
-    const std::map<irs::type_info::type_id, field_id>& features,
-    const byte_type* stats, const attribute_provider& doc_attrs,
-    score_t boost) const = 0;
+  virtual ScoreFunction prepare_scorer(const ColumnProvider& segment,
+                                       const feature_map_t& features,
+                                       const byte_type* stats,
+                                       const attribute_provider& doc_attrs,
+                                       score_t boost) const = 0;
 
   // Create an object to be used for collecting index statistics, one
   // instance per matched term.
@@ -341,7 +339,7 @@ class Aggregator {
   void merge(score_t* dst, const score_t* src) const noexcept {
     merger_(dst, src);
   }
- 
+
  private:
   IRS_NO_UNIQUE_ADDRESS Merger merger_;
   std::array<score_t, Size> buf_;
@@ -484,7 +482,7 @@ class ScorerBase : public Scorer {
   void collect(byte_type*, const FieldCollector*,
                const TermCollector*) const override {}
 
-  void get_features(std::set<irs::type_info::type_id>&) const override {}
+  void get_features(feature_set_t&) const override {}
 
   IRS_FORCE_INLINE static const StatsType* stats_cast(
     const byte_type* buf) noexcept {

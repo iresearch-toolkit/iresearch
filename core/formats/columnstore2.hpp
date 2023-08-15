@@ -155,8 +155,7 @@ class column final : public irs::column_output {
   irs::type_info compression_;
   compression::compressor::ptr deflater_;
   columnstore_writer::column_finalizer_f finalizer_;
-  std::vector<column_block, ManagedTypedAllocator<column_block>>
-    blocks_;  // at most 65536 blocks
+  ManagedVector<column_block> blocks_;  // at most 65536 blocks
   memory_output data_;
   memory_output docs_;
   sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};

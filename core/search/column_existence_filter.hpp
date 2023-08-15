@@ -49,11 +49,7 @@ struct by_column_existence_options {
 class by_column_existence final
   : public filter_base<by_column_existence_options> {
  public:
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& rdr, const Scorers& ord,
-                                score_t boost,
-                                const attribute_provider* ctx) const final;
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 };
 
 }  // namespace irs

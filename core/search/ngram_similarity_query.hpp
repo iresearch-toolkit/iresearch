@@ -46,8 +46,6 @@ class NGramSimilarityQuery : public filter::prepared {
       states_{std::move(states)},
       stats_{std::move(stats)} {}
 
-  using filter::prepared::execute;
-
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final;
 
   void visit(const SubReader& segment, PreparedStateVisitor& visitor,

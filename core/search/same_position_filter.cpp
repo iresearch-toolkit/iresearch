@@ -104,15 +104,13 @@ class same_position_iterator : public Conjunction {
 
 class same_position_query : public filter::prepared {
  public:
-  typedef std::vector<TermState> terms_states_t;
-  typedef StatesCache<terms_states_t> states_t;
-  typedef std::vector<bstring> stats_t;
+  using terms_states_t = ManagedVector<TermState>;
+  using states_t = StatesCache<terms_states_t>;
+  using stats_t = ManagedVector<bstring>;
 
   explicit same_position_query(states_t&& states, stats_t&& stats,
                                score_t boost)
     : prepared(boost), states_(std::move(states)), stats_(std::move(stats)) {}
-
-  using filter::prepared::execute;
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
     // FIXME(gnusi): implement
@@ -190,8 +188,7 @@ class same_position_query : public filter::prepared {
 }  // namespace
 
 filter::prepared::ptr by_same_position::prepare(
-  const IndexReader& index, const Scorers& ord, score_t boost,
-  const attribute_provider* /*ctx*/) const {
+  const PrepareContext& ctx) const {
   auto& terms = options().terms;
   const auto size = terms.size();
 
@@ -201,21 +198,22 @@ filter::prepared::ptr by_same_position::prepare(
   }
 
   // per segment query state
-  same_position_query::states_t query_states{index.size()};
+  same_position_query::states_t query_states{ctx.memory, ctx.index.size()};
 
   // per segment terms states
-  same_position_query::states_t::state_type term_states;
+  same_position_query::states_t::state_type term_states{
+    same_position_query::states_t::state_type::allocator_type{ctx.memory}};
   term_states.reserve(size);
 
   // !!! FIXME !!!
   // that's completely wrong, we have to collect stats for each field
   // instead of aggregating them using a single collector
-  field_collectors field_stats(ord);
+  field_collectors field_stats(ctx.scorers);
 
   // prepare phrase stats (collector for each term)
-  term_collectors term_stats(ord, size);
+  term_collectors term_stats(ctx.scorers, size);
 
-  for (const auto& segment : index) {
+  for (const auto& segment : ctx.index) {
     size_t term_idx = 0;
 
     for (const auto& branch : terms) {
@@ -233,14 +231,14 @@ filter::prepared::ptr by_same_position::prepare(
         continue;
       }
 
-      field_stats.collect(segment,
-                          *field);  // collect field statistics once per segment
+      // collect field statistics once per segment
+      field_stats.collect(segment, *field);
 
       // find terms
       seek_term_iterator::ptr term = field->iterator(SeekMode::NORMAL);
 
       if (!term->seek(branch.second)) {
-        if (ord.empty()) {
+        if (ctx.scorers.empty()) {
           break;
         } else {
           // continue here because we should collect
@@ -251,7 +249,7 @@ filter::prepared::ptr by_same_position::prepare(
 
       term->read();  // read term attributes
       term_stats.collect(segment, *field, term_idx, *term);
-      term_states.emplace_back();
+      term_states.emplace_back(ctx.memory);
 
       auto& state = term_states.back();
 
@@ -273,15 +271,16 @@ filter::prepared::ptr by_same_position::prepare(
 
   // finish stats
   size_t term_idx = 0;
-  same_position_query::stats_t stats(size);
+  same_position_query::stats_t stats(
+    size, same_position_query::stats_t::allocator_type{ctx.memory});
   for (auto& stat : stats) {
-    stat.resize(ord.stats_size());
+    stat.resize(ctx.scorers.stats_size());
     auto* stats_buf = stat.data();
-    term_stats.finish(stats_buf, term_idx++, field_stats, index);
+    term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }
 
-  return memory::make_managed<same_position_query>(
-    std::move(query_states), std::move(stats), this->boost() * boost);
+  return memory::make_tracked<same_position_query>(
+    ctx.memory, std::move(query_states), std::move(stats), ctx.boost * boost());
 }
 
 }  // namespace irs

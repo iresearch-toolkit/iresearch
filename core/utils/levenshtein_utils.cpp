@@ -25,7 +25,6 @@
 #include <cmath>
 #include <queue>
 
-#include "arena_allocator.hpp"
 #include "automaton_utils.hpp"
 #include "bit_utils.hpp"
 #include "bitset.hpp"
@@ -366,8 +365,7 @@ struct character {
 /// @return characteristic vectors for a specified word
 //////////////////////////////////////////////////////////////////////////////
 std::vector<character> make_alphabet(bytes_view word, size_t& utf8_size) {
-  memory::arena<uint32_t, 16> arena;
-  memory::arena_vector<uint32_t, decltype(arena)> chars(arena);
+  SmallVector<uint32_t, 16> chars;
   utf8_utils::utf8_to_utf32<false>(word, std::back_inserter(chars));
   utf8_size = chars.size();
 
@@ -692,8 +690,7 @@ size_t edit_distance(const parametric_description& description,
                      const byte_type* rhs, size_t rhs_size) {
   IRS_ASSERT(description);
 
-  memory::arena<uint32_t, 16> arena;
-  memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
+  SmallVector<uint32_t, 16> lhs_chars;
   utf8_utils::utf8_to_utf32<false>(lhs, lhs_size,
                                    std::back_inserter(lhs_chars));
 
@@ -726,8 +723,7 @@ bool edit_distance(size_t& distance, const parametric_description& description,
                    size_t rhs_size) {
   IRS_ASSERT(description);
 
-  memory::arena<uint32_t, 16> arena;
-  memory::arena_vector<uint32_t, decltype(arena)> lhs_chars(arena);
+  SmallVector<uint32_t, 16> lhs_chars;
   if (!utf8_utils::utf8_to_utf32<true>(lhs, lhs_size,
                                        std::back_inserter(lhs_chars))) {
     return false;

@@ -110,24 +110,20 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
  public:
   static ptr make();
 
-  static prepared::ptr prepare(const IndexReader& index, const Scorers& order,
-                               score_t boost, std::string_view field,
-                               bytes_view term, size_t terms_limit,
-                               byte_type max_distance,
+  static prepared::ptr prepare(const PrepareContext& ctx,
+                               std::string_view field, bytes_view term,
+                               size_t terms_limit, byte_type max_distance,
                                options_type::pdp_f provider,
                                bool with_transpositions, bytes_view prefix);
 
   static field_visitor visitor(const options_type::filter_options& options);
 
-  using filter::prepare;
-
-  filter::prepared::ptr prepare(const IndexReader& index, const Scorers& order,
-                                score_t boost,
-                                const attribute_provider* /*ctx*/) const final {
-    return prepare(index, order, this->boost() * boost, field(), options().term,
-                   options().max_terms, options().max_distance,
-                   options().provider, options().with_transpositions,
-                   options().prefix);
+  filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
+    auto sub_ctx = ctx;
+    sub_ctx.boost *= boost();
+    return prepare(sub_ctx, field(), options().term, options().max_terms,
+                   options().max_distance, options().provider,
+                   options().with_transpositions, options().prefix);
   }
 };
 

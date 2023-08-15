@@ -34,6 +34,7 @@
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
 
+namespace irs {
 namespace {
 
 // Example term structure, in order of term iteration/comparison, N = 4:
@@ -49,27 +50,26 @@ namespace {
 // max_term (with e.g. N=3)-/
 
 // Return the granularity portion of the term
-irs::bytes_view mask_granularity(irs::bytes_view term,
-                                 size_t prefix_size) noexcept {
-  return term.size() > prefix_size ? irs::bytes_view{term.data(), prefix_size}
+bytes_view mask_granularity(bytes_view term, size_t prefix_size) noexcept {
+  return term.size() > prefix_size ? bytes_view{term.data(), prefix_size}
                                    : term;
 }
 
 // Return the value portion of the term
-irs::bytes_view mask_value(irs::bytes_view term, size_t prefix_size) noexcept {
-  if (irs::IsNull(term)) {
+bytes_view mask_value(bytes_view term, size_t prefix_size) noexcept {
+  if (IsNull(term)) {
     return term;
   }
 
-  return term.size() > prefix_size ? irs::bytes_view{term.data() + prefix_size,
-                                                     term.size() - prefix_size}
-                                   : irs::bytes_view{};
+  return term.size() > prefix_size
+           ? bytes_view{term.data() + prefix_size, term.size() - prefix_size}
+           : bytes_view{};
 }
 
 // Collect terms while they are accepted by Comparer
 template<typename Visitor, typename Comparer>
-void collect_terms(const irs::SubReader& segment, const irs::term_reader& field,
-                   irs::seek_term_iterator& terms, Visitor& visitor,
+void collect_terms(const SubReader& segment, const term_reader& field,
+                   seek_term_iterator& terms, Visitor& visitor,
                    const Comparer& cmp) {
   terms.read();  // read attributes (needed for cookie())
   visitor.prepare(segment, field, terms);
@@ -81,7 +81,7 @@ void collect_terms(const irs::SubReader& segment, const irs::term_reader& field,
       break;  // terminate traversal
     }
 
-    visitor.visit(irs::kNoBoost);
+    visitor.visit(kNoBoost);
   } while (terms.next());
 }
 
@@ -90,32 +90,31 @@ void collect_terms(const irs::SubReader& segment, const irs::term_reader& field,
 // [null == current .. max), (min .. null == end of granularity range]
 template<typename Visitor>
 void collect_terms_between(
-  const irs::SubReader& segment, const irs::term_reader& field,
-  irs::seek_term_iterator& terms, size_t prefix_size,
-  irs::bytes_view begin_term,
-  irs::bytes_view end_term,  // granularity level for end_term is ingored
-                             // during comparison
-  bool include_begin_term,   // should begin_term also be included
-  bool include_end_term,     /* should end_term also be included*/
+  const SubReader& segment, const term_reader& field, seek_term_iterator& terms,
+  size_t prefix_size, bytes_view begin_term,
+  bytes_view end_term,      // granularity level for end_term is ingored
+                            // during comparison
+  bool include_begin_term,  // should begin_term also be included
+  bool include_end_term,    /* should end_term also be included*/
   Visitor& visitor) {
-  irs::bstring tmp;
-  irs::bytes_view masked_begin_level;
+  bstring tmp;
+  bytes_view masked_begin_level;
 
   // seek to start of term range for collection
-  if (!irs::IsNull(begin_term)) {
+  if (!IsNull(begin_term)) {
     const auto res = terms.seek_ge(begin_term);  // seek to start
 
-    if (irs::SeekResult::END == res) {
+    if (SeekResult::END == res) {
       return;  // have reached the end of terms in segment
     }
 
-    if (irs::SeekResult::FOUND == res) {
+    if (SeekResult::FOUND == res) {
       if (!include_begin_term) {
         if (!terms.next()) {
           return;  // skipped current term and no more terms in segment
         }
       } else if (!include_end_term &&
-                 !irs::IsNull(end_term)  // (begin .. end of granularity range]
+                 !IsNull(end_term)  // (begin .. end of granularity range]
                  && !(mask_value(begin_term, prefix_size) <
                       mask_value(end_term,
                                  prefix_size))) {  // don't use '==' since it
@@ -130,7 +129,7 @@ void collect_terms_between(
     return;  // skipped current term and no more terms in segment
   } else {
     // need a copy as the original reference may be changed
-    tmp = static_cast<irs::bstring>(terms.value());
+    tmp = static_cast<bstring>(terms.value());
     // the starting range granularity level
     masked_begin_level = mask_granularity(tmp, prefix_size);
   }
@@ -141,7 +140,7 @@ void collect_terms_between(
   collect_terms(
     segment, field, terms, visitor,
     [&prefix_size, masked_begin_level, masked_end_term,
-     include_end_term](const irs::term_iterator& itr) -> bool {
+     include_end_term](const term_iterator& itr) -> bool {
       const auto& value = itr.value();
       const auto masked_current_level = mask_granularity(value, prefix_size);
       const auto masked_current_term = mask_value(value, prefix_size);
@@ -151,8 +150,7 @@ void collect_terms_between(
       // or granularity level boundary passed or term already covered by a
       // less-granular range
       return masked_current_level == masked_begin_level &&
-             (irs::IsNull(
-                masked_end_term)  // (begin .. end of granularity range]
+             (IsNull(masked_end_term)  // (begin .. end of granularity range]
               || (include_end_term &&
                   masked_current_term <= masked_end_term)  // (being .. end]
               || (!include_end_term &&
@@ -162,19 +160,18 @@ void collect_terms_between(
 
 // collect all terms starting from the min_term granularity range
 template<typename Visitor>
-void collect_terms_from(
-  const irs::SubReader& segment, const irs::term_reader& field,
-  irs::seek_term_iterator& terms, size_t prefix_size,
-  const irs::by_granular_range::options_type::terms& min_term,
-  bool min_term_inclusive, Visitor& visitor) {
+void collect_terms_from(const SubReader& segment, const term_reader& field,
+                        seek_term_iterator& terms, size_t prefix_size,
+                        const by_granular_range::options_type::terms& min_term,
+                        bool min_term_inclusive, Visitor& visitor) {
   auto min_term_itr = min_term.rbegin();  // start with least granular
 
   // for the case where there is no min_term, include remaining range at the
   // current granularity level
   if (min_term_itr == min_term.rend()) {
     collect_terms_between(segment, field, terms, prefix_size,
-                          irs::bytes_view{},  // collect full granularity range
-                          irs::bytes_view{},  // collect full granularity range
+                          bytes_view{},  // collect full granularity range
+                          bytes_view{},  // collect full granularity range
                           true, true, visitor);
 
     return;  // done
@@ -191,8 +188,8 @@ void collect_terms_from(
   // masked next term is < masked current term)
   collect_terms_between(
     segment, field, terms, prefix_size,
-    *min_term_itr,      // the min term for the current granularity level
-    irs::bytes_view{},  // collect full granularity range
+    *min_term_itr,  // the min term for the current granularity level
+    bytes_view{},   // collect full granularity range
     min_term_inclusive && exact_min_term == &(*min_term_itr),
     true,  // add min_term if requested
     visitor);
@@ -209,25 +206,25 @@ void collect_terms_from(
     // seek to the same term at a lower granularity level than current level
     auto res = terms.seek_ge(*min_term_itr);
 
-    if (irs::SeekResult::END == res) {
+    if (SeekResult::END == res) {
       continue;
     }
 
     auto end_term =
-      (irs::SeekResult::NOT_FOUND == res ||
-       (irs::SeekResult::FOUND == res && terms.next()))  // have next term
+      (SeekResult::NOT_FOUND == res ||
+       (SeekResult::FOUND == res && terms.next()))  // have next term
           && mask_granularity(terms.value(), prefix_size) ==
                mask_granularity(*min_term_itr,
                                 prefix_size)  // on same level
         ? terms.value()
-        : irs::bytes_view{};
-    irs::bstring end_term_copy;
+        : bytes_view{};
+    bstring end_term_copy;
     auto is_most_granular_term = exact_min_term == &(*current_min_term_itr);
 
     // need a copy of the term since bytes_view changes on terms.seek(...)
-    if (!irs::IsNull(end_term)) {
+    if (!IsNull(end_term)) {
       end_term_copy.assign(end_term.data(), end_term.size());
-      end_term = irs::bytes_view(end_term_copy);
+      end_term = bytes_view(end_term_copy);
     }
 
     collect_terms_between(
@@ -236,9 +233,8 @@ void collect_terms_from(
                               // level
       end_term,  // the min term for the previous lesser granularity level
       min_term_inclusive && is_most_granular_term,  // add min_term if requested
-      irs::IsNull(end_term) &&
-        is_most_granular_term,  // add end term if required
-                                // (for most granular)
+      IsNull(end_term) && is_most_granular_term,    // add end term if required
+                                                    // (for most granular)
       visitor);
   }
 }
@@ -246,19 +242,18 @@ void collect_terms_from(
 // Collect terms only starting from the current granularity level and ending
 // with granularity range, include/exclude end term
 template<typename Visitor>
-void collect_terms_until(
-  const irs::SubReader& segment, const irs::term_reader& field,
-  irs::seek_term_iterator& terms, size_t prefix_size,
-  const irs::by_granular_range::options_type::terms& max_term,
-  bool max_term_inclusive, Visitor& visitor) {
+void collect_terms_until(const SubReader& segment, const term_reader& field,
+                         seek_term_iterator& terms, size_t prefix_size,
+                         const by_granular_range::options_type::terms& max_term,
+                         bool max_term_inclusive, Visitor& visitor) {
   auto max_term_itr = max_term.rbegin();  // start with least granular
 
   // for the case where there is no max_term, remaining range at the current
   // granularity level
   if (max_term_itr == max_term.rend()) {
     collect_terms_between(segment, field, terms, prefix_size,
-                          irs::bytes_view{},  // collect full granularity range
-                          irs::bytes_view{},  // collect full granularity range
+                          bytes_view{},  // collect full granularity range
+                          bytes_view{},  // collect full granularity range
                           true, true, visitor);
 
     return;  // done
@@ -288,8 +283,8 @@ void collect_terms_until(
   // advance by one and collect all terms excluding the current max_term
   collect_terms_between(
     segment, field, terms, prefix_size,
-    irs::bytes_view{},  // collect full granularity range
-    *max_term_itr,      // the max term for the current granularity level
+    bytes_view{},   // collect full granularity range
+    *max_term_itr,  // the max term for the current granularity level
     true,
     max_term_inclusive &&
       exact_max_term == &(*max_term_itr),  // add max_term if requested
@@ -300,7 +295,7 @@ void collect_terms_until(
   // collect the remaining more-granular ranges of the min_term
   // ...........................................................................
 
-  irs::bstring tmp_term;
+  bstring tmp_term;
 
   // advance by one and collect all terms excluding the current max_term, repeat
   // for all remaining granularity levels
@@ -331,10 +326,9 @@ void collect_terms_until(
 // granularity range
 template<typename Visitor>
 void collect_terms_within(
-  const irs::SubReader& segment, const irs::term_reader& field,
-  irs::seek_term_iterator& terms, size_t prefix_size,
-  const irs::by_granular_range::options_type::terms& min_term,
-  const irs::by_granular_range::options_type::terms& max_term,
+  const SubReader& segment, const term_reader& field, seek_term_iterator& terms,
+  size_t prefix_size, const by_granular_range::options_type::terms& min_term,
+  const by_granular_range::options_type::terms& max_term,
   bool min_term_inclusive, bool max_term_inclusive, Visitor& visitor) {
   auto min_term_itr = min_term.rbegin();  // start with least granular
 
@@ -418,10 +412,9 @@ void collect_terms_within(
   collect_terms_between(
     segment, field, terms, prefix_size,
     *min_term_itr,  // the min term for the current granularity level
-    max_term.empty()
-      ? irs::bytes_view{}
-      : irs::bytes_view(*max_term_itr),  // collect up to max term at same
-                                         // granularity range
+    max_term.empty() ? bytes_view{}
+                     : bytes_view(*max_term_itr),  // collect up to max term at
+                                                   // same granularity range
     min_term_inclusive && exact_min_term == &(*min_term_itr),
     false,  // add min_term if requested, end_term already covered by a
             // less-granular range
@@ -438,24 +431,24 @@ void collect_terms_within(
        ++current_min_term_itr != end; ++min_term_itr) {
     auto res = terms.seek_ge(*min_term_itr);
 
-    if (irs::SeekResult::END == res) {
+    if (SeekResult::END == res) {
       continue;
     }
 
     auto end_term =
-      (irs::SeekResult::NOT_FOUND == res ||
-       (irs::SeekResult::FOUND == res && terms.next()))  // have next term
+      (SeekResult::NOT_FOUND == res ||
+       (SeekResult::FOUND == res && terms.next()))  // have next term
           && mask_granularity(terms.value(), prefix_size) ==
                mask_granularity(*min_term_itr,
                                 prefix_size)  // on same level
         ? terms.value()
-        : irs::bytes_view{};
-    irs::bstring end_term_copy;
+        : bytes_view{};
+    bstring end_term_copy;
 
     // need a copy of the term since bytes_view changes on terms.seek(...)
-    if (!irs::IsNull(end_term)) {
+    if (!IsNull(end_term)) {
       end_term_copy.assign(end_term.data(), end_term.size());
-      end_term = irs::bytes_view(end_term_copy);
+      end_term = bytes_view(end_term_copy);
     }
 
     collect_terms_between(
@@ -484,25 +477,25 @@ void collect_terms_within(
 }
 
 template<typename Visitor>
-void visit(const irs::SubReader& segment, const irs::term_reader& reader,
-           const irs::by_granular_range::options_type::range_type& rng,
-           Visitor& visitor) {
-  auto terms = reader.iterator(irs::SeekMode::NORMAL);
+void VisitImpl(const SubReader& segment, const term_reader& reader,
+               const by_granular_range::options_type::range_type& rng,
+               Visitor& visitor) {
+  auto terms = reader.iterator(SeekMode::NORMAL);
 
   if (IRS_UNLIKELY(!terms) || !terms->next()) {
     return;  // no terms to collect
   }
 
   const size_t prefix_size =
-    reader.meta().features.count(irs::type<irs::granularity_prefix>::id());
+    reader.meta().features.count(type<granularity_prefix>::id());
 
-  IRS_ASSERT(!rng.min.empty() || irs::BoundType::UNBOUNDED == rng.min_type);
-  IRS_ASSERT(!rng.max.empty() || irs::BoundType::UNBOUNDED == rng.max_type);
+  IRS_ASSERT(!rng.min.empty() || BoundType::UNBOUNDED == rng.min_type);
+  IRS_ASSERT(!rng.max.empty() || BoundType::UNBOUNDED == rng.max_type);
 
   if (rng.min.empty()) {    // open min range
     if (rng.max.empty()) {  // open max range
       // collect all terms
-      static const irs::by_granular_range::options_type::terms empty;
+      static const by_granular_range::options_type::terms empty;
       collect_terms_from(segment, reader, *terms, prefix_size, empty, true,
                          visitor);
       return;
@@ -511,13 +504,13 @@ void visit(const irs::SubReader& segment, const irs::term_reader& reader,
     auto& max_term = *rng.max.rbegin();
 
     // smallest least granular term
-    const irs::bytes_view smallest_term{max_term.c_str(),
-                                        std::min(max_term.size(), prefix_size)};
+    const bytes_view smallest_term{max_term.c_str(),
+                                   std::min(max_term.size(), prefix_size)};
 
     // collect terms ending with max granularity range, include/exclude max term
-    if (irs::SeekResult::END != terms->seek_ge(smallest_term)) {
+    if (SeekResult::END != terms->seek_ge(smallest_term)) {
       collect_terms_until(segment, reader, *terms, prefix_size, rng.max,
-                          irs::BoundType::INCLUSIVE == rng.max_type, visitor);
+                          BoundType::INCLUSIVE == rng.max_type, visitor);
     }
 
     return;
@@ -527,22 +520,20 @@ void visit(const irs::SubReader& segment, const irs::term_reader& reader,
     // collect terms starting with min granularity range, include/exclude min
     // term
     collect_terms_from(segment, reader, *terms, prefix_size, rng.min,
-                       irs::BoundType::INCLUSIVE == rng.min_type, visitor);
+                       BoundType::INCLUSIVE == rng.min_type, visitor);
     return;
   }
 
   // collect terms starting with min granularity range and ending with max
   // granularity range, include/exclude min/max term
   collect_terms_within(segment, reader, *terms, prefix_size, rng.min, rng.max,
-                       irs::BoundType::INCLUSIVE == rng.min_type,
-                       irs::BoundType::INCLUSIVE == rng.max_type, visitor);
+                       BoundType::INCLUSIVE == rng.min_type,
+                       BoundType::INCLUSIVE == rng.max_type, visitor);
 }
 
 }  // namespace
 
-namespace irs {
-
-// Sequential 'granularity_level' value, cannot use 'irs::increment' since
+// Sequential 'granularity_level' value, cannot use 'increment' since
 // it can be 0
 void set_granular_term(by_granular_range_options::terms& boundary,
                        numeric_token_stream& term) {
@@ -555,9 +546,8 @@ void set_granular_term(by_granular_range_options::terms& boundary,
 }
 
 filter::prepared::ptr by_granular_range::prepare(
-  const IndexReader& index, const Scorers& ord, score_t boost,
-  std::string_view field, const options_type::range_type& rng,
-  size_t scored_terms_limit) {
+  const PrepareContext& ctx, std::string_view field,
+  const options_type::range_type& rng, size_t scored_terms_limit) {
   if (!rng.min.empty() && !rng.max.empty()) {
     const auto& min = rng.min.front();
     const auto& max = rng.max.front();
@@ -566,7 +556,7 @@ filter::prepared::ptr by_granular_range::prepare(
       if (rng.min_type == rng.max_type &&
           rng.min_type == BoundType::INCLUSIVE) {
         // degenerated case
-        return by_term::prepare(index, ord, boost, field, min);
+        return by_term::prepare(ctx, field, min);
       }
 
       // can't satisfy condition
@@ -576,12 +566,12 @@ filter::prepared::ptr by_granular_range::prepare(
 
   // object for collecting order stats
   limited_sample_collector<term_frequency> collector{
-    ord.empty() ? 0 : scored_terms_limit};
-  MultiTermQuery::States states{index.size()};
+    ctx.scorers.empty() ? 0 : scored_terms_limit};
+  MultiTermQuery::States states{ctx.memory, ctx.index.size()};
   multiterm_visitor mtv{collector, states};
 
   // iterate over the segments
-  for (const auto& segment : index) {
+  for (const auto& segment : ctx.index) {
     // get term dictionary for field
     const term_reader* reader = segment.field(field);
 
@@ -589,18 +579,18 @@ filter::prepared::ptr by_granular_range::prepare(
       continue;  // no such field in this reader
     }
 
-    ::visit(segment, *reader, rng, mtv);
+    VisitImpl(segment, *reader, rng, mtv);
   }
 
   if (states.empty()) {
     return prepared::empty();
   }
 
-  MultiTermQuery::Stats stats;
-  collector.score(index, ord, stats);
+  MultiTermQuery::Stats stats{{ctx.memory}};
+  collector.score(ctx.index, ctx.scorers, stats);
 
-  return memory::make_managed<MultiTermQuery>(std::move(states),
-                                              std::move(stats), boost,
+  return memory::make_tracked<MultiTermQuery>(ctx.memory, std::move(states),
+                                              std::move(stats), ctx.boost,
                                               ScoreMergeType::kSum, size_t{1});
 }
 
@@ -608,7 +598,7 @@ void by_granular_range::visit(const SubReader& segment,
                               const term_reader& reader,
                               const options_type::range_type& rng,
                               filter_visitor& visitor) {
-  ::visit(segment, reader, rng, visitor);
+  VisitImpl(segment, reader, rng, visitor);
 }
 
 }  // namespace irs

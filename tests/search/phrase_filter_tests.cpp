@@ -71,10 +71,10 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
   {
     irs::by_phrase q;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
@@ -88,10 +88,10 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     irs::by_phrase q;
     *q.mutable_field() = "phrase_anl";
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
@@ -107,7 +107,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -116,14 +116,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -228,7 +228,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_prefix_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -237,14 +237,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -410,7 +410,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_wildcard_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -419,14 +419,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -592,7 +592,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_wildcard_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("%ox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -601,14 +601,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -714,7 +714,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_wildcard_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("_ox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -723,14 +723,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -836,7 +836,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_wildcard_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("f_x"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -845,14 +845,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -958,7 +958,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_wildcard_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fo_"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -967,14 +967,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1080,7 +1080,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_wildcard_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1089,14 +1089,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1204,7 +1204,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     lt.max_distance = 0;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1213,14 +1213,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1328,7 +1328,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fol"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1337,14 +1337,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1450,7 +1450,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto& st = q.mutable_options()->push_back<irs::by_terms_options>();
     st.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("fox")));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1459,14 +1459,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1573,7 +1573,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     st.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("fox")));
     st.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("that")));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1582,14 +1582,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1718,7 +1718,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::INCLUSIVE;
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1727,14 +1727,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1772,7 +1772,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::EXCLUSIVE;
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1781,14 +1781,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_TRUE(irs::doc_limits::eof(docs_seek->value()));
 
     ASSERT_FALSE(docs->next());
@@ -1806,7 +1806,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::INCLUSIVE;
     rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1815,14 +1815,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_TRUE(irs::doc_limits::eof(docs_seek->value()));
 
     ASSERT_FALSE(docs->next());
@@ -1840,7 +1840,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::EXCLUSIVE;
     rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1849,14 +1849,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_TRUE(irs::doc_limits::eof(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_TRUE(irs::doc_limits::eof(docs_seek->value()));
 
     ASSERT_FALSE(docs->next());
@@ -1874,7 +1874,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::INCLUSIVE;
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1883,14 +1883,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -1968,7 +1968,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::EXCLUSIVE;
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -1977,14 +1977,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2052,7 +2052,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::INCLUSIVE;
     rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2061,14 +2061,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2126,7 +2126,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::EXCLUSIVE;
     rt.range.max_type = irs::BoundType::EXCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -2135,14 +2135,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2188,7 +2188,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
@@ -2201,14 +2201,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2234,7 +2234,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>();
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -2248,14 +2248,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2301,7 +2301,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -2315,14 +2315,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2368,7 +2368,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("f_x%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -2382,14 +2382,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2438,7 +2438,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     lt.with_transpositions = true;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fxo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -2452,14 +2452,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2488,7 +2488,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::INCLUSIVE;
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -2502,14 +2502,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2546,7 +2546,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
       ->push_back<irs::by_term_options>(std::numeric_limits<size_t>::max())
       .term = irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr, dynamic_cast<const irs::TermQuery*>(prepared.get()));
@@ -2559,14 +2559,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2666,7 +2666,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
       std::numeric_limits<size_t>::max());
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -2680,14 +2680,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -2845,7 +2845,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
       std::numeric_limits<size_t>::max());
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -2859,14 +2859,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3024,7 +3024,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
       std::numeric_limits<size_t>::max());
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("f%x"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -3038,14 +3038,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3147,7 +3147,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fkx"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -3161,14 +3161,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3271,7 +3271,7 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     rt.range.min_type = irs::BoundType::INCLUSIVE;
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 #ifndef IRESEARCH_DLL
     // check single word phrase optimization
     ASSERT_NE(nullptr,
@@ -3285,14 +3285,14 @@ TEST_P(phrase_filter_test_case, sequential_one_term) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3363,7 +3363,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3372,7 +3372,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* score = irs::get<irs::score>(*docs);
@@ -3381,7 +3381,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3427,7 +3427,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3436,14 +3436,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3498,7 +3498,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3507,14 +3507,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3569,7 +3569,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3578,12 +3578,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3631,7 +3631,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3640,14 +3640,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3695,7 +3695,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3704,12 +3704,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3758,7 +3758,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("x2"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3767,14 +3767,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3803,7 +3803,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3812,12 +3812,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3872,7 +3872,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3881,14 +3881,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -3943,7 +3943,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -3952,12 +3952,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4005,7 +4005,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4014,14 +4014,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4070,7 +4070,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("x2"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4079,14 +4079,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4115,7 +4115,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>();
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4124,14 +4124,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4186,7 +4186,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4195,14 +4195,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4257,7 +4257,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("f_x"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4266,12 +4266,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4320,7 +4320,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     lt.with_transpositions = true;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("fxo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4329,14 +4329,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4385,7 +4385,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     rt.range.min_type = irs::BoundType::INCLUSIVE;
     rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4394,14 +4394,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4430,7 +4430,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4439,12 +4439,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4517,7 +4517,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4526,14 +4526,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4606,7 +4606,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4615,12 +4615,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4679,7 +4679,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("fox"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4688,14 +4688,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4756,7 +4756,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("x2"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4765,12 +4765,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4799,7 +4799,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& pt2 = q.mutable_options()->push_back<irs::by_prefix_options>();
     pt2.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4808,14 +4808,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4888,7 +4888,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& wt2 = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt2.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4897,14 +4897,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -4977,7 +4977,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& wt2 = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt2.term = irs::ViewCast<irs::byte_type>(std::string_view("f%x"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -4986,12 +4986,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5052,7 +5052,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     rt2.range.min_type = irs::BoundType::INCLUSIVE;
     rt2.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5061,14 +5061,14 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5101,7 +5101,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     lt2.max_distance = 1;
     lt2.term = irs::ViewCast<irs::byte_type>(std::string_view("fix"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5110,12 +5110,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5161,7 +5161,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& pt2 = q.mutable_options()->push_back<irs::by_prefix_options>();
     pt2.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5170,12 +5170,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5248,7 +5248,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& wt2 = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt2.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5257,12 +5257,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5335,7 +5335,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& wt2 = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt2.term = irs::ViewCast<irs::byte_type>(std::string_view("f_%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5344,12 +5344,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5428,7 +5428,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     rt2.range.min_type = irs::BoundType::INCLUSIVE;
     rt2.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5437,12 +5437,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5471,7 +5471,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     pt2.term = irs::ViewCast<irs::byte_type>(std::string_view("bro"));
     pt3.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5480,12 +5480,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5614,12 +5614,10 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
       [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::field_collector>(sort);
+      return std::make_unique<tests::sort::custom_sort::field_collector>(sort);
     };
     sort.prepare_term_collector_ = [&sort]() -> irs::TermCollector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::term_collector>(sort);
+      return std::make_unique<tests::sort::custom_sort::term_collector>(sort);
     };
     sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
       ASSERT_NE(nullptr, score);
@@ -5627,7 +5625,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     };
 
     auto pord = irs::Scorers::Prepare(sort);
-    auto prepared = q.prepare(rdr, pord);
+    auto prepared = q.prepare({.index = rdr, .scorers = pord});
     ASSERT_EQ(1, collect_field_count);  // 1 field in 1 segment
     ASSERT_EQ(6, collect_term_count);   // 6 different terms
     ASSERT_EQ(6, finish_count);         // 6 sub-terms in phrase
@@ -5642,12 +5640,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     // no order passed - no frequency
     {
-      auto docs = prepared->execute(*sub);
+      auto docs = prepared->execute({.segment = *sub});
       ASSERT_FALSE(irs::get<irs::frequency>(*docs));
       ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     }
 
-    auto docs = prepared->execute(*sub, pord);
+    auto docs = prepared->execute({.segment = *sub, .scorers = pord});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -5655,7 +5653,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, pord);
+    auto docs_seek = prepared->execute({.segment = *sub, .scorers = pord});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5784,7 +5782,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     wt2.term = irs::ViewCast<irs::byte_type>(std::string_view("br_wn"));
     wt3.term = irs::ViewCast<irs::byte_type>(std::string_view("_%x"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -5794,12 +5792,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5849,7 +5847,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto& st3 = q.mutable_options()->push_back<irs::by_terms_options>();
     st3.terms.emplace(irs::ViewCast<irs::byte_type>(std::string_view("fox")));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5858,12 +5856,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -5945,7 +5943,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     rt3.range.min_type = irs::BoundType::INCLUSIVE;
     rt3.range.max_type = irs::BoundType::INCLUSIVE;
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -5954,12 +5952,12 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6008,12 +6006,10 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
       [&finish_count](irs::byte_type*, const irs::FieldCollector*,
                       const irs::TermCollector*) -> void { ++finish_count; };
     sort.prepare_field_collector_ = [&sort]() -> irs::FieldCollector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::field_collector>(sort);
+      return std::make_unique<tests::sort::custom_sort::field_collector>(sort);
     };
     sort.prepare_term_collector_ = [&sort]() -> irs::TermCollector::ptr {
-      return std::make_unique<
-        tests::sort::custom_sort::term_collector>(sort);
+      return std::make_unique<tests::sort::custom_sort::term_collector>(sort);
     };
     sort.scorer_score = [](irs::doc_id_t doc, irs::score_t* score) {
       ASSERT_NE(nullptr, score);
@@ -6021,7 +6017,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     };
 
     auto pord = irs::Scorers::Prepare(sort);
-    auto prepared = q.prepare(rdr, pord);
+    auto prepared = q.prepare({.index = rdr, .scorers = pord});
     ASSERT_EQ(1, collect_field_count);  // 1 field in 1 segment
     ASSERT_EQ(3, collect_term_count);   // 3 different terms
     ASSERT_EQ(3, finish_count);         // 3 sub-terms in phrase
@@ -6029,7 +6025,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
 
     // no order passed - no frequency
     {
-      auto docs = prepared->execute(*sub);
+      auto docs = prepared->execute({.segment = *sub});
       ASSERT_FALSE(irs::get<irs::frequency>(*docs));
       ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     }
@@ -6040,7 +6036,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, pord);
+    auto docs = prepared->execute({.segment = *sub, .scorers = pord});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -6048,7 +6044,7 @@ TEST_P(phrase_filter_test_case, sequential_three_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, pord);
+    auto docs_seek = prepared->execute({.segment = *sub, .scorers = pord});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!score);
@@ -6112,7 +6108,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6121,12 +6117,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6161,7 +6157,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6170,12 +6166,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6210,7 +6206,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6219,12 +6215,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6261,7 +6257,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6270,12 +6266,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6310,7 +6306,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(1);
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("qui"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6319,12 +6315,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6359,7 +6355,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(1);
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("qui%ck"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6368,12 +6364,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6408,7 +6404,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
     pt2.term = irs::ViewCast<irs::byte_type>(std::string_view("qui"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6417,12 +6413,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6457,7 +6453,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     wt1.term = irs::ViewCast<irs::byte_type>(std::string_view("f%x"));
     wt2.term = irs::ViewCast<irs::byte_type>(std::string_view("qui%ck"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6466,12 +6462,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6510,7 +6506,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     lt2.max_distance = 1;
     lt2.term = irs::ViewCast<irs::byte_type>(std::string_view("quik"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6519,14 +6515,14 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::get<irs::frequency>(*docs));
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6569,7 +6565,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
     auto prepared_order = irs::Scorers::Prepare(*scorer);
 
-    auto prepared = q.prepare(rdr, prepared_order);
+    auto prepared = q.prepare({.index = rdr, .scorers = prepared_order});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6578,7 +6574,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, prepared_order);
+    auto docs = prepared->execute({.segment = *sub, .scorers = prepared_order});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     auto* boost = irs::get<irs::filter_boost>(*docs);
@@ -6587,7 +6583,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, prepared_order);
+    auto docs_seek =
+      prepared->execute({.segment = *sub, .scorers = prepared_order});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6637,7 +6634,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
     auto prepared_order = irs::Scorers::Prepare(*scorer);
 
-    auto prepared = q.prepare(rdr, prepared_order);
+    auto prepared = q.prepare({.index = rdr, .scorers = prepared_order});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6646,7 +6643,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, prepared_order);
+    auto docs = prepared->execute({.segment = *sub, .scorers = prepared_order});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -6654,7 +6651,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, prepared_order);
+    auto docs_seek =
+      prepared->execute({.segment = *sub, .scorers = prepared_order});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6704,7 +6702,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
     auto prepared_order = irs::Scorers::Prepare(*scorer);
 
-    auto prepared = q.prepare(rdr, prepared_order);
+    auto prepared = q.prepare({.index = rdr, .scorers = prepared_order});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6713,7 +6711,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, prepared_order);
+    auto docs = prepared->execute({.segment = *sub, .scorers = prepared_order});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     auto* boost = irs::get<irs::filter_boost>(*docs);
@@ -6722,7 +6720,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, prepared_order);
+    auto docs_seek =
+      prepared->execute({.segment = *sub, .scorers = prepared_order});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6807,7 +6806,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
     auto prepared_order = irs::Scorers::Prepare(*scorer);
 
-    auto prepared = q.prepare(rdr, prepared_order);
+    auto prepared = q.prepare({.index = rdr, .scorers = prepared_order});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6816,7 +6815,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, prepared_order);
+    auto docs = prepared->execute({.segment = *sub, .scorers = prepared_order});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -6824,7 +6823,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, prepared_order);
+    auto docs_seek =
+      prepared->execute({.segment = *sub, .scorers = prepared_order});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -6978,7 +6978,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
     auto prepared_order = irs::Scorers::Prepare(*scorer);
 
-    auto prepared = q.prepare(rdr, prepared_order);
+    auto prepared = q.prepare({.index = rdr, .scorers = prepared_order});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -6987,7 +6987,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, prepared_order);
+    auto docs = prepared->execute({.segment = *sub, .scorers = prepared_order});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     auto* boost = irs::get<irs::filter_boost>(*docs);
@@ -6996,7 +6996,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, prepared_order);
+    auto docs_seek =
+      prepared->execute({.segment = *sub, .scorers = prepared_order});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7174,7 +7175,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
       "bm25", irs::type<irs::text_format::json>::get(), "{ \"b\" : 0 }");
     auto prepared_order = irs::Scorers::Prepare(*scorer);
 
-    auto prepared = q.prepare(rdr, prepared_order);
+    auto prepared = q.prepare({.index = rdr, .scorers = prepared_order});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7183,7 +7184,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, prepared_order);
+    auto docs = prepared->execute({.segment = *sub, .scorers = prepared_order});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -7191,7 +7192,8 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, prepared_order);
+    auto docs_seek =
+      prepared->execute({.segment = *sub, .scorers = prepared_order});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7224,7 +7226,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7233,12 +7235,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7275,7 +7277,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(0).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7284,12 +7286,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7318,7 +7320,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fox"));
     pt2.term = irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7327,12 +7329,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7361,7 +7363,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7370,12 +7372,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7412,7 +7414,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7421,12 +7423,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7463,7 +7465,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(1);
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("qui"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7472,12 +7474,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7514,7 +7516,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(1);
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("qui%k"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7523,12 +7525,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7565,7 +7567,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     pt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
     pt2.term = irs::ViewCast<irs::byte_type>(std::string_view("qui"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7574,12 +7576,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7616,7 +7618,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     wt1.term = irs::ViewCast<irs::byte_type>(std::string_view("fo%"));
     wt2.term = irs::ViewCast<irs::byte_type>(std::string_view("qui%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7625,12 +7627,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7669,7 +7671,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     lt.max_distance = 1;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("quik"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7678,12 +7680,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7718,10 +7720,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(10).term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
@@ -7739,10 +7741,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>(10);
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("qui"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
@@ -7760,10 +7762,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>(10);
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("qu_ck"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
@@ -7783,10 +7785,10 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     lt.max_distance = 2;
     lt.term = irs::ViewCast<irs::byte_type>(std::string_view("quc"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
@@ -7804,7 +7806,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>(1).term =
       irs::ViewCast<irs::byte_type>(std::string_view("eye"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -7813,12 +7815,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7856,7 +7858,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("forward"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -7864,12 +7866,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7912,7 +7914,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& pt = q.mutable_options()->push_back<irs::by_prefix_options>();
     pt.term = irs::ViewCast<irs::byte_type>(std::string_view("fo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -7920,12 +7922,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -7970,7 +7972,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     };
     auto pord = irs::Scorers::Prepare(sort);
 
-    auto prepared = q.prepare(rdr, pord);
+    auto prepared = q.prepare({.index = rdr, .scorers = pord});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -7978,7 +7980,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, pord);
+    auto docs = prepared->execute({.segment = *sub, .scorers = pord});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -7986,7 +7988,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, pord);
+    auto docs_seek = prepared->execute({.segment = *sub, .scorers = pord});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!score);
@@ -8038,7 +8040,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     };
     auto pord = irs::Scorers::Prepare(sort);
 
-    auto prepared = q.prepare(rdr, pord);
+    auto prepared = q.prepare({.index = rdr, .scorers = pord});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -8046,7 +8048,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, pord);
+    auto docs = prepared->execute({.segment = *sub, .scorers = pord});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -8054,7 +8056,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, pord);
+    auto docs_seek = prepared->execute({.segment = *sub, .scorers = pord});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
     auto* score = irs::get<irs::score>(*docs);
     ASSERT_FALSE(!score);
@@ -8087,7 +8089,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -8096,12 +8098,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8141,7 +8143,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     };
     auto pord = irs::Scorers::Prepare(sort);
 
-    auto prepared = q.prepare(rdr, pord);
+    auto prepared = q.prepare({.index = rdr, .scorers = pord});
 
     auto sub = rdr.begin();
     auto column = sub->column("name");
@@ -8150,7 +8152,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_NE(nullptr, values);
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
-    auto docs = prepared->execute(*sub, pord);
+    auto docs = prepared->execute({.segment = *sub, .scorers = pord});
     auto* freq = irs::get<irs::frequency>(*docs);
     ASSERT_TRUE(freq);
     ASSERT_FALSE(irs::get<irs::filter_boost>(*docs));
@@ -8158,7 +8160,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub, pord);
+    auto docs_seek = prepared->execute({.segment = *sub, .scorers = pord});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8184,7 +8186,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("zo\\_%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -8193,12 +8195,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8223,7 +8225,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("\\_oo"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -8232,12 +8234,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8262,7 +8264,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("z\\_o"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -8271,12 +8273,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8303,7 +8305,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("giraff\\_%"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -8312,12 +8314,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8344,7 +8346,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("\\_iraffe"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -8353,12 +8355,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8385,7 +8387,7 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto& wt = q.mutable_options()->push_back<irs::by_wildcard_options>();
     wt.term = irs::ViewCast<irs::byte_type>(std::string_view("gira\\_fe"));
 
-    auto prepared = q.prepare(rdr);
+    auto prepared = q.prepare({.index = rdr});
     auto sub = rdr.begin();
     auto column = sub->column("name");
     ASSERT_NE(nullptr, column);
@@ -8394,12 +8396,12 @@ TEST_P(phrase_filter_test_case, sequential_several_terms) {
     auto* actual_value = irs::get<irs::payload>(*values);
     ASSERT_NE(nullptr, actual_value);
 
-    auto docs = prepared->execute(*sub);
+    auto docs = prepared->execute({.segment = *sub});
     auto* doc = irs::get<irs::document>(*docs);
     ASSERT_TRUE(bool(doc));
     ASSERT_EQ(docs->value(), doc->value);
     ASSERT_FALSE(irs::doc_limits::valid(docs->value()));
-    auto docs_seek = prepared->execute(*sub);
+    auto docs_seek = prepared->execute({.segment = *sub});
     ASSERT_FALSE(irs::doc_limits::valid(docs_seek->value()));
 
     ASSERT_TRUE(docs->next());
@@ -8467,7 +8469,7 @@ TEST(by_phrase_test, boost) {
     irs::by_phrase q;
     *q.mutable_field() = "field";
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -8478,7 +8480,7 @@ TEST(by_phrase_test, boost) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("quick"));
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -8491,12 +8493,13 @@ TEST(by_phrase_test, boost) {
     q.mutable_options()->push_back<irs::by_term_options>().term =
       irs::ViewCast<irs::byte_type>(std::string_view("brown"));
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
   // with boost
   {
+    MaxMemoryCounter counter;
     irs::score_t boost = 1.5f;
 
     // no terms, return empty query
@@ -8505,7 +8508,7 @@ TEST(by_phrase_test, boost) {
       *q.mutable_field() = "field";
       q.boost(boost);
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(irs::kNoBoost, prepared->boost());
     }
 
@@ -8517,9 +8520,15 @@ TEST(by_phrase_test, boost) {
         irs::ViewCast<irs::byte_type>(std::string_view("quick"));
       q.boost(boost);
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({
+        .index = irs::SubReader::empty(),
+        .memory = counter,
+      });
       ASSERT_EQ(boost, prepared->boost());
     }
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
+    counter.Reset();
 
     // single multiple terms
     {
@@ -8531,7 +8540,7 @@ TEST(by_phrase_test, boost) {
         irs::ViewCast<irs::byte_type>(std::string_view("brown"));
       q.boost(boost);
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(boost, prepared->boost());
     }
 
@@ -8557,7 +8566,7 @@ TEST(by_phrase_test, boost) {
       rt.range.min_type = irs::BoundType::INCLUSIVE;
       rt.range.max_type = irs::BoundType::INCLUSIVE;
 
-      auto prepared = q.prepare(irs::SubReader::empty());
+      auto prepared = q.prepare({.index = irs::SubReader::empty()});
       ASSERT_EQ(boost, prepared->boost());
     }
   }

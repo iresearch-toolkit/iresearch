@@ -145,7 +145,7 @@ namespace irs {
 // Base class for boolean queries
 class BooleanQuery : public filter::prepared {
  public:
-  using queries_t = std::vector<filter::prepared::ptr>;
+  using queries_t = ManagedVector<filter::prepared::ptr>;
   using iterator = queries_t::const_iterator;
 
   BooleanQuery() noexcept : excl_{0} {}
@@ -193,27 +193,28 @@ class BooleanQuery : public filter::prepared {
     }
   }
 
-  virtual void prepare(const IndexReader& rdr, const Scorers& ord,
-                       score_t boost, ScoreMergeType merge_type,
-                       const attribute_provider* ctx,
-                       std::span<const filter* const> incl,
-                       std::span<const filter* const> excl) {
-    BooleanQuery::queries_t queries;
+  void prepare(const PrepareContext& ctx, ScoreMergeType merge_type,
+               std::span<const filter* const> incl,
+               std::span<const filter* const> excl) {
+    BooleanQuery::queries_t queries{{ctx.memory}};
     queries.reserve(incl.size() + excl.size());
 
     // apply boost to the current node
-    this->boost(boost);
+    this->boost(ctx.boost);
 
     // prepare included
     for (const auto* filter : incl) {
-      queries.emplace_back(filter->prepare(rdr, ord, boost, ctx));
+      queries.emplace_back(filter->prepare(ctx));
     }
 
     // prepare excluded
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
-      queries.emplace_back(
-        filter->prepare(rdr, Scorers::kUnordered, irs::kNoBoost, ctx));
+      queries.emplace_back(filter->prepare({
+        .index = ctx.index,
+        .memory = ctx.memory,
+        .ctx = ctx.ctx,
+      }));
     }
 
     // nothrow block
@@ -334,9 +335,7 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
                     });
 }
 
-filter::prepared::ptr boolean_filter::prepare(
-  const IndexReader& rdr, const Scorers& ord, score_t boost,
-  const attribute_provider* ctx) const {
+filter::prepared::ptr boolean_filter::prepare(const PrepareContext& ctx) const {
   const auto size = filters_.size();
 
   if (IRS_UNLIKELY(size == 0)) {
@@ -349,7 +348,7 @@ filter::prepared::ptr boolean_filter::prepare(
 
     // FIXME(gnusi): let Not handle everything?
     if (filter->type() != irs::type<irs::Not>::id()) {
-      return filter->prepare(rdr, ord, boost * this->boost(), ctx);
+      return filter->prepare(ctx.Boost(boost()));
     }
   }
 
@@ -368,7 +367,7 @@ filter::prepared::ptr boolean_filter::prepare(
     incl.push_back(all_docs_no_boost.get());
   }
 
-  return prepare(incl, excl, rdr, ord, boost, ctx);
+  return PrepareBoolean(incl, excl, ctx);
 }
 
 void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
@@ -419,11 +418,9 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
   }
 }
 
-filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
-                                   std::vector<const filter*>& excl,
-                                   const IndexReader& rdr, const Scorers& ord,
-                                   score_t boost,
-                                   const attribute_provider* ctx) const {
+filter::prepared::ptr And::PrepareBoolean(std::vector<const filter*>& incl,
+                                          std::vector<const filter*>& excl,
+                                          const PrepareContext& ctx) const {
   // optimization step
   //  if include group empty itself or has 'empty' -> this whole conjunction is
   //  empty
@@ -431,9 +428,12 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
     return prepared::empty();
   }
 
+  PrepareContext sub_ctx = ctx;
+
   // single node case
   if (1 == incl.size() && excl.empty()) {
-    return incl.front()->prepare(rdr, ord, this->boost() * boost, ctx);
+    sub_ctx.boost *= boost();
+    return incl.front()->prepare(sub_ctx);
   }
 
   auto cumulative_all = MakeAllDocsFilter(kNoBoost);
@@ -467,12 +467,12 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
       // substitute new_boost back we will get ( boost * OR_BOOST * ALL_BOOST +
       // boost * OR_BOOST * LEFT_BOOST) - original non-optimized boost value
       auto left_boost = (*incl.begin())->boost();
-      if (this->boost() != 0 && left_boost != 0 && !ord.empty()) {
-        boost = (boost * this->boost() * all_boost +
-                 boost * this->boost() * left_boost) /
-                (left_boost * this->boost());
+      if (boost() != 0 && left_boost != 0 && !sub_ctx.scorers.empty()) {
+        sub_ctx.boost = (sub_ctx.boost * boost() * all_boost +
+                         sub_ctx.boost * boost() * left_boost) /
+                        (left_boost * boost());
       } else {
-        boost = 0;
+        sub_ctx.boost = 0;
       }
     } else {
       // create new 'all' with boost from all removed
@@ -480,38 +480,33 @@ filter::prepared::ptr And::prepare(std::vector<const filter*>& incl,
       incl.push_back(cumulative_all.get());
     }
   }
-  boost *= this->boost();
+  sub_ctx.boost *= this->boost();
   if (1 == incl.size() && excl.empty()) {
     // single node case
-    return incl.front()->prepare(rdr, ord, boost, ctx);
+    return incl.front()->prepare(sub_ctx);
   }
-  auto q = memory::make_managed<AndQuery>();
-  q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
+  auto q = memory::make_tracked<AndQuery>(sub_ctx.memory);
+  q->prepare(sub_ctx, merge_type(), incl, excl);
   return q;
 }
 
-filter::prepared::ptr Or::prepare(const IndexReader& rdr, const Scorers& ord,
-                                  score_t boost,
-                                  const attribute_provider* ctx) const {
+filter::prepared::ptr Or::prepare(const PrepareContext& ctx) const {
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
     // all conditions are satisfied
-    return MakeAllDocsFilter(kNoBoost)->prepare(rdr, ord, this->boost() * boost,
-                                                ctx);
+    return MakeAllDocsFilter(kNoBoost)->prepare(ctx.Boost(boost()));
   }
 
-  return boolean_filter::prepare(rdr, ord, boost, ctx);
+  return boolean_filter::prepare(ctx);
 }
 
-filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
-                                  std::vector<const filter*>& excl,
-                                  const IndexReader& rdr, const Scorers& ord,
-                                  score_t boost,
-                                  const attribute_provider* ctx) const {
-  boost *= this->boost();
+filter::prepared::ptr Or::PrepareBoolean(std::vector<const filter*>& incl,
+                                         std::vector<const filter*>& excl,
+                                         const PrepareContext& ctx) const {
+  const PrepareContext sub_ctx = ctx.Boost(boost());
 
   if (0 == min_match_count_) {  // only explicit 0 min match counts!
     // all conditions are satisfied
-    return MakeAllDocsFilter(kNoBoost)->prepare(rdr, ord, boost, ctx);
+    return MakeAllDocsFilter(kNoBoost)->prepare(sub_ctx);
   }
 
   if (!incl.empty() && incl.back()->type() == irs::type<irs::empty>::id()) {
@@ -524,7 +519,7 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
 
   // single node case
   if (1 == incl.size() && excl.empty()) {
-    return incl.front()->prepare(rdr, ord, boost, ctx);
+    return incl.front()->prepare(sub_ctx);
   }
 
   auto cumulative_all = MakeAllDocsFilter(kNoBoost);
@@ -542,7 +537,8 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
     }
   }
   if (all_count != 0) {
-    if (ord.empty() && incl.size() > 1 && min_match_count_ <= all_count) {
+    if (sub_ctx.scorers.empty() && incl.size() > 1 &&
+        min_match_count_ <= all_count) {
       // if we have at least one all in include group - all other filters are
       // not necessary in case there is no scoring and 'all' count satisfies
       // min_match
@@ -566,12 +562,11 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
   // check strictly less to not roll back to 0 min_match (we`ve handled this
   // case above!) single 'all' left -> it could contain boost we want to
   // preserve
-  const auto adjusted_min_match_count =
-    (optimized_match_count < min_match_count_)
-      ? min_match_count_ - optimized_match_count
-      : 1;
+  const auto adjusted_min_match = (optimized_match_count < min_match_count_)
+                                    ? min_match_count_ - optimized_match_count
+                                    : 1;
 
-  if (adjusted_min_match_count > incl.size()) {
+  if (adjusted_min_match > incl.size()) {
     // can't satisfy 'min_match_count' conditions
     // having only 'incl.size()' queries
     return prepared::empty();
@@ -579,48 +574,45 @@ filter::prepared::ptr Or::prepare(std::vector<const filter*>& incl,
 
   if (1 == incl.size() && excl.empty()) {
     // single node case
-    return incl.front()->prepare(rdr, ord, boost, ctx);
+    return incl.front()->prepare(sub_ctx);
   }
 
-  IRS_ASSERT(adjusted_min_match_count > 0 &&
-             adjusted_min_match_count <= incl.size());
+  IRS_ASSERT(adjusted_min_match > 0 && adjusted_min_match <= incl.size());
 
   memory::managed_ptr<BooleanQuery> q;
-  if (adjusted_min_match_count == incl.size()) {
-    q = memory::make_managed<AndQuery>();
-  } else if (1 == adjusted_min_match_count) {
-    q = memory::make_managed<OrQuery>();
+  if (adjusted_min_match == incl.size()) {
+    q = memory::make_tracked<AndQuery>(sub_ctx.memory);
+  } else if (1 == adjusted_min_match) {
+    q = memory::make_tracked<OrQuery>(sub_ctx.memory);
   } else {  // min_match_count > 1 && min_match_count < incl.size()
-    q = memory::make_managed<MinMatchQuery>(adjusted_min_match_count);
+    q = memory::make_tracked<MinMatchQuery>(sub_ctx.memory, adjusted_min_match);
   }
 
-  q->prepare(rdr, ord, boost, merge_type(), ctx, incl, excl);
+  q->prepare(sub_ctx, merge_type(), incl, excl);
   return q;
 }
 
-filter::prepared::ptr Not::prepare(const IndexReader& rdr, const Scorers& ord,
-                                   score_t boost,
-                                   const attribute_provider* ctx) const {
+filter::prepared::ptr Not::prepare(const PrepareContext& ctx) const {
   const auto res = optimize_not(*this);
 
   if (!res.first) {
     return prepared::empty();
   }
 
-  boost *= this->boost();
+  const PrepareContext sub_ctx = ctx.Boost(boost());
 
   if (res.second) {
     auto all_docs = MakeAllDocsFilter(kNoBoost);
     const std::array<const irs::filter*, 1> incl{all_docs.get()};
     const std::array<const irs::filter*, 1> excl{res.first};
 
-    auto q = memory::make_managed<AndQuery>();
-    q->prepare(rdr, ord, boost, ScoreMergeType::kSum, ctx, incl, excl);
+    auto q = memory::make_tracked<AndQuery>(sub_ctx.memory);
+    q->prepare(sub_ctx, ScoreMergeType::kSum, incl, excl);
     return q;
   }
 
   // negation has been optimized out
-  return res.first->prepare(rdr, ord, boost, ctx);
+  return res.first->prepare(sub_ctx);
 }
 
 size_t Not::hash() const noexcept {

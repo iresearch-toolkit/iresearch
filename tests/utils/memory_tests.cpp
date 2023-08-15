@@ -32,6 +32,142 @@
 #include "utils/memory_pool.hpp"
 #include "utils/timer_utils.hpp"
 
+namespace irs::memory {
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class memory_multi_size_pool
+/// @brief an allocator that can handle allocations of slots with different
+///        sizes
+///////////////////////////////////////////////////////////////////////////////
+template<typename GrowPolicy = log2_grow,
+         typename BlockAllocator = malloc_free_allocator>
+class memory_multi_size_pool : public pool_base<GrowPolicy, BlockAllocator> {
+ public:
+  typedef pool_base<GrowPolicy, BlockAllocator> pool_base_t;
+  typedef typename pool_base_t::grow_policy_t grow_policy_t;
+  typedef typename pool_base_t::block_allocator_t block_allocator_t;
+  typedef memory_pool<grow_policy_t, block_allocator_t> memory_pool_t;
+
+  explicit memory_multi_size_pool(
+    size_t initial_size = 32,
+    const block_allocator_t& block_alloc = block_allocator_t(),
+    const grow_policy_t& grow_policy = grow_policy_t()) noexcept
+    : pool_base_t(grow_policy, block_alloc), initial_size_(initial_size) {}
+
+  void* allocate(const size_t slot_size) {
+    return this->pool(slot_size).allocate();
+  }
+
+  void* allocate(const size_t slot_size, size_t n) {
+    return this->pool(slot_size).allocate(n);
+  }
+
+  void deallocate(const size_t slot_size, void* p) {
+    this->pool(slot_size).deallocate(p);
+  }
+
+  void deallocate(const size_t slot_size, void* p, const size_t n) {
+    this->pool(slot_size).deallocate(p, n);
+  }
+
+  memory_pool_t& pool(const size_t size) const {
+    const auto res = pools_.try_emplace(size, size, initial_size_, this->alloc_,
+                                        this->grow_policy_);
+
+    return res.first->second;
+  }
+
+ private:
+  mutable std::map<size_t, memory_pool_t> pools_;
+  const size_t initial_size_;  // initial size for all sub-allocators
+};
+
+///////////////////////////////////////////////////////////////////////////////
+/// @class template<typename T> memory_pool_multi_size_allocator
+/// @brief a std-compliant allocator based of memory_multi_size_pool
+/// @note single_allocator_tag is used for optimizations for node-based
+///        memory allocations (e.g. std::map, std::set, std::list)
+///////////////////////////////////////////////////////////////////////////////
+template<typename T, typename AllocatorsPool,
+         typename Tag = single_allocator_tag>
+class memory_pool_multi_size_allocator : public allocator_base<T> {
+ public:
+  typedef AllocatorsPool allocators_t;
+  typedef typename allocators_t::memory_pool_t memory_pool_t;
+
+  typedef typename memory_pool_t::size_type size_type;
+  typedef allocator_base<T> allocator_base_t;
+  typedef typename allocator_base_t::pointer pointer;
+  typedef typename allocator_base_t::const_pointer const_pointer;
+
+  typedef std::true_type propagate_on_container_copy_assignment;
+  typedef std::true_type propagate_on_container_move_assignment;
+  typedef std::true_type propagate_on_container_swap;
+
+  template<typename U>
+  struct rebind {
+    typedef memory_pool_multi_size_allocator<U, AllocatorsPool, Tag> other;
+  };
+
+  template<typename U>
+  memory_pool_multi_size_allocator(
+    const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>&
+      rhs) noexcept
+    : allocators_(rhs.allocators_), pool_(&allocators_->pool(sizeof(T))) {}
+
+  memory_pool_multi_size_allocator(allocators_t& pool) noexcept
+    : allocators_(&pool), pool_(&allocators_->pool(sizeof(T))) {}
+
+  pointer allocate(size_type n, const_pointer hint = 0) {
+    IRS_IGNORE(hint);
+
+    if constexpr (std::is_same_v<Tag, single_allocator_tag>) {
+      IRS_ASSERT(1 == n);
+      return static_cast<pointer>(pool_->allocate());
+    } else {
+      if (1 == n) {
+        return static_cast<pointer>(pool_->allocate());
+      }
+      return static_cast<pointer>(pool_->allocate(n));
+    }
+  }
+
+  void deallocate(pointer p, size_type n = 1) noexcept {
+    if constexpr (std::is_same_v<Tag, single_allocator_tag>) {
+      IRS_ASSERT(1 == n);
+      pool_->deallocate(p);
+    } else {
+      if (1 == n) {
+        pool_->deallocate(p);
+      } else {
+        pool_->deallocate(p, n);
+      }
+    }
+  }
+
+ private:
+  allocators_t* allocators_;
+  memory_pool_t* pool_;
+
+  template<typename U, typename, typename>
+  friend class memory_pool_multi_size_allocator;
+};
+
+template<typename T, typename U, typename AllocatorsPool, typename Tag>
+constexpr inline bool operator==(
+  const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
+  const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
+  return lhs.allocators_ == rhs.allocators_ && sizeof(T) == sizeof(U);
+}
+
+template<typename T, typename U, typename AllocatorsPool, typename Tag>
+constexpr inline bool operator!=(
+  const memory_pool_multi_size_allocator<T, AllocatorsPool, Tag>& lhs,
+  const memory_pool_multi_size_allocator<U, AllocatorsPool, Tag>& rhs) {
+  return !(lhs == rhs);
+}
+
+}  // namespace irs::memory
 namespace {
 
 struct unique_base {
@@ -287,7 +423,7 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       pool;
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      std::pair<size_t const, test_data>, decltype(pool),
+      std::pair<const size_t, test_data>, decltype(pool),
       irs::memory::single_allocator_tag>
       alloc_t;
 
@@ -324,7 +460,7 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
       pool(initial_size);
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      std::pair<size_t const, test_data>, decltype(pool),
+      std::pair<const size_t, test_data>, decltype(pool),
       irs::memory::single_allocator_tag>
       alloc_t;
 
@@ -408,7 +544,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       pool(0);
 
     typedef irs::memory::memory_pool_allocator<
-      std::pair<size_t const, test_data>, decltype(pool),
+      std::pair<const size_t, test_data>, decltype(pool),
       irs::memory::single_allocator_tag>
       alloc_t;
 
@@ -451,7 +587,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       pool(0, initial_size);
 
     typedef irs::memory::memory_pool_allocator<
-      std::pair<size_t const, test_data>, decltype(pool),
+      std::pair<const size_t, test_data>, decltype(pool),
       irs::memory::single_allocator_tag>
       alloc_t;
 
@@ -482,7 +618,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       pool;
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      std::pair<size_t const, test_data>, decltype(pool),
+      std::pair<const size_t, test_data>, decltype(pool),
       irs::memory::single_allocator_tag>
       alloc_t;
 
@@ -514,7 +650,7 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
       pool(initial_size);
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      std::pair<size_t const, test_data>, decltype(pool),
+      std::pair<const size_t, test_data>, decltype(pool),
       irs::memory::single_allocator_tag>
       alloc_t;
 
