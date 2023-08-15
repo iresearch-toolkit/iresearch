@@ -432,7 +432,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
   score_t sum_scores_;
   doc_id_t leafs_doc_{doc_limits::invalid()};
   score_t threshold_{};
-  IRS_NO_UNIQUE_ADDRESS typename Merger::Buffer score_;
+  typename Merger::Buffer score_;
 };
 
 // Returns conjunction iterator created from the specified sub iterators

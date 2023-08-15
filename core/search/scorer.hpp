@@ -319,10 +319,10 @@ struct NoopAggregator {
 };
 
 template<size_t Size>
-struct Buffer {
+struct ScoreBuffer {
   static_assert(Size > 0);
 
-  Buffer(size_t = 0) noexcept {}
+  ScoreBuffer(size_t = 0) noexcept {}
 
   constexpr size_t size() const noexcept { return Size; }
 
@@ -333,12 +333,12 @@ struct Buffer {
 };
 
 template<>
-struct Buffer<kBufferRuntimeSize> {
+struct ScoreBuffer<kBufferRuntimeSize> {
  private:
   using Alloc = memory::allocator_array_deallocator<std::allocator<score_t>>;
 
  public:
-  explicit Buffer(size_t size) noexcept
+  explicit ScoreBuffer(size_t size) noexcept
     : buf_{memory::allocate_unique<score_t[]>(std::allocator<score_t>{}, size,
                                               memory::allocate_only)} {
     IRS_ASSERT(size);
@@ -353,7 +353,7 @@ struct Buffer<kBufferRuntimeSize> {
 };
 
 template<typename Merger, size_t Size>
-struct Aggregator : Buffer<Size> {
+struct Aggregator : ScoreBuffer<Size> {
   using Buffer = Buffer<Size>;
 
   using Buffer::Buffer;
