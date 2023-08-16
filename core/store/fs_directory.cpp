@@ -417,7 +417,7 @@ class pooled_fs_index_input final : public fs_index_input {
 fs_index_input::fs_index_input(file_handle::ptr&& handle, size_t pool_size)
   : handle_(std::move(handle)), pool_size_(pool_size), pos_(0) {
   IRS_ASSERT(handle_);
-  handle_->resource_manager.readers->Increase(sizeof(fs_index_input));
+  handle_->resource_manager.readers->Increase(sizeof(pooled_fs_index_input));
   buffered_index_input::reset(buf_, sizeof buf_, 0);
 }
 
