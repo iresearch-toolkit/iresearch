@@ -256,7 +256,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
       auto score_root = [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = static_cast<BlockConjunction&>(*ctx);
         std::memcpy(res, self.score_.temp(),
-                    self.score_.size() * sizeof(score_t));
+                    static_cast<Merger&>(self).byte_size());
       };
       this->PrepareScore(score, score_root, score_root, min);
     } else {
