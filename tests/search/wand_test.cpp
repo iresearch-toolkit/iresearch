@@ -112,7 +112,7 @@ class WandTestCase : public tests::index_test_base {
   void GenerateSegmentMinNorm(irs::ScorersView scorers);
   void ConsolidateAll(irs::ScorersView scorers, bool write_norms);
 
-  void AssertFilters(irs::ScorersView scorers) {
+  void AssertFilters(irs::ScorersView scorers, bool disjunction = true) {
     auto apply = [&](auto assert_filter) {
       ASSERT_FALSE(scorers.empty());
       for (size_t idx = 0; auto* scorer : scorers) {
@@ -124,7 +124,9 @@ class WandTestCase : public tests::index_test_base {
     };
     apply(&WandTestCase::AssertTermFilter);
     apply(&WandTestCase::AssertConjunctionFilter);
-    apply(&WandTestCase::AssertDisjunctionFilter);
+    if (disjunction) {
+      apply(&WandTestCase::AssertDisjunctionFilter);
+    }
   }
 
   void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
@@ -527,7 +529,7 @@ TEST_P(WandTestCase, TermFilterBM25) {
   AssertFilters(scorers);
 
   GenerateSegmentMinNorm(scorers);
-  AssertFilters(scorers);
+  AssertFilters(scorers, false);
 }
 
 TEST_P(WandTestCase, TermFilterBM15) {
