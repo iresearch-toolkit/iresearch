@@ -124,25 +124,42 @@ struct empty_score_buffer {
 
   size_t bucket_size() const noexcept { return 0; }
 };
+struct SubScoresCtx : SubScores {
+  size_t unscored = 0;
 
-inline SubScores MakeSubScores(auto& itrs) {
-  SubScores scores;
+  size_t Size() const noexcept { return unscored + scores.size(); }
+
+  void Clear() noexcept {
+    scores.clear();
+    sum_score = 0.f;
+    unscored = 0;
+  }
+};
+
+inline bool MakeSubScores(const auto& itrs, SubScoresCtx& scores) {
+  IRS_ASSERT(scores.Size() == 0);
   scores.scores.reserve(itrs.size());
   for (auto& it : itrs) {
     // FIXME(gnus): remove const cast
     auto* score = const_cast<irs::score*>(it.score);
     IRS_ASSERT(score);  // ensured by ScoreAdapter
     if (score->IsDefault()) {
+      ++scores.unscored;
       continue;
     }
     scores.scores.emplace_back(score);
     const auto tail = score->max.tail;
     if (tail == std::numeric_limits<score_t>::max()) {
-      return {};
+      return false;
     }
     scores.sum_score += tail;
   }
-  return scores;
+  std::sort(scores.scores.begin(), scores.scores.end(),
+            [](const auto* lhs, const auto* rhs) noexcept {
+              return lhs->max.tail > rhs->max.tail;
+            });
+  IRS_ASSERT(scores.Size() == itrs.size());
+  return !scores.scores.empty();
 }
 
 }  // namespace detail
@@ -883,11 +900,12 @@ class block_disjunction : public doc_iterator,
   using doc_iterators_t = std::vector<adapter>;
 
   block_disjunction(doc_iterators_t&& itrs, Merger&& merger, cost::cost_t est)
-    : block_disjunction{std::move(itrs), 1, std::move(merger), SubScores{},
-                        est} {}
+    : block_disjunction{std::move(itrs), 1, std::move(merger),
+                        detail::SubScoresCtx{}, est} {}
 
   block_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
-                    Merger&& merger, SubScores&& scores, cost::cost_t est)
+                    Merger&& merger, detail::SubScoresCtx&& scores,
+                    cost::cost_t est)
     : block_disjunction{std::move(itrs),   min_match_count,
                         std::move(merger), est,
                         std::move(scores), resolve_overload_tag()} {}
@@ -896,7 +914,8 @@ class block_disjunction : public doc_iterator,
     : block_disjunction{std::move(itrs), 1, std::move(merger)} {}
 
   block_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
-                    Merger&& merger = Merger{}, SubScores&& scores = {})
+                    Merger&& merger = Merger{},
+                    detail::SubScoresCtx&& scores = {})
     : block_disjunction{std::move(itrs),
                         min_match_count,
                         std::move(merger),
@@ -1093,7 +1112,7 @@ class block_disjunction : public doc_iterator,
   template<typename Estimation>
   block_disjunction(doc_iterators_t&& itrs, size_t min_match_count,
                     Merger&& merger, Estimation&& estimation,
-                    SubScores&& scores, resolve_overload_tag)
+                    detail::SubScoresCtx&& scores, resolve_overload_tag)
     : Merger{std::move(merger)},
       itrs_(std::move(itrs)),
       match_count_(itrs_.empty()
@@ -1114,12 +1133,16 @@ class block_disjunction : public doc_iterator,
       auto min = ScoreFunction::DefaultMin;
       if (!scores_.scores.empty()) {
         score.max.leaf = score.max.tail = scores_.sum_score;
-        std::sort(scores_.scores.begin(), scores_.scores.end(),
-                  [](const auto* lhs, const auto* rhs) noexcept {
-                    return lhs->max.tail > rhs->max.tail;
-                  });
         min = [](score_ctx* ctx, score_t arg) noexcept {
           auto& self = static_cast<block_disjunction&>(*ctx);
+          if (IRS_UNLIKELY(self.scores_.Size() != self.itrs_.size())) {
+            self.scores_.Clear();
+            detail::MakeSubScores(self.itrs_, self.scores_);
+            auto& score = std::get<irs::score>(self.attrs_);
+            // TODO(MBkkt) We cannot change tail now
+            // Because it needs to recompute sum_score for our parent iterator
+            score.max.leaf /* = score.max.tail */ = self.scores_.sum_score;
+          }
           auto it = self.scores_.scores.begin();
           auto end = self.scores_.scores.end();
           [[maybe_unused]] size_t min_match = 0;
@@ -1177,6 +1200,8 @@ class block_disjunction : public doc_iterator,
 
     while (begin != end) {
       if (!visitor(*begin)) {
+        // TODO(MBkkt) It looks good, but only for wand case
+        // scores_.unscored -= begin->score->IsDefault();
         irstd::swap_remove(itrs_, begin);
         --end;
 
@@ -1342,7 +1367,7 @@ class block_disjunction : public doc_iterator,
   IRS_NO_UNIQUE_ADDRESS min_match_buffer_type match_buf_;
   // TODO(MBkkt) We don't need scores_ for not wand,
   // but we don't want to generate more functions, than necessary
-  SubScores scores_;
+  detail::SubScoresCtx scores_;
   const score_t* score_value_{score_buf_.data()};
 };
 
@@ -1431,8 +1456,8 @@ doc_iterator::ptr MakeDisjunction(WandContext ctx,
     if (ctx.Enabled()) {
       // TODO(MBkkt) root optimization
       // TODO(MBkkt) block wand/maxscore optimization
-      auto scores = detail::MakeSubScores(itrs);
-      if (!scores.scores.empty()) {
+      detail::SubScoresCtx scores;
+      if (detail::MakeSubScores(itrs, scores)) {
         return memory::make_managed<Wand>(
           std::move(itrs), size_t{1}, std::forward<Merger>(merger),
           std::move(scores), std::forward<Args>(args)...);
@@ -1474,8 +1499,8 @@ doc_iterator::ptr MakeWeakDisjunction(
   }
 
   if (ctx.Enabled()) {
-    auto scores = detail::MakeSubScores(itrs);
-    if (!scores.scores.empty()) {
+    detail::SubScoresCtx scores;
+    if (detail::MakeSubScores(itrs, scores)) {
       // TODO(MBkkt) root optimization
       // TODO(MBkkt) block wand/maxscore optimization
       using Wand = typename RebindIterator<WeakConjunction>::Wand;
@@ -1486,8 +1511,8 @@ doc_iterator::ptr MakeWeakDisjunction(
   }
 
   return memory::make_managed<WeakConjunction>(
-    std::move(itrs), min_match, std::forward<Merger>(merger), SubScores{},
-    std::forward<Args>(args)...);
+    std::move(itrs), min_match, std::forward<Merger>(merger),
+    detail::SubScoresCtx{}, std::forward<Args>(args)...);
 }
 
 }  // namespace irs

@@ -312,41 +312,33 @@ Scorers Scorers::Prepare(Iterator begin, Iterator end) {
   return scorers;
 }
 
+inline constexpr size_t kBufferRuntimeSize = std::numeric_limits<size_t>::max();
+
 struct NoopAggregator {
   constexpr size_t size() const noexcept { return 0; }
 };
 
-template<typename Merger, size_t Size>
-class Aggregator {
- public:
+template<size_t Size>
+struct ScoreBuffer {
   static_assert(Size > 0);
+
+  ScoreBuffer(size_t = 0) noexcept {}
 
   constexpr size_t size() const noexcept { return Size; }
 
-  constexpr size_t byte_size() const noexcept { return Size * sizeof(score_t); }
-
   constexpr score_t* temp() noexcept { return buf_.data(); }
 
-  void operator()(score_t* dst, const score_t* src) const noexcept {
-    for (size_t i = 0; i < Size; ++i) {
-      merger_(dst, src);
-      ++dst;
-      ++src;
-    }
-  }
-
  private:
-  IRS_NO_UNIQUE_ADDRESS Merger merger_;
   std::array<score_t, Size> buf_;
 };
 
-template<typename Merger>
-class Aggregator<Merger, std::numeric_limits<size_t>::max()> {
+template<>
+struct ScoreBuffer<kBufferRuntimeSize> {
  private:
   using Alloc = memory::allocator_array_deallocator<std::allocator<score_t>>;
 
  public:
-  explicit Aggregator(size_t size) noexcept
+  explicit ScoreBuffer(size_t size) noexcept
     : buf_{memory::allocate_unique<score_t[]>(std::allocator<score_t>{}, size,
                                               memory::allocate_only)} {
     IRS_ASSERT(size);
@@ -354,12 +346,28 @@ class Aggregator<Merger, std::numeric_limits<size_t>::max()> {
 
   size_t size() const noexcept { return buf_.get_deleter().size(); }
 
-  size_t byte_size() const noexcept { return size() * sizeof(score_t); }
-
   score_t* temp() noexcept { return buf_.get(); }
 
+ private:
+  std::unique_ptr<score_t[], Alloc> buf_;
+};
+
+template<typename Merger, size_t Size>
+struct Aggregator : ScoreBuffer<Size> {
+  using Buffer = ScoreBuffer<Size>;
+
+  using Buffer::Buffer;
+
+  IRS_FORCE_INLINE size_t byte_size() const noexcept {
+    return this->size() * sizeof(score_t);
+  }
+
+  IRS_FORCE_INLINE void Merge(score_t& dst, score_t src) const noexcept {
+    merger_(&dst, &src);
+  }
+
   void operator()(score_t* dst, const score_t* src) const noexcept {
-    for (size_t i = 0; i < size(); ++i) {
+    for (size_t i = 0; i != this->size(); ++i) {
       merger_(dst, src);
       ++dst;
       ++src;
@@ -368,7 +376,6 @@ class Aggregator<Merger, std::numeric_limits<size_t>::max()> {
 
  private:
   IRS_NO_UNIQUE_ADDRESS Merger merger_;
-  std::unique_ptr<score_t[], Alloc> buf_;
 };
 
 template<typename Aggregator>
@@ -415,8 +422,6 @@ struct MinMerger {
 template<typename Visitor>
 auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
                      Visitor&& visitor) {
-  constexpr size_t kRuntimeSize = std::numeric_limits<size_t>::max();
-
   auto impl = [&]<typename Merger>() {
     switch (num_buckets) {
       case 0:
@@ -430,7 +435,7 @@ auto ResoveMergeType(ScoreMergeType type, size_t num_buckets,
       case 4:
         return visitor(Aggregator<Merger, 4>{});
       default:
-        return visitor(Aggregator<Merger, kRuntimeSize>{num_buckets});
+        return visitor(Aggregator<Merger, kBufferRuntimeSize>{num_buckets});
     }
   };
 

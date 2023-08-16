@@ -239,7 +239,8 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
   explicit BlockConjunction(Merger&& merger, ScoreAdapters<DocIterator>&& itrs,
                             SubScores&& scores, bool strict)
     : Base{std::move(merger), std::move(itrs), std::move(scores.scores)},
-      sum_scores_{scores.sum_score} {
+      sum_scores_{scores.sum_score},
+      score_{static_cast<Merger&>(*this).size()} {
     IRS_ASSERT(this->itrs_.size() >= 2);
     IRS_ASSERT(!this->scores_.empty());
     std::sort(this->scores_.begin(), this->scores_.end(),
@@ -254,7 +255,8 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
     if constexpr (Root) {
       auto score_root = [](score_ctx* ctx, score_t* res) noexcept {
         auto& self = static_cast<BlockConjunction&>(*ctx);
-        *res = self.score_;
+        std::memcpy(res, self.score_.temp(),
+                    static_cast<Merger&>(self).byte_size());
       };
       this->PrepareScore(score, score_root, score_root, min);
     } else {
@@ -284,7 +286,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
     auto& doc = std::get<document>(attrs_).value;
     if (IRS_UNLIKELY(target <= doc)) {
       if constexpr (Root) {
-        if (threshold_ < score_) {
+        if (threshold_ < score_.temp()[0]) {
           return doc;
         }
         target = doc + !doc_limits::eof(doc);
@@ -326,12 +328,12 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
       auto begin = this->scores_.begin();
       auto end = this->scores_.end();
 
-      (**begin)(&score_);
+      (**begin)(score_.temp());
       for (++begin; begin != end; ++begin) {
         (**begin)(merger.temp());
-        merger(&score_, merger.temp());
+        merger(score_.temp(), merger.temp());
       }
-      if (threshold_ < score_) {
+      if (threshold_ < score_.temp()[0]) {
         return target;
       }
       ++target;
@@ -415,9 +417,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
         max_leafs = max_leaf;
       }
       IRS_ASSERT(min_leafs <= max_leafs);
-      if constexpr (HasScore_v<Merger>) {
-        merger(&sum_leafs_score, &it.score->max.leaf);
-      }
+      merger.Merge(sum_leafs_score, it.score->max.leaf);
     }
 
     leafs_doc_ = max_leafs;
@@ -432,7 +432,7 @@ class BlockConjunction : public ConjunctionBase<DocIterator, Merger> {
   score_t sum_scores_;
   doc_id_t leafs_doc_{doc_limits::invalid()};
   score_t threshold_{};
-  IRS_NO_UNIQUE_ADDRESS utils::Need<Root, score_t> score_{};
+  typename Merger::Buffer score_;
 };
 
 // Returns conjunction iterator created from the specified sub iterators
