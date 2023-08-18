@@ -73,7 +73,7 @@ struct by_terms_options {
   }
 
   size_t hash() const noexcept {
-    size_t hash = hash_combine(hash, min_match);
+    size_t hash = hash_combine(0, min_match);
     for (auto& term : terms) {
       hash = hash_combine(hash, term.hash());
     }
