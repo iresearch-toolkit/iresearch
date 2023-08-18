@@ -139,11 +139,6 @@ class ProgressTracker {
 
   explicit operator bool() const noexcept { return valid_; }
 
-  void reset() noexcept {
-    hits_ = 0;
-    valid_ = true;
-  }
-
  private:
   const MergeWriter::FlushProgress* progress_;
   const size_t count_;  // call progress callback each `count_` hits
@@ -404,8 +399,6 @@ class CompoundColumnIterator final {
     iterators_.reserve(size);
     iterator_mask_.reserve(size);
   }
-
-  size_t size() const { return iterators_.size(); }
 
   void add(const SubReader& reader, const doc_map_f& doc_map) {
     auto it = reader.columns();

@@ -367,19 +367,7 @@ TEST_F(SkipWriterTest, Reset) {
 }
 
 TEST_F(SkipReaderTest, Prepare) {
-  struct NoopRead {
-    bool IsLess(size_t, irs::doc_id_t) const {
-      EXPECT_FALSE(true);
-      return false;
-    }
-
-    void MoveDown(size_t) { ASSERT_FALSE(true); }
-
-    irs::doc_id_t Read(size_t, size_t, irs::data_input&) const {
-      EXPECT_FALSE(true);
-      return irs::doc_limits::eof();
-    }
-  };
+  struct NoopRead {};
 
   //.Prepare empty
   {
@@ -502,7 +490,7 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
       return id;
     }
 
-    void MoveDown(size_t level) {}
+    void MoveDown(size_t /*level*/) {}
 
     void Read(size_t level, irs::data_input& in) {
       scores_[level] = in.read_vlong();
@@ -510,8 +498,6 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
     }
 
     void Seal(size_t level) { docs_[level] = irs::doc_limits::eof(); }
-
-    void Reset() noexcept {}
   };
 
   irs::memory_directory dir;

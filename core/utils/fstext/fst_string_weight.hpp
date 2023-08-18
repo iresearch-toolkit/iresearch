@@ -135,7 +135,7 @@ class StringLeftWeight : public StringLeftWeightTraits<Label> {
 
   size_t Hash() const noexcept { return std::hash<str_t>()(str_); }
 
-  StringLeftWeight Quantize(float delta = kDelta) const noexcept {
+  StringLeftWeight Quantize(float /*delta*/ = kDelta) const noexcept {
     return *this;
   }
 

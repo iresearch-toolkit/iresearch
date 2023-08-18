@@ -185,7 +185,6 @@ void assert_pipeline(irs::analysis::analyzer* pipe, const std::string& data,
     auto term_value =
       std::string(irs::ViewCast<char>(term->value).data(), term->value.size());
     SCOPED_TRACE(testing::Message("Term:") << term_value);
-    auto old_pos = pos;
     pos += inc->value;
     ASSERT_NE(expected_token, expected_tokens.end());
     ASSERT_EQ(irs::ViewCast<irs::byte_type>(expected_token->value),

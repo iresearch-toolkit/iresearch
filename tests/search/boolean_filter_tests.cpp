@@ -16298,10 +16298,10 @@ TEST_P(boolean_filter_test_case, mixed) {
           // name=A OR name=C OR NAME=P OR name=U OR name=X
           {
             irs::Or& subsubchild = subchild.add<irs::Or>();
-            append<irs::by_term>(subchild, "name", "A");
-            append<irs::by_term>(subchild, "name", "C");
-            append<irs::by_term>(subchild, "name", "P");
-            append<irs::by_term>(subchild, "name", "X");
+            append<irs::by_term>(subsubchild, "name", "A");
+            append<irs::by_term>(subsubchild, "name", "C");
+            append<irs::by_term>(subsubchild, "name", "P");
+            append<irs::by_term>(subsubchild, "name", "X");
           }
         }
       }
@@ -16711,7 +16711,7 @@ TEST(Or_test, equal) {
 
 TEST(Or_test, optimize_double_negation) {
   irs::Or root;
-  auto& term = root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
+  root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>() =
     make_filter<irs::by_term>("test_field", "test_term");
 
   auto prepared = root.prepare({.index = irs::SubReader::empty()});

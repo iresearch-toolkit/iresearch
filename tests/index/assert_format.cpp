@@ -222,9 +222,6 @@ void index_segment::compute_features() {
   struct column_output final : public irs::column_output {
     explicit column_output(irs::bstring& buf) noexcept : buf_{&buf} {}
 
-    column_output(column_output&&) = default;
-    column_output& operator=(column_output&&) = default;
-
     void Prepare(irs::doc_id_t) final { written = true; }
 
     void write_byte(irs::byte_type b) final { (*buf_) += b; }

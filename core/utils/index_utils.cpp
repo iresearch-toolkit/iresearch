@@ -84,24 +84,6 @@ struct ConsolidationCandidate {
   iterator_t begin() const noexcept { return segments.first; }
   iterator_t end() const noexcept { return segments.second; }
 
-  const SegmentStats& front() const noexcept {
-    IRS_ASSERT(segments.first != segments.second);
-    return *segments.first;
-  }
-
-  const SegmentStats& back() const noexcept {
-    IRS_ASSERT(segments.first != segments.second);
-    auto curr_end = segments.second;
-    return *(--curr_end);
-  }
-
-  void reset() noexcept {
-    segments = range_t();
-    count = 0;
-    size = 0;
-    score = -1.;
-  }
-
   range_t segments;
   size_t count{0};
   size_t size{0};           // estimated size of the level

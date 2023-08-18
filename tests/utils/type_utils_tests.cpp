@@ -29,7 +29,7 @@ DEFINE_HAS_MEMBER(bar);
 
 TEST(type_utils_tests, sfinae) {
   struct A {
-    void foo() {}
+    [[maybe_unused]] void foo() {}
   };
   struct B {
     int bar;

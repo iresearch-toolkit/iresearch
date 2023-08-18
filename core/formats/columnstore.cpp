@@ -79,25 +79,15 @@ irs::bytes_view kDummy;  // placeholder for visiting logic in columnstore
 struct column_meta {
  public:
   column_meta() = default;
-  column_meta(column_meta&& rhs) noexcept
-    : name(std::move(rhs.name)), id(rhs.id) {
-    rhs.id = field_limits::invalid();
-  }
 
+  column_meta(column_meta&&) = delete;
   column_meta(const column_meta&) = delete;
+  column_meta& operator=(column_meta&&) = delete;
   column_meta& operator=(const column_meta&) = delete;
-  column_meta& operator=(column_meta&& rhs) noexcept = delete;
-
-  bool operator==(const column_meta& rhs) const noexcept {
-    return name == rhs.name;
-  }
 
   std::string name;
   field_id id{field_limits::invalid()};
 };
-
-static_assert(std::is_nothrow_move_constructible_v<column_meta>,
-              "default move constructor expected");
 
 struct format_traits {
   IRS_FORCE_INLINE static void pack32(const uint32_t* IRS_RESTRICT decoded,
@@ -255,23 +245,6 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     throw irs::index_error("error while reading compact");
   }
 }
-
-struct ColumnMetaEq : ValueRefEq<column_meta*> {
-  using is_transparent = void;
-  using Self::operator();
-
-  bool operator()(const Ref& lhs,
-                  const hashed_string_view& rhs) const noexcept {
-    return lhs.ref->name == rhs;
-  }
-
-  bool operator()(const hashed_string_view& lhs,
-                  const Ref& rhs) const noexcept {
-    return this->operator()(rhs, lhs);
-  }
-};
-
-using name_to_column_map = flat_hash_set<ColumnMetaEq>;
 
 class meta_writer final {
  public:
@@ -1669,7 +1642,7 @@ class column : public irs::column_reader, private util::noncopyable {
   using ptr = std::unique_ptr<column>;
 
   explicit column(field_id id, ColumnProperty props) noexcept
-    : props_(props), id_{id}, encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {}
+    : id_{id}, encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {}
 
   virtual ~column() = default;
 
@@ -1704,7 +1677,6 @@ class column : public irs::column_reader, private util::noncopyable {
   bool empty() const noexcept { return 0 == size(); }
   uint32_t avg_block_size() const noexcept { return avg_block_size_; }
   uint32_t avg_block_count() const noexcept { return avg_block_count_; }
-  ColumnProperty props() const noexcept { return props_; }
   compression::decompressor* decompressor() const noexcept {
     return decomp_.get();
   }
@@ -1719,7 +1691,6 @@ class column : public irs::column_reader, private util::noncopyable {
   uint32_t count_{};
   uint32_t avg_block_size_{};
   uint32_t avg_block_count_{};
-  ColumnProperty props_{CP_SPARSE};
   field_id id_;
   std::optional<std::string> name_;
   bool encrypted_{false};  // cached encryption mark

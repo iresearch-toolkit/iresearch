@@ -147,8 +147,6 @@ class parametric_state {
     return positions_.end();
   }
 
-  size_t size() const noexcept { return positions_.size(); }
-
   bool empty() const noexcept { return positions_.empty(); }
 
   void clear() noexcept { return positions_.clear(); }
@@ -355,9 +353,6 @@ struct character {
   byte_type utf8[utf8_utils::kMaxCharSize]{};
   size_t size{};
   uint32_t cp{};  // utf8 code point
-
-  const byte_type* begin() const noexcept { return utf8; }
-  const byte_type* end() const noexcept { return utf8 + size; }
 };
 
 //////////////////////////////////////////////////////////////////////////////

@@ -191,14 +191,6 @@ struct doc_buffer : skip_buffer {
     last = doc;
   }
 
-  void reset() noexcept {
-    skip_buffer::reset();
-    doc = docs.begin();
-    freq = freqs.begin();
-    last = doc_limits::invalid();
-    block_last = doc_limits::min();
-  }
-
   std::span<doc_id_t> docs;
   std::span<uint32_t> freqs;
   uint32_t* skip_doc;

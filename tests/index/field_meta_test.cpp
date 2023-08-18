@@ -46,7 +46,6 @@ TEST(field_meta_test, ctor) {
 }
 
 TEST(field_meta_test, move) {
-  const field_id norm = 10;
   const std::string name("name");
 
   irs::feature_map_t features;

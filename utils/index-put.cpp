@@ -69,7 +69,6 @@ const std::string HELP = "help";
 const std::string BATCH_SIZE = "batch-size";
 const std::string CONSOLIDATE_ALL = "consolidate-all";
 const std::string INDEX_DIR = "index-dir";
-const std::string OUTPUT = "out";
 const std::string INPUT = "in";
 const std::string MAX = "max-lines";
 const std::string THR = "threads";
