@@ -68,15 +68,16 @@ struct by_terms_options {
   ScoreMergeType merge_type{ScoreMergeType::kSum};
 
   bool operator==(const by_terms_options& rhs) const noexcept {
-    return terms == rhs.terms;
+    return min_match == rhs.min_match && merge_type == rhs.merge_type &&
+           terms == rhs.terms;
   }
 
   size_t hash() const noexcept {
-    size_t hash = 0;
+    size_t hash = hash_combine(0, min_match);
     for (auto& term : terms) {
       hash = hash_combine(hash, term.hash());
     }
-    return hash;
+    return hash_combine(hash, merge_type);
   }
 };
 
