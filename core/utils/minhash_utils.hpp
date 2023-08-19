@@ -101,7 +101,9 @@ class MinHash {
                       });
     const auto cardinality = Size() + rhs.size() - intersect;
 
-    return cardinality ? static_cast<double_t>(intersect) / cardinality : 1.0;
+    return cardinality
+             ? static_cast<double>(intersect) / static_cast<double>(cardinality)
+             : 1.0;
   }
 
   // Return Jaccard coefficient of 2 MinHash signatures.

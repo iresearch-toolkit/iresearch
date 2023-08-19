@@ -265,7 +265,7 @@ bool nearest_neighbors_stream::reset(std::string_view data) {
   std::istream ss{&buf};
 
   model_dict_->getLine(ss, line_token_ids_, line_token_label_ids_);
-  n_tokens_ = line_token_ids_.size();
+  n_tokens_ = static_cast<int32_t>(line_token_ids_.size());
   current_token_ind_ = 0;
 
   neighbors_.clear();

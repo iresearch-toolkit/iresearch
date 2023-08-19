@@ -659,7 +659,7 @@ class writer final : public irs::columnstore_writer {
       // do not take into account last block
       const auto blocks_count = std::max(1U, column_index_.total());
       avg_block_count_ = block_index_.flushed() / blocks_count;
-      avg_block_size_ = length_ / blocks_count;
+      avg_block_size_ = static_cast<uint32_t>(length_ / blocks_count);
 
       // we don't care of tail block size
       prev_block_size_ = block_buf_.size();
@@ -1104,7 +1104,7 @@ class dense_block : util::noncopyable {
         return false;
       }
 
-      value_ = base_ + std::distance(begin_, it_);
+      value_ = base_ + static_cast<uint32_t>(std::distance(begin_, it_));
       next_value();
 
       return true;
@@ -1173,7 +1173,7 @@ class dense_block : util::noncopyable {
     encode::avg::visit_block_packed_tail(
       in, size, reinterpret_cast<uint64_t*>(buf.data()),
       [begin](uint64_t offset) mutable {
-        *begin = offset;
+        *begin = static_cast<uint32_t>(offset);
         ++begin;
       });
 
@@ -1643,8 +1643,6 @@ class column : public irs::column_reader, private util::noncopyable {
 
   explicit column(field_id id, ColumnProperty props) noexcept
     : id_{id}, encrypted_(0 != (props & CP_COLUMN_ENCRYPT)) {}
-
-  virtual ~column() = default;
 
   field_id id() const final { return id_; }
 

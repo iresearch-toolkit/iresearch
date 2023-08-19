@@ -125,8 +125,9 @@ bool parse_vpack_options(const VPackSlice slice, std::string& delimiter) {
         delimiter = delim_type_slice.stringView();
         return true;
       }
-    default: {
-    }  // fall through
+      break;
+    default:
+      break;
   }
 
   IRS_LOG_ERROR(absl::StrCat(

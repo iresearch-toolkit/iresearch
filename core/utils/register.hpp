@@ -128,7 +128,7 @@ class generic_register : public singleton<RegisterType> {
       std::lock_guard<mutex_t> lock(mutex_);
 
       this_ptr->so_handles_.emplace_back(
-        handle, [](void* handle) -> void { irs::free_library(handle); });
+        handle, [](void* h) -> void { irs::free_library(h); });
     }
 
     if (!this_ptr->add_so_handle(handle)) {

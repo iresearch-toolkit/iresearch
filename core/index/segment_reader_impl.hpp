@@ -40,7 +40,7 @@ class SegmentReaderImpl final : public SubReader {
 
  public:
   SegmentReaderImpl(PrivateTag, IResourceManager& rm) noexcept
-    : docs_mask_{{rm}} {};
+    : docs_mask_{{rm}} {}
 
   static std::shared_ptr<const SegmentReaderImpl> Open(
     const directory& dir, const SegmentMeta& meta,

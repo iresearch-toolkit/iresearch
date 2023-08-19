@@ -399,8 +399,8 @@ void ngram_token_stream_base::emit_original() noexcept {
                          : EmitOriginal::WithEndMarker;
       inc.value = next_inc_val_;
       break;
-    default:
-      IRS_ASSERT(false);  // should not be called when None
+    case EmitOriginal::None:
+      IRS_ASSERT(false);
       break;
   }
   next_inc_val_ = 0;

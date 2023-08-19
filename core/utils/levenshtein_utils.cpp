@@ -249,7 +249,8 @@ void add_elementary_transitions(parametric_state& state, const position& pos,
     // Situation 2, [i+j,e+j-1] - elements X[i+1:i+j-1] are deleted
     for (size_t j = 1, max = max_distance + 1 - pos.distance; j < max; ++j) {
       if (irs::check_bit(chi, j)) {
-        state.emplace(pos.offset + 1 + j, pos.distance + j, false);
+        state.emplace(static_cast<uint32_t>(pos.offset + 1 + j),
+                      pos.distance + j, false);
       }
     }
 

@@ -1798,7 +1798,8 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
   // Handle empty values greater than the last document in sort column
   for (auto it = itrs.begin(); auto& reader : readers_) {
     if (!fill_doc_map(reader.doc_id_map, *it,
-                      doc_limits::min() + reader.reader->docs_count())) {
+                      doc_limits::min() +
+                        static_cast<doc_id_t>(reader.reader->docs_count()))) {
       return false;  // progress callback requested termination
     }
     ++it;

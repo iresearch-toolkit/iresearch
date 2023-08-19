@@ -129,7 +129,7 @@ uint32_t write_block64(PackFunc&& pack, data_output& out,
 
   if (simd::all_equal<false>(decoded, size)) {
     out.write_byte(ALL_EQUAL);
-    out.write_vint(*decoded);
+    out.write_vlong(*decoded);
     return ALL_EQUAL;
   }
 

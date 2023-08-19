@@ -36,10 +36,6 @@
 namespace fst {
 namespace fstext {
 
-namespace detail {
-DEFINE_HAS_MEMBER(FinalRef);
-}
-
 template<typename Arc>
 class ImmutableFst;
 
@@ -66,7 +62,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
     SetProperties(kNullProperties | kStaticProperties);
   }
 
-  ~ImmutableFstImpl() {
+  ~ImmutableFstImpl() override {
     states_.reset();
     arcs_.reset();
     weights_.reset();
@@ -286,19 +282,14 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
   stream.write_long(stats.total_weight_size);
   stream.write_int(static_cast<StateId>(stats.num_states));
   IRS_ASSERT(stats.num_states >= static_cast<size_t>(fst.Start()));
-  stream.write_vint(stats.num_states - fst.Start());
+  stream.write_vint(static_cast<uint32_t>(stats.num_states - fst.Start()));
   irs::write_zvlong(stream, stats.num_arcs - stats.num_states);
 
   // write states & arcs
   for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
     const StateId s = siter.Value();
 
-    size_t weight_size;
-    if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
-      weight_size = impl->FinalRef(s).Size();
-    } else {
-      weight_size = impl->Final(s).Size();
-    }
+    size_t weight_size = impl->FinalRef(s).Size();
 
     if (IRS_LIKELY(weight_size <= Impl::kMaxStateWeight)) {
       const size_t narcs = impl->NumArcs(s);
@@ -328,16 +319,8 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
   for (StateIterator<FST> siter(fst); !siter.Done(); siter.Next()) {
     const StateId s = siter.Value();
 
-    if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
-      const auto& weight = impl->FinalRef(s);
-      if (!weight.Empty()) {
-        stream.write_bytes(weight.c_str(), weight.Size());
-      }
-    } else {
-      const auto weight = impl->Final(s);
-      if (!weight.Empty()) {
-        stream.write_bytes(weight.c_str(), weight.Size());
-      }
+    if (const auto& weight = impl->FinalRef(s); !weight.Empty()) {
+      stream.write_bytes(weight.c_str(), weight.Size());
     }
 
     for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {

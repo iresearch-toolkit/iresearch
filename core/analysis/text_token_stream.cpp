@@ -374,9 +374,9 @@ bool process_term(analysis::text_token_stream::state_t& state,
     case analysis::text_token_stream::UPPER:
       state.token.toUpper(state.options.locale);  // inplace case-conversion
       break;
-    default: {
-    }  // NOOP
-  };
+    case analysis::text_token_stream::NONE:
+      break;
+  }
 
   // collate value, e.g. remove accents
   if (state.transliterator) {
@@ -399,7 +399,8 @@ bool process_term(analysis::text_token_stream::state_t& state,
     const sb_symbol* value =
       reinterpret_cast<const sb_symbol*>(word_utf8.c_str());
 
-    value = sb_stemmer_stem(state.stemmer.get(), value, (int)word_utf8.size());
+    value = sb_stemmer_stem(state.stemmer.get(), value,
+                            static_cast<int>(word_utf8.size()));
 
     if (value) {
       static_assert(sizeof(byte_type) == sizeof(sb_symbol));

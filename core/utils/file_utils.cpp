@@ -104,7 +104,7 @@ namespace irs {
 namespace file_utils {
 
 void file_deleter::operator()(void* f) const noexcept {
-#if _WIN32
+#ifdef _WIN32
   if (f != nullptr && f != INVALID_HANDLE_VALUE) {
     CloseHandle(f);
   }
@@ -136,7 +136,7 @@ void lock_file_deleter::operator()(void* handle) const {
   }
 }
 
-bool exists(const path_char_t* file) {
+static bool exists(const path_char_t* file) {
 #ifdef _WIN32
   return TRUE == ::PathFileExists(file);
 #else
@@ -591,24 +591,6 @@ bool block_size(file_blksize_t& result, const path_char_t* file) noexcept {
 #endif  // _WIN32
 }
 
-#ifdef _WIN32
-bool block_size(file_blksize_t& result, void* fd) noexcept {
-  // TODO FIXME find a workaround
-  IRS_IGNORE(fd);
-  result = 512;
-  return true;
-}
-#else
-bool block_size(file_blksize_t& result, int fd) noexcept {
-  file_stat_t info;
-  if (0 != file_fstat(fd, &info)) {
-    return false;
-  }
-  result = info.st_blksize;
-  return true;
-}
-#endif  // _WIN32
-
 bool byte_size(uint64_t& result, const path_char_t* file) noexcept {
   IRS_ASSERT(file != nullptr);
   file_stat_t info;
@@ -872,8 +854,8 @@ handle_t open(void* file, OpenMode mode, int advice) noexcept {
   // under /proc/self/fd the link is guaranteed to point to the original inode
   // even if the original file was removed
   auto fd = handle_cast(file);
-  char path[strlen("/proc/self/fd/") + sizeof(fd) * 3 +
-            1];  // approximate maximum number of chars, +1 for \0
+  // approximate maximum number of chars, +1 for \0
+  char path[14 + sizeof(fd) * 3 + 1];
 
   if (0 > fd || 0 > sprintf(path, "/proc/self/fd/%d", fd)) {
     IRS_LOG_ERROR(absl::StrCat(

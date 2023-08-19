@@ -67,7 +67,8 @@ bool init_handlers(handlers_t&);
 
 namespace {
 
-void AssertCallback(irs::SourceLocation&& source, std::string_view message) {
+[[noreturn]] void AssertCallback(irs::SourceLocation&& source,
+                                 std::string_view message) {
   std::cerr << source.file << ":" << source.line << ": " << source.func
             << ": Assert failed: " << message << std::endl;
   std::abort();
@@ -116,8 +117,9 @@ int main(int argc, char* argv[]) {
     std::sort(output.begin(), output.end());
     for (auto& [key, count, time_us] : output) {
       std::cout << key << " calls:" << count << ", time: " << time_us
-                << " us, avg call: " << time_us / double(count) << " us"
-                << std::endl;
+                << " us, avg call: "
+                << static_cast<double>(time_us) / static_cast<double>(count)
+                << " us" << std::endl;
     }
   };
 

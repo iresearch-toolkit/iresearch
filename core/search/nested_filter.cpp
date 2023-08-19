@@ -259,7 +259,7 @@ class NoneMatcher : public NoopAggregator {
 
  private:
   score_t boost_;
-  size_t size_;
+  uint32_t size_;
 };
 
 template<typename Merger>
@@ -654,8 +654,8 @@ doc_iterator::ptr ByNestedQuery::execute(const ExecutionContext& ctx) const {
           if constexpr (std::is_same_v<NoneMatcher, M>) {
             if (doc_limits::eof(child->value())) {  // Match all parents
               if constexpr (!std::is_same_v<NoopAggregator, A>) {
-                auto func =
-                  ScoreFunction::Constant(none_boost_, ord.buckets().size());
+                auto func = ScoreFunction::Constant(
+                  none_boost_, static_cast<uint32_t>(ord.buckets().size()));
                 auto* score = irs::get_mutable<irs::score>(parent.get());
                 if (IRS_UNLIKELY(!score)) {
                   return memory::make_managed<ScorerWrapper>(std::move(parent),
