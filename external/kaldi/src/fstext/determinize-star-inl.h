@@ -205,7 +205,7 @@ template<class F> class DeterminizerStar {
       assert(cur_id == 0 && "Do not call Determinize twice.");
     }
     std::vector<Element> closed_subset;
-    std::vector<std::pair<std::pair<Label, bool>, Element>> all_elems;
+    std::vector<RangeElement> all_elems;
     while (!Q_.empty()) {
       std::pair<std::vector<Element>*, OutputStateId> cur_pair = Q_.front();
       Q_.pop_front();
@@ -267,6 +267,15 @@ template<class F> class DeterminizerStar {
       return (state != other.state || string != other.string ||
               weight != other.weight);
     }
+  };
+
+  struct RangeElement {
+    Label min;
+    Label max;
+    // TODO(MBkkt) unify max and is_max: is_max == true <=> max == NoLabel?
+    bool is_max;
+    // TODO(MBkkt) store element in separate array, to avoid unnecessary copies
+    Element element;
   };
 
   // Arcs in the format we temporarily create in this class (a representation, essentially of
@@ -507,87 +516,101 @@ template<class F> class DeterminizerStar {
   // and output_arcs_.
   void ProcessTransitions(
       std::vector<Element>& closed_subset,
-      std::vector<std::pair<std::pair<Label, bool>, Element>>& all_elems,
+      std::vector<RangeElement>& all_elems,
       OutputStateId state) {
     all_elems.clear();
 
-    {  // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
+    { 
+      std::vector<Label> seq; 
+      // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
       for (const Element& elem : closed_subset) {
         for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
-            std::pair<std::pair<Label, bool>, Element> this_pr;
-            Element &next_elem(this_pr.second);
-            next_elem.state = arc.nextstate;
-            next_elem.weight = Times(elem.weight, arc.weight);
-            if (arc.olabel == 0) // output epsilon-- this is simple case so
-                                 // handle separately for efficiency
-              next_elem.string = elem.string;
-            else {
-              std::vector<Label> seq;
+            Element element{
+              .state = arc.nextstate,
+              .weight = Times(elem.weight, arc.weight),
+            };
+            if (arc.olabel == 0) {
+              // output epsilon-- this is simple case so handle separately for efficiency
+              element.string = elem.string;
+            } else {
+              seq.clear();
               repository_.SeqOfId(elem.string, &seq);
               seq.push_back(arc.olabel);
-              next_elem.string = repository_.IdOfSeq(seq);
+              element.string = repository_.IdOfSeq(seq);
             }
 
-            this_pr.first = { arc.min, false };
-            all_elems.emplace_back(this_pr);
-            this_pr.first = { arc.max, true };
-            all_elems.emplace_back(this_pr);
+            all_elems.emplace_back(RangeElement{arc.min, arc.max, false, element});
+            all_elems.emplace_back(RangeElement{arc.max, arc.max, true, std::move(element)});
           }
         }
       }
     }
     // now sorted first on input label bound, bound type, then on state.
     if (!epsilon_closure_.FstSorted() || closed_subset.size() > 1) {
-      std::sort(all_elems.begin(), all_elems.end(), [](const auto &p1, const auto &p2) noexcept {
-        if (p1.first.first < p2.first.first) {
+      std::sort(all_elems.begin(), all_elems.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.min < rhs.min) {
           return true;
-        } else if (p1.first.first > p2.first.first) {
+        } else if (lhs.min > rhs.min) {
           return false;
-        } else if (p1.first.second < p2.first.second) {
-          return true;
-        } else if (p1.first.second > p2.first.second) {
-          return false;
-        } else {
-          return p1.second.state < p2.second.state;
         }
+        if (!lhs.is_max && rhs.is_max) {
+          return true;
+        } else if (lhs.is_max && !rhs.is_max) {
+          return false;
+        }
+        if (lhs.is_max) {
+          // same max elements just sorted by state
+          IRS_ASSERT(lhs.element.state != rhs.element.state && &lhs != &rhs);
+          return lhs.element.state < rhs.element.state;
+        }
+        // same min elements sorted opposite to their max elements
+        if (lhs.max < rhs.max) {
+          return false;
+        } else if (lhs.max > rhs.max) {
+          return true;
+        }
+        IRS_ASSERT(lhs.element.state != rhs.element.state && &lhs != &rhs);
+        return lhs.element.state > rhs.element.state;
       });
     }
 
-   // reuse memory as we don't need data anymore
-   std::vector<Element>& subset = closed_subset;
-   subset.clear();
-   fsa::RangeLabel label;
+    // reuse memory as we don't need data anymore
+    std::vector<Element>& subset = closed_subset;
+    subset.clear();
+    fsa::RangeLabel label;
 
-   for (auto& e : all_elems) {
-     const auto [bound, is_max] = e.first;
+    for (auto& e : all_elems) {
+      const auto bound = e.min;
+      const bool is_max = e.is_max;
 
-     if (!is_max) {
-       if (label.ilabel != fst::kNoLabel && label.min != bound) {
-         label.max = bound - 1;
-         assert(!subset.empty() && label.min <= label.max);
-         ProcessTransition(state, label.ilabel, &subset);
-       }
+      if (!is_max) {
+        if (label.ilabel != fst::kNoLabel && label.min != bound) {
+          label.max = bound - 1;
+          assert(!subset.empty() && label.min <= label.max);
+          ProcessTransition(state, label.ilabel, &subset);
+        }
 
-       subset.emplace_back(e.second);
-       label.min = bound;
-     } else {
-       if (label.max != bound) {
-         label.max = bound;
-         assert(!subset.empty() && label.min <= label.max);
-         ProcessTransition(state, label.ilabel, &subset);
-         label.min = bound + 1;
-       }
+        // TODO(MBkkt) move?
+        subset.emplace_back(e.element);
+        label.min = bound;
+      } else {
+        if (label.max != bound) {
+          label.max = bound;
+          assert(!subset.empty() && label.min <= label.max);
+          ProcessTransition(state, label.ilabel, &subset);
+          label.min = bound + 1;
+        }
 
-       assert(!subset.empty());
-       subset.pop_back();
-       if (subset.empty()) {
-         label.ilabel = fst::kNoLabel;
-       }
-     }
-   }
+        assert(!subset.empty());
+        subset.pop_back();
+        if (subset.empty()) {
+          label.ilabel = fst::kNoLabel;
+        }
+      }
+    }
 
     assert(subset.empty());
   }
@@ -630,7 +653,7 @@ template<class F> class DeterminizerStar {
   // to the queue).
   void ProcessSubset(
       const std::pair<std::vector<Element>*, OutputStateId>& pair,
-      std::vector<std::pair<std::pair<Label, bool>, Element>>* all_elems,
+      std::vector<RangeElement>* all_elems,
       std::vector<Element>* closed_subset) {  // subset after epsilon closure.
     OutputStateId state = pair.second;
 
