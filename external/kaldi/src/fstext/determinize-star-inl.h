@@ -283,7 +283,7 @@ template<class F> class DeterminizerStar {
     const Element& Get() const noexcept { return element; }
 
    private:
-    // TODO(MBkkt) unify max and is_max: is_max == true <=> max == NoLabel?
+    // TODO(MBkkt) store element in separate array to avoid unnecessary copies
     Element element;
   };
 
