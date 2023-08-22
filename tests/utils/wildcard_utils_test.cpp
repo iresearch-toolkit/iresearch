@@ -37,9 +37,71 @@ class wildcard_utils_test : public test_base {
       fst::kILabelSorted | fst::kOLabelSorted | fst::kIDeterministic |
       fst::kAcceptor | fst::kUnweighted;
 
-    ASSERT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
+    EXPECT_EQ(EXPECTED_PROPERTIES, a.Properties(EXPECTED_PROPERTIES, true));
   }
 };
+
+TEST_F(wildcard_utils_test, same_start) {
+  {
+    auto a = irs::from_wildcard("%р%");
+    assert_properties(a);
+
+    bool r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("р")));
+    EXPECT_TRUE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("с")));
+    EXPECT_FALSE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("ё")));
+    EXPECT_FALSE(r);
+  }
+  {
+    auto a = irs::from_wildcard("%ара%");
+    assert_properties(a);
+
+    bool r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("ара")));
+    EXPECT_TRUE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("аса")));
+    EXPECT_FALSE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("аёа")));
+    EXPECT_FALSE(r);
+  }
+}
+
+TEST_F(wildcard_utils_test, same_end) {
+  {
+    auto a = irs::from_wildcard("%ѿ%");
+    assert_properties(a);
+
+    bool r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("ѿ")));
+    EXPECT_TRUE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("с")));
+    EXPECT_FALSE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("ё")));
+    EXPECT_FALSE(r);
+  }
+  {
+    auto a = irs::from_wildcard("%аѿа%");
+    assert_properties(a);
+
+    bool r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("аѿа")));
+    EXPECT_TRUE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("аса")));
+    EXPECT_FALSE(r);
+    r = irs::accept<irs::byte_type>(
+      a, irs::ViewCast<irs::byte_type>(std::string_view("аёа")));
+    EXPECT_FALSE(r);
+  }
+}
 
 TEST_F(wildcard_utils_test, match_wildcard) {
   {
