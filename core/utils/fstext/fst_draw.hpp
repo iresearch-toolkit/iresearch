@@ -16,9 +16,12 @@
 
 namespace fst {
 
-template<typename Label>
+template<typename Arc>
 struct LabelToString {
-  std::string operator()(Label label) const { return std::to_string(label); }
+  std::string operator()(const Arc&, typename Arc::Label label,
+                         std::string_view) const {
+    return std::to_string(label);
+  }
 };
 
 // Print a binary FST in GraphViz textual format (helper class for fstdraw.cc).
@@ -135,12 +138,12 @@ class FstDrawer {
 
   void PrintStateId(StateId s) const { PrintId(s, ssyms_, "state ID"); }
 
-  void PrintILabel(Label label) const {
-    PrintLabel(label, isyms_, "arc input label");
+  void PrintILabel(const Arc& arc) const {
+    PrintLabel(arc, arc.ilabel, isyms_, "arc input label");
   }
 
-  void PrintOLabel(Label label) const {
-    PrintLabel(label, osyms_, "arc output label");
+  void PrintOLabel(const Arc& arc) const {
+    PrintLabel(arc, arc.olabel, osyms_, "arc output label");
   }
 
   void PrintWeight(Weight w) const {
@@ -153,22 +156,15 @@ class FstDrawer {
     *ostrm_ << t;
   }
 
-  void PrintLabel(int32_t id, const SymbolTable* syms, const char* name) const {
-    if (syms) {
-      auto symbol = syms->Find(id);
-      if (!symbol.empty()) {
-        PrintString(Escape(symbol));
-      } else {
-        PrintString(label_to_string_(id));
-      }
-    } else {
-      PrintString(label_to_string_(id));
-    }
-  }
-
   template<class T>
-  void PrintLabel(const T& label, const SymbolTable*, const char*) const {
-    *ostrm_ << label_to_string_(label);
+  void PrintLabel(const Arc& arc, T label, const SymbolTable* syms,
+                  std::string_view name) const {
+    if (syms) {
+      if (auto symbol = syms->Find(label); !symbol.empty()) {
+        return PrintString(Escape(symbol));
+      }
+    }
+    PrintString(label_to_string_(arc, label, name));
   }
 
   template<class T>
@@ -208,10 +204,10 @@ class FstDrawer {
       PrintString(" -> ");
       Print(arc.nextstate);
       PrintString(" [label = \"");
-      PrintILabel(arc.ilabel);
+      PrintILabel(arc);
       if (!accep_) {
         PrintString(":");
-        PrintOLabel(arc.olabel);
+        PrintOLabel(arc);
       }
       if (show_weight_one_ || (arc.weight != Weight::One())) {
         PrintString("/");
@@ -268,7 +264,7 @@ inline void drawFst(
 }
 
 template<typename Fst,
-         typename LabelToString = fst::LabelToString<typename Fst::Arc::Label>>
+         typename LabelToString = fst::LabelToString<typename Fst::Arc>>
 inline bool drawFst(const Fst& fst, const std::string& dest,
                     const LabelToString& label_to_string = {},
                     const SymbolTable* isyms = nullptr,
