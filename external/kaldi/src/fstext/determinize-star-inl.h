@@ -204,12 +204,11 @@ template<class F> class DeterminizerStar {
       OutputStateId cur_id = SubsetToStateId({elem});
       assert(cur_id == 0 && "Do not call Determinize twice.");
     }
-    std::vector<Element> closed_subset;
-    std::vector<RangeElement> all_elems;
+    closed_subset_.clear();
     while (!Q_.empty()) {
       std::pair<std::vector<Element>*, OutputStateId> cur_pair = Q_.front();
       Q_.pop_front();
-      ProcessSubset(cur_pair, &all_elems, &closed_subset);
+      ProcessSubset(cur_pair);
       if (debug_ptr && *debug_ptr) Debug();  // will exit.
       if (max_states_ > 0 && output_arcs_.size() > max_states_) {
         if (allow_partial_ == false) {
@@ -270,11 +269,21 @@ template<class F> class DeterminizerStar {
   };
 
   struct RangeElement {
-    Label min;
+    explicit RangeElement(Label min, Label max, const Element& element)
+      : bound{min}, max{max}, element{element} {}
+    explicit RangeElement(Label max, Element&& element)
+      : bound{max}, max{fst::kNoLabel}, element{std::move(element)} {}
+
+    Label bound;
     Label max;
+
+    bool IsMax() const noexcept { return max == fst::kNoLabel; }
+
+    Element& Get() noexcept { return element; }
+    const Element& Get() const noexcept { return element; }
+
+   private:
     // TODO(MBkkt) unify max and is_max: is_max == true <=> max == NoLabel?
-    bool is_max;
-    // TODO(MBkkt) store element in separate array, to avoid unnecessary copies
     Element element;
   };
 
@@ -514,17 +523,13 @@ template<class F> class DeterminizerStar {
   // with the same ilabel.
   // Side effects on repository, and (via ProcessTransition) on Q_, hash_,
   // and output_arcs_.
-  void ProcessTransitions(
-      std::vector<Element>& closed_subset,
-      std::vector<RangeElement>& all_elems,
-      OutputStateId state) {
-    all_elems.clear();
+  void ProcessTransitions(OutputStateId state) {
+    all_elems_.clear();
 
     { 
-      std::vector<Label> seq; 
       // Push back into "all_elems", elements corresponding to all non-epsilon-input transitions
       // out of all states in "closed_subset".
-      for (const Element& elem : closed_subset) {
+      for (const auto& elem : closed_subset_) {
         for (ArcIterator<Fst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
           const Arc &arc = aiter.Value();
           if (arc.ilabel != 0) {  // Non-epsilon transition -- ignore epsilons here.
@@ -533,86 +538,83 @@ template<class F> class DeterminizerStar {
               .weight = Times(elem.weight, arc.weight),
             };
             if (arc.olabel == 0) {
-              // output epsilon-- this is simple case so handle separately for efficiency
+              // output epsilon -- this is simple case so handle separately for efficiency
               element.string = elem.string;
             } else {
-              seq.clear();
-              repository_.SeqOfId(elem.string, &seq);
-              seq.push_back(arc.olabel);
-              element.string = repository_.IdOfSeq(seq);
+              seq_.clear();
+              repository_.SeqOfId(elem.string, &seq_);
+              seq_.push_back(arc.olabel);
+              element.string = repository_.IdOfSeq(seq_);
             }
-
-            all_elems.emplace_back(RangeElement{arc.min, arc.max, false, element});
-            all_elems.emplace_back(RangeElement{arc.max, arc.max, true, std::move(element)});
+            all_elems_.emplace_back(arc.min, arc.max, element);
+            all_elems_.emplace_back(arc.max, std::move(element));
           }
         }
       }
     }
-    // now sorted first on input label bound, bound type, then on state.
-    if (!epsilon_closure_.FstSorted() || closed_subset.size() > 1) {
-      std::sort(all_elems.begin(), all_elems.end(), [](const auto& lhs, const auto& rhs) {
-        if (lhs.min < rhs.min) {
-          return true;
-        } else if (lhs.min > rhs.min) {
-          return false;
+    // now sorted first on input label bound, bound type, then read comparator
+    if (!epsilon_closure_.FstSorted() || closed_subset_.size() > 1) {
+      std::sort(all_elems_.begin(), all_elems_.end(), [](const auto& lhs, const auto& rhs) {
+        if (lhs.bound != rhs.bound) {
+          return lhs.bound < rhs.bound;
         }
-        if (!lhs.is_max && rhs.is_max) {
-          return true;
-        } else if (lhs.is_max && !rhs.is_max) {
-          return false;
+        const bool lhs_max = lhs.IsMax();
+        const bool rhs_max = rhs.IsMax();
+        if (lhs_max != rhs_max) {
+          return lhs_max < rhs_max;
         }
-        if (lhs.is_max) {
+        const auto& lhs_e = lhs.Get();
+        const auto& rhs_e = rhs.Get();
+        if (lhs_max) {
           // same max elements just sorted by state
-          IRS_ASSERT(lhs.element.state != rhs.element.state && &lhs != &rhs);
-          return lhs.element.state < rhs.element.state;
+          IRS_ASSERT((&lhs != &rhs) == (lhs_e.state != rhs_e.state));
+          return lhs_e.state < rhs_e.state;
         }
         // same min elements sorted opposite to their max elements
-        if (lhs.max < rhs.max) {
-          return false;
-        } else if (lhs.max > rhs.max) {
-          return true;
+        if (lhs.max != rhs.max) {
+          return lhs.max > rhs.max;
         }
-        IRS_ASSERT(lhs.element.state != rhs.element.state && &lhs != &rhs);
-        return lhs.element.state > rhs.element.state;
+        IRS_ASSERT((&lhs != &rhs) == (lhs_e.state != rhs_e.state));
+        return lhs_e.state > rhs_e.state;
       });
     }
 
     // reuse memory as we don't need data anymore
-    std::vector<Element>& subset = closed_subset;
-    subset.clear();
+    closed_subset_.clear();
     fsa::RangeLabel label;
 
-    for (auto& e : all_elems) {
-      const auto bound = e.min;
-      const bool is_max = e.is_max;
+    for (auto& e : all_elems_) {
+      const auto& bound = e.bound;
+      const bool is_max = e.IsMax();
 
       if (!is_max) {
         if (label.ilabel != fst::kNoLabel && label.min != bound) {
           label.max = bound - 1;
-          assert(!subset.empty() && label.min <= label.max);
-          ProcessTransition(state, label.ilabel, &subset);
+          assert(!closed_subset_.empty());
+          assert(label.min <= label.max);
+          ProcessTransition(state, label.ilabel, &closed_subset_);
         }
 
-        // TODO(MBkkt) move?
-        subset.emplace_back(e.element);
+        closed_subset_.emplace_back(std::move(e.Get()));
         label.min = bound;
       } else {
         if (label.max != bound) {
           label.max = bound;
-          assert(!subset.empty() && label.min <= label.max);
-          ProcessTransition(state, label.ilabel, &subset);
+          assert(!closed_subset_.empty());
+          assert(label.min <= label.max);
+          ProcessTransition(state, label.ilabel, &closed_subset_);
           label.min = bound + 1;
         }
 
-        assert(!subset.empty());
-        subset.pop_back();
-        if (subset.empty()) {
+        assert(!closed_subset_.empty());
+        closed_subset_.pop_back();
+        if (closed_subset_.empty()) {
           label.ilabel = fst::kNoLabel;
         }
       }
     }
 
-    assert(subset.empty());
+    assert(closed_subset_.empty());
   }
 
   // SubsetToStateId converts a subset (vector of Elements) to a StateId in the output
@@ -651,25 +653,25 @@ template<class F> class DeterminizerStar {
   // of (states, weights)).  After that we ignore epsilons.  We process the final-weight
   // of the state, and then handle transitions out (this may add more determinized states
   // to the queue).
-  void ProcessSubset(
-      const std::pair<std::vector<Element>*, OutputStateId>& pair,
-      std::vector<RangeElement>* all_elems,
-      std::vector<Element>* closed_subset) {  // subset after epsilon closure.
+  void ProcessSubset(const std::pair<std::vector<Element>*, OutputStateId>& pair) {
     OutputStateId state = pair.second;
 
-    epsilon_closure_.GetEpsilonClosure(*pair.first, closed_subset);
+    epsilon_closure_.GetEpsilonClosure(*pair.first, &closed_subset_);
 
     // Now follow non-epsilon arcs [and also process final states]
-    ProcessFinal(*closed_subset, state);
+    ProcessFinal(closed_subset_, state);
 
     // Now handle transitions out of these states.
-    ProcessTransitions(*closed_subset, *all_elems, state);
+    ProcessTransitions(state);
   }
 
   void Debug();
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(DeterminizerStar);
   std::deque<std::pair<std::vector<Element>*, OutputStateId> > Q_;  // queue of subsets to be processed.
+  std::vector<Element> closed_subset_;  // subset after epsilon closure.
+  std::vector<RangeElement> all_elems_;
+  std::vector<Label> seq_;
 
   std::vector<std::vector<TempArc> > output_arcs_;  // essentially an FST in our format.
 
