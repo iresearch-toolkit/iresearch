@@ -283,8 +283,8 @@ void MemoryIndexOutput::Truncate(size_t pos) noexcept {
 }
 
 void MemoryIndexOutput::WriteBytes(const byte_type* b, size_t len) {
-  WriteBytesImpl(b, len, [pos = pos_](const byte_type* b, size_t len) {
-    std::memcpy(pos, b, len);
+  WriteBytesImpl(b, len, [&](const byte_type* b, size_t len) noexcept {
+    std::memcpy(pos_, b, len);
   });
 }
 
@@ -321,7 +321,7 @@ class ChecksumMemoryIndexOutput final : public MemoryIndexOutput {
   }
 
   void WriteDirect(const byte_type* b, size_t len) final {
-    crc_.process_bytes(buf_, end_ - buf_);
+    crc_.process_bytes(buf_, pos_ - buf_);
     NextBuffer();
   }
 
@@ -352,7 +352,7 @@ IndexOutput::ptr MemoryDirectory::create(std::string_view name) noexcept try {
   std::lock_guard lock{flock_};
 
   auto it = files_.lazy_emplace(name, [&](const auto& ctor) {
-    ctor(new MemoryFile{files_.get_allocator().ResourceManager()});
+    ctor(name, new MemoryFile{files_.get_allocator().ResourceManager()});
   });
 
   it->second->Reset();

@@ -134,6 +134,21 @@ class BufferedOutput : public DataOutput {
   byte_type* end_{};
 
  private:
+  // TODO(MBkkt) move it to cpp
+  template<typename N>
+  IRS_NO_INLINE void WriteFixFlush(N n, size_t remain) {
+    std::memcpy(pos_, &n, remain);
+    FlushBuffer();
+    remain = sizeof(n) - remain;
+    std::memcpy(pos_, &n, remain);
+    pos_ += remain;
+  }
+
+  template<typename N>
+  IRS_NO_INLINE void WriteVarFlush(N n, size_t remain) {
+    WriteVarBytes(n, [&](byte_type b) { WriteByte(b); });
+  }
+
   template<typename N>
   IRS_FORCE_INLINE void WriteFixImpl(N n) {
     static constexpr size_t Needed = sizeof(n);
@@ -154,12 +169,6 @@ class BufferedOutput : public DataOutput {
     }
     WriteVarBytes(n, [&](byte_type b) { *pos_++ = b; });
   }
-
-  template<typename N>
-  IRS_NO_INLINE void WriteFixFlush(N n, size_t size);
-
-  template<typename N>
-  IRS_NO_INLINE void WriteVarFlush(N n, size_t size);
 };
 
 class IndexOutput : public BufferedOutput {

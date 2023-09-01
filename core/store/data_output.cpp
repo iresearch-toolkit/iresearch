@@ -69,30 +69,4 @@ void BufferedOutput::WriteBytes(const byte_type* b, size_t len) {
   WriteBuffer(b, len);
 }
 
-template<typename N>
-void BufferedOutput::WriteFixFlush(N n, size_t remain) {
-  std::memcpy(pos_, &n, remain);
-  FlushBuffer();
-  remain = sizeof(n) - remain;
-  std::memcpy(pos_, &n, remain);
-  pos_ += remain;
-}
-
-template<typename N>
-void BufferedOutput::WriteVarFlush(N n, size_t remain) {
-  WriteVarBytes(n, [&](byte_type b) { WriteByte(b); });
-}
-
-template<>
-void BufferedOutput::WriteFixFlush<uint16_t>(uint16_t n, size_t remain);
-template<>
-void BufferedOutput::WriteFixFlush<uint32_t>(uint32_t n, size_t remain);
-template<>
-void BufferedOutput::WriteFixFlush<uint64_t>(uint64_t n, size_t remain);
-
-template<>
-void BufferedOutput::WriteVarFlush<uint32_t>(uint32_t n, size_t remain);
-template<>
-void BufferedOutput::WriteVarFlush<uint64_t>(uint64_t n, size_t remain);
-
 }  // namespace irs
