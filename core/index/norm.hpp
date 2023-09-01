@@ -134,14 +134,14 @@ class Norm2Writer : public FeatureWriter {
 
   void write(const field_stats& stats, doc_id_t doc,
              // cppcheck-suppress constParameter
-             column_output& writer) final {
+             ColumnOutput& writer) final {
     hdr_.Reset(stats.len);
 
     writer.Prepare(doc);
     WriteValue(writer, stats.len);
   }
 
-  void write(data_output& out, bytes_view payload) final {
+  void write(DataOutput& out, bytes_view payload) final {
     uint32_t value;
 
     switch (payload.size()) {
@@ -167,17 +167,17 @@ class Norm2Writer : public FeatureWriter {
   void finish(bstring& out) final { Norm2Header::Write(hdr_, out); }
 
  private:
-  static void WriteValue(data_output& out, uint32_t value) {
+  static void WriteValue(DataOutput& out, uint32_t value) {
     if constexpr (sizeof(T) == sizeof(byte_type)) {
-      out.write_byte(static_cast<byte_type>(value & 0xFF));
+      out.WriteByte(static_cast<byte_type>(value & 0xFF));
     }
 
     if constexpr (sizeof(T) == sizeof(uint16_t)) {
-      out.write_short(static_cast<uint16_t>(value & 0xFFFF));
+      out.WriteU16(static_cast<uint16_t>(value & 0xFFFF));
     }
 
     if constexpr (sizeof(T) == sizeof(uint32_t)) {
-      out.write_int(value);
+      out.WriteU32(value);
     }
   }
 

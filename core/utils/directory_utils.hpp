@@ -55,7 +55,7 @@ struct TrackingDirectory final : public directory {
     return impl_.attributes();
   }
 
-  index_output::ptr create(std::string_view name) noexcept final;
+  IndexOutput::ptr create(std::string_view name) noexcept final;
 
   bool exists(bool& result, std::string_view name) const noexcept final {
     return impl_.exists(result, name);
@@ -103,7 +103,7 @@ struct TrackingDirectory final : public directory {
   directory& impl_;
   uint64_t files_size_{};
   FileSet files_;
-  index_output::OnClose on_close_;
+  // IndexOutput::OnClose on_close_;
 };
 
 // Track files created/opened via file refs instead of file names
@@ -123,7 +123,7 @@ struct RefTrackingDirectory : public directory {
 
   void clear_refs() const;
 
-  index_output::ptr create(std::string_view name) noexcept final;
+  IndexOutput::ptr create(std::string_view name) noexcept final;
 
   bool exists(bool& result, std::string_view name) const noexcept final {
     return impl_.exists(result, name);

@@ -22,8 +22,6 @@
 
 #pragma once
 
-#include <streambuf>
-
 #include "utils/bytes_utils.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/noncopyable.hpp"
@@ -31,148 +29,155 @@
 
 namespace irs {
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct data_output
-/// @brief base interface for all low-level output data streams
-//////////////////////////////////////////////////////////////////////////////
-struct data_output {
-  using iterator_category = std::output_iterator_tag;
-  using value_type = void;
-  using pointer = void;
-  using reference = void;
-  using difference_type = void;
+#define IRS_UNREACHABLE() \
+  do {                    \
+    IRS_ASSERT(false);    \
+    ABSL_UNREACHABLE();   \
+  } while (false)
 
-  virtual ~data_output() = default;
+template<typename T>
+T byteswap(T value) {
+  return value;
+}
 
-  virtual void write_byte(byte_type b) = 0;
-
-  virtual void write_bytes(const byte_type* b, size_t len) = 0;
-
-  virtual void write_short(int16_t i) { irs::write<uint16_t>(*this, i); }
-
-  virtual void write_int(int32_t i) { irs::write<uint32_t>(*this, i); }
-
-  virtual void write_long(int64_t i) { irs::write<uint64_t>(*this, i); }
-
-  virtual void write_vint(uint32_t i) { irs::vwrite<uint32_t>(*this, i); }
-
-  virtual void write_vlong(uint64_t i) { irs::vwrite<uint64_t>(*this, i); }
-
-  data_output& operator=(byte_type b) {
-    write_byte(b);
-    return *this;
+template<typename N, typename Assign>
+IRS_FORCE_INLINE void WriteVarBytes(N n, Assign&& assign) {
+  static constexpr N kMax = 0x80;
+  // TODO(MBkkt) Maybe unrolled cycle is better?
+  while (n >= kMax) {
+    assign(static_cast<byte_type>(n | kMax));
+    n >>= 7;
   }
-  data_output& operator*() noexcept { return *this; }
-  data_output& operator++() noexcept { return *this; }
-  data_output& operator++(int) noexcept { return *this; }
-};
+  assign(static_cast<byte_type>(n));
+}
 
-class index_output : public data_output {
+class DataOutput {
  public:
-  using OnClose = std::function<void(size_t)>;
+  virtual ~DataOutput() = default;
 
-  DECLARE_IO_PTR(index_output, close);
-  DEFINE_FACTORY_INLINE(index_output);
+  // According to C++ standard it's safe to convert signed to unsigned
+  // But not opposite!
+  // So we should read signed but write unsigned or duplicate code.
+  // Duplicate code potentially worse for perfomance:
+  //  more virtual functions in vtable, symbols, etc -- code colder
 
-  virtual void flush() = 0;
+  virtual void WriteByte(byte_type b) = 0;
+  virtual void WriteBytes(const byte_type* b, size_t len) = 0;
 
-  void close() {
-    const auto size = CloseImpl();
-    if (callback_ && *callback_) {
-      (*callback_)(size);
-    }
-  }
-
-  virtual size_t file_pointer() const = 0;
-
-  virtual int64_t checksum() const = 0;
-
-  const OnClose* SetCallback(const OnClose* callback) noexcept {
-    return std::exchange(callback_, callback);
-  }
-
- private:
-  virtual size_t CloseImpl() = 0;
-
-  const OnClose* callback_{};
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class output_buf
-//////////////////////////////////////////////////////////////////////////////
-class output_buf final : public std::streambuf, util::noncopyable {
- public:
-  typedef std::streambuf::char_type char_type;
-  typedef std::streambuf::int_type int_type;
-
-  explicit output_buf(index_output* out);
-
-  std::streamsize xsputn(const char_type* c, std::streamsize size) final;
-
-  int_type overflow(int_type c) final;
-
-  index_output* internal() const { return out_; }
-
- private:
-  index_output* out_;
-};
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class buffered_index_output
-//////////////////////////////////////////////////////////////////////////////
-class buffered_index_output : public index_output, util::noncopyable {
- public:
-  void flush() final;
-
-  size_t file_pointer() const final;
-
-  void write_byte(byte_type b) final;
-
-  void write_bytes(const byte_type* b, size_t length) final;
-
-  void write_short(int16_t value) final;
-
-  void write_vint(uint32_t v) final;
-
-  void write_vlong(uint64_t v) final;
-
-  void write_int(int32_t v) final;
-
-  void write_long(int64_t v) final;
-
-  buffered_index_output& operator=(byte_type b) {
-    write_byte(b);
-    return *this;
-  }
-  buffered_index_output& operator*() noexcept { return *this; }
-  buffered_index_output& operator++() noexcept { return *this; }
-  buffered_index_output& operator++(int) noexcept { return *this; }
+  virtual void WriteU16(uint16_t n) = 0;
+  virtual void WriteU32(uint32_t n) = 0;
+  virtual void WriteU64(uint64_t n) = 0;
+  virtual void WriteV32(uint32_t n) = 0;
+  virtual void WriteV64(uint64_t n) = 0;
 
  protected:
-  void reset(byte_type* buf, size_t size) noexcept {
-    buf_ = buf;
-    pos_ = buf;
-    end_ = buf + size;
-    buf_size_ = size;
+  template<typename N>
+  IRS_FORCE_INLINE void WriteFixImpl(N n) {
+    // TODO(MBkkt) change to little in new version
+    n = absl::big_endian::FromHost(n);
+    WriteBytes(reinterpret_cast<byte_type*>(&n), sizeof(n));
   }
 
-  size_t CloseImpl() override;
+  template<typename N>
+  IRS_FORCE_INLINE void WriteVarImpl(N n) {
+    WriteVarBytes(n, [&](byte_type b) { WriteByte(b); });
+  }
+};
 
-  virtual void flush_buffer(const byte_type* b, size_t len) = 0;
+// Instead of default implementation to avoid double virtual call
+#define IRS_DATA_OUTPUT_MEMBERS                        \
+  void WriteU16(uint16_t n) final { WriteFixImpl(n); } \
+  void WriteU32(uint32_t n) final { WriteFixImpl(n); } \
+  void WriteU64(uint64_t n) final { WriteFixImpl(n); } \
+  void WriteV32(uint32_t n) final { WriteVarImpl(n); } \
+  void WriteV64(uint64_t n) final { WriteVarImpl(n); }
 
-  byte_type* buffer() const noexcept { return buf_; }
+class BufferedOutput : public DataOutput {
+ public:
+  void WriteByte(byte_type b) final {
+    if (IRS_UNLIKELY(pos_ == end_)) {
+      FlushBuffer();
+    }
+    *pos_++ = b;
+  }
 
-  size_t buffer_offset() const noexcept { return start_; }
+  void WriteBytes(const byte_type* b, size_t len) override;
 
-  // returns number of reamining bytes in the buffer
-  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  void WriteU16(uint16_t n) final { WriteFixImpl(n); }
+  void WriteU32(uint32_t n) final { WriteFixImpl(n); }
+  void WriteU64(uint64_t n) final { WriteFixImpl(n); }
+
+  void WriteV32(uint32_t n) final { WriteVarImpl(n); }
+  void WriteV64(uint64_t n) final { WriteVarImpl(n); }
+
+ protected:
+  BufferedOutput(byte_type* buf, byte_type* end)
+    : buf_{buf}, pos_{buf}, end_{end} {}
+
+  IRS_FORCE_INLINE size_t Length() const noexcept { return pos_ - buf_; }
+  IRS_FORCE_INLINE size_t Remain() const noexcept { return end_ - pos_; }
+
+  IRS_FORCE_INLINE void FlushBuffer() {
+    WriteDirect(buf_, Length());
+    pos_ = buf_;
+  }
+
+  virtual void WriteDirect(const byte_type* b, size_t len) = 0;
+
+  IRS_FORCE_INLINE void WriteBuffer(const byte_type* b, size_t len) {
+    std::memcpy(pos_, b, len);
+    pos_ += len;
+  }
+
+  byte_type* buf_{};
+  byte_type* pos_{};
+  byte_type* end_{};
 
  private:
-  byte_type* buf_{};
-  byte_type* pos_{};  // position in buffer
-  byte_type* end_{};
-  size_t start_{};  // position of buffer in a file
-  size_t buf_size_{};
+  template<typename N>
+  IRS_FORCE_INLINE void WriteFixImpl(N n) {
+    static constexpr size_t Needed = sizeof(n);
+    // TODO(MBkkt) change to little in new version
+    n = absl::big_endian::FromHost(n);
+    if (const auto remain = Remain(); IRS_UNLIKELY(remain < Needed)) {
+      return WriteFixFlush(n, remain);
+    }
+    std::memcpy(buf_, &n, Needed);
+    pos_ += Needed;
+  }
+
+  template<typename N>
+  IRS_FORCE_INLINE void WriteVarImpl(N n) {
+    static constexpr size_t Needed = (sizeof(n) * 8 + 6) / 7;
+    if (const auto remain = Remain(); IRS_UNLIKELY(remain < Needed)) {
+      return WriteVarFlush(n, remain);
+    }
+    WriteVarBytes(n, [&](byte_type b) { *pos_++ = b; });
+  }
+
+  template<typename N>
+  IRS_NO_INLINE void WriteFixFlush(N n, size_t size);
+
+  template<typename N>
+  IRS_NO_INLINE void WriteVarFlush(N n, size_t size);
+};
+
+class IndexOutput : public BufferedOutput {
+ public:
+  using BufferedOutput::BufferedOutput;
+
+  IRS_USING_IO_PTR(IndexOutput, Close);
+
+  virtual size_t Position() const noexcept = 0;
+
+  // Flush output
+  virtual void Flush() = 0;
+
+  // Flush and compute checksum output
+  virtual uint32_t Checksum() = 0;
+
+  // Flush and close output
+  virtual void Close() = 0;
 };
 
 }  // namespace irs

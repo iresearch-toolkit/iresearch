@@ -34,13 +34,13 @@
 
 namespace irs {
 
-bool encrypt(std::string_view filename, index_output& out, encryption* enc,
+bool encrypt(std::string_view filename, IndexOutput& out, encryption* enc,
              bstring& header, encryption::stream::ptr& cipher) {
   header.resize(enc ? enc->header_length() : 0);
 
   if (header.empty()) {
     // no encryption
-    irs::write_string(out, header);
+    irs::WriteStr(out, header);
     return false;
   }
 
@@ -52,7 +52,7 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   }
 
   // header is encrypted here
-  irs::write_string(out, header);
+  irs::WriteStr(out, header);
 
   cipher = enc->create_stream(filename, header.data());
 
@@ -70,7 +70,7 @@ bool encrypt(std::string_view filename, index_output& out, encryption* enc,
   // header is decrypted here, write checksum
   crc32c crc;
   crc.process_bytes(header.c_str(), header.size());
-  out.write_vlong(crc.checksum());
+  out.WriteV64(crc.checksum());
 
   return true;
 }
@@ -124,131 +124,39 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
   return true;
 }
 
-encrypted_output::encrypted_output(index_output& out,
-                                   encryption::stream& cipher,
-                                   size_t num_buffers)
-  : out_(&out),
-    cipher_(&cipher),
-    buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
-    buf_(std::make_unique<byte_type[]>(buf_size_)),
-    start_(0),
-    pos_(buf_.get()),
-    end_(pos_ + buf_size_) {
-  IRS_ASSERT(buf_size_);
+EncryptedOutput::EncryptedOutput(IndexOutput& out, encryption::stream& cipher,
+                                 size_t num_blocks)
+  : IndexOutput{nullptr, nullptr}, out_{&out}, cipher_{&cipher} {
+  IRS_ASSERT(num_blocks);
+  const auto block_size = cipher.block_size();
+  IRS_ASSERT(block_size);
+  const auto buf_size = block_size * num_blocks;
+  buf_ = std::allocator<byte_type>{}.allocate(buf_size);
+  pos_ = buf_;
+  end_ = buf_ + buf_size;
 }
 
-encrypted_output::encrypted_output(index_output::ptr&& out,
-                                   encryption::stream& cipher,
-                                   size_t num_buffers)
-  : encrypted_output(*out, cipher, num_buffers) {
+EncryptedOutput::EncryptedOutput(IndexOutput::ptr&& out,
+                                 encryption::stream& cipher, size_t num_blocks)
+  : EncryptedOutput{*out, cipher, num_blocks} {
+  IRS_ASSERT(out);
   managed_out_ = std::move(out);
 }
 
-void encrypted_output::write_int(int32_t value) {
-  if (remain() < sizeof(uint32_t)) {
-    irs::write<uint32_t>(*this, value);
-  } else {
-    irs::write<uint32_t>(pos_, value);
-  }
+EncryptedOutput::~EncryptedOutput() {
+  std::allocator<byte_type>{}.deallocate(buf_, end_ - buf_);
 }
 
-void encrypted_output::write_long(int64_t value) {
-  if (remain() < sizeof(uint64_t)) {
-    irs::write<uint64_t>(*this, value);
-  } else {
-    irs::write<uint64_t>(pos_, value);
-  }
-}
-
-void encrypted_output::write_vint(uint32_t v) {
-  if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    irs::vwrite<uint32_t>(*this, v);
-  } else {
-    irs::vwrite<uint32_t>(pos_, v);
-  }
-}
-
-void encrypted_output::write_vlong(uint64_t v) {
-  if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    irs::vwrite<uint64_t>(*this, v);
-  } else {
-    irs::vwrite<uint64_t>(pos_, v);
-  }
-}
-
-void encrypted_output::write_byte(byte_type b) {
-  if (pos_ >= end_) {
-    flush();
-  }
-
-  *pos_++ = b;
-}
-
-void encrypted_output::write_bytes(const byte_type* b, size_t length) {
-  IRS_ASSERT(pos_ <= end_);
-  auto left = size_t(std::distance(pos_, end_));
-
-  // is there enough space in the buffer?
-  if (left >= length) {
-    // we add the data to the end of the buffer
-    std::memcpy(pos_, b, length);
-    pos_ += length;
-
-    // if the buffer is full, flush it
-    if (end_ == pos_) {
-      flush();
-    }
-  } else {
-    // we fill/flush the buffer (until the input is written)
-    size_t slice_pos = 0;  // position in the input data
-
-    while (slice_pos < length) {
-      auto slice_len = std::min(length - slice_pos, left);
-
-      std::memcpy(pos_, b + slice_pos, slice_len);
-      slice_pos += slice_len;
-      pos_ += slice_len;
-
-      // if the buffer is full, flush it
-      left -= slice_len;
-      if (pos_ == end_) {
-        flush();
-        left = buf_size_;
-      }
-    }
-  }
-}
-
-size_t encrypted_output::file_pointer() const noexcept {
-  IRS_ASSERT(buf_.get() <= pos_);
-  return start_ + size_t(std::distance(buf_.get(), pos_));
-}
-
-void encrypted_output::flush() {
-  if (!out_) {
-    return;
-  }
-
-  IRS_ASSERT(buf_.get() <= pos_);
-  const auto size = size_t(std::distance(buf_.get(), pos_));
-
-  if (!cipher_->encrypt(out_->file_pointer(), buf_.get(), size)) {
-    throw io_error{absl::StrCat("Buffer size ", size,
+void EncryptedOutput::WriteDirect(const byte_type* b, size_t len) {
+  IRS_ASSERT(b == buf_);
+  if (!cipher_->encrypt(out_->Position(), pos_, Length())) {
+    throw io_error{absl::StrCat("Buffer size ", len,
                                 " is not multiple of cipher block size ",
                                 cipher_->block_size())};
   }
 
-  out_->write_bytes(buf_.get(), size);
-  start_ += size;
-  pos_ = buf_.get();
-}
-
-size_t encrypted_output::CloseImpl() {
-  flush();
-  const auto size = file_pointer();
-  start_ = 0;
-  pos_ = buf_.get();
-  return size;
+  out_->WriteBytes(b, len);
+  offset_ += len;
 }
 
 encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
@@ -257,10 +165,10 @@ encrypted_input::encrypted_input(index_input& in, encryption::stream& cipher,
     buf_(std::make_unique<byte_type[]>(buf_size_)),
     in_(&in),
     cipher_(&cipher),
-    start_(in_->file_pointer()),
+    start_(in_->Position()),
     length_(in_->length() - start_ - padding) {
   IRS_ASSERT(cipher.block_size() && buf_size_);
-  IRS_ASSERT(in_ && in_->length() >= in_->file_pointer() + padding);
+  IRS_ASSERT(in_ && in_->length() >= in_->Position() + padding);
   buffered_index_input::reset(buf_.get(), buf_size_, 0);
 }
 
@@ -281,11 +189,11 @@ encrypted_input::encrypted_input(const encrypted_input& rhs,
     start_(rhs.start_),
     length_(rhs.length_) {
   IRS_ASSERT(cipher_->block_size());
-  buffered_index_input::reset(buf_.get(), buf_size_, rhs.file_pointer());
+  buffered_index_input::reset(buf_.get(), buf_size_, rhs.Position());
 }
 
-int64_t encrypted_input::checksum(size_t offset) const {
-  const auto begin = file_pointer();
+uint32_t encrypted_input::checksum(size_t offset) const {
+  const auto begin = Position();
   const auto end = (std::min)(begin + offset, this->length());
 
   Finally restore_position = [begin, this]() noexcept {
@@ -296,7 +204,7 @@ int64_t encrypted_input::checksum(size_t offset) const {
   const_cast<encrypted_input*>(this)->seek_internal(begin);
 
   crc32c crc;
-  byte_type buf[DEFAULT_ENCRYPTION_BUFFER_SIZE];
+  byte_type buf[kDefaultEncryptionBufferSize];
 
   for (auto pos = begin; pos < end;) {
     const auto to_read = (std::min)(end - pos, sizeof buf);
@@ -331,13 +239,13 @@ index_input::ptr encrypted_input::reopen() const {
 void encrypted_input::seek_internal(size_t pos) {
   pos += start_;
 
-  if (pos != in_->file_pointer()) {
+  if (pos != in_->Position()) {
     in_->seek(pos);
   }
 }
 
 size_t encrypted_input::read_internal(byte_type* b, size_t count) {
-  const auto offset = in_->file_pointer();
+  const auto offset = in_->Position();
 
   const auto read = in_->read_bytes(b, count);
 

@@ -31,18 +31,17 @@
 #include "utils/encryption.hpp"
 #include "utils/math_utils.hpp"
 
-namespace irs {
-namespace columnstore2 {
+namespace irs::columnstore2 {
 
 enum class Version : int32_t { kMin = 0, kMax = kMin };
 
-class column final : public irs::column_output {
+class column final : public ColumnOutput {
  public:
   static constexpr size_t kBlockSize = sparse_bitmap_writer::kBlockSize;
   static_assert(math::is_power2(kBlockSize));
 
   struct context {
-    index_output* data_out;
+    IndexOutput* data_out;
     encryption::stream* cipher;
     union {
       byte_type* u8buf;
@@ -69,13 +68,15 @@ class column final : public irs::column_output {
                   compression::compressor::ptr deflater,
                   IResourceManager& resource_manager);
 
-  void write_byte(byte_type b) final { data_.stream.write_byte(b); }
+  void WriteByte(byte_type b) final { data_.stream.WriteByte(b); }
 
-  void write_bytes(const byte_type* b, size_t size) final {
-    data_.stream.write_bytes(b, size);
+  void WriteBytes(const byte_type* b, size_t size) final {
+    data_.stream.WriteBytes(b, size);
   }
 
-  void reset() final;
+  IRS_DATA_OUTPUT_MEMBERS
+
+  void Reset() final;
 
  private:
   friend class writer;
@@ -145,7 +146,7 @@ class column final : public irs::column_output {
     }
   }
 
-  void finish(index_output& index_out);
+  void finish(IndexOutput& index_out);
 
   std::string_view name() const noexcept { return name_; }
 
@@ -156,8 +157,8 @@ class column final : public irs::column_output {
   compression::compressor::ptr deflater_;
   columnstore_writer::column_finalizer_f finalizer_;
   ManagedVector<column_block> blocks_;  // at most 65536 blocks
-  memory_output data_;
-  memory_output docs_;
+  MemoryOutput data_;
+  MemoryOutput docs_;
   sparse_bitmap_writer docs_writer_{docs_.stream, ctx_.version};
   address_table addr_table_;
   bstring payload_;
@@ -198,7 +199,7 @@ class writer final : public columnstore_writer {
   std::deque<column, ManagedTypedAllocator<column>>
     columns_;  // pointers remain valid
   std::vector<column*> sorted_columns_;
-  index_output::ptr data_out_;
+  IndexOutput::ptr data_out_;
   encryption::stream::ptr data_cipher_;
   byte_type* buf_;
   Version ver_;
@@ -292,9 +293,8 @@ class reader final : public columnstore_reader {
   index_input::ptr data_in_;
 };
 
-irs::columnstore_writer::ptr make_writer(Version version, bool consolidation,
-                                         IResourceManager& rm);
-irs::columnstore_reader::ptr make_reader();
+columnstore_writer::ptr make_writer(Version version, bool consolidation,
+                                    IResourceManager& rm);
+columnstore_reader::ptr make_reader();
 
-}  // namespace columnstore2
-}  // namespace irs
+}  // namespace irs::columnstore2

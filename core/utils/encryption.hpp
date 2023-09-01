@@ -35,7 +35,7 @@ namespace irs {
 /// @returns true if cipher stream was initialized, false if encryption is not
 ///          appliclabe
 /// @throws index_error in case of error on header or stream creation
-bool encrypt(std::string_view filename, index_output& out, encryption* enc,
+bool encrypt(std::string_view filename, IndexOutput& out, encryption* enc,
              bstring& header, encryption::stream::ptr& cipher);
 
 /// @brief create corresponding cipher stream from a specified encryption header
@@ -48,69 +48,44 @@ bool decrypt(std::string_view filename, index_input& in, encryption* enc,
 ////////////////////////////////////////////////////////////////////////////////
 ///// @brief reasonable default value for a buffer serving encryption
 ////////////////////////////////////////////////////////////////////////////////
-constexpr size_t DEFAULT_ENCRYPTION_BUFFER_SIZE = 1024;
+inline constexpr size_t kDefaultEncryptionBufferSize = 1024;
 
-////////////////////////////////////////////////////////////////////////////////
-///// @class encrypted_output
-////////////////////////////////////////////////////////////////////////////////
-class encrypted_output : public irs::index_output, util::noncopyable {
+class EncryptedOutput final : public IndexOutput, util::noncopyable {
  public:
-  encrypted_output(index_output& out, encryption::stream& cipher,
-                   size_t num_buffers);
+  EncryptedOutput(IndexOutput& out, encryption::stream& cipher,
+                  size_t num_blocks);
 
-  encrypted_output(index_output::ptr&& out, encryption::stream& cipher,
-                   size_t num_buffers);
+  EncryptedOutput(IndexOutput::ptr&& out, encryption::stream& cipher,
+                  size_t num_blocks);
 
-  void flush() final;
+  ~EncryptedOutput() final;
 
-  size_t file_pointer() const noexcept final;
+  IndexOutput::ptr Release() noexcept { return std::move(managed_out_); }
 
-  void write_byte(byte_type b) final;
+  size_t Position() const noexcept final { return offset_ + Length(); }
 
-  void write_bytes(const byte_type* b, size_t length) final;
+  void Flush() final { FlushBuffer(); }
 
-  void write_vint(uint32_t v) final;
-
-  void write_vlong(uint64_t v) final;
-
-  void write_int(int32_t v) final;
-
-  void write_long(int64_t v) final;
-
-  int64_t checksum() const final {
-    // FIXME do we need to calculate checksum over
-    // unencrypted data here? That will slow down writes.
-    return out_->checksum();
+  uint32_t Checksum() final {
+    // FIXME do we need to calculate checksum over unencrypted data here?
+    // That will slow down writes.
+    // TODO(MBkkt) Flush?
+    return out_->Checksum();
   }
 
-  size_t buffer_size() const noexcept { return buf_size_; }
-
-  const index_output& stream() const noexcept { return *out_; }
-
-  index_output::ptr release() noexcept { return std::move(managed_out_); }
-
-  encrypted_output& operator=(byte_type b) {
-    write_byte(b);
-    return *this;
+  void Close() final {
+    Flush();
+    offset_ = 0;
+    pos_ = buf_;
   }
-  encrypted_output& operator*() noexcept { return *this; }
-  encrypted_output& operator++() noexcept { return *this; }
-  encrypted_output& operator++(int) noexcept { return *this; }
 
  private:
-  /// @returns number of remaining bytes in the buffer
-  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
+  void WriteDirect(const byte_type* b, size_t len) final;
 
-  size_t CloseImpl() final;
-
-  index_output::ptr managed_out_;
-  index_output* out_;
+  IndexOutput::ptr managed_out_;
+  IndexOutput* out_;
   encryption::stream* cipher_;
-  const size_t buf_size_;
-  std::unique_ptr<byte_type[]> buf_;
-  size_t start_;    // position of buffer in a file
-  byte_type* pos_;  // position in buffer
-  byte_type* end_;
+  size_t offset_{};
 };
 
 class encrypted_input : public buffered_index_input, util::noncopyable {
@@ -127,7 +102,7 @@ class encrypted_input : public buffered_index_input, util::noncopyable {
 
   size_t length() const noexcept final { return length_; }
 
-  int64_t checksum(size_t offset) const final;
+  uint32_t checksum(size_t offset) const final;
 
   size_t buffer_size() const noexcept { return buf_size_; }
 

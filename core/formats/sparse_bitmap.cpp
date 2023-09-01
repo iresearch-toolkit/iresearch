@@ -67,14 +67,16 @@ constexpr uint32_t kDenseBlockIndexWordsPerBlock =
   kDenseBlockIndexBlockSize / bits_required<size_t>();
 
 template<size_t N>
-void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
+void write_block_index(IndexOutput& out, size_t (&bits)[N]) {
   uint16_t popcnt = 0;
-  uint16_t index[kDenseBlockIndexNumBlocks];
-  static_assert(kDenseIndexBlockSizeInBytes == sizeof index);
+  uint16_t data[kDenseBlockIndexNumBlocks];
+  static_assert(kDenseIndexBlockSizeInBytes == sizeof data);
 
-  auto* block = reinterpret_cast<byte_type*>(std::begin(index));
-  auto begin = std::begin(bits);
-  for (; begin != std::end(bits); begin += kDenseBlockIndexWordsPerBlock) {
+  auto* index = reinterpret_cast<byte_type*>(std::begin(data));
+  auto* block = index;
+
+  for (auto begin = std::begin(bits), end = std::end(bits); begin != end;
+       begin += kDenseBlockIndexWordsPerBlock) {
     irs::write<uint16_t>(block, popcnt);
 
     for (uint32_t i = 0; i < kDenseBlockIndexWordsPerBlock; ++i) {
@@ -82,8 +84,7 @@ void write_block_index(irs::index_output& out, size_t (&bits)[N]) {
     }
   }
 
-  out.write_bytes(reinterpret_cast<const byte_type*>(std::begin(index)),
-                  sizeof index);
+  out.WriteBytes(index, kDenseIndexBlockSizeInBytes);
 }
 
 }  // namespace
@@ -108,12 +109,12 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
   IRS_ASSERT(block_ < kBlockSize);
   IRS_ASSERT(popcnt <= kBlockSize);
 
-  out_->write_short(static_cast<uint16_t>(block_));
-  out_->write_short(static_cast<uint16_t>(popcnt - 1));  // -1 to fit uint16_t
+  out_->WriteU16(static_cast<uint16_t>(block_));
+  out_->WriteU16(static_cast<uint16_t>(popcnt - 1));  // -1 to fit uint16_t
 
   if (opts_.track_prev_doc) {
     // write last value in the previous block
-    out_->write_int(last_in_flushed_block_);
+    out_->WriteU32(last_in_flushed_block_);
     last_in_flushed_block_ = prev_value_;
   }
 
@@ -127,14 +128,13 @@ void sparse_bitmap_writer::do_flush(uint32_t popcnt) {
         });
       }
 
-      out_->write_bytes(reinterpret_cast<const byte_type*>(bits_),
-                        sizeof bits_);
+      out_->WriteBytes(reinterpret_cast<const byte_type*>(bits_), sizeof bits_);
     }
   } else {
     bitset_doc_iterator it(std::begin(bits_), std::end(bits_));
 
     while (it.next()) {
-      out_->write_short(static_cast<uint16_t>(it.value()));
+      out_->WriteU16(static_cast<uint16_t>(it.value()));
     }
   }
 }
@@ -236,8 +236,7 @@ struct container_iterator<BT_DENSE, false> {
       IRS_ASSERT(delta > 0);
 
       if constexpr (AT_STREAM == Access) {
-        self->in_->seek(self->in_->file_pointer() +
-                        (delta - 1) * sizeof(size_t));
+        self->in_->seek(self->in_->Position() + (delta - 1) * sizeof(size_t));
         ctx.word = self->in_->read_long();
       } else {
         ctx.u64data += delta;
@@ -366,7 +365,7 @@ struct container_iterator<BT_DENSE, true> {
       if constexpr (AT_STREAM == Access) {
         auto& in = *self->in_;
         // original position
-        const auto pos = in.file_pointer();
+        const auto pos = in.Position();
 
         auto prev = pos - 2 * sizeof(size_t);
         do {
@@ -434,7 +433,7 @@ sparse_bitmap_iterator::sparse_bitmap_iterator(Ptr&& in, const options& opts)
   : in_{std::move(in)},
     seek_func_{&sparse_bitmap_iterator::initial_seek},
     block_index_{opts.blocks},
-    cont_begin_{in_->file_pointer()},
+    cont_begin_{in_->Position()},
     origin_{cont_begin_},
     use_block_index_{opts.use_block_index},
     prev_doc_written_{opts.version >= SparseBitmapVersion::kPrevDoc},
@@ -477,13 +476,13 @@ void sparse_bitmap_iterator::read_block_header() {
 
   if (popcnt == sparse_bitmap_writer::kBlockSize) {
     ctx_.all.missing = block_ - index_;
-    cont_begin_ = in_->file_pointer();
+    cont_begin_ = in_->Position();
 
     seek_func_ = track_prev_doc_ ? &container_iterator<BT_RANGE, true>::seek
                                  : &container_iterator<BT_RANGE, false>::seek;
   } else if (popcnt <= kBitSetThreshold) {
     const size_t block_size = 2 * popcnt;
-    cont_begin_ = in_->file_pointer() + block_size;
+    cont_begin_ = in_->Position() + block_size;
     ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
     ctx_.sparse.index = index_;
 
@@ -510,10 +509,10 @@ void sparse_bitmap_iterator::read_block_header() {
       }
     } else {
       ctx_.dense.index.u8data = nullptr;
-      in_->seek(in_->file_pointer() + kDenseIndexBlockSizeInBytes);
+      in_->seek(in_->Position() + kDenseIndexBlockSizeInBytes);
     }
 
-    cont_begin_ = in_->file_pointer() + block_size;
+    cont_begin_ = in_->Position() + block_size;
     ctx_.u8data = in_->read_buffer(block_size, BufferHint::NORMAL);
 
     seek_func_ = GetSeekFunc<BT_DENSE>(ctx_.u8data, track_prev_doc_);

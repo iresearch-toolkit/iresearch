@@ -1125,8 +1125,8 @@ TEST_P(format_test_case, segment_meta_read_write) {
         return dir_.mtime(result, name);
       }
 
-      irs::index_input::ptr open(std::string_view name,
-                                 irs::IOAdvice advice) const noexcept final {
+      irs::IndexInput::ptr open(std::string_view name,
+                                irs::IOAdvice advice) const noexcept final {
         return dir_.open(name, advice);
       }
 
@@ -1207,14 +1207,14 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
 
     for (; id <= 1024; ++id, ++seg.docs_count) {
       auto& stream = column_handler(id);
-      stream.write_bytes(payload.data(), payload.size());
+      stream.WriteBytes(payload.data(), payload.size());
     }
 
     ++id;  // gap
 
     for (; id <= 2037; ++id, ++seg.docs_count) {
       auto& stream = column_handler(id);
-      stream.write_bytes(payload.data(), payload.size());
+      stream.WriteBytes(payload.data(), payload.size());
     }
 
     irs::flush_state state{
@@ -1726,8 +1726,8 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
 TEST_P(format_test_case, columns_rw_big_document) {
   struct big_stored_field {
-    bool write(irs::data_output& out) const {
-      out.write_bytes(reinterpret_cast<const irs::byte_type*>(buf), sizeof buf);
+    bool write(irs::DataOutput& out) const {
+      out.WriteBytes(reinterpret_cast<const irs::byte_type*>(buf), sizeof buf);
       return true;
     }
 
@@ -2457,8 +2457,8 @@ TEST_P(format_test_case, columns_issue700) {
     for (auto& doc : docs) {
       auto& stream = dense_fixed_offset_column.out(doc.first);
       str.resize(doc.second, 'c');
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.data()),
-                         str.size());
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(str.data()),
+                        str.size());
     }
 
     irs::flush_state state{
@@ -2524,15 +2524,15 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
       {
         auto& stream = dense_fixed_offset_column.out(doc + 1);
 
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&keys),
-                           sizeof keys);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&keys),
+                          sizeof keys);
       }
 
       {
         auto& stream = sparse_fixed_offset_column.out(doc + 3);
 
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&keys),
-                           sizeof keys);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&keys),
+                          sizeof keys);
       }
     }
 
@@ -2721,20 +2721,20 @@ TEST_P(format_test_case, columns_rw) {
     // column==field0
     {
       auto& stream = field0_writer(1);
-      irs::write_string(stream, std::string_view("field0_doc0"));  // doc==1
+      irs::WriteStr(stream, std::string_view("field0_doc0"));  // doc==1
     }
 
     // column==field4
     {
       auto& stream = field4_writer(1);  // doc==1
-      irs::write_string(stream, std::string_view("field4_doc_min"));
+      irs::WriteStr(stream, std::string_view("field4_doc_min"));
     }
 
     // column==field1, multivalued attribute
     {
       auto& stream = field1_writer(1);  // doc==1
-      irs::write_string(stream, std::string_view("field1_doc0"));
-      irs::write_string(stream, std::string_view("field1_doc0_1"));
+      irs::WriteStr(stream, std::string_view("field1_doc0"));
+      irs::WriteStr(stream, std::string_view("field1_doc0_1"));
     }
 
     // column==field2
@@ -2743,33 +2743,33 @@ TEST_P(format_test_case, columns_rw) {
       // rollback
       {
         auto& stream = field2_writer(1);  // doc==1
-        irs::write_string(stream, std::string_view("invalid_string"));
+        irs::WriteStr(stream, std::string_view("invalid_string"));
         stream.reset();  // rollback changes
         stream.reset();  // rollback changes
       }
       {
         auto& stream = field2_writer(1);  // doc==1
-        irs::write_string(stream, std::string_view("field2_doc1"));
+        irs::WriteStr(stream, std::string_view("field2_doc1"));
       }
     }
 
     // column==field0, rollback
     {
       auto& stream = field0_writer(2);  // doc==2
-      irs::write_string(stream, std::string_view("field0_doc1"));
+      irs::WriteStr(stream, std::string_view("field0_doc1"));
       stream.reset();
     }
 
     // column==field0
     {
       auto& stream = field0_writer(2);  // doc==2
-      irs::write_string(stream, std::string_view("field0_doc2"));
+      irs::WriteStr(stream, std::string_view("field0_doc2"));
     }
 
     // column==field0
     {
       auto& stream = field0_writer(33);  // doc==33
-      irs::write_string(stream, std::string_view("field0_doc33"));
+      irs::WriteStr(stream, std::string_view("field0_doc33"));
     }
 
     // column==field1, multivalued attribute
@@ -2779,11 +2779,11 @@ TEST_P(format_test_case, columns_rw) {
       // (e.g. 'field1_doc12_1', 'field1_doc12_2' in this case)
       {
         auto& stream = field1_writer(12);  // doc==12
-        irs::write_string(stream, std::string_view("field1_doc12_1"));
+        irs::WriteStr(stream, std::string_view("field1_doc12_1"));
       }
       {
         auto& stream = field1_writer(12);  // doc==12
-        irs::write_string(stream, std::string_view("field1_doc12_2"));
+        irs::WriteStr(stream, std::string_view("field1_doc12_2"));
       }
     }
 
@@ -2816,39 +2816,39 @@ TEST_P(format_test_case, columns_rw) {
     // column==field3
     {
       auto& stream = field2_writer(1);  // doc==1
-      irs::write_string(stream, std::string_view("segment_2_field3_doc0"));
+      irs::WriteStr(stream, std::string_view("segment_2_field3_doc0"));
     }
 
     // column==field1, multivalued attribute
     {
       auto& stream = field0_writer(1);  // doc==1
-      irs::write_string(stream, std::string_view("segment_2_field1_doc0"));
+      irs::WriteStr(stream, std::string_view("segment_2_field1_doc0"));
     }
 
     // column==field2, rollback
     {
       auto& stream = field1_writer(1);
-      irs::write_string(stream, std::string_view("segment_2_field2_doc0"));
+      irs::WriteStr(stream, std::string_view("segment_2_field2_doc0"));
       stream.reset();  // rollback
     }
 
     // column==field3, rollback
     {
       auto& stream = field2_writer(2);  // doc==2
-      irs::write_string(stream, std::string_view("segment_2_field0_doc1"));
+      irs::WriteStr(stream, std::string_view("segment_2_field0_doc1"));
       stream.reset();  // rollback
     }
 
     // colum==field1
     {
       auto& stream = field0_writer(12);  // doc==12
-      irs::write_string(stream, std::string_view("segment_2_field1_doc12"));
+      irs::WriteStr(stream, std::string_view("segment_2_field1_doc12"));
     }
 
     // colum==field3
     {
       auto& stream = field2_writer(23);  // doc==23
-      irs::write_string(stream, std::string_view("segment_2_field3_doc23"));
+      irs::WriteStr(stream, std::string_view("segment_2_field3_doc23"));
       stream.reset();  // rollback
     }
 
@@ -3473,8 +3473,8 @@ TEST_P(format_test_case, format_utils_checksum) {
   {
     auto stream = dir().create("file");
     ASSERT_NE(nullptr, stream);
-    irs::format_utils::write_header(*stream, "test", 42);
-    irs::format_utils::write_footer(*stream);
+    irs::format_utils::WriteHeader(*stream, "test", 42);
+    irs::format_utils::WriteFooter(*stream);
   }
 
   {
@@ -3507,8 +3507,8 @@ TEST_P(format_test_case, format_utils_header_footer) {
   {
     auto stream = dir().create("file");
     ASSERT_NE(nullptr, stream);
-    irs::format_utils::write_header(*stream, "test", 42);
-    irs::format_utils::write_footer(*stream);
+    irs::format_utils::WriteHeader(*stream, "test", 42);
+    irs::format_utils::WriteFooter(*stream);
   }
 
   {
@@ -3587,9 +3587,9 @@ TEST_P(format_test_case_with_encryption,
     {
       auto [id, handle] =
         writer->push_column(info, [](auto&) { return std::string_view{}; });
-      handle(1).write_byte(1);
-      handle(2).write_byte(2);
-      handle(3).write_byte(3);
+      handle(1).WriteByte(1);
+      handle(2).WriteByte(2);
+      handle(3).WriteByte(3);
     }
 
     const std::set<irs::type_info::type_id> features;

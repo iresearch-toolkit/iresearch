@@ -63,16 +63,14 @@ bool RemoveAllUnreferenced(directory& dir) {
 
 }  // namespace directory_utils
 
-TrackingDirectory::TrackingDirectory(directory& impl) noexcept
-  : impl_{impl}, on_close_{[this](size_t size) noexcept {
-      this->files_size_ += size;
-    }} {}
+TrackingDirectory::TrackingDirectory(directory& impl) noexcept : impl_{impl} {
+  IRS_ASSERT(false);
+}
 
-index_output::ptr TrackingDirectory::create(std::string_view name)  //
-  noexcept try {
+IndexOutput::ptr TrackingDirectory::create(std::string_view name) noexcept try {
   files_.emplace(name);
   if (auto result = impl_.create(name); IRS_LIKELY(result)) {
-    result->SetCallback(&on_close_);
+    // result->SetCallback(&on_close_);
     return result;
   }
   files_.erase(name);  // Revert change
@@ -134,7 +132,7 @@ void RefTrackingDirectory::clear_refs() const {
   refs_.clear();
 }
 
-index_output::ptr RefTrackingDirectory::create(std::string_view name) noexcept {
+IndexOutput::ptr RefTrackingDirectory::create(std::string_view name) noexcept {
   try {
     // Do not change the order of calls!
     // The cleaner should "see" the file in directory

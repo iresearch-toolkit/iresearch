@@ -45,7 +45,7 @@ namespace boost { namespace text {
         }
 
         template<typename T>
-        void write_bytes(
+        void WriteBytes(
             T const & x, filesystem::ofstream & ofs, filesystem_fstream_tag_t)
         {
             ofs.write(reinterpret_cast<char const *>(&x), sizeof(T));
@@ -64,7 +64,7 @@ namespace boost { namespace text {
 
         filesystem::ofstream ofs(path, std::ios_base::binary);
 
-        detail::write_bytes(header, ofs);
+        detail::WriteBytes(header, ofs);
 
         detail::write_collation_elements(
             table.collation_element_vec_, table.collation_elements_, ofs);

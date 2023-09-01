@@ -100,19 +100,19 @@ struct FstReadOptions {
 
 struct FstWriteOptions {
   std::string source;   // Where you're writing to.
-  bool write_header;    // Write the header?
+  bool WriteHeader;    // Write the header?
   bool write_isymbols;  // Write input symbols?
   bool write_osymbols;  // Write output symbols?
   bool align;           // Write data aligned (may fail on pipes)?
   bool stream_write;    // Avoid seek operations in writing.
 
   explicit FstWriteOptions(std::string_view source = "<unspecified>",
-                           bool write_header = true, bool write_isymbols = true,
+                           bool WriteHeader = true, bool write_isymbols = true,
                            bool write_osymbols = true,
                            bool align = FST_FLAGS_fst_align,
                            bool stream_write = false)
       : source(source),
-        write_header(write_header),
+        WriteHeader(WriteHeader),
         write_isymbols(write_isymbols),
         write_osymbols(write_osymbols),
         align(align),
@@ -785,7 +785,7 @@ class FstImpl {
   // This method is needed for implementations that implement Write methods.
   void WriteHeader(std::ostream &strm, const FstWriteOptions &opts, int version,
                    FstHeader *hdr) const {
-    if (opts.write_header) {
+    if (opts.WriteHeader) {
       hdr->SetFstType(type_);
       hdr->SetArcType(Arc::Type());
       hdr->SetVersion(version);
@@ -813,7 +813,7 @@ class FstImpl {
                              const FstWriteOptions &opts, int version,
                              std::string_view type, uint64_t properties,
                              FstHeader *hdr) {
-    if (opts.write_header) {
+    if (opts.WriteHeader) {
       hdr->SetFstType(type);
       hdr->SetArcType(Arc::Type());
       hdr->SetVersion(version);

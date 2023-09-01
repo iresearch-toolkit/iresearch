@@ -37,7 +37,7 @@
 
 namespace irs {
 
-struct data_output;
+class DataOutput;
 class token_stream;
 
 }  // namespace irs
@@ -56,7 +56,7 @@ struct ifield {
   virtual irs::IndexFeatures index_features() const = 0;
   virtual irs::token_stream& get_tokens() const = 0;
   virtual std::string_view name() const = 0;
-  virtual bool write(irs::data_output& out) const = 0;
+  virtual bool write(irs::DataOutput& out) const = 0;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -103,7 +103,7 @@ class long_field : public field_base {
   irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const final;
+  bool write(irs::DataOutput& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
@@ -131,7 +131,7 @@ class int_field : public field_base {
   irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const final;
+  bool write(irs::DataOutput& out) const final;
 
  private:
   mutable std::shared_ptr<irs::numeric_token_stream> stream_;
@@ -151,7 +151,7 @@ class double_field : public field_base {
   irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const final;
+  bool write(irs::DataOutput& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
@@ -171,7 +171,7 @@ class float_field : public field_base {
   irs::token_stream& get_tokens() const final;
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
-  bool write(irs::data_output& out) const final;
+  bool write(irs::DataOutput& out) const final;
 
  private:
   mutable irs::numeric_token_stream stream_;
@@ -196,7 +196,7 @@ class binary_field : public field_base {
     value_ = bytes(first, last);
   }
 
-  bool write(irs::data_output& out) const final;
+  bool write(irs::DataOutput& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;
@@ -667,7 +667,7 @@ class text_field : public tests::field_base {
   }
 
  private:
-  virtual bool write(irs::data_output&) const { return false; }
+  virtual bool write(irs::DataOutput&) const { return false; }
 
   std::unique_ptr<token_stream_payload> pay_stream_;
   irs::analysis::analyzer::ptr token_stream_;
@@ -690,7 +690,7 @@ class string_field : public tests::field_base {
   std::string_view value() const { return value_; }
 
   irs::token_stream& get_tokens() const final;
-  bool write(irs::data_output& out) const final;
+  bool write(irs::DataOutput& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;
@@ -713,7 +713,7 @@ class string_view_field : public tests::field_base {
   std::string_view value() const { return value_; }
 
   irs::token_stream& get_tokens() const final;
-  bool write(irs::data_output& out) const final;
+  bool write(irs::DataOutput& out) const final;
 
  private:
   mutable irs::string_token_stream stream_;

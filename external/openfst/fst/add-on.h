@@ -204,7 +204,7 @@ class AddOnImpl : public FstImpl<typename FST::Arc> {
     WriteHeader(strm, nopts, kFileVersion, &hdr);
     WriteType(strm, kAddOnMagicNumber);  // Ensures this is an add-on FST.
     FstWriteOptions fopts(opts);
-    fopts.write_header = true;  // Forces writing contained header.
+    fopts.WriteHeader = true;  // Forces writing contained header.
     if (!fst_.Write(strm, fopts)) return false;
     bool have_addon = !!t_;
     WriteType(strm, have_addon);

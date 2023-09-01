@@ -247,7 +247,7 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
   }
 
   template<typename FST, typename Stats>
-  static bool Write(const FST& fst, irs::data_output& strm, const Stats& stats);
+  static bool Write(const FST& fst, irs::DataOutput& strm, const Stats& stats);
 
   void InitStateIterator(StateIteratorData<Arc>* data) const final {
     GetImpl()->InitStateIterator(data);
@@ -271,7 +271,7 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
 
 template<typename A>
 template<typename FST, typename Stats>
-bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
+bool ImmutableFst<A>::Write(const FST& fst, irs::DataOutput& stream,
                             const Stats& stats) {
   static_assert(sizeof(StateId) == sizeof(uint32_t));
 
@@ -282,12 +282,12 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
     fst.Properties(kCopyProperties, true) | Impl::kStaticProperties;
 
   // write header
-  stream.write_byte(static_cast<irs::byte_type>(Impl::Version::MIN));
-  stream.write_long(properties);
-  stream.write_long(stats.total_weight_size);
-  stream.write_int(static_cast<StateId>(stats.num_states));
+  stream.WriteByte(static_cast<irs::byte_type>(Impl::Version::MIN));
+  stream.WriteU64(properties);
+  stream.WriteU64(stats.total_weight_size);
+  stream.WriteU32(static_cast<StateId>(stats.num_states));
   IRS_ASSERT(stats.num_states >= static_cast<size_t>(fst.Start()));
-  stream.write_vint(stats.num_states - fst.Start());
+  stream.WriteV32(stats.num_states - fst.Start());
   irs::write_zvlong(stream, stats.num_arcs - stats.num_states);
 
   // write states & arcs
@@ -305,18 +305,18 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
       const size_t narcs = impl->NumArcs(s);
       IRS_ASSERT(narcs <= Impl::kMaxArcs);
 
-      stream.write_vlong(irs::shift_pack_64(weight_size, !narcs));
+      stream.WriteV64(irs::shift_pack_64(weight_size, !narcs));
       if (narcs) {
         // -1 to fit byte_type
-        stream.write_byte(static_cast<irs::byte_type>((narcs - 1) & 0xFF));
+        stream.WriteByte(static_cast<irs::byte_type>((narcs - 1) & 0xFF));
 
         for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {
           const auto& arc = aiter.Value();
 
           IRS_ASSERT(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
-          stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF));
-          stream.write_vint(arc.nextstate);
-          stream.write_vlong(arc.weight.Size());
+          stream.WriteByte(static_cast<irs::byte_type>(arc.ilabel & 0xFF));
+          stream.WriteV32(arc.nextstate);
+          stream.WriteV64(arc.weight.Size());
         }
       }
     } else {
@@ -332,12 +332,12 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
     if constexpr (detail::has_member_FinalRef_v<typename FST::Impl>) {
       const auto& weight = impl->FinalRef(s);
       if (!weight.Empty()) {
-        stream.write_bytes(weight.c_str(), weight.Size());
+        stream.WriteBytes(weight.c_str(), weight.Size());
       }
     } else {
       const auto weight = impl->Final(s);
       if (!weight.Empty()) {
-        stream.write_bytes(weight.c_str(), weight.Size());
+        stream.WriteBytes(weight.c_str(), weight.Size());
       }
     }
 
@@ -345,7 +345,7 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
       const auto& weight = aiter.Value().weight;
 
       if (!weight.Empty()) {
-        stream.write_bytes(weight.c_str(), weight.Size());
+        stream.WriteBytes(weight.c_str(), weight.Size());
       }
     }
   }

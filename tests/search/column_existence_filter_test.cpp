@@ -51,7 +51,7 @@ class column_existence_filter_test_case : public tests::FilterTestCaseBase {
        public:
         explicit mask_field(const std::string& name) : name_(name) {}
 
-        bool write(irs::data_output&) const { return true; }
+        bool write(irs::DataOutput&) const { return true; }
         std::string_view name() const { return name_; }
         irs::IndexFeatures index_features() const noexcept {
           return irs::IndexFeatures::NONE;

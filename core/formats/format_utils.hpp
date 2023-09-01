@@ -37,9 +37,9 @@ constexpr int32_t kFormatMagic = 0x3fd76c17;
 constexpr int32_t kFooterMagic = -kFormatMagic;
 constexpr uint32_t kFooterLen = 2 * sizeof(int32_t) + sizeof(int64_t);
 
-void write_header(index_output& out, std::string_view format, int32_t ver);
+void WriteHeader(IndexOutput& out, std::string_view format, int32_t ver);
 
-void write_footer(index_output& out);
+void WriteFooter(IndexOutput& out);
 
 size_t header_length(std::string_view format) noexcept;
 

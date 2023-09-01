@@ -244,23 +244,20 @@ void AsyncFile::drain(bool wait) {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class async_index_output
-//////////////////////////////////////////////////////////////////////////////
-class AsyncIndexOutput final : public index_output {
+class AsyncIndexOutput final : public IndexOutput {
  public:
   DEFINE_FACTORY_INLINE(AsyncIndexOutput);
 
-  static index_output::ptr open(const path_char_t* name,
-                                AsyncFilePtr&& async) noexcept;
+  static IndexOutput::ptr open(const path_char_t* name,
+                               AsyncFilePtr&& async) noexcept;
 
-  void write_int(int32_t value) final;
-  void write_long(int64_t value) final;
-  void write_vint(uint32_t v) final;
-  void write_vlong(uint64_t v) final;
-  void write_byte(byte_type b) final;
-  void write_bytes(const byte_type* b, size_t length) final;
-  size_t file_pointer() const final {
+  void WriteU32(int32_t value) final;
+  void WriteU64(int64_t value) final;
+  void WriteV32(uint32_t v) final;
+  void WriteV64(uint64_t v) final;
+  void WriteByte(byte_type b) final;
+  void WriteBytes(const byte_type* b, size_t length) final;
+  size_t Position() const final {
     IRS_ASSERT(buf_->value <= pos_);
     return start_ + static_cast<size_t>(std::distance(buf_->value, pos_));
   }
@@ -283,7 +280,7 @@ class AsyncIndexOutput final : public index_output {
     // FIXME(gnusi): we can avoid waiting here in case
     // if we'll keep track of all unsynced files
     async_->drain(true);
-    return file_pointer();
+    return Position();
   }
 
   using node_type = concurrent_stack<byte_type*>::node_type;
@@ -315,8 +312,8 @@ class AsyncIndexOutput final : public index_output {
   size_t start_{};    // position of the buffer in file
 };
 
-index_output::ptr AsyncIndexOutput::open(const path_char_t* name,
-                                         AsyncFilePtr&& async) noexcept {
+IndexOutput::ptr AsyncIndexOutput::open(const path_char_t* name,
+                                        AsyncFilePtr&& async) noexcept {
   IRS_ASSERT(name);
 
   if (!async) {
@@ -335,15 +332,15 @@ index_output::ptr AsyncIndexOutput::open(const path_char_t* name,
   }
 
   try {
-    return index_output::make<AsyncIndexOutput>(std::move(async),
-                                                std::move(handle));
+    return IndexOutput::make<AsyncIndexOutput>(std::move(async),
+                                               std::move(handle));
   } catch (...) {
   }
 
   return nullptr;
 }
 
-void AsyncIndexOutput::write_int(int32_t value) {
+void AsyncIndexOutput::WriteU32(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
     irs::write<uint32_t>(*this, value);
   } else {
@@ -351,7 +348,7 @@ void AsyncIndexOutput::write_int(int32_t value) {
   }
 }
 
-void AsyncIndexOutput::write_long(int64_t value) {
+void AsyncIndexOutput::WriteU64(int64_t value) {
   if (remain() < sizeof(uint64_t)) {
     irs::write<uint64_t>(*this, value);
   } else {
@@ -359,7 +356,7 @@ void AsyncIndexOutput::write_long(int64_t value) {
   }
 }
 
-void AsyncIndexOutput::write_vint(uint32_t v) {
+void AsyncIndexOutput::WriteV32(uint32_t v) {
   if (remain() < bytes_io<uint32_t>::const_max_vsize) {
     irs::vwrite<uint32_t>(*this, v);
   } else {
@@ -367,7 +364,7 @@ void AsyncIndexOutput::write_vint(uint32_t v) {
   }
 }
 
-void AsyncIndexOutput::write_vlong(uint64_t v) {
+void AsyncIndexOutput::WriteV64(uint64_t v) {
   if (remain() < bytes_io<uint64_t>::const_max_vsize) {
     irs::vwrite<uint64_t>(*this, v);
   } else {
@@ -375,7 +372,7 @@ void AsyncIndexOutput::write_vlong(uint64_t v) {
   }
 }
 
-void AsyncIndexOutput::write_byte(byte_type b) {
+void AsyncIndexOutput::WriteByte(byte_type b) {
   if (pos_ >= end_) {
     flush();
   }
@@ -410,7 +407,7 @@ void AsyncIndexOutput::flush() {
   reset(buf_->value);
 }
 
-void AsyncIndexOutput::write_bytes(const byte_type* b, size_t length) {
+void AsyncIndexOutput::WriteBytes(const byte_type* b, size_t length) {
   IRS_ASSERT(pos_ <= end_);
   auto left = static_cast<size_t>(std::distance(pos_, end_));
 
@@ -474,7 +471,7 @@ AsyncDirectory::AsyncDirectory(std::filesystem::path path,
     queue_size_{queue_size},
     flags_{flags} {}
 
-index_output::ptr AsyncDirectory::create(std::string_view name) noexcept {
+IndexOutput::ptr AsyncDirectory::create(std::string_view name) noexcept {
   std::filesystem::path path;
 
   try {

@@ -30,7 +30,7 @@ struct noop_field_collector final : FieldCollector {
   void collect(const SubReader&, const term_reader&) final {}
   void reset() final {}
   void collect(bytes_view) final {}
-  void write(data_output&) const final {}
+  void write(DataOutput&) const final {}
 };
 
 struct noop_term_collector final : TermCollector {
@@ -38,7 +38,7 @@ struct noop_term_collector final : TermCollector {
                const attribute_provider&) final {}
   void reset() final {}
   void collect(bytes_view) final {}
-  void write(data_output&) const final {}
+  void write(DataOutput&) const final {}
 };
 
 static noop_field_collector NOOP_FIELD_STATS;

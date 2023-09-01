@@ -24,146 +24,75 @@
 
 #include <memory>
 
-#include "data_input.hpp"
 #include "shared.hpp"
-#include "utils/bytes_utils.hpp"
-#include "utils/std.hpp"
 
 namespace irs {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         output_buf implementation
-// -----------------------------------------------------------------------------
-
-output_buf::output_buf(index_output* out) : out_(out) { IRS_ASSERT(out_); }
-
-std::streamsize output_buf::xsputn(const char_type* c, std::streamsize size) {
-  out_->write_bytes(reinterpret_cast<const byte_type*>(c), size);
-  return size;
-}
-
-output_buf::int_type output_buf::overflow(int_type c) {
-  out_->write_byte(traits_type::to_char_type(c));
-  return c;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                              buffered_index_output implementation
-// -----------------------------------------------------------------------------
-
-void buffered_index_output::write_short(int16_t value) {
-  if (remain() < sizeof(uint16_t)) {
-    irs::write<uint16_t>(*this, value);
-  } else {
-    irs::write<uint16_t>(pos_, value);
-  }
-}
-
-void buffered_index_output::write_int(int32_t value) {
-  if (remain() < sizeof(uint32_t)) {
-    irs::write<uint32_t>(*this, value);
-  } else {
-    irs::write<uint32_t>(pos_, value);
-  }
-}
-
-void buffered_index_output::write_long(int64_t value) {
-  if (remain() < sizeof(uint64_t)) {
-    irs::write<uint64_t>(*this, value);
-  } else {
-    irs::write<uint64_t>(pos_, value);
-  }
-}
-
-void buffered_index_output::write_vint(uint32_t v) {
-  if (remain() < bytes_io<uint32_t>::const_max_vsize) {
-    irs::vwrite<uint32_t>(*this, v);
-  } else {
-    irs::vwrite<uint32_t>(pos_, v);
-  }
-}
-
-void buffered_index_output::write_vlong(uint64_t v) {
-  if (remain() < bytes_io<uint64_t>::const_max_vsize) {
-    irs::vwrite<uint64_t>(*this, v);
-  } else {
-    irs::vwrite<uint64_t>(pos_, v);
-  }
-}
-
-void buffered_index_output::write_byte(byte_type b) {
-  if (pos_ >= end_) {
-    flush();
-  }
-
-  *pos_++ = b;
-}
-
-void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
-  IRS_ASSERT(pos_ <= end_);
-  auto left = size_t(std::distance(pos_, end_));
-
-  // is there enough space in the buffer?
-  if (left > length) {
-    // we add the data to the end of the buffer
-    std::memcpy(pos_, b, length);
-    pos_ += length;
-  } else {
-    // is data larger or equal than buffer?
-    if (length >= buf_size_) {
-      // we flush the buffer
-      if (pos_ > buf_) {
-        flush();
-      }
-
-      // and write data at once
-      flush_buffer(b, length);
-      start_ += length;
-    } else {
-      // we fill/flush the buffer (until the input is written)
-      size_t slice_pos_ = 0;  // pos_ition in the input data
-
-      while (slice_pos_ < length) {
-        auto slice_len = std::min(length - slice_pos_, left);
-
-        std::memcpy(pos_, b + slice_pos_, slice_len);
-        slice_pos_ += slice_len;
-        pos_ += slice_len;
-
-        // if the buffer is full, flush it
-        left -= slice_len;
-        if (pos_ == end_) {
-          flush();
-          left = buf_size_;
+void BufferedOutput::WriteBytes(const byte_type* b, size_t len) {
+  IRS_ASSERT(b != nullptr);  // memcpy needs if for len == 0 in such case
+  if (auto remain = Remain(); IRS_UNLIKELY(remain < len)) {
+    // The purpose of this approach is minimize count of
+    // 1. WriteDirect
+    // 2. not full WriteDirect
+    // 3. memcpy
+    // length != 0 && remain != 0: fill buffer to make remain == 0
+    // length != 0 && remain == 0: flush buffer to make length == 0
+    // length == 0 && remain != 0: direct write bigger than buffer size
+    auto length = Length();
+    const auto option =
+      static_cast<size_t>(length != 0) * 2 + static_cast<size_t>(remain != 0);
+    switch (option) {
+      case 2 + 1:
+        WriteBuffer(b, remain);
+        b += remain;
+        len -= remain;
+        [[fallthrough]];
+      case 2 + 0:
+        FlushBuffer();
+        remain = Remain();
+        [[fallthrough]];
+      case 0 + 1:
+        if (const auto buffer_len = len % remain; len != buffer_len) {
+          const auto direct_len = len - buffer_len;
+          WriteDirect(b, direct_len);
+          if (buffer_len == 0) {
+            return;
+          }
+          b += direct_len;
+          len = buffer_len;
         }
-      }
+        break;
+      default:
+        IRS_UNREACHABLE();
     }
   }
+  WriteBuffer(b, len);
 }
 
-size_t buffered_index_output::file_pointer() const {
-  IRS_ASSERT(buf_ <= pos_);
-  return start_ + size_t(std::distance(buf_, pos_));
+template<typename N>
+void BufferedOutput::WriteFixFlush(N n, size_t remain) {
+  std::memcpy(pos_, &n, remain);
+  FlushBuffer();
+  remain = sizeof(n) - remain;
+  std::memcpy(pos_, &n, remain);
+  pos_ += remain;
 }
 
-void buffered_index_output::flush() {
-  IRS_ASSERT(buf_ <= pos_);
-  const auto size = size_t(std::distance(buf_, pos_));
-  if (size) {
-    flush_buffer(buf_, size);
-    start_ += size;
-    pos_ = buf_;
-  }
+template<typename N>
+void BufferedOutput::WriteVarFlush(N n, size_t remain) {
+  WriteVarBytes(n, [&](byte_type b) { WriteByte(b); });
 }
 
-size_t buffered_index_output::CloseImpl() {
-  if (pos_ > buf_) {
-    flush_buffer(buf_, size_t(std::distance(buf_, pos_)));
-  }
-  const auto size = file_pointer();
-  start_ = 0;
-  pos_ = buf_;
-  return size;
-}
+template<>
+void BufferedOutput::WriteFixFlush<uint16_t>(uint16_t n, size_t remain);
+template<>
+void BufferedOutput::WriteFixFlush<uint32_t>(uint32_t n, size_t remain);
+template<>
+void BufferedOutput::WriteFixFlush<uint64_t>(uint64_t n, size_t remain);
+
+template<>
+void BufferedOutput::WriteVarFlush<uint32_t>(uint32_t n, size_t remain);
+template<>
+void BufferedOutput::WriteVarFlush<uint64_t>(uint64_t n, size_t remain);
 
 }  // namespace irs

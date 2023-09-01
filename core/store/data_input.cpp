@@ -50,7 +50,7 @@ input_buf::int_type input_buf::underflow() {
   // FIXME add 'peek()' function to 'index_input'
   const auto ch = uflow();
   if (EOF != ch) {
-    in_->seek(in_->file_pointer() - 1);
+    in_->seek(in_->Position() - 1);
   }
   return ch;
 }
@@ -61,7 +61,7 @@ input_buf::int_type input_buf::uflow() {
 }
 
 std::streamsize input_buf::showmanyc() {
-  return in_->length() - in_->file_pointer();
+  return in_->length() - in_->Position();
 }
 
 // -----------------------------------------------------------------------------
@@ -116,8 +116,8 @@ const byte_type* buffered_index_input::read_buffer(size_t size,
     return begin;
   }
 
-  if (size <= std::min(buf_size_, length() - file_pointer())) {
-    seek_internal(file_pointer());
+  if (size <= std::min(buf_size_, length() - Position())) {
+    seek_internal(Position());
     refill();
 
     auto begin = begin_;
@@ -173,7 +173,7 @@ size_t buffered_index_input::read_bytes(byte_type* b, size_t count) {
 }
 
 size_t buffered_index_input::refill() {
-  const auto data_start = this->file_pointer();
+  const auto data_start = this->Position();
   const auto data_end = std::min(data_start + buf_size_, length());
 
   const ptrdiff_t data_size = data_end - data_start;
@@ -199,6 +199,6 @@ void buffered_index_input::seek(size_t p) {
   }
 }
 
-void buffered_index_input::skip(size_t count) { seek(file_pointer() + count); }
+void buffered_index_input::skip(size_t count) { seek(Position() + count); }
 
 }  // namespace irs

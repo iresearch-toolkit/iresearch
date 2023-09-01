@@ -278,9 +278,9 @@ class encryption_test_case : public tests::directory_test_case_base<> {
       auto out = dir().create("encrypted");
       auto raw_out = dir().create("raw");
       ASSERT_NE(nullptr, out);
-      irs::write_string(*out, header);
+      irs::WriteStr(*out, header);
       ASSERT_EQ(irs::bytes_io<uint64_t>::vsize(header.size()) + header.size(),
-                out->file_pointer());
+                out->Position());
       auto cipher = enc->create_stream("encrypted", &header[0]);
       ASSERT_NE(nullptr, cipher);
       ASSERT_EQ(block_size, cipher->block_size());
@@ -289,44 +289,43 @@ class encryption_test_case : public tests::directory_test_case_base<> {
       ASSERT_EQ(nullptr, out);
       ASSERT_EQ(
         enc->header_length() + irs::bytes_io<uint64_t>::vsize(header.size()),
-        encryptor.stream().file_pointer());
+        encryptor.stream().Position());
       ASSERT_EQ(std::max(buf_size, size_t(1)) * cipher->block_size(),
                 encryptor.buffer_size());
-      ASSERT_EQ(0, encryptor.file_pointer());
+      ASSERT_EQ(0, encryptor.Position());
 
       for (auto& str : data) {
-        irs::write_string(encryptor, str);
-        irs::write_string(*raw_out, str);
+        irs::WriteStr(encryptor, str);
+        irs::WriteStr(*raw_out, str);
       }
 
-      fp_magic = encryptor.file_pointer();
+      fp_magic = encryptor.Position();
 
-      encryptor.write_long(magic);
-      raw_out->write_long(magic);
+      encryptor.WriteU64(magic);
+      raw_out->WriteU64(magic);
 
       for (size_t i = 0, step = 321; i < data.size(); ++i) {
         auto value = 9886 + step;
-        encryptor.write_vlong(value);
-        raw_out->write_vlong(value);
+        encryptor.WriteV64(value);
+        raw_out->WriteV64(value);
 
         step += step;
         value = 9886 + step;
 
-        encryptor.write_long(value);
-        raw_out->write_long(value);
+        encryptor.WriteU64(value);
+        raw_out->WriteU64(value);
 
         step += step;
       }
 
       encryptor.flush();
-      ASSERT_EQ(raw_out->file_pointer(), encryptor.file_pointer());
-      encrypted_length = encryptor.file_pointer();
+      ASSERT_EQ(raw_out->Position(), encryptor.Position());
+      encrypted_length = encryptor.Position();
       checksum = raw_out->checksum();
       out = encryptor.release();
       ASSERT_NE(nullptr, out);
-      ASSERT_EQ(out->file_pointer(),
-                irs::bytes_io<uint64_t>::vsize(header.size()) + header.size() +
-                  encrypted_length);
+      ASSERT_EQ(out->Position(), irs::bytes_io<uint64_t>::vsize(header.size()) +
+                                   header.size() + encrypted_length);
     }
 
     // read encrypted data
@@ -339,7 +338,7 @@ class encryption_test_case : public tests::directory_test_case_base<> {
       ASSERT_EQ(enc->header_length(), header.size());
       ASSERT_EQ(
         enc->header_length() + irs::bytes_io<uint64_t>::vsize(header.size()),
-        in->file_pointer());
+        in->Position());
 
       auto cipher = enc->create_stream("encrypted", &header[0]);
       ASSERT_NE(nullptr, cipher);
@@ -349,14 +348,14 @@ class encryption_test_case : public tests::directory_test_case_base<> {
       ASSERT_EQ(nullptr, in);
       ASSERT_EQ(
         enc->header_length() + irs::bytes_io<uint64_t>::vsize(header.size()),
-        decryptor.stream().file_pointer());
+        decryptor.stream().Position());
       ASSERT_EQ(std::max(buf_size, size_t(1)) * cipher->block_size(),
                 decryptor.buffer_size());
-      ASSERT_EQ(0, decryptor.file_pointer());
+      ASSERT_EQ(0, decryptor.Position());
 
       decryptor.seek(fp_magic);
       ASSERT_EQ(magic, decryptor.read_long());
-      ASSERT_EQ(fp_magic + sizeof(uint64_t), decryptor.file_pointer());
+      ASSERT_EQ(fp_magic + sizeof(uint64_t), decryptor.Position());
       decryptor.seek(0);
 
       // check dup
@@ -364,7 +363,7 @@ class encryption_test_case : public tests::directory_test_case_base<> {
         auto dup = decryptor.dup();
         dup->seek(fp_magic);
         ASSERT_EQ(magic, dup->read_long());
-        ASSERT_EQ(fp_magic + sizeof(uint64_t), dup->file_pointer());
+        ASSERT_EQ(fp_magic + sizeof(uint64_t), dup->Position());
         for (size_t i = 0, step = 321; i < data.size(); ++i) {
           ASSERT_EQ(9886 + step, dup->read_vlong());
           step += step;
@@ -378,9 +377,9 @@ class encryption_test_case : public tests::directory_test_case_base<> {
         auto dup = decryptor.reopen();
         dup->seek(0);
         ASSERT_EQ(checksum, dup->checksum(dup->length()));
-        ASSERT_EQ(0, dup->file_pointer());  // checksum doesn't change position
+        ASSERT_EQ(0, dup->Position());  // checksum doesn't change position
         ASSERT_EQ(checksum, dup->checksum(std::numeric_limits<size_t>::max()));
-        ASSERT_EQ(0, dup->file_pointer());  // checksum doesn't change position
+        ASSERT_EQ(0, dup->Position());  // checksum doesn't change position
       }
 
       // check reopen
@@ -388,7 +387,7 @@ class encryption_test_case : public tests::directory_test_case_base<> {
         auto dup = decryptor.reopen();
         dup->seek(fp_magic);
         ASSERT_EQ(magic, dup->read_long());
-        ASSERT_EQ(fp_magic + sizeof(uint64_t), dup->file_pointer());
+        ASSERT_EQ(fp_magic + sizeof(uint64_t), dup->Position());
         for (size_t i = 0, step = 321; i < data.size(); ++i) {
           ASSERT_EQ(9886 + step, dup->read_vlong());
           step += step;
@@ -402,18 +401,18 @@ class encryption_test_case : public tests::directory_test_case_base<> {
         auto dup = decryptor.reopen();
         dup->seek(0);
         ASSERT_EQ(checksum, dup->checksum(dup->length()));
-        ASSERT_EQ(0, dup->file_pointer());  // checksum doesn't change position
+        ASSERT_EQ(0, dup->Position());  // checksum doesn't change position
         ASSERT_EQ(checksum, dup->checksum(std::numeric_limits<size_t>::max()));
-        ASSERT_EQ(0, dup->file_pointer());  // checksum doesn't change position
+        ASSERT_EQ(0, dup->Position());  // checksum doesn't change position
       }
 
       for (auto& str : data) {
-        const auto fp = decryptor.file_pointer();
+        const auto fp = decryptor.Position();
         ASSERT_EQ(str, irs::read_string<std::string>(decryptor));
         decryptor.seek(fp);
         ASSERT_EQ(str, irs::read_string<std::string>(decryptor));
       }
-      ASSERT_EQ(fp_magic, decryptor.file_pointer());
+      ASSERT_EQ(fp_magic, decryptor.Position());
       ASSERT_EQ(magic, decryptor.read_long());
 
       for (size_t i = 0, step = 321; i < data.size(); ++i) {
@@ -423,11 +422,11 @@ class encryption_test_case : public tests::directory_test_case_base<> {
         step += step;
       }
 
-      const auto fp = decryptor.file_pointer();
+      const auto fp = decryptor.Position();
       in = decryptor.release();
       ASSERT_NE(nullptr, in);
       ASSERT_EQ(
-        in->file_pointer(),
+        in->Position(),
         header_length + irs::bytes_io<uint64_t>::vsize(header.size()) + fp);
     }
   }
@@ -471,10 +470,10 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
    protected:
     void flush_buffer(const irs::byte_type* b, size_t size) final {
       last_written_size_ = size;
-      out_->write_bytes(b, size);
+      out_->WriteBytes(b, size);
     }
 
-    irs::byte_type buf_[irs::DEFAULT_ENCRYPTION_BUFFER_SIZE];
+    irs::byte_type buf_[irs::kDefaultEncryptionBufferSize];
     index_output* out_;
     size_t last_written_size_{};
   };
@@ -510,13 +509,13 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     }
 
    private:
-    irs::byte_type buf_[irs::DEFAULT_ENCRYPTION_BUFFER_SIZE];
+    irs::byte_type buf_[irs::kDefaultEncryptionBufferSize];
     index_input* in_;
     size_t last_read_size_{};
   };
 
   tests::rot13_encryption enc(16);
-  irs::memory_output out(irs::IResourceManager::kNoop);
+  irs::MemoryOutput out(irs::IResourceManager::kNoop);
 
   bstring encrypted_header;
   encrypted_header.resize(enc.header_length());
@@ -533,22 +532,22 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     buffered_output buf_out(out.stream);
     irs::encrypted_output enc_out(
       buf_out, *cipher,
-      irs::DEFAULT_ENCRYPTION_BUFFER_SIZE / cipher->block_size());
+      irs::kDefaultEncryptionBufferSize / cipher->block_size());
     ASSERT_EQ(nullptr, enc_out.release());  // unmanaged instance
 
-    for (size_t i = 0; i < 2 * irs::DEFAULT_ENCRYPTION_BUFFER_SIZE + 1; ++i) {
-      enc_out.write_vint(i);
-      ASSERT_EQ(size_t(irs::DEFAULT_ENCRYPTION_BUFFER_SIZE),
-                buf_out.remain());  // ensure no buffering
-      if (buf_out.file_pointer() >= irs::DEFAULT_ENCRYPTION_BUFFER_SIZE) {
-        ASSERT_EQ(size_t(irs::DEFAULT_ENCRYPTION_BUFFER_SIZE),
+    for (size_t i = 0; i < 2 * irs::kDefaultEncryptionBufferSize + 1; ++i) {
+      enc_out.WriteV32(i);
+      // ensure no buffering
+      ASSERT_EQ(size_t(irs::kDefaultEncryptionBufferSize), buf_out.remain());
+      if (buf_out.Position() >= irs::kDefaultEncryptionBufferSize) {
+        ASSERT_EQ(size_t(irs::kDefaultEncryptionBufferSize),
                   buf_out.last_written_size());
       }
     }
 
     enc_out.flush();
     buf_out.flush();
-    ASSERT_EQ(enc_out.file_pointer() - 3 * irs::DEFAULT_ENCRYPTION_BUFFER_SIZE,
+    ASSERT_EQ(enc_out.Position() - 3 * irs::kDefaultEncryptionBufferSize,
               buf_out.last_written_size());
   }
 
@@ -559,16 +558,16 @@ TEST(ecnryption_test_case, ensure_no_double_bufferring) {
     buffered_input buf_in(in);
     irs::encrypted_input enc_in(
       buf_in, *cipher,
-      irs::DEFAULT_ENCRYPTION_BUFFER_SIZE / cipher->block_size());
+      irs::kDefaultEncryptionBufferSize / cipher->block_size());
 
-    for (size_t i = 0; i < 2 * irs::DEFAULT_ENCRYPTION_BUFFER_SIZE + 1; ++i) {
+    for (size_t i = 0; i < 2 * irs::kDefaultEncryptionBufferSize + 1; ++i) {
       ASSERT_EQ(i, enc_in.read_vint());
       ASSERT_EQ(0, buf_in.remain());  // ensure no buffering
-      if (buf_in.file_pointer() <= 3 * irs::DEFAULT_ENCRYPTION_BUFFER_SIZE) {
-        ASSERT_EQ(size_t(irs::DEFAULT_ENCRYPTION_BUFFER_SIZE),
+      if (buf_in.Position() <= 3 * irs::kDefaultEncryptionBufferSize) {
+        ASSERT_EQ(size_t(irs::kDefaultEncryptionBufferSize),
                   buf_in.last_read_size());
       } else {
-        ASSERT_EQ(buf_in.length() - 3 * irs::DEFAULT_ENCRYPTION_BUFFER_SIZE,
+        ASSERT_EQ(buf_in.length() - 3 * irs::kDefaultEncryptionBufferSize,
                   buf_in.last_read_size());
       }
     }

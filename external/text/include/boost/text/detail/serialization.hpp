@@ -153,9 +153,9 @@ namespace boost { namespace text { namespace detail {
     }
 
     template<typename T, typename Sink>
-    void write_bytes(T const & x, Sink & out)
+    void WriteBytes(T const & x, Sink & out)
     {
-        write_bytes(x, out, tag_t<Sink>{});
+        WriteBytes(x, out, tag_t<Sink>{});
     }
 
     template<typename Source>
@@ -182,10 +182,11 @@ namespace boost { namespace text { namespace detail {
             endian::little_uint8_buf_t lead_primary_shifted;
             read_bytes(in, lead_primary_shifted);
 
-            collation_elements const value{first.value(),
-                                           last.value(),
-                                           lead_primary.value(),
-                                           lead_primary_shifted.value()};
+            collation_elements const value{
+                first.value(),
+                last.value(),
+                lead_primary.value(),
+                lead_primary_shifted.value()};
 
             trie.insert(key, value);
         }
@@ -197,28 +198,28 @@ namespace boost { namespace text { namespace detail {
         for (auto const & element : trie) {
             endian::little_int32_buf_t key_size;
             key_size = element.key.size_;
-            write_bytes(key_size, out);
+            WriteBytes(key_size, out);
             for (int j = 0, end = element.key.size_; j < end; ++j) {
                 endian::little_uint32_buf_t cp;
                 cp = element.key.cps_.values_[j];
-                write_bytes(cp, out);
+                WriteBytes(cp, out);
             }
 
             endian::little_uint16_buf_t first;
             first = element.value.first();
-            write_bytes(first, out);
+            WriteBytes(first, out);
             endian::little_uint16_buf_t last;
             last = element.value.last();
-            write_bytes(last, out);
+            WriteBytes(last, out);
 
             endian::little_uint8_buf_t lead_primary;
             lead_primary =
                 element.value.lead_primary(variable_weighting::non_ignorable);
-            write_bytes(lead_primary, out);
+            WriteBytes(lead_primary, out);
             endian::little_uint8_buf_t lead_primary_shifted;
             lead_primary_shifted =
                 element.value.lead_primary(variable_weighting::shifted);
-            write_bytes(lead_primary_shifted, out);
+            WriteBytes(lead_primary_shifted, out);
         }
     }
 
@@ -249,7 +250,7 @@ namespace boost { namespace text { namespace detail {
     {
         for (auto ce : collation_element_vec) {
             serialized_collation_element_t const sce = convert(ce);
-            write_bytes(sce, out);
+            WriteBytes(sce, out);
         }
     }
 
@@ -281,7 +282,7 @@ namespace boost { namespace text { namespace detail {
         endian::little_uint8_buf_t c;
         for (unsigned char c_ : nonstarter_table) {
             c = c_;
-            write_bytes(c, out);
+            WriteBytes(c, out);
         }
     }
 
@@ -303,7 +304,7 @@ namespace boost { namespace text { namespace detail {
     {
         for (auto reorder : nonsimple_reorders) {
             serialized_nonsimple_script_reorder_t const snsr = convert(reorder);
-            write_bytes(snsr, out);
+            WriteBytes(snsr, out);
         }
     }
 
@@ -325,7 +326,7 @@ namespace boost { namespace text { namespace detail {
     {
         for (auto reorder : simple_reorders) {
             endian::little_uint32_buf_t const r{reorder};
-            write_bytes(r, out);
+            WriteBytes(r, out);
         }
     }
 

@@ -55,7 +55,7 @@ TEST(memory_index_output_tests, reset) {
       "8MG2lAxZwOrRuPu", "kKLlAuK4yU3ZFGl"};
 
     std::for_each(data0.begin(), data0.end(), [&out](const std::string& s) {
-      write_string(out, s.c_str(), s.size());
+      WriteStr(out, s.c_str(), s.size());
     });
     ASSERT_GT(memory.counter_, 0);
     out.flush();
@@ -87,7 +87,7 @@ TEST(memory_index_output_tests, reset) {
       "CIvs4EyDjz59q1V", "EIKi8LuYghXWHD3"};
 
     std::for_each(data1.begin(), data1.end(), [&out](const std::string& s) {
-      write_string(out, s.c_str(), s.size());
+      WriteStr(out, s.c_str(), s.size());
     });
 
     out.flush();
@@ -102,7 +102,7 @@ TEST(memory_index_output_tests, reset) {
     // some memory would be left as buffers tracking vector is not deallocated
     ASSERT_LT(memory.counter_, mem);
     std::for_each(data1.begin(), data1.end(), [&out](const std::string& s) {
-      write_string(out, s.c_str(), s.size());
+      WriteStr(out, s.c_str(), s.size());
     });
     ASSERT_EQ(memory.counter_, mem);
   }

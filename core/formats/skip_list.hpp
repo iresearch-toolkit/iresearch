@@ -43,7 +43,7 @@ class SkipWriter : util::noncopyable {
   // skip_0: skip interval for level 0
   // skip_n: skip interval for levels 1..n
   SkipWriter(doc_id_t skip_0, doc_id_t skip_n, IResourceManager& rm) noexcept
-    : levels_{ManagedTypedAllocator<memory_output>{rm}},
+    : levels_{ManagedTypedAllocator<MemoryOutput>{rm}},
       max_levels_{0},
       skip_0_{skip_0},
       skip_n_{skip_n} {
@@ -65,13 +65,13 @@ class SkipWriter : util::noncopyable {
 
   // Flushes all internal data into the specified output stream
   uint32_t CountLevels() const;
-  void FlushLevels(uint32_t num_levels, index_output& out);
-  void Flush(index_output& out) { FlushLevels(CountLevels(), out); }
+  void FlushLevels(uint32_t num_levels, IndexOutput& out);
+  void Flush(IndexOutput& out) { FlushLevels(CountLevels(), out); }
 
   // Resets skip writer internal state
   void Reset() noexcept {
     for (auto& level : levels_) {
-      level.stream.reset();
+      level.stream.Reset();
     }
   }
 
@@ -82,7 +82,7 @@ class SkipWriter : util::noncopyable {
   void Skip(doc_id_t count, Writer&& write);
 
  protected:
-  ManagedVector<memory_output> levels_;
+  ManagedVector<MemoryOutput> levels_;
   size_t max_levels_;
   doc_id_t skip_0_;  // skip interval for 0 level
   doc_id_t skip_n_;  // skip interval for 1..n levels
@@ -100,7 +100,7 @@ void SkipWriter::Skip(doc_id_t count, Writer&& write) {
       auto& stream = levels_.front().stream;
       write(0, stream);
       count /= skip_0_;
-      child = stream.file_pointer();
+      child = stream.Position();
     }
 
     // write levels from 1 to n
@@ -109,8 +109,8 @@ void SkipWriter::Skip(doc_id_t count, Writer&& write) {
       auto& stream = levels_[i].stream;
       write(i, stream);
 
-      uint64_t next_child = stream.file_pointer();
-      stream.write_vlong(child);
+      uint64_t next_child = stream.Position();
+      stream.WriteV64(child);
       child = next_child;
     }
   }
@@ -162,7 +162,7 @@ class SkipReaderBase : util::noncopyable {
     IRS_ASSERT(lvl.stream);
     auto& stream = *lvl.stream;
     const auto absolute_ptr = lvl.begin + ptr;
-    if (absolute_ptr > stream.file_pointer()) {
+    if (absolute_ptr > stream.Position()) {
       stream.seek(absolute_ptr);
       lvl.left = prev.left + prev.step;
       if (lvl.child != kUndefined) {

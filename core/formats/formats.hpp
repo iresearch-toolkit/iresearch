@@ -50,7 +50,7 @@ struct SegmentMeta;
 struct field_meta;
 struct flush_state;
 struct ReaderState;
-class index_output;
+class IndexOutput;
 struct data_input;
 struct index_input;
 struct postings_writer;
@@ -110,12 +110,12 @@ struct postings_writer {
 
   virtual ~postings_writer() = default;
   // out - corresponding terms stream
-  virtual void prepare(index_output& out, const flush_state& state) = 0;
+  virtual void prepare(IndexOutput& out, const flush_state& state) = 0;
   virtual void begin_field(IndexFeatures index_features,
                            const feature_map_t& features) = 0;
   virtual void write(doc_iterator& docs, term_meta& meta) = 0;
   virtual void begin_block() = 0;
-  virtual void encode(data_output& out, const term_meta& state) = 0;
+  virtual void encode(DataOutput& out, const term_meta& state) = 0;
   virtual FieldStats end_field() = 0;
   virtual void end() = 0;
 };
@@ -269,14 +269,14 @@ struct field_reader {
   virtual size_t size() const = 0;
 };
 
-struct column_output : data_output {
+struct ColumnOutput : DataOutput {
   // Resets stream to previous persisted state
-  virtual void reset() = 0;
+  virtual void Reset() = 0;
   // NOTE: doc_limits::invalid() < doc && doc < doc_limits::eof()
   virtual void Prepare(doc_id_t doc) = 0;
 
 #ifdef IRESEARCH_TEST
-  column_output& operator()(doc_id_t doc) {
+  ColumnOutput& operator()(doc_id_t doc) {
     Prepare(doc);
     return *this;
   }
@@ -293,7 +293,7 @@ struct columnstore_writer {
 
   struct column_t {
     field_id id;
-    column_output& out;
+    ColumnOutput& out;
   };
 
   virtual ~columnstore_writer() = default;

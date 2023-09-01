@@ -233,20 +233,22 @@ struct IntrusiveList {
 
 // Block of terms
 struct block_t : private util::noncopyable {
-  struct prefixed_output final : data_output,
+  struct prefixed_output final : DataOutput,
                                  Node<prefixed_output>,
                                  private util::noncopyable {
     explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
-      : Node<prefixed_output>{this}, prefix(std::move(prefix)) {}
+      : Node<prefixed_output>{this}, prefix{std::move(prefix)} {}
 
-    void write_byte(byte_type b) final { weight.PushBack(b); }
+    void WriteByte(byte_type b) final { weight.PushBack(b); }
 
-    void write_bytes(const byte_type* b, size_t len) final {
+    void WriteBytes(const byte_type* b, size_t len) final {
       weight.PushBack(b, b + len);
     }
 
-    byte_weight weight;
+    IRS_DATA_OUTPUT_MEMBERS
+
     volatile_byte_ref prefix;
+    byte_weight weight;
   };
 
   static constexpr uint16_t INVALID_LABEL{std::numeric_limits<uint16_t>::max()};
@@ -529,7 +531,7 @@ struct block_meta {
 };
 
 template<typename FeatureMap>
-void write_segment_features_legacy(FeatureMap& feature_map, data_output& out,
+void write_segment_features_legacy(FeatureMap& feature_map, DataOutput& out,
                                    const flush_state& state) {
   const auto* features = state.features;
   const auto index_features = state.index_features;
@@ -540,27 +542,27 @@ void write_segment_features_legacy(FeatureMap& feature_map, data_output& out,
   feature_map.clear();
   feature_map.reserve(count);
 
-  out.write_vlong(count);
+  out.WriteV64(count);
   if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
-    write_string(out, irs::type<frequency>::name());
+    WriteStr(out, irs::type<frequency>::name());
     feature_map.emplace(irs::type<frequency>::id(), feature_map.size());
   }
   if (IndexFeatures::NONE != (index_features & IndexFeatures::POS)) {
-    write_string(out, irs::type<position>::name());
+    WriteStr(out, irs::type<position>::name());
     feature_map.emplace(irs::type<position>::id(), feature_map.size());
   }
   if (IndexFeatures::NONE != (index_features & IndexFeatures::OFFS)) {
-    write_string(out, irs::type<offset>::name());
+    WriteStr(out, irs::type<offset>::name());
     feature_map.emplace(irs::type<offset>::id(), feature_map.size());
   }
   if (IndexFeatures::NONE != (index_features & IndexFeatures::PAY)) {
-    write_string(out, irs::type<payload>::name());
+    WriteStr(out, irs::type<payload>::name());
     feature_map.emplace(irs::type<payload>::id(), feature_map.size());
   }
 
   if (features) {
     for (const irs::type_info::type_id feature : *features) {
-      write_string(out, feature().name());
+      WriteStr(out, feature().name());
       feature_map.emplace(feature, feature_map.size());
     }
   }
@@ -594,7 +596,7 @@ void read_segment_features_legacy(data_input& in, IndexFeatures& features,
 }
 
 template<typename FeatureMap>
-void write_field_features_legacy(FeatureMap& feature_map, data_output& out,
+void write_field_features_legacy(FeatureMap& feature_map, DataOutput& out,
                                  IndexFeatures index_features,
                                  const irs::feature_map_t& features) {
   auto write_feature = [&out, &feature_map](irs::type_info::type_id feature) {
@@ -607,13 +609,13 @@ void write_field_features_legacy(FeatureMap& feature_map, data_output& out,
         "Feature '", feature().name(), "' is not listed in segment features")};
     }
 
-    out.write_vlong(it->second);
+    out.WriteV64(it->second);
   };
 
   const size_t count =
     features.size() + std::popcount(static_cast<uint32_t>(index_features));
 
-  out.write_vlong(count);
+  out.WriteV64(count);
 
   if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
     write_feature(irs::type<frequency>::id());
@@ -678,7 +680,7 @@ void read_field_features_legacy(data_input& in,
 }
 
 template<typename FeatureMap>
-void write_segment_features(FeatureMap& feature_map, data_output& out,
+void write_segment_features(FeatureMap& feature_map, DataOutput& out,
                             const flush_state& state) {
   auto* features = state.features;
 
@@ -687,19 +689,19 @@ void write_segment_features(FeatureMap& feature_map, data_output& out,
   feature_map.clear();
   feature_map.reserve(count);
 
-  out.write_int(static_cast<uint32_t>(state.index_features));
-  out.write_vlong(count);
+  out.WriteU32(static_cast<uint32_t>(state.index_features));
+  out.WriteV64(count);
 
   if (features) {
     for (const irs::type_info::type_id feature : *features) {
-      write_string(out, feature().name());
+      WriteStr(out, feature().name());
       feature_map.emplace(feature, feature_map.size());
     }
   }
 }
 
 template<typename FeatureMap>
-void write_field_features(FeatureMap& feature_map, data_output& out,
+void write_field_features(FeatureMap& feature_map, DataOutput& out,
                           IndexFeatures index_features,
                           const irs::feature_map_t& features) {
   auto write_feature = [&out, feature_map](irs::type_info::type_id feature) {
@@ -712,16 +714,16 @@ void write_field_features(FeatureMap& feature_map, data_output& out,
         "Feature '", feature().name(), "' is not listed in segment features"));
     }
 
-    out.write_vlong(it->second);
+    out.WriteV64(it->second);
   };
 
   const size_t count = features.size();
 
-  out.write_int(static_cast<uint32_t>(index_features));
-  out.write_vlong(count);
+  out.WriteU32(static_cast<uint32_t>(index_features));
+  out.WriteV64(count);
   for (const auto& feature : features) {
     write_feature(feature.first);
-    out.write_vlong(feature.second + 1);
+    out.WriteV64(feature.second + 1);
   }
 }
 
@@ -780,7 +782,7 @@ void read_field_features(data_input& in, const feature_map_t& feature_map,
   }
 }
 
-inline void prepare_output(std::string& str, index_output::ptr& out,
+inline void prepare_output(std::string& str, IndexOutput::ptr& out,
                            const flush_state& state, std::string_view ext,
                            std::string_view format, const int32_t version) {
   IRS_ASSERT(!out);
@@ -792,7 +794,7 @@ inline void prepare_output(std::string& str, index_output::ptr& out,
     throw io_error{absl::StrCat("failed to create file, path: ", str)};
   }
 
-  format_utils::write_header(*out, format, version);
+  format_utils::WriteHeader(*out, format, version);
 }
 
 inline int32_t prepare_input(std::string& str, index_input::ptr& in,
@@ -893,21 +895,21 @@ void MergeBlocks(Blocks& blocks, OutputBuffer& buffer) {
   IRS_ASSERT(char(root_block.meta) != fst::kStringInfinity);
 
   // will store just several bytes here
-  out.write_byte(static_cast<byte_type>(root_block.meta));  // block metadata
-  out.write_vlong(root_block.start);  // start pointer of the block
+  out.WriteByte(static_cast<byte_type>(root_block.meta));  // block metadata
+  out.WriteV64(root_block.start);  // start pointer of the block
 
   if (block_meta::floor(root_block.meta)) {
     IRS_ASSERT(blocks.size() - 1 < std::numeric_limits<uint32_t>::max());
-    out.write_vint(static_cast<uint32_t>(blocks.size() - 1));
+    out.WriteV32(static_cast<uint32_t>(blocks.size() - 1));
     for (++it; it != blocks.end(); ++it) {
       const auto* block = &it->block();
       IRS_ASSERT(block->label != block_t::INVALID_LABEL);
       IRS_ASSERT(block->start > root_block.start);
 
       const uint64_t start_delta = it->block().start - root_block.start;
-      out.write_byte(static_cast<byte_type>(block->label & 0xFF));
-      out.write_vlong(start_delta);
-      out.write_byte(static_cast<byte_type>(block->meta));
+      out.WriteByte(static_cast<byte_type>(block->label & 0xFF));
+      out.WriteV64(start_delta);
+      out.WriteByte(static_cast<byte_type>(block->meta));
 
       root_index.Append(std::move(it->block().index));
     }
@@ -1019,13 +1021,13 @@ class field_writer final : public irs::field_writer {
   absl::flat_hash_map<irs::type_info::type_id, size_t> feature_map_;
   OutputBuffer output_buffer_;
   Blocks blocks_;
-  memory_output suffix_;  // term suffix column
-  memory_output stats_;   // term stats column
+  MemoryOutput suffix_;  // term suffix column
+  MemoryOutput stats_;   // term stats column
   encryption::stream::ptr terms_out_cipher_;
-  index_output::ptr terms_out_;  // output stream for terms
+  IndexOutput::ptr terms_out_;  // output stream for terms
   encryption::stream::ptr index_out_cipher_;
-  index_output::ptr index_out_;  // output stream for indexes
-  postings_writer::ptr pw_;      // postings writer
+  IndexOutput::ptr index_out_;  // output stream for indexes
+  postings_writer::ptr pw_;     // postings writer
   ManagedVector<entry> stack_;
   fst_buffer* fst_buf_;  // pimpl buffer used for building FST for fields
   volatile_byte_ref last_term_;  // last pushed term
@@ -1042,10 +1044,10 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   IRS_ASSERT(end > begin);
 
   // begin of the block
-  const uint64_t block_start = terms_out_->file_pointer();
+  const uint64_t block_start = terms_out_->Position();
 
   // write block header
-  terms_out_->write_vint(
+  terms_out_->WriteV32(
     shift_pack_32(static_cast<uint32_t>(end - begin), end == stack_.size()));
 
   // write block entries
@@ -1065,9 +1067,9 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
     IRS_ASSERT(data.size() - prefix <= UINT32_C(0x7FFFFFFF));
     const uint32_t suf_size = static_cast<uint32_t>(data.size() - prefix);
 
-    suffix_.stream.write_vint(
+    suffix_.stream.WriteV32(
       leaf ? suf_size : ((suf_size << 1) | static_cast<uint32_t>(type)));
-    suffix_.stream.write_bytes(data.data() + prefix, suf_size);
+    suffix_.stream.WriteBytes(data.data() + prefix, suf_size);
 
     if (ET_TERM == type) {
       pw_->encode(stats_.stream, e.term());
@@ -1076,21 +1078,20 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
 
       // current block start pointer should be greater
       IRS_ASSERT(block_start > e.block().start);
-      suffix_.stream.write_vlong(block_start - e.block().start);
+      suffix_.stream.WriteV64(block_start - e.block().start);
       index.Append(std::move(e.block().index));
     }
   }
 
-  const size_t block_size = suffix_.stream.file_pointer();
+  const size_t block_size = suffix_.stream.Position();
 
-  suffix_.stream.flush();
-  stats_.stream.flush();
+  suffix_.stream.Flush();
+  stats_.stream.Flush();
 
-  terms_out_->write_vlong(
-    shift_pack_64(static_cast<uint64_t>(block_size), leaf));
+  terms_out_->WriteV64(shift_pack_64(static_cast<uint64_t>(block_size), leaf));
 
   auto copy = [this](const irs::byte_type* b, size_t len) {
-    terms_out_->write_bytes(b, len);
+    terms_out_->WriteBytes(b, len);
     return true;
   };
 
@@ -1104,23 +1105,23 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
         return false;
       }
 
-      terms_out_->write_bytes(b, len);
+      terms_out_->WriteBytes(b, len);
       offset += len;
       return true;
     };
 
-    if (!suffix_.file.visit(encrypt_and_copy)) {
+    if (!suffix_.file.Visit(encrypt_and_copy)) {
       throw io_error("failed to encrypt term dictionary");
     }
   } else {
-    suffix_.file.visit(copy);
+    suffix_.file.Visit(copy);
   }
 
-  terms_out_->write_vlong(static_cast<uint64_t>(stats_.stream.file_pointer()));
-  stats_.file.visit(copy);
+  terms_out_->WriteV64(static_cast<uint64_t>(stats_.stream.Position()));
+  stats_.file.Visit(copy);
 
-  suffix_.stream.reset();
-  stats_.stream.reset();
+  suffix_.stream.Reset();
+  stats_.stream.Reset();
 
   // add new block to the list of created blocks
   blocks_.emplace_back(bytes_view{last_term_.view().data(), prefix},
@@ -1256,8 +1257,8 @@ void field_writer::prepare(const flush_state& state) {
   last_term_.clear();
   prefixes_.assign(DEFAULT_SIZE, 0);
   stack_.clear();
-  stats_.reset();
-  suffix_.reset();
+  stats_.Reset();
+  suffix_.Reset();
   fields_count_ = 0;
 
   std::string filename;
@@ -1288,10 +1289,10 @@ void field_writer::prepare(const flush_state& state) {
       IRS_ASSERT(index_out_cipher_ && index_out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE, index_out_cipher_->block_size());
+        kDefaultEncryptionBufferSize, index_out_cipher_->block_size());
 
-      index_out_ = index_output::make<encrypted_output>(
-        std::move(index_out_), *index_out_cipher_, blocks_in_buffer);
+      index_out_ = irs::IndexOutput::ptr{new EncryptedOutput{
+        std::move(index_out_), *index_out_cipher_, blocks_in_buffer}};
     }
   }
 
@@ -1304,8 +1305,8 @@ void field_writer::prepare(const flush_state& state) {
   // prepare postings writer
   pw_->prepare(*terms_out_, state);
 
-  suffix_.reset();
-  stats_.reset();
+  suffix_.Reset();
+  stats_.Reset();
 }
 
 void field_writer::write(const basic_term_reader& reader,
@@ -1384,23 +1385,23 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
   IRS_ASSERT(1 == stack_.size());
 
   // write field meta
-  write_string(*index_out_, name);
+  WriteStr(*index_out_, name);
   if (IRS_LIKELY(version_ >= burst_trie::Version::IMMUTABLE_FST)) {
     write_field_features(feature_map_, *index_out_, index_features, features);
   } else {
     write_field_features_legacy(feature_map_, *index_out_, index_features,
                                 features);
   }
-  index_out_->write_vlong(term_count);
-  index_out_->write_vlong(doc_count);
-  index_out_->write_vlong(total_doc_freq);
-  write_string<irs::bytes_view>(*index_out_, min_term);
-  write_string<irs::bytes_view>(*index_out_, max_term);
+  index_out_->WriteV64(term_count);
+  index_out_->WriteV64(doc_count);
+  index_out_->WriteV64(total_doc_freq);
+  WriteStr<irs::bytes_view>(*index_out_, min_term);
+  WriteStr<irs::bytes_view>(*index_out_, max_term);
   if (IndexFeatures::NONE != (index_features & IndexFeatures::FREQ)) {
-    index_out_->write_vlong(total_term_freq);
+    index_out_->WriteV64(total_term_freq);
   }
   if (IRS_LIKELY(version_ >= burst_trie::Version::WAND)) {
-    index_out_->write_long(wand_mask);
+    index_out_->WriteU64(wand_mask);
   }
 
   // build fst
@@ -1435,8 +1436,9 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
     ok = immutable_byte_fst::Write(fst, *index_out_, fst_stats);
   } else {
     // wrap stream to be OpenFST compliant
-    output_buf isb(index_out_.get());
-    std::ostream os(&isb);
+    // output_buf isb(index_out_.get());
+    IRS_ASSERT(false);
+    std::ostream os(nullptr);
     ok = fst.Write(os, fst_write_options());
   }
 
@@ -1457,17 +1459,17 @@ void field_writer::end() {
   // finish postings
   pw_->end();
 
-  format_utils::write_footer(*terms_out_);
+  format_utils::WriteFooter(*terms_out_);
   terms_out_.reset();  // ensure stream is closed
 
   if (index_out_cipher_) {
-    auto& out = static_cast<encrypted_output&>(*index_out_);
-    out.flush();
-    index_out_ = out.release();
+    auto& out = static_cast<EncryptedOutput&>(*index_out_);
+    out.Flush();
+    index_out_ = out.Release();
   }
 
-  index_out_->write_long(fields_count_);
-  format_utils::write_footer(*index_out_);
+  index_out_->WriteU64(fields_count_);
+  format_utils::WriteFooter(*index_out_);
   index_out_.reset();  // ensure stream is closed
 }
 
@@ -1834,7 +1836,7 @@ void block_iterator::load(index_input& in, irs::encryption::stream* cipher) {
 #endif
   stats_.assert_block_boundaries();
 
-  cur_end_ = in.file_pointer();
+  cur_end_ = in.Position();
   cur_ent_ = 0;
   cur_block_start_ = UNDEFINED_ADDRESS;
   term_count_ = 0;
@@ -3361,7 +3363,7 @@ void field_reader::prepare(const ReaderState& state) {
   // read total number of indexed fields
   size_t fields_count{0};
   {
-    const uint64_t ptr = index_in->file_pointer();
+    const uint64_t ptr = index_in->Position();
 
     index_in->seek(index_in->length() - FOOTER_LEN);
 
@@ -3381,7 +3383,7 @@ void field_reader::prepare(const ReaderState& state) {
       IRS_ASSERT(index_in_cipher && index_in_cipher->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE, index_in_cipher->block_size());
+        kDefaultEncryptionBufferSize, index_in_cipher->block_size());
 
       index_in = std::make_unique<encrypted_input>(
         std::move(index_in), *index_in_cipher, blocks_in_buffer, FOOTER_LEN);

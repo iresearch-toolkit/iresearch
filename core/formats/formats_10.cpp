@@ -64,15 +64,8 @@ using namespace irs;
 // name of the module holding different formats
 constexpr std::string_view MODULE_NAME = "10";
 
-void write_strings(data_output& out, std::span<const std::string> strings) {
-  write_size(out, strings.size());
-  for (const auto& s : strings) {
-    write_string(out, s);
-  }
-}
-
 std::vector<std::string> read_strings(data_input& in) {
-  const size_t size = read_size(in);
+  const size_t size = in.read_long();
 
   std::vector<std::string> strings(size);
 
@@ -115,8 +108,8 @@ struct format_traits {
                          decoded + 3 * packed::BLOCK_SIZE_32, bits);
   }
 
-  IRS_FORCE_INLINE static void write_block(index_output& out,
-                                           const uint32_t* in, uint32_t* buf) {
+  IRS_FORCE_INLINE static void write_block(IndexOutput& out, const uint32_t* in,
+                                           uint32_t* buf) {
     bitpack::write_block32<block_size()>(pack_block, out, in, buf);
   }
 
@@ -133,7 +126,7 @@ struct format_traits {
 template<typename T, typename M>
 std::string file_name(const M& meta);
 
-void prepare_output(std::string& str, index_output::ptr& out,
+void prepare_output(std::string& str, IndexOutput::ptr& out,
                     const flush_state& state, std::string_view ext,
                     std::string_view format, const int32_t version) {
   IRS_ASSERT(!out);
@@ -144,7 +137,7 @@ void prepare_output(std::string& str, index_output::ptr& out,
     throw io_error{absl::StrCat("Failed to create file, path: ", str)};
   }
 
-  format_utils::write_header(*out, format, version);
+  format_utils::WriteHeader(*out, format, version);
 }
 
 void prepare_input(std::string& str, index_input::ptr& in, IOAdvice advice,
@@ -387,8 +380,8 @@ class postings_writer_base : public irs::postings_writer {
     last_state_.clear();
   }
 
-  void prepare(index_output& out, const flush_state& state) final;
-  void encode(data_output& out, const irs::term_meta& attrs) final;
+  void prepare(IndexOutput& out, const flush_state& state) final;
+  void encode(DataOutput& out, const irs::term_meta& attrs) final;
   void end() final;
 
  protected:
@@ -452,7 +445,7 @@ class postings_writer_base : public irs::postings_writer {
     }
   };
 
-  void WriteSkip(size_t level, memory_index_output& out) const;
+  void WriteSkip(size_t level, MemoryIndexOutput& out) const;
   void BeginTerm();
   void EndTerm(version10::term_meta& meta);
   void EndDocument();
@@ -468,9 +461,9 @@ class postings_writer_base : public irs::postings_writer {
   SkipWriter skip_;
   version10::term_meta last_state_;  // Last final term state
   bitset docs_;                      // Set of all processed documents
-  index_output::ptr doc_out_;        // Postings (doc + freq)
-  index_output::ptr pos_out_;        // Positions
-  index_output::ptr pay_out_;        // Payload (pay + offs)
+  IndexOutput::ptr doc_out_;         // Postings (doc + freq)
+  IndexOutput::ptr pos_out_;         // Positions
+  IndexOutput::ptr pay_out_;         // Payload (pay + offs)
   doc_buffer doc_;                   // Document stream
   pos_buffer pos_;                   // Proximity stream
   pay_buffer pay_;                   // Payloads and offsets stream
@@ -507,21 +500,21 @@ void postings_writer_base::PrepareWriters(const irs::feature_map_t& features) {
 }
 
 void postings_writer_base::WriteSkip(size_t level,
-                                     memory_index_output& out) const {
+                                     MemoryIndexOutput& out) const {
   const doc_id_t doc_delta = doc_.block_last;  //- doc_.skip_doc[level];
-  const uint64_t doc_ptr = doc_out_->file_pointer();
+  const uint64_t doc_ptr = doc_out_->Position();
 
-  out.write_vint(doc_delta);
-  out.write_vlong(doc_ptr - doc_.skip_ptr[level]);
+  out.WriteV32(doc_delta);
+  out.WriteV64(doc_ptr - doc_.skip_ptr[level]);
 
   doc_.skip_doc[level] = doc_.block_last;
   doc_.skip_ptr[level] = doc_ptr;
 
   if (features_.HasPosition()) {
-    const uint64_t pos_ptr = pos_out_->file_pointer();
+    const uint64_t pos_ptr = pos_out_->Position();
 
-    out.write_vint(pos_.block_last);
-    out.write_vlong(pos_ptr - pos_.skip_ptr[level]);
+    out.WriteV32(pos_.block_last);
+    out.WriteV64(pos_ptr - pos_.skip_ptr[level]);
 
     pos_.skip_ptr[level] = pos_ptr;
 
@@ -529,19 +522,18 @@ void postings_writer_base::WriteSkip(size_t level,
       IRS_ASSERT(pay_out_);
 
       if (features_.HasPayload()) {
-        out.write_vint(static_cast<uint32_t>(pay_.block_last));
+        out.WriteV32(static_cast<uint32_t>(pay_.block_last));
       }
 
-      const uint64_t pay_ptr = pay_out_->file_pointer();
+      const uint64_t pay_ptr = pay_out_->Position();
 
-      out.write_vlong(pay_ptr - pay_.skip_ptr[level]);
+      out.WriteV64(pay_ptr - pay_.skip_ptr[level]);
       pay_.skip_ptr[level] = pay_ptr;
     }
   }
 }
 
-void postings_writer_base::prepare(index_output& out,
-                                   const flush_state& state) {
+void postings_writer_base::prepare(IndexOutput& out, const flush_state& state) {
   IRS_ASSERT(state.dir);
   IRS_ASSERT(!IsNull(state.name));
 
@@ -568,9 +560,9 @@ void postings_writer_base::prepare(index_output& out,
 
   skip_.Prepare(kMaxSkipLevels, state.doc_count);
 
-  format_utils::write_header(out, kTermsFormatName,
-                             static_cast<int32_t>(terms_format_version_));
-  out.write_vint(skip_.Skip0());  // Write postings block size
+  format_utils::WriteHeader(out, kTermsFormatName,
+                            static_cast<int32_t>(terms_format_version_));
+  out.WriteV32(skip_.Skip0());  // Write postings block size
 
   // Prepare wand writers
   writers_ = PrepareWandWriters(state.scorers, kMaxSkipLevels);
@@ -581,61 +573,61 @@ void postings_writer_base::prepare(index_output& out,
   docs_.reset(doc_limits::min() + state.doc_count);
 }
 
-void postings_writer_base::encode(data_output& out,
+void postings_writer_base::encode(DataOutput& out,
                                   const irs::term_meta& state) {
   const auto& meta = static_cast<const version10::term_meta&>(state);
 
-  out.write_vint(meta.docs_count);
+  out.WriteV32(meta.docs_count);
   if (meta.freq) {
     IRS_ASSERT(meta.freq >= meta.docs_count);
-    out.write_vint(meta.freq - meta.docs_count);
+    out.WriteV32(meta.freq - meta.docs_count);
   }
 
-  out.write_vlong(meta.doc_start - last_state_.doc_start);
+  out.WriteV64(meta.doc_start - last_state_.doc_start);
   if (features_.HasPosition()) {
-    out.write_vlong(meta.pos_start - last_state_.pos_start);
+    out.WriteV64(meta.pos_start - last_state_.pos_start);
     if (address_limits::valid(meta.pos_end)) {
-      out.write_vlong(meta.pos_end);
+      out.WriteV64(meta.pos_end);
     }
     if (features_.HasOffsetOrPayload()) {
-      out.write_vlong(meta.pay_start - last_state_.pay_start);
+      out.WriteV64(meta.pay_start - last_state_.pay_start);
     }
   }
 
   if (1 == meta.docs_count) {
-    out.write_vint(meta.e_single_doc);
+    out.WriteV32(meta.e_single_doc);
   } else if (skip_.Skip0() < meta.docs_count) {
-    out.write_vlong(meta.e_skip_start);
+    out.WriteV64(meta.e_skip_start);
   }
 
   last_state_ = meta;
 }
 
 void postings_writer_base::end() {
-  format_utils::write_footer(*doc_out_);
+  format_utils::WriteFooter(*doc_out_);
   doc_out_.reset();  // ensure stream is closed
 
   if (pos_out_) {
-    format_utils::write_footer(*pos_out_);
+    format_utils::WriteFooter(*pos_out_);
     pos_out_.reset();  // ensure stream is closed
   }
 
   if (pay_out_) {
-    format_utils::write_footer(*pay_out_);
+    format_utils::WriteFooter(*pay_out_);
     pay_out_.reset();  // ensure stream is closed
   }
 }
 
 void postings_writer_base::BeginTerm() {
-  doc_.start = doc_out_->file_pointer();
+  doc_.start = doc_out_->Position();
   std::fill_n(doc_.skip_ptr, kMaxSkipLevels, doc_.start);
   if (features_.HasPosition()) {
     IRS_ASSERT(pos_out_);
-    pos_.start = pos_out_->file_pointer();
+    pos_.start = pos_out_->Position();
     std::fill_n(pos_.skip_ptr, kMaxSkipLevels, pos_.start);
     if (features_.HasOffsetOrPayload()) {
       IRS_ASSERT(pay_out_);
-      pay_.start = pay_out_->file_pointer();
+      pay_.start = pay_out_->Position();
       std::fill_n(pay_.skip_ptr, kMaxSkipLevels, pay_.start);
     }
   }
@@ -648,16 +640,16 @@ void postings_writer_base::BeginTerm() {
 void postings_writer_base::EndDocument() {
   if (doc_.full()) {
     doc_.block_last = doc_.last;
-    doc_.end = doc_out_->file_pointer();
+    doc_.end = doc_out_->Position();
     if (features_.HasPosition()) {
       IRS_ASSERT(pos_out_);
-      pos_.end = pos_out_->file_pointer();
+      pos_.end = pos_out_->Position();
       // documents stream is full, but positions stream is not
       // save number of positions to skip before the next block
       pos_.block_last = pos_.size;
       if (features_.HasOffsetOrPayload()) {
         IRS_ASSERT(pay_out_);
-        pay_.end = pay_out_->file_pointer();
+        pay_.end = pay_out_->Position();
         pay_.block_last = pay_.pay_buf_.size();
       }
     }
@@ -676,7 +668,7 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
   auto write_max_score = [&](size_t level) {
     ApplyWriters([&](auto& writer) {
       const byte_type size = writer.SizeRoot(level);
-      doc_out_->write_byte(size);
+      doc_out_->WriteByte(size);
     });
     ApplyWriters([&](auto& writer) { writer.WriteRoot(level, *doc_out_); });
   };
@@ -701,10 +693,10 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
         const doc_id_t delta = *doc - prev;
 
         if (1 == freq) {
-          out.write_vint(shift_pack_32(delta, true));
+          out.WriteV32(shift_pack_32(delta, true));
         } else {
-          out.write_vint(shift_pack_32(delta, false));
-          out.write_vint(freq);
+          out.WriteV32(shift_pack_32(delta, false));
+          out.WriteV32(freq);
         }
 
         ++doc_freq;
@@ -712,7 +704,7 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
       }
     } else {
       for (; doc < doc_.doc; ++doc) {
-        out.write_vint(*doc - prev);
+        out.WriteV32(*doc - prev);
         prev = *doc;
       }
     }
@@ -726,11 +718,11 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
     IRS_ASSERT(pos_out_);
 
     if (meta.freq > skip_.Skip0()) {
-      meta.pos_end = pos_out_->file_pointer() - pos_.start;
+      meta.pos_end = pos_out_->Position() - pos_.start;
     }
 
     if (pos_.size > 0) {
-      data_output& out = *pos_out_;
+      auto& out = *pos_out_;
       uint32_t last_pay_size = std::numeric_limits<uint32_t>::max();
       uint32_t last_offs_len = std::numeric_limits<uint32_t>::max();
       uint32_t pay_buf_start = 0;
@@ -742,18 +734,18 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
           const uint32_t size = pay_.pay_sizes[i];
           if (last_pay_size != size) {
             last_pay_size = size;
-            out.write_vint(shift_pack_32(pos_delta, true));
-            out.write_vint(size);
+            out.WriteV32(shift_pack_32(pos_delta, true));
+            out.WriteV32(size);
           } else {
-            out.write_vint(shift_pack_32(pos_delta, false));
+            out.WriteV32(shift_pack_32(pos_delta, false));
           }
 
           if (size != 0) {
-            out.write_bytes(pay_.pay_buf_.c_str() + pay_buf_start, size);
+            out.WriteBytes(pay_.pay_buf_.c_str() + pay_buf_start, size);
             pay_buf_start += size;
           }
         } else {
-          out.write_vint(pos_delta);
+          out.WriteV32(pos_delta);
         }
 
         if (features_.HasOffset()) {
@@ -762,10 +754,10 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
           const uint32_t pay_offs_delta = pay_.offs_start_buf[i];
           const uint32_t len = pay_.offs_len_buf[i];
           if (len == last_offs_len) {
-            out.write_vint(shift_pack_32(pay_offs_delta, false));
+            out.WriteV32(shift_pack_32(pay_offs_delta, false));
           } else {
-            out.write_vint(shift_pack_32(pay_offs_delta, true));
-            out.write_vint(len);
+            out.WriteV32(shift_pack_32(pay_offs_delta, true));
+            out.WriteV32(len);
             last_offs_len = len;
           }
         }
@@ -782,7 +774,7 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
   // one block there was buffered
   // skip data, so we need to flush it
   if (has_skip_list) {
-    meta.e_skip_start = doc_out_->file_pointer() - doc_.start;
+    meta.e_skip_start = doc_out_->Position() - doc_.start;
     const auto num_levels = skip_.CountLevels();
     write_max_score(num_levels);
     skip_.FlushLevels(num_levels, *doc_out_);
@@ -924,10 +916,10 @@ void postings_writer<FormatTraits>::AddPosition(uint32_t pos) {
       IRS_ASSERT(pay_out_);
       auto& pay_buf = pay_.pay_buf_;
 
-      pay_out_->write_vint(static_cast<uint32_t>(pay_buf.size()));
+      pay_out_->WriteV32(static_cast<uint32_t>(pay_buf.size()));
       if (!pay_buf.empty()) {
         FormatTraits::write_block(*pay_out_, pay_.pay_sizes, buf_);
-        pay_out_->write_bytes(pay_buf.c_str(), pay_buf.size());
+        pay_out_->WriteBytes(pay_buf.c_str(), pay_buf.size());
         pay_buf.clear();
       }
     }
@@ -993,7 +985,7 @@ void postings_writer<FormatTraits>::write(irs::doc_iterator& docs,
     attrs_.freq_value_.value = attrs_.freq_->value;
 
     if (doc_limits::valid(doc_.last) && doc_.empty()) {
-      skip_.Skip(docs_count, [this](size_t level, memory_index_output& out) {
+      skip_.Skip(docs_count, [this](size_t level, MemoryIndexOutput& out) {
         WriteSkip(level, out);
 
         if constexpr (FormatTraits::wand()) {
@@ -1002,7 +994,7 @@ void postings_writer<FormatTraits>::write(irs::doc_iterator& docs,
           ApplyWriters([&](auto& writer) {
             const byte_type size = writer.Size(level);
             IRS_ASSERT(size <= irs::WandWriter::kMaxSize);
-            out.write_byte(size);
+            out.WriteByte(size);
           });
           ApplyWriters([&](auto& writer) { writer.Write(level, out); });
         }
@@ -1428,7 +1420,7 @@ struct position_impl<IteratorTraits, FieldTraits, true, false>
           pay_size = this->pos_in_->read_vint();
         }
         if (pay_size) {
-          this->pos_in_->seek(this->pos_in_->file_pointer() + pay_size);
+          this->pos_in_->seek(this->pos_in_->Position() + pay_size);
         }
       } else {
         this->pos_deltas_[i] = this->pos_in_->read_vint();
@@ -1468,7 +1460,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, false> {
     const size_t size = in.read_vint();
     if (size) {
       IteratorTraits::skip_block(in);
-      in.seek(in.file_pointer() + size);
+      in.seek(in.Position() + size);
     }
   }
 
@@ -1528,7 +1520,7 @@ struct position_impl<IteratorTraits, FieldTraits, false, false> {
           pay_size = pos_in_->read_vint();
         }
         if (pay_size) {
-          pos_in_->seek(pos_in_->file_pointer() + pay_size);
+          pos_in_->seek(pos_in_->Position() + pay_size);
         }
       } else {
         pos_deltas_[i] = pos_in_->read_vint();
@@ -1662,7 +1654,7 @@ class position final : public irs::position,
 
  private:
   void refill() {
-    if (this->pos_in_->file_pointer() == this->tail_start_) {
+    if (this->pos_in_->Position() == this->tail_start_) {
       this->read_tail_block();
     } else {
       this->read_block();
@@ -2053,7 +2045,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
 
     auto old_offset = std::numeric_limits<size_t>::max();
     if (meta.docs_count == FieldTraits::block_size()) {
-      old_offset = this->doc_in_->file_pointer();
+      old_offset = this->doc_in_->Position();
       FieldTraits::skip_block(*this->doc_in_);
       if constexpr (FieldTraits::frequency()) {
         FieldTraits::skip_block(*this->doc_in_);
@@ -2890,31 +2882,31 @@ bool IndexMetaWriter::prepare(directory& dir, IndexMeta& meta,
   }
 
   {
-    format_utils::write_header(*out, kFormatName, version_);
-    out->write_vlong(meta.gen);
-    out->write_long(meta.seg_counter);
+    format_utils::WriteHeader(*out, kFormatName, version_);
+    out->WriteV64(meta.gen);
+    out->WriteU64(meta.seg_counter);
     IRS_ASSERT(meta.segments.size() <= std::numeric_limits<uint32_t>::max());
-    out->write_vint(uint32_t(meta.segments.size()));
+    out->WriteV32(uint32_t(meta.segments.size()));
 
     for (const auto& segment : meta.segments) {
-      write_string(*out, segment.filename);
-      write_string(*out, segment.meta.codec->type()().name());
+      WriteStr(*out, segment.filename);
+      WriteStr(*out, segment.meta.codec->type()().name());
     }
 
     if (version_ > kFormatMin) {
       const auto payload = GetPayload(meta);
       const byte_type flags = IsNull(payload) ? 0 : kHasPayload;
-      out->write_byte(flags);
+      out->WriteByte(flags);
 
       if (flags == kHasPayload) {
-        irs::write_string(*out, payload);
+        irs::WriteStr(*out, payload);
       }
     } else {
       // Earlier versions don't support payload.
       meta.payload.reset();
     }
 
-    format_utils::write_footer(*out);
+    format_utils::WriteFooter(*out);
   }  // Important to close output here
 
   // Only noexcept operations below
@@ -3123,27 +3115,30 @@ void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
 
   byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
 
-  format_utils::write_header(*out, FORMAT_NAME, version_);
-  write_string(*out, meta.name);
-  out->write_vlong(meta.version);
-  out->write_vlong(meta.live_docs_count);
-  out->write_vlong(meta.docs_count -
-                   meta.live_docs_count);  // docs_count >= live_docs_count
-  out->write_vlong(meta.byte_size);
+  format_utils::WriteHeader(*out, FORMAT_NAME, version_);
+  WriteStr(*out, meta.name);
+  out->WriteV64(meta.version);
+  out->WriteV64(meta.live_docs_count);
+  out->WriteV64(meta.docs_count -
+                meta.live_docs_count);  // docs_count >= live_docs_count
+  out->WriteV64(meta.byte_size);
   if (SupportPrimarySort()) {
     // sorted indices are not supported in version 1.0
     if (field_limits::valid(meta.sort)) {
       flags |= SORTED;
     }
 
-    out->write_byte(flags);
-    out->write_vlong(1 + meta.sort);  // max->0
+    out->WriteByte(flags);
+    out->WriteV64(1 + meta.sort);  // max->0
   } else {
-    out->write_byte(flags);
+    out->WriteByte(flags);
     meta.sort = field_limits::invalid();
   }
-  write_strings(*out, meta.files);
-  format_utils::write_footer(*out);
+  out->WriteU64(meta.files.size());
+  for (const auto& s : meta.files) {
+    WriteStr(*out, s);
+  }
+  format_utils::WriteFooter(*out);
 }
 
 struct SegmentMetaReader : public segment_meta_reader {
@@ -3263,15 +3258,15 @@ size_t DocumentMaskWriter::write(directory& dir, const SegmentMeta& meta,
   IRS_ASSERT(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
   const auto count = static_cast<uint32_t>(docs_mask.size());
 
-  format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
-  out->write_vint(count);
+  format_utils::WriteHeader(*out, FORMAT_NAME, FORMAT_MAX);
+  out->WriteV32(count);
 
   for (auto mask : docs_mask) {
-    out->write_vint(mask);
+    out->WriteV32(mask);
   }
 
-  format_utils::write_footer(*out);
-  return out->file_pointer();
+  format_utils::WriteFooter(*out);
+  return out->Position();
 }
 
 class DocumentMaskReader : public document_mask_reader {
@@ -4148,8 +4143,8 @@ struct format_traits_sse4 {
     ::simdunpack(reinterpret_cast<const align_type*>(encoded), decoded, bits);
   }
 
-  IRS_FORCE_INLINE static void write_block(index_output& out,
-                                           const uint32_t* in, uint32_t* buf) {
+  IRS_FORCE_INLINE static void write_block(IndexOutput& out, const uint32_t* in,
+                                           uint32_t* buf) {
     bitpack::write_block32<block_size()>(pack_block, out, in, buf);
   }
 

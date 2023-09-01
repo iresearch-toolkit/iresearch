@@ -75,7 +75,7 @@ struct sort : irs::Scorer {
     }
 
     void collect(irs::bytes_view) final {}
-    void write(irs::data_output&) const final {}
+    void write(irs::DataOutput&) const final {}
   };
 
   struct term_collector final : irs::TermCollector {
@@ -94,7 +94,7 @@ struct sort : irs::Scorer {
     void reset() noexcept final { docs_with_term = 0; }
 
     void collect(irs::bytes_view) final {}
-    void write(irs::data_output&) const final {}
+    void write(irs::DataOutput&) const final {}
   };
 
   irs::IndexFeatures index_features() const final {

@@ -135,7 +135,7 @@ void assert_fst_read_write(const std::string& resource) {
   ASSERT_EQ(expected_stats, stats);
 
   SimpleMemoryAccounter writer_memory;
-  irs::memory_output out(writer_memory);
+  irs::MemoryOutput out(writer_memory);
   irs::immutable_byte_fst::Write(fst, out.stream, stats);
   out.stream.flush();
   ASSERT_GT(writer_memory.counter_, 0);
@@ -143,7 +143,7 @@ void assert_fst_read_write(const std::string& resource) {
   irs::memory_index_input in(out.file);
   std::unique_ptr<irs::immutable_byte_fst> read_fst(
     irs::immutable_byte_fst::Read(in, immutable_fst_memory));
-  ASSERT_EQ(out.file.length(), in.file_pointer());
+  ASSERT_EQ(out.file.length(), in.Position());
   ASSERT_GT(immutable_fst_memory.counter_, 0);
   ASSERT_NE(nullptr, read_fst);
   ASSERT_EQ(fst::kExpanded, read_fst->Properties(fst::kExpanded, false));

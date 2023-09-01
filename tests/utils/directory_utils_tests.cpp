@@ -86,8 +86,8 @@ class directory_utils_tests : public ::testing::Test {
     explicit callback_directory(irs::directory& impl, AfterCallback&& p)
       : tests::directory_mock(impl), after(p) {}
 
-    irs::index_input::ptr open(std::string_view name,
-                               irs::IOAdvice advice) const noexcept final {
+    irs::IndexInput::ptr open(std::string_view name,
+                              irs::IOAdvice advice) const noexcept final {
       auto stream = tests::directory_mock::open(name, advice);
       after();
       return stream;
@@ -158,7 +158,7 @@ TEST_F(directory_utils_tests, test_ref_tracking_dir) {
     auto file1 = dir.create(file);
 
     ASSERT_FALSE(!file1);
-    file1->write_byte(42);
+    file1->WriteByte(42);
     file1->flush();
 
     auto file2 = track_dir.open(file, irs::IOAdvice::NORMAL);
@@ -330,7 +330,7 @@ TEST_F(directory_utils_tests, test_tracking_dir) {
     {
       auto file1 = track_dir.create(file);
       ASSERT_FALSE(!file1);
-      file1->write_byte(42);
+      file1->WriteByte(42);
       file1->flush();
     }
     ASSERT_TRUE(track_dir.sync({&file, 1}));

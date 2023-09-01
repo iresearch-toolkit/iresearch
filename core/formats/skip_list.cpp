@@ -50,7 +50,7 @@ void SkipWriter::Prepare(size_t max_levels, size_t count) {
 
   // reset existing skip levels
   for (auto& level : levels_) {
-    level.reset();
+    level.Reset();
   }
 
   // add new skip levels if needed
@@ -64,8 +64,8 @@ uint32_t SkipWriter::CountLevels() const {
   const auto rend = std::rend(levels_);
 
   // find first filled level
-  level = std::find_if(level, rend, [](const memory_output& level) {
-    return level.stream.file_pointer();
+  level = std::find_if(level, rend, [](const MemoryOutput& level) {
+    return level.stream.Position();
   });
 
   // count number of levels
@@ -73,21 +73,21 @@ uint32_t SkipWriter::CountLevels() const {
   return num_levels;
 }
 
-void SkipWriter::FlushLevels(uint32_t num_levels, index_output& out) {
+void SkipWriter::FlushLevels(uint32_t num_levels, IndexOutput& out) {
   // write number of levels
-  out.write_vint(num_levels);
+  out.WriteV32(num_levels);
 
   // write levels from n downto 0
   auto level = std::make_reverse_iterator(std::begin(levels_) + num_levels);
   const auto rend = std::rend(levels_);
   for (; level != rend; ++level) {
     auto& stream = level->stream;
-    stream.flush();  // update length of each buffer
+    stream.Flush();  // update length of each buffer
 
-    const uint64_t length = stream.file_pointer();
+    const uint64_t length = stream.Position();
     IRS_ASSERT(length);
-    out.write_vlong(length);
-    stream >> out;
+    out.WriteU64(length);
+    // TODO(MBkkt) stream >> out;
   }
 }
 
@@ -125,7 +125,7 @@ void SkipReaderBase::Prepare(index_input::ptr&& in, doc_id_t left) {
         throw index_error("while loading level, error: zero length");
       }
 
-      const auto begin = stream->file_pointer();
+      const auto begin = stream->Position();
 
       levels.emplace_back(std::move(stream), step, left, begin);
 

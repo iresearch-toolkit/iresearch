@@ -75,7 +75,7 @@ struct data_input {
   //////////////////////////////////////////////////////////////////////////////
   virtual const byte_type* read_buffer(size_t count, BufferHint hint) = 0;
 
-  virtual size_t file_pointer() const = 0;
+  virtual size_t Position() const = 0;
 
   virtual size_t length() const = 0;
 
@@ -109,18 +109,17 @@ struct data_input {
   data_input& operator++(int) noexcept { return *this; }
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @struct index_input
-//////////////////////////////////////////////////////////////////////////////
 struct index_input : public data_input {
  public:
   using ptr = std::unique_ptr<index_input>;
 
-  virtual ptr dup() const = 0;  // non-thread-safe fd copy (offset preserved)
-  virtual ptr reopen()
-    const = 0;  // thread-safe new low-level-fd (offset preserved)
+  // TODO(MBkkt) now they're both implemented the same they,
+  // also it doesn't look like all users aware. Maybe we should remove dup?
+  virtual ptr dup() const = 0;     // thread-unsafe fd copy (offset preserved)
+  virtual ptr reopen() const = 0;  // thread-safe fd copy (offset preserved)
+
   virtual void seek(size_t pos) = 0;
-  virtual void skip(size_t count) { seek(file_pointer() + count); }
+  virtual void skip(size_t count) { seek(Position() + count); }
 
   using data_input::read_bytes;
   virtual size_t read_bytes(size_t offset, byte_type* b, size_t count) = 0;
@@ -140,7 +139,7 @@ struct index_input : public data_input {
   /// @return checksum from the current position to a
   /// specified offset without changing current position
   //////////////////////////////////////////////////////////////////////////////
-  virtual int64_t checksum(size_t offset) const = 0;
+  virtual uint32_t checksum(size_t offset) const = 0;
 
   virtual uint64_t CountMappedMemory() const { return 0; }
 
@@ -197,9 +196,9 @@ class buffered_index_input : public index_input {
   const byte_type* read_buffer(size_t offset, size_t size,
                                BufferHint hint) noexcept final;
 
-  size_t file_pointer() const noexcept final { return start_ + offset(); }
+  size_t Position() const noexcept final { return start_ + offset(); }
 
-  bool eof() const final { return file_pointer() >= length(); }
+  bool eof() const final { return Position() >= length(); }
 
   void seek(size_t pos) final;
   void skip(size_t pos) final;

@@ -183,7 +183,7 @@ struct Doc {
 
     virtual irs::token_stream& get_tokens() const = 0;
 
-    virtual bool write(irs::data_output& out) const = 0;
+    virtual bool write(irs::DataOutput& out) const = 0;
 
     virtual ~Field() = default;
   };
@@ -205,8 +205,8 @@ struct Doc {
       return _stream;
     }
 
-    bool write(irs::data_output& out) const override {
-      irs::write_string(out, f.c_str(), f.length());
+    bool write(irs::DataOutput& out) const override {
+      irs::WriteStr(out, f.c_str(), f.length());
       return true;
     }
   };
@@ -224,8 +224,8 @@ struct Doc {
       return *stream;
     }
 
-    bool write(irs::data_output& out) const override {
-      irs::write_string(out, f.c_str(), f.length());
+    bool write(irs::DataOutput& out) const override {
+      irs::WriteStr(out, f.c_str(), f.length());
       return true;
     }
   };
@@ -247,7 +247,7 @@ struct Doc {
       return stream;
     }
 
-    bool write(irs::data_output& out) const override {
+    bool write(irs::DataOutput& out) const override {
       irs::write_zvlong(out, value);
       return true;
     }

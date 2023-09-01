@@ -33,7 +33,7 @@
 
 namespace irs {
 
-struct data_output;
+class DataOutput;
 struct data_input;
 
 template<typename T, size_t SubstCost = 1>
@@ -222,7 +222,7 @@ parametric_description make_parametric_description(byte_type max_distance,
 /// @param description parametric description to write
 /// @param out output stream
 ////////////////////////////////////////////////////////////////////////////////
-void write(const parametric_description& description, data_output& out);
+void write(const parametric_description& description, DataOutput& out);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read parametric description from a specified input stream

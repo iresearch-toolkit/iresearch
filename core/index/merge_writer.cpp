@@ -86,7 +86,7 @@ class NoopDirectory : public directory {
 
   directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view) noexcept final { return nullptr; }
+  IndexOutput::ptr create(std::string_view) noexcept final { return nullptr; }
 
   bool exists(bool&, std::string_view) const noexcept final { return false; }
 
@@ -1108,10 +1108,10 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
     const auto res = cs.insert(
       columns, column_info(column_name),
       [column_name](bstring&) { return column_name; },
-      [](column_output& out, doc_id_t doc, bytes_view payload) {
+      [](ColumnOutput& out, doc_id_t doc, bytes_view payload) {
         out.Prepare(doc);
         if (!payload.empty()) {
-          out.write_bytes(payload.data(), payload.size());
+          out.WriteBytes(payload.data(), payload.size());
         }
       });
 
@@ -1123,9 +1123,10 @@ bool WriteColumns(Columnstore& cs, Iterator& columns,
   return true;
 }
 
-class BufferedValues final : public column_reader, data_output {
+class BufferedValues final : public column_reader, DataOutput {
  public:
   BufferedValues(IResourceManager& rm) : index_{{rm}}, data_{{rm}} {}
+
   void Clear() noexcept {
     index_.clear();
     data_.clear();
@@ -1156,7 +1157,7 @@ class BufferedValues final : public column_reader, data_output {
     auto* data = data_.data();
     for (auto v : index_) {
       out_->Prepare(v.key);
-      out_->write_bytes(data + v.begin, v.size);
+      out_->WriteBytes(data + v.begin, v.size);
     }
   }
 
@@ -1166,7 +1167,7 @@ class BufferedValues final : public column_reader, data_output {
     IRS_ASSERT(out_ == nullptr);
   }
 
-  void operator()(column_output& out, doc_id_t doc, bytes_view payload) {
+  void operator()(ColumnOutput& out, doc_id_t doc, bytes_view payload) {
     IRS_ASSERT(out_ == nullptr || out_ == &out);
     out_ = &out;
     const auto begin = data_.size();
@@ -1175,36 +1176,13 @@ class BufferedValues final : public column_reader, data_output {
   }
 
   // data_output
-  void write_byte(byte_type b) final { data_ += b; }
+  void WriteByte(byte_type b) final { data_ += b; }
 
-  void write_bytes(const byte_type* b, size_t len) final {
+  void WriteBytes(const byte_type* b, size_t len) final {
     data_.append(b, len);
   }
 
-  void write_short(int16_t value) final {
-    auto* begin = EnsureSize(sizeof(uint16_t));
-    irs::write<uint16_t>(begin, value);
-  }
-
-  void write_int(int32_t value) final {
-    auto* begin = EnsureSize(sizeof(uint32_t));
-    irs::write<uint32_t>(begin, value);
-  }
-
-  void write_long(int64_t value) final {
-    auto* begin = EnsureSize(sizeof(uint64_t));
-    irs::write<uint64_t>(begin, value);
-  }
-
-  void write_vint(uint32_t value) final {
-    auto* begin = EnsureSize(bytes_io<uint32_t>::const_max_vsize);
-    irs::vwrite<uint32_t>(begin, value);
-  }
-
-  void write_vlong(uint64_t value) final {
-    auto* begin = EnsureSize(bytes_io<uint64_t>::const_max_vsize);
-    irs::vwrite<uint64_t>(begin, value);
-  }
+  IRS_DATA_OUTPUT_MEMBERS
 
   // column_reader
   field_id id() const noexcept final { return id_; }
@@ -1228,18 +1206,11 @@ class BufferedValues final : public column_reader, data_output {
   }
 
  private:
-  byte_type* EnsureSize(size_t size) {
-    const auto offset = data_.size();
-    absl::strings_internal::STLStringResizeUninitializedAmortized(
-      &data_, offset + size);
-    return data_.data() + offset;
-  }
-
   BufferedColumn::BufferedValues index_;
   BufferedColumn::Buffer data_;
   field_id id_{field_limits::invalid()};
   std::optional<bstring> header_;
-  column_output* out_{};
+  ColumnOutput* out_{};
   FeatureWriter* feature_writer_{};
 };
 
@@ -1408,7 +1379,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
           res = write_values(*buffered_column);
         } else {
           res = write_values(
-            [writer = feature_writer.get()](column_output& out, doc_id_t doc,
+            [writer = feature_writer.get()](ColumnOutput& out, doc_id_t doc,
                                             bytes_view payload) {
               out.Prepare(doc);
               writer->write(out, payload);
@@ -1419,11 +1390,11 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
         // Factory has failed to instantiate a writer
         res = cs.insert(
           feature_itr, info, [](bstring&) { return std::string_view{}; },
-          [buffered_column](column_output& out, doc_id_t doc,
+          [buffered_column](ColumnOutput& out, doc_id_t doc,
                             bytes_view payload) {
             out.Prepare(doc);
             if (!payload.empty()) {
-              out.write_bytes(payload.data(), payload.size());
+              out.WriteBytes(payload.data(), payload.size());
               if (buffered_column) {
                 buffered_column->PushBack(doc, payload);
               }
@@ -1793,7 +1764,7 @@ bool MergeWriter::FlushSorted(TrackingDirectory& dir, SegmentMeta& segment,
     // write value into new column if present
     column_writer.Prepare(next_id);
     const auto payload = it.payload->value;
-    column_writer.write_bytes(payload.data(), payload.size());
+    column_writer.WriteBytes(payload.data(), payload.size());
 
     ++next_id;
 

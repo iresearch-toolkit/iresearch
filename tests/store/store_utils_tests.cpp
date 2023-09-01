@@ -59,9 +59,7 @@ class bytes_input : public data_input, public bytes_view {
     pos_ = this->data() + pos;
   }
 
-  size_t file_pointer() const final {
-    return std::distance(this->data(), pos_);
-  }
+  size_t Position() const final { return std::distance(this->data(), pos_); }
 
   size_t length() const final { return this->size(); }
 
@@ -270,14 +268,14 @@ void packed_read_write_block_core(const std::vector<uint32_t>& src) {
 }
 
 using irs::data_input;
-using irs::data_output;
+using irs::DataOutput;
 
 template<typename T>
 void read_write_core(const std::vector<T>& src,
                      const std::function<T(data_input&)>& reader,
-                     const std::function<void(data_output&, T)>& writer) {
+                     const std::function<void(DataOutput&, T)>& writer) {
   irs::bstring buf;
-  irs::bytes_output out(buf);
+  irs::BytesOutput out(buf);
   std::for_each(src.begin(), src.end(),
                 [&out, &writer](const T& v) { writer(out, v); });
 
@@ -289,7 +287,7 @@ void read_write_core(const std::vector<T>& src,
 // Since NaN != NaN according to the ieee754
 template<typename T>
 void read_write_core_nan(const std::function<T(data_input&)>& reader,
-                         const std::function<void(data_output&, T)>& writer) {
+                         const std::function<void(DataOutput&, T)>& writer) {
   irs::bstring buf;
   irs::bytes_output out(buf);
   writer(out, std::numeric_limits<T>::quiet_NaN());
@@ -303,7 +301,7 @@ void read_write_core_nan(const std::function<T(data_input&)>& reader,
 template<typename Cont>
 void read_write_core_container(
   const Cont& src, const std::function<Cont(data_input&)>& reader,
-  const std::function<data_output&(data_output&, const Cont&)>& writer) {
+  const std::function<DataOutput&(DataOutput&, const Cont&)>& writer) {
   irs::bstring buf;
   irs::bytes_output out(buf);
   writer(out, src);
@@ -524,7 +522,7 @@ TEST(store_utils_tests, std_string_read_write) {
     {std::string(), std::string(""), std::string("quick brown fox 1232141"),
      std::string("jumps over the 0218021"), std::string("lazy p1230142hlds"),
      std::string("dob  sdofjasoufdsa")},
-    irs::read_string<std::string>, irs::write_string<std::string>);
+    irs::read_string<std::string>, irs::WriteStr<std::string>);
 }
 
 TEST(store_utils_tests, bytes_read_write) {
@@ -534,7 +532,7 @@ TEST(store_utils_tests, bytes_read_write) {
      bstring(irs::ViewCast<byte_type>(std::string_view("jfdldsflaflj"))),
      bstring(irs::ViewCast<byte_type>(std::string_view("102174174010"))),
      bstring(irs::ViewCast<byte_type>(std::string_view("0182ljdskfaof")))},
-    irs::read_string<bstring>, irs::write_string<bstring>);
+    irs::read_string<bstring>, irs::WriteStr<bstring>);
 }
 
 TEST(store_utils_tests, packed_read_write_32) {
@@ -999,22 +997,22 @@ TEST(store_utils_tests, test_remapped_bytes_view) {
                                  std::move(mapping));
     auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual[0], data[0]);
-    ASSERT_EQ(5, in.file_pointer());
+    ASSERT_EQ(5, in.Position());
     std::array<irs::byte_type, 2> read;
     ASSERT_EQ(2, in.read_bytes(5, read.data(), 2));
     ASSERT_EQ(0x3, read[0]);
     ASSERT_EQ(0x4, read[1]);
-    ASSERT_EQ(7, in.file_pointer());
+    ASSERT_EQ(7, in.Position());
     ASSERT_EQ(2, in.read_bytes(read.data(), 2));
     ASSERT_EQ(0x5, read[0]);
     ASSERT_EQ(0x6, read[1]);
-    ASSERT_EQ(9, in.file_pointer());
+    ASSERT_EQ(9, in.Position());
     auto actual2 = in.read_buffer(4, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual2[0], data[1]);
-    ASSERT_EQ(6, in.file_pointer());
+    ASSERT_EQ(6, in.Position());
     auto actual3 = in.read_buffer(17, 1, BufferHint::NORMAL);
     ASSERT_EQ(actual3[0], data[14]);
-    ASSERT_EQ(18, in.file_pointer());
+    ASSERT_EQ(18, in.Position());
   }
 
   {
@@ -1026,13 +1024,13 @@ TEST(store_utils_tests, test_remapped_bytes_view) {
                                  std::move(mapping));
     auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual[1], data[1]);
-    ASSERT_EQ(5, in.file_pointer());
+    ASSERT_EQ(5, in.Position());
     auto actual2 = in.read_buffer(5, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual2[0], data[7]);
-    ASSERT_EQ(7, in.file_pointer());
+    ASSERT_EQ(7, in.Position());
     auto actual3 = in.read_buffer(25, 1, BufferHint::NORMAL);
     ASSERT_EQ(actual3[0], data[14]);
-    ASSERT_EQ(26, in.file_pointer());
+    ASSERT_EQ(26, in.Position());
   }
 }
 

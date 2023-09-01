@@ -75,7 +75,7 @@ class failing_directory : public tests::directory_mock {
     size_t read_bytes(size_t offset, irs::byte_type* b, size_t count) final {
       return impl_->read_bytes(offset, b, count);
     }
-    size_t file_pointer() const final { return impl_->file_pointer(); }
+    size_t Position() const final { return impl_->Position(); }
     size_t length() const final { return impl_->length(); }
     bool eof() const final { return impl_->eof(); }
     ptr dup() const final {
@@ -173,8 +173,8 @@ class failing_directory : public tests::directory_mock {
 
     return tests::directory_mock::mtime(result, name);
   }
-  irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept final {
+  irs::IndexInput::ptr open(std::string_view name,
+                            irs::IOAdvice advice) const noexcept final {
     if (should_fail(Failure::OPEN, name)) {
       return nullptr;
     }

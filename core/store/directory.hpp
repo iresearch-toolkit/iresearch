@@ -37,8 +37,7 @@ class directory_attributes;
 
 // An interface for abstract resource locking
 struct index_lock : private util::noncopyable {
-  DECLARE_IO_PTR(index_lock, unlock);
-  DEFINE_FACTORY_INLINE(index_lock);
+  IRS_USING_IO_PTR(index_lock, unlock);
 
   static constexpr size_t kLockWaitForever = std::numeric_limits<size_t>::max();
 
@@ -58,7 +57,7 @@ struct index_lock : private util::noncopyable {
   // Returns true on success
   bool try_lock(size_t wait_timeout = 1000) noexcept;
 
-  // Nnlocks the guarded resource
+  // Unlocks the guarded resource
   // Returns call success
   virtual bool unlock() noexcept = 0;
 };
@@ -104,7 +103,7 @@ struct directory : private util::noncopyable {
   // Opens output stream associated with the file
   // name - name of the file to open
   // Returns output stream associated with the file with the specified name
-  virtual index_output::ptr create(std::string_view name) noexcept = 0;
+  virtual IndexOutput::ptr create(std::string_view name) noexcept = 0;
 
   // Check whether the file specified by the given name exists
   // result - true if file already exists

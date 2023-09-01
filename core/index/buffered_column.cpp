@@ -28,7 +28,7 @@
 
 namespace irs {
 
-bool BufferedColumn::FlushSparsePrimary(DocMap& docmap, column_output& writer,
+bool BufferedColumn::FlushSparsePrimary(DocMap& docmap, ColumnOutput& writer,
                                         doc_id_t docs_count,
                                         const Comparer& compare) {
   auto comparer = [&](const auto& lhs, const auto& rhs) {
@@ -114,14 +114,14 @@ std::pair<DocMap, field_id> BufferedColumn::Flush(
   return {std::move(docmap), column_id};
 }
 
-void BufferedColumn::FlushAlreadySorted(column_output& writer) {
+void BufferedColumn::FlushAlreadySorted(ColumnOutput& writer) {
   for (const auto& value : index_) {
     writer.Prepare(value.key);
     WriteValue(writer, value);
   }
 }
 
-bool BufferedColumn::FlushDense(column_output& writer, DocMapView docmap,
+bool BufferedColumn::FlushDense(ColumnOutput& writer, DocMapView docmap,
                                 BufferedValues& buffer) {
   IRS_ASSERT(!docmap.empty());
 
@@ -155,7 +155,7 @@ bool BufferedColumn::FlushDense(column_output& writer, DocMapView docmap,
   return true;
 }
 
-void BufferedColumn::FlushSparse(column_output& writer, DocMapView docmap) {
+void BufferedColumn::FlushSparse(ColumnOutput& writer, DocMapView docmap) {
   IRS_ASSERT(!docmap.empty());
 
   for (auto& value : index_) {
