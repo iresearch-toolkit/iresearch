@@ -205,8 +205,9 @@ include(OptimizeForArchitectureLocal)
 if (USE_URING AND NOT MSVC)
   find_package(Uring)
 
-  if (${uring_FOUND})
+  if (uring_FOUND)
     add_definitions(-DIRESEARCH_URING)
+    set(LIBURING uring::uring)
   endif ()
 endif ()
 
