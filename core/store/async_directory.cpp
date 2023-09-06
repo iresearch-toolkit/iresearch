@@ -468,10 +468,10 @@ void AsyncIndexOutput::write_bytes(const byte_type* b, size_t length) {
 
 AsyncDirectory::AsyncDirectory(std::filesystem::path dir,
                                directory_attributes attrs,
-                               const ResourceManagementOptions& /*rm*/,
+                               const ResourceManagementOptions& rm,
                                size_t pool_size, size_t queue_size,
                                unsigned flags)
-  : MMapDirectory{std::move(dir), std::move(attrs)},
+  : MMapDirectory{std::move(dir), std::move(attrs), rm},
     async_pool_{pool_size},
     queue_size_{queue_size},
     flags_{flags} {}
