@@ -368,7 +368,6 @@ target_include_directories(iresearch-static
   SYSTEM
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
   PRIVATE ${ICU_INCLUDE_DIR}
-  PRIVATE ${URING_INCLUDE_DIR}
   PRIVATE $<TARGET_PROPERTY:iresearch-ofst,INTERFACE_INCLUDE_DIRECTORIES>
   PUBLIC ${VPACK_INCLUDE_PATH}
   PUBLIC $<TARGET_PROPERTY:hwy,INTERFACE_INCLUDE_DIRECTORIES>
@@ -411,7 +410,6 @@ target_link_libraries(iresearch-static
   PUBLIC iresearch-scorer-bm25-static
   PUBLIC iresearch-scorer-tfidf-static
   PUBLIC ${ICU_STATIC_LIBS}
-  ${URING_LIBRARIES}
   PUBLIC absl::flat_hash_map
   PUBLIC absl::flat_hash_set
   ${GCOV_LIBRARY}
@@ -419,6 +417,7 @@ target_link_libraries(iresearch-static
   ${DL_LIBRARY}
   ${SIMD_LIBRARY_STATIC}
   velocypack
+  ${LIBURING}
   )
 
 if (CLANG_TIDY_EXE)

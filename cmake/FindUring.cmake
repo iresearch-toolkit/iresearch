@@ -1,24 +1,21 @@
-# - Find uring
+# - Find liburing
 #
-# URING_INCLUDE_DIR - Where to find liburing.h
-# URING_LIBRARIES - List of libraries when using uring
-# uring_FOUND - True if uring found
+# uring_INCLUDE_DIR - Where to find liburing.h
+# uring_LIBRARIES - List of libraries when using uring.
+# uring_FOUND - True if uring found.
 
-find_path(URING_INCLUDE_DIR liburing.h)
-find_library(URING_LIBRARIES liburing.a liburing)
+find_path(uring_INCLUDE_DIR NAMES liburing.h)
+find_library(uring_LIBRARIES NAMES liburing.a liburing.so liburing)
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(uring DEFAULT_MSG URING_LIBRARIES URING_INCLUDE_DIR)
+find_package_handle_standard_args(uring DEFAULT_MSG uring_LIBRARIES uring_INCLUDE_DIR)
 
 if (uring_FOUND AND NOT TARGET uring::uring)
   add_library(uring::uring UNKNOWN IMPORTED)
   set_target_properties(uring::uring PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${URING_INCLUDE_DIR}"
+    INTERFACE_INCLUDE_DIRECTORIES "${uring_INCLUDE_DIR}"
     IMPORTED_LINK_INTERFACE_LANGUAGES "C"
-    IMPORTED_LOCATION "${URING_LIBRARIES}")
+    IMPORTED_LOCATION "${uring_LIBRARIES}")
 endif ()
 
-message("URING_INCLUDE_DIR: " ${URING_INCLUDE_DIR})
-message("URING_LIBRARIES: " ${URING_LIBRARIES})
-
-mark_as_advanced(URING_INCLUDE_DIR URING_LIBRARIES)
+mark_as_advanced(uring_INCLUDE_DIR uring_LIBRARIES)

@@ -29,7 +29,6 @@
 #include "utils/attribute_provider.hpp"
 #include "utils/iterator.hpp"
 #include "utils/math_utils.hpp"
-#include "utils/memory_pool.hpp"
 #include "utils/small_vector.hpp"
 
 namespace irs {
