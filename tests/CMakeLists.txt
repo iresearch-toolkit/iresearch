@@ -105,7 +105,6 @@ set(IReSearch_tests_sources
   ./utils/levenshtein_utils_test.cpp
   ./utils/wildcard_utils_test.cpp
   ./utils/ref_counter_tests.cpp
-  ./utils/memory_tests.cpp
   ./utils/minhash_utils_test.cpp
   ./utils/string_tests.cpp
   ./utils/simd_utils_test.cpp

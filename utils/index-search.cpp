@@ -66,7 +66,6 @@
 #include "search/wildcard_filter.hpp"
 #include "store/fs_directory.hpp"
 #include "utils/levenshtein_default_pdp.hpp"
-#include "utils/memory_pool.hpp"
 #include "utils/timer_utils.hpp"
 
 namespace {
