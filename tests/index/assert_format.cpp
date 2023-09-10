@@ -219,17 +219,17 @@ void column_values::rewrite() {
 }
 
 void index_segment::compute_features() {
-  struct column_output final : public irs::column_output {
-    explicit column_output(irs::bstring& buf) noexcept : buf_{&buf} {}
+  struct ColumnOutput final : public irs::ColumnOutput {
+    explicit ColumnOutput(irs::bstring& buf) noexcept : buf_{&buf} {}
 
-    column_output(column_output&&) = default;
-    column_output& operator=(column_output&&) = default;
+    ColumnOutput(ColumnOutput&&) = default;
+    ColumnOutput& operator=(ColumnOutput&&) = default;
 
     void Prepare(irs::doc_id_t) final { written = true; }
 
-    void write_byte(irs::byte_type b) final { (*buf_) += b; }
+    void WriteByte(irs::byte_type b) final { (*buf_) += b; }
 
-    void write_bytes(const irs::byte_type* b, size_t size) final {
+    void WriteBytes(const irs::byte_type* b, size_t size) final {
       buf_->append(b, size);
     }
 

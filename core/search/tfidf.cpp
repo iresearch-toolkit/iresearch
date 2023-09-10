@@ -64,7 +64,7 @@ struct TFIDFFieldCollector final : FieldCollector {
     docs_with_field += docs_with_field_value;
   }
 
-  void write(data_output& out) const final { out.write_vlong(docs_with_field); }
+  void write(DataOutput& out) const final { out.WriteV64(docs_with_field); }
 };
 
 // TODO(MBkkt) deduplicate with bm25.cpp

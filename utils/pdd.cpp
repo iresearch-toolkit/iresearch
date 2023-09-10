@@ -35,6 +35,7 @@
 #pragma warning(default : 4101)
 #endif
 
+#include "bytes_output.hpp"
 #include "shared.hpp"
 #include "store/store_utils.hpp"
 #include "utils/compression.hpp"
@@ -74,8 +75,8 @@ int dump(irs::byte_type distance, bool with_transpositions, size_t line_length,
 
   // write description to string
   {
-    irs::bytes_output out(raw);
-    irs::write(d, static_cast<irs::data_output&>(out));
+    irs::BytesOutput out{raw};
+    irs::write(d, static_cast<irs::DataOutput&>(out));
   }
 
   irs::bstring buf;

@@ -76,8 +76,8 @@ class directory_mock : public irs::directory {
     return impl_.mtime(result, name);
   }
 
-  irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept override {
+  irs::IndexInput::ptr open(std::string_view name,
+                            irs::IOAdvice advice) const noexcept override {
     return impl_.open(name, advice);
   }
 

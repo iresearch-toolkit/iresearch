@@ -42,7 +42,7 @@ struct BufferedValue {
   size_t size{};
 };
 
-class BufferedColumn final : public column_output, private util::noncopyable {
+class BufferedColumn final : public ColumnOutput, private util::noncopyable {
  public:
   using BufferedValues = ManagedVector<BufferedValue>;
   using Buffer = irs::basic_string<irs::byte_type,
@@ -67,13 +67,15 @@ class BufferedColumn final : public column_output, private util::noncopyable {
     }
   }
 
-  void write_byte(byte_type b) final { data_buf_ += b; }
+  void WriteByte(byte_type b) final { data_buf_ += b; }
 
-  void write_bytes(const byte_type* b, size_t size) final {
+  void WriteBytes(const byte_type* b, size_t size) final {
     data_buf_.append(b, size);
   }
 
-  void reset() final {
+  IRS_DATA_OUTPUT_MEMBERS
+
+  void Reset() final {
     if (!doc_limits::valid(pending_key_)) {
       return;
     }
@@ -127,20 +129,20 @@ class BufferedColumn final : public column_output, private util::noncopyable {
     return {data_buf_.data() + value.begin, value.size};
   }
 
-  void WriteValue(data_output& out, const BufferedValue& value) {
+  void WriteValue(DataOutput& out, const BufferedValue& value) {
     const auto payload = GetPayload(value);
-    out.write_bytes(payload.data(), payload.size());
+    out.WriteBytes(payload.data(), payload.size());
   }
 
-  bool FlushSparsePrimary(DocMap& docmap, column_output& writer,
+  bool FlushSparsePrimary(DocMap& docmap, ColumnOutput& writer,
                           doc_id_t docs_count, const Comparer& compare);
 
-  void FlushAlreadySorted(column_output& writer);
+  void FlushAlreadySorted(ColumnOutput& writer);
 
-  bool FlushDense(column_output& writer, DocMapView docmap,
+  bool FlushDense(ColumnOutput& writer, DocMapView docmap,
                   BufferedValues& buffer);
 
-  void FlushSparse(column_output& writer, DocMapView docmap);
+  void FlushSparse(ColumnOutput& writer, DocMapView docmap);
 
   Buffer data_buf_;  // FIXME use memory_file or block_pool instead
   BufferedValues index_;

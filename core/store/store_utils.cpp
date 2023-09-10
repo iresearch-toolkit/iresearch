@@ -29,23 +29,21 @@
 
 namespace irs {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                               read/write helpers
-// ----------------------------------------------------------------------------
+// TODO(MBkkt) Remove zv with columnstore
 
-void write_zvfloat(data_output& out, float_t v) {
+void write_zvfloat(DataOutput& out, float_t v) {
   const int32_t iv = numeric_utils::ftoi32(v);
 
   if (iv >= -1 && iv <= 125) {
     // small signed values between [-1 and 125]
-    out.write_byte(static_cast<byte_type>(0x80 | (1 + iv)));
+    out.WriteByte(static_cast<byte_type>(0x80 | (1 + iv)));
   } else if (!std::signbit(v)) {
     // positive value
-    out.write_int(iv);
+    out.WriteU32(iv);
   } else {
     // negative value
-    out.write_byte(0xFF);
-    out.write_int(iv);
+    out.WriteByte(0xFF);
+    out.WriteU32(iv);
   }
 };
 
@@ -66,25 +64,25 @@ float_t read_zvfloat(data_input& in) {
   return numeric_utils::i32tof((b << 24) | part | uint32_t(in.read_byte()));
 }
 
-void write_zvdouble(data_output& out, double_t v) {
+void write_zvdouble(DataOutput& out, double_t v) {
   const int64_t lv = numeric_utils::dtoi64(v);
 
   if (lv > -1 && lv <= 124) {
     // small signed values between [-1 and 124]
-    out.write_byte(static_cast<byte_type>(0x80 | (1 + lv)));
+    out.WriteByte(static_cast<byte_type>(0x80 | (1 + lv)));
   } else {
     const float_t fv = static_cast<float_t>(v);
 
     if (fv == static_cast<double_t>(v)) {
-      out.write_byte(0xFE);
-      out.write_int(numeric_utils::ftoi32(fv));
+      out.WriteByte(0xFE);
+      out.WriteU32(numeric_utils::ftoi32(fv));
     } else if (!std::signbit(v)) {
       // positive value
-      out.write_long(lv);
+      out.WriteU64(lv);
     } else {
       // negative value
-      out.write_byte(0xFF);
-      out.write_long(lv);
+      out.WriteByte(0xFF);
+      out.WriteU64(lv);
     }
   }
 }
@@ -146,7 +144,7 @@ void bytes_view_input::read_bytes(bstring& buf, size_t size) {
   IRS_ASSERT(read == size);
 }
 
-int64_t bytes_view_input::checksum(size_t offset) const {
+uint32_t bytes_view_input::checksum(size_t offset) const {
   crc32c crc;
 
   crc.process_block(pos_, std::min(pos_ + offset, data_.data() + data_.size()));
@@ -168,8 +166,8 @@ size_t remapped_bytes_view_input::src_to_internal(size_t t) const noexcept {
   return it->second + (t - it->first);
 }
 
-size_t remapped_bytes_view_input::file_pointer() const noexcept {
-  const auto addr = bytes_view_input::file_pointer();
+size_t remapped_bytes_view_input::Position() const noexcept {
+  const auto addr = bytes_view_input::Position();
   auto diff = std::numeric_limits<size_t>::max();
   IRS_ASSERT(!mapping_.empty());
   mapping_value src = mapping_.front();

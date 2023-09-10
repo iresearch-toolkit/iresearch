@@ -85,8 +85,8 @@ TEST_F(segment_writer_tests, invalid_actions) {
       static std::string_view value("test_field");
       return value;
     }
-    bool write(irs::data_output& out) {
-      irs::write_string(out, name());
+    bool write(irs::DataOutput& out) {
+      irs::WriteStr(out, name());
       return true;
     }
   };
@@ -155,8 +155,8 @@ TEST_F(segment_writer_tests, memory_sorted_vs_unsorted) {
       return value;
     }
 
-    bool write(irs::data_output& out) const {
-      irs::write_string(out, name());
+    bool write(irs::DataOutput& out) const {
+      irs::WriteStr(out, name());
       return true;
     }
   } field;
@@ -225,8 +225,8 @@ TEST_F(segment_writer_tests, insert_sorted_without_comparator) {
       return value;
     }
 
-    bool write(irs::data_output& out) const {
-      irs::write_string(out, name());
+    bool write(irs::DataOutput& out) const {
+      irs::WriteStr(out, name());
       return true;
     }
   } field;
@@ -275,8 +275,8 @@ TEST_F(segment_writer_tests, memory_store_sorted_field) {
       return value;
     }
 
-    bool write(irs::data_output& out) const {
-      irs::write_string(out, name());
+    bool write(irs::DataOutput& out) const {
+      irs::WriteStr(out, name());
       return true;
     }
   } field;
@@ -324,8 +324,8 @@ TEST_F(segment_writer_tests, memory_store_field_sorted) {
       return value;
     }
 
-    bool write(irs::data_output& out) const {
-      irs::write_string(out, name());
+    bool write(irs::DataOutput& out) const {
+      irs::WriteStr(out, name());
       return true;
     }
   } field;
@@ -373,8 +373,8 @@ TEST_F(segment_writer_tests, memory_store_field_unsorted) {
       return value;
     }
 
-    bool write(irs::data_output& out) const {
-      irs::write_string(out, name());
+    bool write(irs::DataOutput& out) const {
+      irs::WriteStr(out, name());
       return true;
     }
   } field;

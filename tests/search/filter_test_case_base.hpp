@@ -95,7 +95,7 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
       // NOOP
     }
 
-    void write(irs::data_output& out) const final {
+    void write(irs::DataOutput& out) const final {
       // NOOP
     }
 
@@ -124,7 +124,7 @@ struct custom_sort : public irs::ScorerBase<custom_sort, void> {
       // NOOP
     }
 
-    void write(irs::data_output& out) const final {
+    void write(irs::DataOutput& out) const final {
       // NOOP
     }
 
@@ -245,7 +245,7 @@ struct frequency_sort : public irs::ScorerBase<frequency_sort, stats_t> {
       // NOOP
     }
 
-    void write(irs::data_output& out) const final {
+    void write(irs::DataOutput& out) const final {
       // NOOP
     }
   };

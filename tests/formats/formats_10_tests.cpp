@@ -123,7 +123,7 @@ class format_10_test_case : public tests::format_test_case {
 
       auto out = dir->create("attributes");
       ASSERT_FALSE(!out);
-      irs::write_string(*out, std::string_view("file_header"));
+      irs::WriteStr(*out, std::string_view("file_header"));
 
       // prepare writer
       writer->prepare(*out, state);
@@ -164,7 +164,7 @@ class format_10_test_case : public tests::format_test_case {
       ASSERT_NE(nullptr, reader);
       reader->prepare(*in, state, field.index_features);
 
-      irs::bstring in_data(in->length() - in->file_pointer(), 0);
+      irs::bstring in_data(in->length() - in->Position(), 0);
       in->read_bytes(&in_data[0], in_data.size());
       const auto* begin = in_data.c_str();
 
@@ -385,7 +385,7 @@ TEST_P(format_10_test_case, postings_read_write_single_doc) {
     ASSERT_NE(nullptr, reader);
     reader->prepare(*in, state, field.index_features);
 
-    irs::bstring in_data(in->length() - in->file_pointer(), 0);
+    irs::bstring in_data(in->length() - in->Position(), 0);
     in->read_bytes(&in_data[0], in_data.size());
     const auto* begin = in_data.c_str();
 
@@ -522,7 +522,7 @@ TEST_P(format_10_test_case, postings_read_write) {
     ASSERT_NE(nullptr, reader);
     reader->prepare(*in, state, field.index_features);
 
-    irs::bstring in_data(in->length() - in->file_pointer(), 0);
+    irs::bstring in_data(in->length() - in->Position(), 0);
     in->read_bytes(&in_data[0], in_data.size());
     const auto* begin = in_data.c_str();
 

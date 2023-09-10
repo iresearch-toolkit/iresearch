@@ -33,10 +33,10 @@
 
 namespace irs {
 
-struct data_output;
+class DataOutput;
 struct IndexReader;
-class memory_index_output;
-class index_output;
+class MemoryIndexOutput;
+class IndexOutput;
 struct SubReader;
 struct ColumnProvider;
 struct term_reader;
@@ -79,7 +79,7 @@ class FieldCollector {
   virtual void collect(bytes_view in) = 0;
 
   // Serialize the internal data representation into 'out'.
-  virtual void write(data_output& out) const = 0;
+  virtual void write(DataOutput& out) const = 0;
 };
 
 // Object used for collecting index statistics, for a specific matched
@@ -108,7 +108,7 @@ struct TermCollector {
   virtual void collect(bytes_view in) = 0;
 
   // Serialize the internal data representation into 'out'.
-  virtual void write(data_output& out) const = 0;
+  virtual void write(DataOutput& out) const = 0;
 };
 
 struct WandSource : attribute_provider {
@@ -132,8 +132,8 @@ struct WandWriter {
 
   virtual void Update() = 0;
 
-  virtual void Write(size_t level, memory_index_output& out) = 0;
-  virtual void WriteRoot(size_t level, index_output& out) = 0;
+  virtual void Write(size_t level, MemoryIndexOutput& out) = 0;
+  virtual void WriteRoot(size_t level, IndexOutput& out) = 0;
 
   virtual byte_type Size(size_t level) const = 0;
   virtual byte_type SizeRoot(size_t level) = 0;

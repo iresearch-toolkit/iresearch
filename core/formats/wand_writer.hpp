@@ -59,7 +59,7 @@ class WandWriterImpl final : public WandWriter {
     producer_.Produce(levels_.front());
   }
 
-  void Write(size_t level, memory_index_output& out) final {
+  void Write(size_t level, MemoryIndexOutput& out) final {
     IRS_ASSERT(level + 1 < levels_.size());
     auto& entry = levels_[level];
     Producer::Produce(entry, levels_[level + 1]);
@@ -67,7 +67,7 @@ class WandWriterImpl final : public WandWriter {
     entry = {};
   }
 
-  void WriteRoot(size_t level, index_output& out) final {
+  void WriteRoot(size_t level, IndexOutput& out) final {
     IRS_ASSERT(level < levels_.size());
     auto& entry = levels_[level];
     Producer::Write(entry, out);
@@ -199,11 +199,11 @@ class FreqNormProducer {
   static void Write(Entry entry, Output& out) {
     // TODO(MBkkt) Compute difference second time looks unnecessary.
     IRS_ASSERT(entry.freq >= 1);
-    out.write_vint(entry.freq);
+    out.WriteV32(entry.freq);
     if constexpr (kNorm) {
       IRS_ASSERT(entry.norm >= entry.freq);
       if (entry.norm != entry.freq) {
-        out.write_vint(entry.norm - entry.freq);
+        out.WriteV32(entry.norm - entry.freq);
       }
     }
   }

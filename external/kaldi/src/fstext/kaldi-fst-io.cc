@@ -117,8 +117,8 @@ void WriteFstKaldi(const VectorFst<StdArc> &fst,
                    std::string wxfilename) {
   if (wxfilename == "") wxfilename = "-"; // interpret "" as stdout,
   // for compatibility with OpenFst conventions.
-  bool write_binary = true, write_header = false;
-  kaldi::Output ko(wxfilename, write_binary, write_header);
+  bool write_binary = true, WriteHeader = false;
+  kaldi::Output ko(wxfilename, write_binary, WriteHeader);
   FstWriteOptions wopts(kaldi::PrintableWxfilename(wxfilename));
   fst.Write(ko.Stream(), wopts);
 }

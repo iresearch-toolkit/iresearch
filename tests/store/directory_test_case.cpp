@@ -67,11 +67,11 @@ TEST_P(directory_test_case, rename) {
   {
     auto stream0 = dir_->create("foo");
     ASSERT_NE(nullptr, stream0);
-    stream0->write_byte(0);
+    stream0->WriteByte(0);
     stream0->flush();
     auto stream1 = dir_->create("bar");
     ASSERT_NE(nullptr, stream1);
-    stream1->write_int(2);
+    stream1->WriteU32(2);
     stream1->flush();
   }
 
@@ -252,12 +252,12 @@ TEST_P(directory_test_case, read_multiple_streams) {
   {
     auto out = dir_->create("test");
     ASSERT_FALSE(!out);
-    out->write_vint(0);
-    out->write_vint(1);
-    out->write_vint(2);
-    out->write_vint(300);
-    out->write_vint(4);
-    out->write_vint(50000);
+    out->WriteV32(0);
+    out->WriteV32(1);
+    out->WriteV32(2);
+    out->WriteV32(300);
+    out->WriteV32(4);
+    out->WriteV32(50000);
   }
 
   // read data
@@ -369,7 +369,7 @@ TEST_P(directory_test_case, read_multiple_streams) {
       ASSERT_FALSE(!out);
 
       for (uint32_t i = 0; i < 10000; ++i) {
-        out->write_vint(i);
+        out->WriteV32(i);
       }
     }
 
@@ -537,10 +537,10 @@ TEST_P(directory_test_case, string_read_write) {
       irs::crc32c crc;
       auto out = dir_->create("test");
       ASSERT_FALSE(!out);
-      out->write_vint(strings.size());
+      out->WriteV32(strings.size());
       u32crc(crc, static_cast<uint32_t>(strings.size()));
       for (const auto& str : strings) {
-        write_string(*out, str.c_str(), str.size());
+        WriteStr(*out, str.c_str(), str.size());
         strcrc(crc, str);
       }
       ASSERT_EQ(crc.checksum(), out->checksum());
@@ -2071,10 +2071,10 @@ TEST_P(directory_test_case, string_read_write) {
       irs::crc32c crc;
       auto out = dir_->create("test");
       ASSERT_FALSE(!out);
-      out->write_vint(strings.size());
+      out->WriteV32(strings.size());
       u32crc(crc, static_cast<uint32_t>(strings.size()));
       for (const auto& str : strings) {
-        write_string(*out, str.c_str(), str.size());
+        WriteStr(*out, str.c_str(), str.size());
         strcrc(crc, str);
       }
       ASSERT_EQ(crc.checksum(), out->checksum());
@@ -3704,10 +3704,10 @@ TEST_P(directory_test_case, string_read_write) {
       irs::crc32c crc;
       auto out = dir_->create("test");
       ASSERT_FALSE(!out);
-      out->write_vint(strings.size());
+      out->WriteV32(strings.size());
       u32crc(crc, static_cast<uint32_t>(strings.size()));
       for (const auto& str : strings) {
-        write_string(*out, str.c_str(), str.size());
+        WriteStr(*out, str.c_str(), str.size());
         strcrc(crc, str);
       }
       ASSERT_EQ(crc.checksum(), out->checksum());
@@ -3876,40 +3876,40 @@ TEST_P(directory_test_case, smoke_index_io) {
   {
     auto out = dir_->create(name);
     ASSERT_FALSE(!out);
-    out->write_bytes(payload.c_str(), payload.size());
-    out->write_byte(27);
-    out->write_short(std::numeric_limits<int16_t>::min());
-    out->write_short(std::numeric_limits<uint16_t>::min());
-    out->write_short(0);
-    out->write_short(8712);
-    out->write_short(std::numeric_limits<int16_t>::max());
-    out->write_short(std::numeric_limits<uint16_t>::max());
+    out->WriteBytes(payload.c_str(), payload.size());
+    out->WriteByte(27);
+    out->WriteU16(std::numeric_limits<int16_t>::min());
+    out->WriteU16(std::numeric_limits<uint16_t>::min());
+    out->WriteU16(0);
+    out->WriteU16(8712);
+    out->WriteU16(std::numeric_limits<int16_t>::max());
+    out->WriteU16(std::numeric_limits<uint16_t>::max());
 
-    out->write_int(std::numeric_limits<int32_t>::min());
-    out->write_int(std::numeric_limits<uint32_t>::min());
-    out->write_int(0);
-    out->write_int(434328);
-    out->write_int(std::numeric_limits<int32_t>::max());
-    out->write_int(std::numeric_limits<uint32_t>::max());
+    out->WriteU32(std::numeric_limits<int32_t>::min());
+    out->WriteU32(std::numeric_limits<uint32_t>::min());
+    out->WriteU32(0);
+    out->WriteU32(434328);
+    out->WriteU32(std::numeric_limits<int32_t>::max());
+    out->WriteU32(std::numeric_limits<uint32_t>::max());
 
-    out->write_long(std::numeric_limits<int64_t>::min());
-    out->write_long(std::numeric_limits<uint64_t>::min());
-    out->write_long(0);
-    out->write_long(8327932492393LL);
-    out->write_long(std::numeric_limits<int64_t>::max());
-    out->write_long(std::numeric_limits<uint64_t>::max());
+    out->WriteU64(std::numeric_limits<int64_t>::min());
+    out->WriteU64(std::numeric_limits<uint64_t>::min());
+    out->WriteU64(0);
+    out->WriteU64(8327932492393LL);
+    out->WriteU64(std::numeric_limits<int64_t>::max());
+    out->WriteU64(std::numeric_limits<uint64_t>::max());
 
-    out->write_vint(std::numeric_limits<uint32_t>::min());
-    out->write_vint(0);
-    out->write_vint(8748374);
-    out->write_vint(std::numeric_limits<uint32_t>::max());
+    out->WriteV32(std::numeric_limits<uint32_t>::min());
+    out->WriteV32(0);
+    out->WriteV32(8748374);
+    out->WriteV32(std::numeric_limits<uint32_t>::max());
 
-    out->write_vlong(std::numeric_limits<uint64_t>::min());
-    out->write_vlong(0);
-    out->write_vlong(23289LL);
-    out->write_vlong(std::numeric_limits<uint64_t>::max());
+    out->WriteV64(std::numeric_limits<uint64_t>::min());
+    out->WriteV64(0);
+    out->WriteV64(23289LL);
+    out->WriteV64(std::numeric_limits<uint64_t>::max());
 
-    write_string(*out, str.c_str(), str.size());
+    WriteStr(*out, str.c_str(), str.size());
   }
 
   // read from file
@@ -4056,18 +4056,18 @@ TEST_P(directory_test_case, smoke_store) {
 
     auto file = dir.create(name);
     ASSERT_FALSE(!file);
-    EXPECT_EQ(0, file->file_pointer());
+    EXPECT_EQ(0, file->Position());
 
-    file->write_bytes(reinterpret_cast<const byte_type*>(it->data()),
-                      it->size());
-    EXPECT_EQ(it->size(), file->file_pointer());
+    file->WriteBytes(reinterpret_cast<const byte_type*>(it->data()),
+                     it->size());
+    EXPECT_EQ(it->size(), file->Position());
     crc.process_bytes(it->data(), it->size());
-    file->write_bytes(buf, sizeof buf);
-    EXPECT_EQ(it->size() + sizeof buf, file->file_pointer());
+    file->WriteBytes(buf, sizeof buf);
+    EXPECT_EQ(it->size() + sizeof buf, file->Position());
     crc.process_bytes(buf, sizeof buf);
-    file->write_byte(++b);
+    file->WriteByte(++b);
     crc.process_bytes(&b, sizeof b);
-    EXPECT_EQ(it->size() + sizeof buf + 1, file->file_pointer());
+    EXPECT_EQ(it->size() + sizeof buf + 1, file->Position());
 
     EXPECT_EQ(crc.checksum(), file->checksum());
 
@@ -4107,22 +4107,22 @@ TEST_P(directory_test_case, smoke_store) {
     auto file = dir.open(name, irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!file);
     EXPECT_FALSE(file->eof());
-    EXPECT_EQ(0, file->file_pointer());
+    EXPECT_EQ(0, file->Position());
     EXPECT_EQ(expected_length, file->length());
 
     auto dup_file = file->dup();
     ASSERT_FALSE(!dup_file);
-    ASSERT_EQ(0, dup_file->file_pointer());
+    ASSERT_EQ(0, dup_file->Position());
     EXPECT_FALSE(dup_file->eof());
     EXPECT_EQ(expected_length, dup_file->length());
     auto reopened_file = file->reopen();
     ASSERT_FALSE(!reopened_file);
-    ASSERT_EQ(0, reopened_file->file_pointer());
+    ASSERT_EQ(0, reopened_file->Position());
     EXPECT_FALSE(reopened_file->eof());
     EXPECT_EQ(expected_length, reopened_file->length());
 
     const auto checksum = file->checksum(file->length());
-    ASSERT_EQ(0, file->file_pointer());
+    ASSERT_EQ(0, file->Position());
 
     {
       buf.resize(it->size());
@@ -4132,27 +4132,27 @@ TEST_P(directory_test_case, smoke_store) {
 
       // random access
       {
-        const auto fp = file->file_pointer();
+        const auto fp = file->Position();
         buf1.resize(it->size());
         const auto read =
           file->read_bytes(fp - it->size(), buf1.data(), it->size());
         ASSERT_EQ(read, it->size());
         ASSERT_EQ(ViewCast<byte_type>(std::string_view(*it)), buf1);
-        ASSERT_EQ(fp, file->file_pointer());
+        ASSERT_EQ(fp, file->Position());
       }
 
       // failed direct buffer access doesn't move file pointer
       {
-        const auto fp = file->file_pointer();
+        const auto fp = file->Position();
         ASSERT_GT(file->length(), 1);
         ASSERT_EQ(nullptr, file->read_buffer(file->length() - 1, file->length(),
                                              BufferHint::NORMAL));
-        ASSERT_EQ(fp, file->file_pointer());
+        ASSERT_EQ(fp, file->Position());
       }
 
       // failed direct buffer access doesn't move file pointer
       {
-        const auto fp = file->file_pointer();
+        const auto fp = file->Position();
         Finally cleanup = [fp, &file]() noexcept {
           try {
             file->seek(fp);
@@ -4165,13 +4165,13 @@ TEST_P(directory_test_case, smoke_store) {
         file->seek(file->length() - 1);
         ASSERT_EQ(nullptr,
                   file->read_buffer(file->length(), BufferHint::NORMAL));
-        ASSERT_EQ(file->length() - 1, file->file_pointer());
+        ASSERT_EQ(file->length() - 1, file->Position());
       }
 
       if (dynamic_cast<MMapDirectory*>(&dir) ||
           dynamic_cast<memory_directory*>(&dir) ||
           dynamic_cast<FSDirectory*>(&dir)) {
-        const auto fp = file->file_pointer();
+        const auto fp = file->Position();
         Finally cleanup = [fp, &file]() noexcept {
           try {
             file->seek(fp);
@@ -4183,11 +4183,11 @@ TEST_P(directory_test_case, smoke_store) {
         // sequential direct access
         {
           file->seek(0);
-          ASSERT_EQ(0, file->file_pointer());
+          ASSERT_EQ(0, file->Position());
           const byte_type* internal_buf =
             file->read_buffer(1, BufferHint::NORMAL);
           ASSERT_NE(nullptr, internal_buf);
-          ASSERT_EQ(1, file->file_pointer());
+          ASSERT_EQ(1, file->Position());
           ASSERT_EQ(it->at(0), *internal_buf);
         }
 
@@ -4196,14 +4196,14 @@ TEST_P(directory_test_case, smoke_store) {
           const byte_type* internal_buf =
             file->read_buffer(0, 1, BufferHint::NORMAL);
           ASSERT_NE(nullptr, internal_buf);
-          ASSERT_EQ(1, file->file_pointer());
+          ASSERT_EQ(1, file->Position());
           ASSERT_EQ(it->at(0), *internal_buf);
         }
       }
 
       // mmap direct buffer access
       if (dynamic_cast<MMapDirectory*>(&dir)) {
-        const auto fp = file->file_pointer();
+        const auto fp = file->Position();
         Finally cleanup = [fp, &file]() noexcept {
           try {
             file->seek(fp);
@@ -4218,7 +4218,7 @@ TEST_P(directory_test_case, smoke_store) {
           const byte_type* internal_buf = file->read_buffer(
             fp - it->size(), it->size(), BufferHint::PERSISTENT);
           ASSERT_NE(nullptr, internal_buf);
-          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(file->Position(), fp);
           ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
         }
 
@@ -4227,7 +4227,7 @@ TEST_P(directory_test_case, smoke_store) {
           const byte_type* internal_buf =
             file->read_buffer(fp - it->size(), it->size(), BufferHint::NORMAL);
           ASSERT_NE(nullptr, internal_buf);
-          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(file->Position(), fp);
           ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
         }
 
@@ -4236,7 +4236,7 @@ TEST_P(directory_test_case, smoke_store) {
           const byte_type* internal_buf = file->read_buffer(
             fp - it->size(), it->size(), BufferHint::PERSISTENT);
           ASSERT_NE(nullptr, internal_buf);
-          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(file->Position(), fp);
           ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
         }
 
@@ -4245,7 +4245,7 @@ TEST_P(directory_test_case, smoke_store) {
           const byte_type* internal_buf =
             file->read_buffer(fp - it->size(), it->size(), BufferHint::NORMAL);
           ASSERT_NE(nullptr, internal_buf);
-          ASSERT_EQ(file->file_pointer(), fp);
+          ASSERT_EQ(file->Position(), fp);
           ASSERT_EQ(bytes_view(internal_buf, it->size()), buf);
         }
       }
@@ -4296,7 +4296,7 @@ TEST_P(directory_test_case, smoke_store) {
       // check checksum
       EXPECT_EQ(crc.checksum(), checksum);
       // check that this is the end of the file
-      EXPECT_EQ(expected_length, file->file_pointer());
+      EXPECT_EQ(expected_length, file->Position());
     }
   }
 
@@ -4355,9 +4355,9 @@ TEST_P(directory_test_case, smoke_store) {
       byte_type buf[1024]{};
       auto out = dir.create(name);
       ASSERT_FALSE(!out);
-      out->write_bytes(buf, sizeof buf);
-      out->write_bytes(buf, sizeof buf);
-      out->write_bytes(buf, 691);
+      out->WriteBytes(buf, sizeof buf);
+      out->WriteBytes(buf, sizeof buf);
+      out->WriteBytes(buf, 691);
       out->flush();
     }
 
@@ -4393,9 +4393,9 @@ TEST_P(directory_test_case, directory_size) {
     auto file = dir_->create("test_file");
 
     ASSERT_FALSE(!file);
-    ASSERT_EQ(0, file->file_pointer());
+    ASSERT_EQ(0, file->Position());
 
-    file->write_int(100);
+    file->WriteU32(100);
     file->flush();
   }
 
@@ -4482,11 +4482,11 @@ TEST_F(fs_directory_test, orphaned_lock) {
       const std::string pid = std::to_string(std::numeric_limits<int>::max());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
-      out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                       strlen(hostname));
-      out->write_byte(0);
-      out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
-                       pid.size());
+      out->WriteBytes(reinterpret_cast<const byte_type*>(hostname),
+                      strlen(hostname));
+      out->WriteByte(0);
+      out->WriteBytes(reinterpret_cast<const byte_type*>(pid.c_str()),
+                      pid.size());
     }
 
     // try to obtain lock
@@ -4510,11 +4510,11 @@ TEST_F(fs_directory_test, orphaned_lock) {
     const std::string pid = "invalid_pid";
     auto out = dir_->create("lock");
     ASSERT_FALSE(!out);
-    out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                     strlen(hostname));
-    out->write_byte(0);
-    out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
-                     pid.size());
+    out->WriteBytes(reinterpret_cast<const byte_type*>(hostname),
+                    strlen(hostname));
+    out->WriteByte(0);
+    out->WriteBytes(reinterpret_cast<const byte_type*>(pid.c_str()),
+                    pid.size());
   }
 
   // try to obtain lock
@@ -4552,8 +4552,8 @@ TEST_F(fs_directory_test, orphaned_lock) {
     ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
     auto out = dir_->create("lock");
     ASSERT_FALSE(!out);
-    out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                     strlen(hostname));
+    out->WriteBytes(reinterpret_cast<const byte_type*>(hostname),
+                    strlen(hostname));
   }
 
   // try to obtain lock
@@ -4575,11 +4575,11 @@ TEST_F(fs_directory_test, orphaned_lock) {
       const std::string pid = std::to_string(irs::get_pid());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
-      out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                       strlen(hostname));
-      out->write_byte(0);
-      out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
-                       pid.size());
+      out->WriteBytes(reinterpret_cast<const byte_type*>(hostname),
+                      strlen(hostname));
+      out->WriteByte(0);
+      out->WriteBytes(reinterpret_cast<const byte_type*>(pid.c_str()),
+                      pid.size());
     }
 
     bool exists;
@@ -4600,11 +4600,11 @@ TEST_F(fs_directory_test, orphaned_lock) {
       const std::string pid = std::to_string(irs::get_pid());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
-      out->write_bytes(reinterpret_cast<const byte_type*>(hostname),
-                       strlen(hostname));
-      out->write_byte(0);
-      out->write_bytes(reinterpret_cast<const byte_type*>(pid.c_str()),
-                       pid.size());
+      out->WriteBytes(reinterpret_cast<const byte_type*>(hostname),
+                      strlen(hostname));
+      out->WriteByte(0);
+      out->WriteBytes(reinterpret_cast<const byte_type*>(pid.c_str()),
+                      pid.size());
     }
 
     bool exists;
@@ -4624,13 +4624,13 @@ TEST(memory_directory_test, rewrite) {
   const bytes_view payload0{ViewCast<byte_type>(str0)};
   const bytes_view payload1{ViewCast<byte_type>(str1)};
 
-  memory_output out{IResourceManager::kNoop};
-  out.stream.write_bytes(payload0.data(), payload0.size());
-  ASSERT_EQ(payload0.size(), out.stream.file_pointer());
-  out.stream.truncate(out.stream.file_pointer() - 3);
-  ASSERT_EQ(payload0.size() - 3, out.stream.file_pointer());
-  out.stream.write_bytes(payload1.data(), payload1.size());
-  ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.file_pointer());
+  MemoryOutput out{IResourceManager::kNoop};
+  out.stream.WriteBytes(payload0.data(), payload0.size());
+  ASSERT_EQ(payload0.size(), out.stream.Position());
+  out.stream.truncate(out.stream.Position() - 3);
+  ASSERT_EQ(payload0.size() - 3, out.stream.Position());
+  out.stream.WriteBytes(payload1.data(), payload1.size());
+  ASSERT_EQ(payload0.size() - 3 + payload1.size(), out.stream.Position());
   out.stream.flush();
 
   memory_index_input in{out.file};

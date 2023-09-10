@@ -147,7 +147,7 @@ irs::token_stream& long_field::get_tokens() const {
   return stream_;
 }
 
-bool long_field::write(irs::data_output& out) const {
+bool long_field::write(irs::DataOutput& out) const {
   irs::write_zvlong(out, value_);
   return true;
 }
@@ -161,7 +161,7 @@ irs::token_stream& int_field::get_tokens() const {
   return *stream_;
 }
 
-bool int_field::write(irs::data_output& out) const {
+bool int_field::write(irs::DataOutput& out) const {
   irs::write_zvint(out, value_);
   return true;
 }
@@ -175,7 +175,7 @@ irs::token_stream& double_field::get_tokens() const {
   return stream_;
 }
 
-bool double_field::write(irs::data_output& out) const {
+bool double_field::write(irs::DataOutput& out) const {
   irs::write_zvdouble(out, value_);
   return true;
 }
@@ -189,7 +189,7 @@ irs::token_stream& float_field::get_tokens() const {
   return stream_;
 }
 
-bool float_field::write(irs::data_output& out) const {
+bool float_field::write(irs::DataOutput& out) const {
   irs::write_zvfloat(out, value_);
   return true;
 }
@@ -203,8 +203,8 @@ irs::token_stream& binary_field::get_tokens() const {
   return stream_;
 }
 
-bool binary_field::write(irs::data_output& out) const {
-  irs::write_string(out, value_);
+bool binary_field::write(irs::DataOutput& out) const {
+  irs::WriteStr(out, value_);
   return true;
 }
 
@@ -565,8 +565,8 @@ void string_field::value(std::string_view str) {
   value_.assign(begin, end);
 }
 
-bool string_field::write(irs::data_output& out) const {
-  irs::write_string(out, value_);
+bool string_field::write(irs::DataOutput& out) const {
+  irs::WriteStr(out, value_);
   return true;
 }
 
@@ -607,8 +607,8 @@ void string_view_field::value(std::string_view str) {
   value_ = std::string_view(str.data(), max_len);
 }
 
-bool string_view_field::write(irs::data_output& out) const {
-  irs::write_string(out, value_);
+bool string_view_field::write(irs::DataOutput& out) const {
+  irs::WriteStr(out, value_);
   return true;
 }
 

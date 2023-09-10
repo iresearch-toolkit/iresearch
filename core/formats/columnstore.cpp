@@ -135,7 +135,7 @@ enum ColumnProperty : uint32_t {
   CP_MASK = 1 << 2,           // column contains no data
   CP_COLUMN_DENSE = 1 << 3,   // column index is dense
   CP_COLUMN_ENCRYPT = 1 << 4  // column contains encrypted data
-};                            // ColumnProperty
+};
 
 ENABLE_BITMASK_ENUM(ColumnProperty);
 
@@ -145,12 +145,12 @@ bool is_good_compression_ratio(size_t raw_size,
   return compressed_size < raw_size - (raw_size / 8U);
 }
 
-ColumnProperty write_compact(index_output& out, bstring& encode_buf,
+ColumnProperty write_compact(IndexOutput& out, bstring& encode_buf,
                              encryption::stream* cipher,
                              compression::compressor& compressor,
                              bstring& data) {
   if (data.empty()) {
-    out.write_byte(0);  // zig_zag_encode32(0) == 0
+    out.WriteByte(0);  // zig_zag_encode32(0) == 0
     return CP_MASK;
   }
 
@@ -164,11 +164,11 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
                static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(out, int32_t(compressed.size()));  // compressed size
     if (cipher) {
-      cipher->encrypt(out.file_pointer(),
+      cipher->encrypt(out.Position(),
                       const_cast<irs::byte_type*>(compressed.data()),
                       compressed.size());
     }
-    out.write_bytes(compressed.data(), compressed.size());
+    out.WriteBytes(compressed.data(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE);  // original size
   } else {
     IRS_ASSERT(data.size() <=
@@ -176,9 +176,9 @@ ColumnProperty write_compact(index_output& out, bstring& encode_buf,
     irs::write_zvint(
       out, int32_t(0) - int32_t(data.size()));  // -ve to mark uncompressed
     if (cipher) {
-      cipher->encrypt(out.file_pointer(), data.data(), data.size());
+      cipher->encrypt(out.Position(), data.data(), data.size());
     }
-    out.write_bytes(data.c_str(), data.size());
+    out.WriteBytes(data.c_str(), data.size());
   }
 
   return CP_SPARSE;
@@ -205,8 +205,7 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size, decode_buf.data(),
-                      buf_size);
+      cipher->decrypt(in.Position() - buf_size, decode_buf.data(), buf_size);
     }
 
     return;
@@ -237,8 +236,7 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
     IRS_ASSERT(read == buf_size);
 
     if (cipher) {
-      cipher->decrypt(in.file_pointer() - buf_size, encode_buf.data(),
-                      buf_size);
+      cipher->decrypt(in.Position() - buf_size, encode_buf.data(), buf_size);
     }
 
     buf = encode_buf.c_str();
@@ -270,7 +268,7 @@ struct column_ref_eq : value_ref_eq<column_meta*> {
   }
 };
 
-using name_to_column_map = flat_hash_set<column_ref_eq>;
+using name_to_column_map = absl::flat_hash_set<column_ref_eq>;
 
 class meta_writer final {
  public:
@@ -288,10 +286,10 @@ class meta_writer final {
 
  private:
   encryption::stream::ptr out_cipher_;
-  index_output::ptr out_;
-  size_t count_{};     // Number of written objects
-  field_id max_id_{};  // The highest column id written (optimization for vector
-                       // resize on read to highest id)
+  IndexOutput::ptr out_;
+  size_t count_{};  // Number of written objects
+  // The highest column id written (optimization for vector resize)
+  field_id max_id_{};
   ColumnMetaVersion version_;
 };
 
@@ -306,8 +304,7 @@ void meta_writer::prepare(directory& dir, std::string_view segment) {
     throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
-  format_utils::write_header(*out_, FORMAT_NAME,
-                             static_cast<int32_t>(version_));
+  format_utils::WriteHeader(*out_, FORMAT_NAME, static_cast<int32_t>(version_));
 
   if (version_ > ColumnMetaVersion::MIN) {
     bstring enc_header;
@@ -317,18 +314,18 @@ void meta_writer::prepare(directory& dir, std::string_view segment) {
       IRS_ASSERT(out_cipher_ && out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE, out_cipher_->block_size());
+        kDefaultEncryptionBufferSize, out_cipher_->block_size());
 
-      out_ = index_output::make<encrypted_output>(std::move(out_), *out_cipher_,
-                                                  blocks_in_buffer);
+      out_ = IndexOutput::ptr{
+        new EncryptedOutput{std::move(out_), *out_cipher_, blocks_in_buffer}};
     }
   }
 }
 
 void meta_writer::write(std::string_view name, field_id id) {
   IRS_ASSERT(out_);
-  out_->write_vlong(id);
-  write_string(*out_, name);
+  out_->WriteV64(id);
+  WriteStr(*out_, name);
   ++count_;
   max_id_ = std::max(max_id_, id);
 }
@@ -337,14 +334,14 @@ void meta_writer::flush() {
   IRS_ASSERT(out_);
 
   if (out_cipher_) {
-    auto& out = static_cast<encrypted_output&>(*out_);
-    out.flush();
-    out_ = out.release();
+    auto& out = static_cast<EncryptedOutput&>(*out_);
+    out.Flush();
+    out_ = out.Release();
   }
 
-  out_->write_long(count_);   // write total number of written objects
-  out_->write_long(max_id_);  // write highest column id written
-  format_utils::write_footer(*out_);
+  out_->WriteU64(count_);   // write total number of written objects
+  out_->WriteU64(max_id_);  // write highest column id written
+  format_utils::WriteFooter(*out_);
   out_.reset();
   count_ = 0;
 }
@@ -425,7 +422,7 @@ bool meta_reader::prepare(const directory& dir, const SegmentMeta& meta,
       IRS_ASSERT(in_cipher_ && in_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        DEFAULT_ENCRYPTION_BUFFER_SIZE, in_cipher_->block_size());
+        kDefaultEncryptionBufferSize, in_cipher_->block_size());
 
       in_ = std::make_unique<encrypted_input>(std::move(in_), *in_cipher_,
                                               blocks_in_buffer, kFooterLength);
@@ -509,7 +506,7 @@ class index_block {
     return *(offset_ - 1);
   }
 
-  ColumnProperty flush(data_output& out, uint64_t* buf) {
+  ColumnProperty flush(DataOutput& out, uint64_t* buf) {
     if (empty()) {
       return CP_DENSE | CP_FIXED;
     }
@@ -576,7 +573,7 @@ class index_block {
   uint64_t* offset_{offsets_};
   doc_id_t* key_{keys_};
   uint32_t flushed_{};  // number of flushed items
-};                      // index_block
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class writer
@@ -609,7 +606,7 @@ class writer final : public irs::columnstore_writer {
   void rollback() noexcept final;
 
  private:
-  class column final : public irs::column_output {
+  class column final : public ColumnOutput {
    public:
     explicit column(writer& ctx, field_id id, const irs::type_info& type,
                     columnstore_writer::column_finalizer_f&& finalizer,
@@ -667,18 +664,17 @@ class writer final : public irs::columnstore_writer {
       if (cipher_) {
         column_props |= CP_COLUMN_ENCRYPT;
       }
-
-      write_enum(out, column_props);
+      out.WriteU32(static_cast<uint32_t>(column_props));
       if (ctx_->version_ > Version::MIN) {
-        write_string(out, comp_type_.name());
+        WriteStr(out, comp_type_.name());
         comp_->flush(out);  // flush compression dependent data
       }
-      out.write_vint(block_index_.total());  // total number of items
-      out.write_vint(max_);                  // max column key
-      out.write_vint(avg_block_size_);       // avg data block size
-      out.write_vint(avg_block_count_);      // avg number of elements per block
-      out.write_vint(column_index_.total());  // total number of index blocks
-      blocks_index_.file >> out;              // column blocks index
+      out.WriteV32(block_index_.total());   // total number of items
+      out.WriteV32(max_);                   // max column key
+      out.WriteV32(avg_block_size_);        // avg data block size
+      out.WriteV32(avg_block_count_);       // avg number of elements per block
+      out.WriteV32(column_index_.total());  // total number of index blocks
+      blocks_index_.file >> out;            // column blocks index
     }
 
     void flush() {
@@ -697,16 +693,18 @@ class writer final : public irs::columnstore_writer {
       IRS_ASSERT(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
       auto* buf = reinterpret_cast<uint64_t*>(ctx_->buf_.data());
       column_index_.flush(blocks_index_.stream, buf);
-      blocks_index_.stream.flush();
+      blocks_index_.stream.Flush();
     }
 
-    void write_byte(byte_type b) final { block_buf_ += b; }
+    void WriteByte(byte_type b) final { block_buf_.push_back(b); }
 
-    void write_bytes(const byte_type* b, size_t size) final {
+    void WriteBytes(const byte_type* b, size_t size) final {
       block_buf_.append(b, size);
     }
 
-    void reset() final {
+    IRS_DATA_OUTPUT_MEMBERS
+
+    void Reset() final {
       if (block_index_.empty()) {
         // nothing to reset
         return;
@@ -739,7 +737,7 @@ class writer final : public irs::columnstore_writer {
       auto& out = *ctx_->data_out_;
 
       // write first block key & where block starts
-      column_index_.push_back(block_index_.min_key(), out.file_pointer());
+      column_index_.push_back(block_index_.min_key(), out.Position());
 
       IRS_ASSERT(ctx_->buf_.size() >= INDEX_BLOCK_SIZE * sizeof(uint64_t));
       auto* buf = reinterpret_cast<uint64_t*>(ctx_->buf_.data());
@@ -751,7 +749,7 @@ class writer final : public irs::columnstore_writer {
       // flush current block
 
       // write total number of elements in the block
-      out.write_vint(block_index_.size());
+      out.WriteV32(block_index_.size());
 
       // write block index, compressed data and aggregate block properties
       // note that order of calls is important here, since it is not defined
@@ -789,9 +787,9 @@ class writer final : public irs::columnstore_writer {
     index_block<INDEX_BLOCK_SIZE>
       block_index_;  // current block index (per document key/offset)
     index_block<INDEX_BLOCK_SIZE>
-      column_index_;              // column block index (per block key/offset)
-    memory_output blocks_index_;  // blocks index
-    bstring block_buf_;           // data buffer
+      column_index_;             // column block index (per block key/offset)
+    MemoryOutput blocks_index_;  // blocks index
+    bstring block_buf_;          // data buffer
     ColumnProperty blocks_props_{
       CP_DENSE | CP_FIXED | CP_MASK};  // aggregated column blocks properties
     ColumnProperty column_props_{
@@ -812,7 +810,7 @@ class writer final : public irs::columnstore_writer {
   std::deque<column> columns_;  // pointers remain valid
   std::vector<std::reference_wrapper<const column>> sorted_columns_;
   bstring buf_;  // reusable temporary buffer for packing/compression
-  index_output::ptr data_out_;
+  IndexOutput::ptr data_out_;
   std::string filename_;
   directory* dir_;
   encryption::stream::ptr data_out_cipher_;
@@ -829,8 +827,8 @@ void writer::prepare(directory& dir, const SegmentMeta& meta) {
     throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
-  format_utils::write_header(*data_out, FORMAT_NAME,
-                             static_cast<int32_t>(version_));
+  format_utils::WriteHeader(*data_out, FORMAT_NAME,
+                            static_cast<int32_t>(version_));
 
   encryption::stream::ptr data_out_cipher;
 
@@ -906,9 +904,9 @@ bool writer::commit(const flush_state& state) {
   }
 
   // Where blocks index start.
-  const auto block_index_ptr = data_out_->file_pointer();
+  const auto block_index_ptr = data_out_->Position();
 
-  data_out_->write_vlong(columns_.size());  // Number of columns.
+  data_out_->WriteV64(columns_.size());  // Number of columns.
 
   // Dummy buffer, current implementation doesn't support column payload.
   bstring tmp;
@@ -918,8 +916,8 @@ bool writer::commit(const flush_state& state) {
     column.finish(tmp);
   }
 
-  data_out_->write_long(block_index_ptr);
-  format_utils::write_footer(*data_out_);
+  data_out_->WriteU64(block_index_ptr);
+  format_utils::WriteFooter(*data_out_);
 
   flush_meta(state);
 
@@ -2419,7 +2417,7 @@ bool reader::prepare(const directory& dir, const SegmentMeta& meta,
   columns.reserve(count);
   for (field_id i = 0, size = static_cast<field_id>(count); i < size; ++i) {
     // read column properties
-    const auto props = read_enum<ColumnProperty>(*stream);
+    const auto props = static_cast<ColumnProperty>(stream->read_int());
     const auto factory_id = (props & (~CP_COLUMN_ENCRYPT));
 
     if (factory_id >= std::size(COLUMN_FACTORIES)) {

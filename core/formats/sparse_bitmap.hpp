@@ -68,10 +68,9 @@ class sparse_bitmap_writer {
     uint32_t offset;
   };
 
-  explicit sparse_bitmap_writer(
-    index_output& out,
-    SparseBitmapVersion version) noexcept(noexcept(out.file_pointer()))
-    : out_{&out}, origin_{out.file_pointer()}, opts_{version} {}
+  explicit sparse_bitmap_writer(IndexOutput& out,
+                                SparseBitmapVersion version) noexcept
+    : out_{&out}, origin_{out.Position()}, opts_{version} {}
 
   void push_back(doc_id_t value) {
     static_assert(math::is_power2(kBlockSize));
@@ -136,7 +135,7 @@ class sparse_bitmap_writer {
   }
 
   IRS_FORCE_INLINE void add_block(uint32_t block_id) {
-    const uint64_t offset = out_->file_pointer() - origin_;
+    const uint64_t offset = out_->Position() - origin_;
     IRS_ASSERT(offset <= std::numeric_limits<uint32_t>::max());
 
     uint32_t count = 1 + block_id - static_cast<uint32_t>(block_index_.size());
@@ -149,7 +148,7 @@ class sparse_bitmap_writer {
 
   void do_flush(uint32_t popcnt);
 
-  index_output* out_;
+  IndexOutput* out_;
   uint64_t origin_;
   size_t bits_[kNumBlocks]{};
   std::vector<block> block_index_;

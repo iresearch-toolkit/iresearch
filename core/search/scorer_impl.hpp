@@ -83,7 +83,7 @@ struct TermCollectorImpl final : TermCollector {
     docs_with_term += docs_with_term_value;
   }
 
-  void write(data_output& out) const final { out.write_vlong(docs_with_term); }
+  void write(DataOutput& out) const final { out.WriteV64(docs_with_term); }
 };
 
 inline constexpr frequency kEmptyFreq;

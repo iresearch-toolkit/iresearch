@@ -43,7 +43,7 @@ namespace boost { namespace text {
         }
 
         template<typename T, typename CharIter>
-        void write_bytes(T const & x, CharIter & out, iterator_tag_t)
+        void WriteBytes(T const & x, CharIter & out, iterator_tag_t)
         {
             char const * const ptr = reinterpret_cast<char const *>(&x);
             out = std::copy_n(ptr, sizeof(T), out);
@@ -60,7 +60,7 @@ namespace boost { namespace text {
 
         detail::header_t header(table);
 
-        detail::write_bytes(header, out);
+        detail::WriteBytes(header, out);
 
         detail::write_collation_elements(
             table.collation_element_vec_, table.collation_elements_, out);

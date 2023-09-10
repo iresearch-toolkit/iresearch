@@ -47,8 +47,8 @@ class DirectoryProxy : public Impl {
     return Impl::length(result, name);
   }
 
-  irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept override {
+  irs::IndexInput::ptr open(std::string_view name,
+                            irs::IOAdvice advice) const noexcept override {
     EXPECT_TRUE(expect_call_);
     return Impl::open(name, advice);
   }
@@ -85,8 +85,8 @@ class CachingDirectory
     return Impl::length(result, name);
   }
 
-  irs::index_input::ptr open(std::string_view name,
-                             irs::IOAdvice advice) const noexcept final {
+  irs::IndexInput::ptr open(std::string_view name,
+                            irs::IOAdvice advice) const noexcept final {
     if (bool(advice & (irs::IOAdvice::READONCE | irs::IOAdvice::DIRECT_READ))) {
       return Impl::open(name, advice);
     }
@@ -149,7 +149,7 @@ void CachingDirectoryTestCase<Directory>::TestCachingImpl(
   auto create_file = [&](std::string_view name, irs::byte_type b) {
     auto stream = dir.create(name);
     ASSERT_NE(nullptr, stream);
-    stream->write_byte(b);
+    stream->WriteByte(b);
   };
 
   auto check_file = [&](std::string_view name, irs::byte_type b,
@@ -157,9 +157,9 @@ void CachingDirectoryTestCase<Directory>::TestCachingImpl(
     auto stream = dir.open(name, advice);
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(1, stream->length());
-    ASSERT_EQ(0, stream->file_pointer());
+    ASSERT_EQ(0, stream->Position());
     ASSERT_EQ(b, stream->read_byte());
-    ASSERT_EQ(1, stream->file_pointer());
+    ASSERT_EQ(1, stream->Position());
   };
 
   ASSERT_EQ(0, dir.Cache().Count());

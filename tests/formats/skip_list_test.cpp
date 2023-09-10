@@ -41,7 +41,7 @@ class SkipWriterTest : public test_base {
     auto write_skip = [&levels, &cur_doc](size_t level,
                                           irs::index_output& out) {
       levels[level].push_back(irs::doc_id_t(cur_doc));
-      out.write_vlong(irs::doc_id_t(cur_doc));
+      out.WriteV64(irs::doc_id_t(cur_doc));
     };
 
     irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
@@ -215,7 +215,7 @@ TEST_F(SkipWriterTest, Reset) {
 
   auto write_skip = [&cur_doc, &levels](size_t level, irs::index_output& out) {
     levels[level].push_back(cur_doc);
-    out.write_vlong(cur_doc);
+    out.WriteV64(cur_doc);
   };
 
   // Prepare writer
@@ -417,7 +417,7 @@ TEST_F(SkipReaderTest, Prepare) {
     size_t skip = 8;
 
     struct write_skip {
-      void operator()(size_t, irs::index_output& out) { out.write_vint(0); }
+      void operator()(size_t, irs::index_output& out) { out.WriteV32(0); }
     };
 
     irs::SkipWriter writer(skip, skip, irs::IResourceManager::kNoop);
@@ -455,8 +455,8 @@ TEST_F(SkipReaderTest, SeekWithLevelAdjustments) {
   struct WriteSkip {
     void Write(size_t level, irs::index_output& out) {
       auto idx = scores_.size() - 1 - level;
-      out.write_vlong(scores_[idx]);
-      out.write_vlong(docs_[idx]);
+      out.WriteV64(scores_[idx]);
+      out.WriteV64(docs_[idx]);
       if (idx && scores_[idx - 1] < scores_[idx]) {
         scores_[idx - 1] = scores_[idx];
       }
@@ -594,9 +594,9 @@ TEST_F(SkipReaderTest, Seek) {
 
     void operator()(size_t level, irs::index_output& out) {
       if (low && !level) {
-        out.write_vlong(*low);
+        out.WriteV64(*low);
       }
-      out.write_vlong(*high);  // upper
+      out.WriteV64(*high);  // upper
     }
   };
 

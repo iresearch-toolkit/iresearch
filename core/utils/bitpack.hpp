@@ -64,7 +64,7 @@ inline void skip_block32(index_input& in, uint32_t size) {
   if (ALL_EQUAL == bits) {
     in.read_vint();
   } else {
-    in.seek(in.file_pointer() + packed::bytes_required_32(size, bits));
+    in.seek(in.Position() + packed::bytes_required_32(size, bits));
   }
 }
 
@@ -73,15 +73,15 @@ inline void skip_block32(index_input& in, uint32_t size) {
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<typename PackFunc>
-IRS_FORCE_INLINE uint32_t write_block32(PackFunc&& pack, data_output& out,
+IRS_FORCE_INLINE uint32_t write_block32(PackFunc&& pack, DataOutput& out,
                                         const uint32_t* IRS_RESTRICT decoded,
                                         uint32_t size,
                                         uint32_t* IRS_RESTRICT encoded) {
   IRS_ASSERT(decoded);
   IRS_ASSERT(size);
   if (simd::all_equal<false>(decoded, size)) {
-    out.write_byte(ALL_EQUAL);
-    out.write_vint(*decoded);
+    out.WriteByte(ALL_EQUAL);
+    out.WriteU32(*decoded);
     return ALL_EQUAL;
   }
 
@@ -101,14 +101,14 @@ IRS_FORCE_INLINE uint32_t write_block32(PackFunc&& pack, data_output& out,
 
   // TODO(MBkkt) direct write api?
   //  out.get_buffer(buf_size + 1, /*fallback=*/encoded)?
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
+  out.WriteByte(static_cast<byte_type>(bits & 0xFF));
+  out.WriteBytes(reinterpret_cast<byte_type*>(encoded), buf_size);
 
   return bits;
 }
 
 template<uint32_t Size, typename PackFunc>
-uint32_t write_block32(PackFunc&& pack, data_output& out,
+uint32_t write_block32(PackFunc&& pack, DataOutput& out,
                        const uint32_t* IRS_RESTRICT decoded,
                        uint32_t* IRS_RESTRICT encoded) {
   return write_block32(std::forward<PackFunc>(pack), out, decoded, Size,
@@ -120,7 +120,7 @@ uint32_t write_block32(PackFunc&& pack, data_output& out,
 //   otherwise            -> bit packing
 // returns number of bits used to encoded the block (0 == RL)
 template<typename PackFunc>
-uint32_t write_block64(PackFunc&& pack, data_output& out,
+uint32_t write_block64(PackFunc&& pack, DataOutput& out,
                        const uint64_t* IRS_RESTRICT decoded, uint64_t size,
                        uint64_t* IRS_RESTRICT encoded) {
   IRS_ASSERT(size);
@@ -128,8 +128,8 @@ uint32_t write_block64(PackFunc&& pack, data_output& out,
   IRS_ASSERT(decoded);
 
   if (simd::all_equal<false>(decoded, size)) {
-    out.write_byte(ALL_EQUAL);
-    out.write_vint(*decoded);
+    out.WriteByte(ALL_EQUAL);
+    out.WriteV64(*decoded);
     return ALL_EQUAL;
   }
 
@@ -140,8 +140,8 @@ uint32_t write_block64(PackFunc&& pack, data_output& out,
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
 
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
-  out.write_bytes(reinterpret_cast<const byte_type*>(encoded), buf_size);
+  out.WriteByte(static_cast<byte_type>(bits & 0xFF));
+  out.WriteBytes(reinterpret_cast<const byte_type*>(encoded), buf_size);
 
   return bits;
 }

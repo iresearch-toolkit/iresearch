@@ -30,7 +30,7 @@
 namespace irs {
 
 void validate_footer(index_input& in) {
-  const int64_t remain = in.length() - in.file_pointer();
+  const int64_t remain = in.length() - in.Position();
 
   if (remain != format_utils::kFooterLen) {
     throw index_error{absl::StrCat(
@@ -54,16 +54,18 @@ void validate_footer(index_input& in) {
 
 namespace format_utils {
 
-void write_header(index_output& out, std::string_view format, int32_t ver) {
-  out.write_int(kFormatMagic);
-  write_string(out, format);
-  out.write_int(ver);
+void WriteHeader(IndexOutput& out, std::string_view format, int32_t ver) {
+  out.WriteU32(kFormatMagic);
+  WriteStr(out, format);
+  out.WriteU32(ver);
 }
 
-void write_footer(index_output& out) {
-  out.write_int(kFooterMagic);
-  out.write_int(0);
-  out.write_long(out.checksum());
+void WriteFooter(IndexOutput& out) {
+  out.WriteU32(kFooterMagic);
+  out.WriteU32(0);
+  // TODO(MBkkt) checksum is uint32_t
+  //  But maybe I should investigate more about not crc32c approaches
+  out.WriteU64(out.Checksum());
 }
 
 size_t header_length(std::string_view format) noexcept {
@@ -73,7 +75,7 @@ size_t header_length(std::string_view format) noexcept {
 
 int32_t check_header(index_input& in, std::string_view req_format,
                      int32_t min_ver, int32_t max_ver) {
-  const ptrdiff_t left = in.length() - in.file_pointer();
+  const ptrdiff_t left = in.length() - in.Position();
 
   if (left < 0) {
     throw illegal_state{"Header has invalid length."};
@@ -122,7 +124,7 @@ int64_t checksum(const index_input& in) {
   }
 
   index_input::ptr dup;
-  if (0 != in.file_pointer()) {
+  if (0 != in.Position()) {
     dup = in.dup();
 
     if (!dup) {
@@ -135,7 +137,7 @@ int64_t checksum(const index_input& in) {
     stream = dup.get();
   }
 
-  IRS_ASSERT(0 == stream->file_pointer());
+  IRS_ASSERT(0 == stream->Position());
   return stream->checksum(length - sizeof(uint64_t));
 }
 

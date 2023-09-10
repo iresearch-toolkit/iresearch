@@ -221,7 +221,7 @@ TEST_P(columnstore2_test_case, empty_column) {
         EXPECT_TRUE(false);
         return std::string_view{};
       });
-    handle1(42).write_byte(42);
+    handle1(42).WriteByte(42);
     const auto pinned = memory.transactions.counter_;
     ASSERT_GT(pinned, 0);
     ASSERT_TRUE(writer.commit(state));
@@ -479,8 +479,8 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       auto& stream = column(doc);
       const auto str = std::to_string(doc);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
-                         str.size());
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
+                        str.size());
     }
 
     ASSERT_TRUE(writer.commit(state));
@@ -539,8 +539,8 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; doc += 2) {
       auto& stream = column(doc);
       const auto str = std::to_string(doc);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
-                         str.size());
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
+                        str.size());
     }
     ASSERT_GT(memory.transactions.counter_, 0);
     ASSERT_TRUE(writer.commit(state));
@@ -603,8 +603,8 @@ TEST_P(columnstore2_test_case, sparse_column) {
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; doc += 2) {
       auto& stream = column(doc);
       const auto str = std::to_string(doc);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.data()),
-                         str.size());
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(str.data()),
+                        str.size());
     }
 
     ASSERT_TRUE(writer.commit(state));
@@ -819,10 +819,10 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
         return "foobarbaz";
       });
 
-    auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
+    auto write_payload = [](irs::doc_id_t doc, irs::DataOutput& stream) {
       if (doc <= kGapBegin || doc > (kGapBegin + kBlockSize)) {
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                           sizeof doc);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                          sizeof doc);
       }
     };
 
@@ -990,12 +990,12 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
   };
 
   {
-    auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                         sizeof doc);
+    auto write_payload = [](irs::doc_id_t doc, irs::DataOutput& stream) {
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                        sizeof doc);
       if (doc > kTailBegin) {
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                           sizeof doc);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                          sizeof doc);
       }
     };
 
@@ -1176,11 +1176,11 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
   };
 
   {
-    auto write_payload = [](irs::doc_id_t doc, irs::data_output& stream) {
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                         sizeof doc);
+    auto write_payload = [](irs::doc_id_t doc, irs::DataOutput& stream) {
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                        sizeof doc);
       if (doc > kTailBegin) {
-        stream.write_byte(42);
+        stream.WriteByte(42);
       }
     };
     irs::columnstore2::writer writer(version(), irs::IResourceManager::kNoop,
@@ -1367,11 +1367,11 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
 
   {
     auto write_payload = [value = kValue](irs::doc_id_t doc,
-                                          irs::data_output& stream) {
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(value.data()),
-                         value.size());
+                                          irs::DataOutput& stream) {
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(value.data()),
+                        value.size());
       if (doc <= kTailBegin) {
-        stream.write_byte(value.front());
+        stream.WriteByte(value.front());
       }
     };
 
@@ -1556,11 +1556,11 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
 
   {
     auto write_payload = [value = kValue](irs::doc_id_t doc,
-                                          irs::data_output& stream) {
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(value.data()),
-                         value.size());
+                                          irs::DataOutput& stream) {
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(value.data()),
+                        value.size());
       if (doc <= kTailBegin) {
-        stream.write_byte(value.front());
+        stream.WriteByte(value.front());
       }
     };
 
@@ -1910,8 +1910,8 @@ TEST_P(columnstore2_test_case, dense_column) {
     for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
       auto& stream = column(doc);
       const auto str = std::to_string(doc);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
-                         str.size());
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
+                        str.size());
     }
 
     ASSERT_TRUE(writer.commit(state));
@@ -2115,8 +2115,8 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     for (irs::doc_id_t doc = kMin; doc <= kMax; ++doc) {
       auto& stream = column(doc);
       const auto str = std::to_string(doc);
-      stream.write_bytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
-                         str.size());
+      stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(str.c_str()),
+                        str.size());
     }
 
     ASSERT_TRUE(writer.commit(state));
@@ -2297,8 +2297,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                           sizeof doc);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                          sizeof doc);
       }
     }
 
@@ -2313,7 +2313,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
-        stream.write_byte(static_cast<irs::byte_type>(doc & 0xFF));
+        stream.WriteByte(static_cast<irs::byte_type>(doc & 0xFF));
       }
     }
 
@@ -2374,8 +2374,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                           sizeof doc);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                          sizeof doc);
       }
     }
 
@@ -2390,7 +2390,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
-        stream.write_byte(static_cast<irs::byte_type>(doc & 0xFF));
+        stream.WriteByte(static_cast<irs::byte_type>(doc & 0xFF));
       }
     }
 
@@ -2452,8 +2452,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                           sizeof doc);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                          sizeof doc);
       }
     }
 
@@ -2467,7 +2467,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
-        stream.write_byte(static_cast<irs::byte_type>(doc & 0xFF));
+        stream.WriteByte(static_cast<irs::byte_type>(doc & 0xFF));
       }
     }
 
@@ -2768,8 +2768,8 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
-        stream.write_bytes(reinterpret_cast<const irs::byte_type*>(&doc),
-                           sizeof doc);
+        stream.WriteBytes(reinterpret_cast<const irs::byte_type*>(&doc),
+                          sizeof doc);
       }
     }
 

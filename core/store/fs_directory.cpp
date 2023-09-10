@@ -158,92 +158,98 @@ class fs_lock : public index_lock {
   file_utils::lock_handle_t handle_;
 };
 
-class fs_index_output : public buffered_index_output {
+class FSIndexOutput final : public IndexOutput {
  public:
-  DEFINE_FACTORY_INLINE(index_output)  // cppcheck-suppress unknownMacro
-
-  static index_output::ptr open(const path_char_t* name,
-                                const ResourceManagementOptions& rm) noexcept
-    try {
+  static ptr open(const path_char_t* name,
+                  const ResourceManagementOptions& rm) noexcept {
     IRS_ASSERT(name);
-    size_t descriptors{1};
-    rm.file_descriptors->Increase(descriptors);
-    irs::Finally cleanup = [&]() noexcept {
-      rm.file_descriptors->DecreaseChecked(descriptors);
-    };
-    file_utils::handle_t handle(
-      file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL));
+    size_t descriptors = 0;
+    size_t memory = 0;
+    try {
+      rm.file_descriptors->Increase(1);
+      descriptors = 1;
 
-    if (nullptr == handle) {
-      IRS_LOG_ERROR(
-        absl::StrCat("Failed to open output file, error: ", GET_ERROR(),
-                     ", path: ", file_utils::ToStr(name)));
+      auto handle =
+        file_utils::open(name, file_utils::OpenMode::Write, IR_FADVICE_NORMAL);
 
-      return nullptr;
+      if (IRS_UNLIKELY(!handle)) {
+        IRS_LOG_ERROR(
+          absl::StrCat("Failed to open output file, error: ", GET_ERROR(),
+                       ", path: ", file_utils::ToStr(name)));
+        goto error;
+      }
+
+      rm.transactions->Increase(sizeof(FSIndexOutput));
+      memory = sizeof(FSIndexOutput);
+
+      ptr ptr{new FSIndexOutput{std::move(handle), rm}};
+      descriptors = 0;
+      memory = 0;
+      return ptr;
+    } catch (...) {
     }
-
-    auto res = fs_index_output::make<fs_index_output>(std::move(handle), rm);
-    descriptors = 0;
-    return res;
-  } catch (...) {
+  error:
+    rm.file_descriptors->DecreaseChecked(descriptors);
+    rm.transactions->DecreaseChecked(memory);
     return nullptr;
   }
 
-  int64_t checksum() const final {
-    const_cast<fs_index_output*>(this)->flush();
+ private:
+  size_t Position() const noexcept {
+    IRS_ASSERT(false);
+    return Length();
+  }
+
+  void Flush() final { FlushBuffer(); }
+
+  uint32_t Checksum() {
+    Flush();
     return crc_.checksum();
   }
 
- protected:
-  size_t CloseImpl() final {
-    const auto size = buffered_index_output::CloseImpl();
-    IRS_ASSERT(handle_);
-    handle_.reset(nullptr);
+  void Close() final {
+    Flush();
+    handle_.reset();
     rm_.file_descriptors->Decrease(1);
-    return size;
   }
 
-  void flush_buffer(const byte_type* b, size_t len) final {
+  void WriteDirect(const byte_type* b, size_t len) final {
     IRS_ASSERT(handle_);
-
-    const auto len_written =
-      irs::file_utils::fwrite(handle_.get(), b, sizeof(byte_type) * len);
-    crc_.process_bytes(b, len_written);
-
-    if (len && len_written != len) {
-      throw io_error{absl::StrCat("Failed to write buffer, written '",
-                                  len_written, "' out of '", len, "' bytes")};
+    const auto written = file_utils::fwrite(handle_.get(), b, len);
+    crc_.process_bytes(b, written);
+    if (IRS_UNLIKELY(len != written)) {
+      throw io_error{
+        absl::StrCat("Failed to FSIndexOutput::WriteDirect, written '", written,
+                     "' out of '", len, "' bytes")};
     }
   }
 
- private:
-  fs_index_output(file_utils::handle_t&& handle,
-                  const ResourceManagementOptions& rm)
-    : handle_(std::move(handle)), rm_{rm} {
+  FSIndexOutput(file_utils::handle_t&& handle,
+                const ResourceManagementOptions& rm)
+    : IndexOutput{buf_, buf_ + sizeof(buf_)},
+      handle_{std::move(handle)},
+      rm_{rm} {
     IRS_ASSERT(handle_);
-    rm_.transactions->Increase(sizeof(fs_index_output));
-    buffered_index_output::reset(buf_, sizeof buf_);
   }
 
-  ~fs_index_output() { rm_.transactions->Decrease(sizeof(fs_index_output)); }
+  ~FSIndexOutput() { rm_.transactions->Decrease(sizeof(FSIndexOutput)); }
 
-  byte_type buf_[1024];
+  // TODO(MBkkt) larger buf_ size?
+  byte_type buf_[4 * 1024];
   file_utils::handle_t handle_;
   const ResourceManagementOptions& rm_;
   crc32c crc_;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class fs_index_input
-//////////////////////////////////////////////////////////////////////////////
-class pooled_fs_index_input;  // predeclaration used by fs_index_input
+class pooled_fs_index_input;
+
 class fs_index_input : public buffered_index_input {
  public:
   uint64_t CountMappedMemory() const final { return 0; }
 
   using buffered_index_input::read_internal;
 
-  int64_t checksum(size_t offset) const final {
+  uint32_t checksum(size_t offset) const final {
     // "read_internal" modifies pos_
     Finally restore_position = [pos = this->pos_, this]() noexcept {
       const_cast<fs_index_input*>(this)->pos_ = pos;
@@ -422,7 +428,7 @@ fs_index_input::fs_index_input(file_handle::ptr&& handle, size_t pool_size)
 }
 
 fs_index_input::fs_index_input(const fs_index_input& rhs)
-  : handle_(rhs.handle_), pool_size_(rhs.pool_size_), pos_(rhs.file_pointer()) {
+  : handle_(rhs.handle_), pool_size_(rhs.pool_size_), pos_(rhs.Position()) {
   IRS_ASSERT(handle_);
   handle_->resource_manager.readers->Increase(sizeof(pooled_fs_index_input));
   buffered_index_input::reset(buf_, sizeof buf_, pos_);
@@ -511,11 +517,11 @@ FSDirectory::FSDirectory(std::filesystem::path dir, directory_attributes attrs,
     dir_{std::move(dir)},
     fd_pool_size_{fd_pool_size} {}
 
-index_output::ptr FSDirectory::create(std::string_view name) noexcept {
+IndexOutput::ptr FSDirectory::create(std::string_view name) noexcept {
   try {
     const auto path = dir_ / name;
 
-    auto out = fs_index_output::open(path.c_str(), resource_manager_);
+    auto out = FSIndexOutput::open(path.c_str(), resource_manager_);
 
     if (!out) {
       IRS_LOG_ERROR(absl::StrCat("Failed to open output file, path: ", name));
@@ -546,7 +552,7 @@ bool FSDirectory::length(uint64_t& result,
 }
 
 index_lock::ptr FSDirectory::make_lock(std::string_view name) noexcept {
-  return index_lock::make<fs_lock>(dir_, name);
+  return index_lock::ptr{new fs_lock{dir_, name}};
 }
 
 bool FSDirectory::mtime(std::time_t& result,

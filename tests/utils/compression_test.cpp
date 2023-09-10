@@ -36,7 +36,7 @@ struct dummy_compressor : irs::compression::compressor {
     return {};
   }
 
-  void flush(irs::data_output&) final {}
+  void flush(irs::DataOutput&) final {}
 };
 
 struct dummy_decompressor : irs::compression::decompressor {

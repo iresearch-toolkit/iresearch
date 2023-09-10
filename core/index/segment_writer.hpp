@@ -222,7 +222,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
 
     std::string name;
     size_t name_hash;
-    column_output* writer{};
+    ColumnOutput* writer{};
     cached_column* cached{};
     mutable field_id id{field_limits::invalid()};
   };
@@ -266,7 +266,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
       return true;
     }
 
-    out.reset();
+    out.Reset();
 
     valid_ = false;
     return false;
@@ -283,7 +283,7 @@ class segment_writer : public ColumnProvider, util::noncopyable {
       return true;
     }
 
-    out.reset();
+    out.Reset();
 
     valid_ = false;
     return false;
@@ -360,13 +360,13 @@ class segment_writer : public ColumnProvider, util::noncopyable {
   }
 
   // Returns stream for storing attributes in sorted order
-  column_output& sorted_stream(const doc_id_t doc_id) {
+  ColumnOutput& sorted_stream(const doc_id_t doc_id) {
     sort_.stream.Prepare(doc_id);
     return sort_.stream;
   }
 
   // Returns stream for storing attributes
-  column_output& stream(const hashed_string_view& name, const doc_id_t doc);
+  ColumnOutput& stream(const hashed_string_view& name, const doc_id_t doc);
 
   // Finishes document
   void finish() {

@@ -44,8 +44,8 @@ using namespace tests;
 
 struct bstring_data_output : public irs::data_output {
   irs::bstring out_;
-  void write_byte(irs::byte_type b) final { write_bytes(&b, 1); }
-  void write_bytes(const irs::byte_type* b, size_t size) final {
+  void WriteByte(irs::byte_type b) final { WriteBytes(&b, 1); }
+  void WriteBytes(const irs::byte_type* b, size_t size) final {
     out_.append(b, size);
   }
 };

@@ -29,16 +29,14 @@
 
 #include <absl/strings/str_cat.h>
 
-#define MAKE_DELETER(method)                                               \
+#define IRS_MAKE_IO_PTR(method)                                            \
   template<typename T>                                                     \
-  struct auto_##method : std::default_delete<T> {                          \
-    typedef T type;                                                        \
-    typedef std::default_delete<type> base;                                \
-    typedef std::unique_ptr<type, auto_##method<type>> ptr;                \
-    void operator()(type* p) const noexcept {                              \
+  struct Auto##method : std::default_delete<T> {                           \
+    using ptr = std::unique_ptr<T, Auto##method<T>>;                       \
+    void operator()(T* p) const noexcept {                                 \
       try {                                                                \
         p->method();                                                       \
-        base::operator()(p);                                               \
+        std::default_delete<T>::operator()(p);                             \
       } catch (const std::exception& e) {                                  \
         IRS_LOG_ERROR(absl::StrCat(                                        \
           "caught exception while closing i/o stream: '", e.what(), "'")); \
@@ -49,14 +47,12 @@
     }                                                                      \
   }
 
-namespace irs {
-namespace io_utils {
+namespace irs::io_utils {
 
-MAKE_DELETER(close);
-MAKE_DELETER(unlock);
+IRS_MAKE_IO_PTR(Close);
+IRS_MAKE_IO_PTR(unlock);
 
-}  // namespace io_utils
-}  // namespace irs
+}  // namespace irs::io_utils
 
-#define DECLARE_IO_PTR(class_name, method) \
-  typedef ::irs::io_utils::auto_##method<class_name>::ptr ptr
+#define IRS_USING_IO_PTR(type, method) \
+  using ptr = irs::io_utils::Auto##method<type>::ptr

@@ -538,7 +538,7 @@ TEST_P(by_edit_distance_test_case, bm25) {
       this->features_.emplace_back(irs::type<irs::Norm>::id());
     }
 
-    bool write(irs::data_output&) const noexcept { return true; }
+    bool write(irs::DataOutput&) const noexcept { return true; }
 
     irs::token_stream& get_tokens() const {
       const bool res = analyzer_->reset(value_);

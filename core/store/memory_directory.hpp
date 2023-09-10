@@ -37,73 +37,52 @@
 
 namespace irs {
 
-class memory_file : public container_utils::raw_block_vector<16, 8> {
+class MemoryFile : public container_utils::raw_block_vector<16, 8> {
   // total number of levels and size of the first level 2^8
-  using raw_block_vector_t = container_utils::raw_block_vector<16, 8>;
+  using Base = container_utils::raw_block_vector<16, 8>;
 
  public:
-  explicit memory_file(IResourceManager& rm) noexcept : raw_block_vector_t{rm} {
-    touch(meta_.mtime);
+  explicit MemoryFile(IResourceManager& rm) noexcept : Base{rm} {
+    meta_.mtime = now();
   }
 
-  memory_file(memory_file&& rhs) noexcept
-    : raw_block_vector_t(std::move(rhs)), meta_(rhs.meta_), len_(rhs.len_) {
-    rhs.len_ = 0;
-  }
+  MemoryFile(MemoryFile&& rhs) noexcept
+    : Base{std::move(rhs)},
+      meta_{rhs.meta_},
+      len_{std::exchange(rhs.len_, 0)} {}
 
-  memory_file& operator>>(data_output& out) {
-    auto len = len_;
-
-    for (size_t i = 0, count = buffer_count(); i < count && len; ++i) {
-      auto& buffer = get_buffer(i);
-      auto to_copy = (std::min)(len, buffer.size);
-
-      out.write_bytes(buffer.data, to_copy);
-      len -= to_copy;
-    }
-
-    IRS_ASSERT(!len);  // everything copied
-
+  MemoryFile& operator>>(DataOutput& out) {
+    Visit([&](const byte_type* b, size_t len) {
+      out.WriteBytes(b, len);
+      return true;
+    });
     return *this;
   }
 
-  size_t length() const noexcept { return len_; }
+  size_t Length() const noexcept { return len_; }
 
-  void length(size_t length) noexcept {
+  void Length(size_t length) noexcept {
     len_ = length;
-    touch(meta_.mtime);
-  }
-
-  // used length of the buffer based on total length
-  size_t buffer_length(size_t i) const noexcept {
-    auto last_buf = buffer_offset(len_);
-
-    if (i == last_buf) {
-      auto& buffer = get_buffer(i);
-
-      // %size for the case if the last buffer is not one of the precomputed
-      // buckets
-      return (len_ - buffer.offset) % buffer.size;
-    }
-
-    return i < last_buf ? get_buffer(i).size : 0;
+    meta_.mtime = now();
   }
 
   std::time_t mtime() const noexcept { return meta_.mtime; }
 
-  void reset() noexcept { len_ = 0; }
+  void Reset() noexcept { len_ = 0; }
 
-  void clear() noexcept {
-    raw_block_vector_t::clear();
-    reset();
+  void Clear() noexcept {
+    Base::clear();
+    Reset();
   }
 
   template<typename Visitor>
-  bool visit(const Visitor& visitor) {
-    for (size_t i = 0, count = buffer_count(); i < count; ++i) {
-      if (!visitor(get_buffer(i).data, buffer_length(i))) {
+  bool Visit(const Visitor& visitor) {
+    auto len = len_;
+    for (const auto& buffer : buffers_) {
+      if (!visitor(buffer.data, std::min(len, buffer.size))) {
         return false;
       }
+      len -= buffer.size;
     }
     return true;
   }
@@ -114,25 +93,21 @@ class memory_file : public container_utils::raw_block_vector<16, 8> {
     std::time_t mtime;
   };
 
-  static void touch(std::time_t& time) noexcept {
-    time =
-      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+  static std::time_t now() noexcept {
+    return std::chrono::system_clock::to_time_t(
+      std::chrono::system_clock::now());
   }
 
   meta meta_;
   size_t len_{};
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class memory_index_input
-/// @brief in memory input stream
-////////////////////////////////////////////////////////////////////////////////
 class memory_index_input final : public index_input {
  public:
-  explicit memory_index_input(const memory_file& file) noexcept;
+  explicit memory_index_input(const MemoryFile& file) noexcept;
 
   index_input::ptr dup() const final;
-  int64_t checksum(size_t offset) const final;
+  uint32_t checksum(size_t offset) const final;
   bool eof() const final;
   byte_type read_byte() final;
   const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
@@ -146,7 +121,7 @@ class memory_index_input final : public index_input {
   index_input::ptr reopen() const final;
   size_t length() const final;
 
-  size_t file_pointer() const final;
+  size_t Position() const final;
 
   void seek(size_t pos) final;
 
@@ -168,92 +143,57 @@ class memory_index_input final : public index_input {
   // returns number of reamining bytes in the buffer
   IRS_FORCE_INLINE size_t remain() const { return std::distance(begin_, end_); }
 
-  const memory_file* file_;       // underline file
+  const MemoryFile* file_;        // underline file
   const byte_type* buf_{};        // current buffer
   const byte_type* begin_{buf_};  // current position
   const byte_type* end_{buf_};    // end of the valid bytes
   size_t start_{};                // buffer offset in file
-};                                // memory_index_input
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class memory_index_output
-/// @brief in memory output stream
-////////////////////////////////////////////////////////////////////////////////
-class memory_index_output : public index_output {
- public:
-  explicit memory_index_output(memory_file& file) noexcept;
-  memory_index_output(const memory_index_output&) = default;
-  memory_index_output& operator=(const memory_index_output&) = delete;
-
-  void reset() noexcept;
-
-  // data_output
-
-  void write_byte(byte_type b) final;
-
-  void write_bytes(const byte_type* b, size_t len) final;
-
-  // index_output
-
-  void flush() override;  // deprecated
-
-  size_t file_pointer() const final;
-
-  int64_t checksum() const override;
-
-  void operator>>(data_output& out);
-
-  void write_int(int32_t v) final;
-
-  void write_long(int64_t v) final;
-
-  void write_vint(uint32_t v) final;
-
-  void write_vlong(uint64_t v) final;
-
-  void truncate(size_t pos);
-
-  memory_index_output& operator=(byte_type b) {
-    write_byte(b);
-    return *this;
-  }
-  memory_index_output& operator*() noexcept { return *this; }
-  memory_index_output& operator++() noexcept { return *this; }
-  memory_index_output& operator++(int) noexcept { return *this; }
-
- protected:
-  size_t CloseImpl() final;
-
-  virtual void switch_buffer();
-
- private:
-  // returns number of reamining bytes in the buffer
-  IRS_FORCE_INLINE size_t remain() const { return std::distance(pos_, end_); }
-
- protected:
-  memory_file::buffer_t buf_;  // current buffer
-  byte_type* pos_;             // position in current buffer
-
- private:
-  memory_file& file_;  // underlying file
-  byte_type* end_;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @class memory_directory
-/// @brief in memory index directory
-////////////////////////////////////////////////////////////////////////////////
-class memory_directory final : public directory {
+class MemoryIndexOutput : public IndexOutput {
  public:
-  explicit memory_directory(
+  explicit MemoryIndexOutput(MemoryFile& file) noexcept;
+
+  void Reset() noexcept {
+    buf_ = pos_ = end_ = nullptr;
+    offset_ = 0;
+  }
+
+  void Truncate(size_t pos) noexcept;
+
+  size_t Position() const noexcept final { return offset_ + Length(); }
+
+  void Flush() noexcept override { file_.Length(Position()); }
+
+  uint32_t Checksum() override { throw not_supported{}; }
+
+  void Close() noexcept override { Flush(); }
+
+  void WriteBytes(const byte_type* b, size_t len) override;
+
+ protected:
+  void WriteDirect(const byte_type* b, size_t len) override;
+
+  template<typename Writer>
+  void WriteBytesImpl(const byte_type* b, size_t len, const Writer& writer);
+
+  void NextBuffer();
+
+  MemoryFile& file_;
+  size_t offset_ = 0;
+};
+
+class MemoryDirectory final : public directory {
+ public:
+  explicit MemoryDirectory(
     directory_attributes attributes = directory_attributes{},
     const ResourceManagementOptions& rm = ResourceManagementOptions::kDefault);
 
-  ~memory_directory() noexcept final;
+  ~MemoryDirectory() noexcept final;
 
   directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view name) noexcept final;
+  IndexOutput::ptr create(std::string_view name) noexcept final;
 
   bool exists(bool& result, std::string_view name) const noexcept final;
 
@@ -275,39 +215,36 @@ class memory_directory final : public directory {
   bool visit(const visitor_f& visitor) const final;
 
  private:
-  friend class single_instance_lock;
-  using files_allocator = ManagedTypedAllocator<
-    std::pair<const std::string, std::unique_ptr<memory_file>>>;
-  using file_map = absl::flat_hash_map<
-    std::string, std::unique_ptr<memory_file>,
+  friend class SingleInstanceLock;
+
+  using FilesAllocator = ManagedTypedAllocator<
+    std::pair<const std::string, std::unique_ptr<MemoryFile>>>;
+  using FileMap = absl::flat_hash_map<
+    std::string, std::unique_ptr<MemoryFile>,
     absl::container_internal::hash_default_hash<std::string>,
     absl::container_internal::hash_default_eq<std::string>,
-    files_allocator>;  // unique_ptr because of rename
-  using lock_map = absl::flat_hash_set<std::string>;
+    FilesAllocator>;  // unique_ptr because of rename
+  using LockMap = absl::flat_hash_set<std::string>;
 
   directory_attributes attrs_;
   mutable std::shared_mutex flock_;
   std::mutex llock_;
-  file_map files_;
-  lock_map locks_;
+  FileMap files_;
+  LockMap locks_;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct memory_output
-/// @brief memory_file + memory_stream
-////////////////////////////////////////////////////////////////////////////////
-struct memory_output {
-  explicit memory_output(IResourceManager& rm) noexcept : file(rm) {}
+struct MemoryOutput {
+  explicit MemoryOutput(IResourceManager& rm) noexcept : file{rm} {}
 
-  memory_output(memory_output&& rhs) noexcept : file(std::move(rhs.file)) {}
+  MemoryOutput(MemoryOutput&& rhs) noexcept : file{std::move(rhs.file)} {}
 
-  void reset() noexcept {
-    file.reset();
-    stream.reset();
+  void Reset() noexcept {
+    file.Reset();
+    stream.Reset();
   }
 
-  memory_file file;
-  memory_index_output stream{file};
+  MemoryFile file;
+  MemoryIndexOutput stream{file};
 };
 
 }  // namespace irs

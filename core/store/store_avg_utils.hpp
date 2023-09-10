@@ -128,24 +128,24 @@ inline void decode(const uint32_t base, const uint32_t avg, uint32_t* begin,
 
 template<typename PackFunc>
 inline uint32_t write_block(
-  PackFunc&& pack, data_output& out, const uint64_t base, const uint64_t avg,
+  PackFunc&& pack, DataOutput& out, const uint64_t base, const uint64_t avg,
   const uint64_t* IRS_RESTRICT decoded,
   const uint64_t size,  // same type as 'read_block'/'write_block'
   uint64_t* IRS_RESTRICT encoded) {
-  out.write_vlong(base);
-  out.write_vlong(avg);
+  out.WriteV64(base);
+  out.WriteV64(avg);
   return bitpack::write_block64(std::forward<PackFunc>(pack), out, decoded,
                                 size, encoded);
 }
 
 template<typename PackFunc>
 inline uint32_t write_block(
-  PackFunc&& pack, data_output& out, const uint32_t base, const uint32_t avg,
+  PackFunc&& pack, DataOutput& out, const uint32_t base, const uint32_t avg,
   const uint32_t* IRS_RESTRICT decoded,
   const uint32_t size,  // same type as 'read_block'/'write_block'
   uint32_t* IRS_RESTRICT encoded) {
-  out.write_vint(base);
-  out.write_vint(avg);
+  out.WriteV32(base);
+  out.WriteV32(avg);
   return bitpack::write_block32(std::forward<PackFunc>(pack), out, decoded,
                                 size, encoded);
 }

@@ -511,14 +511,14 @@ parametric_description make_parametric_description(byte_type max_distance,
   return {std::move(transitions), std::move(distance), max_distance};
 }
 
-void write(const parametric_description& description, data_output& out) {
+void write(const parametric_description& description, DataOutput& out) {
   uint32_t last_state = 0;
   uint32_t last_offset = 0;
 
-  out.write_byte(description.max_distance());
+  out.WriteByte(description.max_distance());
 
   const auto transitions = description.transitions();
-  out.write_vlong(transitions.size());
+  out.WriteV64(transitions.size());
   for (auto& transition : transitions) {
     write_zvint(out, transition.first - last_state);
     write_zvint(out, transition.second - last_offset);
@@ -527,8 +527,8 @@ void write(const parametric_description& description, data_output& out) {
   }
 
   const auto distances = description.distances();
-  out.write_vlong(distances.size_bytes());
-  out.write_bytes(distances.data(), distances.size_bytes());
+  out.WriteV64(distances.size_bytes());
+  out.WriteBytes(distances.data(), distances.size_bytes());
 }
 
 parametric_description read(data_input& in) {

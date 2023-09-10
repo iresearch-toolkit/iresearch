@@ -80,12 +80,12 @@ class test_feature_writer : public irs::FeatureWriter {
   explicit test_feature_writer(uint32_t value) noexcept : value_{value} {}
 
   void write(const irs::field_stats& stats, irs::doc_id_t doc,
-             irs::column_output& writer) final {
-    writer(doc).write_int(stats.len + value_);
+             irs::ColumnOutput& writer) final {
+    writer(doc).WriteU32(stats.len + value_);
   }
 
-  void write(irs::data_output& out, irs::bytes_view payload) final {
-    out.write_bytes(payload.data(), payload.size());
+  void write(irs::DataOutput& out, irs::bytes_view payload) final {
+    out.WriteBytes(payload.data(), payload.size());
   }
 
   void finish(irs::bstring& out) final {

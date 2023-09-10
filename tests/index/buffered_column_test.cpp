@@ -398,11 +398,11 @@ TEST_P(BufferedColumnTestCase, InsertDuplicates) {
     for (const auto value : values) {
       // write value
       col.Prepare(doc);
-      col.write_vint(value);
+      col.WriteV32(value);
 
       // write and rollback
       col.Prepare(doc);
-      col.write_vint(value);
+      col.WriteV32(value);
       col.reset();
 
       ++doc;
@@ -486,11 +486,11 @@ TEST_P(BufferedColumnTestCase, Sort) {
     for (const auto value : values) {
       // write value
       col.Prepare(doc);
-      col.write_vint(value);
+      col.WriteV32(value);
 
       // write and rollback
       col.Prepare(++doc);
-      col.write_vint(value);
+      col.WriteV32(value);
       col.reset();
     }
     ASSERT_EQ(std::size(values), col.Size());

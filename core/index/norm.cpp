@@ -33,7 +33,7 @@ using namespace irs;
 class NormWriter : public FeatureWriter {
  public:
   void write(const field_stats& stats, doc_id_t doc,
-             column_output& writer) final {
+             ColumnOutput& writer) final {
     if (stats.len > 0) {
       const float_t value = 1.f / float_t(std::sqrt(double_t(stats.len)));
       if (value != Norm::DEFAULT()) {
@@ -43,9 +43,9 @@ class NormWriter : public FeatureWriter {
     }
   }
 
-  void write(data_output& out, bytes_view payload) final {
+  void write(DataOutput& out, bytes_view payload) final {
     if (!payload.empty()) {
-      out.write_bytes(payload.data(), payload.size());
+      out.WriteBytes(payload.data(), payload.size());
     }
   }
 

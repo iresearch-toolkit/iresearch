@@ -45,7 +45,7 @@ class FSDirectory : public directory {
   using directory::attributes;
   directory_attributes& attributes() noexcept final { return attrs_; }
 
-  index_output::ptr create(std::string_view name) noexcept override;
+  IndexOutput::ptr create(std::string_view name) noexcept override;
 
   bool exists(bool& result, std::string_view name) const noexcept override;
 

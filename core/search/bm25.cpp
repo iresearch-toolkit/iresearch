@@ -73,9 +73,9 @@ struct BM25FieldCollector final : FieldCollector {
     total_term_freq += total_term_freq_value;
   }
 
-  void write(data_output& out) const final {
-    out.write_vlong(docs_with_field);
-    out.write_vlong(total_term_freq);
+  void write(DataOutput& out) const final {
+    out.WriteV64(docs_with_field);
+    out.WriteV64(total_term_freq);
   }
 };
 

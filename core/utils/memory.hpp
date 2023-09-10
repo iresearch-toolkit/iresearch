@@ -495,36 +495,4 @@ template<typename T, typename Alloc, typename... Types>
 std::enable_if_t<std::extent_v<T> != 0, void> allocate_unique(
   Alloc&, Types&&...) = delete;
 
-template<typename Class, bool = is_shared_ptr_v<typename Class::ptr>>
-struct maker {
-  template<typename... Args>
-  static typename Class::ptr make(Args&&... args) {
-    // creates shared_ptr with a single heap allocation
-    return std::make_shared<Class>(std::forward<Args>(args)...);
-  }
-};
-
-template<typename Class>
-struct maker<Class, false> {
-  template<typename... Args>
-  static typename Class::ptr make(Args&&... args) {
-    static_assert(
-      std::is_nothrow_constructible_v<typename Class::ptr,
-                                      typename Class::ptr::element_type*>);
-
-    return typename Class::ptr(new Class(std::forward<Args>(args)...));
-  }
-};
-
 }  // namespace irs::memory
-
-// Default inline implementation of a factory method, instantiation on heap
-#define DEFINE_FACTORY_INLINE(class_name)                                 \
-  template<typename Class, bool>                                          \
-  friend struct irs::memory::maker;                                       \
-  template<typename _T, typename... Args>                                 \
-  static ptr make(Args&&... args) {                                       \
-    using type = std::enable_if_t<std::is_base_of_v<class_name, _T>, _T>; \
-    using maker_t = irs::memory::maker<type>;                             \
-    return maker_t::template make(std::forward<Args>(args)...);           \
-  }

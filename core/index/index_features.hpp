@@ -34,7 +34,7 @@
 namespace irs {
 
 struct field_stats;
-struct column_output;
+struct ColumnOutput;
 
 // Represents a set of features that can be stored in the index
 enum class IndexFeatures : byte_type {
@@ -69,9 +69,9 @@ struct FeatureWriter : memory::Managed {
   using ptr = memory::managed_ptr<FeatureWriter>;
 
   virtual void write(const field_stats& stats, doc_id_t doc,
-                     column_output& writer) = 0;
+                     ColumnOutput& writer) = 0;
 
-  virtual void write(data_output& out, bytes_view value) = 0;
+  virtual void write(DataOutput& out, bytes_view value) = 0;
 
   virtual void finish(bstring& out) = 0;
 };

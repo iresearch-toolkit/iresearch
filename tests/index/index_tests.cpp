@@ -1607,7 +1607,7 @@ class index_test_case : public tests::index_test_base {
 
       irs::features_t features() const { return {}; }
 
-      bool write(irs::data_output&) const noexcept { return true; }
+      bool write(irs::DataOutput&) const noexcept { return true; }
 
       std::string_view name_;
 
@@ -1907,8 +1907,8 @@ class index_test_case : public tests::index_test_base {
       irs::features_t features() const {
         return {features_.data(), features_.size()};
       }
-      bool write(irs::data_output& out) const noexcept {
-        irs::write_string(out, value_);
+      bool write(irs::DataOutput& out) const noexcept {
+        irs::WriteStr(out, value_);
         return stored_valid_;
       }
 
@@ -1961,8 +1961,8 @@ class index_test_case : public tests::index_test_base {
 
       irs::features_t features() const { return {}; }
 
-      bool write(irs::data_output& out) const {
-        write_string(out, value_);
+      bool write(irs::DataOutput& out) const {
+        WriteStr(out, value_);
         return valid_;
       }
 
@@ -3043,7 +3043,7 @@ TEST_P(index_test_case, document_context) {
     std::atomic<bool> wait;
     std::string_view name() { return ""; }
     irs::features_t features() const { return {}; }
-    bool write(irs::data_output&) {
+    bool write(irs::DataOutput&) {
       { std::lock_guard cond_lock{cond_mutex}; }
 
       cond.notify_all();
@@ -5964,8 +5964,8 @@ TEST_P(index_test_case, doc_update) {
      public:
       irs::string_token_stream tokens_;
       bool write_result_;
-      bool write(irs::data_output& out) const final {
-        out.write_byte(1);
+      bool write(irs::DataOutput& out) const final {
+        out.WriteByte(1);
         return write_result_;
       }
       irs::token_stream& get_tokens() const final {
@@ -15129,7 +15129,7 @@ class index_test_case_14 : public index_test_case {
       : call_stats_{&call_stats}, filter_doc_{filter_doc}, min_doc_{min_doc} {}
 
     void write(const irs::field_stats& stats, irs::doc_id_t doc,
-               irs::column_output& writer) final {
+               irs::ColumnOutput& writer) final {
       ++call_stats_->num_write_calls;
 
       if (doc == filter_doc_) {
@@ -15137,23 +15137,23 @@ class index_test_case_14 : public index_test_case {
       }
 
       auto& stream = writer(doc);
-      stream.write_int(doc);
-      stream.write_int(stats.len);
-      stream.write_int(stats.num_overlap);
-      stream.write_int(stats.max_term_freq);
-      stream.write_int(stats.num_unique);
+      stream.WriteU32(doc);
+      stream.WriteU32(stats.len);
+      stream.WriteU32(stats.num_overlap);
+      stream.WriteU32(stats.max_term_freq);
+      stream.WriteU32(stats.num_unique);
 
       min_doc_ = std::min(doc, min_doc_);
     }
 
-    void write(irs::data_output& out, irs::bytes_view payload) final {
+    void write(irs::DataOutput& out, irs::bytes_view payload) final {
       ++call_stats_->num_write_consolidation_calls;
 
       if (!payload.empty()) {
         auto* p = payload.data();
         min_doc_ = std::min(irs::read<irs::doc_id_t>(p), min_doc_);
 
-        out.write_bytes(payload.data(), payload.size());
+        out.WriteBytes(payload.data(), payload.size());
       }
     }
 

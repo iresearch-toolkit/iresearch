@@ -148,11 +148,11 @@ class field_data : util::noncopyable {
   friend class fields_data;
 
   struct feature_info {
-    feature_info(FeatureWriter::ptr handler, column_output& writer)
+    feature_info(FeatureWriter::ptr handler, ColumnOutput& writer)
       : handler{std::move(handler)}, writer{&writer} {}
 
     FeatureWriter::ptr handler;
-    column_output* writer;
+    ColumnOutput* writer;
   };
 
   using process_term_f = void (field_data::*)(posting&, doc_id_t,

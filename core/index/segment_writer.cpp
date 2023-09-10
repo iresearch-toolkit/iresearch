@@ -198,8 +198,8 @@ bool segment_writer::index(const hashed_string_view& name, const doc_id_t doc,
   return false;
 }
 
-column_output& segment_writer::stream(const hashed_string_view& name,
-                                      const doc_id_t doc_id) {
+ColumnOutput& segment_writer::stream(const hashed_string_view& name,
+                                     const doc_id_t doc_id) {
   REGISTER_TIMER_DETAILED();
   IRS_ASSERT(column_info_);
   auto& out =

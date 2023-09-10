@@ -53,7 +53,7 @@ struct EmptyField : tests::ifield {
     throw irs::not_impl_error{};
   }
 
-  bool write(irs::data_output&) const final { return false; }
+  bool write(irs::DataOutput&) const final { return false; }
 
   mutable irs::null_token_stream stream_;
 };
@@ -182,21 +182,21 @@ struct CustomFeature {
 
     void write(const irs::field_stats& stats, irs::doc_id_t doc,
                // cppcheck-suppress constParameter
-               irs::column_output& writer) final {
+               irs::ColumnOutput& writer) final {
       ++hdr.count;
 
       // We intentionally call `writer(doc)` multiple
       // times to check concatenation logic.
-      writer(doc).write_int(stats.len);
-      writer(doc).write_int(stats.max_term_freq);
-      writer(doc).write_int(stats.num_overlap);
-      writer(doc).write_int(stats.num_unique);
+      writer(doc).WriteU32(stats.len);
+      writer(doc).WriteU32(stats.max_term_freq);
+      writer(doc).WriteU32(stats.num_overlap);
+      writer(doc).WriteU32(stats.num_unique);
     }
 
-    virtual void write(irs::data_output& out, irs::bytes_view payload) {
+    virtual void write(irs::DataOutput& out, irs::bytes_view payload) {
       if (!payload.empty()) {
         ++hdr.count;
-        out.write_bytes(payload.data(), payload.size());
+        out.WriteBytes(payload.data(), payload.size());
       }
     }
 
@@ -1155,9 +1155,9 @@ TEST_P(SortedIndexTestCase, europarl) {
 
 TEST_P(SortedIndexTestCase, multi_valued_sorting_field) {
   struct {
-    bool write(irs::data_output& out) {
-      out.write_bytes(reinterpret_cast<const irs::byte_type*>(value.data()),
-                      value.size());
+    bool write(irs::DataOutput& out) {
+      out.WriteBytes(reinterpret_cast<const irs::byte_type*>(value.data()),
+                     value.size());
       return true;
     }
 

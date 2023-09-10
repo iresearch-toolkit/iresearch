@@ -66,14 +66,15 @@ std::string index_file_name(std::string_view prefix) {
   return file_name(prefix, writer::kIndexFormatExt);
 }
 
-void write_header(index_output& out, const column_header& hdr) {
-  out.write_long(hdr.docs_index);
+void WriteHeader(IndexOutput& out, const column_header& hdr) {
+  out.WriteU64(hdr.docs_index);
   IRS_ASSERT(hdr.id < std::numeric_limits<uint32_t>::max());
-  out.write_int(static_cast<uint32_t>(hdr.id & 0xFFFFFFFF));
-  out.write_int(hdr.min);
-  out.write_int(hdr.docs_count);
-  write_enum(out, hdr.type);
-  write_enum(out, hdr.props);
+  out.WriteU32(static_cast<uint32_t>(hdr.id & 0xFFFFFFFF));
+  out.WriteU32(hdr.min);
+  out.WriteU32(hdr.docs_count);
+  // TODO(MBkkt) use WriteV8 for type and props
+  out.WriteU16(static_cast<uint16_t>(hdr.type));
+  out.WriteU16(static_cast<uint16_t>(hdr.props));
 }
 
 column_header read_header(index_input& in) {
@@ -82,8 +83,8 @@ column_header read_header(index_input& in) {
   hdr.id = in.read_int();
   hdr.min = in.read_int();
   hdr.docs_count = in.read_int();
-  hdr.type = read_enum<ColumnType>(in);
-  hdr.props = read_enum<ColumnProperty>(in);
+  hdr.type = static_cast<ColumnType>(in.read_short());
+  hdr.props = static_cast<ColumnProperty>(in.read_short());
   return hdr;
 }
 
@@ -91,18 +92,18 @@ bool is_encrypted(const column_header& hdr) noexcept {
   return ColumnProperty::kEncrypt == (hdr.props & ColumnProperty::kEncrypt);
 }
 
-void write_bitmap_index(index_output& out,
+void write_bitmap_index(IndexOutput& out,
                         std::span<const sparse_bitmap_writer::block> blocks) {
   const uint32_t count = static_cast<uint32_t>(blocks.size());
 
   if (count > 2) {
-    out.write_int(count);
+    out.WriteU32(count);
     for (auto& block : blocks) {
-      out.write_int(block.index);
-      out.write_int(block.offset);
+      out.WriteU32(block.index);
+      out.WriteU32(block.offset);
     }
   } else {
-    out.write_int(0);
+    out.WriteU32(0);
   }
 }
 
@@ -132,23 +133,21 @@ column_index read_bitmap_index(index_input& in) {
   return {};
 }
 
-void write_blocks_sparse(index_output& out,
+void write_blocks_sparse(IndexOutput& out,
                          std::span<const column::column_block> blocks) {
-  // FIXME optimize
   for (auto& block : blocks) {
-    out.write_long(block.addr);
-    out.write_long(block.avg);
-    out.write_byte(static_cast<byte_type>(block.bits));
-    out.write_long(block.data);
-    out.write_long(block.last_size);
+    out.WriteU64(block.addr);
+    out.WriteU64(block.avg);
+    out.WriteByte(static_cast<byte_type>(block.bits));
+    out.WriteU64(block.data);
+    out.WriteU64(block.last_size);
   }
 }
 
-void write_blocks_dense(index_output& out,
+void write_blocks_dense(IndexOutput& out,
                         std::span<const column::column_block> blocks) {
-  // FIXME optimize
   for (auto& block : blocks) {
-    out.write_long(block.data);
+    out.WriteU64(block.data);
   }
 }
 
@@ -1319,18 +1318,18 @@ void column::Prepare(doc_id_t key) {
     prev_ = pend_;
     pend_ = key;
     docs_writer_.push_back(key);
-    addr_table_.push_back(data_.stream.file_pointer());
+    addr_table_.push_back(data_.stream.Position());
   }
 }
 
-void column::reset() {
+void column::Reset() {
   if (addr_table_.empty()) {
     return;
   }
 
   [[maybe_unused]] const bool res = docs_writer_.erase(pend_);
   IRS_ASSERT(res);
-  data_.stream.truncate(addr_table_.back());
+  data_.stream.Truncate(addr_table_.back());
   addr_table_.pop_back();
   pend_ = prev_;
 }
@@ -1338,12 +1337,12 @@ void column::reset() {
 void column::flush_block() {
   IRS_ASSERT(!addr_table_.empty());
   IRS_ASSERT(ctx_.data_out);
-  data_.stream.flush();
+  data_.stream.Flush();
 
   auto& data_out = *ctx_.data_out;
   auto& block = blocks_.emplace_back();
-  block.addr = data_out.file_pointer();
-  block.last_size = data_.file.length() - addr_table_.back();
+  block.addr = data_out.Position();
+  block.last_size = data_.file.Length() - addr_table_.back();
 
   const uint32_t docs_count = addr_table_.size();
   const uint64_t addr_table_size =
@@ -1354,13 +1353,13 @@ void column::flush_block() {
     std::memset(it, 0, (end - it) * sizeof(*it));
   }
 
-  bool all_equal = !data_.file.length();
+  bool all_equal = !data_.file.Length();
   if (!all_equal) {
     std::tie(block.data, block.avg, all_equal) =
       encode::avg::encode(begin, addr_table_.current());
   } else {
     block.avg = 0;
-    block.data = data_out.file_pointer();
+    block.data = data_out.Position();
   }
 
   if (all_equal) {
@@ -1381,19 +1380,19 @@ void column::flush_block() {
     std::memset(ctx_.u64buf, 0, buf_size);
     packed::pack(begin, end, ctx_.u64buf, block.bits);
 
-    data_out.write_bytes(ctx_.u8buf, buf_size);
+    data_out.WriteBytes(ctx_.u8buf, buf_size);
     fixed_length_ = false;
   }
 
 #ifdef IRESEARCH_DEBUG
-  block.size = data_.file.length();
+  block.size = data_.file.Length();
 #endif
 
-  if (data_.file.length()) {
-    block.data += data_out.file_pointer();
+  if (data_.file.Length()) {
+    block.data += data_out.Position();
 
     if (ctx_.cipher) {
-      auto offset = data_out.file_pointer();
+      auto offset = data_out.Position();
 
       auto encrypt_and_copy = [&data_out, cipher = ctx_.cipher, &offset](
                                 byte_type* b, size_t len) {
@@ -1403,20 +1402,20 @@ void column::flush_block() {
           return false;
         }
 
-        data_out.write_bytes(b, len);
+        data_out.WriteBytes(b, len);
         offset += len;
         return true;
       };
 
-      if (!data_.file.visit(encrypt_and_copy)) {
+      if (!data_.file.Visit(encrypt_and_copy)) {
         throw io_error("failed to encrypt columnstore");
       }
     } else {
       data_.file >> data_out;
     }
 
-    data_.stream.truncate(0);
-    data_.file.reset();
+    data_.stream.Truncate(0);
+    data_.file.Reset();
   }
 
   addr_table_.reset();
@@ -1440,12 +1439,12 @@ column::column(const context& ctx, field_id id, const type_info& compression,
   IRS_ASSERT(field_limits::valid(id_));
 }
 
-void column::finish(index_output& index_out) {
+void column::finish(IndexOutput& index_out) {
   IRS_ASSERT(id_ < field_limits::invalid());
   IRS_ASSERT(ctx_.data_out);
 
   docs_writer_.finish();
-  docs_.stream.flush();
+  docs_.stream.Flush();
 
   column_header hdr;
   hdr.docs_count = docs_count_;
@@ -1467,7 +1466,7 @@ void column::finish(index_output& index_out) {
 
     // we don't need to store bitmap index in case
     // if every document in a column has a value
-    hdr.docs_index = data_out.file_pointer();
+    hdr.docs_index = data_out.Position();
     docs_.file >> data_out;
   }
 
@@ -1505,18 +1504,18 @@ void column::finish(index_output& index_out) {
     }
   }
 
-  irs::write_string(index_out, compression_.name());
-  write_header(index_out, hdr);
-  write_string(index_out, payload_);
+  WriteStr(index_out, compression_.name());
+  WriteHeader(index_out, hdr);
+  WriteStr(index_out, payload_);
   if (!IsNull(name_)) {
     if (ctx_.cipher) {
       auto name = static_cast<std::string>(name_);
-      ctx_.cipher->encrypt(index_out.file_pointer(),
+      ctx_.cipher->encrypt(index_out.Position(),
                            reinterpret_cast<byte_type*>(name.data()),
                            name.size());
-      irs::write_string(index_out, name);
+      WriteStr(index_out, name);
     } else {
-      irs::write_string(index_out, name_);
+      WriteStr(index_out, name_);
     }
   } else {
     IRS_ASSERT(ColumnProperty::kNoName ==
@@ -1531,9 +1530,9 @@ void column::finish(index_output& index_out) {
   if (ColumnType::kSparse == hdr.type) {
     write_blocks_sparse(index_out, blocks_);
   } else if (ColumnType::kMask != hdr.type) {
-    index_out.write_long(blocks_.front().avg);
+    index_out.WriteU64(blocks_.front().avg);
     if (ColumnType::kDenseFixed == hdr.type) {
-      index_out.write_long(blocks_.front().data);
+      index_out.WriteU64(blocks_.front().data);
     } else {
       IRS_ASSERT(ColumnType::kFixed == hdr.type);
       write_blocks_dense(index_out, blocks_);
@@ -1566,8 +1565,8 @@ void writer::prepare(directory& dir, const SegmentMeta& meta) {
     throw io_error{absl::StrCat("Failed to create file, path: ", filename)};
   }
 
-  format_utils::write_header(*data_out, kDataFormatName,
-                             static_cast<int32_t>(ver_));
+  format_utils::WriteHeader(*data_out, kDataFormatName,
+                            static_cast<int32_t>(ver_));
 
   encryption::stream::ptr data_cipher;
   bstring enc_header;
@@ -1675,16 +1674,16 @@ bool writer::commit(const flush_state& /*state*/) {
       absl::StrCat("Failed to create file, path: ", index_filename)};
   }
 
-  format_utils::write_header(*index_out, kIndexFormatName,
-                             static_cast<int32_t>(ver_));
+  format_utils::WriteHeader(*index_out, kIndexFormatName,
+                            static_cast<int32_t>(ver_));
 
-  index_out->write_vint(static_cast<uint32_t>(count));
+  index_out->WriteV32(static_cast<uint32_t>(count));
   for (auto* column : sorted_columns_) {
     column->finish(*index_out);
   }
 
-  format_utils::write_footer(*index_out);
-  format_utils::write_footer(*data_out_);
+  format_utils::WriteFooter(*index_out);
+  format_utils::WriteFooter(*data_out_);
 
   rollback();
 
@@ -1801,7 +1800,7 @@ void reader::prepare_index(const directory& dir, const SegmentMeta& meta,
 
     std::optional<std::string> name;
     if (ColumnProperty::kNoName != (hdr.props & ColumnProperty::kNoName)) {
-      [[maybe_unused]] const auto offset = index_in->file_pointer();
+      [[maybe_unused]] const auto offset = index_in->Position();
 
       name = read_string<std::string>(*index_in);
 

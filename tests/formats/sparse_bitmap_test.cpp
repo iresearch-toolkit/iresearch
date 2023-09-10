@@ -588,7 +588,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
         }
 
         stream->seek(0);
-        ASSERT_EQ(0, stream->file_pointer());
+        ASSERT_EQ(0, stream->Position());
 
         irs::sparse_bitmap_iterator it{stream->dup(),
                                        iterator_options(bitmap_index, true),
@@ -662,7 +662,7 @@ void sparse_bitmap_test_case::test_rw_seek_next(const range_type (&ranges)[N]) {
         }
 
         stream->seek(0);
-        ASSERT_EQ(0, stream->file_pointer());
+        ASSERT_EQ(0, stream->Position());
 
         irs::sparse_bitmap_iterator it{stream->dup(),
                                        iterator_options({}, false)};

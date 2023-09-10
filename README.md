@@ -89,7 +89,7 @@ For type `T` to be `StoredField`, the following conditions have to be satisfied 
 |Expression|Requires|Effects|
 |----|----|----|
 |`m.name()`|The output type must be convertible to `irs::string_ref`|A value uses as a key name.|
-|`m.write(irs::data_output& out)`|The output type must be convertible to bool.|One may write arbitrary data to stream denoted by `out` in order to retrieve written value using index_reader API later. If nothing has written but returned value is `true` then stored value is treated as flag. If returned value is `false` then nothing is stored even if something has been written to `out` stream.|
+|`m.write(irs::DataOutput& out)`|The output type must be convertible to bool.|One may write arbitrary data to stream denoted by `out` in order to retrieve written value using index_reader API later. If nothing has written but returned value is `true` then stored value is treated as flag. If returned value is `false` then nothing is stored even if something has been written to `out` stream.|
 
 ### Directory
 

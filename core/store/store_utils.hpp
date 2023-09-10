@@ -34,43 +34,6 @@
 #include "utils/string.hpp"
 
 namespace irs {
-namespace detail {
-
-template<typename T, size_t N = sizeof(T)>
-struct read_write_helper {
-  static T read(irs::data_input& in);
-  static T write(irs::data_output& out, T size);
-};
-
-template<typename T>
-struct read_write_helper<T, sizeof(irs::byte_type)> {
-  inline static T read(irs::data_input& in) { return in.read_byte(); }
-
-  inline static void write(irs::data_output& out, T in) { out.write_byte(in); }
-};
-
-template<typename T>
-struct read_write_helper<T, sizeof(uint16_t)> {
-  inline static T read(irs::data_input& in) { return in.read_short(); }
-
-  inline static void write(irs::data_output& out, T in) { out.write_short(in); }
-};
-
-template<typename T>
-struct read_write_helper<T, sizeof(uint32_t)> {
-  inline static T read(irs::data_input& in) { return in.read_vint(); }
-
-  inline static void write(irs::data_output& out, T in) { out.write_vint(in); }
-};
-
-template<typename T>
-struct read_write_helper<T, sizeof(uint64_t)> {
-  inline static T read(irs::data_input& in) { return in.read_vlong(); }
-
-  inline static void write(irs::data_output& out, T in) { out.write_vlong(in); }
-};
-
-}  // namespace detail
 
 template<typename StringType,
          typename TraitsType = typename StringType::traits_type>
@@ -90,67 +53,45 @@ struct enum_hash {
   }
 };
 
-template<typename T>
-void write_enum(data_output& out, T value) {
-  static_assert(std::is_enum_v<T>);
-  detail::read_write_helper<std::underlying_type_t<T>>::write(
-    out, static_cast<std::underlying_type_t<T>>(value));
-}
-
-template<typename T>
-T read_enum(data_input& in) {
-  static_assert(std::is_enum_v<T>);
-  return static_cast<T>(
-    detail::read_write_helper<std::underlying_type_t<T>>::read(in));
-}
-
-inline void write_size(data_output& out, size_t size) {
-  detail::read_write_helper<size_t>::write(out, size);
-}
-
-inline size_t read_size(data_input& in) {
-  return detail::read_write_helper<size_t>::read(in);
-}
-
-void write_zvfloat(data_output& out, float_t v);
+void write_zvfloat(DataOutput& out, float_t v);
 
 float_t read_zvfloat(data_input& in);
 
-void write_zvdouble(data_output& out, double_t v);
+void write_zvdouble(DataOutput& out, double_t v);
 
 double_t read_zvdouble(data_input& in);
 
-inline void write_zvint(data_output& out, int32_t v) {
-  out.write_vint(zig_zag_encode32(v));
+inline void write_zvint(DataOutput& out, int32_t v) {
+  out.WriteV32(zig_zag_encode32(v));
 }
 
 inline int32_t read_zvint(data_input& in) {
   return zig_zag_decode32(in.read_vint());
 }
 
-inline void write_zvlong(data_output& out, int64_t v) {
-  out.write_vlong(zig_zag_encode64(v));
+inline void write_zvlong(DataOutput& out, int64_t v) {
+  out.WriteV64(zig_zag_encode64(v));
 }
 
 inline int64_t read_zvlong(data_input& in) {
   return zig_zag_decode64(in.read_vlong());
 }
 
-inline void write_string(data_output& out, const char* s, size_t len) {
+inline void WriteStr(DataOutput& out, const char* s, size_t len) {
   IRS_ASSERT(len < std::numeric_limits<uint32_t>::max());
-  out.write_vint(uint32_t(len));
-  out.write_bytes(reinterpret_cast<const byte_type*>(s), len);
+  out.WriteV32(uint32_t(len));
+  out.WriteBytes(reinterpret_cast<const byte_type*>(s), len);
 }
 
-inline void write_string(data_output& out, const byte_type* s, size_t len) {
+inline void WriteStr(DataOutput& out, const byte_type* s, size_t len) {
   IRS_ASSERT(len < std::numeric_limits<uint32_t>::max());
-  out.write_vint(uint32_t(len));
-  out.write_bytes(s, len);
+  out.WriteV32(static_cast<uint32_t>(len));
+  out.WriteBytes(s, len);
 }
 
 template<typename StringType>
-inline void write_string(data_output& out, const StringType& str) {
-  write_string(out, str.data(), str.size());
+inline void WriteStr(DataOutput& out, const StringType& str) {
+  WriteStr(out, str.data(), str.size());
 }
 
 template<typename StringType>
@@ -169,7 +110,7 @@ inline StringType read_string(data_input& in) {
 /// @return bytes written
 ////////////////////////////////////////////////////////////////////////////////
 template<typename OutputIterator, typename T>
-size_t write_bytes(OutputIterator& out, const T* value, size_t size) {
+size_t WriteBytes(OutputIterator& out, const T* value, size_t size) {
   auto* data = reinterpret_cast<const byte_type*>(value);
 
   size = sizeof(T) * size;
@@ -189,8 +130,8 @@ size_t write_bytes(OutputIterator& out, const T* value, size_t size) {
 /// @return bytes written
 ////////////////////////////////////////////////////////////////////////////////
 template<typename OutputIterator, typename T>
-size_t write_bytes(OutputIterator& out, const T& value) {
-  return write_bytes(out, &value, 1);
+size_t WriteBytes(OutputIterator& out, const T& value) {
+  return WriteBytes(out, &value, 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +164,7 @@ T* read_ref(const byte_type*& in, size_t size) {
 template<typename OutputIterator, typename CharType>
 void vwrite_string(OutputIterator& out, const CharType* value, size_t size) {
   vwrite<uint64_t>(out, size);
-  write_bytes(out, value, size);
+  WriteBytes(out, value, size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,23 +209,6 @@ IRS_FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
   return static_cast<T>(in & 1);
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class bytes_output
-//////////////////////////////////////////////////////////////////////////////
-class bytes_output : public data_output {
- public:
-  explicit bytes_output(bstring& buf) noexcept : buf_(&buf) {}
-
-  void write_byte(byte_type b) final { (*buf_) += b; }
-
-  void write_bytes(const byte_type* b, size_t size) final {
-    buf_->append(b, size);
-  }
-
- private:
-  bstring* buf_;
-};
-
 class bytes_view_input : public index_input {
  public:
   bytes_view_input() = default;
@@ -301,7 +225,7 @@ class bytes_view_input : public index_input {
     pos_ = data_.data() + pos;
   }
 
-  size_t file_pointer() const noexcept override {
+  size_t Position() const noexcept override {
     return std::distance(data_.data(), pos_);
   }
 
@@ -369,7 +293,7 @@ class bytes_view_input : public index_input {
 
   uint32_t read_vint() noexcept final { return irs::vread<uint32_t>(pos_); }
 
-  int64_t checksum(size_t offset) const override;
+  uint32_t checksum(size_t offset) const override;
 
  private:
   bytes_view data_;
@@ -394,7 +318,7 @@ class remapped_bytes_view_input : public bytes_view_input {
   remapped_bytes_view_input(const remapped_bytes_view_input& other)
     : bytes_view_input(other), mapping_{other.mapping_} {}
 
-  int64_t checksum(size_t offset) const final {
+  uint32_t checksum(size_t offset) const final {
     return bytes_view_input::checksum(src_to_internal(offset));
   }
 
@@ -402,7 +326,7 @@ class remapped_bytes_view_input : public bytes_view_input {
     bytes_view_input::seek(src_to_internal(pos));
   }
 
-  size_t file_pointer() const noexcept final;
+  size_t Position() const noexcept final;
 
   ptr dup() const final {
     return std::make_unique<remapped_bytes_view_input>(*this);

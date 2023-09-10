@@ -76,7 +76,7 @@ struct identity_compressor : compressor {
     return {in, size};
   }
 
-  void flush(data_output& /*out*/) final {}
+  void flush(DataOutput& /*out*/) final {}
 };
 
 identity_compressor kIdentityCompressor;

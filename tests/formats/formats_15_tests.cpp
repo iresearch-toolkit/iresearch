@@ -324,7 +324,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
 
     auto out = dir.create("attributes");
     EXPECT_FALSE(!out);
-    irs::write_string(*out, std::string_view("file_header"));
+    irs::WriteStr(*out, std::string_view("file_header"));
 
     writer->prepare(*out, state);
     writer->begin_field(features, irs::feature_map_t{});
@@ -353,7 +353,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   EXPECT_NE(nullptr, reader);
   reader->prepare(*in, state, features);
 
-  irs::bstring in_data(in->length() - in->file_pointer(), 0);
+  irs::bstring in_data(in->length() - in->Position(), 0);
   in->read_bytes(&in_data[0], in_data.size());
   const auto* begin = in_data.c_str();
 

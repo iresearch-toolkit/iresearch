@@ -89,7 +89,7 @@ class EditFstData {
   bool Write(std::ostream &strm, const FstWriteOptions &opts) const {
     // Serializes all private data members of this class.
     FstWriteOptions edits_opts(opts);
-    edits_opts.write_header = true;  // Forces writing contained header.
+    edits_opts.WriteHeader = true;  // Forces writing contained header.
     edits_.Write(strm, edits_opts);
     WriteType(strm, external_to_internal_ids_);
     WriteType(strm, edited_final_weights_);
@@ -451,7 +451,7 @@ class EditFstImpl : public FstImpl<A> {
     // Serializes the wrapped FST to stream.
     FstWriteOptions wrapped_opts(opts);
     // Forces writing the contained header.
-    wrapped_opts.write_header = true;
+    wrapped_opts.WriteHeader = true;
     wrapped_->Write(strm, wrapped_opts);
     data_->Write(strm, opts);
     strm.flush();

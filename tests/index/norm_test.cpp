@@ -95,8 +95,8 @@ class NormField final : public tests::ifield {
     return irs::IndexFeatures::ALL;
   }
 
-  bool write(irs::data_output& out) const final {
-    irs::write_string(out, value_);
+  bool write(irs::DataOutput& out) const final {
+    irs::WriteStr(out, value_);
     return true;
   }
 
