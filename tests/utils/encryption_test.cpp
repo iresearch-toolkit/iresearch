@@ -33,6 +33,15 @@ namespace {
 
 using irs::bstring;
 
+std::string ToString(irs::bytes_view bytes) {
+  std::string s = "' ";
+  for (auto b : bytes) {
+    absl::StrAppend(&s, static_cast<int>(b), " ");
+  }
+  absl::StrAppend(&s, "'");
+  return s;
+}
+
 void assert_encryption(size_t block_size, size_t header_lenght) {
   tests::rot13_encryption enc(block_size, header_lenght);
 
@@ -51,12 +60,19 @@ void assert_encryption(size_t block_size, size_t header_lenght) {
             irs::bytes_view(header.c_str(), 2 * cipher->block_size()));
 
   // encrypted part of the header
-  ASSERT_TRUE(
+  bool cond =
     encrypted_header.size() == 2 * cipher->block_size() ||
-    (irs::bytes_view(encrypted_header.c_str() + 2 * cipher->block_size(),
+    (irs::bytes_view(encrypted_header.data() + 2 * cipher->block_size(),
                      encrypted_header.size() - 2 * cipher->block_size()) !=
-     irs::bytes_view(header.c_str() + 2 * cipher->block_size(),
-                     header.size() - 2 * cipher->block_size())));
+     irs::bytes_view(header.data() + 2 * cipher->block_size(),
+                     header.size() - 2 * cipher->block_size()));
+  EXPECT_TRUE(cond) << "block_size: " << block_size
+                    << ", header_lenght: " << header_lenght
+                    << ", encrypted_header: " << ToString(encrypted_header)
+                    << ", header: " << ToString(header);
+  if (!cond) {
+    return;
+  }
 
   const bstring data(
     reinterpret_cast<const irs::byte_type*>(
