@@ -132,7 +132,7 @@ filter::prepared::ptr by_column_existence::prepare(
   // skip field-level/term-level statistics because there are no explicit
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
-  bstring stats(ctx.scorers.stats_size(), 0);
+  bstring stats(ctx.scorers.stats_size(), byte_type{0});
   auto* stats_buf = stats.data();
 
   PrepareCollectors(ctx.scorers.buckets(), stats_buf);

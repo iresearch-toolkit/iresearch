@@ -43,7 +43,7 @@ irs::bstring encode(T value, size_t offset = 0) {
 }  // namespace
 
 TEST(numeric_utils_test, encode32) {
-  const irs::byte_type TYPE_MAGIC = 0;
+  const irs::byte_type TYPE_MAGIC{0};
 
   // 0
   {
@@ -55,11 +55,12 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -70,10 +71,11 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -84,9 +86,10 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -97,8 +100,9 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -109,7 +113,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -120,7 +125,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
@@ -144,11 +150,12 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0x7D);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x7D));
       ASSERT_EQ(actual, expected);
     }
 
@@ -159,10 +166,11 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -173,9 +181,10 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -186,8 +195,9 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -198,7 +208,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -209,7 +220,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
@@ -234,11 +246,12 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0x30);
-      expected.append(1, 0x37);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x30));
+      expected.push_back(static_cast<irs::byte_type>(0x37));
       ASSERT_EQ(actual, expected);
     }
 
@@ -249,10 +262,11 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0x30);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x30));
       ASSERT_EQ(actual, expected);
     }
 
@@ -263,9 +277,10 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -276,8 +291,9 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -288,7 +304,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -299,7 +316,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
@@ -324,11 +342,12 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0])));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0x44);
-      expected.append(1, 0);
-      expected.append(1, 0x7D);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0x44));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x7D));
       ASSERT_EQ(actual, expected);
     }
 
@@ -339,10 +358,11 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0x44);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0x44));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -353,9 +373,10 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0x44);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0x44));
       ASSERT_EQ(actual, expected);
     }
 
@@ -366,8 +387,9 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -378,7 +400,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -389,7 +412,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
@@ -414,11 +438,12 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFE);
-      expected.append(1, 0xAF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFE));
+      expected.push_back(static_cast<irs::byte_type>(0xAF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -429,10 +454,11 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFE);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFE));
       ASSERT_EQ(actual, expected);
     }
 
@@ -443,9 +469,10 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -456,8 +483,9 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xFF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -468,7 +496,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -479,7 +508,8 @@ TEST(numeric_utils_test, encode32) {
       actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
       actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
@@ -826,7 +856,7 @@ TEST(numeric_utils_test, double_lexicographical_sort) {
 }
 
 TEST(numeric_utils_test, encode64) {
-  const irs::byte_type TYPE_MAGIC = 0x60;
+  const irs::byte_type TYPE_MAGIC{0x60};
 
   // 0
   {
@@ -838,15 +868,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -857,13 +888,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -874,11 +906,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -889,9 +922,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -902,8 +936,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -914,7 +949,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -925,7 +961,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -949,15 +986,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0x7D);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x7D));
       ASSERT_EQ(actual, expected);
     }
 
@@ -968,13 +1006,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -985,11 +1024,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1000,9 +1040,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1013,8 +1054,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1025,7 +1067,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1036,7 +1079,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -1060,15 +1104,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0x30);
-      expected.append(1, 0x37);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x30));
+      expected.push_back(static_cast<irs::byte_type>(0x37));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1079,13 +1124,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1096,11 +1142,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1111,9 +1158,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1124,8 +1172,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1136,7 +1185,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1147,7 +1197,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -1171,15 +1222,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0x44);
-      expected.append(1, 0);
-      expected.append(1, 0x7D);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x44));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x7D));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1190,13 +1242,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0x44);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x44));
 
       ASSERT_EQ(actual, expected);
     }
@@ -1208,11 +1261,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1223,9 +1277,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1236,8 +1291,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1248,7 +1304,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1259,7 +1316,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -1283,15 +1341,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFE);
-      expected.append(1, 0xAF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFE));
+      expected.push_back(static_cast<irs::byte_type>(0xAF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1302,13 +1361,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1319,11 +1379,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1334,9 +1395,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1347,8 +1409,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1359,7 +1422,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1370,7 +1434,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -1394,15 +1459,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFE);
-      expected.append(1, 0xAF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFE));
+      expected.push_back(static_cast<irs::byte_type>(0xAF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1413,13 +1479,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1430,11 +1497,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0);
-      expected.append(1, 0xCE);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1445,9 +1513,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1458,8 +1527,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1470,7 +1540,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1481,7 +1552,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -1505,15 +1577,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFE);
-      expected.append(1, 0xAF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFE));
+      expected.push_back(static_cast<irs::byte_type>(0xAF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1524,13 +1597,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1541,11 +1615,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1556,9 +1631,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1569,8 +1645,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1581,7 +1658,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1592,7 +1670,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -1616,15 +1695,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0xEF);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFE);
-      expected.append(1, 0xAF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFE));
+      expected.push_back(static_cast<irs::byte_type>(0xAF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1635,13 +1715,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0xEF);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1652,11 +1733,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0xEF);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1667,9 +1749,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
-      expected.append(1, 0xEF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1680,8 +1763,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0x80);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0x80));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1692,7 +1776,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1703,7 +1788,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
@@ -1727,15 +1813,16 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xAA);
-      expected.append(1, 0xEF);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
-      expected.append(1, 0xFE);
-      expected.append(1, 0xAF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xAA));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
+      expected.push_back(static_cast<irs::byte_type>(0xFE));
+      expected.push_back(static_cast<irs::byte_type>(0xAF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1746,13 +1833,14 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xAA);
-      expected.append(1, 0xEF);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
-      expected.append(1, 0x7F);
-      expected.append(1, 0xFF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xAA));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
+      expected.push_back(static_cast<irs::byte_type>(0x7F));
+      expected.push_back(static_cast<irs::byte_type>(0xFF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1763,11 +1851,12 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xAA);
-      expected.append(1, 0xEF);
-      expected.append(1, 0xFA);
-      expected.append(1, 0xCE);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xAA));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
+      expected.push_back(static_cast<irs::byte_type>(0xFA));
+      expected.push_back(static_cast<irs::byte_type>(0xCE));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1778,9 +1867,10 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xAA);
-      expected.append(1, 0xEF);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xAA));
+      expected.push_back(static_cast<irs::byte_type>(0xEF));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1791,8 +1881,9 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
-      expected.append(1, 0xAA);
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
+      expected.push_back(static_cast<irs::byte_type>(0xAA));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1803,7 +1894,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
     }
 
@@ -1814,7 +1906,8 @@ TEST(numeric_utils_test, encode64) {
       actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
       actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
       irs::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
+      expected.push_back(static_cast<irs::byte_type>(
+        TYPE_MAGIC + static_cast<irs::byte_type>(shift)));
       ASSERT_EQ(actual, expected);
       ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }

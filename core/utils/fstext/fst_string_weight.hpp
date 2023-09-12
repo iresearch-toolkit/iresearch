@@ -413,12 +413,12 @@ inline std::istream& operator>>(std::istream& strm,
     weight.Clear();
     char* p = nullptr;
     for (const char* cs = str.c_str(); !p || *p != '\0'; cs = p + 1) {
-      const irs::byte_type label = strtoll(cs, &p, 10);
+      const auto label = strtoll(cs, &p, 10);
       if (p == cs || (*p != 0 && *p != kStringSeparator)) {
         strm.clear(std::ios::badbit);
         break;
       }
-      weight.PushBack(label);
+      weight.PushBack(static_cast<irs::byte_type>(label));
     }
   }
   return strm;

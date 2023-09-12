@@ -146,13 +146,13 @@ void CachingDirectoryTestCase<Directory>::TestCachingImpl(
   IsCached&& is_cached) {
   auto& dir = GetDirectory();
 
-  auto create_file = [&](std::string_view name, irs::byte_type b) {
+  auto create_file = [&](std::string_view name, uint8_t b) {
     auto stream = dir.create(name);
     ASSERT_NE(nullptr, stream);
     stream->write_byte(b);
   };
 
-  auto check_file = [&](std::string_view name, irs::byte_type b,
+  auto check_file = [&](std::string_view name, uint8_t b,
                         irs::IOAdvice advice = irs::IOAdvice::NORMAL) {
     auto stream = dir.open(name, advice);
     ASSERT_NE(nullptr, stream);

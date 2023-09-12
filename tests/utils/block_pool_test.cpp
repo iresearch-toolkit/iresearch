@@ -128,7 +128,7 @@ class block_pool_test : public test_base {
       EXPECT_EQ(i, res);
 
       if (i % 3 == 0) {  // read data within slice
-        bstring payload(slice_data.size(), 0);
+        bstring payload(slice_data.size(), irs::byte_type{0});
 
         size_t size = r.read(payload.data(), slice_data.size());
         EXPECT_TRUE(slice_data.size() == size);
@@ -155,7 +155,7 @@ class block_pool_test : public test_base {
       // insert payload
       {
         T payload[500];
-        std::fill(payload, payload + sizeof payload, 20);
+        std::fill(payload, payload + sizeof payload, irs::byte_type{20});
         ins.write(payload, sizeof payload);
       }
 
@@ -236,21 +236,21 @@ class block_pool_test : public test_base {
       sliced_inserter_t sliced_ins(ins, slice_chain_begin);
 
       // write single value
-      sliced_ins = 5;
+      sliced_ins = irs::byte_type{5};
 
       // insert payload
       {
         T payload[BlockSize - 5];
-        std::fill(payload, payload + sizeof payload, 20);
+        std::fill(payload, payload + sizeof payload, irs::byte_type{20});
         ins.write(payload, sizeof payload);
       }
 
       // write additional values
-      sliced_ins = 6;  // will be moved to the 2nd slice
-      sliced_ins = 7;  // will be moved to the 2nd slice
-      sliced_ins = 8;  // will be moved to the 2nd slice
-      sliced_ins = 9;  // here new block will be allocated and value will be
-                       // written in 2nd slice
+      sliced_ins = irs::byte_type{6};  // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{7};  // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{8};  // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{9};  // here new block will be allocated and
+                                       // value will be written in 2nd slice
       ASSERT_EQ(2 * BlockSize + 3 + 1, sliced_ins.pool_offset());
 
       slice_chain_end = sliced_ins.pool_offset();
@@ -330,7 +330,7 @@ class block_pool_test : public test_base {
       // insert payload
       {
         T payload[500];
-        std::fill(payload, payload + sizeof payload, 20);
+        std::fill(payload, payload + sizeof payload, irs::byte_type{20});
         ins.write(payload, sizeof payload);
       }
 
@@ -347,7 +347,7 @@ class block_pool_test : public test_base {
       // insert payload
       {
         T payload[500];
-        std::fill(payload, payload + sizeof payload, 20);
+        std::fill(payload, payload + sizeof payload, irs::byte_type{20});
         ins.write(payload, sizeof payload);
       }
 
@@ -418,24 +418,24 @@ class block_pool_test : public test_base {
       sliced_greedy_inserter_t sliced_ins(ins, slice_chain_begin, 1);
 
       // write single value
-      sliced_ins = 5;
+      sliced_ins = irs::byte_type{5};
 
       // insert payload
       {
         T payload[BlockSize - 5];
-        std::fill(payload, payload + sizeof payload, 20);
+        std::fill(payload, payload + sizeof payload, irs::byte_type{20});
         ins.write(payload, sizeof payload);
       }
 
       // write additional values
-      sliced_ins = 6;   // will be moved to the 2nd slice
-      sliced_ins = 7;   // will be moved to the 2nd slice
-      sliced_ins = 8;   // will be moved to the 2nd slice
-      sliced_ins = 9;   // will be moved to the 2nd slice
-      sliced_ins = 10;  // will be moved to the 2nd slice
-      sliced_ins = 11;  // will be moved to the 2nd slice
-      sliced_ins = 12;  // will be moved to the 2nd slice
-      sliced_ins = 13;  // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{6};   // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{7};   // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{8};   // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{9};   // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{10};  // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{11};  // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{12};  // will be moved to the 2nd slice
+      sliced_ins = irs::byte_type{13};  // will be moved to the 2nd slice
       ASSERT_EQ(2 * BlockSize + 9 + 1, sliced_ins.pool_offset());
 
       slice_chain_end = sliced_ins.pool_offset();

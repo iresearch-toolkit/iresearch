@@ -69,7 +69,7 @@ class column final : public irs::column_output {
                   compression::compressor::ptr deflater,
                   IResourceManager& resource_manager);
 
-  void write_byte(byte_type b) final { data_.stream.write_byte(b); }
+  void write_byte(uint8_t b) final { data_.stream.write_byte(b); }
 
   void write_bytes(const byte_type* b, size_t size) final {
     data_.stream.write_bytes(b, size);

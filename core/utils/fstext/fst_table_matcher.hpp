@@ -47,10 +47,10 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
       for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
         const auto& arc = aiter.Value();
         fsa::RangeLabel range{MatchInput ? arc.ilabel : arc.olabel};
-        IRS_ASSERT(range.min <= std::numeric_limits<irs::byte_type>::max());
-        IRS_ASSERT(range.max <= std::numeric_limits<irs::byte_type>::max());
-        range.max += decltype(range.max)(
-          range.max < std::numeric_limits<irs::byte_type>::max());
+        IRS_ASSERT(range.min <= std::numeric_limits<uint8_t>::max());
+        IRS_ASSERT(range.max <= std::numeric_limits<uint8_t>::max());
+        range.max +=
+          decltype(range.max)(range.max < std::numeric_limits<uint8_t>::max());
 
         irs::set_bit(bits[range.min / irs::bits_required<size_t>()],
                      range.min % irs::bits_required<size_t>());
@@ -226,7 +226,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
     size_t label_offset;
     if constexpr (ByteLabel &&
-                  CacheSize > std::numeric_limits<irs::byte_type>::max()) {
+                  CacheSize > std::numeric_limits<uint8_t>::max()) {
       label_offset = cached_label_offsets_[size_t(label)];
     } else {
       label_offset = (size_t(label) < std::size(cached_label_offsets_)
@@ -251,7 +251,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
     size_t label_offset;
     if constexpr (ByteLabel &&
-                  CacheSize > std::numeric_limits<irs::byte_type>::max()) {
+                  CacheSize > std::numeric_limits<uint8_t>::max()) {
       label_offset = cached_label_offsets_[size_t(label)];
     } else {
       label_offset = (size_t(label) < std::size(cached_label_offsets_)

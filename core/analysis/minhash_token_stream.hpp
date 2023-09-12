@@ -67,6 +67,7 @@ class MinHashTokenStream final : public TypedAnalyzer<MinHashTokenStream>,
 
  private:
   using attributes = std::tuple<term_attribute, increment, offset>;
+  // TODO(MBkkt) should be uint64_t?
   using iterator = std::vector<size_t>::const_iterator;
 
   void ComputeSignature();

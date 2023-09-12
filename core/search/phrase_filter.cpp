@@ -282,8 +282,8 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   IRS_ASSERT(!options().empty());
   const size_t base_offset = options().begin()->first;
 
-  // finish stats
-  bstring stats(ctx.scorers.stats_size(), 0);  // aggregated phrase stats
+  // finish stats. aggregated phrase stats
+  bstring stats(ctx.scorers.stats_size(), byte_type{0});
   auto* stats_buf = stats.data();
 
   FixedPhraseQuery::positions_t positions(phrase_size);
@@ -396,9 +396,9 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   IRS_ASSERT(!options().empty());
   const size_t base_offset = options().begin()->first;
 
-  // finish stats
+  // finish stats. aggregated phrase stats
   IRS_ASSERT(phrase_size == phrase_part_stats.size());
-  bstring stats(ctx.scorers.stats_size(), 0);  // aggregated phrase stats
+  bstring stats(ctx.scorers.stats_size(), byte_type{0});
   auto* stats_buf = stats.data();
   auto collector = phrase_part_stats.begin();
 

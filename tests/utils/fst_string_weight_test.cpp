@@ -367,9 +367,13 @@ TEST(fst_byte_weight_test, static_const) {
 TEST(fst_byte_weight_test, plus) {
   // weight + weight
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
-    const std::vector<irs::byte_type> rhs{1, 2, 4};
-    const std::vector<irs::byte_type> prefix{1, 2};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{4}};
+    const std::vector<irs::byte_type> prefix{irs::byte_type{1},
+                                             irs::byte_type{2}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -382,9 +386,13 @@ TEST(fst_byte_weight_test, plus) {
 
   // weight + weight
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 4};
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
-    const std::vector<irs::byte_type> prefix{1, 2};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{4}};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
+    const std::vector<irs::byte_type> prefix{irs::byte_type{1},
+                                             irs::byte_type{2}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -397,7 +405,9 @@ TEST(fst_byte_weight_test, plus) {
 
   // weight + Zero()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> prefix{};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
@@ -411,7 +421,9 @@ TEST(fst_byte_weight_test, plus) {
 
   // Zero() + weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> prefix{};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
@@ -425,7 +437,9 @@ TEST(fst_byte_weight_test, plus) {
 
   // weight + NoWeight()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> prefix{};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
@@ -439,7 +453,9 @@ TEST(fst_byte_weight_test, plus) {
 
   // NoWeight() + weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> prefix{};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
@@ -453,7 +469,9 @@ TEST(fst_byte_weight_test, plus) {
 
   // weight + One()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> prefix{};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
@@ -467,7 +485,9 @@ TEST(fst_byte_weight_test, plus) {
 
   // One() + weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> prefix{};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
@@ -483,9 +503,15 @@ TEST(fst_byte_weight_test, plus) {
 TEST(fst_byte_weight_test, times) {
   // weight * weight
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
-    const std::vector<irs::byte_type> rhs{1, 2, 4};
-    const std::vector<irs::byte_type> result{1, 2, 3, 4, 5, 6, 1, 2, 4};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{4}};
+    const std::vector<irs::byte_type> result{
+      irs::byte_type{1}, irs::byte_type{2}, irs::byte_type{3},
+      irs::byte_type{4}, irs::byte_type{5}, irs::byte_type{6},
+      irs::byte_type{1}, irs::byte_type{2}, irs::byte_type{4}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -498,9 +524,15 @@ TEST(fst_byte_weight_test, times) {
 
   // weight * weight
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 4};
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
-    const std::vector<irs::byte_type> result{1, 2, 4, 1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{4}};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
+    const std::vector<irs::byte_type> result{
+      irs::byte_type{1}, irs::byte_type{2}, irs::byte_type{4},
+      irs::byte_type{1}, irs::byte_type{2}, irs::byte_type{3},
+      irs::byte_type{4}, irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -513,7 +545,9 @@ TEST(fst_byte_weight_test, times) {
 
   // weight * Zero()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -524,7 +558,9 @@ TEST(fst_byte_weight_test, times) {
 
   // Zero() * weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
                                                            rhs.end());
@@ -535,7 +571,9 @@ TEST(fst_byte_weight_test, times) {
 
   // weight * NoWeight()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -546,7 +584,9 @@ TEST(fst_byte_weight_test, times) {
 
   // NoWeight() * weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
                                                            rhs.end());
@@ -557,7 +597,9 @@ TEST(fst_byte_weight_test, times) {
 
   // weight * One()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -568,7 +610,9 @@ TEST(fst_byte_weight_test, times) {
 
   // One() * weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
                                                            rhs.end());
@@ -581,9 +625,13 @@ TEST(fst_byte_weight_test, times) {
 TEST(fst_byte_weight_test, divide) {
   // weight / weight
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
-    const std::vector<irs::byte_type> rhs{1, 2};
-    const std::vector<irs::byte_type> result{3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2}};
+    const std::vector<irs::byte_type> result{
+      irs::byte_type{3}, irs::byte_type{4}, irs::byte_type{5},
+      irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -597,8 +645,10 @@ TEST(fst_byte_weight_test, divide) {
 
   // weight / weight
   {
-    const std::vector<irs::byte_type> lhs{1, 2};
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2}};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> result{};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
@@ -613,7 +663,9 @@ TEST(fst_byte_weight_test, divide) {
 
   // weight / Zero()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -625,7 +677,9 @@ TEST(fst_byte_weight_test, divide) {
 
   // Zero() / weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> result{};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
@@ -639,7 +693,9 @@ TEST(fst_byte_weight_test, divide) {
 
   // weight / NoWeight()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -651,7 +707,9 @@ TEST(fst_byte_weight_test, divide) {
 
   // NoWeight() / weight
   {
-    const std::vector<irs::byte_type> rhs{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> result{};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),
@@ -665,8 +723,12 @@ TEST(fst_byte_weight_test, divide) {
 
   // weight / One()
   {
-    const std::vector<irs::byte_type> lhs{1, 2, 3, 4, 5, 6};
-    const std::vector<irs::byte_type> result{1, 2, 3, 4, 5, 6};
+    const std::vector<irs::byte_type> lhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
+    const std::vector<irs::byte_type> result{
+      irs::byte_type{1}, irs::byte_type{2}, irs::byte_type{3},
+      irs::byte_type{4}, irs::byte_type{5}, irs::byte_type{6}};
 
     const fst::StringLeftWeight<irs::byte_type> lhs_weight(lhs.begin(),
                                                            lhs.end());
@@ -680,7 +742,9 @@ TEST(fst_byte_weight_test, divide) {
 
   // One() / weight
   {
-    const std::string rhs = "123456";
+    const std::vector<irs::byte_type> rhs{irs::byte_type{1}, irs::byte_type{2},
+                                          irs::byte_type{3}, irs::byte_type{4},
+                                          irs::byte_type{5}, irs::byte_type{6}};
     const std::vector<irs::byte_type> result{};
 
     const fst::StringLeftWeight<irs::byte_type> rhs_weight(rhs.begin(),

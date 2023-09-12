@@ -42,7 +42,7 @@ bytes_view unescape(bytes_view in, bstring& out) {
   bool copy = true;
   std::copy_if(in.begin(), in.end(), std::back_inserter(out),
                [&copy](byte_type c) {
-                 if (c == WildcardMatch::ESCAPE) {
+                 if (c == static_cast<uint8_t>(WildcardMatch::ESCAPE)) {
                    copy = !copy;
                  } else {
                    copy = true;

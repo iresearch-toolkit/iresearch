@@ -163,7 +163,7 @@ filter::prepared::ptr by_terms::prepare(const PrepareContext& ctx) const {
   MultiTermQuery::Stats stats{{ctx.memory}};
   stats.resize(size);
   for (size_t term_idx = 0; auto& stat : stats) {
-    stat.resize(ctx.scorers.stats_size(), 0);
+    stat.resize(ctx.scorers.stats_size(), byte_type{0});
     auto* stats_buf = stat.data();
     term_stats.finish(stats_buf, term_idx++, field_stats, ctx.index);
   }

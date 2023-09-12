@@ -91,12 +91,12 @@ void buffered_index_output::write_vlong(uint64_t v) {
   }
 }
 
-void buffered_index_output::write_byte(byte_type b) {
+void buffered_index_output::write_byte(uint8_t b) {
   if (pos_ >= end_) {
     flush();
   }
 
-  *pos_++ = b;
+  *pos_++ = byte_type{b};
 }
 
 void buffered_index_output::write_bytes(const byte_type* b, size_t length) {

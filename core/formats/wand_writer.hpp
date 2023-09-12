@@ -208,7 +208,7 @@ class FreqNormProducer {
     }
   }
 
-  static size_t Size(Entry entry) noexcept {
+  static byte_type Size(Entry entry) noexcept {
     IRS_ASSERT(entry.freq >= 1);
     size_t size = bytes_io<uint32_t>::vsize(entry.freq);
     if constexpr (kNorm) {
@@ -217,7 +217,7 @@ class FreqNormProducer {
         size += bytes_io<uint32_t>::vsize(entry.norm - entry.freq);
       }
     }
-    return size;
+    return static_cast<byte_type>(size);
   }
 
   explicit FreqNormProducer(const Scorer& scorer) : scorer_{scorer} {}

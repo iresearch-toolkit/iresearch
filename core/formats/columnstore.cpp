@@ -591,7 +591,7 @@ class writer final : public irs::columnstore_writer {
 
   explicit writer(Version version, ColumnMetaVersion meta_version) noexcept
     : meta_writer_{meta_version},
-      buf_(2 * MAX_DATA_BLOCK_SIZE, 0),
+      buf_(2 * MAX_DATA_BLOCK_SIZE, byte_type{0}),
       dir_(nullptr),
       version_(version) {
     static_assert(
@@ -622,7 +622,7 @@ class writer final : public irs::columnstore_writer {
         cipher_(cipher),
         id_(id),
         blocks_index_(IResourceManager::kNoop),
-        block_buf_(2 * MAX_DATA_BLOCK_SIZE, 0) {
+        block_buf_(2 * MAX_DATA_BLOCK_SIZE, byte_type{0}) {
       IRS_ASSERT(comp_);   // ensured by `push_column'
       block_buf_.clear();  // reset size to '0'
     }
@@ -700,7 +700,7 @@ class writer final : public irs::columnstore_writer {
       blocks_index_.stream.flush();
     }
 
-    void write_byte(byte_type b) final { block_buf_ += b; }
+    void write_byte(uint8_t b) final { block_buf_.push_back(byte_type{b}); }
 
     void write_bytes(const byte_type* b, size_t size) final {
       block_buf_.append(b, size);
@@ -1538,7 +1538,7 @@ class read_context
       block_cache_traits<dense_mask_block, Allocator>::cache_t(
         typename block_cache_traits<dense_mask_block, Allocator>::allocator_t(
           alloc)),
-      buf_(INDEX_BLOCK_SIZE * sizeof(uint32_t), 0),
+      buf_(INDEX_BLOCK_SIZE * sizeof(uint32_t), byte_type{0}),
       stream_(std::move(in)),
       cipher_(cipher) {}
 

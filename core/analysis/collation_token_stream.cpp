@@ -269,8 +269,8 @@ bool collation_token_stream::reset(std::string_view data) {
   static_assert(sizeof raw_term_buf == sizeof state_->term_buf);
 
   auto buf = state_->options.forceUtf8 ? raw_term_buf : state_->term_buf;
-  int32_t term_size =
-    state_->collator->getSortKey(icu_token, buf, sizeof raw_term_buf);
+  int32_t term_size = state_->collator->getSortKey(
+    icu_token, reinterpret_cast<uint8_t*>(buf), sizeof raw_term_buf);
 
   // https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/classicu_1_1Collator.html
   // according to ICU docs sort keys are always zero-terminated,
@@ -301,9 +301,11 @@ bool collation_token_stream::reset(std::string_view data) {
         return false;
       }
       IRS_ASSERT(size <= 2);
-      state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset];
+      state_->term_buf[termBufIdx++] =
+        static_cast<byte_type>(kBytesRecalcMap[offset]);
       if (size == 2) {
-        state_->term_buf[termBufIdx++] = kBytesRecalcMap[offset + 1];
+        state_->term_buf[termBufIdx++] =
+          static_cast<byte_type>(kBytesRecalcMap[offset + 1]);
       }
     }
   }

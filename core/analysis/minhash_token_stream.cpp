@@ -467,17 +467,11 @@ bool MinHashTokenStream::next() {
     return false;
   }
 
-  const size_t value = [value = *begin_]() noexcept -> size_t {
-    if constexpr (is_big_endian()) {
-      return absl::gbswap_64(value);
-    } else {
-      return value;
-    }
-  }();
+  const auto value = absl::little_endian::FromHost(*begin_);
 
   [[maybe_unused]] const size_t length =
     absl::strings_internal::Base64EscapeInternal(
-      reinterpret_cast<const byte_type*>(&value), sizeof value, buf_.data(),
+      reinterpret_cast<const uint8_t*>(&value), sizeof value, buf_.data(),
       buf_.size(), absl::strings_internal::kBase64Chars, false);
   IRS_ASSERT(length == buf_.size());
 

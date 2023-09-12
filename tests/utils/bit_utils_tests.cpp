@@ -77,7 +77,7 @@ TEST(bit_utils_test, set_check_bit) {
   }
   EXPECT_EQ(0, v);
 
-  byte_type b = 76;
+  byte_type b{76};
 
   EXPECT_FALSE(check_bit<0>(b));
   EXPECT_FALSE(check_bit<1>(b));
@@ -111,7 +111,7 @@ TEST(bit_utils_test, set_check_bit) {
 TEST(bit_utils_test, test_unset_bit) {
   // test compile time
   {
-    irs::byte_type b = 0x6c;
+    irs::byte_type b{0x6c};
 
     EXPECT_FALSE(irs::check_bit<0>(b));
     EXPECT_FALSE(irs::check_bit<1>(b));
@@ -143,7 +143,7 @@ TEST(bit_utils_test, test_unset_bit) {
 
   // test runtime
   {
-    irs::byte_type b = 0x6c;
+    irs::byte_type b{0x6c};
 
     EXPECT_FALSE(irs::check_bit(b, 0));
     EXPECT_FALSE(irs::check_bit(b, 1));

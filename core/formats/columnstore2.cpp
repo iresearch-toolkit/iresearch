@@ -138,7 +138,7 @@ void write_blocks_sparse(index_output& out,
   for (auto& block : blocks) {
     out.write_long(block.addr);
     out.write_long(block.avg);
-    out.write_byte(static_cast<byte_type>(block.bits));
+    out.write_byte(block.bits);
     out.write_long(block.data);
     out.write_long(block.last_size);
   }
@@ -534,7 +534,7 @@ template<bool Resize>
 class value_reader {
  protected:
   value_reader(index_input::ptr data_in, size_t size)
-    : buf_(size, 0), data_in_{std::move(data_in)} {}
+    : buf_(size, byte_type{0}), data_in_{std::move(data_in)} {}
 
   bytes_view value(uint64_t offset, size_t length) {
     if constexpr (Resize) {
@@ -559,7 +559,7 @@ class encrypted_value_reader {
  protected:
   encrypted_value_reader(index_input::ptr&& data_in, encryption::stream* cipher,
                          size_t size)
-    : buf_(size, 0), data_in_{std::move(data_in)}, cipher_{cipher} {}
+    : buf_(size, byte_type{0}), data_in_{std::move(data_in)}, cipher_{cipher} {}
 
   bytes_view value(uint64_t offset, size_t length) {
     if constexpr (Resize) {
@@ -1705,7 +1705,7 @@ const column_header* reader::header(field_id field) const {
                    : columns_[field];
 
   if (column) {
-    return &down_cast<column_base>(*column).header();
+    return &DownCast<column_base>(*column).header();
   }
 
   return nullptr;

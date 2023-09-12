@@ -100,12 +100,11 @@ class WandTestCase : public tests::index_test_base {
 
   std::vector<Doc> Collect(const irs::DirectoryReader& index,
                            const irs::filter& filter, irs::ScorersView scorers,
-                           irs::byte_type wand_idx, bool can_use_wand,
-                           size_t limit);
+                           uint8_t wand_idx, bool can_use_wand, size_t limit);
 
   void AssertResults(const irs::DirectoryReader& index,
                      const irs::filter& filter, irs::ScorersView scorers,
-                     irs::byte_type wand_idx, bool can_use_wand, size_t limit);
+                     uint8_t wand_idx, bool can_use_wand, size_t limit);
 
   void GenerateSegment(irs::ScorersView scorers, bool write_norms,
                        bool append_data = false);
@@ -130,18 +129,16 @@ class WandTestCase : public tests::index_test_base {
   }
 
   void AssertTermFilter(irs::ScorersView scorers, const irs::Scorer& scorer,
-                        irs::byte_type wand_index);
+                        uint8_t wand_index);
 
   void AssertConjunctionFilter(irs::ScorersView scorers,
-                               const irs::Scorer& scorer,
-                               irs::byte_type wand_index);
+                               const irs::Scorer& scorer, uint8_t wand_index);
 
   void AssertDisjunctionFilter(irs::ScorersView scorers,
-                               const irs::Scorer& scorer,
-                               irs::byte_type wand_index);
+                               const irs::Scorer& scorer, uint8_t wand_index);
 
   bool CanUseWand(irs::ScorersView scorers, const irs::Scorer& scorer,
-                  irs::byte_type wand_index, const irs::term_reader& field) {
+                  uint8_t wand_index, const irs::term_reader& field) {
     const auto& field_meta = field.meta();
     const auto index_features = scorer.index_features();
     if (index_features != (index_features & field_meta.index_features)) {
@@ -166,8 +163,8 @@ class WandTestCase : public tests::index_test_base {
 std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
                                        const irs::filter& filter,
                                        irs::ScorersView scorers,
-                                       irs::byte_type wand_idx,
-                                       bool can_use_wand, size_t limit) {
+                                       uint8_t wand_idx, bool can_use_wand,
+                                       size_t limit) {
   auto prepared = irs::Scorers::Prepare(std::span(
     const_cast<const irs::Scorer**>(&scorers.front()), scorers.size()));
   EXPECT_FALSE(prepared.empty());
@@ -235,9 +232,8 @@ std::vector<Doc> WandTestCase::Collect(const irs::DirectoryReader& index,
 
 void WandTestCase::AssertResults(const irs::DirectoryReader& index,
                                  const irs::filter& filter,
-                                 irs::ScorersView scorers,
-                                 irs::byte_type scorer_idx, bool can_use_wand,
-                                 size_t limit) {
+                                 irs::ScorersView scorers, uint8_t scorer_idx,
+                                 bool can_use_wand, size_t limit) {
   auto wand_result =
     Collect(index, filter, scorers, scorer_idx, can_use_wand, limit);
   auto result = Collect(index, filter, scorers, irs::WandContext::kDisable,
@@ -324,7 +320,7 @@ void WandTestCase::GenerateSegmentMinNorm(irs::ScorersView scorers) {
 
 void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
                                     const irs::Scorer& scorer,
-                                    irs::byte_type wand_index) {
+                                    uint8_t wand_index) {
   static constexpr std::string_view kFieldName = "name";
 
   irs::by_term filter;
@@ -352,7 +348,7 @@ void WandTestCase::AssertTermFilter(irs::ScorersView scorers,
 
 void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers,
                                            const irs::Scorer& scorer,
-                                           irs::byte_type wand_index) {
+                                           uint8_t wand_index) {
   static constexpr std::string_view kFieldName = "name";
 
   irs::And conjunction;
@@ -385,7 +381,7 @@ void WandTestCase::AssertConjunctionFilter(irs::ScorersView scorers,
 
 void WandTestCase::AssertDisjunctionFilter(irs::ScorersView scorers,
                                            const irs::Scorer& scorer,
-                                           irs::byte_type wand_index) {
+                                           uint8_t wand_index) {
   static constexpr std::string_view kFieldName = "name";
 
   irs::Or disjunction;

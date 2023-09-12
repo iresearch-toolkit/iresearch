@@ -83,7 +83,7 @@ class empty_term_reader final : public irs::term_reader {
   // most significant term
   bytes_view(max)() const noexcept final { return {}; }
 
-  bool has_scorer(byte_type) const noexcept final { return false; }
+  bool has_scorer(uint8_t) const noexcept final { return false; }
 
  private:
   uint64_t docs_count_;

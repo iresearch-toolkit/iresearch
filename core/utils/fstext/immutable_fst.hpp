@@ -57,8 +57,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
   using internal::FstImpl<A>::Properties;
 
   static constexpr const char kTypePrefix[] = "immutable";
-  static constexpr size_t kMaxArcs =
-    1 + std::numeric_limits<irs::byte_type>::max();
+  static constexpr size_t kMaxArcs = 1 + std::numeric_limits<uint8_t>::max();
   static constexpr size_t kMaxStateWeight =
     std::numeric_limits<size_t>::max() >> 1;
 
@@ -113,7 +112,7 @@ class ImmutableFstImpl : public internal::FstImpl<A> {
  private:
   friend class ImmutableFst<Arc>;
 
-  enum class Version : irs::byte_type { MIN = 0 };
+  enum class Version : uint8_t { MIN = 0 };
 
   struct State {
     const Arc* arcs;  // Start of state's arcs in *arcs_.
@@ -240,7 +239,7 @@ class ImmutableFst : public ImplToExpandedFst<ImmutableFstImpl<A>> {
   // OpenFST API compliance broken. But as only we use it here it is ok.
   static ImmutableFst<A>* Read(std::istream& strm, const FstReadOptions&,
                                irs::IResourceManager& rm) {
-    auto* rdbuf = down_cast<irs::input_buf*>(strm.rdbuf());
+    auto* rdbuf = irs::DownCast<irs::input_buf>(strm.rdbuf());
     IRS_ASSERT(rdbuf && rdbuf->internal());
 
     return Read(*rdbuf->internal(), rm);
@@ -282,7 +281,7 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
     fst.Properties(kCopyProperties, true) | Impl::kStaticProperties;
 
   // write header
-  stream.write_byte(static_cast<irs::byte_type>(Impl::Version::MIN));
+  stream.write_byte(static_cast<uint8_t>(Impl::Version::MIN));
   stream.write_long(properties);
   stream.write_long(stats.total_weight_size);
   stream.write_int(static_cast<StateId>(stats.num_states));
@@ -308,13 +307,13 @@ bool ImmutableFst<A>::Write(const FST& fst, irs::data_output& stream,
       stream.write_vlong(irs::shift_pack_64(weight_size, !narcs));
       if (narcs) {
         // -1 to fit byte_type
-        stream.write_byte(static_cast<irs::byte_type>((narcs - 1) & 0xFF));
+        stream.write_byte((narcs - 1) & 0xFF);
 
         for (ArcIterator<FST> aiter(fst, s); !aiter.Done(); aiter.Next()) {
           const auto& arc = aiter.Value();
 
-          IRS_ASSERT(arc.ilabel <= std::numeric_limits<irs::byte_type>::max());
-          stream.write_byte(static_cast<irs::byte_type>(arc.ilabel & 0xFF));
+          IRS_ASSERT(arc.ilabel <= std::numeric_limits<uint8_t>::max());
+          stream.write_byte(arc.ilabel & 0xFF);
           stream.write_vint(arc.nextstate);
           stream.write_vlong(arc.weight.Size());
         }

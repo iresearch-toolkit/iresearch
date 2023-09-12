@@ -120,7 +120,7 @@ struct WandSource : attribute_provider {
 struct WandWriter {
   using ptr = std::unique_ptr<WandWriter>;
 
-  static constexpr byte_type kMaxSize = 127;
+  static constexpr uint8_t kMaxSize = 127;
 
   virtual ~WandWriter() = default;
 

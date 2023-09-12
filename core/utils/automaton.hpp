@@ -68,8 +68,8 @@ class BooleanWeight {
 
   constexpr BooleanWeight() noexcept = default;
   // cppcheck-suppress noExplicitConstructor
-  constexpr BooleanWeight(bool v, PayloadType payload = 0) noexcept
-    : v_(static_cast<PayloadType>(v)), p_(payload) {}
+  constexpr BooleanWeight(bool v, uint8_t payload = 0) noexcept
+    : v_{static_cast<uint8_t>(v)}, p_{payload} {}
 
   constexpr bool Member() const noexcept { return kInvalid != v_; }
   constexpr BooleanWeight Quantize(
@@ -77,7 +77,7 @@ class BooleanWeight {
     return {};
   }
   std::istream& Read(std::istream& strm) noexcept {
-    v_ = strm.get();
+    v_ = static_cast<PayloadType>(strm.get());
     if (strm.fail()) {
       v_ = kInvalid;
     }
@@ -149,9 +149,9 @@ class BooleanWeight {
   }
 
  private:
-  static constexpr PayloadType kFalse = 0;
-  static constexpr PayloadType kTrue = 1;     // "is true" mask
-  static constexpr PayloadType kInvalid = 2;  // "not a member" value
+  static constexpr PayloadType kFalse{0};
+  static constexpr PayloadType kTrue{1};     // "is true" mask
+  static constexpr PayloadType kInvalid{2};  // "not a member" value
 
   // TODO(MBkkt) can be bool?
   // TODO(MBkkt) try to make it more signaling

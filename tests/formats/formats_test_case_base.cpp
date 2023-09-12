@@ -588,18 +588,18 @@ TEST_P(format_test_case, fields_seek_ge) {
 
   // seek to non-existent term in the middle
   {
-    const std::vector<std::vector<irs::byte_type>> terms{
-      {207},
-      {208},
-      {208, 191},
-      {208, 192, 81},
-      {192, 192, 187, 86, 0},
-      {192, 192, 187, 88, 0}};
+    const std::vector<std::vector<uint8_t>> terms{{207},
+                                                  {208},
+                                                  {208, 191},
+                                                  {208, 192, 81},
+                                                  {192, 192, 187, 86, 0},
+                                                  {192, 192, 187, 88, 0}};
 
     auto it = field->iterator(irs::SeekMode::NORMAL);
 
     for (auto& term : terms) {
-      const irs::bytes_view target(term.data(), term.size());
+      const irs::bytes_view target(
+        reinterpret_cast<const irs::byte_type*>(term.data()), term.size());
 
       ASSERT_EQ(irs::SeekResult::NOT_FOUND, it->seek_ge(target));
 
@@ -621,9 +621,7 @@ TEST_P(format_test_case, fields_seek_ge) {
 
   // seek to non-existent term
   {
-    const irs::byte_type term[]{209, 191};
-    const irs::bytes_view target(term, sizeof term);
-    const std::vector<std::vector<irs::byte_type>> terms{
+    const std::vector<std::vector<uint8_t>> terms{
       {209},
       {208, 193},
       {208, 192, 188},
@@ -633,7 +631,8 @@ TEST_P(format_test_case, fields_seek_ge) {
     auto it = field->iterator(irs::SeekMode::NORMAL);
 
     for (auto& term : terms) {
-      const irs::bytes_view target(term.data(), term.size());
+      const irs::bytes_view target(
+        reinterpret_cast<const irs::byte_type*>(term.data()), term.size());
       ASSERT_EQ(irs::SeekResult::END, it->seek_ge(target));
     }
   }

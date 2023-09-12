@@ -27,7 +27,7 @@
 
 namespace irs {
 
-const irs::parametric_description& default_pdp(irs::byte_type distance,
+const irs::parametric_description& default_pdp(uint8_t distance,
                                                bool with_transpositions) {
   struct builder {
     using type = irs::parametric_description;

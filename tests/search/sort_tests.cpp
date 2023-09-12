@@ -119,8 +119,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -162,8 +162,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
 
     irs::score score;
     ASSERT_TRUE(score.Func() == &irs::ScoreFunction::DefaultScore);
@@ -205,8 +205,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 1);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{1});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -222,8 +222,8 @@ TEST(sort_tests, prepare_order) {
 
     score(reinterpret_cast<irs::score_t*>(score_buf.data()));
 
-    irs::bstring expected(prepared.score_size(), 0);
-    std::fill_n(expected.data(), sizeof(irs::score_t), 1);
+    irs::bstring expected(prepared.score_size(), irs::byte_type{0});
+    std::fill_n(expected.data(), sizeof(irs::score_t), irs::byte_type{1});
     EXPECT_EQ(irs::ViewCast<char>(irs::bytes_view{expected}),
               irs::ViewCast<char>(irs::bytes_view{score_buf}));
   }
@@ -259,8 +259,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 1);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{1});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -276,9 +276,9 @@ TEST(sort_tests, prepare_order) {
 
     score(reinterpret_cast<irs::score_t*>(score_buf.data()));
 
-    irs::bstring expected(prepared.score_size(), 0);
+    irs::bstring expected(prepared.score_size(), irs::byte_type{0});
     std::fill_n(expected.data() + sizeof(irs::score_t), sizeof(irs::score_t),
-                1);
+                irs::byte_type{1});
     EXPECT_EQ(irs::ViewCast<char>(irs::bytes_view{expected}),
               irs::ViewCast<char>(irs::bytes_view{score_buf}));
   }
@@ -313,8 +313,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 1);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{1});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -329,7 +329,7 @@ TEST(sort_tests, prepare_order) {
     ASSERT_NE(&irs::ScoreFunction::DefaultScore, score.Func());
 
     score(reinterpret_cast<irs::score_t*>(score_buf.data()));
-    irs::bstring expected(prepared.score_size(), 0);
+    irs::bstring expected(prepared.score_size(), irs::byte_type{0});
     EXPECT_EQ(irs::ViewCast<char>(irs::bytes_view{expected}),
               irs::ViewCast<char>(irs::bytes_view{score_buf}));
   }
@@ -364,8 +364,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -414,8 +414,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -460,8 +460,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -519,8 +519,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -570,8 +570,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -622,8 +622,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -673,8 +673,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -724,8 +724,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);
@@ -775,8 +775,8 @@ TEST(sort_tests, prepare_order) {
     }
     ASSERT_EQ(expected_offset, expected_offsets.end());
 
-    irs::bstring stats_buf(prepared.stats_size(), 0);
-    irs::bstring score_buf(prepared.score_size(), 0);
+    irs::bstring stats_buf(prepared.stats_size(), irs::byte_type{0});
+    irs::bstring score_buf(prepared.score_size(), irs::byte_type{0});
     auto scorers = irs::PrepareScorers(
       prepared.buckets(), irs::SubReader::empty(), irs::empty_term_reader(0),
       stats_buf.c_str(), EMPTY_ATTRIBUTE_PROVIDER, irs::kNoBoost);

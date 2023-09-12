@@ -65,7 +65,7 @@ class encrypted_output : public irs::index_output, util::noncopyable {
 
   size_t file_pointer() const noexcept final;
 
-  void write_byte(byte_type b) final;
+  void write_byte(uint8_t b) final;
 
   void write_bytes(const byte_type* b, size_t length) final;
 

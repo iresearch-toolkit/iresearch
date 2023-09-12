@@ -53,7 +53,7 @@ IRS_FORCE_INLINE score_t similarity(uint32_t distance, uint32_t size) noexcept {
 }
 
 template<typename Invalid, typename Term, typename Levenshtein>
-inline auto executeLevenshtein(byte_type max_distance,
+inline auto executeLevenshtein(uint8_t max_distance,
                                by_edit_distance_options::pdp_f provider,
                                bool with_transpositions,
                                const bytes_view prefix, const bytes_view target,
@@ -176,10 +176,10 @@ bool collect_terms(const IndexReader& index, std::string_view field,
   }
 
   auto matcher = make_automaton_matcher(acceptor);
-  const uint32_t utf8_term_size =
-    std::max(1U, uint32_t(utf8_utils::utf8_length(prefix)) +
-                   uint32_t(utf8_utils::utf8_length(term)));
-  const byte_type max_distance = d.max_distance() + 1;
+  const auto utf8_term_size =
+    std::max(1U, static_cast<uint32_t>(utf8_utils::utf8_length(prefix) +
+                                       utf8_utils::utf8_length(term)));
+  const auto max_distance = static_cast<byte_type>(d.max_distance() + 1);
 
   for (auto& segment : index) {
     if (auto* reader = segment.field(field); reader) {
@@ -221,7 +221,7 @@ filter::prepared::ptr prepare_levenshtein_filter(
 
   MultiTermQuery::Stats stats(
     1, MultiTermQuery::Stats::allocator_type{ctx.memory});
-  stats.back().resize(ctx.scorers.stats_size(), 0);
+  stats.back().resize(ctx.scorers.stats_size(), byte_type{0});
   auto* stats_buf = stats[0].data();
   term_stats.finish(stats_buf, 0, field_stats, ctx.index);
 
@@ -266,10 +266,10 @@ field_visitor by_edit_distance::visitor(
         return [](const SubReader&, const term_reader&, filter_visitor&) {};
       }
 
-      const uint32_t utf8_term_size =
-        std::max(1U, uint32_t(utf8_utils::utf8_length(prefix) +
-                              utf8_utils::utf8_length(term)));
-      const byte_type max_distance = d.max_distance() + 1;
+      const auto utf8_term_size =
+        std::max(1U, static_cast<uint32_t>(utf8_utils::utf8_length(prefix) +
+                                           utf8_utils::utf8_length(term)));
+      const auto max_distance = static_cast<byte_type>(d.max_distance() + 1);
 
       return [ctx = std::move(ctx), utf8_term_size, max_distance](
                const SubReader& segment, const term_reader& field,
@@ -282,8 +282,8 @@ field_visitor by_edit_distance::visitor(
 
 filter::prepared::ptr by_edit_distance::prepare(
   const PrepareContext& ctx, std::string_view field, bytes_view term,
-  size_t scored_terms_limit, byte_type max_distance,
-  options_type::pdp_f provider, bool with_transpositions, bytes_view prefix) {
+  size_t scored_terms_limit, uint8_t max_distance, options_type::pdp_f provider,
+  bool with_transpositions, bytes_view prefix) {
   return executeLevenshtein(
     max_distance, provider, with_transpositions, prefix, term,
     []() -> filter::prepared::ptr { return prepared::empty(); },

@@ -107,13 +107,13 @@ filter::prepared::ptr by_term::prepare(const PrepareContext& ctx,
       continue;
     }
 
-    field_stats.collect(segment,
-                        *reader);  // collect field statistics once per segment
+    // collect field statistics once per segment
+    field_stats.collect(segment, *reader);
 
     VisitImpl(segment, *reader, term, visitor);
   }
 
-  bstring stats(ctx.scorers.stats_size(), 0);
+  bstring stats(ctx.scorers.stats_size(), byte_type{0});
   auto* stats_buf = stats.data();
 
   term_stats.finish(stats_buf, 0, field_stats, ctx.index);

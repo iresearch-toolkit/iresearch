@@ -65,7 +65,7 @@ WildcardType wildcard_type(bytes_view expr) noexcept {
       return WildcardType::INVALID;
     }
 
-    switch (*char_begin) {
+    switch (static_cast<uint8_t>(*char_begin)) {
       case WildcardMatch::ANY_STRING:
         num_adjacent_match_any_string += size_t(!escaped);
         num_match_any_string += size_t(!escaped);
@@ -113,7 +113,7 @@ automaton from_wildcard(bytes_view expr) {
   // need this variable to preserve valid address
   // for cases with match all and  terminal escape
   // character (%\\)
-  const byte_type c = WildcardMatch::ESCAPE;
+  const auto c = static_cast<uint32_t>(WildcardMatch::ESCAPE);
 
   bool escaped = false;
   std::vector<automaton> parts;
@@ -136,7 +136,7 @@ automaton from_wildcard(bytes_view expr) {
       return {};
     }
 
-    switch (*label_begin) {
+    switch (static_cast<uint8_t>(*label_begin)) {
       case WildcardMatch::ANY_STRING: {
         if (escaped) {
           append_char({label_begin, label_length});

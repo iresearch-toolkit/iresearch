@@ -363,12 +363,12 @@ void memory_index_output::write_vint(uint32_t v) {
   }
 }
 
-void memory_index_output::write_byte(byte_type byte) {
+void memory_index_output::write_byte(uint8_t b) {
   if (pos_ >= end_) {
     switch_buffer();
   }
 
-  *pos_++ = byte;
+  *pos_++ = byte_type{b};
 }
 
 void memory_index_output::write_bytes(const byte_type* b, size_t len) {

@@ -388,10 +388,10 @@ irs::filter::prepared::ptr prepareFilter(
       for (auto& b : opts->term) {
         switch (b) {
           case '*':
-            b = '%';
+            b = static_cast<irs::byte_type>('%');
             break;  // '*' => '%'
           case '?':
-            b = '_';
+            b = static_cast<irs::byte_type>('_');
             break;  // '?' => '_'
         }
       }
@@ -411,7 +411,8 @@ irs::filter::prepared::ptr prepareFilter(
       *query.mutable_field() = "body";
       auto* opts = query.mutable_options();
       opts->max_terms = 50;  // same as Lucene by default
-      opts->max_distance = (category == category_t::Fuzzy1 ? 1 : 2);
+      opts->max_distance =
+        static_cast<irs::byte_type>(category == category_t::Fuzzy1 ? 1 : 2);
       opts->term = irs::ViewCast<irs::byte_type>(term);
 
       return query.prepare({
@@ -492,10 +493,10 @@ int search(std::string_view path, std::string_view dir_type,
            std::string_view scorer, std::string_view scorer_arg_format,
            std::string_view scorer_arg, std::string_view mode_arg) {
   // build parametric descriptions for distances 1 and 2
-  irs::default_pdp(1, false);
-  irs::default_pdp(1, true);
-  irs::default_pdp(2, false);
-  irs::default_pdp(2, true);
+  irs::default_pdp(irs::byte_type{1}, false);
+  irs::default_pdp(irs::byte_type{1}, true);
+  irs::default_pdp(irs::byte_type{2}, false);
+  irs::default_pdp(irs::byte_type{2}, true);
 
   ExecutionMode mode{ExecutionMode::kAll};
 
@@ -511,7 +512,8 @@ int search(std::string_view path, std::string_view dir_type,
       return {};
     }
 
-    return {.index = 0, .strict = mode == ExecutionMode::kStrictTop};
+    return {.index = irs::byte_type{0},
+            .strict = mode == ExecutionMode::kStrictTop};
   }();
 
   auto arg_format_itr = kTextFormats.find(scorer_arg_format);

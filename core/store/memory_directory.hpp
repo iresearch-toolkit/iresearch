@@ -189,7 +189,7 @@ class memory_index_output : public index_output {
 
   // data_output
 
-  void write_byte(byte_type b) final;
+  void write_byte(uint8_t b) final;
 
   void write_bytes(const byte_type* b, size_t len) final;
 

@@ -3919,7 +3919,7 @@ TEST_P(directory_test_case, smoke_index_io) {
     EXPECT_FALSE(in->eof());
 
     // check bytes
-    const bstring payload_read(payload.size(), 0);
+    const bstring payload_read(payload.size(), irs::byte_type{0});
     const auto read = in->read_bytes(const_cast<byte_type*>(&(payload_read[0])),
                                      payload_read.size());
     EXPECT_EQ(payload_read.size(), read);
@@ -4046,7 +4046,7 @@ TEST_P(directory_test_case, smoke_store) {
     "UKb3uiFuGEi7m9", "yeRCnG0EEZ8Vrr"};
 
   // Write contents
-  irs::byte_type b = 1;
+  uint8_t b = 1;
   auto it = std::end(names);
   for (const auto& name : names) {
     irs::byte_type buf[64 * 1024];
@@ -4288,7 +4288,7 @@ TEST_P(directory_test_case, smoke_store) {
 
       crc.process_bytes(buf.c_str(), buf.size());
       crc.process_bytes(readbuf, sizeof readbuf);
-      const irs::byte_type t = b + 1;
+      const auto t = static_cast<irs::byte_type>(b + 1);
       crc.process_bytes(&t, sizeof t);
       ++b;
 

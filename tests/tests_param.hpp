@@ -63,14 +63,14 @@ class rot13_encryption final : public irs::ctr_encryption {
 
     bool decrypt(irs::byte_type* data) const final {
       for (size_t i = 0; i < block_size_; ++i) {
-        data[i] -= 13;
+        data[i] = static_cast<irs::byte_type>(data[i] - 13);
       }
       return true;
     }
 
     bool encrypt(irs::byte_type* data) const final {
       for (size_t i = 0; i < block_size_; ++i) {
-        data[i] += 13;
+        data[i] = static_cast<irs::byte_type>(data[i] + 13);
       }
       return true;
     }

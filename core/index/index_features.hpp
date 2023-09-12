@@ -37,7 +37,7 @@ struct field_stats;
 struct column_output;
 
 // Represents a set of features that can be stored in the index
-enum class IndexFeatures : byte_type {
+enum class IndexFeatures : uint8_t {
   // Documents
   NONE = 0,
 

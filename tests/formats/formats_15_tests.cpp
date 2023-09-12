@@ -353,7 +353,7 @@ Format15TestCase::WriteReadMeta(irs::directory& dir, DocsView docs,
   EXPECT_NE(nullptr, reader);
   reader->prepare(*in, state, features);
 
-  irs::bstring in_data(in->length() - in->file_pointer(), 0);
+  irs::bstring in_data(in->length() - in->file_pointer(), irs::byte_type{0});
   in->read_bytes(&in_data[0], in_data.size());
   const auto* begin = in_data.c_str();
 

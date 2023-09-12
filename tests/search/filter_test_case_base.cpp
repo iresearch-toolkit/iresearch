@@ -289,7 +289,7 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
       ASSERT_FALSE(score_must_be_present);
     }
 
-    irs::bstring score_value(prepared_order.score_size(), 0);
+    irs::bstring score_value(prepared_order.score_size(), irs::byte_type{0});
 
     while (docs->next()) {
       ASSERT_EQ(docs->value(), doc->value);
@@ -299,8 +299,9 @@ void FilterTestCaseBase::CheckQuery(const irs::filter& filter,
 
         scored_result.emplace(score_value, docs->value());
       } else {
-        scored_result.emplace(irs::bstring(prepared_order.score_size(), 0),
-                              docs->value());
+        scored_result.emplace(
+          irs::bstring(prepared_order.score_size(), irs::byte_type{0}),
+          docs->value());
       }
     }
     ASSERT_FALSE(docs->next());

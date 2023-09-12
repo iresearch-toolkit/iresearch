@@ -181,7 +181,7 @@ class seek_term_iterator : public irs::seek_term_iterator {
     }
 
     bool IsEqual(const irs::seek_cookie& rhs) const noexcept final {
-      return ptr == irs::down_cast<seek_ptr>(rhs).ptr;
+      return ptr == irs::DownCast<seek_ptr>(rhs).ptr;
     }
 
     size_t Hash() const noexcept final {

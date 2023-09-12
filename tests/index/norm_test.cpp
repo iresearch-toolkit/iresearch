@@ -194,13 +194,15 @@ TEST(Norm2HeaderTest, ReadInvalid) {
 
   // Invalid encoding
   {
-    constexpr irs::byte_type kBuf[irs::Norm2Header::ByteSize()]{0, 3};
+    constexpr irs::byte_type kBuf[irs::Norm2Header::ByteSize()]{
+      irs::byte_type{0}, irs::byte_type{3}};
     ASSERT_FALSE(irs::Norm2Header::Read({kBuf, sizeof kBuf}).has_value());
   }
 
   // Invalid version
   {
-    constexpr irs::byte_type kBuf[irs::Norm2Header::ByteSize()]{42, 1};
+    constexpr irs::byte_type kBuf[irs::Norm2Header::ByteSize()]{
+      irs::byte_type{42}, irs::byte_type{1}};
     ASSERT_FALSE(irs::Norm2Header::Read({kBuf, sizeof kBuf}).has_value());
   }
 }
@@ -248,8 +250,8 @@ TEST(Norm2HeaderTest, ResetByPayload) {
     irs::Norm2Header::Write(acc, buf);
 
     AssertNorm2Header(buf, sizeof(irs::byte_type),
-                      std::numeric_limits<irs::byte_type>::max() - 2,
-                      std::numeric_limits<irs::byte_type>::max());
+                      std::numeric_limits<uint8_t>::max() - 2,
+                      std::numeric_limits<uint8_t>::max());
   }
 
   // 2-byte header
@@ -263,7 +265,7 @@ TEST(Norm2HeaderTest, ResetByPayload) {
     irs::Norm2Header::Write(acc, buf);
 
     AssertNorm2Header(buf, sizeof(uint16_t),
-                      std::numeric_limits<irs::byte_type>::max() - 2,
+                      std::numeric_limits<uint8_t>::max() - 2,
                       std::numeric_limits<uint16_t>::max());
   }
 
@@ -278,7 +280,7 @@ TEST(Norm2HeaderTest, ResetByPayload) {
     irs::Norm2Header::Write(acc, buf);
 
     AssertNorm2Header(buf, sizeof(uint32_t),
-                      std::numeric_limits<irs::byte_type>::max() - 2,
+                      std::numeric_limits<uint8_t>::max() - 2,
                       std::numeric_limits<uint32_t>::max());
   }
 }
@@ -326,8 +328,8 @@ template<typename T>
 void Norm2TestCase::AssertNormColumn(
   const irs::SubReader& segment, std::string_view name,
   const std::vector<std::pair<irs::doc_id_t, uint32_t>>& expected_docs) {
-  static_assert(std::is_same_v<T, irs::byte_type> ||
-                std::is_same_v<T, uint16_t> || std::is_same_v<T, uint32_t>);
+  static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> ||
+                std::is_same_v<T, uint32_t>);
 
   auto* field = segment.field(name);
   ASSERT_NE(nullptr, field);
@@ -729,14 +731,14 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
       const auto it = kSeedMapping.find(kName);
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
-      AssertNormColumn<irs::byte_type>(segment, {kName.data(), kName.size()},
-                                       {{1, seed},
-                                        {2, seed * 2},
-                                        {3, seed * 3},
-                                        {4, seed * 4},
-                                        {5, seed * 5},
-                                        {6, seed * 6},
-                                        {7, seed * 7}});
+      AssertNormColumn<uint8_t>(segment, {kName.data(), kName.size()},
+                                {{1, seed},
+                                 {2, seed * 2},
+                                 {3, seed * 3},
+                                 {4, seed * 4},
+                                 {5, seed * 5},
+                                 {6, seed * 6},
+                                 {7, seed * 7}});
     }
 
     {
@@ -744,14 +746,14 @@ TEST_P(Norm2TestCase, CheckNormsConsolidation) {
       const auto it = kSeedMapping.find(kName);
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
-      AssertNormColumn<irs::byte_type>(segment, {kName.data(), kName.size()},
-                                       {{1, seed},
-                                        {2, seed * 2},
-                                        {3, seed * 3},
-                                        {4, seed * 4},
-                                        {5, seed * 5},
-                                        {6, seed * 6},
-                                        {7, seed * 7}});
+      AssertNormColumn<uint8_t>(segment, {kName.data(), kName.size()},
+                                {{1, seed},
+                                 {2, seed * 2},
+                                 {3, seed * 3},
+                                 {4, seed * 4},
+                                 {5, seed * 5},
+                                 {6, seed * 6},
+                                 {7, seed * 7}});
     }
 
     {
@@ -999,13 +1001,13 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       const auto it = kSeedMapping.find(kName);
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
-      AssertNormColumn<irs::byte_type>(segment, {kName.data(), kName.size()},
-                                       {{1, seed},
-                                        {2, seed * 2},
-                                        {3, seed * 3},
-                                        {4, seed * 5},
-                                        {5, seed * 6},
-                                        {6, seed * 7}});
+      AssertNormColumn<uint8_t>(segment, {kName.data(), kName.size()},
+                                {{1, seed},
+                                 {2, seed * 2},
+                                 {3, seed * 3},
+                                 {4, seed * 5},
+                                 {5, seed * 6},
+                                 {6, seed * 7}});
     }
 
     {
@@ -1013,13 +1015,13 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       const auto it = kSeedMapping.find(kName);
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
-      AssertNormColumn<irs::byte_type>(segment, {kName.data(), kName.size()},
-                                       {{1, seed},
-                                        {2, seed * 2},
-                                        {3, seed * 3},
-                                        {4, seed * 5},
-                                        {5, seed * 6},
-                                        {6, seed * 7}});
+      AssertNormColumn<uint8_t>(segment, {kName.data(), kName.size()},
+                                {{1, seed},
+                                 {2, seed * 2},
+                                 {3, seed * 3},
+                                 {4, seed * 5},
+                                 {5, seed * 6},
+                                 {6, seed * 7}});
     }
 
     {
@@ -1070,14 +1072,14 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       const auto it = kSeedMapping.find(kName);
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
-      AssertNormColumn<irs::byte_type>(segment, {kName.data(), kName.size()},
-                                       {{1, seed},
-                                        {2, seed * 2},
-                                        {3, seed * 3},
-                                        {4, seed * 5},
-                                        {5, seed * 6},
-                                        {6, seed * 7},
-                                        {7, seed}});
+      AssertNormColumn<uint8_t>(segment, {kName.data(), kName.size()},
+                                {{1, seed},
+                                 {2, seed * 2},
+                                 {3, seed * 3},
+                                 {4, seed * 5},
+                                 {5, seed * 6},
+                                 {6, seed * 7},
+                                 {7, seed}});
     }
 
     {
@@ -1085,14 +1087,14 @@ TEST_P(Norm2TestCase, CheckNormsConsolidationWithRemovals) {
       const auto it = kSeedMapping.find(kName);
       ASSERT_NE(kSeedMapping.end(), it);
       const uint32_t seed{it->second};
-      AssertNormColumn<irs::byte_type>(segment, {kName.data(), kName.size()},
-                                       {{1, seed},
-                                        {2, seed * 2},
-                                        {3, seed * 3},
-                                        {4, seed * 5},
-                                        {5, seed * 6},
-                                        {6, seed * 7},
-                                        {7, seed}});
+      AssertNormColumn<uint8_t>(segment, {kName.data(), kName.size()},
+                                {{1, seed},
+                                 {2, seed * 2},
+                                 {3, seed * 3},
+                                 {4, seed * 5},
+                                 {5, seed * 6},
+                                 {6, seed * 7},
+                                 {7, seed}});
     }
 
     {

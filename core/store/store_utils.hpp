@@ -157,7 +157,7 @@ template<typename StringType>
 inline StringType read_string(data_input& in) {
   const size_t len = in.read_vint();
 
-  StringType str(len, 0);
+  StringType str(len, byte_type{0});
   [[maybe_unused]] const auto read =
     in.read_bytes(reinterpret_cast<byte_type*>(str.data()), str.size());
   IRS_ASSERT(read == str.size());
@@ -275,7 +275,7 @@ class bytes_output : public data_output {
  public:
   explicit bytes_output(bstring& buf) noexcept : buf_(&buf) {}
 
-  void write_byte(byte_type b) final { (*buf_) += b; }
+  void write_byte(uint8_t b) final { buf_->push_back(byte_type{b}); }
 
   void write_bytes(const byte_type* b, size_t size) final {
     buf_->append(b, size);

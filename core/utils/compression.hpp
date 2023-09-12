@@ -53,7 +53,7 @@ struct data_input;
 namespace compression {
 
 struct options {
-  enum class Hint : byte_type {
+  enum class Hint : uint8_t {
     /// @brief use default compressor parameters
     DEFAULT = 0,
 

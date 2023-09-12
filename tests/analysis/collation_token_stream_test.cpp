@@ -33,11 +33,11 @@
 
 namespace {
 
-std::vector<uint8_t> encode(uint8_t b) {
-  std::vector<uint8_t> res;
+std::vector<irs::byte_type> encode(irs::byte_type b) {
+  std::vector<irs::byte_type> res;
   if (0x80 & b) {
-    res.push_back(0xc0 | (b >> 3));
-    res.push_back(0x80 | (b & 0x7));
+    res.push_back(static_cast<irs::byte_type>(0xc0 | (b >> 3)));
+    res.push_back(static_cast<irs::byte_type>(0x80 | (b & 0x7)));
   } else {
     res.push_back(b);
   }
@@ -60,7 +60,7 @@ class CollationEncoder {
   }
 
  private:
-  std::vector<uint8_t> buffer_;
+  std::vector<irs::byte_type> buffer_;
 };
 
 }  // namespace
@@ -80,7 +80,7 @@ TEST(collation_token_stream_test, test_byte_encoder) {
   ASSERT_EQ(256, kRecalcMap.size());
   do {
     --target;
-    const auto expected = encode(target);
+    const auto expected = encode(irs::byte_type{target});
     const auto actual = kRecalcMap[target];
     ASSERT_EQ(expected.size(), actual.second);
     for (size_t i = 0; i < expected.size(); ++i) {
@@ -196,7 +196,8 @@ TEST(collation_token_stream_test, check_collation) {
     EXPECT_TRUE(U_SUCCESS(err));
 
     int32_t size = 0;
-    const irs::byte_type* p = key.getByteArray(size);
+    const auto* p =
+      reinterpret_cast<const irs::byte_type*>(key.getByteArray(size));
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
     encodedKey.encode({p, static_cast<size_t>(size - 1)});
@@ -279,7 +280,8 @@ TEST(collation_token_stream_test, check_collation_with_variant1) {
     EXPECT_TRUE(U_SUCCESS(err));
 
     int32_t size = 0;
-    const irs::byte_type* p = key.getByteArray(size);
+    const auto* p =
+      reinterpret_cast<const irs::byte_type*>(key.getByteArray(size));
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
     encodedKey.encode({p, static_cast<size_t>(size - 1)});
@@ -560,7 +562,8 @@ TEST(collation_token_stream_test, check_collation_with_variant2) {
     EXPECT_TRUE(U_SUCCESS(err));
 
     int32_t size = 0;
-    const irs::byte_type* p = key.getByteArray(size);
+    const auto* p =
+      reinterpret_cast<const irs::byte_type*>(key.getByteArray(size));
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
     encodedKey.encode({p, static_cast<size_t>(size - 1)});
@@ -728,7 +731,8 @@ TEST(collation_token_stream_test, check_tokens_utf8) {
     EXPECT_TRUE(U_SUCCESS(err));
 
     int32_t size = 0;
-    const irs::byte_type* p = key.getByteArray(size);
+    const auto* p =
+      reinterpret_cast<const irs::byte_type*>(key.getByteArray(size));
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
     encodedKey.encode({p, static_cast<size_t>(size - 1)});
@@ -830,7 +834,8 @@ TEST(collation_token_stream_test, check_tokens) {
     EXPECT_TRUE(U_SUCCESS(err));
 
     int32_t size = 0;
-    const irs::byte_type* p = key.getByteArray(size);
+    const auto* p =
+      reinterpret_cast<const irs::byte_type*>(key.getByteArray(size));
     EXPECT_NE(nullptr, p);
     EXPECT_NE(0, size);
     encodedKey.encode({p, static_cast<size_t>(size - 1)});

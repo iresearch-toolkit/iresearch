@@ -42,7 +42,7 @@ irs::by_term make_term_filter(const std::string_view& field,
 
 irs::by_edit_distance make_filter(const std::string_view& field,
                                   const std::string_view term,
-                                  irs::byte_type max_distance = 0,
+                                  uint8_t max_distance = 0,
                                   size_t max_terms = 0,
                                   bool with_transpositions = false,
                                   const std::string_view prefix = "") {

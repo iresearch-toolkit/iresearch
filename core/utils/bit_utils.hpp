@@ -40,22 +40,22 @@ inline constexpr size_t bits_required(size_t n) noexcept {
 
 template<typename T>
 inline constexpr void set_bit(T& value, size_t bit) noexcept {
-  value |= (T(1) << bit);
+  value = static_cast<T>(value | (T{1} << bit));
 }
 
 template<unsigned Bit, typename T>
 inline constexpr void set_bit(T& value) noexcept {
-  value |= (T(1) << (Bit));
+  value = static_cast<T>(value | (T{1} << Bit));
 }
 
 template<typename T>
 inline constexpr void unset_bit(T& value, size_t bit) noexcept {
-  value &= ~(T(1) << bit);
+  value = static_cast<T>(value & (~(T{1} << bit)));
 }
 
 template<unsigned Bit, typename T>
 inline constexpr void unset_bit(T& value) noexcept {
-  value &= ~(T(1) << (Bit));
+  value = static_cast<T>(value & (~(T{1} << Bit)));
 }
 
 template<unsigned Bit, typename T>

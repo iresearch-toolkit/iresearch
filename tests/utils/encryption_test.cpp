@@ -288,7 +288,7 @@ class encryption_test_case : public tests::directory_test_case_base<> {
 
     // write encrypted data
     {
-      bstring header(enc->header_length(), 0);
+      bstring header(enc->header_length(), irs::byte_type{0});
       ASSERT_TRUE(enc->create_header("encrypted", &header[0]));
 
       auto out = dir().create("encrypted");

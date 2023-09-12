@@ -38,7 +38,7 @@ void write_zvfloat(data_output& out, float_t v) {
 
   if (iv >= -1 && iv <= 125) {
     // small signed values between [-1 and 125]
-    out.write_byte(static_cast<byte_type>(0x80 | (1 + iv)));
+    out.write_byte(0x80 | (1 + iv));
   } else if (!std::signbit(v)) {
     // positive value
     out.write_int(iv);
@@ -71,7 +71,7 @@ void write_zvdouble(data_output& out, double_t v) {
 
   if (lv > -1 && lv <= 124) {
     // small signed values between [-1 and 124]
-    out.write_byte(static_cast<byte_type>(0x80 | (1 + lv)));
+    out.write_byte(0x80 | (1 + lv));
   } else {
     const float_t fv = static_cast<float_t>(v);
 

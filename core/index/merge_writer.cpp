@@ -1175,7 +1175,7 @@ class BufferedValues final : public column_reader, data_output {
   }
 
   // data_output
-  void write_byte(byte_type b) final { data_ += b; }
+  void write_byte(uint8_t b) final { data_.push_back(byte_type{b}); }
 
   void write_bytes(const byte_type* b, size_t len) final {
     data_.append(b, len);
@@ -1355,7 +1355,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
   // Ensured by the caller
   IRS_ASSERT(flush_state.columns);
   auto& buffered_columns = const_cast<BufferedColumns&>(
-    down_cast<BufferedColumns>(*flush_state.columns));
+    DownCast<BufferedColumns>(*flush_state.columns));
 
   while (field_itr.next()) {
     buffered_columns.Clear();

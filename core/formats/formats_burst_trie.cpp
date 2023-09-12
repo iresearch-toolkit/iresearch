@@ -239,7 +239,7 @@ struct block_t : private util::noncopyable {
     explicit prefixed_output(volatile_byte_ref&& prefix) noexcept
       : Node<prefixed_output>{this}, prefix(std::move(prefix)) {}
 
-    void write_byte(byte_type b) final { weight.PushBack(b); }
+    void write_byte(uint8_t b) final { weight.PushBack(byte_type{b}); }
 
     void write_bytes(const byte_type* b, size_t len) final {
       weight.PushBack(b, b + len);
@@ -329,7 +329,7 @@ class MonotonicBuffer {
     // TODO(MBkkt) Don't be lazy, call Decrease eager
     // resource_manager_.Decrease(blocks_memory_ - size of head block);
 
-    auto* initial_current = reinterpret_cast<byte_type*>(head_) + sizeof(Block);
+    auto* initial_current = reinterpret_cast<uint8_t*>(head_) + sizeof(Block);
     available_ += (current_ - initial_current) / sizeof(T);
     current_ = initial_current;
   }
@@ -364,9 +364,9 @@ class MonotonicBuffer {
     resource_manager_.Increase(size);
     blocks_memory_ += size;
     auto* p =
-      static_cast<byte_type*>(operator new(size, std::align_val_t{kAlign}));
+      static_cast<uint8_t*>(operator new(size, std::align_val_t{kAlign}));
     head_ = new (p) Block{head_};
-    IRS_ASSERT(p == reinterpret_cast<byte_type*>(head_));
+    IRS_ASSERT(p == reinterpret_cast<uint8_t*>(head_));
     current_ = p + sizeof(Block);
     available_ = next_size_;
     next_size_ = (next_size_ * 3) / 2;
@@ -381,12 +381,12 @@ class MonotonicBuffer {
   Block* head_ = nullptr;
 
   size_t available_ = 0;
-  byte_type* current_ = nullptr;
+  uint8_t* current_ = nullptr;
 };
 
 using OutputBuffer = MonotonicBuffer<block_t::prefixed_output>;
 
-enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };
+enum EntryType : uint8_t { ET_TERM = 0, ET_BLOCK, ET_INVALID };
 
 // Block or term
 class entry : private util::noncopyable {
@@ -829,7 +829,7 @@ struct cookie final : seek_cookie {
 
   bool IsEqual(const irs::seek_cookie& rhs) const noexcept final {
     // We intentionally don't check `rhs` cookie type.
-    const auto& rhs_meta = down_cast<cookie>(rhs).meta;
+    const auto& rhs_meta = DownCast<cookie>(rhs).meta;
     return meta.doc_start == rhs_meta.doc_start &&
            meta.pos_start == rhs_meta.pos_start;
   }
@@ -893,7 +893,7 @@ void MergeBlocks(Blocks& blocks, OutputBuffer& buffer) {
   IRS_ASSERT(char(root_block.meta) != fst::kStringInfinity);
 
   // will store just several bytes here
-  out.write_byte(static_cast<byte_type>(root_block.meta));  // block metadata
+  out.write_byte(root_block.meta);    // block metadata
   out.write_vlong(root_block.start);  // start pointer of the block
 
   if (block_meta::floor(root_block.meta)) {
@@ -905,9 +905,9 @@ void MergeBlocks(Blocks& blocks, OutputBuffer& buffer) {
       IRS_ASSERT(block->start > root_block.start);
 
       const uint64_t start_delta = it->block().start - root_block.start;
-      out.write_byte(static_cast<byte_type>(block->label & 0xFF));
+      out.write_byte(block->label & 0xFF);
       out.write_vlong(start_delta);
-      out.write_byte(static_cast<byte_type>(block->meta));
+      out.write_byte(block->meta);
 
       root_index.Append(std::move(it->block().index));
     }
@@ -1038,7 +1038,7 @@ class field_writer final : public irs::field_writer {
 };
 
 void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
-                              irs::byte_type meta, uint16_t label) {
+                              byte_type meta, uint16_t label) {
   IRS_ASSERT(end > begin);
 
   // begin of the block
@@ -1089,7 +1089,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   terms_out_->write_vlong(
     shift_pack_64(static_cast<uint64_t>(block_size), leaf));
 
-  auto copy = [this](const irs::byte_type* b, size_t len) {
+  auto copy = [this](const byte_type* b, size_t len) {
     terms_out_->write_bytes(b, len);
     return true;
   };
@@ -1097,7 +1097,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   if (terms_out_cipher_) {
     auto offset = block_start;
 
-    auto encrypt_and_copy = [this, &offset](irs::byte_type* b, size_t len) {
+    auto encrypt_and_copy = [this, &offset](byte_type* b, size_t len) {
       IRS_ASSERT(terms_out_cipher_);
 
       if (!terms_out_cipher_->encrypt(offset, b, len)) {
@@ -1134,7 +1134,7 @@ void field_writer::WriteBlocks(size_t prefix, size_t count) {
   IRS_ASSERT(blocks_.empty());
 
   // block metadata
-  irs::byte_type meta{};
+  byte_type meta{};
 
   const size_t end = stack_.size();
   const size_t begin = end - count;
@@ -1377,7 +1377,7 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
   const auto [wand_mask, doc_count] = pw_->end_field();
 
   // cause creation of all final blocks
-  Push(kEmptyStringView<irs::byte_type>);
+  Push(kEmptyStringView<byte_type>);
 
   // write root block with empty prefix
   WriteBlocks(0, stack_.size());
@@ -1483,15 +1483,15 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   bytes_view min() const noexcept final { return min_term_; }
   bytes_view max() const noexcept final { return max_term_; }
   attribute* get_mutable(irs::type_info::type_id type) noexcept final;
-  bool has_scorer(byte_type index) const noexcept final;
+  bool has_scorer(uint8_t index) const noexcept final;
 
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
 
-  byte_type WandCount() const noexcept { return wand_count_; }
+  uint8_t WandCount() const noexcept { return wand_count_; }
 
  protected:
-  byte_type WandIndex(byte_type i) const noexcept;
+  uint8_t WandIndex(uint8_t i) const noexcept;
 
  private:
   field_meta field_;
@@ -1501,11 +1501,11 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   uint64_t doc_count_;
   uint64_t doc_freq_;
   uint64_t wand_mask_{};
-  uint32_t wand_count_{};
+  uint8_t wand_count_{};
   frequency freq_;  // total term freq
 };
 
-byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
+uint8_t term_reader_base::WandIndex(uint8_t i) const noexcept {
   if (i >= kMaxScorers) {
     return WandContext::kDisable;
   }
@@ -1516,10 +1516,10 @@ byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
     return WandContext::kDisable;
   }
 
-  return static_cast<byte_type>(std::popcount(wand_mask_ & (mask - 1)));
+  return static_cast<uint8_t>(std::popcount(wand_mask_ & (mask - 1)));
 }
 
-bool term_reader_base::has_scorer(byte_type index) const noexcept {
+bool term_reader_base::has_scorer(uint8_t index) const noexcept {
   return WandIndex(index) != WandContext::kDisable;
 }
 
@@ -1546,7 +1546,7 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
 
   if (IRS_LIKELY(version >= burst_trie::Version::WAND)) {
     wand_mask_ = in.read_long();
-    wand_count_ = static_cast<byte_type>(std::popcount(wand_mask_));
+    wand_count_ = static_cast<uint8_t>(std::popcount(wand_mask_));
   }
 }
 
@@ -3031,7 +3031,7 @@ bool automaton_term_iterator<FST>::next() {
                      cur_block_->start());
 
         if (!acceptor_->Final(state)) {
-          cur_block_->scan_to_sub_block(data.arcs->min);
+          cur_block_->scan_to_sub_block(static_cast<byte_type>(data.arcs->min));
         }
 
         cur_block_->load(terms_input(), terms_cipher());
@@ -3055,7 +3055,7 @@ bool automaton_term_iterator<FST>::next() {
         const auto* arc = arcs.value();
 
         if (next_label < arc->min) {
-          IRS_ASSERT(arc->min <= std::numeric_limits<byte_type>::max());
+          IRS_ASSERT(arc->min <= std::numeric_limits<uint8_t>::max());
           cur_block_->scan_to_sub_block(byte_type(arc->min));
           IRS_ASSERT(cur_block_->next_label() == block_t::INVALID_LABEL ||
                      arc->min < uint32_t(cur_block_->next_label()));
@@ -3076,7 +3076,7 @@ bool automaton_term_iterator<FST>::next() {
 
           if (!arc) {
             IRS_ASSERT(arcs.value()->min <=
-                       std::numeric_limits<byte_type>::max());
+                       std::numeric_limits<uint8_t>::max());
             cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
             IRS_ASSERT(cur_block_->next_label() == block_t::INVALID_LABEL ||
                        arcs.value()->min < uint32_t(cur_block_->next_label()));
@@ -3254,7 +3254,7 @@ class field_reader final : public irs::field_reader {
     size_t bit_union(const cookie_provider& provider, size_t* set) const final {
       auto term_provider = [&provider]() mutable -> const term_meta* {
         if (auto* cookie = provider()) {
-          return &down_cast<::cookie>(*cookie).meta;
+          return &DownCast<::cookie>(*cookie).meta;
         }
 
         return nullptr;
@@ -3302,7 +3302,7 @@ class field_reader final : public irs::field_reader {
     doc_iterator::ptr postings(const seek_cookie& cookie,
                                IndexFeatures features) const final {
       return owner_->pr_->iterator(meta().index_features, features,
-                                   down_cast<::cookie>(cookie).meta,
+                                   DownCast<::cookie>(cookie).meta,
                                    WandCount());
     }
 
@@ -3311,7 +3311,7 @@ class field_reader final : public irs::field_reader {
                                  const WanderatorOptions& options,
                                  WandContext ctx) const final {
       return owner_->pr_->wanderator(
-        meta().index_features, features, down_cast<::cookie>(cookie).meta,
+        meta().index_features, features, DownCast<::cookie>(cookie).meta,
         options, ctx,
         {.mapped_index = WandIndex(ctx.index), .count = WandCount()});
     }

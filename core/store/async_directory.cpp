@@ -258,7 +258,7 @@ class AsyncIndexOutput final : public index_output {
   void write_long(int64_t value) final;
   void write_vint(uint32_t v) final;
   void write_vlong(uint64_t v) final;
-  void write_byte(byte_type b) final;
+  void write_byte(uint8_t b) final;
   void write_bytes(const byte_type* b, size_t length) final;
   size_t file_pointer() const final {
     IRS_ASSERT(buf_->value <= pos_);
@@ -375,12 +375,12 @@ void AsyncIndexOutput::write_vlong(uint64_t v) {
   }
 }
 
-void AsyncIndexOutput::write_byte(byte_type b) {
+void AsyncIndexOutput::write_byte(uint8_t b) {
   if (pos_ >= end_) {
     flush();
   }
 
-  *pos_++ = b;
+  *pos_++ = byte_type{b};
 }
 
 void AsyncIndexOutput::flush() {

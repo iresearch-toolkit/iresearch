@@ -206,13 +206,13 @@ TEST_P(columnstore2_test_case, empty_column) {
     [[maybe_unused]] auto [id0, handle0] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 1;
+        out.push_back(static_cast<irs::byte_type>(1));
         return "foobar";
       });
     [[maybe_unused]] auto [id1, handle1] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 2;
+        out.push_back(static_cast<irs::byte_type>(2));
         return std::string_view{};
       });
     [[maybe_unused]] auto [id2, handle2] =
@@ -321,7 +321,7 @@ TEST_P(columnstore2_test_case, sparse_mask_column) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return std::string_view{};
       });
     ASSERT_GT(memory.transactions.counter_, 0);
@@ -472,7 +472,7 @@ TEST_P(columnstore2_test_case, sparse_column_m) {
       {irs::type<irs::compression::none>::get(), {}, has_encryption},
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return "foobaz";
       });
     ASSERT_GT(mem.transactions.counter_, 0);
@@ -532,7 +532,7 @@ TEST_P(columnstore2_test_case, sparse_column_mr) {
       {irs::type<irs::compression::none>::get(), {}, has_encryption},
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return "foobaz";
       });
 
@@ -596,7 +596,7 @@ TEST_P(columnstore2_test_case, sparse_column) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return "foobaz";
       });
 
@@ -815,7 +815,7 @@ TEST_P(columnstore2_test_case, sparse_column_gap) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return "foobarbaz";
       });
 
@@ -1006,7 +1006,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return std::string_view{};
       });
 
@@ -1190,7 +1190,7 @@ TEST_P(columnstore2_test_case, sparse_column_tail_block_last_value) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return std::string_view{};
       });
 
@@ -1382,7 +1382,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return std::string_view{};
       });
 
@@ -1571,7 +1571,7 @@ TEST_P(columnstore2_test_case, sparse_column_full_blocks_all_equal) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return std::string_view{};
       });
 
@@ -1745,7 +1745,7 @@ TEST_P(columnstore2_test_case, dense_mask_column) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return "foobar";
       });
 
@@ -1903,7 +1903,7 @@ TEST_P(columnstore2_test_case, dense_column) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return "foobar";
       });
 
@@ -2108,7 +2108,7 @@ TEST_P(columnstore2_test_case, dense_column_range) {
     auto [id, column] =
       writer.push_column(column_info(), [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out.push_back(static_cast<irs::byte_type>(42));
         return std::string_view{};
       });
 
@@ -2291,7 +2291,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
         {irs::type<irs::compression::none>::get(), {}, has_encryption},
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
-          out += 42;
+          out.push_back(static_cast<irs::byte_type>(42));
           return std::string_view{};
         });
 
@@ -2307,13 +2307,13 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_m) {
         {irs::type<irs::compression::none>::get(), {}, has_encryption},
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
-          out += 43;
+          out.push_back(static_cast<irs::byte_type>(43));
           return std::string_view{};
         });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
-        stream.write_byte(static_cast<irs::byte_type>(doc & 0xFF));
+        stream.write_byte(doc & 0xFF);
       }
     }
 
@@ -2368,7 +2368,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
         {irs::type<irs::compression::none>::get(), {}, has_encryption},
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
-          out += 42;
+          out.push_back(static_cast<irs::byte_type>(42));
           return std::string_view{};
         });
 
@@ -2384,13 +2384,13 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_mr) {
         {irs::type<irs::compression::none>::get(), {}, has_encryption},
         [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
-          out += 43;
+          out.push_back(static_cast<irs::byte_type>(43));
           return std::string_view{};
         });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= MAX; ++doc) {
         auto& stream = column(doc);
-        stream.write_byte(static_cast<irs::byte_type>(doc & 0xFF));
+        stream.write_byte(doc & 0xFF);
       }
     }
 
@@ -2446,7 +2446,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       auto [id, column] =
         writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
-          out += 42;
+          out.push_back(static_cast<irs::byte_type>(42));
           return std::string_view{};
         });
 
@@ -2461,13 +2461,13 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column) {
       auto [id, column] =
         writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
-          out += 43;
+          out.push_back(static_cast<irs::byte_type>(43));
           return std::string_view{};
         });
 
       for (irs::doc_id_t doc = irs::doc_limits::min(); doc <= kMax; ++doc) {
         auto& stream = column(doc);
-        stream.write_byte(static_cast<irs::byte_type>(doc & 0xFF));
+        stream.write_byte(doc & 0xFF);
       }
     }
 
@@ -2762,7 +2762,7 @@ TEST_P(columnstore2_test_case, dense_fixed_length_column_empty_tail) {
       auto [id, column] =
         writer.push_column(column_info(), [](irs::bstring& out) {
           EXPECT_TRUE(out.empty());
-          out += 42;
+          out.push_back(static_cast<irs::byte_type>(42));
           return std::string_view{};
         });
 

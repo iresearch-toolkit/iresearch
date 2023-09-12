@@ -49,7 +49,7 @@ namespace irs {
 
 namespace bitpack {
 
-constexpr uint32_t ALL_EQUAL = 0U;
+inline constexpr uint32_t ALL_EQUAL = 0U;
 
 // returns true if one can use run length encoding for the specified numberof
 // bits
@@ -101,7 +101,7 @@ IRS_FORCE_INLINE uint32_t write_block32(PackFunc&& pack, data_output& out,
 
   // TODO(MBkkt) direct write api?
   //  out.get_buffer(buf_size + 1, /*fallback=*/encoded)?
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
+  out.write_byte(bits & 0xFF);
   out.write_bytes(reinterpret_cast<byte_type*>(encoded), buf_size);
 
   return bits;
@@ -140,7 +140,7 @@ uint32_t write_block64(PackFunc&& pack, data_output& out,
   std::memset(encoded, 0, buf_size);
   pack(decoded, encoded, size, bits);
 
-  out.write_byte(static_cast<byte_type>(bits & 0xFF));
+  out.write_byte(bits & 0xFF);
   out.write_bytes(reinterpret_cast<const byte_type*>(encoded), buf_size);
 
   return bits;

@@ -227,7 +227,9 @@ void index_segment::compute_features() {
 
     void Prepare(irs::doc_id_t) final { written = true; }
 
-    void write_byte(irs::byte_type b) final { (*buf_) += b; }
+    void write_byte(uint8_t b) final {
+      buf_->push_back(static_cast<irs::byte_type>(b));
+    }
 
     void write_bytes(const irs::byte_type* b, size_t size) final {
       buf_->append(b, size);
@@ -559,7 +561,7 @@ class term_iterator : public irs::seek_term_iterator {
     }
 
     bool IsEqual(const irs::seek_cookie& rhs) const noexcept final {
-      return term == irs::down_cast<term_cookie>(rhs).term;
+      return term == irs::DownCast<term_cookie>(rhs).term;
     }
 
     size_t Hash() const noexcept final {

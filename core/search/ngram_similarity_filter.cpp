@@ -120,7 +120,7 @@ filter::prepared::ptr by_ngram_similarity::prepare(
     term_states.reserve(terms_count);
   }
 
-  bstring stats(ctx.scorers.stats_size(), 0);
+  bstring stats(ctx.scorers.stats_size(), byte_type{0});
   auto* stats_buf = stats.data();
 
   for (size_t term_idx = 0; term_idx < terms_count; ++term_idx) {

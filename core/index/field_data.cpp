@@ -98,7 +98,7 @@ IRS_FORCE_INLINE void write_cookie(Inserter& out, uint64_t cookie) {
 }
 
 IRS_FORCE_INLINE uint64_t cookie(size_t slice_offset, size_t offset) noexcept {
-  IRS_ASSERT(offset <= std::numeric_limits<byte_type>::max());
+  IRS_ASSERT(offset <= std::numeric_limits<uint8_t>::max());
   return static_cast<uint64_t>(slice_offset) << 8 |
          static_cast<byte_type>(offset);
 }

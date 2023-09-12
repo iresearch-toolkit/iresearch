@@ -504,7 +504,7 @@ TEST_P(BufferedColumnTestCase, Sort) {
       *writer,
       [](irs::bstring& out) {
         EXPECT_TRUE(out.empty());
-        out += 42;
+        out += irs::byte_type{42};
         return std::string_view{};
       },
       std::size(values), kLess);

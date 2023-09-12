@@ -97,9 +97,9 @@ class levenshtein_automaton_index_test_case : public tests::index_test_base {
 
 TEST_P(levenshtein_automaton_index_test_case, test_lev_automaton) {
   const irs::parametric_description DESCRIPTIONS[]{
-    irs::make_parametric_description(1, false),
-    irs::make_parametric_description(2, false),
-    irs::make_parametric_description(3, false),
+    irs::make_parametric_description(irs::byte_type{1}, false),
+    irs::make_parametric_description(irs::byte_type{2}, false),
+    irs::make_parametric_description(irs::byte_type{3}, false),
   };
 
   constexpr std::string_view TARGETS[]{"atlas",     "bloom",    "burden", "del",

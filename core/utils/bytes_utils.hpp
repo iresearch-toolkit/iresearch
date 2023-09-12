@@ -34,7 +34,7 @@ struct bytes_io;
 
 template<typename T>
 struct bytes_io<T, sizeof(uint8_t)> {
-  static const T const_max_vsize = 1;
+  static constexpr T const_max_vsize{1};
 
   template<typename InputIterator>
   static T read(InputIterator& in, std::input_iterator_tag) {
@@ -71,7 +71,7 @@ struct bytes_io<T, sizeof(uint8_t)> {
 
 template<typename T>
 struct bytes_io<T, sizeof(uint16_t)> {
-  static const T const_max_vsize = 2;
+  static constexpr T const_max_vsize = 2;
 
   template<typename InputIterator>
   static T read(InputIterator& in, std::input_iterator_tag) {
@@ -119,7 +119,7 @@ struct bytes_io<T, sizeof(uint16_t)> {
 
 template<typename T>
 struct bytes_io<T, sizeof(uint32_t)> {
-  static const T const_max_vsize = 5;
+  static constexpr T const_max_vsize = 5;
 
   template<typename OutputIterator>
   static void vwrite(OutputIterator& out, T in) {
@@ -258,7 +258,7 @@ struct bytes_io<T, sizeof(uint32_t)> {
 
 template<typename T>
 struct bytes_io<T, sizeof(uint64_t)> {
-  static const T const_max_vsize = 10;
+  static constexpr T const_max_vsize = 10;
 
   template<typename OutputIterator>
   static void vwrite(OutputIterator& out, T in) {

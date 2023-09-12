@@ -266,7 +266,7 @@ class ptr_iterator
   template<typename T>
   typename adjust_const<T>::reference as() const {
     static_assert(std::is_base_of_v<base_element_type, T>);
-    return irs::down_cast<T>(dereference());
+    return irs::DownCast<T>(dereference());
   }
 
   //////////////////////////////////////////////////////////////////////////////

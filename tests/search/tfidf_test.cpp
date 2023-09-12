@@ -44,7 +44,7 @@ using namespace tests;
 
 struct bstring_data_output : public irs::data_output {
   irs::bstring out_;
-  void write_byte(irs::byte_type b) final { write_bytes(&b, 1); }
+  void write_byte(uint8_t b) final { out_.push_back(irs::byte_type{b}); }
   void write_bytes(const irs::byte_type* b, size_t size) final {
     out_.append(b, size);
   }
@@ -1503,7 +1503,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
     auto collector = prepared_sort.prepare_field_collector();
     ASSERT_NE(nullptr, collector);
     auto out = fcollector_out;
-    out.append(1, 42);
+    out.push_back(irs::byte_type{42});
     ASSERT_THROW(collector->collect(out), irs::io_error);
   }
 
@@ -1513,7 +1513,7 @@ TEST_P(tfidf_test_case, test_collector_serialization) {
     auto collector = prepared_sort.prepare_term_collector();
     ASSERT_NE(nullptr, collector);
     auto out = tcollector_out;
-    out.append(1, 42);
+    out.push_back(irs::byte_type{42});
     ASSERT_THROW(collector->collect(out), irs::io_error);
   }
 }

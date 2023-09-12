@@ -144,8 +144,8 @@ struct field_writer {
 };
 
 struct WandInfo {
-  byte_type mapped_index{WandContext::kDisable};
-  byte_type count{0};
+  uint8_t mapped_index{WandContext::kDisable};
+  uint8_t count{0};
 };
 
 struct postings_reader {
@@ -171,7 +171,7 @@ struct postings_reader {
   virtual doc_iterator::ptr iterator(IndexFeatures field_features,
                                      IndexFeatures required_features,
                                      const term_meta& meta,
-                                     byte_type wand_count) = 0;
+                                     uint8_t wand_count) = 0;
 
   virtual doc_iterator::ptr wanderator(IndexFeatures field_features,
                                        IndexFeatures required_features,
@@ -187,7 +187,7 @@ struct postings_reader {
   // This API is experimental.
   virtual size_t bit_union(IndexFeatures field_features,
                            const term_provider_f& provider, size_t* set,
-                           byte_type wand_count) = 0;
+                           uint8_t wand_count) = 0;
 };
 
 // Expected usage pattern of seek_term_iterator
@@ -252,7 +252,7 @@ struct term_reader : public attribute_provider {
   virtual bytes_view(max)() const = 0;
 
   // Returns true if scorer denoted by the is supported by the field.
-  virtual bool has_scorer(byte_type index) const = 0;
+  virtual bool has_scorer(uint8_t index) const = 0;
 };
 
 struct field_reader {

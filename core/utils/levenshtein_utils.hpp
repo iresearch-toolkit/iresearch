@@ -109,7 +109,7 @@ class parametric_description {
   /// @brief theoretically max possible distance we can evaluate, not really
   ///        feasible due to exponential growth of parametric description size
   //////////////////////////////////////////////////////////////////////////////
-  static constexpr byte_type MAX_DISTANCE = 31;
+  static constexpr uint8_t MAX_DISTANCE = 31;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates default "invalid" description
@@ -121,7 +121,7 @@ class parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   parametric_description(std::vector<transition_t>&& transitions,
                          std::vector<byte_type>&& distance,
-                         byte_type max_distance) noexcept;
+                         uint8_t max_distance) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return transition from 'from' state matching a provided
@@ -144,7 +144,7 @@ class parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   byte_type distance(size_t state, size_t offset) const noexcept {
     if (offset >= chi_size_) {
-      return max_distance_ + 1;
+      return static_cast<byte_type>(max_distance_ + 1);
     }
 
     IRS_ASSERT(state * chi_size_ + offset < distance_.size());
@@ -176,7 +176,7 @@ class parametric_description {
   //////////////////////////////////////////////////////////////////////////////
   /// @return the edit distance for which this description was built
   //////////////////////////////////////////////////////////////////////////////
-  byte_type max_distance() const noexcept { return max_distance_; }
+  uint8_t max_distance() const noexcept { return max_distance_; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return true if description is valid, false otherwise
@@ -205,8 +205,8 @@ class parametric_description {
   uint64_t chi_size_{};                    // 2*max_distance_+1
   uint64_t chi_max_{};                     // 1 << chi_size
   size_t num_states_{};                    // number of parametric states
-  byte_type max_distance_{};               // max allowed distance
-};                                         // parametric_description
+  uint8_t max_distance_{};                 // max allowed distance
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds parametric description of Levenshtein automaton
@@ -214,7 +214,7 @@ class parametric_description {
 /// @param with_transposition count transpositions
 /// @returns parametric description of Levenshtein automaton for supplied args
 ////////////////////////////////////////////////////////////////////////////////
-parametric_description make_parametric_description(byte_type max_distance,
+parametric_description make_parametric_description(uint8_t max_distance,
                                                    bool with_transposition);
 
 ////////////////////////////////////////////////////////////////////////////////

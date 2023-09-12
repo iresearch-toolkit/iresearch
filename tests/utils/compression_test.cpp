@@ -144,7 +144,7 @@ TEST(compression_test, lz4) {
     std::generate(data.begin(), data.end(), generator);
 
     bstring compression_buf;
-    bstring data_buf(data.size() * sizeof(size_t), 0);
+    bstring data_buf(data.size() * sizeof(size_t), irs::byte_type{0});
     std::memcpy(&data_buf[0], data.data(), data_buf.size());
 
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
@@ -161,8 +161,8 @@ TEST(compression_test, lz4) {
                          data.size() * sizeof(size_t)),
               bytes_view(data_buf));
 
-    bstring decompression_buf(data_buf.size(),
-                              0);  // ensure we have enough space in buffer
+    // ensure we have enough space in buffer
+    bstring decompression_buf(data_buf.size(), irs::byte_type{0});
     const auto decompressed =
       decompressor.decompress(&compression_buf[0], compressed.size(),
                               &decompression_buf[0], decompression_buf.size());
@@ -192,7 +192,7 @@ TEST(compression_test, delta) {
     std::generate(data.begin(), data.end(), generator);
 
     bstring compression_buf;
-    bstring data_buf(data.size() * sizeof(size_t), 0);
+    bstring data_buf(data.size() * sizeof(size_t), irs::byte_type{0});
     std::memcpy(&data_buf[0], data.data(), data_buf.size());
 
     ASSERT_EQ(bytes_view(reinterpret_cast<const byte_type*>(data.data()),
@@ -204,8 +204,8 @@ TEST(compression_test, delta) {
     ASSERT_EQ(compressed,
               bytes_view(compression_buf.c_str(), compressed.size()));
 
-    bstring decompression_buf(data_buf.size(),
-                              0);  // ensure we have enough space in buffer
+    // ensure we have enough space in buffer
+    bstring decompression_buf(data_buf.size(), irs::byte_type{0});
     const auto decompressed =
       decompressor.decompress(&compression_buf[0], compressed.size(),
                               &decompression_buf[0], decompression_buf.size());

@@ -989,14 +989,16 @@ TEST(store_utils_tests, avg_encode_block_read_write) {
 }
 
 TEST(store_utils_tests, test_remapped_bytes_view) {
-  std::array<irs::byte_type, 15> data = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,
-                                         0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
+  std::array<uint8_t, 15> data = {0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8,
+                                  0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF};
 
   {
     remapped_bytes_view_input::mapping mapping;
     mapping.emplace_back(3, 0);
-    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
-                                 std::move(mapping));
+    remapped_bytes_view_input in(
+      bytes_view(reinterpret_cast<const irs::byte_type*>(data.data()),
+                 data.size()),
+      std::move(mapping));
     auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual[0], data[0]);
     ASSERT_EQ(5, in.file_pointer());
@@ -1022,8 +1024,10 @@ TEST(store_utils_tests, test_remapped_bytes_view) {
     mapping.emplace_back(3, 0);
     mapping.emplace_back(5, 7);
     mapping.emplace_back(25, 14);
-    remapped_bytes_view_input in(bytes_view(data.data(), data.size()),
-                                 std::move(mapping));
+    remapped_bytes_view_input in(
+      bytes_view(reinterpret_cast<const irs::byte_type*>(data.data()),
+                 data.size()),
+      std::move(mapping));
     auto actual = in.read_buffer(3, 2, BufferHint::NORMAL);
     ASSERT_EQ(actual[1], data[1]);
     ASSERT_EQ(5, in.file_pointer());

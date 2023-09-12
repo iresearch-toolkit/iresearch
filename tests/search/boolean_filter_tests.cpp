@@ -16496,7 +16496,7 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
         EXPECT_EQ(*expected_doc, doc->value);
         ++expected_doc;
 
-        irs::bstring score_value(prepared_ord.score_size(), 0);
+        irs::bstring score_value(prepared_ord.score_size(), irs::byte_type{0});
         score->operator()(reinterpret_cast<irs::score_t*>(score_value.data()));
         scores.emplace_back(std::move(score_value));
       }

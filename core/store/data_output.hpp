@@ -44,7 +44,7 @@ struct data_output {
 
   virtual ~data_output() = default;
 
-  virtual void write_byte(byte_type b) = 0;
+  virtual void write_byte(uint8_t b) = 0;
 
   virtual void write_bytes(const byte_type* b, size_t len) = 0;
 
@@ -126,7 +126,7 @@ class buffered_index_output : public index_output, util::noncopyable {
 
   size_t file_pointer() const final;
 
-  void write_byte(byte_type b) final;
+  void write_byte(uint8_t b) final;
 
   void write_bytes(const byte_type* b, size_t length) final;
 
