@@ -60,7 +60,7 @@ class MinHash {
 
   // Update MinHash with the new value.
   // `noexcept` because we reserved enough space in constructor already.
-  void Insert(size_t hash_value) {
+  void Insert(uint64_t hash_value) {
     if (left_ && dedup_.emplace(hash_value).second) {
       min_hashes_.emplace_back(hash_value);
       if (0 == --left_) {
@@ -90,13 +90,13 @@ class MinHash {
 
   // Return Jaccard coefficient of 2 MinHash signatures.
   // `rhs` members are meant to be unique.
-  double Jaccard(std::span<const size_t> rhs) const noexcept {
-    const size_t intersect =
-      std::accumulate(std::begin(rhs), std::end(rhs), size_t{0},
-                      [&](size_t acc, size_t hash_value) noexcept {
-                        return acc + size_t{dedup_.contains(hash_value)};
+  double Jaccard(std::span<const uint64_t> rhs) const noexcept {
+    const auto intersect =
+      std::accumulate(std::begin(rhs), std::end(rhs), uint64_t{0},
+                      [&](uint64_t acc, uint64_t hash_value) noexcept {
+                        return acc + uint64_t{dedup_.contains(hash_value)};
                       });
-    const size_t cardinality = Size() + rhs.size() - intersect;
+    const uint64_t cardinality = Size() + rhs.size() - intersect;
 
     return cardinality ? static_cast<double_t>(intersect) / cardinality : 1.0;
   }
@@ -104,9 +104,9 @@ class MinHash {
   // Return Jaccard coefficient of 2 MinHash signatures.
   double Jaccard(const MinHash& rhs) const noexcept {
     if (Size() > rhs.Size()) {
-      return Jaccard(std::span<const size_t>{rhs.min_hashes_});
+      return Jaccard(rhs.min_hashes_);
     } else {
-      return rhs.Jaccard(std::span<const size_t>{min_hashes_});
+      return rhs.Jaccard(min_hashes_);
     }
   }
 
@@ -118,8 +118,8 @@ class MinHash {
   }
 
  private:
-  std::vector<size_t> min_hashes_;
-  absl::flat_hash_set<size_t> dedup_;  // guard against duplicated hash values
+  std::vector<uint64_t> min_hashes_;
+  absl::flat_hash_set<uint64_t> dedup_;  // guard against duplicated hash values
   size_t max_size_;
   size_t left_;
 };
