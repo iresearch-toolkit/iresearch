@@ -142,12 +142,12 @@ TEST(Norm2HeaderTest, ResetByValue) {
   auto AssertNumBytes = [](auto value) {
     using value_type = decltype(value);
 
-    static_assert(std::is_same_v<value_type, irs::byte_type> ||
+    static_assert(std::is_same_v<value_type, uint8_t> ||
                   std::is_same_v<value_type, uint16_t> ||
                   std::is_same_v<value_type, uint32_t>);
 
     irs::Norm2Encoding encoding;
-    if constexpr (std::is_same_v<value_type, irs::byte_type>) {
+    if constexpr (std::is_same_v<value_type, uint8_t>) {
       encoding = irs::Norm2Encoding::Byte;
     } else if (std::is_same_v<value_type, uint16_t>) {
       encoding = irs::Norm2Encoding::Short;
@@ -169,9 +169,9 @@ TEST(Norm2HeaderTest, ResetByValue) {
                       std::numeric_limits<value_type>::max());
   };
 
-  AssertNumBytes(irs::byte_type{});  // 1-byte header
-  AssertNumBytes(uint16_t{});        // 2-byte header
-  AssertNumBytes(uint32_t{});        // 4-byte header
+  AssertNumBytes(uint8_t{});   // 1-byte header
+  AssertNumBytes(uint16_t{});  // 2-byte header
+  AssertNumBytes(uint32_t{});  // 4-byte header
 }
 
 TEST(Norm2HeaderTest, ReadInvalid) {
@@ -211,12 +211,12 @@ TEST(Norm2HeaderTest, ResetByPayload) {
   auto WriteHeader = [](auto value, irs::bstring& buf) {
     using value_type = decltype(value);
 
-    static_assert(std::is_same_v<value_type, irs::byte_type> ||
+    static_assert(std::is_same_v<value_type, uint8_t> ||
                   std::is_same_v<value_type, uint16_t> ||
                   std::is_same_v<value_type, uint32_t>);
 
     irs::Norm2Encoding encoding;
-    if constexpr (std::is_same_v<value_type, irs::byte_type>) {
+    if constexpr (std::is_same_v<value_type, uint8_t>) {
       encoding = irs::Norm2Encoding::Byte;
     } else if (std::is_same_v<value_type, uint16_t>) {
       encoding = irs::Norm2Encoding::Short;
@@ -242,14 +242,14 @@ TEST(Norm2HeaderTest, ResetByPayload) {
   // 1-byte header
   {
     irs::bstring buf;
-    WriteHeader(irs::byte_type{}, buf);
+    WriteHeader(uint8_t{}, buf);
     auto hdr = irs::Norm2Header::Read(buf);
     ASSERT_TRUE(hdr.has_value());
     acc.Reset(hdr.value());
     buf.clear();
     irs::Norm2Header::Write(acc, buf);
 
-    AssertNorm2Header(buf, sizeof(irs::byte_type),
+    AssertNorm2Header(buf, sizeof(uint8_t),
                       std::numeric_limits<uint8_t>::max() - 2,
                       std::numeric_limits<uint8_t>::max());
   }

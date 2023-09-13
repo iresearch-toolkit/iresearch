@@ -237,15 +237,12 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight(false), weight);
     ASSERT_NE(fst::fsa::BooleanWeight(false, 2), weight);
     ASSERT_NE(
-      fst::fsa::BooleanWeight(
-        false,
-        std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()),
+      fst::fsa::BooleanWeight(false, std::numeric_limits<uint8_t>::max()),
       weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true), weight);
     ASSERT_EQ(fst::fsa::BooleanWeight(true, 1), weight);
     ASSERT_EQ(
-      fst::fsa::BooleanWeight(
-        true, std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max()),
+      fst::fsa::BooleanWeight(true, std::numeric_limits<uint8_t>::max()),
       weight);
     ASSERT_EQ(fst::fsa::BooleanWeight::NoWeight(), weight.Quantize());
     ASSERT_NE(weight, weight.Quantize());
@@ -255,8 +252,7 @@ TEST(boolean_weight_test, create) {
     ASSERT_NE(fst::fsa::BooleanWeight::Zero(), weight);
     ASSERT_EQ(true, bool(weight));
     ASSERT_NE(false, bool(weight));
-    ASSERT_EQ(std::numeric_limits<fst::fsa::BooleanWeight::PayloadType>::max(),
-              weight.Payload());
+    ASSERT_EQ(std::numeric_limits<uint8_t>::max(), weight.Payload());
     ASSERT_EQ(1, weight.Hash());
 
     {
