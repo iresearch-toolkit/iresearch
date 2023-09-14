@@ -27,21 +27,20 @@
 
 namespace irs {
 
-const irs::parametric_description& default_pdp(irs::byte_type distance,
-                                               bool with_transpositions) {
+const parametric_description& default_pdp(uint8_t distance,
+                                          bool with_transpositions) {
   struct builder {
-    using type = irs::parametric_description;
+    using type = parametric_description;
 
     static type make(size_t idx) {
-      const auto max_distance = irs::byte_type(idx >> 1);
+      const auto max_distance = uint8_t(idx >> 1);
       const auto with_transpositions = 0 != (idx % 2);
-      return irs::make_parametric_description(max_distance,
-                                              with_transpositions);
+      return make_parametric_description(max_distance, with_transpositions);
     }
   };
 
   const size_t idx = 2 * size_t(distance) + size_t(with_transpositions);
-  return irs::irstd::static_lazy_array<builder, 9>::at(idx);
+  return irstd::static_lazy_array<builder, 9>::at(idx);
 }
 
 }  // namespace irs

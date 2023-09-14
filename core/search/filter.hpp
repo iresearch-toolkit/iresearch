@@ -138,7 +138,7 @@ class filter_with_options : public filter {
  protected:
   bool equals(const filter& rhs) const noexcept override {
     return filter::equals(rhs) &&
-           options_ == down_cast<filter_type>(rhs).options_;
+           options_ == DownCast<filter_type>(rhs).options_;
   }
 
  private:
@@ -163,7 +163,7 @@ class filter_base : public filter_with_options<Options> {
  protected:
   bool equals(const filter& rhs) const noexcept final {
     return filter_with_options<options_type>::equals(rhs) &&
-           field_ == down_cast<filter_type>(rhs).field_;
+           field_ == DownCast<filter_type>(rhs).field_;
   }
 
  private:

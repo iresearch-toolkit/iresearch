@@ -161,8 +161,8 @@ FeatureWriter::ptr Norm2::MakeWriter(std::span<const bytes_view> headers) {
   }
 
   switch (max_bytes) {
-    case sizeof(byte_type):
-      return memory::make_managed<Norm2Writer<byte_type>>();
+    case sizeof(uint8_t):
+      return memory::make_managed<Norm2Writer<uint8_t>>();
     case sizeof(uint16_t):
       return memory::make_managed<Norm2Writer<uint16_t>>();
     default:

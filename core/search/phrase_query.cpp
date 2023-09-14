@@ -268,7 +268,7 @@ doc_iterator::ptr VariadicPhraseQuery::execute(
     // TODO(MBkkt) VariadicPhrase wand support
     auto disj =
       MakeDisjunction<Disjunction>({}, std::move(disj_itrs), NoopAggregator{});
-    pos.first = down_cast<CompoundDocIterator>(disj.get());
+    pos.first = DownCast<CompoundDocIterator>(disj.get());
     conj_itrs.emplace_back(std::move(disj));
     ++position;
   }
@@ -371,7 +371,7 @@ doc_iterator::ptr VariadicPhraseQuery::ExecuteWithOffsets(
     // TODO(MBkkt) VariadicPhrase wand support
     auto disj =
       MakeDisjunction<Disjunction>({}, std::move(disj_itrs), NoopAggregator{});
-    pos.first = down_cast<CompundDocIterator>(disj.get());
+    pos.first = DownCast<CompundDocIterator>(disj.get());
     conj_itrs.emplace_back(std::move(disj));
     ++position;
     ++i;

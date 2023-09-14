@@ -56,7 +56,7 @@ constexpr uint32_t INVALID_STATE = 0;
 ///        parametric state
 ////////////////////////////////////////////////////////////////////////////////
 struct position {
-  explicit position(uint32_t offset = 0, byte_type distance = 0,
+  explicit position(uint32_t offset = 0, uint8_t distance = 0,
                     bool transpose = false) noexcept
     : offset(offset), distance(distance), transpose(transpose) {}
 
@@ -78,9 +78,9 @@ struct position {
   }
 
   uint32_t offset{};      // parametric position offset
-  byte_type distance{};   // parametric position distance
+  uint8_t distance{};     // parametric position distance
   bool transpose{false};  // position is introduced by transposition
-};                        // position
+};
 
 IRS_FORCE_INLINE uint32_t abs_diff(uint32_t lhs, uint32_t rhs) noexcept {
   return lhs < rhs ? rhs - lhs : lhs - rhs;
@@ -104,7 +104,7 @@ IRS_FORCE_INLINE bool subsumes(const position& lhs,
 ////////////////////////////////////////////////////////////////////////////////
 class parametric_state {
  public:
-  bool emplace(uint32_t offset, byte_type distance, bool transpose) {
+  bool emplace(uint32_t offset, uint8_t distance, bool transpose) {
     return emplace(position(offset, distance, transpose));
   }
 
@@ -230,8 +230,7 @@ const void* parametric_states::parametric_state_hash::SEED =
 ///        'state' according to a specified characteristic vector 'chi'
 ////////////////////////////////////////////////////////////////////////////////
 void add_elementary_transitions(parametric_state& state, const position& pos,
-                                const uint64_t chi,
-                                const byte_type max_distance,
+                                const uint64_t chi, const uint8_t max_distance,
                                 const bool with_transpositions) {
   if (irs::check_bit<0>(chi)) {
     // Situation 1: [i+1,e] subsumes { [i,e+1], [i+1,e+1], [i+1,e] }
@@ -268,7 +267,7 @@ void add_elementary_transitions(parametric_state& state, const position& pos,
 ///        according to a specified characteristic vector 'cv'
 ////////////////////////////////////////////////////////////////////////////////
 void add_transition(parametric_state& to, const parametric_state& from,
-                    const uint64_t cv, const byte_type max_distance,
+                    const uint64_t cv, const uint8_t max_distance,
                     const bool with_transpositions) {
   to.clear();
   for (const auto& pos : from) {
@@ -298,7 +297,7 @@ IRS_FORCE_INLINE uint64_t chi_max(uint32_t chi_size) noexcept {
 /// @returns number of states in parametric description according to
 ///          specified options
 ////////////////////////////////////////////////////////////////////////////////
-size_t predict_num_states(byte_type max_distance,
+size_t predict_num_states(uint8_t max_distance,
                           bool with_transpositions) noexcept {
   static constexpr size_t NUM_STATES[]{
     2,    2,     // distance 0
@@ -440,7 +439,7 @@ namespace irs {
 
 parametric_description::parametric_description(
   std::vector<transition_t>&& transitions, std::vector<byte_type>&& distance,
-  byte_type max_distance) noexcept
+  uint8_t max_distance) noexcept
   : transitions_(std::move(transitions)),
     distance_(std::move(distance)),
     chi_size_(::chi_size(max_distance)),
@@ -451,7 +450,7 @@ parametric_description::parametric_description(
   IRS_ASSERT(0 == (distance_.size() % chi_size_));
 }
 
-parametric_description make_parametric_description(byte_type max_distance,
+parametric_description make_parametric_description(uint8_t max_distance,
                                                    bool with_transpositions) {
   if (max_distance > parametric_description::MAX_DISTANCE) {
     // invalid parametric description
@@ -532,7 +531,7 @@ void write(const parametric_description& description, data_output& out) {
 }
 
 parametric_description read(data_input& in) {
-  const byte_type max_distance = in.read_byte();
+  const uint8_t max_distance = in.read_byte();
 
   const size_t tcount = in.read_vlong();
   std::vector<parametric_description::transition_t> transitions(tcount);

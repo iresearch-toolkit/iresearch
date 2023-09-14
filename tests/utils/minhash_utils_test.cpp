@@ -136,13 +136,11 @@ TEST(MinHashTest, Jaccard) {
   auto assert_jaccard = [](const irs::MinHash& lhs, const irs::MinHash rhs,
                            double expected) {
     // Circumvent Apple Clang build issue
-    const std::vector<size_t> rhs_values{std::begin(rhs), std::end(rhs)};
-    const std::vector<size_t> lhs_values{std::begin(lhs), std::end(lhs)};
+    const std::vector<uint64_t> rhs_values{std::begin(rhs), std::end(rhs)};
+    const std::vector<uint64_t> lhs_values{std::begin(lhs), std::end(lhs)};
 
-    ASSERT_DOUBLE_EQ(expected,
-                     lhs.Jaccard(std::span<const size_t>{rhs_values}));
-    ASSERT_DOUBLE_EQ(expected,
-                     rhs.Jaccard(std::span<const size_t>{lhs_values}));
+    ASSERT_DOUBLE_EQ(expected, lhs.Jaccard(rhs_values));
+    ASSERT_DOUBLE_EQ(expected, rhs.Jaccard(lhs_values));
     ASSERT_DOUBLE_EQ(expected, lhs.Jaccard(rhs));
     ASSERT_DOUBLE_EQ(expected, rhs.Jaccard(lhs));
   };

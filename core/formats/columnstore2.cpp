@@ -1705,7 +1705,7 @@ const column_header* reader::header(field_id field) const {
                    : columns_[field];
 
   if (column) {
-    return &down_cast<column_base>(*column).header();
+    return &DownCast<column_base>(*column).header();
   }
 
   return nullptr;

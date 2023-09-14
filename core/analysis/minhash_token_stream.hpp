@@ -67,7 +67,7 @@ class MinHashTokenStream final : public TypedAnalyzer<MinHashTokenStream>,
 
  private:
   using attributes = std::tuple<term_attribute, increment, offset>;
-  using iterator = std::vector<size_t>::const_iterator;
+  using iterator = std::vector<uint64_t>::const_iterator;
 
   void ComputeSignature();
 

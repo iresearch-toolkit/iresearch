@@ -73,13 +73,13 @@ class WandWriterImpl final : public WandWriter {
     Producer::Write(entry, out);
   }
 
-  byte_type Size(size_t level) const noexcept final {
+  uint8_t Size(size_t level) const noexcept final {
     IRS_ASSERT(level + 1 < levels_.size());
     const auto& entry = levels_[level];
     return Producer::Size(entry);
   }
 
-  byte_type SizeRoot(size_t level) noexcept final {
+  uint8_t SizeRoot(size_t level) noexcept final {
     IRS_ASSERT(level < levels_.size());
     auto it = levels_.begin();
     for (auto end = it + level; it != end;) {
@@ -208,7 +208,7 @@ class FreqNormProducer {
     }
   }
 
-  static size_t Size(Entry entry) noexcept {
+  static uint8_t Size(Entry entry) noexcept {
     IRS_ASSERT(entry.freq >= 1);
     size_t size = bytes_io<uint32_t>::vsize(entry.freq);
     if constexpr (kNorm) {

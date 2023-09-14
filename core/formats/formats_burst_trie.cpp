@@ -253,7 +253,7 @@ struct block_t : private util::noncopyable {
 
   using block_index_t = IntrusiveList<prefixed_output>;
 
-  block_t(block_index_t&& other, uint64_t block_start, byte_type meta,
+  block_t(block_index_t&& other, uint64_t block_start, uint8_t meta,
           uint16_t label) noexcept
     : index{std::move(other)}, start{block_start}, label{label}, meta{meta} {}
 
@@ -282,7 +282,7 @@ struct block_t : private util::noncopyable {
   block_index_t index;  // fst index data
   uint64_t start;       // file pointer
   uint16_t label;       // block lead label
-  byte_type meta;       // block metadata
+  uint8_t meta;         // block metadata
 };
 
 template<typename T>
@@ -386,7 +386,7 @@ class MonotonicBuffer {
 
 using OutputBuffer = MonotonicBuffer<block_t::prefixed_output>;
 
-enum EntryType : byte_type { ET_TERM = 0, ET_BLOCK, ET_INVALID };
+enum EntryType : uint8_t { ET_TERM = 0, ET_BLOCK, ET_INVALID };
 
 // Block or term
 class entry : private util::noncopyable {
@@ -394,8 +394,7 @@ class entry : private util::noncopyable {
   entry(irs::bytes_view term, version10::term_meta&& attrs, bool volatile_term);
 
   entry(irs::bytes_view prefix, block_t::block_index_t&& index,
-        uint64_t block_start, byte_type meta, uint16_t label,
-        bool volatile_term);
+        uint64_t block_start, uint8_t meta, uint16_t label, bool volatile_term);
   entry(entry&& rhs) noexcept;
   entry& operator=(entry&& rhs) noexcept;
   ~entry() noexcept;
@@ -434,7 +433,7 @@ entry::entry(irs::bytes_view term, version10::term_meta&& attrs,
 }
 
 entry::entry(irs::bytes_view prefix, block_t::block_index_t&& index,
-             uint64_t block_start, byte_type meta, uint16_t label,
+             uint64_t block_start, uint8_t meta, uint16_t label,
              bool volatile_term)
   : type_(ET_BLOCK) {
   if (block_t::INVALID_LABEL != label) {
@@ -500,29 +499,27 @@ struct block_meta {
   // 2 - is floor block
 
   // block has terms
-  static bool terms(byte_type mask) noexcept {
-    return check_bit<ET_TERM>(mask);
-  }
+  static bool terms(uint8_t mask) noexcept { return check_bit<ET_TERM>(mask); }
 
   // block has sub-blocks
-  static bool blocks(byte_type mask) noexcept {
+  static bool blocks(uint8_t mask) noexcept {
     return check_bit<ET_BLOCK>(mask);
   }
 
-  static void type(byte_type& mask, EntryType type) noexcept {
+  static void type(uint8_t& mask, EntryType type) noexcept {
     set_bit(mask, type);
   }
 
   // block is floor block
-  static bool floor(byte_type mask) noexcept {
+  static bool floor(uint8_t mask) noexcept {
     return check_bit<ET_INVALID>(mask);
   }
-  static void floor(byte_type& mask, bool b) noexcept {
+  static void floor(uint8_t& mask, bool b) noexcept {
     set_bit<ET_INVALID>(b, mask);
   }
 
   // resets block meta
-  static void reset(byte_type mask) noexcept {
+  static void reset(uint8_t mask) noexcept {
     unset_bit<ET_TERM>(mask);
     unset_bit<ET_BLOCK>(mask);
   }
@@ -829,7 +826,7 @@ struct cookie final : seek_cookie {
 
   bool IsEqual(const irs::seek_cookie& rhs) const noexcept final {
     // We intentionally don't check `rhs` cookie type.
-    const auto& rhs_meta = down_cast<cookie>(rhs).meta;
+    const auto& rhs_meta = DownCast<cookie>(rhs).meta;
     return meta.doc_start == rhs_meta.doc_start &&
            meta.pos_start == rhs_meta.pos_start;
   }
@@ -1007,7 +1004,7 @@ class field_writer final : public irs::field_writer {
   // end - index of the last entry in the block
   // meta - block metadata
   // label - block lead label (if present)
-  void WriteBlock(size_t prefix, size_t begin, size_t end, byte_type meta,
+  void WriteBlock(size_t prefix, size_t begin, size_t end, uint8_t meta,
                   uint16_t label);
 
   // prefix - prefix length ( in last_term
@@ -1038,7 +1035,7 @@ class field_writer final : public irs::field_writer {
 };
 
 void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
-                              irs::byte_type meta, uint16_t label) {
+                              uint8_t meta, uint16_t label) {
   IRS_ASSERT(end > begin);
 
   // begin of the block
@@ -1089,7 +1086,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   terms_out_->write_vlong(
     shift_pack_64(static_cast<uint64_t>(block_size), leaf));
 
-  auto copy = [this](const irs::byte_type* b, size_t len) {
+  auto copy = [this](const byte_type* b, size_t len) {
     terms_out_->write_bytes(b, len);
     return true;
   };
@@ -1097,7 +1094,7 @@ void field_writer::WriteBlock(size_t prefix, size_t begin, size_t end,
   if (terms_out_cipher_) {
     auto offset = block_start;
 
-    auto encrypt_and_copy = [this, &offset](irs::byte_type* b, size_t len) {
+    auto encrypt_and_copy = [this, &offset](byte_type* b, size_t len) {
       IRS_ASSERT(terms_out_cipher_);
 
       if (!terms_out_cipher_->encrypt(offset, b, len)) {
@@ -1134,7 +1131,7 @@ void field_writer::WriteBlocks(size_t prefix, size_t count) {
   IRS_ASSERT(blocks_.empty());
 
   // block metadata
-  irs::byte_type meta{};
+  uint8_t meta{};
 
   const size_t end = stack_.size();
   const size_t begin = end - count;
@@ -1377,7 +1374,7 @@ void field_writer::EndField(std::string_view name, IndexFeatures index_features,
   const auto [wand_mask, doc_count] = pw_->end_field();
 
   // cause creation of all final blocks
-  Push(kEmptyStringView<irs::byte_type>);
+  Push(kEmptyStringView<byte_type>);
 
   // write root block with empty prefix
   WriteBlocks(0, stack_.size());
@@ -1483,15 +1480,15 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   bytes_view min() const noexcept final { return min_term_; }
   bytes_view max() const noexcept final { return max_term_; }
   attribute* get_mutable(irs::type_info::type_id type) noexcept final;
-  bool has_scorer(byte_type index) const noexcept final;
+  bool has_scorer(uint8_t index) const noexcept final;
 
   virtual void prepare(burst_trie::Version version, index_input& in,
                        const feature_map_t& features);
 
-  byte_type WandCount() const noexcept { return wand_count_; }
+  uint8_t WandCount() const noexcept { return wand_count_; }
 
  protected:
-  byte_type WandIndex(byte_type i) const noexcept;
+  uint8_t WandIndex(uint8_t i) const noexcept;
 
  private:
   field_meta field_;
@@ -1505,7 +1502,7 @@ class term_reader_base : public irs::term_reader, private util::noncopyable {
   frequency freq_;  // total term freq
 };
 
-byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
+uint8_t term_reader_base::WandIndex(uint8_t i) const noexcept {
   if (i >= kMaxScorers) {
     return WandContext::kDisable;
   }
@@ -1516,10 +1513,10 @@ byte_type term_reader_base::WandIndex(byte_type i) const noexcept {
     return WandContext::kDisable;
   }
 
-  return static_cast<byte_type>(std::popcount(wand_mask_ & (mask - 1)));
+  return static_cast<uint8_t>(std::popcount(wand_mask_ & (mask - 1)));
 }
 
-bool term_reader_base::has_scorer(byte_type index) const noexcept {
+bool term_reader_base::has_scorer(uint8_t index) const noexcept {
   return WandIndex(index) != WandContext::kDisable;
 }
 
@@ -1546,7 +1543,7 @@ void term_reader_base::prepare(burst_trie::Version version, index_input& in,
 
   if (IRS_LIKELY(version >= burst_trie::Version::WAND)) {
     wand_mask_ = in.read_long();
-    wand_count_ = static_cast<byte_type>(std::popcount(wand_mask_));
+    wand_count_ = static_cast<uint8_t>(std::popcount(wand_mask_));
   }
 }
 
@@ -1620,7 +1617,7 @@ class block_iterator : util::noncopyable {
 
   const version10::term_meta& state() const noexcept { return state_; }
   bool dirty() const noexcept { return dirty_; }
-  byte_type meta() const noexcept { return cur_meta_; }
+  uint8_t meta() const noexcept { return cur_meta_; }
   size_t prefix() const noexcept { return prefix_; }
   EntryType type() const noexcept { return cur_type_; }
   uint64_t block_start() const noexcept { return cur_block_start_; }
@@ -3055,7 +3052,7 @@ bool automaton_term_iterator<FST>::next() {
         const auto* arc = arcs.value();
 
         if (next_label < arc->min) {
-          IRS_ASSERT(arc->min <= std::numeric_limits<byte_type>::max());
+          IRS_ASSERT(arc->min <= std::numeric_limits<uint8_t>::max());
           cur_block_->scan_to_sub_block(byte_type(arc->min));
           IRS_ASSERT(cur_block_->next_label() == block_t::INVALID_LABEL ||
                      arc->min < uint32_t(cur_block_->next_label()));
@@ -3076,7 +3073,7 @@ bool automaton_term_iterator<FST>::next() {
 
           if (!arc) {
             IRS_ASSERT(arcs.value()->min <=
-                       std::numeric_limits<byte_type>::max());
+                       std::numeric_limits<uint8_t>::max());
             cur_block_->scan_to_sub_block(byte_type(arcs.value()->min));
             IRS_ASSERT(cur_block_->next_label() == block_t::INVALID_LABEL ||
                        arcs.value()->min < uint32_t(cur_block_->next_label()));
@@ -3254,7 +3251,7 @@ class field_reader final : public irs::field_reader {
     size_t bit_union(const cookie_provider& provider, size_t* set) const final {
       auto term_provider = [&provider]() mutable -> const term_meta* {
         if (auto* cookie = provider()) {
-          return &down_cast<::cookie>(*cookie).meta;
+          return &DownCast<::cookie>(*cookie).meta;
         }
 
         return nullptr;
@@ -3302,7 +3299,7 @@ class field_reader final : public irs::field_reader {
     doc_iterator::ptr postings(const seek_cookie& cookie,
                                IndexFeatures features) const final {
       return owner_->pr_->iterator(meta().index_features, features,
-                                   down_cast<::cookie>(cookie).meta,
+                                   DownCast<::cookie>(cookie).meta,
                                    WandCount());
     }
 
@@ -3311,7 +3308,7 @@ class field_reader final : public irs::field_reader {
                                  const WanderatorOptions& options,
                                  WandContext ctx) const final {
       return owner_->pr_->wanderator(
-        meta().index_features, features, down_cast<::cookie>(cookie).meta,
+        meta().index_features, features, DownCast<::cookie>(cookie).meta,
         options, ctx,
         {.mapped_index = WandIndex(ctx.index), .count = WandCount()});
     }

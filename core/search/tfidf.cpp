@@ -262,8 +262,8 @@ struct MakeScoreFunctionImpl<TFIDFContext<Norm>> {
 
 void TFIDF::collect(byte_type* stats_buf, const FieldCollector* field,
                     const TermCollector* term) const {
-  const auto* field_ptr = down_cast<TFIDFFieldCollector>(field);
-  const auto* term_ptr = down_cast<TermCollectorImpl>(term);
+  const auto* field_ptr = DownCast<TFIDFFieldCollector>(field);
+  const auto* term_ptr = DownCast<TermCollectorImpl>(term);
 
   // nullptr possible if e.g. 'all' filter
   const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
@@ -389,7 +389,7 @@ bool TFIDF::equals(const Scorer& other) const noexcept {
   if (!Scorer::equals(other)) {
     return false;
   }
-  const auto& p = down_cast<TFIDF>(other);
+  const auto& p = DownCast<TFIDF>(other);
   return p.normalize_ == normalize_;
 }
 

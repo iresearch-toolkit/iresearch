@@ -675,7 +675,7 @@ void postings_writer_base::EndTerm(version10::term_meta& meta) {
   const bool has_skip_list = skip_.Skip0() < meta.docs_count;
   auto write_max_score = [&](size_t level) {
     ApplyWriters([&](auto& writer) {
-      const byte_type size = writer.SizeRoot(level);
+      const uint8_t size = writer.SizeRoot(level);
       doc_out_->write_byte(size);
     });
     ApplyWriters([&](auto& writer) { writer.WriteRoot(level, *doc_out_); });
@@ -1000,7 +1000,7 @@ void postings_writer<FormatTraits>::write(irs::doc_iterator& docs,
           // FIXME(gnusi): optimize for 1 writer case? compile? maybe just 1
           // composite wand writer?
           ApplyWriters([&](auto& writer) {
-            const byte_type size = writer.Size(level);
+            const uint8_t size = writer.Size(level);
             IRS_ASSERT(size <= irs::WandWriter::kMaxSize);
             out.write_byte(size);
           });
@@ -1928,24 +1928,24 @@ void single_doc_iterator<IteratorTraits, FieldTraits>::prepare(
 
 static_assert(kMaxScorers < WandContext::kDisable);
 
-template<byte_type Value>
+template<uint8_t Value>
 struct Extent {
-  static constexpr byte_type GetExtent() noexcept { return Value; }
+  static constexpr uint8_t GetExtent() noexcept { return Value; }
 };
 
 template<>
 struct Extent<WandContext::kDisable> {
-  Extent(byte_type value) noexcept : value{value} {}
+  Extent(uint8_t value) noexcept : value{value} {}
 
-  constexpr byte_type GetExtent() const noexcept { return value; }
+  constexpr uint8_t GetExtent() const noexcept { return value; }
 
-  byte_type value;
+  uint8_t value;
 };
 
 using DynamicExtent = Extent<WandContext::kDisable>;
 
-template<byte_type PossibleMin, typename Func>
-auto ResolveExtent(byte_type extent, Func&& func) {
+template<uint8_t PossibleMin, typename Func>
+auto ResolveExtent(uint8_t extent, Func&& func) {
   if constexpr (PossibleMin == WandContext::kDisable) {
     return std::forward<Func>(func)(Extent<0>{});
   } else {
@@ -1985,7 +1985,7 @@ void CommonSkipWandData(WandExtent extent, index_input& in) {
 }
 
 template<typename WandExtent>
-void CommonReadWandData(WandExtent wextent, byte_type index,
+void CommonReadWandData(WandExtent wextent, uint8_t index,
                         const ScoreFunction& func, WandSource& ctx,
                         index_input& in, score_t& score) {
   const auto extent = wextent.GetExtent();
@@ -1998,7 +1998,7 @@ void CommonReadWandData(WandExtent wextent, byte_type index,
     return;
   }
 
-  byte_type i = 0;
+  uint8_t i = 0;
   uint64_t scorer_offset = 0;
   for (; i < index; ++i) {
     scorer_offset += in.read_byte();
@@ -2043,7 +2043,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   void WandPrepare(const term_meta& meta, const index_input* doc_in,
                    const index_input* pos_in, const index_input* pay_in,
                    const ScoreFunctionFactory& factory, const Scorer& scorer,
-                   byte_type wand_index) {
+                   uint8_t wand_index) {
     prepare(meta, doc_in, pos_in, pay_in, wand_index);
     if (meta.docs_count > FieldTraits::block_size()) {
       return;
@@ -2073,7 +2073,7 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
   void prepare(const term_meta& meta, const index_input* doc_in,
                [[maybe_unused]] const index_input* pos_in,
                [[maybe_unused]] const index_input* pay_in,
-               byte_type wand_index = WandContext::kDisable);
+               uint8_t wand_index = WandContext::kDisable);
 
  private:
   attribute* get_mutable(irs::type_info::type_id type) noexcept final {
@@ -2138,8 +2138,8 @@ class doc_iterator : public doc_iterator_base<IteratorTraits, FieldTraits> {
       Disable();  // Prevent using skip-list by default
     }
 
-    void ReadMaxScore(byte_type index, const ScoreFunction& func,
-                      WandSource& ctx, index_input& in, score_t& score) {
+    void ReadMaxScore(uint8_t index, const ScoreFunction& func, WandSource& ctx,
+                      index_input& in, score_t& score) {
       CommonReadWandData(static_cast<WandExtent>(*this), index, func, ctx, in,
                          score);
     }
@@ -2246,7 +2246,7 @@ template<typename IteratorTraits, typename FieldTraits, typename WandExtent>
 void doc_iterator<IteratorTraits, FieldTraits, WandExtent>::prepare(
   const term_meta& meta, const index_input* doc_in,
   [[maybe_unused]] const index_input* pos_in,
-  [[maybe_unused]] const index_input* pay_in, byte_type wand_index) {
+  [[maybe_unused]] const index_input* pay_in, uint8_t wand_index) {
   // Don't use doc_iterator for singleton docs, must be ensured by the caller
   IRS_ASSERT(meta.docs_count > 1);
   IRS_ASSERT(this->begin_ == std::end(this->buf_.docs));
@@ -2452,7 +2452,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
   using ptr = memory::managed_ptr<wanderator>;
 
   wanderator(const ScoreFunctionFactory& factory, const Scorer& scorer,
-             WandExtent extent, byte_type index, bool strict)
+             WandExtent extent, uint8_t index, bool strict)
     : skip_{IteratorTraits::block_size(), postings_writer_base::kSkipN,
             ReadSkip{factory, scorer, index, extent}},
       scorer_{factory(*this)} {
@@ -2503,7 +2503,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
   class ReadSkip {
    public:
     ReadSkip(const ScoreFunctionFactory& factory, const Scorer& scorer,
-             byte_type index, WandExtent extent)
+             uint8_t index, WandExtent extent)
       : ctx_{scorer.prepare_wand_source()},
         func_{factory(*ctx_)},
         index_{index},
@@ -2551,7 +2551,7 @@ class wanderator : public doc_iterator_base<IteratorTraits, FieldTraits>,
     std::vector<score_t> skip_scores_;
     SkipState prev_skip_;  // skip context used by skip reader
     score_t threshold_{};
-    byte_type index_;
+    uint8_t index_;
     IRS_NO_UNIQUE_ADDRESS WandExtent extent_;
   };
 
@@ -2903,7 +2903,7 @@ bool IndexMetaWriter::prepare(directory& dir, IndexMeta& meta,
 
     if (version_ > kFormatMin) {
       const auto payload = GetPayload(meta);
-      const byte_type flags = IsNull(payload) ? 0 : kHasPayload;
+      const uint8_t flags = IsNull(payload) ? 0 : kHasPayload;
       out->write_byte(flags);
 
       if (flags == kHasPayload) {
@@ -3121,7 +3121,7 @@ void SegmentMetaWriter::write(directory& dir, std::string& meta_file,
     throw io_error{absl::StrCat("failed to create file, path: ", meta_file)};
   }
 
-  byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
+  uint8_t flags = meta.column_store ? HAS_COLUMN_STORE : 0;
 
   format_utils::write_header(*out, FORMAT_NAME, version_);
   write_string(*out, meta.name);
@@ -3498,7 +3498,7 @@ class postings_reader final : public postings_reader_base {
   irs::doc_iterator::ptr iterator(IndexFeatures field_features,
                                   IndexFeatures required_features,
                                   const term_meta& meta,
-                                  byte_type wand_count) final {
+                                  uint8_t wand_count) final {
     if (meta.docs_count == 0) {
       IRS_ASSERT(false);
       return irs::doc_iterator::empty();
@@ -3540,7 +3540,7 @@ class postings_reader final : public postings_reader_base {
   }
 
   size_t bit_union(IndexFeatures field, const term_provider_f& provider,
-                   size_t* set, byte_type wand_count) final;
+                   size_t* set, uint8_t wand_count) final;
 
  private:
   irs::doc_iterator::ptr MakeWanderator(IndexFeatures field_features,
@@ -3760,7 +3760,7 @@ void bit_union(index_input& doc_in, doc_id_t docs_count, uint32_t (&docs)[N],
 template<typename FormatTraits>
 size_t postings_reader<FormatTraits>::bit_union(
   const IndexFeatures field_features, const term_provider_f& provider,
-  size_t* set, byte_type wand_count) {
+  size_t* set, uint8_t wand_count) {
   constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
   uint32_t enc_buf[FormatTraits::block_size()];
   uint32_t docs[FormatTraits::block_size()];

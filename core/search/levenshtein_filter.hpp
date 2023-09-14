@@ -35,7 +35,7 @@ struct by_edit_distance_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parametric description provider
   //////////////////////////////////////////////////////////////////////////////
-  using pdp_f = const parametric_description& (*)(byte_type, bool);
+  using pdp_f = const parametric_description& (*)(uint8_t, bool);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief target value
@@ -59,7 +59,7 @@ struct by_edit_distance_filter_options {
   //////////////////////////////////////////////////////////////////////////////
   /// @returns maximum allowed edit distance
   //////////////////////////////////////////////////////////////////////////////
-  byte_type max_distance{0};
+  uint8_t max_distance{0};
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief consider transpositions as an atomic change
@@ -74,7 +74,7 @@ struct by_edit_distance_filter_options {
   size_t hash() const noexcept {
     const auto hash0 = hash_combine(std::hash<bool>()(with_transpositions),
                                     std::hash<bstring>()(term));
-    const auto hash1 = hash_combine(std::hash<byte_type>()(max_distance),
+    const auto hash1 = hash_combine(std::hash<uint8_t>()(max_distance),
                                     std::hash<bstring>()(prefix));
     return hash_combine(hash0, hash1);
   }
@@ -112,7 +112,7 @@ class by_edit_distance final : public filter_base<by_edit_distance_options> {
 
   static prepared::ptr prepare(const PrepareContext& ctx,
                                std::string_view field, bytes_view term,
-                               size_t terms_limit, byte_type max_distance,
+                               size_t terms_limit, uint8_t max_distance,
                                options_type::pdp_f provider,
                                bool with_transpositions, bytes_view prefix);
 

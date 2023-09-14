@@ -59,9 +59,9 @@ class ctr_cipher_stream : public encryption::stream {
   bool decrypt(uint64_t offset, byte_type* data, size_t size) final;
 
  private:
-  bool encrypt_block(uint64_t block_index, byte_type* data, byte_type* scratch);
-
-  bool decrypt_block(uint64_t block_index, byte_type* data, byte_type* scratch);
+  // for CTR decryption and encryption are the same
+  bool crypt_block(uint64_t block_index, byte_type* IRS_RESTRICT data,
+                   byte_type* IRS_RESTRICT scratch);
 
   const cipher* cipher_;
   bstring iv_;
@@ -88,7 +88,7 @@ bool ctr_cipher_stream::encrypt(uint64_t offset, byte_type* data, size_t size) {
       std::memmove(block + block_offset, data, n);
     }
 
-    if (!encrypt_block(block_index, block, scratch.data())) {
+    if (!crypt_block(block_index, block, scratch.data())) {
       return false;
     }
 
@@ -128,7 +128,7 @@ bool ctr_cipher_stream::decrypt(uint64_t offset, byte_type* data, size_t size) {
       std::memmove(block + block_offset, data, n);
     }
 
-    if (!decrypt_block(block_index, block, scratch.data())) {
+    if (!crypt_block(block_index, block, scratch.data())) {
       return false;
     }
 
@@ -148,8 +148,9 @@ bool ctr_cipher_stream::decrypt(uint64_t offset, byte_type* data, size_t size) {
   }
 }
 
-bool ctr_cipher_stream::encrypt_block(uint64_t block_index, byte_type* data,
-                                      byte_type* scratch) {
+bool ctr_cipher_stream::crypt_block(uint64_t block_index,
+                                    byte_type* IRS_RESTRICT data,
+                                    byte_type* IRS_RESTRICT scratch) {
   // init nonce + counter
   const auto block_size = this->block_size();
   std::memmove(scratch, iv_.c_str(), block_size);
@@ -167,12 +168,6 @@ bool ctr_cipher_stream::encrypt_block(uint64_t block_index, byte_type* data,
   }
 
   return true;
-}
-
-bool ctr_cipher_stream::decrypt_block(uint64_t block_index, byte_type* data,
-                                      byte_type* scratch) {
-  // for CTR decryption and encryption are the same
-  return encrypt_block(block_index, data, scratch);
 }
 
 // -----------------------------------------------------------------------------

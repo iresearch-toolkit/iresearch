@@ -72,10 +72,10 @@ class Norm : public attribute {
 static_assert(std::is_nothrow_move_constructible_v<Norm>);
 static_assert(std::is_nothrow_move_assignable_v<Norm>);
 
-enum class Norm2Version : byte_type { kMin = 0 };
+enum class Norm2Version : uint8_t { kMin = 0 };
 
-enum class Norm2Encoding : byte_type {
-  Byte = sizeof(byte_type),
+enum class Norm2Encoding : uint8_t {
+  Byte = sizeof(uint8_t),
   Short = sizeof(uint16_t),
   Int = sizeof(uint32_t)
 };
@@ -88,7 +88,7 @@ class Norm2Header final {
   }
 
   constexpr static bool CheckNumBytes(size_t num_bytes) noexcept {
-    return num_bytes == sizeof(byte_type) || num_bytes == sizeof(uint16_t) ||
+    return num_bytes == sizeof(uint8_t) || num_bytes == sizeof(uint16_t) ||
            num_bytes == sizeof(uint32_t);
   }
 
@@ -104,8 +104,8 @@ class Norm2Header final {
   void Reset(const Norm2Header& hdr) noexcept;
 
   size_t MaxNumBytes() const noexcept {
-    if (max_ <= std::numeric_limits<byte_type>::max()) {
-      return sizeof(byte_type);
+    if (max_ <= std::numeric_limits<uint8_t>::max()) {
+      return sizeof(uint8_t);
     } else if (max_ <= std::numeric_limits<uint16_t>::max()) {
       return sizeof(uint16_t);
     } else {
@@ -127,7 +127,7 @@ class Norm2Header final {
 template<typename T>
 class Norm2Writer : public FeatureWriter {
  public:
-  static_assert(std::is_same_v<T, byte_type> || std::is_same_v<T, uint16_t> ||
+  static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> ||
                 std::is_same_v<T, uint32_t>);
 
   explicit Norm2Writer() noexcept : hdr_{Norm2Encoding{sizeof(T)}} {}
@@ -145,7 +145,7 @@ class Norm2Writer : public FeatureWriter {
     uint32_t value;
 
     switch (payload.size()) {
-      case sizeof(irs::byte_type): {
+      case sizeof(uint8_t): {
         value = payload.front();
       } break;
       case sizeof(uint16_t): {
@@ -168,8 +168,8 @@ class Norm2Writer : public FeatureWriter {
 
  private:
   static void WriteValue(data_output& out, uint32_t value) {
-    if constexpr (sizeof(T) == sizeof(byte_type)) {
-      out.write_byte(static_cast<byte_type>(value & 0xFF));
+    if constexpr (sizeof(T) == sizeof(uint8_t)) {
+      out.write_byte(static_cast<uint8_t>(value & 0xFF));
     }
 
     if constexpr (sizeof(T) == sizeof(uint16_t)) {
@@ -209,7 +209,7 @@ class Norm2 : public attribute {
 
   template<typename T>
   static auto MakeReader(Context&& ctx) {
-    static_assert(std::is_same_v<T, byte_type> || std::is_same_v<T, uint16_t> ||
+    static_assert(std::is_same_v<T, uint8_t> || std::is_same_v<T, uint16_t> ||
                   std::is_same_v<T, uint32_t>);
     IRS_ASSERT(ctx.num_bytes == sizeof(T));
     IRS_ASSERT(ctx.it);
@@ -222,11 +222,11 @@ class Norm2 : public attribute {
         IRS_ASSERT(sizeof(T) == ctx.payload->value.size());
         const auto* value = ctx.payload->value.data();
 
-        if constexpr (std::is_same_v<T, irs::byte_type>) {
+        if constexpr (std::is_same_v<T, uint8_t>) {
           return *value;
+        } else {
+          return irs::read<T>(value);
         }
-
-        return irs::read<T>(value);
       }
 
       // we should investigate why we failed to find a norm2 value for doc

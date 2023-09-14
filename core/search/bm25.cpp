@@ -366,8 +366,8 @@ void BM25::collect(byte_type* stats_buf, const irs::FieldCollector* field,
                    const irs::TermCollector* term) const {
   auto* stats = stats_cast(stats_buf);
 
-  const auto* field_ptr = down_cast<BM25FieldCollector>(field);
-  const auto* term_ptr = down_cast<TermCollectorImpl>(term);
+  const auto* field_ptr = DownCast<BM25FieldCollector>(field);
+  const auto* term_ptr = DownCast<TermCollectorImpl>(term);
 
   // nullptr possible if e.g. 'all' filter
   const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0;
@@ -546,7 +546,7 @@ bool BM25::equals(const Scorer& other) const noexcept {
   if (!Scorer::equals(other)) {
     return false;
   }
-  const auto& p = down_cast<BM25>(other);
+  const auto& p = DownCast<BM25>(other);
   return p.k_ == k_ && p.b_ == b_;
 }
 
