@@ -35,7 +35,7 @@ class parametric_description;
 ///       the exception for distance 4: can only build description wihtout
 ///       transpositions
 ////////////////////////////////////////////////////////////////////////////////
-const parametric_description& default_pdp(byte_type max_distance,
+const parametric_description& default_pdp(uint8_t max_distance,
                                           bool with_transpositions);
 
 }  // namespace irs

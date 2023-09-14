@@ -327,7 +327,7 @@ bool boolean_filter::equals(const filter& rhs) const noexcept {
   if (!filter::equals(rhs)) {
     return false;
   }
-  const auto& typed_rhs = down_cast<boolean_filter>(rhs);
+  const auto& typed_rhs = DownCast<boolean_filter>(rhs);
   return filters_.size() == typed_rhs.size() &&
          std::equal(begin(), end(), typed_rhs.begin(),
                     [](const filter::ptr& lhs, const filter::ptr& rhs) {
@@ -384,7 +384,7 @@ void boolean_filter::group_filters(filter::ptr& all_docs_zero_boost,
       continue;
     }
     if (irs::type<Not>::id() == (*begin)->type()) {
-      const auto res = optimize_not(down_cast<Not>(**begin));
+      const auto res = optimize_not(DownCast<Not>(**begin));
 
       if (!res.first) {
         continue;
@@ -628,7 +628,7 @@ bool Not::equals(const irs::filter& rhs) const noexcept {
   if (!filter::equals(rhs)) {
     return false;
   }
-  const auto& typed_rhs = down_cast<Not>(rhs);
+  const auto& typed_rhs = DownCast<Not>(rhs);
   return (!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_) ||
          (empty() && typed_rhs.empty());
 }

@@ -172,16 +172,13 @@ automaton::StateId utf8_expand_labels(automaton& a) {
   class utf8_char {
    public:
     explicit utf8_char(uint32_t utf32value) noexcept
-      : size_(utf8_utils::utf32_to_utf8(utf32value, data())) {
-    }
+      : size_(utf8_utils::utf32_to_utf8(utf32value, data())) {}
 
     uint32_t size() const noexcept { return size_; }
     const byte_type* c_str() const noexcept {
       return const_cast<utf8_char*>(this)->data();
     }
-    operator bytes_view() const noexcept {
-      return { c_str(), size() };
-    }
+    operator bytes_view() const noexcept { return {c_str(), size()}; }
 
    private:
     byte_type* data() noexcept { return reinterpret_cast<byte_type*>(&data_); }
@@ -194,7 +191,7 @@ automaton::StateId utf8_expand_labels(automaton& a) {
 
   utf8_transitions_builder builder;
   fst::ArcIteratorData<automaton::Arc> arcs;
-  for (auto s = 0, nstates = a.NumStates(); s < nstates ; ++s) {
+  for (auto s = 0, nstates = a.NumStates(); s < nstates; ++s) {
     a.InitArcIterator(s, &arcs);
 
     if (arcs.narcs) {
@@ -214,7 +211,7 @@ automaton::StateId utf8_expand_labels(automaton& a) {
       auto begin = arcs.arcs;
       for (; begin != arc; ++begin) {
         if (IRS_UNLIKELY(begin->ilabel >
-static_cast<Label>(utf8_utils::MAX_CODE_POINT))) {
+                         static_cast<Label>(utf8_utils::MAX_CODE_POINT))) {
           // invalid code point, give up
           return s;
         }
@@ -233,9 +230,11 @@ static_cast<Label>(utf8_utils::MAX_CODE_POINT))) {
         case 1: {
           auto& utf8_arc = utf8_arcs.front();
           utf8_emplace_arc(a, s, rho_state, bytes_view(utf8_arc.first),
-utf8_arc.second); } break; default: {
-          //FIXME
-          //builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
+                           utf8_arc.second);
+        } break;
+        default: {
+          // FIXME
+          builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
         } break;
       }
     }
@@ -244,14 +243,15 @@ utf8_arc.second); } break; default: {
 #ifdef IRESEARCH_DEBUG
   // Ensure automaton is defined over the alphabet of ranges
   // [0..127], [128..191], [192..223], [224..239], [240..255]
-  for (auto s = 0, nstates = a.NumStates(); s < nstates ; ++s) {
+  for (auto s = 0, nstates = a.NumStates(); s < nstates; ++s) {
     a.InitArcIterator(s, &arcs);
     auto* begin = arcs.arcs;
     auto* end = begin + arcs.narcs;
     for (; begin != end; ++begin) {
-      IRS_ASSERT((begin->ilabel >=
-range_label(std::numeric_limits<byte_type>::min()) && begin->ilabel <=
-range_label(std::numeric_limits<byte_type>::max())));
+      IRS_ASSERT(begin->ilabel >=
+                 range_label(std::numeric_limits<uint8_t>::min()));
+      IRS_ASSERT(begin->ilabel <=
+                 range_label(std::numeric_limits<uint8_t>::max()));
     }
   }
 #endif

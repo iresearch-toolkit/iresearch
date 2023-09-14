@@ -59,9 +59,9 @@ class PhraseQuery : public filter::prepared {
     if (auto state = states_.find(segment); state) {
       boost *= this->boost();
       if constexpr (std::is_same_v<State, FixedPhraseState>) {
-        visitor.Visit(down_cast<FixedPhraseQuery>(*this), *state, boost);
+        visitor.Visit(DownCast<FixedPhraseQuery>(*this), *state, boost);
       } else if constexpr (std::is_same_v<State, VariadicPhraseState>) {
-        visitor.Visit(down_cast<VariadicPhraseQuery>(*this), *state, boost);
+        visitor.Visit(DownCast<VariadicPhraseQuery>(*this), *state, boost);
       }
     }
   }

@@ -66,7 +66,7 @@ struct encode_traits;
 template<>
 struct encode_traits<uint64_t> {
   typedef uint64_t type;
-  static const byte_type TYPE_MAGIC = 0x60;
+  static constexpr byte_type TYPE_MAGIC = 0x60;
   static type hton(type value) { return htonll(value); }
   static type ntoh(type value) { return ntohll(value); }
 };
@@ -74,7 +74,7 @@ struct encode_traits<uint64_t> {
 template<>
 struct encode_traits<uint32_t> {
   typedef uint32_t type;
-  static const byte_type TYPE_MAGIC = 0;
+  static constexpr byte_type TYPE_MAGIC = 0;
   static type hton(type value) { return htonl(value); }
   static type ntoh(type value) { return ntohl(value); }
 };
@@ -83,14 +83,14 @@ struct encode_traits<uint32_t> {
 template<>
 struct encode_traits<float_t> : encode_traits<uint32_t> {
   // cppcheck-suppress duplInheritedMember
-  static const byte_type TYPE_MAGIC = 0x20;
+  static constexpr byte_type TYPE_MAGIC = 0x20;
 };
 #endif
 
 template<>
 struct encode_traits<double_t> : encode_traits<uint64_t> {
   // cppcheck-suppress duplInheritedMember
-  static const byte_type TYPE_MAGIC = 0xA0;
+  static constexpr byte_type TYPE_MAGIC = 0xA0;
 };
 
 // returns number of bytes required to store

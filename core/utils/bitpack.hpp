@@ -49,7 +49,7 @@ namespace irs {
 
 namespace bitpack {
 
-constexpr uint32_t ALL_EQUAL = 0U;
+inline constexpr uint32_t ALL_EQUAL = 0U;
 
 // returns true if one can use run length encoding for the specified numberof
 // bits

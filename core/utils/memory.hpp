@@ -115,8 +115,8 @@ struct aligned_union {
   };
 #endif
 
-  static const size_t alignment_value = alignof(type);
-  static const size_t size_value = sizeof(type);
+  static constexpr size_t alignment_value = alignof(type);
+  static constexpr size_t size_value = sizeof(type);
 };
 
 // Provides the storage (POD type) that is suitable for use as

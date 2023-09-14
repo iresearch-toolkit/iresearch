@@ -1355,7 +1355,7 @@ bool WriteFields(Columnstore& cs, Iterator& feature_itr,
   // Ensured by the caller
   IRS_ASSERT(flush_state.columns);
   auto& buffered_columns = const_cast<BufferedColumns&>(
-    down_cast<BufferedColumns>(*flush_state.columns));
+    DownCast<BufferedColumns>(*flush_state.columns));
 
   while (field_itr.next()) {
     buffered_columns.Clear();

@@ -90,7 +90,7 @@ constexpr CachedFunc<Input, Size, Func> cache_func(Input offset, Func&& func) {
 }
 
 template<typename To, typename From>
-constexpr auto* down_cast(From* from) noexcept {
+constexpr auto* DownCast(From* from) noexcept {
   static_assert(!std::is_pointer_v<To>);
   static_assert(!std::is_reference_v<To>);
   using CastTo =
@@ -100,8 +100,8 @@ constexpr auto* down_cast(From* from) noexcept {
 }
 
 template<typename To, typename From>
-constexpr auto& down_cast(From& from) noexcept {
-  return *down_cast<To>(std::addressof(from));
+constexpr auto& DownCast(From& from) noexcept {
+  return *DownCast<To>(std::addressof(from));
 }
 
 // A convenient helper to use with std::visit(...)

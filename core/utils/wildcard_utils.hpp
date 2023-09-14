@@ -38,7 +38,7 @@ enum class WildcardType {
 
 WildcardType wildcard_type(bytes_view pattern) noexcept;
 
-enum WildcardMatch : byte_type {
+enum WildcardMatch : uint8_t {
   ANY_STRING = '%',
   ANY_CHAR = '_',
   ESCAPE = '\\'

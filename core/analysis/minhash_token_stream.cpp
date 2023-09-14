@@ -40,9 +40,9 @@ namespace {
 // That is important because produced tokens are stored in the index as terms.
 
 // Some primes between 2^63 and 2^64 for various uses.
-static const uint64_t k0 = 0xc3a5c85c97cb3127ULL;
-static const uint64_t k1 = 0xb492b66fbe98f273ULL;
-static const uint64_t k2 = 0x9ae16a3b2f90404fULL;
+static constexpr uint64_t k0 = 0xc3a5c85c97cb3127ULL;
+static constexpr uint64_t k1 = 0xb492b66fbe98f273ULL;
+static constexpr uint64_t k2 = 0x9ae16a3b2f90404fULL;
 
 #ifdef ABSL_IS_BIG_ENDIAN
 #define uint32_in_expected_order(x) (absl::gbswap_32(x))
@@ -467,17 +467,11 @@ bool MinHashTokenStream::next() {
     return false;
   }
 
-  const size_t value = [value = *begin_]() noexcept -> size_t {
-    if constexpr (is_big_endian()) {
-      return absl::gbswap_64(value);
-    } else {
-      return value;
-    }
-  }();
+  const auto value = absl::little_endian::FromHost(*begin_);
 
   [[maybe_unused]] const size_t length =
     absl::strings_internal::Base64EscapeInternal(
-      reinterpret_cast<const byte_type*>(&value), sizeof value, buf_.data(),
+      reinterpret_cast<const uint8_t*>(&value), sizeof value, buf_.data(),
       buf_.size(), absl::strings_internal::kBase64Chars, false);
   IRS_ASSERT(length == buf_.size());
 
@@ -510,7 +504,7 @@ void MinHashTokenStream::ComputeSignature() {
 
     do {
       const std::string_view value = ViewCast<char>(term_->value);
-      const size_t hash_value = ::CityHash64(value.data(), value.size());
+      const auto hash_value = ::CityHash64(value.data(), value.size());
 
       minhash_.Insert(hash_value);
       end = offs->end;

@@ -44,8 +44,8 @@ struct cipher {
 ////////////////////////////////////////////////////////////////////////////////
 class ctr_encryption : public encryption {
  public:
-  static const size_t DEFAULT_HEADER_LENGTH = 4096;
-  static const size_t MIN_HEADER_LENGTH = sizeof(uint64_t);
+  static constexpr size_t DEFAULT_HEADER_LENGTH = 4096;
+  static constexpr size_t MIN_HEADER_LENGTH = sizeof(uint64_t);
 
   explicit ctr_encryption(const cipher& cipher) noexcept : cipher_(&cipher) {}
 

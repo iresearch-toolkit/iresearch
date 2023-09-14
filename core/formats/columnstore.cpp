@@ -460,7 +460,7 @@ namespace columnstore {
 template<size_t Size>
 class index_block {
  public:
-  static const size_t SIZE = Size;
+  static constexpr size_t SIZE = Size;
 
   void push_back(doc_id_t key, uint64_t offset) noexcept {
     IRS_ASSERT(key_ >= keys_);
