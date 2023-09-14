@@ -198,21 +198,22 @@ class field_data : util::noncopyable {
 
 class fields_data : util::noncopyable {
  private:
-  struct field_ref_eq : value_ref_eq<field_data*> {
-    using self_t::operator();
+  struct FieldEq : ValueRefEq<field_data*> {
+    using is_transparent = void;
+    using Self::operator();
 
-    bool operator()(const ref_t& lhs,
+    bool operator()(const Ref& lhs,
                     const hashed_string_view& rhs) const noexcept {
-      return lhs.second->meta().name == rhs;
+      return lhs.ref->meta().name == rhs;
     }
 
     bool operator()(const hashed_string_view& lhs,
-                    const ref_t& rhs) const noexcept {
+                    const Ref& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
   };
 
-  using fields_map = flat_hash_set<field_ref_eq>;
+  using fields_map = flat_hash_set<FieldEq>;
 
  public:
   using postings_ref_t = std::vector<const posting*>;

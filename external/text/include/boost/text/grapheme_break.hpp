@@ -110,6 +110,7 @@ namespace boost { namespace text {
         template<typename CPIter>
         struct grapheme_break_state
         {
+            CPIter it_prev;
             CPIter it;
 
             grapheme_property prev_prop;
@@ -121,7 +122,7 @@ namespace boost { namespace text {
         template<typename CPIter>
         grapheme_break_state<CPIter> next(grapheme_break_state<CPIter> state)
         {
-            ++state.it;
+            state.it_prev = state.it++;
             state.prev_prop = state.prop;
             return state;
         }
@@ -259,12 +260,12 @@ constexpr std::array<std::array<bool, 15>, 15> grapheme_breaks = {{
                 return first;
 
             grapheme_break_state<CPIter> state;
-            state.it = first;
+            state.it = state.it_prev = first;
 
             if (++state.it == last)
                 return state.it;
 
-            state.prev_prop = boost::text::grapheme_prop(*std::prev(state.it));
+            state.prev_prop = boost::text::grapheme_prop(*state.it_prev);
             state.prop = boost::text::grapheme_prop(*state.it);
 
             state.emoji_state =
@@ -278,22 +279,17 @@ constexpr std::array<std::array<bool, 15>, 15> grapheme_breaks = {{
                 // GB11
                 if (state.prev_prop == grapheme_property::ZWJ &&
                     state.prop == grapheme_property::ExtPict &&
-                    detail::gb11_prefix(first, std::prev(state.it))) {
+                    detail::gb11_prefix(first, state.it_prev)) {
                     continue;
                 }
 
-                if (state.emoji_state ==
-                    grapheme_break_emoji_state_t::first_emoji) {
+                if (state.emoji_state == grapheme_break_emoji_state_t::first_emoji) {
+                    state.emoji_state = grapheme_break_emoji_state_t::none;
                     if (state.prop == grapheme_property::Regional_Indicator) {
-                        state.emoji_state = grapheme_break_emoji_state_t::none;
                         continue;
-                    } else {
-                        state.emoji_state = grapheme_break_emoji_state_t::none;
                     }
-                } else if (
-                    state.prop == grapheme_property::Regional_Indicator) {
-                    state.emoji_state =
-                        grapheme_break_emoji_state_t::first_emoji;
+                } else if (state.prop == grapheme_property::Regional_Indicator) {
+                    state.emoji_state = grapheme_break_emoji_state_t::first_emoji;
                 }
 
                 if (detail::table_grapheme_break(state.prev_prop, state.prop))

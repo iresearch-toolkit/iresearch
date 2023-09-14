@@ -97,6 +97,14 @@ endif ()
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
   set(IRESEARCH_COVERAGE ON)
   set(CMAKE_BUILD_TYPE "Debug")
+elseif (CMAKE_BUILD_TYPE MATCHES "Profile")
+  set(CMAKE_BUILD_TYPE "Release")
+  add_compile_options(
+    -g 
+    -fno-omit-frame-pointer
+  # -fno-inline
+  # -fno-optimize-sibling-calls
+  )
 endif ()
 
 add_option_gprof(FALSE)

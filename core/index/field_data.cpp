@@ -1054,23 +1054,23 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
       last_start_offs_ = start_offset;
     }
 
-    const auto res = terms_.emplace(term->value);
+    auto* posting = terms_.emplace(term->value);
 
-    if (nullptr == res.first) {
-      IRS_LOG_WARN(absl::StrCat("skipping too long term of size '",
-                                term->value.size(), "' in field '", meta_.name,
-                                "'"));
-      IRS_LOG_TRACE(absl::StrCat("field '", meta_.name,
-                                 "' contains too long term '",
-                                 ViewCast<char>(term->value), "'"));
+    if (posting == nullptr) {
+      IRS_LOG_WARN(absl::StrCat("skipping too long term of size: ",
+                                term->value.size(), " in field: ", meta_.name));
+      IRS_LOG_TRACE(
+        absl::StrCat("field: ", meta_.name,
+                     " contains too long term: ", ViewCast<char>(term->value)));
       continue;
     }
 
-    (this->*proc_table_[size_t(res.second)])(*res.first, id, pay, offs);
+    (this->*proc_table_[posting->doc == doc_limits::invalid()])(*posting, id,
+                                                                pay, offs);
 
     if (0 == ++stats_.len) {
-      IRS_LOG_ERROR(absl::StrCat("too many tokens in field '", meta_.name,
-                                 "', document '", id, "'"));
+      IRS_LOG_ERROR(absl::StrCat("too many tokens in field: ", meta_.name,
+                                 ", document: ", id));
       return false;
     }
 
@@ -1108,12 +1108,12 @@ field_data* fields_data::emplace(const hashed_string_view& name,
 
   auto it = fields_map_.lazy_emplace(
     name, [&name](const fields_map::constructor& ctor) {
-      ctor(name.hash(), nullptr);
+      ctor(nullptr, name.hash());
     });
 
-  if (!it->second) {
+  if (!it->ref) {
     try {
-      const_cast<field_data*&>(it->second) = &fields_.emplace_back(
+      const_cast<field_data*&>(it->ref) = &fields_.emplace_back(
         name, features, *feature_info_, *cached_columns_, *cached_features_,
         columns, byte_writer_, int_writer_, index_features,
         (nullptr != comparator_));
@@ -1123,7 +1123,7 @@ field_data* fields_data::emplace(const hashed_string_view& name,
     }
   }
 
-  return it->second;
+  return it->ref;
 }
 
 void fields_data::flush(field_writer& fw, flush_state& state) {
