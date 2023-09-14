@@ -28,22 +28,20 @@
 
 namespace irs {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief first - hash value, second - reference
-////////////////////////////////////////////////////////////////////////////////
 template<typename T>
-using value_ref_t = std::pair<size_t, T>;
+struct ValueRef {
+  explicit ValueRef(T ref, size_t hash) : ref{ref}, hash{hash} {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct transparent hash for value_ref_t
-////////////////////////////////////////////////////////////////////////////////
-class value_ref_hash {
- public:
+  T ref;
+  size_t hash;
+};
+
+struct ValueRefHash {
   using is_transparent = void;
 
   template<typename T>
-  size_t operator()(const value_ref_t<T>& value) const noexcept {
-    return value.first;
+  size_t operator()(const ValueRef<T>& value) const noexcept {
+    return value.hash;
   }
 
   template<typename Char>
@@ -53,19 +51,13 @@ class value_ref_hash {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @struct transparent equality comparator for value_ref_t
-////////////////////////////////////////////////////////////////////////////////
 template<typename T>
-struct value_ref_eq {
-  using is_transparent = void;
+struct ValueRefEq {
+  using Self = ValueRefEq<T>;
+  using Ref = ValueRef<T>;
 
-  using self_t = value_ref_eq<T>;
-  using ref_t = value_ref_t<T>;
-  using value_t = typename ref_t::second_type;
-
-  bool operator()(const ref_t& lhs, const ref_t& rhs) const noexcept {
-    return lhs.second == rhs.second;
+  bool operator()(const Ref& lhs, const Ref& rhs) const noexcept {
+    return lhs.ref == rhs.ref;
   }
 };
 
@@ -74,7 +66,6 @@ struct value_ref_eq {
 ///        rehash may still happen even if enough space was allocated
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Eq>
-using flat_hash_set =
-  absl::flat_hash_set<typename Eq::ref_t, value_ref_hash, Eq>;
+using flat_hash_set = absl::flat_hash_set<typename Eq::Ref, ValueRefHash, Eq>;
 
 }  // namespace irs
