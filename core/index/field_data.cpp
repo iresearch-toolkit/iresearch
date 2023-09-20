@@ -1054,9 +1054,9 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
       last_start_offs_ = start_offset;
     }
 
-    auto* posting = terms_.emplace(term->value);
+    auto* p = terms_.emplace(term->value);
 
-    if (posting == nullptr) {
+    if (p == nullptr) {
       IRS_LOG_WARN(absl::StrCat("skipping too long term of size: ",
                                 term->value.size(), " in field: ", meta_.name));
       IRS_LOG_TRACE(
@@ -1065,8 +1065,8 @@ bool field_data::invert(token_stream& stream, doc_id_t id) {
       continue;
     }
 
-    (this->*proc_table_[posting->doc == doc_limits::invalid()])(*posting, id,
-                                                                pay, offs);
+    (this->*proc_table_[!doc_limits::valid(p->doc)])(*p, id, pay, offs);
+    IRS_ASSERT(doc_limits::valid(p->doc));
 
     if (0 == ++stats_.len) {
       IRS_LOG_ERROR(absl::StrCat("too many tokens in field: ", meta_.name,

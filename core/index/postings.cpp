@@ -92,8 +92,7 @@ posting* postings::emplace(bytes_view term) {
     auto* start = writer_.position().buffer();
     writer_.write(term.data(), term_size);
     IRS_ASSERT(start == (writer_.position() - term_size).buffer());
-    auto& posting = postings_.emplace_back(start, term_size);
-    return &posting;
+    return &postings_.emplace_back(start, term_size);
   } catch (...) {
     // we leave some garbage in block pool
     terms_.erase(it);
