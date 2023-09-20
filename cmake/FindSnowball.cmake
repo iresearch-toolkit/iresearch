@@ -21,6 +21,7 @@ if (NOT "${SNOWBALL_ROOT}" STREQUAL "")
 
   set(Snowball_SEARCH_LIB_PATHS
     ${SNOWBALL_ROOT}/lib
+    ${SNOWBALL_ROOT}/lib/x86_64-linux-gnu
     ${SNOWBALL_ROOT}/build
     ${SNOWBALL_ROOT}/Release
     ${SNOWBALL_ROOT}/build/Release

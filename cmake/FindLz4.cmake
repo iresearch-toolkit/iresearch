@@ -25,6 +25,7 @@ if (NOT "${LZ4_ROOT}" STREQUAL "")
   set(LZ4_SEARCH_LIB_PATHS
     ${LZ4_ROOT}
     ${LZ4_ROOT}/lib
+    ${LZ4_ROOT}/lib/x86_64-linux-gnu
     )
 
   set(LZ4_SEARCH_SRC_PATHS
