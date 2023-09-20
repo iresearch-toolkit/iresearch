@@ -55,12 +55,13 @@ void insert_find_core(const std::vector<std::string>& src) {
     const std::string& s = src[i];
     const bytes_view b = detail::to_bytes_view(s);
     auto res = bh.emplace(b);
-    ASSERT_NE(nullptr, res.first);
-    ASSERT_TRUE(res.second);
+    ASSERT_NE(nullptr, res);
+    ASSERT_FALSE(doc_limits::valid(res->doc));
+    res->doc = doc_limits::invalid() + 1;
 
     res = bh.emplace(b);
-    ASSERT_NE(nullptr, res.first);
-    ASSERT_FALSE(res.second);
+    ASSERT_NE(nullptr, res);
+    ASSERT_TRUE(doc_limits::valid(res->doc));
   }
   ASSERT_GT(memory.counter_, 0);
 
@@ -72,21 +73,21 @@ void insert_find_core(const std::vector<std::string>& src) {
     const std::string long_str(block_size - irs::bytes_io<size_t>::vsize(32767),
                                'c');
     auto res = bh.emplace(detail::to_bytes_view(long_str));
-    ASSERT_TRUE(res.second);
+    ASSERT_FALSE(doc_limits::valid(res->doc));
   }
 
   // insert long key
   {
     const std::string too_long_str(block_size, 'c');
     auto res = bh.emplace(detail::to_bytes_view(too_long_str));
-    ASSERT_TRUE(res.second);
+    ASSERT_FALSE(doc_limits::valid(res->doc));
   }
 
   // insert too long key
   {
     const std::string too_long_str(1 + block_size, 'c');
     auto res = bh.emplace(detail::to_bytes_view(too_long_str));
-    ASSERT_FALSE(res.second);
+    ASSERT_EQ(nullptr, res);
   }
   ASSERT_GT(memory.counter_, 0);
   pool.reset();
