@@ -47,13 +47,16 @@ elseif (NOT MSVC)
   set(ICU_SEARCH_HEADER_PATHS
     "/usr/include"
     "/usr/include/x86_64-linux-gnu"
+    "/usr/include/aarch64-linux-gnu"
     )
 
   set(ICU_SEARCH_LIB_PATHS
     "/lib"
     "/lib/x86_64-linux-gnu"
+    "/lib/aarch64-linux-gnu"
     "/usr/lib"
     "/usr/lib/x86_64-linux-gnu"
+    "/usr/lib/aarch64-linux-gnu"
     )
 
   set(ICU_SEARCH_SRC_PATHS

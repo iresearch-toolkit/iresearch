@@ -26,6 +26,7 @@ if (NOT "${LZ4_ROOT}" STREQUAL "")
     ${LZ4_ROOT}
     ${LZ4_ROOT}/lib
     ${LZ4_ROOT}/lib/x86_64-linux-gnu
+    ${LZ4_ROOT}/lib/aarch64-linux-gnu
     )
 
   set(LZ4_SEARCH_SRC_PATHS
@@ -46,8 +47,10 @@ elseif (NOT MSVC)
   set(LZ4_SEARCH_LIB_PATHS
     "/lib"
     "/lib/x86_64-linux-gnu"
+    "/lib/aarch64-linux-gnu"
     "/usr/lib"
     "/usr/lib/x86_64-linux-gnu"
+    "/usr/lib/aarch64-linux-gnu"
     )
 
   set(LZ4_SEARCH_SRC_PATHS

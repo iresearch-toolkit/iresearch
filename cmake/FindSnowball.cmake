@@ -22,6 +22,7 @@ if (NOT "${SNOWBALL_ROOT}" STREQUAL "")
   set(Snowball_SEARCH_LIB_PATHS
     ${SNOWBALL_ROOT}/lib
     ${SNOWBALL_ROOT}/lib/x86_64-linux-gnu
+    ${SNOWBALL_ROOT}/lib/aarch64-linux-gnu
     ${SNOWBALL_ROOT}/build
     ${SNOWBALL_ROOT}/Release
     ${SNOWBALL_ROOT}/build/Release
@@ -48,8 +49,10 @@ elseif (NOT MSVC)
   set(Snowball_SEARCH_LIB_PATHS
     "/lib"
     "/lib/x86_64-linux-gnu"
+    "/lib/aarch64-linux-gnu"
     "/usr/lib"
     "/usr/lib/x86_64-linux-gnu"
+    "/usr/lib/aarch64-linux-gnu"
     )
 
   set(Snowball_SEARCH_SRC_PATHS
