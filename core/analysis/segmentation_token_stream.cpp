@@ -354,15 +354,14 @@ bool segmentation_token_stream::next() {
         term.value = {reinterpret_cast<const byte_type*>(&(*begin.base())),
                       length};
         break;
-        // TODO(MBkkt) do we need to call as_graphemes? Feels like no
       case options_t::case_convert_t::LOWER:
         term_buf_.clear();
-        to_lower(as_graphemes(begin, end), from_utf32_back_inserter(term_buf_));
+        to_lower(begin, begin, end, from_utf32_back_inserter(term_buf_));
         term.value = irs::ViewCast<byte_type>(std::string_view{term_buf_});
         break;
       case options_t::case_convert_t::UPPER:
         term_buf_.clear();
-        to_upper(as_graphemes(begin, end), from_utf32_back_inserter(term_buf_));
+        to_upper(begin, begin, end, from_utf32_back_inserter(term_buf_));
         term.value = irs::ViewCast<byte_type>(std::string_view{term_buf_});
         break;
     }
