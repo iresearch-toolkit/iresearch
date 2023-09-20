@@ -29,6 +29,7 @@
 #include "utils/hash_utils.hpp"
 #include "utils/noncopyable.hpp"
 #include "utils/string.hpp"
+#include "utils/type_limits.hpp"
 
 namespace irs {
 
@@ -54,6 +55,9 @@ using byte_block_pool =
   block_pool<byte_type, 32768, ManagedTypedAllocator<byte_type>>;
 
 struct posting {
+  explicit posting(const byte_type* data, size_t size) noexcept
+    : term{data, size} {}
+
   bytes_view term;
   uint64_t doc_code;
   // ...........................................................................
@@ -64,7 +68,7 @@ struct posting {
   // [3] - pointer to prox stream begin
   // ...........................................................................
   size_t int_start;
-  doc_id_t doc;
+  doc_id_t doc{doc_limits::invalid()};
   uint32_t freq;
   uint32_t pos;
   uint32_t offs{0};
@@ -77,10 +81,10 @@ class postings : util::noncopyable {
 
   // cppcheck-suppress constParameter
   explicit postings(writer_t& writer)
-    : map_{0, value_ref_hash{}, term_id_eq{postings_}}, writer_(writer) {}
+    : terms_{0, ValueRefHash{}, TermEq{postings_}}, writer_(writer) {}
 
   void clear() noexcept {
-    map_.clear();
+    terms_.clear();
     postings_.clear();
   }
 
@@ -88,29 +92,28 @@ class postings : util::noncopyable {
   /// sorted order
   void get_sorted_postings(std::vector<const posting*>& postings) const;
 
-  /// @note on error returns std::ptr(nullptr, false)
+  /// @note on error returns nullptr
   /// @note returned poitern remains valid until the next call
-  std::pair<posting*, bool> emplace(bytes_view term);
+  posting* emplace(bytes_view term);
 
-  bool empty() const noexcept { return map_.empty(); }
-  size_t size() const noexcept { return map_.size(); }
+  bool empty() const noexcept { return terms_.empty(); }
+  size_t size() const noexcept { return terms_.size(); }
 
  private:
-  class term_id_eq : public value_ref_eq<size_t> {
-   public:
-    explicit term_id_eq(const std::vector<posting>& data) noexcept
-      : data_(&data) {}
+  struct TermEq : ValueRefEq<size_t> {
+    using is_transparent = void;
+    using Self::operator();
 
-    using self_t::operator();
+    explicit TermEq(const std::vector<posting>& data) noexcept : data_{&data} {}
 
-    bool operator()(const ref_t& lhs,
+    bool operator()(const Ref& lhs,
                     const hashed_bytes_view& rhs) const noexcept {
-      IRS_ASSERT(lhs.second < data_->size());
-      return (*data_)[lhs.second].term == rhs;
+      IRS_ASSERT(lhs.ref < data_->size());
+      return (*data_)[lhs.ref].term == rhs;
     }
 
     bool operator()(const hashed_bytes_view& lhs,
-                    const ref_t& rhs) const noexcept {
+                    const Ref& rhs) const noexcept {
       return this->operator()(rhs, lhs);
     }
 
@@ -118,10 +121,9 @@ class postings : util::noncopyable {
     const std::vector<posting>* data_;
   };
 
-  using map_t = flat_hash_set<term_id_eq>;
-
+  // TODO(MBkkt) Maybe just flat_hash_set<unique_ptr<posting>>?
   std::vector<posting> postings_;
-  map_t map_;
+  flat_hash_set<TermEq> terms_;
   writer_t& writer_;
 };
 

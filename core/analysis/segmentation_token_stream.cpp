@@ -328,11 +328,10 @@ bool segmentation_token_stream::next() {
     const auto begin = gr_begin.base();
     const auto end = gr_end.base();
 
-    const size_t length =
+    const auto length =
       static_cast<size_t>(std::distance(begin.base(), end.base()));
 
-    if (!length) {
-      // eof
+    if (length == 0) {  // eof
       return false;
     }
 
@@ -355,6 +354,7 @@ bool segmentation_token_stream::next() {
         term.value = {reinterpret_cast<const byte_type*>(&(*begin.base())),
                       length};
         break;
+        // TODO(MBkkt) do we need to call as_graphemes? Feels like no
       case options_t::case_convert_t::LOWER:
         term_buf_.clear();
         to_lower(as_graphemes(begin, end), from_utf32_back_inserter(term_buf_));

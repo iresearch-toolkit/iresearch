@@ -256,21 +256,22 @@ void read_compact(irs::index_input& in, irs::encryption::stream* cipher,
   }
 }
 
-struct column_ref_eq : value_ref_eq<column_meta*> {
-  using self_t::operator();
+struct ColumnMetaEq : ValueRefEq<column_meta*> {
+  using is_transparent = void;
+  using Self::operator();
 
-  bool operator()(const ref_t& lhs,
+  bool operator()(const Ref& lhs,
                   const hashed_string_view& rhs) const noexcept {
-    return lhs.second->name == rhs;
+    return lhs.ref->name == rhs;
   }
 
   bool operator()(const hashed_string_view& lhs,
-                  const ref_t& rhs) const noexcept {
+                  const Ref& rhs) const noexcept {
     return this->operator()(rhs, lhs);
   }
 };
 
-using name_to_column_map = flat_hash_set<column_ref_eq>;
+using name_to_column_map = flat_hash_set<ColumnMetaEq>;
 
 class meta_writer final {
  public:

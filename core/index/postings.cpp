@@ -34,12 +34,12 @@ namespace irs {
 
 void postings::get_sorted_postings(
   std::vector<const posting*>& postings) const {
-  postings.resize(map_.size());
+  IRS_ASSERT(terms_.size() == postings_.size());
 
-  auto begin = postings.begin();
-  for (auto& entry : map_) {
-    *begin = &postings_[entry.second];
-    ++begin;
+  postings.resize(postings_.size());
+
+  for (auto* p = postings.data(); const auto& posting : postings_) {
+    *p++ = &posting;
   }
 
   std::sort(postings.begin(), postings.end(),
@@ -48,20 +48,20 @@ void postings::get_sorted_postings(
             });
 }
 
-std::pair<posting*, bool> postings::emplace(bytes_view term) {
+posting* postings::emplace(bytes_view term) {
   REGISTER_TIMER_DETAILED();
   auto& parent = writer_.parent();
 
   // maximum number to bytes needed for storage of term length and data
-  const auto max_term_len = term.size();  // + vencode_size(term.size());
+  const auto term_size = term.size();  // + vencode_size(term.size());
 
-  if (writer_t::container::block_type::SIZE < max_term_len) {
+  if (writer_t::container::block_type::SIZE < term_size) {
     // TODO: maybe move big terms it to a separate storage
     // reject terms that do not fit in a block
-    return std::make_pair(nullptr, false);
+    return nullptr;
   }
 
-  const auto slice_end = writer_.pool_offset() + max_term_len;
+  const auto slice_end = writer_.pool_offset() + term_size;
   const auto next_block_start =
     writer_.pool_offset() < parent.value_count()
       ? writer_.position().block_offset() +
@@ -74,34 +74,30 @@ std::pair<posting*, bool> postings::emplace(bytes_view term) {
   }
 
   IRS_ASSERT(size() < doc_limits::eof());  // not larger then the static flag
-  IRS_ASSERT(map_.size() == postings_.size());
+  IRS_ASSERT(terms_.size() == postings_.size());
 
   const hashed_bytes_view hashed_term{term};
 
   bool is_new = false;
-  const auto it = map_.lazy_emplace(
-    hashed_term, [&is_new, hash = hashed_term.hash(),
-                  id = map_.size()](const map_t::constructor& ctor) {
+  const auto it = terms_.lazy_emplace(
+    hashed_term, [&, size = terms_.size()](const auto& ctor) {
+      ctor(size, hashed_term.hash());
       is_new = true;
-      ctor(hash, id);
     });
-
-  if (is_new) {
-    // for new terms also write out their value
-    try {
-      writer_.write(term.data(), term.size());
-      postings_.emplace_back();
-    } catch (...) {
-      // we leave some garbage in block pool
-      map_.erase(it);
-      throw;
-    }
-
-    postings_.back().term = {(writer_.position() - term.size()).buffer(),
-                             term.size()};
+  if (IRS_LIKELY(!is_new)) {
+    return &postings_[it->ref];
   }
-
-  return {&postings_[it->second], is_new};
+  // for new terms also write out their value
+  try {
+    auto* start = writer_.position().buffer();
+    writer_.write(term.data(), term_size);
+    IRS_ASSERT(start == (writer_.position() - term_size).buffer());
+    return &postings_.emplace_back(start, term_size);
+  } catch (...) {
+    // we leave some garbage in block pool
+    terms_.erase(it);
+    throw;
+  }
 }
 
 }  // namespace irs
