@@ -1204,9 +1204,7 @@ void IndexWriter::Clear(uint64_t tick) {
 
   to_commit.ctx = SwitchFlushContext();
   // Ensure there are no active struct update operations
-  std::unique_lock ctx_lock{to_commit.ctx->pending_.Mutex()};
-  to_commit.ctx->pending_.Wait(ctx_lock);
-  ctx_lock.unlock();
+  to_commit.ctx->pending_.Wait();
 
   Abort();  // Abort any already opened transaction
   ApplyFlush(std::move(to_commit));
@@ -1823,11 +1821,8 @@ IndexWriter::PendingContext IndexWriter::PrepareFlush(const CommitInfo& info) {
 
   // noexcept block: I'm not sure is it really necessary or not
   auto ctx = SwitchFlushContext();
-  // TODO(MBkkt) It looks like lock mutex_ completely unnecessary
   // ensure there are no active struct update operations
-  std::unique_lock lock{ctx->pending_.Mutex()};
-  ctx->pending_.Wait(lock);
-  lock.unlock();
+  ctx->pending_.Wait();
   // Stage 0
   // wait for any outstanding segments to settle to ensure that any rollbacks
   // are properly tracked in 'modification_queries_'
