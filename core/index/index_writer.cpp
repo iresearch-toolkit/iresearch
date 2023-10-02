@@ -1197,8 +1197,9 @@ void IndexWriter::Clear(uint64_t tick) {
 
   to_commit.ctx = SwitchFlushContext();
   // Ensure there are no active struct update operations
-  std::lock_guard ctx_lock{to_commit.ctx->pending_.Mutex()};
-  // TODO(MBkkt) Wait while all on going transaction finish?
+  std::unique_lock ctx_lock{to_commit.ctx->pending_.Mutex()};
+  to_commit.ctx->pending_.Wait(ctx_lock);
+  ctx_lock.unlock();
 
   Abort();  // Abort any already opened transaction
   ApplyFlush(std::move(to_commit));
