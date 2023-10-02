@@ -1206,7 +1206,7 @@ void IndexWriter::Clear(uint64_t tick) {
   // Ensure there are no active struct update operations
   to_commit.ctx->pending_.Wait();
 
-  Abort();  // Abort any already opened transaction
+  Abort();  // Abort ongoing Commit, iff IndexWriter::Begin() was used
   ApplyFlush(std::move(to_commit));
   Finish();
 
