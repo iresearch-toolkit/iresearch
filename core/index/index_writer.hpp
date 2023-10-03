@@ -827,8 +827,8 @@ class IndexWriter : private util::noncopyable {
       }
 
       void Wait() noexcept {
+        std::unique_lock lock{m_};
         if (counter_.fetch_sub(1, std::memory_order_acq_rel) != 1) {
-          std::unique_lock lock{m_};
           do {
             cv_.wait(lock);
           } while (counter_.load(std::memory_order_acquire) != 0);
