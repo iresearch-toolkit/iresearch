@@ -826,15 +826,14 @@ class IndexWriter : private util::noncopyable {
         }
       }
 
-      void Wait(std::unique_lock<std::mutex>& lock) noexcept {
-        IRS_ASSERT(lock.mutex() == &m_);
-        IRS_ASSERT(lock.owns_lock());
+      void Wait() noexcept {
         if (counter_.fetch_sub(1, std::memory_order_acq_rel) != 1) {
-          do {
+          std::unique_lock lock{m_};
+          while (counter_.load(std::memory_order_acquire) != 0) {
             cv_.wait(lock);
-            // relaxed probably enough
-          } while (counter_.load(std::memory_order_acquire) != 0);
+          }
         }
+        // We can put acquire here and remove above, but is it worth?
         counter_.store(1, std::memory_order_relaxed);
       }
 
