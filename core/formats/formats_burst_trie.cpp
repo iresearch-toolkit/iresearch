@@ -3185,7 +3185,8 @@ class field_reader final : public irs::field_reader {
 
     size_t read_documents(bytes_view term,
                           std::span<doc_id_t> docs) const final {
-      if (IRS_UNLIKELY(docs.empty())) {
+      // Order is important here!
+      if (max() < term || term < min() || docs.empty()) {
         return 0;
       }
 
