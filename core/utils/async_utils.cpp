@@ -386,8 +386,8 @@ void thread_pool<UsePriority>::worker_impl(
   }
 }
 
-template thread_pool<true>;
-template thread_pool<false>;
+template class thread_pool<true>;
+template class thread_pool<false>;
 
 }  // namespace async_utils
 }  // namespace irs
