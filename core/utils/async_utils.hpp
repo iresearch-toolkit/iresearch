@@ -94,7 +94,7 @@ class thread_pool {
   }
 
   template<typename T>
-  func_t& func(T& t) {
+  static func_t& func(T& t) {
     if constexpr (UsePriority) {
       return const_cast<func_t&>(t.fn);
     } else {
