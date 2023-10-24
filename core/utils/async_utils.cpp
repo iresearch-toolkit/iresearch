@@ -56,8 +56,9 @@ void busywait_mutex::unlock() noexcept {
 }
 
 template<bool UsePriority>
-thread_pool<UsePriority>::thread_pool(size_t max_threads /*= 0*/, size_t max_idle /*= 0*/,
-                         basic_string_view<native_char_t> worker_name /*= ""*/)
+thread_pool<UsePriority>::thread_pool(
+  size_t max_threads /*= 0*/, size_t max_idle /*= 0*/,
+  basic_string_view<native_char_t> worker_name /*= ""*/)
   : shared_state_(std::make_shared<shared_state>()),
     max_idle_(max_idle),
     max_threads_(max_threads),
@@ -160,8 +161,8 @@ void thread_pool<UsePriority>::max_threads_delta(int delta) {
 }
 
 template<bool UsePriority>
-bool thread_pool<UsePriority>::run(thread_pool<UsePriority>::func_t&&fn,
-                      clock_t::duration delay /*=0*/) {
+bool thread_pool<UsePriority>::run(thread_pool<UsePriority>::func_t&& fn,
+                                   clock_t::duration delay /*=0*/) {
   if (!fn) {
     return false;
   }
@@ -252,7 +253,7 @@ bool thread_pool<UsePriority>::maybe_spawn_worker() {
 }
 
 template<bool UsePriority>
-std::pair<size_t, size_t>  thread_pool<UsePriority>::limits() const {
+std::pair<size_t, size_t> thread_pool<UsePriority>::limits() const {
   std::lock_guard lock{shared_state_->lock};
 
   return {max_threads_, max_idle_};
@@ -314,7 +315,7 @@ void thread_pool<UsePriority>::worker(
 template<bool UsePriority>
 void thread_pool<UsePriority>::worker_impl(
   std::unique_lock<std::mutex>& lock,
-                              std::shared_ptr<shared_state> shared_state) {
+  std::shared_ptr<shared_state> shared_state) {
   auto& state = shared_state->state;
 
   lock.lock();

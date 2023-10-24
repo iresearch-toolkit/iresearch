@@ -25,10 +25,11 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <function2/function2.hpp>
 #include <functional>
 #include <queue>
 #include <thread>
-#include <function2/function2.hpp>
+
 #include "noncopyable.hpp"
 #include "shared.hpp"
 #include "string.hpp"
@@ -73,7 +74,7 @@ class thread_pool {
   std::pair<size_t, size_t> limits() const;
   void limits(size_t max_threads, size_t max_idle);
 
-  bool run(func_t&& fn, [[maybe_unused]]clock_t::duration delay = {});
+  bool run(func_t&& fn, [[maybe_unused]] clock_t::duration delay = {});
   void stop(bool skip_pending = false);  // always a blocking call
   size_t tasks_active() const;
   size_t tasks_pending() const;
@@ -84,7 +85,7 @@ class thread_pool {
  private:
   enum class State { ABORT, FINISH, RUN };
 
-  auto& next() { 
+  auto& next() {
     if constexpr (UsePriority) {
       return queue_.top();
     } else {
@@ -127,8 +128,8 @@ class thread_pool {
   std::atomic<size_t> threads_{0};
   size_t max_idle_;
   size_t max_threads_;
-  std::conditional_t <UsePriority, std::priority_queue<task>,
-    std::queue<func_t>> queue_;
+  std::conditional_t<UsePriority, std::priority_queue<task>, std::queue<func_t>>
+    queue_;
   basic_string<native_char_t> worker_name_;
 };
 
