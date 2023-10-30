@@ -66,11 +66,11 @@ class notifying_counter {
   size_t notify_after_;
 };
 
-template<bool UsePriority>
+template<bool UseDelay>
 void run_thread_pool_bound_mt() {
   // test max threads
   {
-    irs::async_utils::ThreadPool<> pool(2);
+    irs::async_utils::ThreadPool<UseDelay> pool(2);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]() -> void {
@@ -110,7 +110,7 @@ void run_thread_pool_bound_mt() {
 
   // test max threads delta grow
   {
-    irs::async_utils::ThreadPool<> pool(1);
+    irs::async_utils::ThreadPool<UseDelay> pool(1);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task = [&mutex, &count]() -> void {
@@ -140,7 +140,7 @@ void run_thread_pool_bound_mt() {
 
   // test max idle
   {
-    irs::async_utils::ThreadPool<> pool(3);
+    irs::async_utils::ThreadPool<UseDelay> pool(3);
     std::atomic<size_t> count(0);
     std::mutex mutex1;
     std::mutex mutex2;
@@ -197,11 +197,11 @@ void run_thread_pool_bound_mt() {
   }
 }
 
-template<bool UsePriority>
+template<bool UseDelay>
 void run_test_thread_pool_run_mt() {
   // test schedule 1 task
   {
-    irs::async_utils::ThreadPool<> pool(1);
+    irs::async_utils::ThreadPool<UseDelay> pool(1);
     std::condition_variable cond;
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
@@ -216,7 +216,7 @@ void run_test_thread_pool_run_mt() {
 
   // test schedule 3 task sequential
   {
-    irs::async_utils::ThreadPool<> pool(1);
+    irs::async_utils::ThreadPool<UseDelay> pool(1);
     std::condition_variable cond;
     notifying_counter count(cond, 3);
     std::mutex mutex;
@@ -251,7 +251,7 @@ void run_test_thread_pool_run_mt() {
 
   // test schedule 3 task parallel
   {
-    irs::async_utils::ThreadPool<> pool(3);
+    irs::async_utils::ThreadPool<UseDelay> pool(3);
     std::condition_variable cond;
     notifying_counter count(cond, 3);
     std::mutex mutex;
@@ -281,7 +281,7 @@ void run_test_thread_pool_run_mt() {
 
   // test schedule 1 task exception + 1 task
   {
-    irs::async_utils::ThreadPool<> pool(1, IR_NATIVE_STRING("foo"));
+    irs::async_utils::ThreadPool<UseDelay> pool(1, IR_NATIVE_STRING("foo"));
     std::condition_variable cond;
     notifying_counter count(cond, 2);
     std::mutex mutex;
