@@ -66,9 +66,6 @@ class notifying_counter {
   size_t notify_after_;
 };
 
-}  // namespace tests
-
-using namespace tests;
 template<bool UsePriority>
 void run_thread_pool_bound_mt() {
   // test max threads
@@ -701,3 +698,5 @@ TEST(thread_utils_test, get_set_name) {
   });
 #endif
 }
+
+}  // namespace tests
