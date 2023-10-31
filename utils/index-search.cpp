@@ -576,7 +576,7 @@ int search(std::string_view path, std::string_view dir_type,
 
   irs::DirectoryReader reader;
   irs::Scorers order;
-  irs::async_utils::thread_pool thread_pool(search_threads);
+  irs::async_utils::ThreadPool<> thread_pool(search_threads);
   irs::IndexReaderOptions options;
   if (wand.Enabled()) {
     options.scorers = {&score, 1};

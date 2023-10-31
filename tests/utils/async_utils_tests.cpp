@@ -66,11 +66,11 @@ class notifying_counter {
   size_t notify_after_;
 };
 
-template<bool UsePriority>
+template<bool UseDelay>
 void run_thread_pool_bound_mt() {
   // test max threads
   {
-    irs::async_utils::thread_pool<UsePriority> pool(0, 0);
+    irs::async_utils::ThreadPool<UseDelay> pool(2);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]() -> void {
@@ -87,11 +87,10 @@ void run_thread_pool_bound_mt() {
     };
     std::unique_lock<std::mutex> lock(mutex);
 
-    ASSERT_EQ(0, pool.threads());
+    ASSERT_EQ(2, pool.threads());
     pool.run(std::move(task1));
     pool.run(std::move(task2));
     pool.run(std::move(task3));
-    pool.max_threads(2);
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
@@ -111,7 +110,7 @@ void run_thread_pool_bound_mt() {
 
   // test max threads delta grow
   {
-    irs::async_utils::thread_pool<UsePriority> pool(0, 0);
+    irs::async_utils::ThreadPool<UseDelay> pool(1);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task = [&mutex, &count]() -> void {
@@ -120,9 +119,8 @@ void run_thread_pool_bound_mt() {
     };
     std::unique_lock<std::mutex> lock(mutex);
 
-    ASSERT_EQ(0, pool.threads());
+    ASSERT_EQ(1, pool.threads());
     pool.run(std::move(task));
-    pool.max_threads_delta(1);
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
@@ -140,26 +138,9 @@ void run_thread_pool_bound_mt() {
     pool.stop(true);
   }
 
-  // test max threads delta
-  {
-    irs::async_utils::thread_pool<UsePriority> pool(1, 10);
-
-    ASSERT_EQ(1, pool.max_threads());
-    pool.max_threads_delta(1);
-    ASSERT_EQ(2, pool.max_threads());
-    pool.max_threads_delta(-2);
-    ASSERT_EQ(0, pool.max_threads());
-    pool.max_threads(std::numeric_limits<size_t>::max());
-    pool.max_threads_delta(1);
-    ASSERT_EQ(std::numeric_limits<size_t>::max(), pool.max_threads());
-    pool.max_threads(1);
-    pool.max_threads_delta(-2);
-    ASSERT_EQ(std::numeric_limits<size_t>::min(), pool.max_threads());
-  }
-
   // test max idle
   {
-    irs::async_utils::thread_pool<UsePriority> pool(0, 0);
+    irs::async_utils::ThreadPool<UseDelay> pool(3);
     std::atomic<size_t> count(0);
     std::mutex mutex1;
     std::mutex mutex2;
@@ -188,12 +169,10 @@ void run_thread_pool_bound_mt() {
     std::unique_lock<std::mutex> lock2(mutex2);
     std::unique_lock<std::mutex> start_lock(start_mutex);
 
-    ASSERT_EQ(0, pool.threads());
+    ASSERT_EQ(3, pool.threads());
     pool.run(std::move(task1));
     pool.run(std::move(task2));
     pool.run(std::move(task3));
-    pool.limits(3, 1);
-    ASSERT_EQ(std::make_pair(size_t(3), size_t(1)), pool.limits());
     ASSERT_TRUE(start_count ||
                 std::cv_status::no_timeout ==
                   start_cond.wait_for(start_lock, 10000ms) ||
@@ -207,40 +186,22 @@ void run_thread_pool_bound_mt() {
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
-      while (2 != pool.threads() || count != 2) {
+      while (count != 2) {
         std::this_thread::sleep_for(10ms);
         ASSERT_LE(std::chrono::steady_clock::now(), end);
       }
     }
     ASSERT_EQ(2, count);  // 2 tasks complete
-    ASSERT_EQ(2, pool.threads());
     lock2.unlock();
     pool.stop(true);
   }
-
-  // test max idle delta
-  {
-    irs::async_utils::thread_pool<UsePriority> pool(10, 1);
-
-    ASSERT_EQ(1, pool.max_idle());
-    pool.max_idle_delta(1);
-    ASSERT_EQ(2, pool.max_idle());
-    pool.max_idle_delta(-2);
-    ASSERT_EQ(0, pool.max_idle());
-    pool.max_idle(std::numeric_limits<size_t>::max());
-    pool.max_idle_delta(1);
-    ASSERT_EQ(std::numeric_limits<size_t>::max(), pool.max_idle());
-    pool.max_idle(1);
-    pool.max_idle_delta(-2);
-    ASSERT_EQ(std::numeric_limits<size_t>::min(), pool.max_idle());
-  }
 }
 
-template<bool UsePriority>
+template<bool UseDelay>
 void run_test_thread_pool_run_mt() {
   // test schedule 1 task
   {
-    irs::async_utils::thread_pool<UsePriority> pool(1, 0);
+    irs::async_utils::ThreadPool<UseDelay> pool(1);
     std::condition_variable cond;
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
@@ -255,7 +216,7 @@ void run_test_thread_pool_run_mt() {
 
   // test schedule 3 task sequential
   {
-    irs::async_utils::thread_pool<UsePriority> pool(1, 1);
+    irs::async_utils::ThreadPool<UseDelay> pool(1);
     std::condition_variable cond;
     notifying_counter count(cond, 3);
     std::mutex mutex;
@@ -290,7 +251,7 @@ void run_test_thread_pool_run_mt() {
 
   // test schedule 3 task parallel
   {
-    irs::async_utils::thread_pool<UsePriority> pool(3, 0);
+    irs::async_utils::ThreadPool<UseDelay> pool(3);
     std::condition_variable cond;
     notifying_counter count(cond, 3);
     std::mutex mutex;
@@ -320,8 +281,7 @@ void run_test_thread_pool_run_mt() {
 
   // test schedule 1 task exception + 1 task
   {
-    irs::async_utils::thread_pool<UsePriority> pool(1, 0,
-                                                    IR_NATIVE_STRING("foo"));
+    irs::async_utils::ThreadPool<UseDelay> pool(1, IR_NATIVE_STRING("foo"));
     std::condition_variable cond;
     notifying_counter count(cond, 2);
     std::mutex mutex;
@@ -349,10 +309,6 @@ void run_test_thread_pool_run_mt() {
     pool.stop(true);
   }
 }
-
-}  // namespace tests
-
-using namespace tests;
 
 TEST_F(async_utils_tests, test_busywait_mutex_mt) {
   typedef irs::async_utils::busywait_mutex mutex_t;
@@ -400,7 +356,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
 TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
   // test stop run pending
   {
-    irs::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::ThreadPool<> pool(1);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]() -> void {
@@ -440,15 +396,15 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
     {
       const auto end = std::chrono::steady_clock::now() +
                        10s;  // assume 10s is more than enough
-      while (pool.tasks_active() || pool.threads()) {
+      while (pool.tasks_active()) {
         std::this_thread::sleep_for(100ms);
         ASSERT_LE(std::chrono::steady_clock::now(), end);
       }
     }
     ASSERT_EQ(0, pool.tasks_active());
     ASSERT_EQ(0, pool.tasks_pending());
-    ASSERT_EQ(0, pool.threads());
-    ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(0)), pool.stats());
+    ASSERT_EQ(1, pool.threads());
+    ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)), pool.stats());
     pool.stop();  // blocking call (thread runtime duration simulated via sleep)
     ASSERT_EQ(2, count);  // all tasks ran
     ASSERT_EQ(0, pool.tasks_active());
@@ -461,7 +417,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_delay_mt) {
 TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
   // test stop run pending
   {
-    irs::async_utils::thread_pool pool(4, 2);
+    irs::async_utils::ThreadPool<> pool(4);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]() -> void {
@@ -516,8 +472,8 @@ TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
     }
     ASSERT_EQ(0, pool.tasks_active());
     ASSERT_EQ(0, pool.tasks_pending());
-    ASSERT_EQ(2, pool.threads());
-    ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(2)), pool.stats());
+    ASSERT_EQ(4, pool.threads());
+    ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(4)), pool.stats());
     pool.stop();  // blocking call (thread runtime duration simulated via sleep)
     ASSERT_EQ(4, count);  // all tasks ran
     ASSERT_EQ(0, pool.tasks_active());
@@ -530,7 +486,7 @@ TEST_F(async_utils_tests, test_thread_pool_max_idle_mt) {
 TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
   // test stop run pending
   {
-    irs::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::ThreadPool<> pool(1);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]() -> void {
@@ -554,7 +510,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
   // test stop skip pending
   {
-    irs::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::ThreadPool<> pool(1);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]() -> void {
@@ -587,7 +543,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
   // test pool stop + run
   {
-    irs::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::ThreadPool<> pool(1);
     std::atomic<size_t> count(0);
     std::mutex mutex;
     auto task1 = [&mutex, &count]() -> void {
@@ -600,9 +556,8 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
     };
     std::unique_lock<std::mutex> lock(mutex);
 
-    ASSERT_EQ(0, pool.threads());
+    ASSERT_EQ(1, pool.threads());
     pool.run(std::move(task1));
-    pool.max_threads(1);
     {
       // assume 10s is more than enough to start first thread
       const auto end = std::chrono::steady_clock::now() + 10s;
@@ -620,7 +575,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
   // test multiple calls to stop will all block
   {
-    irs::async_utils::thread_pool pool(1, 0);
+    irs::async_utils::ThreadPool<> pool(1);
     std::condition_variable cond;
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
@@ -629,7 +584,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
       cond.notify_all();
     };
 
-    ASSERT_EQ(0, pool.threads());
+    ASSERT_EQ(1, pool.threads());
     pool.run(std::move(task));
     ASSERT_EQ(1, pool.threads());
 
@@ -668,7 +623,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
 
   // test stop with a single thread will stop threads
   {
-    irs::async_utils::thread_pool pool(1, 1);
+    irs::async_utils::ThreadPool<> pool(1);
 
     pool.run([]() -> void {});  // start a single thread
     ASSERT_EQ(1, pool.threads());
@@ -689,7 +644,7 @@ TEST_F(async_utils_tests, test_queue_thread_pool_delay_mt) {
   {
     uint64_t counter{0};
     uint64_t counter_start{0};
-    irs::async_utils::thread_pool<false> pool(1, 1);
+    irs::async_utils::ThreadPool<false> pool(1);
     std::condition_variable cond;
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
@@ -714,7 +669,7 @@ TEST_F(async_utils_tests, test_queue_thread_pool_delay_mt) {
       }
     };
 
-    ASSERT_EQ(0, pool.threads());
+    ASSERT_EQ(1, pool.threads());
     // delay is ignored for non priority qeue
     // tasks are executed as is
     pool.run(std::move(task), 10000s);
@@ -743,3 +698,5 @@ TEST(thread_utils_test, get_set_name) {
   });
 #endif
 }
+
+}  // namespace tests

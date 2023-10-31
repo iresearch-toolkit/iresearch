@@ -126,7 +126,7 @@ class index_profile_test_case : public tests::index_test_base {
     std::atomic<size_t> writer_import_count(0);
     auto thread_count = (std::max)((size_t)1, num_insert_threads);
     auto total_threads = thread_count + num_import_threads + num_update_threads;
-    irs::async_utils::thread_pool thread_pool(total_threads, total_threads);
+    irs::async_utils::ThreadPool<> thread_pool(total_threads);
     std::mutex mutex;
 
     if (!writer) {
@@ -473,7 +473,7 @@ class index_profile_test_case : public tests::index_test_base {
                                             size_t cleanup_interval) {
     auto* directory = &dir();
     std::atomic<bool> working(true);
-    irs::async_utils::thread_pool thread_pool(1, 1);
+    irs::async_utils::ThreadPool<> thread_pool(1);
 
     thread_pool.run([cleanup_interval, directory, &working]() -> void {
       while (working.load()) {
@@ -502,7 +502,7 @@ class index_profile_test_case : public tests::index_test_base {
     options.segment_count_max = 8;  // match original implementation or may run
                                     // out of file handles (e.g. MacOS/Travis)
 
-    irs::async_utils::thread_pool thread_pool(commit_threads, commit_threads);
+    irs::async_utils::ThreadPool<> thread_pool(commit_threads);
     auto writer = open_writer(irs::OM_CREATE, options);
 
     for (size_t i = 0; i < commit_threads; ++i) {
@@ -536,7 +536,7 @@ class index_profile_test_case : public tests::index_test_base {
       irs::index_utils::MakePolicy(irs::index_utils::ConsolidateCount());
     irs::IndexWriterOptions options;
     std::atomic<bool> working(true);
-    irs::async_utils::thread_pool thread_pool(2, 2);
+    irs::async_utils::ThreadPool<> thread_pool(2);
 
     options.segment_count_max = 8;  // match original implementation or may run
                                     // out of file handles (e.g. MacOS/Travis)

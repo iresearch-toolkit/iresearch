@@ -454,7 +454,7 @@ int put(const std::string& path, const std::string& dir_type,
 
   auto writer = irs::IndexWriter::Make(*dir, codec, irs::OM_CREATE, opts);
 
-  irs::async_utils::thread_pool thread_pool(
+  irs::async_utils::ThreadPool<> thread_pool(
     indexer_threads + consolidation_threads + 1);  // +1 for commiter thread
 
   SCOPED_TIMER("Total Time");
