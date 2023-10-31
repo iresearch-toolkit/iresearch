@@ -78,7 +78,7 @@ bool ThreadPool<UseDelay>::run(Func&& fn, Clock::duration delay) {
       return false;
     }
     tasks_.emplace(std::move(fn), at);
-    // TODO We can don't notify when new element is more delayed than min
+    // TODO We can skip notify when new element is more delayed than min
   } else {
     std::unique_lock lock{m_};
     if (WasStop()) {
