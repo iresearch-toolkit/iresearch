@@ -37,7 +37,8 @@ struct WaitGroup {
   }
 
   void Done(size_t counter = 1) noexcept {
-    if (counter_.fetch_sub(2 * counter, std::memory_order_acq_rel) == 2 * counter) {
+    if (counter_.fetch_sub(2 * counter, std::memory_order_acq_rel) ==
+        2 * counter) {
       std::lock_guard lock{m_};
       cv_.notify_one();
     }
