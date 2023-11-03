@@ -30,14 +30,14 @@ namespace irs {
 
 // TODO(MBkkt) Considered to replace with YACLib
 struct WaitGroup {
-  explicit WaitGroup(size_t counter = 0) noexcept : counter_{counter + 1} {}
+  explicit WaitGroup(size_t counter = 0) noexcept : counter_{2 * counter + 1} {}
 
   void Add(size_t counter = 1) noexcept {
-    counter_.fetch_add(counter, std::memory_order_relaxed);
+    counter_.fetch_add(2 * counter, std::memory_order_relaxed);
   }
 
   void Done(size_t counter = 1) noexcept {
-    if (counter_.fetch_sub(counter, std::memory_order_acq_rel) == counter) {
+    if (counter_.fetch_sub(2 * counter, std::memory_order_acq_rel) == 2 * counter) {
       std::lock_guard lock{m_};
       cv_.notify_one();
     }
@@ -56,13 +56,12 @@ struct WaitGroup {
   }
 
   // It shouldn't used for synchronization
-  // It's current value + 0/1 depends on exist parallel call Wait or not
   size_t Count() const noexcept {
-    return counter_.load(std::memory_order_relaxed);
+    return counter_.load(std::memory_order_relaxed) / 2;
   }
 
   void Reset(size_t counter) noexcept {
-    counter_.store(counter + 1, std::memory_order_relaxed);
+    counter_.store(2 * counter + 1, std::memory_order_relaxed);
   }
 
   std::mutex& Mutex() noexcept { return m_; }
