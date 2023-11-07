@@ -44,13 +44,14 @@ class proxy_filter final : public filter {
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 
-  template<typename T, typename... Args>
-  std::pair<T&, cache_ptr> set_filter(IResourceManager& memory,
-                                      Args&&... args) {
-    static_assert(std::is_base_of_v<filter, T>);
+  template<typename Impl, typename Base = Impl, typename... Args>
+  std::pair<Base&, cache_ptr> set_filter(IResourceManager& memory,
+                                         Args&&... args) {
+    static_assert(std::is_base_of_v<filter, Base>);
+    static_assert(std::is_base_of_v<Base, Impl>);
     auto& ptr =
-      cache_filter(memory, std::make_unique<T>(std::forward<Args>(args)...));
-    return {static_cast<T&>(ptr), cache_};
+      cache_filter(memory, std::make_unique<Impl>(std::forward<Args>(args)...));
+    return {static_cast<Base&>(ptr), cache_};
   }
 
   proxy_filter& set_cache(cache_ptr cache) noexcept {
