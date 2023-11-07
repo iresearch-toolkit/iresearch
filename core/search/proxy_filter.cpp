@@ -25,8 +25,9 @@
 #include <bit>
 
 #include "cost.hpp"
-#include "score.hpp"
 #include "utils/bitset.hpp"
+
+#include <absl/synchronization/mutex.h>
 
 namespace irs {
 
@@ -178,39 +179,45 @@ class lazy_filter_bitset_iterator : public doc_iterator,
 
 struct proxy_query_cache {
   proxy_query_cache(IResourceManager& memory, filter::ptr&& ptr) noexcept
-    : readers_{Alloc{memory}}, real_filter_(std::move(ptr)) {}
+    : real_filter_{std::move(ptr)}, readers_{Alloc{memory}} {}
 
   using Alloc = ManagedTypedAllocator<
     std::pair<const SubReader* const, std::unique_ptr<lazy_filter_bitset>>>;
 
+  filter::ptr real_filter_;
+  filter::prepared::ptr real_filter_prepared_;
+  absl::Mutex readers_lock_;
   absl::flat_hash_map<
     const SubReader*, std::unique_ptr<lazy_filter_bitset>,
     absl::container_internal::hash_default_hash<const SubReader*>,
     absl::container_internal::hash_default_eq<const SubReader*>, Alloc>
     readers_;
-  filter::prepared::ptr prepared_real_filter_;
-  filter::ptr real_filter_;
 };
 
 class proxy_query : public filter::prepared {
  public:
-  explicit proxy_query(proxy_filter::cache_ptr cache) : cache_(cache) {
-    IRS_ASSERT(cache_->prepared_real_filter_);
+  explicit proxy_query(proxy_filter::cache_ptr cache) : cache_{cache} {
+    IRS_ASSERT(cache_->real_filter_prepared_);
   }
 
   doc_iterator::ptr execute(const ExecutionContext& ctx) const final {
-    // first try to find segment in cache.
-    [[maybe_unused]] auto& [_, cached] =
-      *cache_->readers_.emplace(&ctx.segment, nullptr).first;
-
-    if (!cached) {
-      cached = std::make_unique<lazy_filter_bitset>(
-        ctx, *cache_->prepared_real_filter_);
+    auto* cache_bitset = [&]() -> lazy_filter_bitset* {
+      absl::ReaderMutexLock lock{&cache_->readers_lock_};
+      auto it = cache_->readers_.find(&ctx.segment);
+      if (it != cache_->readers_.end()) {
+        return it->second.get();
+      }
+      return nullptr;
+    }();
+    if (!cache_bitset) {
+      auto bitset = std::make_unique<lazy_filter_bitset>(
+        ctx, *cache_->real_filter_prepared_);
+      cache_bitset = bitset.get();
+      absl::WriterMutexLock lock{&cache_->readers_lock_};
+      cache_->readers_.emplace(&ctx.segment, std::move(bitset));
     }
-
-    IRS_ASSERT(cached);
     return memory::make_tracked<lazy_filter_bitset_iterator>(ctx.memory,
-                                                             *cached);
+                                                             *cache_bitset);
   }
 
   void visit(const SubReader&, PreparedStateVisitor&, score_t) const final {
@@ -218,25 +225,26 @@ class proxy_query : public filter::prepared {
   }
 
  private:
-  mutable proxy_filter::cache_ptr cache_;
+  proxy_filter::cache_ptr cache_;
 };
 
 filter::prepared::ptr proxy_filter::prepare(const PrepareContext& ctx) const {
-  if (!cache_ || !cache_->real_filter_ || !ctx.scorers.empty()) {
-    // Currently we do not support caching scores.
-    // Proxy filter should not be used with scorers!
-    IRS_ASSERT(false);
+  // Currently we do not support caching scores.
+  // Proxy filter should not be used with scorers!
+  IRS_ASSERT(ctx.scorers.empty());
+  if (!cache_ || !ctx.scorers.empty()) {
     return filter::prepared::empty();
   }
-  if (!cache_->prepared_real_filter_) {
-    cache_->prepared_real_filter_ = cache_->real_filter_->prepare(ctx);
+  if (!cache_->real_filter_prepared_) {
+    cache_->real_filter_prepared_ = cache_->real_filter_->prepare(ctx);
+    cache_->real_filter_.reset();
   }
   return memory::make_tracked<proxy_query>(ctx.memory, cache_);
 }
 
 filter& proxy_filter::cache_filter(IResourceManager& memory,
-                                   filter::ptr&& ptr) {
-  cache_ = std::make_shared<proxy_query_cache>(memory, std::move(ptr));
+                                   filter::ptr&& real) {
+  cache_ = std::make_shared<proxy_query_cache>(memory, std::move(real));
   IRS_ASSERT(cache_->real_filter_);
   return *cache_->real_filter_;
 }
