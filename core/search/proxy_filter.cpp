@@ -214,6 +214,7 @@ class proxy_query : public filter::prepared {
         ctx, *cache_->real_filter_prepared_);
       cache_bitset = bitset.get();
       absl::WriterMutexLock lock{&cache_->readers_lock_};
+      IRS_ASSERT(!cache_->readers_.contains(&ctx.segment));
       cache_->readers_.emplace(&ctx.segment, std::move(bitset));
     }
     return memory::make_tracked<lazy_filter_bitset_iterator>(ctx.memory,
