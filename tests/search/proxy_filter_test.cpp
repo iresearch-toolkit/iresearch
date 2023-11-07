@@ -125,13 +125,13 @@ class doclist_test_filter : public filter {
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final {
     ++prepares_;
-    return memory::make_tracked<doclist_test_query>(ctx.memory, documents_,
+    return memory::make_tracked<doclist_test_query>(ctx.memory, *documents_,
                                                     ctx.boost);
   }
 
   // intentional copy here to simplify multiple runs of same expected
   void set_expected(const std::vector<doc_id_t>& documents) {
-    documents_ = documents;
+    documents_ = &documents;
   }
 
   irs::type_info::type_id type() const noexcept final {
@@ -139,7 +139,7 @@ class doclist_test_filter : public filter {
   }
 
  private:
-  std::vector<doc_id_t> documents_;
+  const std::vector<doc_id_t>* documents_;
   static size_t prepares_;
 };
 
