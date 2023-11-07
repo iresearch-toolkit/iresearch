@@ -54,11 +54,7 @@ class proxy_filter final : public filter {
     return {DownCast<Base>(real), cache_};
   }
 
-  void set_cache(cache_ptr cache) noexcept {
-    // It's quite strange if we need to set in not empty cache_
-    IRS_ASSERT(!cache_);
-    cache_ = std::move(cache);
-  }
+  void set_cache(cache_ptr cache) noexcept { cache_ = std::move(cache); }
 
   irs::type_info::type_id type() const noexcept final {
     return irs::type<proxy_filter>::id();
