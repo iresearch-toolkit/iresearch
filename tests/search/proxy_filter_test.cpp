@@ -129,7 +129,6 @@ class doclist_test_filter : public filter {
                                                     ctx.boost);
   }
 
-  // intentional copy here to simplify multiple runs of same expected
   void set_expected(const std::vector<doc_id_t>& documents) {
     documents_ = &documents;
   }
