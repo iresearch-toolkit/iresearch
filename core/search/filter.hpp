@@ -98,10 +98,7 @@ class filter {
 
   score_t boost() const noexcept { return boost_; }
 
-  filter& boost(score_t boost) noexcept {
-    boost_ = boost;
-    return *this;
-  }
+  void boost(score_t boost) noexcept { boost_ = boost; }
 
   virtual type_info::type_id type() const noexcept = 0;
 

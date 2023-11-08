@@ -44,19 +44,17 @@ class proxy_filter final : public filter {
 
   filter::prepared::ptr prepare(const PrepareContext& ctx) const final;
 
-  template<typename T, typename... Args>
-  std::pair<T&, cache_ptr> set_filter(IResourceManager& memory,
-                                      Args&&... args) {
-    static_assert(std::is_base_of_v<filter, T>);
-    auto& ptr =
-      cache_filter(memory, std::make_unique<T>(std::forward<Args>(args)...));
-    return {static_cast<T&>(ptr), cache_};
+  template<typename Impl, typename Base = Impl, typename... Args>
+  std::pair<Base&, cache_ptr> set_filter(IResourceManager& memory,
+                                         Args&&... args) {
+    static_assert(std::is_base_of_v<filter, Base>);
+    static_assert(std::is_base_of_v<Base, Impl>);
+    auto& real =
+      cache_filter(memory, std::make_unique<Impl>(std::forward<Args>(args)...));
+    return {DownCast<Base>(real), cache_};
   }
 
-  proxy_filter& set_cache(cache_ptr cache) noexcept {
-    cache_ = std::move(cache);
-    return *this;
-  }
+  void set_cache(cache_ptr cache) noexcept { cache_ = std::move(cache); }
 
   irs::type_info::type_id type() const noexcept final {
     return irs::type<proxy_filter>::id();
@@ -67,4 +65,5 @@ class proxy_filter final : public filter {
 
   mutable cache_ptr cache_;
 };
+
 }  // namespace irs
