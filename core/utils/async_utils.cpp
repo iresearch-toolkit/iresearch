@@ -61,6 +61,7 @@ ThreadPool<UseDelay>::ThreadPool(size_t threads, basic_string_view<Char> name) {
 
 template<bool UseDelay>
 void ThreadPool<UseDelay>::start(size_t threads, basic_string_view<Char> name) {
+  IRS_ASSERT(threads_.empty());
   threads_.reserve(threads);
   for (size_t i = 0; i != threads; ++i) {
     threads_.emplace_back([&] {
