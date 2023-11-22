@@ -57,9 +57,11 @@ class ThreadPool {
   using Clock = std::chrono::steady_clock;
   using Func = fu2::unique_function<void()>;
 
+  ThreadPool() = default;
   explicit ThreadPool(size_t threads, basic_string_view<Char> name = {});
   ~ThreadPool() { stop(true); }
 
+  void start(size_t threads, basic_string_view<Char> name = {});
   bool run(Func&& fn, Clock::duration delay = {});
   void stop(bool skip_pending = false) noexcept;  // always a blocking call
   size_t tasks_active() const {
@@ -95,7 +97,6 @@ class ThreadPool {
 
   bool WasStop() const { return state_ % 2 != 0; }
 
-  basic_string<Char> name_;
   std::vector<std::thread> threads_;
   mutable std::mutex m_;
   std::condition_variable cv_;

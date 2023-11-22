@@ -55,13 +55,19 @@ void busywait_mutex::unlock() noexcept {
 }
 
 template<bool UseDelay>
-ThreadPool<UseDelay>::ThreadPool(size_t threads, basic_string_view<Char> name)
-  : name_{name} {
+ThreadPool<UseDelay>::ThreadPool(size_t threads, basic_string_view<Char> name) {
+  start(threads, name);
+}
+
+template<bool UseDelay>
+void ThreadPool<UseDelay>::start(size_t threads, basic_string_view<Char> name) {
+  IRS_ASSERT(threads_.empty());
   threads_.reserve(threads);
   for (size_t i = 0; i != threads; ++i) {
-    threads_.emplace_back([&] {
-      if (!name_.empty()) {
-        set_thread_name(name_.c_str());
+    threads_.emplace_back([this, name] {
+      if (!name.empty()) {
+        IRS_ASSERT(std::char_traits<Char>::length(name.data()) == name.size());
+        set_thread_name(name.data());
       }
       Work();
     });
