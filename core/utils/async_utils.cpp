@@ -67,7 +67,7 @@ void ThreadPool<UseDelay>::start(size_t threads,
   IRS_ASSERT(threads);
   threads_.reserve(threads);
   for (size_t i = 0; i != threads; ++i) {
-    threads_.emplace_back([&] {
+    threads_.emplace_back([this, name] {
       if (!name.empty()) {
         set_thread_name(name.data());
       }
