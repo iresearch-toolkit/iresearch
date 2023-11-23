@@ -63,6 +63,7 @@ ThreadPool<UseDelay>::ThreadPool(size_t threads,
 template<bool UseDelay>
 void ThreadPool<UseDelay>::start(size_t threads,
                                  std::basic_string_view<Char> name) {
+  std::lock_guard lock{m_};
   IRS_ASSERT(threads_.empty());
   IRS_ASSERT(threads);
   threads_.reserve(threads);
