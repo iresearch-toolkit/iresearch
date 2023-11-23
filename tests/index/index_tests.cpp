@@ -537,7 +537,7 @@ class index_test_case : public tests::index_test_base {
 
     // validate terms async
     {
-      irs::async_utils::thread_pool pool(thread_count, thread_count);
+      irs::async_utils::ThreadPool<> pool(thread_count);
 
       {
         std::lock_guard<std::mutex> lock(mutex);
@@ -580,7 +580,7 @@ class index_test_case : public tests::index_test_base {
           ASSERT_EQ(expected_term_itrs[i]->value(), actual_term_itr->value());
         }
 
-        irs::async_utils::thread_pool pool(thread_count, thread_count);
+        irs::async_utils::ThreadPool<> pool(thread_count);
 
         {
           std::lock_guard<std::mutex> lock(mutex);

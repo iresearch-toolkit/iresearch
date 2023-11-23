@@ -374,7 +374,7 @@ TEST_P(directory_test_case, read_multiple_streams) {
     auto in = dir_->open("test_async", irs::IOAdvice::NORMAL);
     std::mutex in_mtx;
     std::mutex mutex;
-    irs::async_utils::thread_pool pool(16, 16);
+    irs::async_utils::ThreadPool<> pool(16);
 
     ASSERT_FALSE(!in);
     in = in->reopen();
@@ -383,7 +383,7 @@ TEST_P(directory_test_case, read_multiple_streams) {
     {
       std::lock_guard<std::mutex> lock(mutex);
 
-      for (auto i = pool.max_threads(); i; --i) {
+      for (auto i = pool.threads(); i; --i) {
         pool.run([&in, &in_mtx, &mutex]() -> void {
           index_input::ptr input;
 
