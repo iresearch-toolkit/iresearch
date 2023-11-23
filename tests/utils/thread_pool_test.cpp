@@ -856,7 +856,7 @@ TEST(thread_pool_test, test_stop_signle_threads_mt) {
 TEST(thread_pool_test, test_check_name_mt) {
   // test stop with a single thread will stop threads
   const thread_name_t expected_name = IR_NATIVE_STRING("foo");
-  irs::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
+  std::basic_string<std::remove_pointer_t<thread_name_t>> actual_name;
   irs::async_utils::ThreadPool<> pool(1, IR_NATIVE_STRING("foo"));
 
   ASSERT_TRUE(pool.run([expected_name, &actual_name]() -> void {
