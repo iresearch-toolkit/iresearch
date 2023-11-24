@@ -126,7 +126,8 @@ void ThreadPool<UseDelay>::Work() {
       if constexpr (UseDelay) {
         auto& top = tasks_.top();
         if (top.at > Clock::now()) {
-          cv_.wait_until(lock, top.at);
+          auto const at = top.at;
+          cv_.wait_until(lock, at);
           continue;
         }
         fn = std::move(const_cast<Func&>(top.fn));
