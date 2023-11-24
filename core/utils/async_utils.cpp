@@ -61,6 +61,7 @@ ThreadPool<UseDelay>::ThreadPool(size_t threads, basic_string_view<Char> name) {
 
 template<bool UseDelay>
 void ThreadPool<UseDelay>::start(size_t threads, basic_string_view<Char> name) {
+  std::lock_guard lock{m_};
   IRS_ASSERT(threads_.empty());
   threads_.reserve(threads);
   for (size_t i = 0; i != threads; ++i) {
@@ -123,7 +124,8 @@ void ThreadPool<UseDelay>::Work() {
       if constexpr (UseDelay) {
         auto& top = tasks_.top();
         if (top.at > Clock::now()) {
-          cv_.wait_until(lock, top.at);
+          auto const at = top.at;
+          cv_.wait_until(lock, at);
           continue;
         }
         fn = std::move(const_cast<Func&>(top.fn));
